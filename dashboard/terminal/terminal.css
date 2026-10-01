@@ -754,6 +754,9 @@
 /* THE NFT CARD ON ITS OWN (2026-09-28): big, in the middle of the window, slapped on, then gone */
 #bt .bt-nft{position:absolute;z-index:9;left:50%;top:41%;transform:translate(-50%,-50%);pointer-events:none;text-align:center}
 #bt .bt-nft[hidden]{display:none}
+#bt .bt-nft.placed{transform:none} /* placed beside him by nftShow (2026-10-01) */
+#bt .bt-nft.placed .nc{width:clamp(150px,13.5vw,200px)}
+#bt .nft-on #bt-labs .wk{opacity:0!important;transition:opacity .3s}
 #bt .bt-nft .nc{width:clamp(170px,17vw,230px);aspect-ratio:3/4;border-radius:14px;overflow:hidden;border:3px solid #fff;margin:0 auto;background:#15121c;
   box-shadow:0 18px 50px rgba(0,0,0,.65),0 0 60px color-mix(in srgb,#a78bfa 60%,transparent);transform:rotate(-4deg)}
 #bt .bt-nft img{display:block;width:100%;height:100%;object-fit:cover}

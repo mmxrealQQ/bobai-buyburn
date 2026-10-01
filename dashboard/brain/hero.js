@@ -34,18 +34,39 @@
   async function w03(win) {
     const b = await burns(); if (!Array.isArray(b)) return;
     const day = (t) => Math.floor(t / 86400e3), today = day(Date.now()), A = new Array(30).fill(0), n7 = b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3);
-    for (const e of b) { const i = 29 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 30) A[i] += +e.bobaiBurned || 0; }
+    // per day: BOBAI burned, the BNB that bought it, the runs (operator, 2026-10-01: "on the bars, hover or tap: that day's
+    // BOBAI and its value in USD, only for the day you are on")
+    const Bnb = new Array(30).fill(0), Runs = new Array(30).fill(0);
+    for (const e of b) { const i = 29 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 30) { A[i] += +e.bobaiBurned || 0; Bnb[i] += +e.bobaiBurnBnb || 0; Runs[i]++; } }
     const tot = b.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     const h = strip(win);
     h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot), 1) + fig('LAST 7 DAYS', cmp(n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI') + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))
-      + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS</div><canvas height="90"></canvas></div>`;
-    const cv = $('canvas', h); requestAnimationFrame(() => {
+      + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90"></canvas><div class="bbt" hidden></div></div></div>`;
+    const cv = $('canvas', h), tip = $('.bbt', h);
+    let hi = -1;
+    const draw = () => {
       const w = cv.clientWidth, H = 90, dpr = Math.min(devicePixelRatio, 2); if (!w) return;
       cv.width = w * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       const mx = Math.max(...A) || 1, bw = w / 30;
-      A.forEach((v, i) => { const bh = v ? Math.max(2, v / mx * (H - 14)) : 1; g.fillStyle = v ? (i === 29 ? '#ffd28a' : '#ff7a3d') : 'rgba(255,255,255,.08)'; if (v) { g.shadowColor = '#ff7a3d'; g.shadowBlur = 8; } g.fillRect(i * bw + 2, H - 12 - bh, bw - 4, bh); g.shadowBlur = 0; });
+      A.forEach((v, i) => { const bh = v ? Math.max(2, v / mx * (H - 14)) : 1; g.fillStyle = i === hi ? '#fff3d6' : v ? (i === 29 ? '#ffd28a' : '#ff7a3d') : 'rgba(255,255,255,.08)'; if (v) { g.shadowColor = i === hi ? '#ffd28a' : '#ff7a3d'; g.shadowBlur = i === hi ? 14 : 8; } g.fillRect(i * bw + 2, H - 12 - bh, bw - 4, bh); g.shadowBlur = 0; });
+      if (hi >= 0) { g.fillStyle = 'rgba(255,210,138,.12)'; g.fillRect(hi * bw, 0, bw, H - 12); }
       g.fillStyle = 'rgba(160,162,192,.6)'; g.font = '600 9px ui-monospace,monospace'; g.fillText('30 DAYS AGO', 0, H - 1); g.textAlign = 'right'; g.fillText('TODAY', w, H - 1);
-    });
+    };
+    // one day's figures: the date (UTC, as the bars count), BOBAI burned, worth today at the live price, the BNB that bought it
+    const show = (i) => {
+      hi = i; draw(); if (i < 0) { tip.hidden = true; return; }
+      const N = window.__bobaiNums || {}, px = N.priceUsd || (window.__btPrice && window.__btPrice()) || 0, d = new Date((today - (29 - i)) * 86400e3).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
+      tip.innerHTML = A[i]
+        ? `<b>${d}</b><span>${cmp(A[i])} BOBAI burned</span><span>${px ? `worth $${nf(A[i] * px, 2)} today` : ''}${px && Bnb[i] ? ' · ' : ''}${Bnb[i] ? `bought with ${Bnb[i].toFixed(4)} BNB` : ''}</span><i>${Runs[i]} bot run${Runs[i] === 1 ? '' : 's'}</i>`
+        : `<b>${d}</b><span>no burn run that day</span>`;
+      tip.hidden = false; const bw = cv.clientWidth / 30, x = (i + 0.5) * bw, tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(cv.clientWidth - tw, x - tw / 2)) + 'px';
+    };
+    const at = (e) => { const r = cv.getBoundingClientRect(); return Math.max(0, Math.min(29, Math.floor((e.clientX - r.left) / (r.width / 30)))); };
+    cv.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') show(at(e)); });
+    cv.addEventListener('pointerdown', (e) => show(at(e) === hi && e.pointerType !== 'mouse' ? -1 : at(e))); // a finger: tap a day, tap it again to close
+    cv.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') show(-1); });
+    requestAnimationFrame(draw);
   }
   // 07 QUESTIONS: find one by typing
   function w07(win) {

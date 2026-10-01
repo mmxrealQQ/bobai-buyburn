@@ -178,6 +178,15 @@ body.bp-winon{overflow:hidden}
 .bw-hero .hf b.c{color:var(--c)}
 .bw-hero .hd{flex:1 1 100%;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 22%,transparent);background:rgba(255,255,255,.02)}
 .bw-hero .hd .ht{font:700 9px var(--bp-mono);letter-spacing:.2em;color:var(--c);margin-bottom:8px}
+/* 03 PROOF: a day's figures under the pointer or finger (2026-10-01) */
+.bw-hero .bbw{position:relative}
+.bw-hero .bbw canvas{display:block;width:100%;cursor:crosshair;touch-action:pan-y}
+.bw-hero .bbt{position:absolute;bottom:calc(100% + 6px);z-index:3;min-width:150px;max-width:240px;padding:8px 11px;border-radius:9px;background:rgba(14,10,8,.94);border:1px solid rgba(255,122,61,.55);box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 18px rgba(255,122,61,.18);pointer-events:none;font:600 11px/1.45 var(--bp-mono);color:#f3e6d8}
+.bw-hero .bbt[hidden]{display:none}
+.bw-hero .bbt b{display:block;font-weight:800;letter-spacing:.08em;color:#ffd28a;margin-bottom:2px}
+.bw-hero .bbt span{display:block}
+.bw-hero .bbt span:empty{display:none}
+.bw-hero .bbt i{display:block;font-style:normal;color:rgba(160,162,192,.85);margin-top:2px}
 .bw-hero canvas{display:block;width:100%}
 .bw-hero .sup{display:flex;height:14px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.06)}
 .bw-hero .sup i{display:block;height:100%}

@@ -649,7 +649,7 @@ function info(k) {
       links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1]; return { t: 'Creator share → d38', c: D.creator.c, rows: [
       ['Share of each trade', pctOf('creator')], ['Last in from 1ce', lastRun ? bnbF(lastRun.creatorBnb) : '…'], ['Last payout from d38', dv ? bnbF(dv.availableBnb) : '…'],
-      ['Payout split', '82% creator · 18% to 5 builders'], ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
+      ['Payout split', '80% creator · 20% to 6 builders'] /* builder #6 from 1.10. (worker-dev-buyback 32bc2ff) */, ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
       note: 'The 1ce bot sends the creator share to d38; the dev bot pays it out every hour. Both wallets are public.',
       links: [['d38 wallet', bsc('0x15Ba17075ef5E0736292b030e3715d9100fe3d38')]] }; }
     case 'core': case 'buyback': return { t: 'The buyback bot · 1ce', c: '#F0B90B', rows: [
@@ -767,9 +767,35 @@ function joyMove() {
   const fresh = J.filter(p => !RECENT.includes(p)); const L = fresh.length ? fresh : J;
   return L[Math.floor(Math.random() * L.length)];
 }
+// EACH CIRCLE, ITS OWN NEWS (operator, 2026-10-01: "hovering the circles — buyback, BOB burn, BOBAI burn, liquidity, DeFi,
+// Giggle — the matching animation and a current, smart line about exactly that circle, what its bot did"): a hover or tap
+// used to play the move in silence (and the joke button said "telling you something"). Every line reads the live figures.
+const hAgo = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+function circleLine(k) {
+  const lb = S.burns.filter(e => +e.bobaiBurned > 0).at(-1), wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3);
+  const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range, ll = S.liq.at(-1), dv = S.dev.at?.(-1), nd = S.nft?.drops?.[0];
+  const f = LIFE.flow || {};
+  const L = {
+    burnA: () => lb && `My last burn: ${cmp(+lb.bobaiBurned)} BOBAI, ${hAgo(Date.parse(lb.time))}. ${supplyPct(S.deadA || 0)}% of my supply is gone for good.`,
+    burnB: () => { const b = S.burns.filter(e => bobOf(e) > 0).at(-1); return b && `I burn BOB too: ${cmp(bobOf(b))} BOB ${hAgo(Date.parse(b.time))}. ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} this week.`; },
+    liq: () => `${lpText()} of my pool's LP is burned.${ll ? ` Last add: ${bnbF(+ll.bnb || 0)}, ${hAgo(Date.parse(ll.time))}.` : ''} Nobody can pull it.`,
+    defi: () => rb ? `My DeFi agent works ${bnbF(rb.value_with_reserve_bnb ?? rb.value_bnb ?? 0)} in CAKE/BNB. ${inr === false ? 'Price outside its range right now, so it waits.' : 'In range, earning fees.'}` : null,
+    giggle: () => GIGGLE_OPEN() ? `The Giggle pot holds ${bnb4(ggBnb())} for Giggle Academy. Every trade adds to it until November 20.` : `The Giggle pot went to Giggle Academy. ${bnb4(ggBnb())}, from every trade.`,
+    creator: () => dv ? `My creator share paid out ${bnbF(+dv.availableBnb || 0)} ${hAgo(Date.parse(dv.time))}: ${dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'}.` : null,
+    src: () => `Every trade pays 3% tax into my brain. This hour: ${nf(f.b || 0)} buy${f.b === 1 ? '' : 's'}, ${nf(f.s || 0)} sell${f.s === 1 ? '' : 's'}.`,
+    core: () => `Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback.${splitBnb() > 0 ? ' My bot splits it at its next check.' : ''}`,
+    buyback: () => `My buyback bot checks every 10 minutes. ${splitBnb() > 0 ? `${bnbF(splitBnb())} is ready to split.` : `Last check ${hAgo(W.buyback.last || Date.now())}.`}`,
+    dev: () => dv ? `My dev bot runs hourly. Last payout ${bnbF(+dv.availableBnb || 0)}, ${hAgo(Date.parse(dv.time))}.` : 'My dev bot runs hourly and pays the creator share.',
+    lp: () => rb ? `My DeFi agent checks its range every hour. ${inr === false ? 'Outside right now, it waits.' : 'In range, earning fees.'}` : null,
+    agent: () => `Other agents are asking me things: ${nf(HB.agent || 0)} requests today.`,
+    nft: () => nd && nd.ts && `Last NFT drop: #${nd.tokenId}, ${TIERS[nd.tier] || 'a buy'}, ${hAgo(nd.ts * 1000)}. Buy $100 or more and the next is yours.`,
+  }[k];
+  try { return L ? L() || null : null; } catch { return null; }
+}
 function clickMove(k) {
   const p = CLICK_MOVE[k] && withClip(CLICK_MOVE[k]), now = performance.now(); if (!p || flowPose(p) !== p || now < (LIFE.clickAt || 0) + 4000) return;
-  LIFE.clickAt = now; setPose(p, 6, true); LIFE.next = Math.max(LIFE.next, now + 60e3);
+  LIFE.clickAt = now; const line = circleLine(k);
+  setPose(line ? moveForLine(line, p) : p, 6, true); if (line) speak(line, 6000); LIFE.next = Math.max(LIFE.next, now + 60e3);
 }
 function bindFocus(el, k) {
   el.classList.add('hot');
@@ -962,6 +988,8 @@ window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
 window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
+window.__btCircles = () => Object.fromEntries(['burnA','burnB','liq','defi','giggle','creator','src','core','buyback','dev','lp','agent','nft'].map(k => [k, circleLine(k)])); // checks: what each circle says now
+window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the terminal read from the chain, for the Brain page's windows (03 PROOF)
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
@@ -1444,13 +1472,16 @@ const COMBO = {
     c => `${pct(c.ch)} in 24 hours and ${nTrades(c.n2)} in two hours. Hold on tight, this bull is running.`,
     c => `Green day, loud chain: ${$usd(c.v2)} traded in two hours. Every trade paid 3% to the brain.`,
     c => `${pct(c.ch)} and the volume is screaming. May the pump be with you.`] },
-  'up-normal': { name: 'bullish', moves: ['cheer', 'saber', 'moon', 'dance'], lines: [
+  // the bull in a bullish market (operator, 2026-10-01: "mood check bullish, and the bull hardly ever comes"): it was only in 'on fire' and 'battle mode'
+  'up-normal': { name: 'bullish', moves: ['bull', 'cheer', 'saber', 'moon', 'dance'], lines: [
     c => `${pct(c.ch)} in 24 hours, at a steady pace. Green is my favourite colour.`,
     c => `${pct(c.ch)} today, ${nTrades(c.n2)} in two hours. No rush, just up.`,
-    c => `Green day, ${pct(c.ch)}. Is this the moon? Asking for a friend.`] },
-  'up-quiet': { name: 'proud', moves: ['coffee', 'hodl', 'dance', 'moon'], lines: [
+    c => `Green day, ${pct(c.ch)}. Is this the moon? Asking for a friend.`,
+    c => `${pct(c.ch)} in 24 hours. The bull is out, so I saddle up and ride.`] },
+  'up-quiet': { name: 'proud', moves: ['coffee', 'hodl', 'dance', 'moon', 'bull'], lines: [
     c => `${pct(c.ch)} in 24 hours, and not one trade for ${mins(c.quietMin)}. Nobody sells. That is conviction.`,
-    c => `Green day, quiet chain. ${pct(c.ch)}, and the holders just hold. Coffee time.`] },
+    c => `Green day, quiet chain. ${pct(c.ch)}, and the holders just hold. Coffee time.`,
+    c => `${pct(c.ch)} in a quiet day. A slow bull ride, nobody in a hurry.`] },
   'side-loud': { name: 'restless', moves: ['think', 'pushups', 'walk', 'saber'], lines: [
     c => `${nTrades(c.n2)} in two hours, and the day is only ${pct(c.ch ?? 0)}. Lots of noise, no direction yet.`,
     c => `${$usd(c.v2)} traded in two hours, ${pct(c.ch ?? 0)} on the day. Buyers and sellers are wrestling. I collect the 3%.`] },
@@ -1551,7 +1582,8 @@ function moodMove() {
 }
 window.__btMood = () => ({ mood: LIFE.mood, d1h: +LIFE.d1h.toFixed(2), flow: LIFE.flow, own: ownLast, line: moodLine() }); // for checks from outside
 window.__btTestMood = m => { LIFE.mood = m; paintMood(); }; // for checks from outside: show one mood now (the next read sets the real one)
-function tellMood(ms = 6400) { const line = moodLine(); setPose(moveForLine(line, moodMove()), 6, false); speak(line, ms); }
+// a move the line NAMES is not varied away (varied() swaps a move he just did; 1.10. linemove.mjs: 'the bull is out' with the dance)
+function tellMood(ms = 6400) { const line = moodLine(), named = moveForLine(line, null); setPose(named || moodMove(), 6, !!named); speak(line, ms); }
 function readMood() {
   const now = Date.now(), pts = [];
   // who traded in the hour (tax swaps and our own bots left out): the chip's tooltip and his mood lines
@@ -1765,9 +1797,12 @@ function lifeTick(now) {
   if (now >= (LIFE.moodAt || 0)) {
     readMood();
     const was = LIFE.seenMood; LIFE.seenMood = LIFE.combo?.key || was; // no swing out of "not loaded yet"
-    if (was && was !== LIFE.seenMood && now >= (LIFE.turnAt || 0)) {
+    // NEVER INTO HIS SENTENCE (2026-10-01, qa/away.mjs: the swing came while 'Back! …' was being typed and cut it off half
+    // way): while he speaks or a move waits, the swing waits too — the mood stays unseen, so the next tick tells it
+    if (was && was !== LIFE.seenMood && now >= (LIFE.turnAt || 0) && (now < LIFE.sayUntil || VID.want || HELD)) LIFE.seenMood = was;
+    else if (was && was !== LIFE.seenMood && now >= (LIFE.turnAt || 0)) {
       LIFE.turnAt = now + 600e3; LIFE.next = now + 8e3 + 60e3 + Math.random() * 60e3;
-      const line = moodLine('Mood swing'); setPose(moodMove(), 7); speak(line, 6600); return;
+      const line = moodLine('Mood swing'); setPose(moveForLine(line, moodMove()), 7); speak(line, 6600); return;
     }
     LIFE.moodAt = now + 20e3;
   }
@@ -1823,13 +1858,13 @@ function ownMoment(act) {
   const k = ownKind(), log = got => { (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), k, got]); return true; }; // for checks from outside
   if (k === 'mood') { tellMood(6400); return log('mood'); }
   if (k === 'joke' && tellJoke(6500)) return log('joke');
-  if (k === 'invite') { const l = inviteLine(); if (l) { setPose(moveForLine(l, moodMove()), 6, false); speak(l, 6800); return log('invite'); } }
+  if (k === 'invite') { const l = inviteLine(); if (l) { const named = moveForLine(l, null); setPose(named || moodMove(), 6, !!named); speak(l, 6800); return log('invite'); } }
   log('work');
   const r = Math.random();
   // his hard hat: building on BNB Chain — half the time explained the way today's market needs it
   if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend]; setPose(poseOr('build'), 6, false); speak(mb && Math.random() < 0.5 ? pick(mb) : pick(BUILD), 6600); return true; }
-  if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { setPose(poseOr(RECENT.includes(mv) ? act()[0] : mv), 6, false); speak(line, 5600); return true; } }
-  const [p, line] = act(); setPose(poseOr(p), 6, false); speak(typeof line === 'function' ? line() : line, 5600); return true;
+  if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { const named = moveForLine(line, null); setPose(named || poseOr(RECENT.includes(mv) ? act()[0] : mv), 6, !!named); speak(line, 5600); return true; } }
+  const [p, l0] = act(), line = typeof l0 === 'function' ? l0() : l0, named = moveForLine(line, null); setPose(named || poseOr(p), 6, !!named); speak(line, 5600); return true;
 }
 // the chain interrupts: a moment of his real work gets a line of its own
 // a burn run placed among the week's (2026-09-28): he knows when one is the biggest, or the day's third
@@ -1910,7 +1945,7 @@ function hoverBobai(on) {
     if (now < waveAt + 60e3 || QUEUE.length || now < sceneUntil || pinnedK || (VID.on && !/^rest/.test(VID.cur || ''))) return;
     if (!vidWave()) return;
     waveAt = now; waveN++; (window.__btHover = window.__btHover || []).push(Math.round(now / 1000)); // for checks from outside
-    if (waveN <= 2) speak(pick(HOVER_LINES), 3600);
+    speak(waveN <= HOVER_LINES.length ? HOVER_LINES[(waveN - 1) % HOVER_LINES.length] : pick(HELLO), 3600); // never a silent wave (1.10.)
     LIFE.next = Math.max(LIFE.next, now + 25e3); LIFE.quietSince = Date.now();
   }, 1000);
 }
@@ -2507,44 +2542,84 @@ stk.innerHTML = '<div class="st-c"><img alt="NFT card"><i class="st-w">MINTING�
 // it sits on the buy board's top-left corner (operator, 2026-09-28: "at the buy alert, not the outer frame"); the board
 // is made further down, so the sticker joins it when first shown
 let mintWaitX = null, nextMintX = null;
-// THE CARD IN THE MIDDLE, OVER NO WORD (operator, 2026-10-01: "the NFT card covers the amount and the tax — put it in the
-// middle of the window, still tilted, 5-10% bigger, but covering no text"): it sat on the board's top-left corner, over
-// THIS BUY, BOUGHT and TAX at every size (qa/stkgeo.mjs). Now it lives in the window and takes the first free place of a
-// search that starts in the middle between the title and his head and widens left and right, then lower: free = no
-// visible text, not the board, not his face. The orbit's bot labels step aside while it shows (CSS .stk-on).
+// A FREE PLACE FOR A CARD (2026-10-01): the first spot of a search list that covers no visible text, none of the given
+// rects, and stays inside the window. Shared by the card on the buy board and the NFT scene's big card.
+// the LETTERS, not the boxes (2026-10-01): a title's box spans the whole window while its words sit in the middle — the
+// box kept the card off the board's top edge everywhere; the rects of the text lines themselves are what may not be covered
+function textRects(skip) {
+  const out = [], rg = document.createRange();
+  for (const e of win.querySelectorAll('*')) {
+    if ((skip && skip.contains(e)) || e.closest('#bt-labs .wk')) continue;
+    const tn = [...e.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim().length > 1); if (!tn.length) continue;
+    // the board's and the title's words count while they still fade in (1366 px: placed during the fade, it sat on the rows)
+    const own = flipEl.contains(e) || momentEl.contains(e);
+    if (!own && (e.checkVisibility ? !e.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : getComputedStyle(e).display === 'none')) continue; // a hidden parent hides it too
+    if (own && getComputedStyle(e).display === 'none') continue;
+    for (const n of tn) { rg.selectNodeContents(n); for (const r of rg.getClientRects()) if (r.width > 0) out.push(r); }
+  }
+  return out
+    // the scene's own labels (trades, the six places, the core) count even while they fade in: they show again under it
+    .concat([...win.querySelectorAll('#bt-labs .lab:not(.wk)')].map(e => e.getBoundingClientRect()).filter(r => r.width > 0));
+}
+function freeSpot(sw, sh, tries, busy, pad = 6) {
+  const W = win.getBoundingClientRect();
+  const free = (x, y) => x >= W.left + pad && y >= W.top + pad && x + sw <= W.right - pad && y + sh <= W.bottom - pad
+    && !busy.some(r => r.right > x - pad && r.left < x + sw + pad && r.bottom > y - pad && r.top < y + sh + pad);
+  for (const [x, y] of tries) if (free(x, y)) return { left: Math.round(x - W.left), top: Math.round(y - W.top) };
+  return null;
+}
+const faceOf = fr => fr && fr.width ? { left: fr.left + fr.width * 0.18, right: fr.right - fr.width * 0.18, top: fr.top, bottom: fr.top + fr.height * 0.42 } : null;
+// THE CARD ON THE BOARD'S TOP EDGE (operator, 2026-10-01: "in the replay the NFT comes with the buy — that makes sense; put
+// the card in the buy window, in the middle of its top edge"; first it sat on the corner over THIS BUY, BOUGHT and TAX,
+// then for an hour in the window's middle): centred on the board's top edge, tilted, 8% bigger, as far down onto the
+// board as its words allow; when the edge is taken, the nearest free spot. The orbit's bot labels step aside (.stk-on).
 function stkPlace() {
   if (stk.parentNode !== win) win.appendChild(stk);
   stk.classList.remove('pt'); stk.classList.toggle('ph', portrait); stk.style.left = stk.style.top = '';
-  const W = win.getBoundingClientRect(), sw = stk.offsetWidth || 108, sh = stk.offsetHeight || 162, pad = 6;
-  const R = e => e && e.getBoundingClientRect(), mc = R(momentEl.querySelector('.mc')), fb = R(flipEl), fr = R(fig);
-  const face = fr && fr.width ? { left: fr.left + fr.width * 0.18, right: fr.right - fr.width * 0.18, top: fr.top, bottom: fr.top + fr.height * 0.42 } : null;
-  const busy = [...win.querySelectorAll('*')].filter(e => !stk.contains(e) && !e.closest('#bt-labs .wk') && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1))
-    .filter(e => e.checkVisibility ? e.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : getComputedStyle(e).display !== 'none').map(R).filter(r => r.width > 0); // a hidden parent hides it too
-  // the scene's own labels (trades, the six places, the core) count even while they fade in: they show again under it
-  busy.push(...[...win.querySelectorAll('#bt-labs .lab:not(.wk)')].map(R).filter(r => r.width > 0));
-  if (fb && fb.width) busy.push(fb); if (face) busy.push(face);
-  const free = (x, y) => x >= W.left + pad && y >= W.top + pad && x + sw <= W.right - pad && y + sh <= W.bottom - pad
-    && !busy.some(r => r.right > x - pad && r.left < x + sw + pad && r.bottom > y - pad && r.top < y + sh + pad);
-  const cx = (face ? (face.left + face.right) / 2 : W.left + W.width / 2) - sw / 2;
-  // the best height: under the title when the title is above him (wide screens), above the scene card when the card is
-  // below him (phones, 1280 px: title and board sit in a card under his feet); then every other height, nearest first
-  const below = mc && mc.height && face && mc.top > face.bottom;
-  const yPref = below ? mc.top - sh - 10 : mc && mc.height ? (face && face.top - mc.bottom > sh + 20 ? mc.bottom + (face.top - mc.bottom - sh) / 2 : mc.bottom + 10) : W.top + W.height * 0.2;
-  const ys = []; for (let y = W.top + pad; y <= W.bottom - sh - pad; y += 12) ys.push(y);
-  ys.sort((a, b) => Math.abs(a - yPref) - Math.abs(b - yPref)); ys.unshift(yPref);
-  const dxs = [0]; for (let d = 20; d <= W.width / 2; d += 20) dxs.push(-d, d);
-  for (const y of ys) for (const dx of dxs) {
-    if (free(cx + dx, y)) { stk.style.left = Math.round(cx + dx - W.left) + 'px'; stk.style.top = Math.round(y - W.top) + 'px'; return; }
+  const W = win.getBoundingClientRect(), sw = stk.offsetWidth || 108, sh = stk.offsetHeight || 162;
+  const fb = flipEl.getBoundingClientRect(), face = faceOf(fig.getBoundingClientRect());
+  const busy = textRects(stk); if (face) busy.push(face);
+  const tries = [];
+  if (fb.width) {
+    const cx = fb.left + fb.width / 2 - sw / 2;
+    // on the edge first: from three quarters on the board up to just touching it, then a little left and right
+    // from the edge itself down into the board's empty middle (its words sit left and right), then up to just touching it
+    for (const dx of [0, -24, 24, -48, 48]) for (const k of [0.5, 0.6, 0.7, 0.8, 0.9, 1, 0.4, 0.3, 0.2, 0.1]) tries.push([cx + dx, fb.top - sh * (1 - k)]);
   }
+  // the edge is taken (a small screen): the nearest free spot around the board, then anywhere
+  const ys = []; for (let y = W.top + 6; y <= W.bottom - sh - 6; y += 12) ys.push(y);
+  const yPref = fb.width ? fb.top - sh / 2 : W.top + W.height * 0.3, xPref = fb.width ? fb.left + fb.width / 2 - sw / 2 : W.left + W.width / 2 - sw / 2;
+  ys.sort((a, b) => Math.abs(a - yPref) - Math.abs(b - yPref));
+  for (const y of ys) for (let d = 0; d <= W.width; d += 20) { tries.push([xPref - d, y]); if (d) tries.push([xPref + d, y]); }
+  const at = freeSpot(sw, sh, tries, busy);
+  if (at) { stk.style.left = at.left + 'px'; stk.style.top = at.top + 'px'; return; }
   // nowhere free (a tiny window): the board's corner, as before
   if (stk.parentNode !== flipEl) flipEl.appendChild(stk); stk.classList.toggle('pt', portrait);
 }
+// THE BOARD WRITES FIRST, THEN THE CARD LANDS (2026-10-01): placed while the board still wrote its lines, the card took
+// a spot that was free only for the moment and then sat on THIS BUY or the title (qa/stkgeo.mjs). It now waits until the
+// board's and the title's text has stood still for 300 ms (at most 3 s), then finds its place and slaps on.
+let stkWait = 0;
 function stkShow(src) {
-  stk.hidden = false; win.classList.add('stk-on'); stkPlace(); // shown first, so it can be measured
+  clearTimeout(stkWait); win.classList.add('stk-on');
   stk.classList.toggle('wait', !src); if (src) stk.querySelector('img').src = src;
-  stk.classList.remove('go'); void stk.offsetWidth; stk.classList.add('go');
+  stk.classList.remove('go'); stk.style.visibility = 'hidden'; stk.hidden = false; // in the layout to be measured, not yet seen
+  const sig = () => flipEl.textContent.length + ':' + (momentEl.querySelector('.mc')?.textContent.length || 0) + ':' + Math.round(flipEl.getBoundingClientRect().height);
+  let last = sig(), since = performance.now(); const t0 = since;
+  const tick = () => {
+    if (stk.hidden) return; // hidden again meanwhile (the moment ended)
+    const now = performance.now(), cur = sig(); if (cur !== last) { last = cur; since = now; }
+    // and until the title and the board have stopped moving: the title zooms in, so its letters measured small and the card
+    // took their place (1440/1366: it sat on HUGE BUY). Endless animations (a glow) do not count.
+    // only the TITLE's zoom (the board's own long animations — its pen — kept it waiting to the 3.5 s cap, and then the card
+    // was up for barely two seconds before the board closed; qa/stkdbg.mjs): text still for 200 ms, the title settled, max 1.5 s
+    const tt = momentEl.querySelector('.mc'), moving = !!tt && tt.getAnimations({ subtree: true }).some(a => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity);
+    if ((now - since < 200 || moving) && now - t0 < 1500) { stkWait = setTimeout(tick, 80); return; }
+    stkPlace(); stk.style.visibility = ''; void stk.offsetWidth; stk.classList.add('go');
+  };
+  stkWait = setTimeout(tick, 100);
 }
-function stkHide() { stk.classList.remove('go'); stk.hidden = true; win.classList.remove('stk-on'); }
+function stkHide() { clearTimeout(stkWait); stk.classList.remove('go'); stk.hidden = true; stk.style.visibility = ''; win.classList.remove('stk-on'); }
 function stkCancel() { mintWaitX = null; stkHide(); }
 function closeMomentIn(ms) {
   const now = performance.now();
@@ -2562,19 +2637,35 @@ win.appendChild(nftEl);
 let nftT = 0;
 // HE PAINTS IT FIRST (2026-09-29, the operator's street-artist idea, clip hub-nft): with its clip he paints a card in the
 // air in front of him, and the real card lands the moment his is finished (~4 s in); without the clip, at once
-const NFT_PAINT_MS = 4200;
+// SEE HIM MAKE IT (operator, 2026-10-01: "the NFT comes straight into the middle and you don't see BOBAI create it — paint
+// it, spray it"): the card used to land 4.2 s into his move, big and in the middle, over him. It now lands when his own
+// card is finished (5.6 s in: he shows it to the viewer and it dissolves), and beside him, so he stays in view.
+const NFT_PAINT_MS = 5600;
 const nftPaints = () => !REDUCED && moveTakes('nft').length > 0;
 function nftReveal(n) {
   if (!nftCard(n)) return;
   if (!nftPaints()) return nftShow(n);
   setPose('nft', 8);
-  withMove(() => setTimeout(() => nftShow(n), NFT_PAINT_MS));
+  // by the clip's own clock (1.10.: a timer from the scene's start let the card land at 4.8 s when the take started late)
+  withMove(() => { const t0 = performance.now(); const wait = () => {
+    const v = VID.v, own = /^hub-nft/.test(VID.cur || '') && v && v.currentTime >= NFT_PAINT_MS / 1000;
+    if (own || performance.now() - t0 > NFT_PAINT_MS + 4000 || !/^hub-nft/.test(VID.cur || '') && performance.now() - t0 > NFT_PAINT_MS) nftShow(n); else setTimeout(wait, 80); };
+    setTimeout(wait, 400); });
 }
 function nftShow(n) {
   const src = nftCard(n); if (!src) return;
   nftEl.querySelector('img').src = src;
   nftEl.querySelector('span').textContent = '#' + n.tokenId + ' · ' + (TIERS[n.tier] || '') + (nUsd(n) ? ' · ' + $buy(nUsd(n), n) + ' buy' : '');
-  nftEl.hidden = false; nftEl.classList.remove('go', 'out'); void nftEl.offsetWidth; nftEl.classList.add('go'); win.classList.add('nft-on');
+  nftEl.hidden = false; nftEl.classList.remove('go', 'out', 'placed'); nftEl.style.left = nftEl.style.top = '';
+  { // beside him, not over him: the first free spot right or left of his figure, at chest height; else the middle as before
+    nftEl.classList.add('placed'); win.classList.add('nft-on'); // measured at its placed size, the bot labels already aside
+    const fr = fig.getBoundingClientRect(), w = nftEl.offsetWidth, h = nftEl.offsetHeight, tries = [];
+    if (fr.width) { const y0 = fr.top + fr.height * 0.42 - h / 2;
+      for (const dy of [0, -30, 30, -60, 60, -100, 100]) for (const dx of [16, 40, 70]) { tries.push([fr.right + dx, y0 + dy]); tries.push([fr.left - w - dx, y0 + dy]); } }
+    const at = freeSpot(w, h, tries, [...textRects(nftEl), fr]);
+    if (at) { nftEl.style.left = at.left + 'px'; nftEl.style.top = at.top + 'px'; } else nftEl.classList.remove('placed');
+  }
+  void nftEl.offsetWidth; nftEl.classList.add('go'); win.classList.add('nft-on');
   fire(A.core, new THREE.Color('#a78bfa')); shock(A.core, '#a78bfa', 1.4);
   clearTimeout(nftT); nftT = setTimeout(() => { nftEl.classList.add('out'); nftT = setTimeout(() => { nftEl.hidden = true; win.classList.remove('nft-on'); }, 600); }, 5000);
 }
@@ -3779,7 +3870,7 @@ function near(e) {
   return best;
 }
 function describe(x) {
-  if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (82% creator, 18% to 5 builders)`;
+  if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (${x.d.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
   if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${cmp(x.bobai)} BOBAI of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
   if (x.kind === 'trade') return x.ours ? `${whoTraded(x)}${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}` : `${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)} · $${nf(x.usd * 0.03, 2)} tax to the brain`;
   if (x.kind === 'run') { const fed = [x.e.lpAgentTx && 'the DeFi agent', x.e.giggleTx && 'the Giggle pot'].filter(Boolean);

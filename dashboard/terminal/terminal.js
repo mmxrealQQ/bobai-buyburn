@@ -961,6 +961,7 @@ window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + D
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
+window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
@@ -1034,6 +1035,12 @@ const poseOr = p => HAVE.has(p) ? p : 'idle';
 // a scene waiting for its move, no laugh take) the joke is not told — never a joke said standing still.
 // a joke not told among the last ten (40+ of them: no repeat within a visit's first dozen)
 const JOKE_RECENT = [];
+// THE LINE NAMES THE MOVE (operator, 2026-10-01: "when he talks about the moon, the moon clip should come"): a line that
+// names one of his moves plays that move — a mood line used to take any of the mood's moves (cheer under "is this the
+// moon?") and every joke laughed, also about push-ups or coffee. Only a move he can play now; otherwise the usual one.
+const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own/i, 'bull'],
+  [/push-?ups?/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug']];
+function moveForLine(t, fallback) { for (const [rx, p] of LINE_MOVES) if (rx.test(t || '') && flowPose(p) === p) return p; return fallback; }
 function freshJoke() {
   const mine = (MOOD_JOKES[LIFE.combo?.key] || []).filter(j => !JOKE_RECENT.includes(j));
   const pool = mine.length && Math.random() < 0.45 ? mine : JOKES.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : JOKES);
@@ -1042,7 +1049,7 @@ function freshJoke() {
 function tellJoke(ms) {
   if (REDUCED || !VID.v) { speak(freshJoke(), ms); return true; }
   if (VID.go || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
-  setPose('laugh', 6, true); speak(freshJoke(), ms); return true; // urgent: never varied() into another move — a joke laughs
+  const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
 const bubble = document.createElement('div'); bubble.className = 'say'; bubble.setAttribute('aria-live', 'polite');
@@ -1251,12 +1258,43 @@ function vidGhost(dur = 0.35) {
   ghost.style.transition = `opacity ${dur}s`; ghost.style.opacity = 0;
 }
 // a small moment of standing life (the wave, the stretch): plays once, back to the still
+// HIS WAVE SAYS SOMETHING (operator, 2026-10-01: "when he waves, the joke button says 'telling you something' but he says
+// nothing — he could greet the community: hey builders, believers, brainers, thanks for the support"): a wave between his
+// moments now comes with one of these, typed when his hand goes up (held like every move's line), never the same twice soon
+const HELLO = [
+  'Hey builders, believers, brainers! Good to have you here.',
+  'Thank you for the support. Every one of you counts.',
+  'Hello to everyone watching. You keep this brain running.',
+  'Builders, believers, brainers: thank you. We build this together.',
+  'Waving to the best community on BNB Chain.',
+  'Thanks for being here. The chain is more fun with you.',
+  'Hey, you! Yes, you. Thanks for watching me build.',
+  'Brainers, you are the reason I keep building.',
+];
+// the second take is a stretch with a big yawn, not a wave: its own lines (operator, 2026-10-01: "when he yawns it says
+// 'telling you something' and he says nothing")
+const STRETCH = [
+  'Big stretch. Building on BNB Chain is a full-body job.',
+  'Yawn. Not bored, just a long day of building.',
+  'Stretch break. My bots keep watching the chain.',
+  'Even a brain needs a stretch. Back to work.',
+  'One yawn, then back to the next block.',
+];
+let HELLO_BAG = [], STRETCH_BAG = [];
+function waveHello() {
+  const later = VID.on, c = vidIdle(); if (!c) return false;
+  let line;
+  if (/-v2$/.test(c)) { if (!STRETCH_BAG.length) STRETCH_BAG = [...STRETCH].sort(() => Math.random() - 0.5); line = STRETCH_BAG.shift(); }
+  else { if (!HELLO_BAG.length) HELLO_BAG = [...HELLO].sort(() => Math.random() - 0.5); line = HELLO_BAG.shift(); }
+  speak(line, 5600); if (later) holdSay(); // after the rest take: the line waits for the move
+  return true;
+}
 function vidIdle() {
   if (!VID.v || REDUCED || VID.go || VID.on && !/^rest/.test(VID.cur)) return false;
   const takes = takesOf('idle'); if (!takes.length) return false; // a wave or a stretch (the rest takes play anyway)
   VID.idleN = (VID.idleN ?? Math.floor(Math.random() * takes.length)) + 1; const c = takes[VID.idleN % takes.length];
-  if (VID.on) { VID.want = { p: 'idle', c }; prefetchClip(c); return true; } // after the rest take, back in his standing pose
-  VID.move = 'idle'; vidStart(c); return true;
+  if (VID.on) { VID.want = { p: 'idle', c }; prefetchClip(c); return c; } // after the rest take, back in his standing pose (the take's name: truthy)
+  VID.move = 'idle'; vidStart(c); return c;
 }
 // the wave itself (the idle take), for a visitor who rests the mouse on him (hoverBobai)
 function vidWave() {
@@ -1512,7 +1550,7 @@ function moodMove() {
 }
 window.__btMood = () => ({ mood: LIFE.mood, d1h: +LIFE.d1h.toFixed(2), flow: LIFE.flow, own: ownLast, line: moodLine() }); // for checks from outside
 window.__btTestMood = m => { LIFE.mood = m; paintMood(); }; // for checks from outside: show one mood now (the next read sets the real one)
-function tellMood(ms = 6400) { const line = moodLine(); setPose(moodMove(), 6, false); speak(line, ms); }
+function tellMood(ms = 6400) { const line = moodLine(); setPose(moveForLine(line, moodMove()), 6, false); speak(line, ms); }
 function readMood() {
   const now = Date.now(), pts = [];
   // who traded in the hour (tax swaps and our own bots left out): the chip's tooltip and his mood lines
@@ -1740,7 +1778,7 @@ function lifeTick(now) {
     // FEWER JOKES, A BIT MORE OF HIM WHEN NOBODY PLAYS WITH HIM (operator, 2026-09-29): halfway he mostly just waves or
     // stretches; when nobody has tapped him or the joke button for three minutes, every other pause gets one more moment
     // of his own from the same even bag (mood, joke, work) — a little more alive, never busier than that
-    if (LIFE.idleAt && now >= LIFE.idleAt && pose === 'idle' && now >= LIFE.sayUntil) { LIFE.idleAt = 0; const alone = performance.now() - (LIFE.touchAt || 0) > 180e3, still = !S.hist.some(x => x.t >= Date.now() - 900e3); if (!(alone && Math.random() < (still ? 0.65 : 0.5) && !ownBusy() && ownMoment())) vidIdle(); }
+    if (LIFE.idleAt && now >= LIFE.idleAt && pose === 'idle' && now >= LIFE.sayUntil) { LIFE.idleAt = 0; const alone = performance.now() - (LIFE.touchAt || 0) > 180e3, still = !S.hist.some(x => x.t >= Date.now() - 900e3); if (!(alone && Math.random() < (still ? 0.65 : 0.5) && !ownBusy() && ownMoment())) waveHello(); }
     return;
   }
   // A MOVE OF HIS OWN WAITS FOR THE ONE PLAYING (2026-09-29, ?lifefast: 8 moves chosen, 4 played — a move picked while
@@ -1784,7 +1822,7 @@ function ownMoment(act) {
   const k = ownKind(), log = got => { (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), k, got]); return true; }; // for checks from outside
   if (k === 'mood') { tellMood(6400); return log('mood'); }
   if (k === 'joke' && tellJoke(6500)) return log('joke');
-  if (k === 'invite') { const l = inviteLine(); if (l) { setPose(moodMove(), 6, false); speak(l, 6800); return log('invite'); } }
+  if (k === 'invite') { const l = inviteLine(); if (l) { setPose(moveForLine(l, moodMove()), 6, false); speak(l, 6800); return log('invite'); } }
   log('work');
   const r = Math.random();
   // his hard hat: building on BNB Chain — half the time explained the way today's market needs it
@@ -2848,7 +2886,7 @@ function bobaiTap() {
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(({ saber: 'May the pump be with you.', moon: 'wen moon? Soon. Probably.', coffee: 'Coffee break. The bots keep working.', hodl: 'Diamond hands. Always.', cheer: 'Thanks for watching me work.', think: 'Checking the chart. Again.', pushups: 'Strong hands need training.', shrug: 'It is what it is. The burns go on.', bull: 'Want a ride? This bull only goes up. In theory.' })[p] || 'gm!', 6000); },
     () => { if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } },
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
-    () => { const line = moodLine(); setPose(moodMove(), 6); speak(line, 6400); },
+    () => { const line = moodLine(); setPose(moveForLine(line, moodMove()), 6); speak(line, 6400); },
     () => { const r = recallLine(); if (r) { setPose(poseOr(r[0]), 6); speak(r[1], 6400); } else { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // what happened this hour (2026-10-01)
   ];
   // the first tap of a visit gets a hello, then he talks shop
@@ -2879,7 +2917,7 @@ const WIN_LINES = {
   'page:Brain Plaza': ['walk', 'A whole plaza of agents. Only the ones that answered made the list.'],
   'page:Agent Services': ['build', 'Ten cents an answer. Cheaper than my coffee.'],
   'page:DeFi Agent': ['defi', 'That is my DeFi agent. It works while I talk.'],
-  'page:NFT Collection': ['cheer', 'Buy $100 or more and one of those lands in your wallet. Automatically.'],
+  'page:NFT Collection': ['nft', 'Buy $100 or more of BOBAI and an NFT of me lands in your wallet. Automatically.'],
   'page:brainScreener': ['giggle', 'How did your brain do? Mine is 45% of me, so I cheat a little.'],
   "page:The BOBAI Game": ['dance', 'Did you beat my high score? Do not tell me if you did.'],
 };

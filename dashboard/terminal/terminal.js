@@ -961,6 +961,7 @@ window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + D
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
+window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
@@ -1561,8 +1562,12 @@ setInterval(() => { try { if (opened) readMood(); } catch {} }, 20e3); // the ch
 let OWN_BAG = [], ownLast = null;
 function ownKind() {
   // in a calm mood (not loud) an invitation joins the bag: something real to try on the screen (2026-09-30)
-  const kinds = LIFE.combo && LIFE.combo.act !== 'loud' ? ['mood', 'joke', 'work', 'invite'] : ['mood', 'joke', 'work'];
-  if (!OWN_BAG.length) { do OWN_BAG = kinds.sort(() => Math.random() - 0.5); while (OWN_BAG[0] === ownLast); }
+  // MOOD FIRST, THEN WHAT HE DOES, THEN A JOKE (operator, 2026-10-01; it was one of each): of every eight moments of his
+  // own four are his mood, three what he does (in a calm market one of them an invitation to try the screen), one a
+  // joke — the joke button is there for more. Shuffled so the same kind never comes twice in a row.
+  const kinds = LIFE.combo && LIFE.combo.act !== 'loud' ? ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'invite', 'joke'] : ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'work', 'joke'];
+  const apart = b => b.every((k, i) => !i || k !== b[i - 1] || k === 'mood' && b.filter(x => x === 'mood').length > b.length / 2);
+  if (!OWN_BAG.length) { let n = 0; do OWN_BAG = [...kinds].sort(() => Math.random() - 0.5); while (++n < 200 && (OWN_BAG[0] === ownLast || !apart(OWN_BAG))); }
   return (ownLast = OWN_BAG.shift());
 }
 // what he does when the chain is quiet, by mood. Lines about his work are functions: real numbers, read now.
@@ -1570,12 +1575,23 @@ function ownKind() {
 function chartWords() {
   const cs = candles(); if (cs.length < 12) return null;
   const ch = chartChange(cs), n = CH.rows.filter(r => r.t >= Date.now() - 86400e3).reduce((a, r) => a + (r.b || 0) + (r.s || 0), 0);
-  return ch == null ? null : { ch, n, s: (ch >= 0 ? '+' : '') + ch.toFixed(2) + '%' };
+  return ch == null ? null : { ch, n, s: (ch >= 0 ? '+' : '') + ch.toFixed(1) + '%' }; // one decimal, as the mood chip (2026-10-01)
 }
 // the Giggle Academy slice runs until 20 Nov 2026 00:01 UTC (phase table); after that no line may say trades still feed it
 const GIGGLE_OPEN = () => Date.now() < Date.parse('2026-11-20T00:01:00Z');
 // each work line with the move that shows what it says (2026-09-28: 'This week I burned…' came with a coffee)
+// HE REMEMBERS (operator, 2026-10-01: "make him smarter"): the last real moment of the hour, in his own words — a burn run,
+// or a buy from outside worth $50 or more, with how long ago and what it did for him. Null when the hour was quiet.
+function recallLine() {
+  const now = Date.now(), mins = t => { const m = Math.max(1, Math.round((now - t) / 60e3)); return m === 1 ? 'A minute ago' : `${m} minutes ago`; };
+  const run = S.burns.filter(e => Date.parse(e.time) >= now - 3600e3 && +e.bobaiBurned > 0).at(-1);
+  const buy = S.hist.filter(x => x.buy && !x.ours && !x.taxSwap && x.usd >= 50 && x.t >= now - 3600e3).at(-1);
+  if (run && (!buy || Date.parse(run.time) >= buy.t)) return ['burn', `${mins(Date.parse(run.time))} I burned ${cmp(+run.bobaiBurned)} BOBAI. ${burnContext(run) || 'Gone for good, on-chain.'}`];
+  if (buy) return ['cheer', `${mins(buy.t)} someone bought $${nf(buy.usd, 0)} of BOBAI. $${nf(buy.usd * 0.03, 2)} of tax from it is charging my next buyback.`];
+  return null;
+}
 const WORK = [
+  ['cheer', () => recallLine()?.[1] ?? null, () => recallLine()?.[0]],
   ['think', () => { const w = chartWords(); return w ? `My chart, last 24 hours: ${w.s}, ${nf(w.n)} trades. I read every single one.` : null; }],
   ['think', () => { const w = chartWords(); return w ? (Math.abs(w.ch) < 1.5 ? `${w.s} in a day. Calm chart, busy bots.` : w.ch > 0 ? `${w.s} today. Green candles look good on me.` : `${w.s} today. Red candles, same work: every trade still pays 3%.`) : null; }],
   ['hodl', () => `${cmp(S.queued)} BOBAI of tax in my pocket. The next buyback is charging.`],
@@ -1773,7 +1789,7 @@ function ownMoment(act) {
   const r = Math.random();
   // his hard hat: building on BNB Chain — half the time explained the way today's market needs it
   if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend]; setPose(poseOr('build'), 6, false); speak(mb && Math.random() < 0.5 ? pick(mb) : pick(BUILD), 6600); return true; }
-  if (r < 0.6 && S.burns.length) { const [mv, fn] = pick(WORK), line = fn(); if (line) { setPose(poseOr(RECENT.includes(mv) ? act()[0] : mv), 6, false); speak(line, 5600); return true; } }
+  if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { setPose(poseOr(RECENT.includes(mv) ? act()[0] : mv), 6, false); speak(line, 5600); return true; } }
   const [p, line] = act(); setPose(poseOr(p), 6, false); speak(typeof line === 'function' ? line() : line, 5600); return true;
 }
 // the chain interrupts: a moment of his real work gets a line of its own
@@ -2833,6 +2849,7 @@ function bobaiTap() {
     () => { if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } },
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
     () => { const line = moodLine(); setPose(moodMove(), 6); speak(line, 6400); },
+    () => { const r = recallLine(); if (r) { setPose(poseOr(r[0]), 6); speak(r[1], 6400); } else { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // what happened this hour (2026-10-01)
   ];
   // the first tap of a visit gets a hello, then he talks shop
   if (tapN === 1) { setPose(joyMove(), 5); speak(`${pick(TAPS)} Tap me again and I tell you what I am doing.`, 5200); }
@@ -2840,7 +2857,7 @@ function bobaiTap() {
   // 55% his work (the tax charging, today's burns, the DeFi agent, a move, his hard hat), 30% his mood, 15% a joke — never
   // the same kind twice in a row. The joke button stays the place for jokes.
   else {
-    const roll = () => { const r = Math.random(); if (r < 0.15) return 4; if (r < 0.45) return 6; const w = [0, 1, 2, 3, 5]; return w[Math.random() * w.length | 0]; };
+    const roll = () => { const r = Math.random(); if (r < 0.15) return 4; if (r < 0.45) return 6; const w = [0, 1, 2, 3, 5, ...(recallLine() ? [7] : [])]; return w[Math.random() * w.length | 0]; };
     let k, n = 0; do k = roll(); while (k === tapKind && ++n < 12); tapKind = k; kinds[k]();
     (window.__btTaps = window.__btTaps || []).push(k === 4 ? 'joke' : k === 6 ? 'mood' : 'work'); // for checks from outside
   }

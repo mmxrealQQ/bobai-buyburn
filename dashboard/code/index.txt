@@ -70,7 +70,7 @@ txt: https://brainonbnb.com/code/defi-agent.txt
 Dev Sweep Bot
 -------------
 The hourly one that empties the tax wallet.
-3 files, 455 lines
+3 files, 463 lines
 needs:
   - A wallet that receives the tax
       ours: the same wallet the buyback bot spends from
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4798 lines
+12 files, 4801 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 2387 lines
+5 files, 2428 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

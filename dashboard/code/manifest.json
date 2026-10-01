@@ -115,10 +115,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that empties the tax wallet.",
    "files": 3,
-   "lines": 455,
-   "zipBytes": 9277,
-   "txtBytes": 19392,
-   "sha256": "67981515a95a1d92",
+   "lines": 463,
+   "zipBytes": 9467,
+   "txtBytes": 20038,
+   "sha256": "d73c7bf1a08cf022",
    "reqs": [
     {
      "what": "A wallet that receives the tax",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4798,
-   "zipBytes": 76913,
-   "txtBytes": 226830,
-   "sha256": "4745454dfc0e5467",
+   "lines": 4801,
+   "zipBytes": 76998,
+   "txtBytes": 227027,
+   "sha256": "79da36188f269339",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2387,
-   "zipBytes": 65926,
-   "txtBytes": 188886,
-   "sha256": "9852ac31f480d9a6",
+   "lines": 2428,
+   "zipBytes": 66680,
+   "txtBytes": 191783,
+   "sha256": "f72f58e69cece5fa",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

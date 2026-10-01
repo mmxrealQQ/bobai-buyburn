@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4798 lines.
+# one fetch. 12 files, 4801 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2620,6 +2620,9 @@ async function removeFromCaptchaIndex(env, userId) {
 // ==================== GUARD BOT HANDLERS ====================
 
 async function handleNewMember(msg, env) {
+  // Captcha belongs to the official chat only. A join anywhere else (the Intern
+  // chat) used to mute + kick that person in the official chat.
+  if (String(msg.chat?.id) !== TG_CHAT_ID) return;
   const members = msg.new_chat_members || [];
   for (const member of members) {
     if (member.is_bot) continue;

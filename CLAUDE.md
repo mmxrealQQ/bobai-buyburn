@@ -1,4 +1,4 @@
 # Project Rules
 
 ## Bilder / Images
-- Niemals heruntergeladene oder generierte Bilder mit dem Read-Tool einlesen. Bilder nur als Datei speichern, nicht ins Kontext laden.
+- Bilder duerfen mit dem Read-Tool angeschaut werden (Regel am 23.9.2026 vom User gestrichen).

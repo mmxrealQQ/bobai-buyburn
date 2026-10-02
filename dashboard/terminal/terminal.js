@@ -1022,6 +1022,7 @@ window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the 
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
+window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
@@ -2194,6 +2195,7 @@ win.addEventListener('click', e => {
 
 // ================= terminal =================
 const logEl = $('log');
+let logFollow = true; // the log keeps to its newest line (see BACK TO THE LIVE END)
 function logLine(tag, color, parts, txs = [], t = Date.now()) {
   const l = document.createElement('div'); l.className = 'ln'; l.style.setProperty('--c', color);
   const tt = document.createElement('span'); tt.className = 't';
@@ -2214,7 +2216,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
   const atEnd = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 60;
   logEl.append(l);
   while (logEl.children.length > 150) logEl.firstChild.remove();
-  if (atEnd) logEl.scrollTop = logEl.scrollHeight; // follow the newest line unless the reader scrolled back
+  if (atEnd || logFollow) logEl.scrollTop = logEl.scrollHeight; // follow the newest line unless the reader scrolled back
   return l;
 }
 
@@ -2497,6 +2499,17 @@ $('shr').onclick = shareCard;
 const cmdForm = $('cmd'), cmdIn = $('cmdIn');
 // opening the log lands on the newest lines
 logEl.closest('.term').addEventListener('pointerenter', () => setTimeout(() => { logEl.scrollTop = logEl.scrollHeight; }, 380));
+// BACK TO THE LIVE END (operator, 2026-10-02: "open the log and close it again, it sits in the middle and no longer goes
+// down to where it is live"): the log grows when opened and shrinks when closed, and its scroll position stayed counted
+// from the top — closed, it showed the middle, and no longer counted as 'at the end', so new lines stopped pulling it
+// down. Now closing always returns to the newest line, and while it follows, any change of size keeps it there.
+logEl.addEventListener('scroll', () => { logFollow = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 60; }, { passive: true });
+if (window.ResizeObserver) new ResizeObserver(() => { if (logFollow) logEl.scrollTop = logEl.scrollHeight; }).observe(logEl);
+{
+  const term = logEl.closest('.term'), toEnd = () => { if (term.matches(':hover,:focus-within')) return; logFollow = true; logEl.scrollTop = logEl.scrollHeight; };
+  term.addEventListener('pointerleave', () => { setTimeout(toEnd, 50); setTimeout(toEnd, 420); }); // and once the closing has settled
+  term.addEventListener('focusout', () => { setTimeout(toEnd, 50); setTimeout(toEnd, 420); });
+}
 cmdForm.addEventListener('submit', e => {
   e.preventDefault();
   const q = cmdIn.value.trim(); if (!q) return; cmdIn.value = '';
@@ -2892,8 +2905,15 @@ function nftShow(n) {
   nftEl.querySelector('img').src = src;
   nftEl.querySelector('span').textContent = '#' + n.tokenId + ' · ' + (TIERS[n.tier] || '') + (nUsd(n) ? ' · ' + $buy(nUsd(n), n) + ' buy' : '');
   nftEl.hidden = false; nftEl.classList.remove('go', 'out', 'placed'); nftEl.style.left = nftEl.style.top = '';
-  { // beside him, not over him: the first free spot right or left of his figure, at chest height; else the middle as before
-    nftEl.classList.add('placed'); win.classList.add('nft-on'); // measured at its placed size, the bot labels already aside
+  nftEl.classList.add('placed'); win.classList.add('nft-on'); // measured at its placed size, the bot labels already aside
+  if (!portrait) { // ON THE BRAIN (operator, 2026-10-02: "show the NFT at the brain — it may cover it for the few seconds; just
+    // set the NFT nicely on it, the hologram and the dots in the circle still show around it"): wide, the hologram brain
+    // stands left of him, so the card is centred on it, its line under it, kept inside the window
+    const c = toScreen(A.head), nc = nftEl.querySelector('.nc'), w = nftEl.offsetWidth, h = nftEl.offsetHeight;
+    nftEl.style.left = clamp(c.x - w / 2, 8, win.clientWidth - w - 8) + 'px';
+    nftEl.style.top = clamp(c.y - nc.offsetHeight / 2, 8, win.clientHeight - h - 8) + 'px';
+  } else { // a phone: the brain is behind his head — on it the card would cover his face. Beside him, as on 1.10.: the
+    // first free spot right or left of his figure, at chest height; else the middle
     const fr = fig.getBoundingClientRect(), w = nftEl.offsetWidth, h = nftEl.offsetHeight, tries = [];
     if (fr.width) { const y0 = fr.top + fr.height * 0.42 - h / 2;
       for (const dy of [0, -30, 30, -60, 60, -100, 100]) for (const dx of [16, 40, 70]) { tries.push([fr.right + dx, y0 + dy]); tries.push([fr.left - w - dx, y0 + dy]); } }

@@ -3256,7 +3256,7 @@ function paintJoke() {
   if (state === jokeShown) return;
   const was = jokeShown; jokeShown = state;
   jokeBtn.classList.toggle('wait', state !== 'ready'); jokeBtn.classList.toggle('queued', state === 'queued');
-  jokeBtn.querySelector('.jk-t').textContent = ({ ready: 'Tell me a joke', queued: 'Got one… wait', 'wait-tell': 'Telling you something', 'wait-show': 'Showing you something' })[state] || 'One moment…';
+  jokeBtn.querySelector('.jk-t').textContent = ({ ready: 'Tell me a joke', queued: 'Got one, wait', 'wait-tell': 'Telling you something', 'wait-show': 'Showing you something' })[state] || 'One moment'; // no '…': the button draws its own three animated dots (2.10.: it read 'ONE MOMENT_' + dots)
   jokeBtn.setAttribute('aria-label', state === 'ready' ? 'Tell me a joke' : state === 'queued' ? 'BOBAI has a joke ready and tells it in a moment' : 'BOBAI is busy for a moment — tap and he tells a joke right after');
   if (state === 'ready' && was) { jokeBtn.classList.remove('ready-in'); void jokeBtn.offsetWidth; jokeBtn.classList.add('ready-in'); }
 }

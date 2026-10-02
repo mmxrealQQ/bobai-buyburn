@@ -84,7 +84,7 @@
     /* The open entry: gold shading only, the word stays grey like the others. */
     .nm a.on{color:var(--muted);background:linear-gradient(135deg,rgba(240,185,11,.3),rgba(240,185,11,.16))}
     @media (max-width:1080px){.nm a{padding:6px 8px;font-size:.72rem}}
-    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px;display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
 
     /* The sub-page header: a way back, the page's name, one action.
@@ -141,6 +141,8 @@
     @media (max-width:560px){
       .brand-link{font-size:12px}
       .nb{padding:7px 14px;font-size:.72rem}
+      /* 360 px: both buttons on one line each, the label centred (2026-10-02: it wrapped and sat left) */
+      @media (max-width:380px){.nb{padding:7px 10px}.nb-group{gap:6px}}
       .nav{gap:8px}
       .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     }

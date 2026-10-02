@@ -428,7 +428,7 @@ function sources(){
   card('lq-init',launch);
   if(botLp){
     card('lq-bot',botLp.lp);
-    put('lq-bot-sub',botLp.n+' adds across Liquidity Boost I and II. Runs on its own, every cycle.');
+    put('lq-bot-sub',botLp.n+' adds across Liquidity Boost I, II and III. Runs on its own, every cycle.');
     const dev=total-launch-botLp.lp;
     if(dev>0){
       card('lq-man',dev);

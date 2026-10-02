@@ -32,6 +32,7 @@ const P = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', BOBP = '0x3c79593e01A7f7
 const BNBFEED = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
 const EXACT = {}; // the exact dollars of NFT buys, asked once per tx (exactBuyUsd; declared up here: logs() starts it)
 const SWAP = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+const SYNC = '0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1'; // the pair's reserves after every swap (the live price)
 const DEAD_BAL = '0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';
 const balOf = a => '0x70a08231000000000000000000000000' + a.slice(2);
 const TX = 'https://bscscan.com/tx/';
@@ -1025,6 +1026,7 @@ window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
+window.__btPx = () => [S.price, S.priceAt || 0, S.hist.length, S.hist.length ? S.hist[S.hist.length - 1].t : 0, (typeof cxCandles === 'function' && cxCandles().at(-1)?.c * S.bnbP) || 0]; // the live price, when it was read, the swaps seen, the open chart's last close in $ (chartlive.mjs)
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
 const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle'];
@@ -1241,7 +1243,7 @@ function vidInit() {
   const fb = () => { if (!SAID_HI && performance.now() < 22e3 && !QUEUE.length) return setTimeout(fb, 1000); GREETED = true; LIFE.saidHi = true; if (!VID.cur) vidRest(); }; // no greeting: the joke button is free anyway
   setTimeout(fb, 9000);
   // until his entrance the picture is empty; never longer than 25 s, whatever happens (a clip that never loads)
-  if (!REDUCED) { fig.classList.add('away'); setTimeout(() => { if (!/-enter-/.test(VID.cur || '')) fig.classList.remove('away'); }, 25e3); }
+  if (!REDUCED && ENTRANCES.length) { fig.classList.add('away'); setTimeout(() => { if (!/-enter-/.test(VID.cur || '')) fig.classList.remove('away'); }, 25e3); }
   VID.wide = new Set(); fetch(`${BASE}anim/wide.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : []).then(l => { for (const c of l) VID.wide.add(c); }).catch(() => {});
   fetch(`${BASE}anim/clips.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : Promise.reject())
     .then(list => { for (const p of list) if (wanted.includes(p)) VID.have.add(p); const e = !GREETED && enterTake(); if (e) prefetchClip(e); else fig.classList.remove('away'); if (!VID.cur && GREETED) vidRest(); prefetchClip(waveTake() || 'idle'); }) // the greeting's wave, fetched while the page boots
@@ -1299,9 +1301,9 @@ function vidStart(c, loop = false) {
     (window.__btLoads = window.__btLoads || []).push([c, sp && sp._c, sp && sp.readyState]); if (window.__btLoads.length > 40) window.__btLoads.shift(); // a switch the spare missed, for checks
     VID.v.src = `${BASE}anim/${c}.pack.mp4`; if (sp && sp._c === c) { sp._c = null; sp._go = false; sp.pause(); }
   }
-  VID.cur = c; VID.v.loop = loop; VID.v._last = false;
+  VID.cur = c; VID.v.loop = loop; VID.v._last = false; trace('start', c, VID.v === sp ? 'swap' : 'load', !!HELD);
   // the canvas shows only once the clip's first frame is on it (vidDraw), so there is never an empty frame between
-  VID.v.play().then(() => { if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
+  VID.v.play().then(() => { trace('playing', c, VID.cur === c); if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
     .catch(err => {
       if (VID.cur !== c) return;
       // NEVER A FROZEN STILL FOR A HICCUP (2026-09-29, flow.mjs: 3-4% still): any failed play() stopped the video on the
@@ -1407,7 +1409,10 @@ function vidIdle() {
 // reload"). Until the greeting the picture is empty (fig.away hides the still); the entrance starts on the empty
 // screen and ends in his standing pose, the greeting wave follows at its end with the line. Never the same one twice
 // running in this browser. No entrance clip (or reduced motion): he stands there and waves, as before.
-const ENTRANCES = ['multipla', 'breakdance', 'puppies', 'builder', 'jetpack', 'giftbox'];
+// NONE ANY MORE (operator, 2026-10-02: "the welcome videos we leave be, the start of the terminal stays as it is now"):
+// the list is empty, so no entrance plays and the still is never hidden while the clip list loads (that blank showed as
+// 2-3 empty frames at the start, trans.mjs). The takes were ['multipla', 'breakdance', 'puppies', 'builder', 'jetpack', 'giftbox'].
+const ENTRANCES = [];
 function enterTake() {
   if (REDUCED || !VID.v) return null;
   if (VID.enterC && VID.have.has(VID.enterC)) return VID.enterC;
@@ -1526,17 +1531,20 @@ function faceTick(now) {
 // is held back and typed the moment the move starts (flushSay); a line typed just before the move was queued is
 // taken back and held the same way (holdSay)
 let LASTSAY = null, HELD = null;
+// THE GREETING'S TIMING, FOR CHECKS (2026-10-02: 2 of 12 flow runs showed the greeting line ~1.6 s after the wave): what held
+// the line, what let it go and when the wave really started — flow.mjs prints it when its greeting rule fails
+const trace = (...a) => { const T = window.__btTrace = window.__btTrace || []; if (T.length < 80) T.push([Math.round(performance.now()), ...a]); };
 function holdSay() {
   if (!LASTSAY || performance.now() - LASTSAY.at > 400) return;
   HELD = LASTSAY; LASTSAY = null; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + HELD.ms;
 }
-function flushSay() { if (HELD) { const h = HELD; HELD = null; speak(h.text, h.ms); } }
+function flushSay() { if (HELD) { const h = HELD; HELD = null; trace('flush', VID.cur); speak(h.text, h.ms); } }
 function speak(text, ms = 5200) {
   if (!text) return;
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
-  if (VID.want && VID.want.p !== 'idle' && !REDUCED) { HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
-  LASTSAY = { text, ms, at: performance.now() };
+  if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
+  LASTSAY = { text, ms, at: performance.now() }; trace('say', text.slice(0, 24), VID.cur);
   const id = ++typing; bubble.textContent = ''; bubble.classList.remove('on', 'tight'); void bubble.offsetWidth; bubble.classList.add('on');
   LIFE.sayUntil = performance.now() + ms;
   if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
@@ -1743,13 +1751,17 @@ function paintMood() {
 // day's chart — so an hour that dips inside a green day reads as a breather, not as the end of the world
 function moodLine(head = 'Mood check') {
   readMood();
-  if (!LIFE.combo) return `${head}: still reading my chart. Ask me again in a minute.`; // never "0 trades" from a ledger not loaded yet
+  // NO "MOOD CHECK: BULLISH." ANY MORE (operator, 2026-10-02: "the mood checks are super nice — just the opening 'mood check',
+  // the mood and the +/- % every time is superfluous, it is already up top left; the text after it must stay as it comes"):
+  // a mood check starts with its line; a mood SWING keeps its short opening, it announces the change
+  const check = head === 'Mood check';
+  if (!LIFE.combo) return check ? 'Still reading my chart. Ask me again in a minute.' : `${head}: still reading my chart. Ask me again in a minute.`; // never "0 trades" from a ledger not loaded yet
   const f = LIFE.flow, c = LIFE.combo, m = comboOf();
   const who = f.b >= 3 && f.bu > f.su * 2 ? ' ' + pick(MOOD_WHO.buy) : f.s >= 3 && f.su > f.bu * 2 ? ' ' + pick(MOOD_WHO.sell) : '';
-  return `${pick(MOOD_HEADS[head] || [head])}: ${m.name}. ${pick(m.lines)(c)}${who}`;
+  return check ? `${pick(m.lines)(c)}${who}` : `${pick(MOOD_HEADS[head] || [head])}: ${m.name}. ${pick(m.lines)(c)}${who}`;
 }
 // how he opens a mood line and who he saw trading (2026-10-02: five of each, so "Mood check" is not every time)
-const MOOD_HEADS = { 'Mood check': ['Mood check', 'Mood report', 'How I feel', 'Vibe check', 'My mood right now'], 'Mood swing': ['Mood swing', 'Mood shift', 'The mood just turned', 'New mood', 'Plot twist'] };
+const MOOD_HEADS = { 'Mood swing': ['Mood swing', 'Mood shift', 'The mood just turned', 'New mood', 'Plot twist'] };
 const MOOD_WHO = {
   buy: ['Buyers in charge this hour.', 'The buyers have the wheel this hour.', 'This hour belongs to the buyers.', 'More buying than selling this hour. I noticed.', 'Buyers outnumber sellers this hour.'],
   sell: ['Sellers louder this hour. Their 3% says thanks.', 'Sellers busy this hour. Every sell still pays 3%.', 'More selling this hour. The tax keeps the brain fed anyway.', 'Sellers had the mic this hour. I kept the burns going.', 'A selling hour. Part of their 3% burns, so thank you.'],
@@ -1764,7 +1776,9 @@ function moodMove() {
 window.__btMood = () => ({ mood: LIFE.mood, d1h: +LIFE.d1h.toFixed(2), flow: LIFE.flow, own: ownLast, line: moodLine() }); // for checks from outside
 window.__btTestMood = m => { LIFE.mood = m; paintMood(); }; // for checks from outside: show one mood now (the next read sets the real one)
 // a move the line NAMES is not varied away (varied() swaps a move he just did; 1.10. linemove.mjs: 'the bull is out' with the dance)
-function tellMood(ms = 6400) { const line = moodLine(), named = moveForLine(line, null); setPose(named || moodMove(), 6, !!named); speak(line, ms); }
+// the mood lines he said, for checks (mood.mjs finds them in the bubble; since 2.10. they have no 'Mood check:' opening)
+const saidMood = l => { const L = window.__btMoodLines = window.__btMoodLines || []; L.push(l); if (L.length > 30) L.shift(); return l; };
+function tellMood(ms = 6400) { const line = saidMood(moodLine()), named = moveForLine(line, null); setPose(named || moodMove(), 6, !!named); speak(line, ms); }
 function readMood() {
   const now = Date.now(), pts = [];
   // who traded in the hour (tax swaps and our own bots left out): the chip's tooltip and his mood lines
@@ -2032,7 +2046,7 @@ function lifeTick(now) {
     if (was && was !== LIFE.seenMood && now >= (LIFE.turnAt || 0) && (now < LIFE.sayUntil || VID.want || HELD)) LIFE.seenMood = was;
     else if (was && was !== LIFE.seenMood && now >= (LIFE.turnAt || 0)) {
       LIFE.turnAt = now + 600e3; LIFE.next = now + 8e3 + 60e3 + Math.random() * 60e3;
-      const line = moodLine('Mood swing'); setPose(moveForLine(line, moodMove()), 7); speak(line, 6600); return;
+      const line = saidMood(moodLine('Mood swing')); setPose(moveForLine(line, moodMove()), 7); speak(line, 6600); return;
     }
     LIFE.moodAt = now + 20e3;
   }
@@ -2550,7 +2564,7 @@ async function chain() {
   const n = NUMS().chain;
   if (n && Date.now() - n.at < 60e3) {
     if (!S.block) { const [b] = await rpc([['eth_blockNumber', []]]); S.block = parseInt(b, 16); }
-    return takeChain({ bnbP: n.bnbUsd, price: n.priceUsd, bobP: n.bobUsdPrice, bobDead: n.bobDead, bobaiDead: n.bobaiDead, queued: n.queuedBobai, walletBnb: n.walletBnb, lpPct: NUMS().lpPct ?? S.lpPct, minD: n.minDispatch });
+    return takeChain({ at: n.at, bnbP: n.bnbUsd, price: n.priceUsd, bobP: n.bobUsdPrice, bobDead: n.bobDead, bobaiDead: n.bobaiDead, queued: n.queuedBobai, walletBnb: n.walletBnb, lpPct: NUMS().lpPct ?? S.lpPct, minD: n.minDispatch });
   }
   const q = await rpc([
     ['eth_getBalance', [BW, 'latest']], call(WBNB, balOf(BW)), call(BOB, DEAD_BAL), call(BOBAI, DEAD_BAL),
@@ -2566,10 +2580,12 @@ async function chain() {
   takeChain({ bnbP, price: Number(wR) / Number(bR) * bnbP, bobP: Number(h1) / Number(h0) * bnbP, bobDead: u18(q[2]), bobaiDead: u18(q[3]),
     queued: u18(q[6]), walletBnb: u18(q[0]) + u18(q[1]), lpPct: Number(BigInt(q[8])) / Number(BigInt(q[7])) * 100, minD: q[12] ? u18(q[12]) : 0 });
 }
-function takeChain({ bnbP, price, bobP, bobDead, bobaiDead, queued, walletBnb, lpPct, minD }) {
+function takeChain({ at = Date.now(), bnbP, price, bobP, bobDead, bobaiDead, queued, walletBnb, lpPct, minD }) {
   if (minD > 0) MIN_DISPATCH = minD;
-  if (price > 0) { LIFE.prices.push([Date.now(), price]); if (LIFE.prices.length > 400) LIFE.prices.shift(); }
-  S.bnbP = bnbP; S.price = price; CH.dirty = true; S.bobP = bobP; S.deadB = bobDead; S.queued = queued; S.walletBnb = walletBnb;
+  // a price older than the one the last trade's Sync gave (the homepage's numbers can be a minute old) does not win
+  const newer = !(S.priceAt > at);
+  if (price > 0 && newer) { LIFE.prices.push([Date.now(), price]); if (LIFE.prices.length > 400) LIFE.prices.shift(); }
+  S.bnbP = bnbP; if (newer || !(S.price > 0)) { S.price = price; S.priceAt = at; } CH.dirty = true; S.bobP = bobP; S.deadB = bobDead; S.queued = queued; S.walletBnb = walletBnb;
   // a burn that lands while the page is open rolls the counter up instead of jumping
   if (S.deadA && bobaiDead > S.deadA) roll(D.burnA.el.querySelector('.v'), S.deadA, bobaiDead, v => burnAText(v));
   S.deadA = bobaiDead;
@@ -3232,12 +3248,16 @@ function paintJoke() {
   const now = performance.now(), r = jokeReady();
   if (r && jokeQueued) { jokeTap(); return; }
   jokeReadySince = r ? (jokeReadySince || now) : 0;
-  const state = jokeQueued ? 'queued' : r && now - jokeReadySince > 500 ? 'ready' : 'wait';
+  // NEVER "TELLING YOU SOMETHING" WITHOUT A SENTENCE (operator rule, 1.10.; 2.10. it still showed under the NFT card with no
+  // bubble): busy, the button names what he does — speaking (or a line held for his move), else a scene, else a moment
+  const talking = !!HELD || (bubble.classList.contains('on') && now < LIFE.sayUntil);
+  const showing = win.classList.contains('in-moment') || win.classList.contains('nft-on') || (VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur));
+  const state = jokeQueued ? 'queued' : r && now - jokeReadySince > 500 ? 'ready' : talking ? 'wait-tell' : showing ? 'wait-show' : 'wait';
   if (state === jokeShown) return;
   const was = jokeShown; jokeShown = state;
   jokeBtn.classList.toggle('wait', state !== 'ready'); jokeBtn.classList.toggle('queued', state === 'queued');
-  jokeBtn.querySelector('.jk-t').textContent = state === 'ready' ? 'Tell me a joke' : state === 'queued' ? 'Got one… wait' : 'Telling you something'; // busy with any scene, not just a joke (operator, 2026-10-01)
-  jokeBtn.setAttribute('aria-label', state === 'ready' ? 'Tell me a joke' : state === 'queued' ? 'BOBAI has a joke ready and tells it in a moment' : 'BOBAI is telling you something — tap and he tells a joke right after');
+  jokeBtn.querySelector('.jk-t').textContent = ({ ready: 'Tell me a joke', queued: 'Got one… wait', 'wait-tell': 'Telling you something', 'wait-show': 'Showing you something' })[state] || 'One moment…';
+  jokeBtn.setAttribute('aria-label', state === 'ready' ? 'Tell me a joke' : state === 'queued' ? 'BOBAI has a joke ready and tells it in a moment' : 'BOBAI is busy for a moment — tap and he tells a joke right after');
   if (state === 'ready' && was) { jokeBtn.classList.remove('ready-in'); void jokeBtn.offsetWidth; jokeBtn.classList.add('ready-in'); }
 }
 setInterval(() => { try { paintJoke(); } catch {} }, 250); // (the scene and the video are made further down: until then, nothing to paint)
@@ -3265,7 +3285,7 @@ function bobaiTap() {
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
     () => { if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } },
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
-    () => { const line = moodLine(); setPose(moveForLine(line, moodMove()), 6); speak(line, 6400); },
+    () => { const line = saidMood(moodLine()); setPose(moveForLine(line, moodMove()), 6); speak(line, 6400); },
     () => { const r = recallLine(); if (r) { setPose(poseOr(r[0]), 6); speak(r[1], 6400); } else { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // what happened this hour (2026-10-01)
   ];
   // the first tap of a visit gets a hello, then he talks shop
@@ -3421,6 +3441,7 @@ function greet(tries = 0) {
     markSeen(); setInterval(() => { if (!document.hidden) markSeen(); }, 60e3); return;
   }
   const waved = vidWave(); // started at once from the still, or queued after a rest take
+  trace('greet', waved, VID.on, VID.cur, !!VID.want);
   if (waved && VID.want) { HELD = { text: line, ms }; LIFE.sayUntil = t + 8000 + ms; }
   // from the still the wave still has to load (~2 s on a first visit): the line waits for its first frame too (flushSay in
   // vidStart), at most 8 s (flow.mjs 2026-09-29: the line came 2 s before the wave)
@@ -3538,15 +3559,24 @@ async function trades() {
     const from = Math.max(S.block + 1, to - BACK_BLOCKS), calls = [];
     for (let a = from; a <= to; a += BACK_CHUNK) {
       const range = { fromBlock: '0x' + a.toString(16), toBlock: '0x' + Math.min(to, a + BACK_CHUNK - 1).toString(16) };
-      calls.push(['eth_getLogs', [{ address: BOBAI, topics: [TAXSWAP], ...range }]], ['eth_getLogs', [{ address: P, topics: [SWAP], ...range }]]);
+      calls.push(['eth_getLogs', [{ address: BOBAI, topics: [TAXSWAP], ...range }]], ['eth_getLogs', [{ address: P, topics: [SWAP], ...range }]], ['eth_getLogs', [{ address: P, topics: [SYNC], ...range }]]);
     }
     const got = await rpc(calls, LOGS_RPC);
     if (got.some(r => r == null)) return; // a part not answered: ask again next time, from the same block
     // AWAY = the tab was hidden or not asking (2026-10-01): a node that skipped a few answers in a bull run used to turn
     // buys older than two minutes into record-only — while the visitor sat watching. Polled steadily, they still play.
     const away = Date.now() - TR_OK > 90e3; TR_OK = Date.now();
-    for (let i = 0; i < got.length; i += 2) takeTaxSwaps(got[i]);
-    const logsR = got.filter((_, i) => i % 2).flat();
+    for (let i = 0; i < got.length; i += 3) takeTaxSwaps(got[i]);
+    const logsR = got.filter((_, i) => i % 3 === 1).flat();
+    // THE PRICE MOVES WITH THE TRADE (operator, 2026-10-02: "with buys or sells the chart does not update live — the
+    // timeline is fast"): the open chart's live candle closed at S.price, read every 20 s — and then often from the
+    // homepage's numbers, up to a minute old — so a trade moved its high and low and the close snapped back. The pair's
+    // last Sync in these blocks carries the reserves after the trade: the price from them, the same formula as chain().
+    const sy = got.filter((_, i) => i % 3 === 2).flat().sort((a, b) => parseInt(a.blockNumber, 16) - parseInt(b.blockNumber, 16) || parseInt(a.logIndex, 16) - parseInt(b.logIndex, 16)).pop();
+    if (sy && S.bnbP > 0) {
+      const r0 = BigInt('0x' + sy.data.slice(2, 66)), r1 = BigInt('0x' + sy.data.slice(66, 130)), bR = S.token0IsBobai ? r0 : r1, wR = S.token0IsBobai ? r1 : r0;
+      if (bR > 0n) { S.price = Number(wR) / Number(bR) * S.bnbP; S.priceAt = Date.now(); LIFE.prices.push([Date.now(), S.price]); if (LIFE.prices.length > 400) LIFE.prices.shift(); CH.dirty = true; }
+    }
     S.block = to;
     const nowMs = Date.now(), dropped = new Set((S.nft?.drops || []).map(n => (n.buyTx || '').toLowerCase()).filter(Boolean));
     for (const x of foldBuys(logsR.map(l => swapOf(l, nowMs - (to - parseInt(l.blockNumber, 16)) * 450)))) { // 0.45 s a block

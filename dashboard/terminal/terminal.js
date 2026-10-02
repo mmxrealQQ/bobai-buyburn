@@ -1024,6 +1024,7 @@ window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z,
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
+window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
 const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle'];
@@ -2948,7 +2949,7 @@ function momentIn(kind, usd, sub, t, fast, card, sayKey, ctx) {
   // LIVE, EVERY ALERT ITS OWN SCENE (operator, 2026-10-01: "in a bull run every buy alert gets its time, one after the
   // other, like a flow"): one 8 s poll stamps all its buys with the same time, so this rule let only the first of a burst
   // on stage. Live, the queue already plays them in turn; the rule stays for the replay only.
-  if (mode !== 'live' && Math.abs(t - LAST_M.t) < 15e3 && level <= LAST_M.level) return;
+  if (mode !== 'live' && Math.abs(t - LAST_M.t) < 15e3 && level <= LAST_M.level) { (window.__btSkip = window.__btSkip || []).push([title, 'burst']); return; } // a board the burst rule kept back, for checks
   LAST_M.t = t; LAST_M.level = level; shownNow = true;
   LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); // after the chain's moment, a calm stretch before his own moves
   const hold = [5.2, 6.0, 7.5, 9.0][level]; // long enough for his explanation to be read, in live and in replay alike
@@ -3995,6 +3996,7 @@ const LANES = ['1ce', 'd38', 'DEFI', 'NFT', 'SWAPS'];
 const lane = x => x.kind === 'liq' && x.l?.dev ? 1 : ({ run: 0, liq: 0, dev: 1, defi: 2, nft: 3, trade: 4 })[x.kind]; // a dev add is d38's
 const laneY = i => 9 + i * 10;
 const TL0 = 10; // no lane names any more: the chart starts at the edge
+window.__btTlX = t => { const r = tl.getBoundingClientRect(); return [r.left + TL0 + (t - from) / WIN * (r.width - 14 - TL0), r.top + r.height / 2]; }; // a time's spot on the timeline, for checks (tlclick.mjs)
 const tlX = (t, w) => TL0 + (t - from) / WIN * (w - TL0 - 14);
 // shapes say what it is before colour does: ▲ buy, ▼ sell, ◆ burn, ● liquidity/agent, ■ payout, ★ NFT
 function mark(kind, x, y, r) {
@@ -4217,6 +4219,10 @@ function seek(t) {
   events.sort((a, b) => a.t - b.t);
   if (mode !== 'replay') { mode = 'replay'; $('live').classList.add('rp'); $('live').lastChild.textContent = 'REPLAY · SCRUBBING'; $('rclk').classList.add('on'); rpLabel(); }
   playhead = clamp(t, from, Date.now()); rLast = 0;
+  // THE FRESH ONES TOO (operator, 2026-10-02: "clicking the timeline during live, the animations come — but for the very
+  // fresh ones too, from their start"): the replay's burst rule (momentIn) compared a just-played moment with ITSELF —
+  // its live showing was the last board, within 15 s of chain time — and swallowed it. A seek starts a new sequence.
+  LAST_M.t = -1e15; LAST_M.level = -1;
   cursor = events.findIndex(x => x.t >= playhead); if (cursor < 0) cursor = events.length;
   dotsFrom(playhead); // scrubbing fires nothing: the dots carry on from here
 }
@@ -4234,7 +4240,8 @@ tl.addEventListener('pointerup', () => {
   if (!scrub) return;
   const s = scrub; scrub = null; nextAt = 0;
   $('live').lastChild.textContent = 'REPLAY · FROM HERE';
-  if (!s.moved && s.hit) { s.hit.lit = performance.now(); seek(s.hit.t); cursor++; if (s.hit.kind === 'trade' && !s.hit.ours) { nextAt = performance.now() + 6000; followTrade(s.hit); } else { run(s.hit, false); nextAt = performance.now() + momentMs(s.hit); } }
+  // a buy with its own scene (an alert, its NFT not minted yet) replays that scene; any other trade is followed
+  if (!s.moved && s.hit) { s.hit.lit = performance.now(); seek(s.hit.t); cursor++; if (s.hit.kind === 'trade' && !s.hit.ours && !(s.hit.buy && s.hit.usd >= ALERT_USD)) { nextAt = performance.now() + 6000; followTrade(s.hit); } else { run(s.hit, false); nextAt = performance.now() + momentMs(s.hit); } }
 });
 // Replay controls (A5, 2026-09-25): pause, and a speed that multiplies both the flight between moments
 // and the moments themselves. The speed stays picked from one replay to the next; a pause does not.
@@ -4299,6 +4306,7 @@ function startReplay() {
   from = Date.now() - WIN; cursor = events.findIndex(x => x.t >= from); if (cursor < 0) cursor = events.length;
   if (REDUCED) { cursor = events.length; goLive(); return; }
   mode = 'replay'; rStart = performance.now(); playhead = from; rLast = 0; paused = false; replayEnded = false; dotsFrom(from);
+  LAST_M.t = -1e15; LAST_M.level = -1; // a new replay: its first moment is not compared with the last live one (see seek)
   storyCard('REPLAYED FROM THE CHAIN · EVERY EVENT IS REAL', 'THE LAST ' + WIN_WORD[winKey], null, 3600);
   nextAt = performance.now() + 3800; // the title has the stage before the clock starts
   $('rclk').classList.add('on'); rpLabel();

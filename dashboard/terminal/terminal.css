@@ -333,6 +333,7 @@
 #bt .fig canvas.vid{position:absolute;left:0;right:0;bottom:0;top:auto;width:100%;height:110.1852%;opacity:0;transition:opacity .25s}
 #bt .fig canvas.vid.on{opacity:1}
 #bt .fig.moving img[data-p]{opacity:0!important}
+#bt .fig.away img[data-p]{opacity:0!important} /* before his entrance (2026-10-02): nobody there yet */
 /* one figure, one flow (2026-09-26): clip and still share their first and last frame, so they swap in one frame —
    a fade let both be half-transparent for a moment and he flickered */
 #bt .fig img[data-p]{transition:none}

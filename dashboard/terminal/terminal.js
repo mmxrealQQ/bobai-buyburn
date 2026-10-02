@@ -1200,15 +1200,17 @@ function vidInit() {
   const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', ...EXTRA_POSES, ...TIER_POSES]; // nft: he paints the card (hub-nft, 2026-09-29)
   // every take up to -v9 (2026-09-30: new waiting takes rest-v3..v6 and third takes of moves would have been ignored)
   const V = n => Array.from({ length: 8 }, (_, i) => n + '-v' + (i + 2));
-  const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
+  const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
   // which clips were shot in the wide framing (FRAMING.wide); a list that does not answer means none
   // no greeting came (a moment took the stage): alive anyway — but a greeting only waiting for the boot gets until 22 s
   const fb = () => { if (!SAID_HI && performance.now() < 22e3 && !QUEUE.length) return setTimeout(fb, 1000); GREETED = true; LIFE.saidHi = true; if (!VID.cur) vidRest(); }; // no greeting: the joke button is free anyway
   setTimeout(fb, 9000);
+  // until his entrance the picture is empty; never longer than 25 s, whatever happens (a clip that never loads)
+  if (!REDUCED) { fig.classList.add('away'); setTimeout(() => { if (!/-enter-/.test(VID.cur || '')) fig.classList.remove('away'); }, 25e3); }
   VID.wide = new Set(); fetch(`${BASE}anim/wide.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : []).then(l => { for (const c of l) VID.wide.add(c); }).catch(() => {});
   fetch(`${BASE}anim/clips.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : Promise.reject())
-    .then(list => { for (const p of list) if (wanted.includes(p)) VID.have.add(p); if (!VID.cur && GREETED) vidRest(); prefetchClip(waveTake() || 'idle'); }) // the greeting's wave, fetched while the page boots
-    .catch(() => { for (const p of wanted) fetch(`${BASE}anim/${p}.pack.mp4`, { method: 'HEAD' }).then(r => { if (r.ok && /^video\//.test(r.headers.get('content-type') || '')) VID.have.add(p); }).catch(() => {}); });
+    .then(list => { for (const p of list) if (wanted.includes(p)) VID.have.add(p); const e = !GREETED && enterTake(); if (e) prefetchClip(e); else fig.classList.remove('away'); if (!VID.cur && GREETED) vidRest(); prefetchClip(waveTake() || 'idle'); }) // the greeting's wave, fetched while the page boots
+    .catch(() => { fig.classList.remove('away'); for (const p of wanted) fetch(`${BASE}anim/${p}.pack.mp4`, { method: 'HEAD' }).then(r => { if (r.ok && /^video\//.test(r.headers.get('content-type') || '')) VID.have.add(p); }).catch(() => {}); });
 }
 // Every clip begins and ends in his standing still, so clip -> clip never shows a seam. Between moves he stands in
 // the calm rest takes, one after the other (vidRest); the still shows only while no clip can play.
@@ -1249,12 +1251,13 @@ function vidStart(c, loop = false) {
   // took to load, drawn in the new clip's framing — a normal take's frame in the wide framing is 1.4x too big.
   // From the still (nothing on the canvas) it may change at once.
   if (VID.on) VID.frameFor = c; else { VID.frameFor = null; vidFrame(c); }
+  if (!/-enter-/.test(c)) fig.classList.remove('away'); // after his entrance (or without one) he is in the picture
   (window.__btClips = window.__btClips || []).push(c); if (window.__btClips.length > 80) window.__btClips.shift(); // every clip played, for checks from outside
   // from the still, a soft take fades in over it; out of a playing clip the ghost already dissolves the seam
   VID.cv.classList.toggle('soft', SOFT(c) && !VID.on);
   VID.cur = c; VID.v.loop = loop; VID.v.src = `${BASE}anim/${c}.pack.mp4`; VID.v.currentTime = 0;
   // the canvas shows only once the clip's first frame is on it (vidDraw), so there is never an empty frame between
-  VID.v.play().then(() => { if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c)) flushSay(); })
+  VID.v.play().then(() => { if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
     .catch(err => {
       if (VID.cur !== c) return;
       // NEVER A FROZEN STILL FOR A HICCUP (2026-09-29, flow.mjs: 3-4% still): any failed play() stopped the video on the
@@ -1270,7 +1273,7 @@ function vidStart(c, loop = false) {
 function vidStop() {
   VID.cur = null; VID.move = null; VID.on = false;
   if (VID.cv) { VID.cv.classList.remove('soft', 'on'); VID.v.pause(); }
-  fig.classList.remove('moving'); showStill();
+  fig.classList.remove('moving', 'away'); showStill();
 }
 // every take of a move, however many come (operator, 2026-09-29: 'all videos played, in turns, also the new ones'):
 // -v2 up to -v9 join by themselves the day clips.json lists them; vidMove plays them round-robin
@@ -1354,6 +1357,21 @@ function vidIdle() {
   if (VID.on) { VID.want = { p: 'idle', c }; prefetchClip(c); return c; } // after the rest take, back in his standing pose (the take's name: truthy)
   VID.move = 'idle'; vidStart(c); return c;
 }
+// HIS ENTRANCE (operator, 2026-10-02: "when the terminal starts, a start animation — BOBAI drives up in a Fiat Multipla,
+// comes as a breakdancer, with a horde of baby kraken, in full construction gear… only once at the start, or on a
+// reload"). Until the greeting the picture is empty (fig.away hides the still); the entrance starts on the empty
+// screen and ends in his standing pose, the greeting wave follows at its end with the line. Never the same one twice
+// running in this browser. No entrance clip (or reduced motion): he stands there and waves, as before.
+const ENTRANCES = ['multipla', 'breakdance', 'puppies', 'builder', 'jetpack', 'giftbox'];
+function enterTake() {
+  if (REDUCED || !VID.v) return null;
+  if (VID.enterC && VID.have.has(VID.enterC)) return VID.enterC;
+  const all = ENTRANCES.flatMap(e => takesOf('hub-enter-' + e)); if (!all.length) return null;
+  let last = ''; try { last = localStorage.getItem('bobai-bt-enter') || ''; } catch {}
+  const L = all.length > 1 ? all.filter(c => c !== last) : all;
+  return VID.enterC = L[Math.random() * L.length | 0];
+}
+window.__btEnter = () => [VID.enterC || null, fig.classList.contains('away'), VID.cur]; // for checks from outside
 // the wave itself, for the greeting and a visitor who rests the mouse on him (hoverBobai)
 // MORE THAN ONE HELLO (operator, 2026-10-02: "the greeting is almost always the same"): every wave take (not the stretch,
 // idle-v2) takes turns, and this browser remembers the last one, so the next visit opens with another
@@ -3307,6 +3325,14 @@ function greet(tries = 0) {
   // his first clip IS the wave: until the greeting he stands in the still under the boot title (GREETED), so the wave
   // does not wait out a rest take that began a few seconds before it (the greeting came at 15 s, 2026-09-28)
   GREETED = true;
+  const ent = !VID.on && enterTake();
+  if (ent) { // his entrance first, then the wave with the line (held until the wave's first frame, at most 18 s)
+    try { localStorage.setItem('bobai-bt-enter', ent); } catch {}
+    VID.move = 'enter'; vidStart(ent); const w = waveTake(); VID.waveC = null;
+    if (w) { VID.want = { p: 'idle', c: w }; prefetchClip(w); }
+    HELD = { text: line, ms }; LIFE.sayUntil = t + 16000 + ms; LIFE.greetUntil += 9000; LIFE.next += 9000; setTimeout(flushSay, 18000);
+    markSeen(); setInterval(() => { if (!document.hidden) markSeen(); }, 60e3); return;
+  }
   const waved = vidWave(); // started at once from the still, or queued after a rest take
   if (waved && VID.want) { HELD = { text: line, ms }; LIFE.sayUntil = t + 8000 + ms; }
   // from the still the wave still has to load (~2 s on a first visit): the line waits for its first frame too (flushSay in

@@ -60,7 +60,9 @@
         ? `<b>${d}</b><span>${cmp(A[i])} BOBAI burned</span><span>${px ? `worth $${nf(A[i] * px, 2)} today` : ''}${px && Bnb[i] ? ' · ' : ''}${Bnb[i] ? `bought with ${Bnb[i].toFixed(4)} BNB` : ''}</span><i>${Runs[i]} bot run${Runs[i] === 1 ? '' : 's'}</i>`
         : `<b>${d}</b><span>no burn run that day</span>`;
       tip.hidden = false; const bw = cv.clientWidth / 30, x = (i + 0.5) * bw, tw = tip.offsetWidth;
-      tip.style.left = Math.max(0, Math.min(cv.clientWidth - tw, x - tw / 2)) + 'px';
+      // beside the bar, on the side with room: never above the chart, where the window cut off the date
+      const L = x > cv.clientWidth / 2 ? x - bw / 2 - 6 - tw : x + bw / 2 + 6;
+      tip.style.left = Math.max(0, Math.min(cv.clientWidth - tw, L)) + 'px';
     };
     const at = (e) => { const r = cv.getBoundingClientRect(); return Math.max(0, Math.min(29, Math.floor((e.clientX - r.left) / (r.width / 30)))); };
     cv.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') show(at(e)); });

@@ -1183,14 +1183,47 @@ function vidInit() {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.BLEND);
-  const v = document.createElement('video'); v.muted = true; v.loop = false; v.playsInline = true; v.setAttribute('playsinline', ''); v.crossOrigin = 'anonymous'; v.preload = 'auto';
+  // TWO VIDEO ELEMENTS (2026-10-02, trans.mjs: every switch froze 333-1785 ms while the one element loaded the next file):
+  // while a take plays, the next one (the queued move, or the rest take picked ahead) loads and decodes its first frame in
+  // the spare element; at the last frame the two swap, and the next take's first frame — the same standing pose — is
+  // already there. VID.v is always the one on screen; a take the spare does not hold loads as before.
+  const mk = () => { const e = document.createElement('video'); e.muted = true; e.loop = false; e.playsInline = true; e.setAttribute('playsinline', ''); e.crossOrigin = 'anonymous'; e.preload = 'auto'; return e; };
+  const v = mk(), spare = mk();
   // a copy of the last shown frame, faded out over the next clip when a chain event cannot wait for the current one to end
   const ghost = document.createElement('canvas'); ghost.className = 'vid ghost'; fig.insertBefore(ghost, cv.nextSibling);
-  Object.assign(VID, { cv, gl, tex, v, ghost, fresh: true, uR: gl.getUniformLocation(pr, "R") });
-  // uploading a 480x1708 frame 60 times a second for a 24 fps clip was the stutter; only new frames go up now
-  if ('requestVideoFrameCallback' in v) { const onFrame = () => { VID.fresh = true; v.requestVideoFrameCallback(onFrame); }; v.requestVideoFrameCallback(onFrame); }
-  else VID.noRvfc = true;
-  v.addEventListener('ended', vidEnded);
+  Object.assign(VID, { cv, gl, tex, v, spare, ghost, fresh: true, uR: gl.getUniformLocation(pr, "R") });
+  for (const e of [v, spare]) {
+    // uploading a 480x1708 frame 60 times a second for a 24 fps clip was the stutter; only new frames go up now
+    // HANDED OVER, NOT WAITED FOR (2026-10-02): 'ended' comes a frame and a task later, and a play() needs its own
+    // 100-300 ms to start. The next take is started hidden in the spare that long before this one ends (VID.lat, learned
+    // from every start of this visit), and takes the canvas once BOTH hold: this take has shown its LAST frame (the
+    // standing pose — its last 6 frames glide into it, so it is never cut short) and the next one is running.
+    // capped at 0.15 s: with 0.25 a slow first start made the next take run 0.2-0.46 s ahead (its start skipped)
+    const lead = () => Math.min(0.15, Math.max(0.04, (VID.lat ?? 100) / 1000));
+    const hand = () => { if (spareReady()) { VID.v.pause(); vidEnded(); } };
+    if ('requestVideoFrameCallback' in e) {
+      const onFrame = (now, meta) => {
+        if (e === VID.v) {
+          VID.fresh = true; const sp = VID.spare;
+          if (!e.loop && e.duration) {
+            e._last = meta.mediaTime >= e.duration - 0.05;
+            if (!sp._go && meta.mediaTime >= e.duration - lead() && spareReady()) {
+              sp._go = true; sp._shown = false; sp._t0 = performance.now(); if (sp.currentTime > 0.05) sp.currentTime = 0;
+              sp.play().catch(() => { sp._go = false; });
+            }
+            if (e._last && sp._go && sp._shown) hand();
+          }
+        } else if (e === VID.spare && e._go) {
+          if (!e._shown) { e._shown = true; const l = performance.now() - e._t0; VID.lat = VID.lat == null ? l : VID.lat * 0.6 + l * 0.4; }
+          if (VID.v._last) hand();
+        }
+        e.requestVideoFrameCallback(onFrame);
+      };
+      e.requestVideoFrameCallback(onFrame);
+    }
+    else VID.noRvfc = true;
+    e.addEventListener('ended', () => { if (e === VID.v) vidEnded(); });
+  }
   // which clips exist: asked once each, quietly. A static host answers a missing file with its index page and
   // a 200, so only a video counts (found 2026-09-25). Standing takes (idle, idle-v2, rest, rest-v2) and the hub
   // moves, each maybe with a second take (hub-<move>-v2).
@@ -1255,7 +1288,16 @@ function vidStart(c, loop = false) {
   (window.__btClips = window.__btClips || []).push(c); if (window.__btClips.length > 80) window.__btClips.shift(); // every clip played, for checks from outside
   // from the still, a soft take fades in over it; out of a playing clip the ghost already dissolves the seam
   VID.cv.classList.toggle('soft', SOFT(c) && !VID.on);
-  VID.cur = c; VID.v.loop = loop; VID.v.src = `${BASE}anim/${c}.pack.mp4`; VID.v.currentTime = 0;
+  // the spare holds this take with its first frame decoded: swap, no loading (vidPreload)
+  const sp = VID.spare;
+  if (sp && sp._c === c && sp.readyState >= 2 && !sp.error) {
+    const old = VID.v, going = sp._go; VID.v = sp; VID.spare = old; old.pause(); old._c = null; old._go = false; sp._go = false; VID.fresh = true;
+    if (!going && sp.currentTime > 0.05) sp.currentTime = 0; // started early (LEAD): it runs on from where it is
+  } else {
+    (window.__btLoads = window.__btLoads || []).push([c, sp && sp._c, sp && sp.readyState]); if (window.__btLoads.length > 40) window.__btLoads.shift(); // a switch the spare missed, for checks
+    VID.v.src = `${BASE}anim/${c}.pack.mp4`; if (sp && sp._c === c) { sp._c = null; sp._go = false; sp.pause(); }
+  }
+  VID.cur = c; VID.v.loop = loop; VID.v._last = false;
   // the canvas shows only once the clip's first frame is on it (vidDraw), so there is never an empty frame between
   VID.v.play().then(() => { if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
     .catch(err => {
@@ -1309,7 +1351,8 @@ function vidMove(p, urgent) {
 // (temp/terminal/home_points.py): no take passes through the standing pose in its middle, only at its first and
 // last frame. So a clip changes only where one ends: nothing is cut into, dissolved or slowed (tried the same day —
 // ramped speed at the cuts and 0.35 s dissolves — and he looked worse: "before it was better").
-window.__btVideo = () => VID.v; // trans.mjs: the one video element (not in the DOM), to time every presented frame
+window.__btVideo = () => VID.v; // trans.mjs: the video element on screen (not in the DOM), to time every presented frame
+window.__btVideos = () => [VID.v, VID.spare].filter(Boolean); // both elements (they swap at every preloaded switch)
 window.__btVid = () => VID.v ? [VID.cur, +VID.v.currentTime.toFixed(2), +VID.v.playbackRate.toFixed(2), +(VID.v.duration || 0).toFixed(2)] : null; // for checks from outside (read-only)
 function vidGhost(dur = 0.35) {
   const { cv, ghost } = VID; if (!ghost || !VID.on) return;
@@ -1402,7 +1445,7 @@ function restTake() {
   return VID.lastRest = (VID.lastRest !== 'rest' && Math.random() < 0.4) || !others.length ? 'rest' : pick(others);
 }
 function vidRest() {
-  const c = !REDUCED && VID.v && restTake(); if (!c) { vidStop(); return; }
+  const c = !REDUCED && VID.v && (VID.nextRest && VID.have.has(VID.nextRest) ? VID.nextRest : restTake()); VID.nextRest = null; if (!c) { vidStop(); return; }
   VID.move = null; vidStart(c);
 }
 // THE BOARD COMES WITH HIS MOVE (operator, 2026-09-28: "the animation and the flipchart come together — the next action
@@ -1423,8 +1466,31 @@ function vidEnded() {
   if (pose !== 'idle') { pose = 'idle'; }
   vidRest();
 }
+// what plays after this take, loaded into the spare element while this one plays (see vidInit): the move waiting its turn,
+// else the rest take vidRest will pick (picked now, kept for it)
+function vidPreload() {
+  const sp = VID.spare; if (!sp || VID.v.loop) return;
+  const c = VID.want ? VID.want.c : (VID.nextRest = VID.nextRest || restTake());
+  if (!c || !VID.have.has(c)) return;
+  if (sp._c !== c) { sp._c = c; sp._warm = false; sp._go = false; sp.src = `${BASE}anim/${c}.pack.mp4`; return; }
+  // A SLEEPING DECODER (2026-10-02, trans.mjs): Chrome parks a paused element's decoder, and waking it at the switch cost
+  // 130-400 ms with the first frames skipped. Shortly before the switch the spare plays a moment and goes back to its
+  // first frame, awake (playing it at speed 0 instead was measured slower: median 150 ms against 117)
+  const left = (VID.v.duration || 8) - VID.v.currentTime;
+  if (!sp._warm && left < 0.8 && sp.readyState >= 2) {
+    sp._warm = true;
+    sp.play().then(() => { if (sp !== VID.v && !sp._go) { sp.pause(); sp.currentTime = 0; } }).catch(() => {});
+  }
+}
+// the spare holds what comes next, first frame ready
+function spareReady() {
+  const sp = VID.spare, c = VID.want ? VID.want.c : VID.nextRest;
+  return !!(sp && c && sp._c === c && sp.readyState >= 2 && !sp.seeking);
+}
 function vidDraw() {
-  if (!VID.on || !VID.v || VID.v.readyState < 2) return;
+  if (!VID.on || !VID.v) return;
+  vidPreload();
+  if (VID.v.readyState < 2) return;
   if (VID.frameFor) { vidFrame(VID.frameFor); VID.frameFor = null; VID.fresh = true; } // the new clip's first frame is here: its framing now
   const { cv, gl, v } = VID, r = fig.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
   const w = Math.round(r.width * (VID.wf || 1) * dpr), h = Math.round(r.height * (VID.hf || 1 + VID_HEAD) * dpr);

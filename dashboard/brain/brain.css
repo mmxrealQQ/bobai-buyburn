@@ -181,7 +181,8 @@ body.bp-winon{overflow:hidden}
 /* 03 PROOF: a day's figures under the pointer or finger (2026-10-01) */
 .bw-hero .bbw{position:relative}
 .bw-hero .bbw canvas{display:block;width:100%;cursor:crosshair;touch-action:pan-y}
-.bw-hero .bbt{position:absolute;bottom:calc(100% + 6px);z-index:3;min-width:150px;max-width:240px;padding:8px 11px;border-radius:9px;background:rgba(14,10,8,.94);border:1px solid rgba(255,122,61,.55);box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 18px rgba(255,122,61,.18);pointer-events:none;font:600 11px/1.45 var(--bp-mono);color:#f3e6d8}
+/* inside the chart, beside the day's bar (2026-10-02: above the chart the window cut its top off — the date) */
+.bw-hero .bbt{position:absolute;top:0;z-index:3;min-width:150px;max-width:240px;padding:8px 11px;border-radius:9px;background:rgba(14,10,8,.94);border:1px solid rgba(255,122,61,.55);box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 18px rgba(255,122,61,.18);pointer-events:none;font:600 11px/1.45 var(--bp-mono);color:#f3e6d8}
 .bw-hero .bbt[hidden]{display:none}
 .bw-hero .bbt b{display:block;font-weight:800;letter-spacing:.08em;color:#ffd28a;margin-bottom:2px}
 .bw-hero .bbt span{display:block}

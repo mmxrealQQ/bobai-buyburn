@@ -887,7 +887,7 @@ function setDest(k, v, s) { const d = D[k]; if (!d.el.querySelector('.v').datase
 const labW = new Map();
 const labRO = new ResizeObserver(es => { for (const e of es) labW.set(e.target, e.borderBoxSize?.[0]?.inlineSize ?? e.target.offsetWidth); });
 function placeLabels() {
-  if (!labW.size) { for (const d of DEST) labRO.observe(d.el); labRO.observe(coreLab); labRO.observe(srcLab); labRO.observe(jokeBtn); for (const w of WORKERS) labRO.observe(w.el); }
+  if (!labW.size) { for (const d of DEST) { labRO.observe(d.el); labRO.observe(d.el.querySelector('.n')); } labRO.observe(coreLab); labRO.observe(srcLab); labRO.observe(jokeBtn); for (const w of WORKERS) labRO.observe(w.el); }
   const fs = A.figScreen || toScreen(A.fig); fig.style.left = fs.x - A.figW / 2 + 'px'; fig.style.top = fs.y - A.figHpx / 2 + 'px';
   // the joke button (centre point). Wide: just under the shadow at his feet (its bottom is 52% of the figure's height
   // below the centre), stepped right of the log box where the two would touch and up where the timeline begins.
@@ -919,7 +919,10 @@ function placeLabels() {
     // Wide screen: the labels hang to the right of their orbs. In the new page the terminal is a window in the middle,
     // a third narrower than the full screen it was drawn for, and the labels ran past its right edge (2026-09-27).
     // Each label gets the room that is really left (--mw): its figure shrinks to fit and its second line wraps.
+    // Its name row never wraps (the name and its % pill): at 1440 px "LIQ BOOST III 0.5%" still ran 7 px past the edge
+    // (2026-10-03) — a row wider than the room left moves the whole label left until it fits.
     const Wd = win.clientWidth;
+    for (const d of DEST) { const nw = labW.get(d.el.querySelector('.n')); if (nw) xs.set(d, Math.min(xs.get(d), Wd - 8 - nw - (parseFloat(d.el.style.getPropertyValue('--off')) || 26))); }
     for (const d of DEST) d.el.style.setProperty('--mw', Math.max(120, Math.round(Wd - xs.get(d) - (parseFloat(d.el.style.getPropertyValue('--off')) || 26) - 12)) + 'px');
   }
   for (const [d, x] of xs) d.el.style.left = x + 'px';
@@ -1311,6 +1314,14 @@ function vidStart(c, loop = false) {
       // twice is struck off; either way he goes on in his calm rest take, the still only if the rest take itself fails.
       (window.__btVidErr = window.__btVidErr || []).push([Math.round(performance.now() / 1000), c, err?.name || String(err)]);
       if (err?.name === 'AbortError') return;
+      // AUTOPLAY REFUSED (2026-10-03, operator's phone in power-saving mode: "his lively moves are gone"): the browser
+      // plays no video without a touch. Not a broken clip — none is struck off; he stands in his still and his clips
+      // come back with the first tap anywhere on the page
+      if (err?.name === 'NotAllowedError') {
+        const g = VID.go; VID.go = null; vidStop(); if (g) g(); // a board that waited for this move still shows
+        if (!VID.wake) { VID.wake = () => { document.removeEventListener('pointerdown', VID.wake, true); VID.wake = null; if (!VID.cur) vidRest(); }; document.addEventListener('pointerdown', VID.wake, true); }
+        return;
+      }
       VID.fails = VID.fails || {}; VID.fails[c] = (VID.fails[c] || 0) + 1; if (VID.fails[c] >= 2) VID.have.delete(c);
       if (/^rest/.test(c)) { if (VID.fails[c] >= 2) vidStop(); else { VID.on = false; vidStart(c); } return; }
       VID.move = null; VID.on = false; const g = VID.go; VID.go = null; vidRest(); if (g) g(); // a board that waited for this move still shows

@@ -96,7 +96,7 @@
 #bt .dest .s{font:500 .68rem var(--mono);color:var(--muted);margin-top:1px}
 /* wide screen: each label gets the room left to the window's right edge (--mw, set in placeLabels) */
 #bt .bt-win:not(.portrait) .dest{max-width:var(--mw,none);white-space:normal}
-#bt .bt-win:not(.portrait) .dest .n{white-space:nowrap}
+#bt .bt-win:not(.portrait) .dest .n{white-space:nowrap;width:max-content}
 #bt .bt-win.tight .dest .s,#bt .bt-win.tight .core .s:not(.cd){display:none}
 /* and the log box a little narrower there, so the buyback label between it and the Giggle label has room */
 #bt .bt-win.tight .term:not(:hover):not(:focus-within){width:min(330px,calc(100% - 32px));height:auto;max-height:92px}

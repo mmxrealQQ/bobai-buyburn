@@ -2058,6 +2058,9 @@ function lifeTick(now) {
   if (mode !== 'live' || document.hidden) return;
   if (DEMO) { if (now >= LIFE.next && !pinnedK) { let k = 0, e; do e = DEMO[demoI++ % DEMO.length]; while (++k < DEMO.length && e[0] !== 'idle' && flowPose(e[0]) === 'idle'); const [p, line] = e; setPose(poseOr(p), 8); /* only the moves that have their clip */ speak(line, 3400); LIFE.next = now + 10e3; } return; }
   if (poseT > 0 || pinnedK || QUEUE.length || now < sceneUntil + 2500) return; // the chain's own moments and the reader's focus go first
+  // A TAPPED JOKE GOES BEFORE HIS OWN MOVES (3.10., qa/situations: the queued joke waited for paintJoke's 250 ms tick and
+  // his own coffee move took the free stage first): told here the moment the stage is free; after 30 s he lives on
+  if (jokeQueued && now - (LIFE.touchAt || 0) < 30e3) { if (jokeReady()) jokeTap(); return; }
   // THE MARKET TURNS (2026-09-26): when the hour's price crosses into a new mood he answers at once, with the real
   // figure — not at his next idle move two minutes later. At most once in ten minutes, so a choppy hour stays calm.
   if (now >= (LIFE.moodAt || 0)) {
@@ -4189,7 +4192,11 @@ function drawTl(now) {
   }
   // the window's price and change, small, top left
   if (cs.length) {
-    const ch = (cs[cs.length - 1].c / cs[0].o - 1) * 100, upc = ch >= 0;
+    // ONE 24H FIGURE (2026-10-03: the mood chip said -0.2 %, the timeline +0.50 % 24H — the timeline measured from its own
+    // first candle): live, the 24H head reads chartChange like the chip and the big chart; a replay keeps its window's own
+    const cc = mode === 'live' && winKey === '24H' ? chartChange(candles()) : null;
+    const ch = cc ?? (cs[cs.length - 1].c / cs[0].o - 1) * 100, upc = ch >= 0;
+    window.__btTlCh = mode === 'live' ? [winKey, ch] : null; // same24h.mjs: the figure the timeline head shows
     tx.textAlign = 'left'; tx.font = '700 9px ' + mono; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText('$BOBAI', TL0 + 2, 11);
     tx.fillStyle = '#f3efe6'; const pt = '$' + (cs[cs.length - 1].c * S.bnbP).toPrecision(4); tx.fillText(pt, TL0 + 44, 11);
     const cht = (upc ? '▲ +' : '▼ ') + ch.toFixed(2) + '% ' + winKey, chx = TL0 + 50 + tx.measureText(pt).width;

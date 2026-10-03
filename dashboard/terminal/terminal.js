@@ -1025,7 +1025,7 @@ window.__btCircles = () => Object.fromEntries(['burnA','burnB','liq','defi','gig
 window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the terminal read from the chain, for the Brain page's windows (03 PROOF)
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
-window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
+window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : kind.includes(':') ? e.kind + ':' + e.key === kind : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
@@ -1043,7 +1043,7 @@ function varied(p) {
 // first, then a move of the same spirit; once the clip itself exists it is used.
 const STAND_IN = { 'buy-kraken': 'cheer', 'buy-thunder': 'saber', 'buy-whale': 'buy-huge', 'buy-huge': 'buy-big', 'buy-big': 'buy-nice', 'buy-nice': 'giggle',
   'burn-supernova': 'burn-apocalypse', 'burn-apocalypse': 'burn-mega', 'burn-mega': 'burn-big', 'burn-big': 'burn-nice', 'burn-nice': 'burn-small', 'burn-small': 'burn',
-  think: 'coffee', hodl: 'saber', bull: 'dance', defi: 'build', laugh: 'giggle', shrug: 'walk',
+  think: 'coffee', hodl: 'saber', bull: 'dance', defi: 'build', 'defi-buy': 'defi', 'defi-cap': 'defi', laugh: 'giggle', shrug: 'walk',
   // withheld as cut by the frame (temp/terminal/anim/cut.txt, 2026-09-27) until re-shot in the wide framing
   burn: 'burn-nice', pushups: 'walk', liq: 'build' };
 function withClip(p) { let q = p; for (let n = 0; n < 8 && q && q !== 'idle' && flowPose(q) !== q; n++) q = STAND_IN[q]; return q && flowPose(q) === q ? q : p; }
@@ -1340,7 +1340,18 @@ function takesOf(base) { return [base, ...Array.from({ length: 8 }, (_, i) => ba
 // older take 10-28 away (build 28), and a fade between two poses still reads as a jump. So only hub takes play, as
 // on 27.9. ("it was like that before"); a move without its hub take yet (defi, think, hodl — being shot) takes its
 // STAND_IN, and its own hub take is used the day it arrives.
-function moveTakes(p) { return takesOf('hub-' + p); }
+// THE DEFI AGENT BUYS BOBAI (2026-10-03, operator: "when the DeFi agent buys BOBAI, animate it"): the two takes where
+// the golden robot helper (his DeFi agent) rolls in with coins play the agent's BOBAI buy (fees collected or a re-set
+// that sends fees to BOBAI); its other steps keep the hologram and the phone, so the robot means: BOBAI was bought
+// (operator, same day: "BOBAI buys BOBAI with the DeFi agent = the golden robot cat, new capital = the blue ones"): new
+// capital plays the two blue hologram takes
+const DEFI_COIN = ['hub-defi-v4', 'hub-defi-v5'], DEFI_BLUE = ['hub-defi', 'hub-defi-v2'];
+function moveTakes(p) {
+  if (p === 'defi-buy') return DEFI_COIN.filter(c => VID.have.has(c));
+  if (p === 'defi-cap') return DEFI_BLUE.filter(c => VID.have.has(c));
+  const t = takesOf('hub-' + p), work = p === 'defi' ? t.filter(c => !DEFI_COIN.includes(c)) : t;
+  return work.length ? work : t;
+}
 function vidMove(p, urgent) {
   if (!VID.v || REDUCED) return;
   const takes = moveTakes(p); if (!takes.length) return;
@@ -3209,7 +3220,7 @@ function boardScene(t, col, pose, kicker, title, spec, hold) {
   momentEl.querySelector('.k').textContent = (Date.now() - t > 120e3 ? new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).toUpperCase() + ' · ' : '') + kicker;
   momentEl.querySelector('.h').textContent = title;
   momentEl.querySelector('.bar').textContent = ''; momentEl.querySelector('.card').hidden = true;
-  momentEl.classList.remove('story'); momentEl.classList.toggle('defi', pose === 'defi');
+  momentEl.classList.remove('story'); momentEl.classList.toggle('defi', /^defi/.test(pose));
   showFlip(spec);
   stkCancel(); momentEl.classList.remove('go'); void momentEl.offsetWidth; momentEl.classList.add('go'); win.classList.add('in-moment');
   clearTimeout(momentTimer); momentTimer = setTimeout(() => { momentEl.classList.remove('go', 'defi'); win.classList.remove('in-moment'); }, hold * 1000);
@@ -3218,7 +3229,8 @@ function boardScene(t, col, pose, kicker, title, spec, hold) {
 }
 function defiScene(x, fast) {
   const [title, spec] = (DEFI_BOARD[x.key] || (() => ['AT WORK', { head: x.step, rows: [] }]))(x.s || {});
-  boardScene(x.t, D.defi.c, 'defi', "BOBAI'S DEFI AGENT", title, spec, 7.0);
+  const bought = +x.s?.bobai_units > 0 || +x.s?.fees_to_bobai_bnb > 0; // its fees bought BOBAI: the robot brings the coins
+  boardScene(x.t, D.defi.c, bought ? 'defi-buy' : x.key === 'increase' ? 'defi-cap' : 'defi', "BOBAI'S DEFI AGENT", title, spec, 7.0);
   D.defi.boost = 1; hitDest('defi');
 }
 

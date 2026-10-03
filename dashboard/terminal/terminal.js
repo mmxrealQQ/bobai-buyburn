@@ -2671,6 +2671,13 @@ function buildEvents() {
     for (const [k, v] of Object.entries(r.steps || {})) for (const s of (Array.isArray(v) ? v : [v]))
       if (s?.acted && STEP[k]) ev.push({ id: 'd' + r.at + k + (s.source || ''), t: Date.parse(r.at) + 5, kind: 'defi', step: STEP[k], key: k, s });
   }
+  // THE BUYBACK'S SHARE COMES AFTER THE BUYBACK (2026-10-03, operator: "NEW CAPITAL AT WORK twice, at the last one"): a
+  // run's time is when it ENDS, its DeFi share lands mid-run and the agent can put it to work before that (3.10.: agent
+  // 14:21:11, run 14:21:19) — the film showed the capital before its own burn, right after the previous capital board
+  for (const x of ev) if (x.kind === 'defi' && x.key === 'increase') {
+    const r = ev.find(y => y.kind === 'run' && y.e.lpAgentTx && y.t > x.t && y.t - x.t < 3 * 60e3);
+    if (r) x.t = r.t + 5;
+  }
   for (const n of S.nft?.drops || []) ev.push({ id: 'n' + n.tokenId, t: n.ts * 1000, kind: 'nft', n });
   // d38's hourly payout of the creator share. Amounts only: the payout transactions lead to personal wallets.
   // a swap sent by one of our wallets is BOBAI acting (buyback or tax swap), not a trader
@@ -3762,7 +3769,7 @@ cxEl.innerHTML = `<div class="cx-h"><div class="cx-t"><b>$BOBAI</b><span>/ BNB �
   <div class="cx-tf"><button type="button" data-tf="1H">1H</button><button type="button" data-tf="6H">6H</button><button type="button" data-tf="24H" class="on">24H</button></div>
   <button type="button" class="cx-x" aria-label="Close the chart">×</button></div>
   <div class="cx-s"></div><div class="cx-c"><canvas></canvas><div class="cx-o"></div></div>
-  <div class="cx-k"><span style="--k:${BUYC}">▲ BUY</span><span style="--k:${SELLC}">▼ SELL</span><span style="--k:#ff7a3d">◆ BOBAI BURNED</span><span style="--k:#2dd4bf">● LIQUIDITY ADDED</span><span style="--k:#60a5fa">● DEFI AGENT</span><span style="--k:#a78bfa">★ NFT DROP</span><em class="cx-say"></em></div>`;
+  <div class="cx-k"><span style="--k:${BUYC}">▲ BUY</span><span style="--k:${SELLC}">▼ SELL</span><span style="--k:${D.burnA.c}">◆ BOBAI BURNED</span><span style="--k:#F0B90B">◆ BOBAI SWAP</span><span style="--k:${D.liq.c}">● LIQUIDITY ADDED</span><span style="--k:${D.defi.c}">● DEFI AGENT</span><span style="--k:${D.creator.c}">■ PAYOUT</span><span style="--k:#a78bfa">★ NFT DROP</span><em class="cx-say"></em></div>`;
 win.appendChild(cxEl);
 const cxCv = cxEl.querySelector('canvas'), cxG = cxCv.getContext('2d');
 const cxOpen = document.createElement('button'); cxOpen.type = 'button'; cxOpen.className = 'chart-open'; cxOpen.textContent = 'OPEN CHART ⤢';
@@ -3790,14 +3797,21 @@ function cxMarks(cs, span) {
   const t0 = cs[0].t - span, t1 = cs[cs.length - 1].t, out = [];
   for (const x of events) {
     if (x.t <= t0 || x.t > t1) continue;
-    const k = x.kind === 'run' ? ['◆', '#ff7a3d', `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', '#2dd4bf', x.l.dev ? `dev wallet added ${bnbF(x.l.bnb)} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbF(x.l.bnb)}, LP burned`]
-      : x.kind === 'defi' ? ['●', '#60a5fa', `DeFi agent ${x.step}`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
-      : x.kind === 'trade' && !x.ours ? [x.buy ? '▲' : '▼', x.buy ? BUYC : SELLC, `${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}`] : null;
+    // a swap of BOBAI's own buyback run is that run's ◆ already (a candle shows two marks: it would push others out)
+    if (x.kind === 'trade' && x.ours && events.some(y => y.kind === 'run' && Math.abs(y.t - x.t) < 5 * 60e3)) continue;
+    const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbF(x.l.bnb)} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbF(x.l.bnb)}, LP burned`]
+      : x.kind === 'defi' ? ['●', D.defi.c, `DeFi agent ${x.step}`] : x.kind === 'dev' ? ['■', D.creator.c, `dev bot paid out ${bnbF(+x.d.availableBnb)} of the creator share`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
+      : x.kind === 'trade' ? (x.ours ? ['◆', '#F0B90B', `BOBAI ${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}`] : [x.buy ? '▲' : '▼', x.buy ? BUYC : SELLC, `${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}`]) : null;
     if (!k) continue;
     const i = cs.findIndex(c => c.t >= x.t); out.push({ i: i < 0 ? cs.length - 1 : i, g: k[0], c: k[1], txt: k[2], t: x.t });
   }
   return out;
 }
+// marks.mjs: every mark both charts would draw for every event (shape and colour) and the big chart's key
+window.__btMarks = () => { const GL = { up: '▲', down: '▼', diamond: '◆', circle: '●', square: '■', star: '★' }, all = [...events].sort((a, b) => a.t - b.t);
+  const cs = all.map(x => ({ t: x.t + 1 })), cx = all.length ? cxMarks(cs, 2) : [];
+  return { tl: all.map(x => [x.kind + (x.ours ? ':ours' : ''), GL[shapeOf(x)], evColor(x), x.t]), cx: cx.map(m => [m.g, m.c, m.t]),
+    cxKey: [...document.querySelectorAll('#bt .cx-k span')].map(e => [e.textContent.trim()[0], e.style.getPropertyValue('--k').trim(), e.textContent.trim().slice(2)]), tlKey: window.__btTlKey || null }; };
 function cxStats(all) {
   const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP), 0); // each bucket at its own BNB price
   const b = day.reduce((a, r) => a + (r.b || 0), 0), sl = day.reduce((a, r) => a + (r.s || 0), 0);
@@ -4166,11 +4180,17 @@ function drawTl(now) {
     const ch = (cs[cs.length - 1].c / cs[0].o - 1) * 100, upc = ch >= 0;
     tx.textAlign = 'left'; tx.font = '700 9px ' + mono; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText('$BOBAI', TL0 + 2, 11);
     tx.fillStyle = '#f3efe6'; const pt = '$' + (cs[cs.length - 1].c * S.bnbP).toPrecision(4); tx.fillText(pt, TL0 + 44, 11);
-    tx.fillStyle = upc ? BUYC : SELLC; tx.fillText((upc ? '▲ +' : '▼ ') + ch.toFixed(2) + '% ' + winKey, TL0 + 50 + tx.measureText(pt).width, 11);
-    // the key to the marks, on a wide screen (a phone has the CHART tab with its own)
-    if (w > 760) {
-      tx.textAlign = 'right'; tx.font = '700 8px ' + mono; let kx = x1 - 4;
-      for (const [g, c, lab] of [['★', '#a78bfa', 'NFT'], ['●', D.defi.c, 'DEFI'], ['●', D.liq.c, 'LIQUIDITY'], ['◆', D.burnA.c, 'BURN'], ['▼', SELLC, 'SELL'], ['▲', BUYC, 'BUY']]) {
+    const cht = (upc ? '▲ +' : '▼ ') + ch.toFixed(2) + '% ' + winKey, chx = TL0 + 50 + tx.measureText(pt).width;
+    tx.fillStyle = upc ? BUYC : SELLC; tx.fillText(cht, chx, 11); const left = chx + tx.measureText(cht).width + 14;
+    // the key to the marks, on a wide screen (a phone has the CHART tab with its own); from 520 px (3.10.: at 1440 the
+    // timeline is 739 px and had no key at 760) — what does not fit beside the price leaves, BUY / SELL / BURN stay
+    if (w > 520) {
+      tx.textAlign = 'right'; tx.font = '700 8px ' + mono; let kx = x1 - 24; // clear of the gold now-line and its ring
+      const keys = [['★', '#a78bfa', 'NFT', 3], ['■', D.creator.c, 'PAYOUT', 1], ['●', D.defi.c, 'DEFI', 4], ['●', D.liq.c, 'LIQUIDITY', 5], ['◆', '#F0B90B', 'BOBAI SWAP', 2], ['◆', D.burnA.c, 'BURN', 9], ['▼', SELLC, 'SELL', 9], ['▲', BUYC, 'BUY', 9]];
+      const kw = k => tx.measureText(k[2]).width + 3 + tx.measureText(k[0]).width + 10;
+      while (keys.reduce((a, k) => a + kw(k), 0) > kx - left) { const lo = keys.reduce((m, k) => k[3] < m[3] ? k : m); if (lo[3] >= 9) break; keys.splice(keys.indexOf(lo), 1); }
+      window.__btTlKey = keys.map(k => [k[0], k[1], k[2]]); // marks.mjs: the key the timeline drew
+      for (const [g, c, lab] of keys) {
         tx.fillStyle = 'rgba(160,162,192,.7)'; tx.fillText(lab, kx, 11); kx -= tx.measureText(lab).width + 3;
         tx.fillStyle = c; tx.fillText(g, kx, 11); kx -= tx.measureText(g).width + 10;
       }

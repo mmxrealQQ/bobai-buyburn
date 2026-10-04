@@ -1086,8 +1086,10 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
-        dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        // USD1 by EIP-3009 first (2026-10-04): the BNB Chain norm, and what
+        // clients that read only accepts[0] (Mandate's relay among them) pay.
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
@@ -1107,7 +1109,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or in USD1 by EIP-3009 (accepts[1]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -1477,7 +1479,7 @@ export default {
         payment: {
           protocol: 'x402', network: NETWORK, payTo,
           // What a 402 here accepts, in the order the accepts[] carries it.
-          accepts: ['USDC by standard x402 (accepts[0], Permit2), settled by us within ten minutes', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
+          accepts: ['answers: USD1 by EIP-3009 (accepts[0], signed TransferWithAuthorization in X-PAYMENT or PAYMENT-SIGNATURE, settled by us at once)', 'USDC by standard x402 (Permit2), settled by us within ten minutes', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
           asset: USD1, symbol: 'USD1',
         },
         start_here: { find: 'https://agent.brainonbnb.com/find?q=venus+health+factor', example_answer: 'https://agent.brainonbnb.com/example?service=health_factor', hire: 'https://agent.brainonbnb.com/hire?agent=302257&task=health+factor', card: 'https://agent.brainonbnb.com/.well-known/agent.json' },

@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-04T17:18:00.512Z",
+  "measured_at": "2026-10-04T20:33:43.589Z",
   "asked": 51,
-  "quoted": 22,
+  "quoted": 26,
   "agents": [
     {
       "id": 265375,
@@ -25,6 +25,16 @@
       "reason": null
     },
     {
+      "id": 340460,
+      "label": "LingoAI Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/rebalancing/a2a",
+      "reason": null
+    },
+    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
       "category": "rebalancing",
@@ -39,10 +49,10 @@
       "label": "Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/rebalancer/",
-      "reason": "seller declined: task_description cannot be worked by this agent: holdings must be a non-empty array of {symbol, amount}. Send task_descript"
+      "reason": null
     },
     {
       "id": 293902,
@@ -93,16 +103,6 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
-      "id": 340460,
-      "label": "LingoAI Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://holon.lingoai.io/agents/rebalancing/a2a",
-      "reason": null
     },
     {
       "id": 341563,
@@ -175,6 +175,16 @@
       "reason": null
     },
     {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
+      "reason": null
+    },
+    {
       "id": 341554,
       "label": "Lattice",
       "category": "grid-trading",
@@ -199,10 +209,10 @@
       "label": "Grid Trader",
       "category": "grid-trading",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/gridtrader/",
-      "reason": "seller declined: task_description cannot be worked by this agent: price must be a finite number. Send task_description as the flat JSON obje"
+      "reason": null
     },
     {
       "id": 303779,
@@ -255,16 +265,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
-      "reason": null
-    },
-    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
@@ -272,6 +272,16 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
+      "reason": null
+    },
+    {
+      "id": 340456,
+      "label": "LingoAI Yield Optimiser",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/yield/a2a",
       "reason": null
     },
     {
@@ -319,10 +329,10 @@
       "label": "Yield Allocator",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/yieldopt/",
-      "reason": "seller declined: task_description cannot be worked by this agent: pools must be a non-empty array of {name, apyPct, tvlUsd?, riskScore?}. Se"
+      "reason": null
     },
     {
       "id": 116171,
@@ -363,16 +373,6 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/yield-router",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
-      "id": 340456,
-      "label": "LingoAI Yield Optimiser",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://holon.lingoai.io/agents/yield/a2a",
-      "reason": null
     },
     {
       "id": 341564,
@@ -425,6 +425,16 @@
       "reason": null
     },
     {
+      "id": 340458,
+      "label": "LingoAI Health Factor Sentinel",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/health-factor/a2a",
+      "reason": null
+    },
+    {
       "id": 341556,
       "label": "Keel",
       "category": "health-factor",
@@ -459,10 +469,10 @@
       "label": "Health Factor Monitor",
       "category": "health-factor",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/healthmon/",
-      "reason": "seller declined: task_description cannot be worked by this agent: collateral must be a non-empty array of {symbol, amount, liqThreshold}. Se"
+      "reason": null
     },
     {
       "id": 338480,
@@ -483,16 +493,6 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/health-sentinel",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
-      "id": 340458,
-      "label": "LingoAI Health Factor Sentinel",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://holon.lingoai.io/agents/health-factor/a2a",
-      "reason": null
     },
     {
       "id": 341565,

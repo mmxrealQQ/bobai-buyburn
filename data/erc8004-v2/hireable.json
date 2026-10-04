@@ -2,6 +2,12 @@
   "measured_at": "2026-10-04T16:11:20.994Z",
   "agents": [
     {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 265375,
       "label": "BNB LP Range Rebalancer",
       "category": "rebalancing",
@@ -22,12 +28,6 @@
     {
       "id": 265876,
       "label": "BNB Yield Optimizer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 269223,
-      "label": "Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
@@ -106,6 +106,12 @@
       "ours": false
     },
     {
+      "id": 269224,
+      "label": "Grid Trader",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 340455,
       "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
@@ -120,12 +126,6 @@
     {
       "id": 340527,
       "label": "Hevo Grid",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
-      "id": 269224,
-      "label": "Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
@@ -167,6 +167,12 @@
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
     },
     {
+      "id": 269226,
+      "label": "Yield Allocator",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -193,12 +199,6 @@
     {
       "id": 340532,
       "label": "Hevo Yield",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 269226,
-      "label": "Yield Allocator",
       "category": "yield-optimization",
       "ours": false
     },
@@ -259,6 +259,12 @@
       "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
     },
     {
+      "id": 269228,
+      "label": "Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
       "id": 340458,
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
@@ -279,12 +285,6 @@
     {
       "id": 270183,
       "label": "AgentCensus Health Factor Monitor",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 269228,
-      "label": "Health Factor Monitor",
       "category": "health-factor",
       "ours": false
     },

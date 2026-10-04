@@ -105,6 +105,19 @@ for (const a of agents) {
       signal: AbortSignal.timeout(90000),
     });
     body = await r.json();
+    // A seller that reads only its own JSON task (its card carries the
+    // example) is asked once more with exactly that example — the question
+    // here is whether it quotes at all, not whether it reads our prose.
+    if (!body?.negotiated && body?.example) {
+      const r2 = await fetch(`${ORIGIN}/hire`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(process.env.HIT_SECRET ? { 'x-hit-secret': process.env.HIT_SECRET } : {}) },
+        body: JSON.stringify({ agent: String(a.id), task: body.example }),
+        signal: AbortSignal.timeout(90000),
+      });
+      const b2 = await r2.json().catch(() => null);
+      if (b2?.negotiated) body = { ...b2, asked_with: 'the example in its own card' };
+    }
   } catch (e) {
     err = String(e.message || e).slice(0, 160);
   }

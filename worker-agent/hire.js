@@ -677,7 +677,7 @@ export async function handleHire(url, body, env, opts = {}) {
       hint: 'Pass an https:// A2A endpoint directly, or an ERC-8004 id that appears in https://brainonbnb.com/api-agents.json',
     } };
   }
-  const { endpoint, skill, source } = resolved;
+  const { endpoint, skill, source, example } = resolved;
 
   const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null, skill || 'negotiate', source);
   if (!neg.ok) {
@@ -689,7 +689,7 @@ export async function handleHire(url, body, env, opts = {}) {
     // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
     // its own 402 states a price. Read it — nothing is paid — and hand it on.
     const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}) } };
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
   }
 
   const q = neg.quote;
@@ -868,6 +868,18 @@ function negotiationSkill(card) {
 // perfectly good skill list. An earlier draft of this returned null the moment
 // the url was missing and threw the skill away with it — which happened to work
 // only because the name it then guessed was the name they use.
+// The first worked example of a work skill (not the negotiation or delivery
+// skills) that parses as a JSON object — the shape the seller says it reads.
+function exampleOf(card) {
+  for (const k of card?.skills || []) {
+    if (/negotiat|notify|status|deliver/i.test(String(k.id || ''))) continue;
+    for (const e of [].concat(k.examples || [])) {
+      if (typeof e !== 'string') continue;
+      try { const o = JSON.parse(e); if (o && typeof o === 'object' && !Array.isArray(o)) return e.slice(0, 1500); } catch { /* prose */ }
+    }
+  }
+  return null;
+}
 async function cardAt(cardUrl) {
   const none = { endpoint: null, skill: null };
   const r = await fetch(cardUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
@@ -875,6 +887,10 @@ async function cardAt(cardUrl) {
   const card = await r.json().catch(() => null);
   if (!card) return none;
   const skill = negotiationSkill(card);
+  // The seller's own worked example of its task (2026-10-04): some read only a
+  // JSON task and say so — ChainHelix declines plain English and points at the
+  // example in its card. Kept so a declined quote can hand it to the buyer.
+  const example = exampleOf(card);
   const iface = (card.supportedInterfaces || []).find((i) => i.url);
   const raw = iface?.url || card.url;
   if (!raw) return { endpoint: null, skill };
@@ -887,7 +903,7 @@ async function cardAt(cardUrl) {
     // including at its own loopback, is reported as it stands rather than
     // quietly rewritten into something that looks reachable.
     if (u.hostname === o.hostname) u.protocol = o.protocol;
-    return { endpoint: u.href, skill };
+    return { endpoint: u.href, skill, example };
   } catch { return { endpoint: null, skill }; }
 }
 
@@ -983,7 +999,7 @@ async function resolveA2aEndpoint(target) {
     const cardUrl = eps.find((e) => /agent-card\.json$|\/\.well-known\//i.test(e));
     if (cardUrl) {
       const c = await cardAt(cardUrl);
-      if (c?.endpoint) return { endpoint: c.endpoint, skill: c.skill, source: 'card' };
+      if (c?.endpoint) return { endpoint: c.endpoint, skill: c.skill, example: c.example, source: 'card' };
       if (c?.skill) { /* keep the name; the endpoint still has to be resolved below */ }
     }
     const direct = eps.find((e) => /\/a2a(\/|$)/i.test(e));

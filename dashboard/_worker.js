@@ -1419,7 +1419,7 @@ export default {
           // the tool descriptions all document ?usd= and ?capitalUsd=, the stdio
           // MCP server forwards them through this route — and only the address
           // was handed on, so every REST caller was answered for $250 and $1,000.
-          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}), ...(url.searchParams.get('quote') != null ? { quote: url.searchParams.get('quote') } : {}) })
+          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || url.searchParams.get('token') || url.searchParams.get('pool') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}), ...(url.searchParams.get('quote') != null ? { quote: url.searchParams.get('quote') } : {}) })
           : await runTool(REST_TOOLS[url.pathname], {});
         // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
         // required. The site's own pages read these routes for their figures and get them without it.

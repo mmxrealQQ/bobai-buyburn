@@ -799,6 +799,7 @@
 #bt .portrait .mdc{position:absolute;left:12px;top:63px;margin:0;font-size:8.5px;padding:2px 8px 2px 4px;gap:5px;transition:opacity .4s ease,color 2s ease,border-color 2s ease}
 #bt .portrait .mdc .mk{display:none}
 #bt .portrait .mdc .mi{width:15px;height:15px}
+#bt .mdc[data-act=quiet]{opacity:.82} /* quiet hours dim a little; BEFORE the two rules below (same weight): under his line and in a scene they win (2026-10-04) */
 #bt .talking .mdc{opacity:.5;transition:opacity .25s ease} /* phone (operator 2026-09-30): while he speaks the mood chip and MOMENTS stay, half as visible, his bubble on top */
 #bt .in-moment .mdc{opacity:0;transition:none}
 #bt .portrait.talking .scn{opacity:.5;transition:opacity .25s ease}
@@ -811,5 +812,4 @@
 /* loud hours glow and bounce quicker, quiet ones slow down and dim a little */
 #bt .mdc[data-act=loud]{box-shadow:0 0 14px var(--mb)}
 #bt .mdc[data-act=loud] .mi{animation-duration:.8s}
-#bt .mdc[data-act=quiet]{opacity:.82}
 #bt .mdc[data-act=quiet] .mi{animation-duration:5s}

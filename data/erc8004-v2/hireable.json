@@ -14,14 +14,14 @@
       "ours": false
     },
     {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
+      "id": 340460,
+      "label": "LingoAI Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 363619,
-      "label": "Plinth keeper",
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false
     },
@@ -62,12 +62,6 @@
       "ours": false
     },
     {
-      "id": 340460,
-      "label": "LingoAI Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 341563,
       "label": "marketplace-operated-rebalance-planner",
       "category": "rebalancing",
@@ -76,6 +70,12 @@
     {
       "id": 341628,
       "label": "IVL Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -102,6 +102,18 @@
     {
       "id": 269233,
       "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 341554,
+      "label": "Lattice",
       "category": "grid-trading",
       "ours": false
     },
@@ -148,23 +160,29 @@
       "ours": false
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
-      "id": 341554,
-      "label": "Lattice",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
       "ours": true,
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
+    },
+    {
+      "id": 340456,
+      "label": "LingoAI Yield Optimiser",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 341555,
+      "label": "Sluicegate",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false
     },
     {
       "id": 265876,
@@ -209,26 +227,8 @@
       "ours": false
     },
     {
-      "id": 340456,
-      "label": "LingoAI Yield Optimiser",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 341555,
-      "label": "Sluicegate",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 341564,
       "label": "marketplace-operated-yield-planner",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 358786,
-      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -259,6 +259,18 @@
       "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
     },
     {
+      "id": 340458,
+      "label": "LingoAI Health Factor Sentinel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 341556,
+      "label": "Keel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
       "id": 266933,
       "label": "BNB Lending Guardian",
       "category": "health-factor",
@@ -285,18 +297,6 @@
     {
       "id": 336625,
       "label": "HealthSentinel",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 340458,
-      "label": "LingoAI Health Factor Sentinel",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 341556,
-      "label": "Keel",
       "category": "health-factor",
       "ours": false
     },

@@ -351,7 +351,7 @@ async function flushDetail(env) {
 // isolate that wakes again after being folded loses its later increments — a
 // small undercount, never a double count.
 const ROLL_AFTER = 30 * 60 * 1000;
-const ROLL_READS = 600;
+const ROLL_READS = 300; // shares the invocation's operation budget with the census and the watcher
 async function rollupDetail(env, day) {
   const key = `detailsum:${day}`;
   const doc = JSON.parse((await env.AGENT.get(key)) || '{"names":{},"rolled":{}}');
@@ -2952,6 +2952,12 @@ ${pageTail}`;
   },
 
   async scheduled(event, env, ctx) {
+    // FIRST, every tick: jobs funded the BNB-SDK way never send notify_funded,
+    // so the seller looks for them (job-watch.js) — ahead of the heavy tasks,
+    // so a buyer's paid job never waits behind the census or the rollup for
+    // the invocation's operation budget (job 56905 was delivered 2 min into
+    // the top-of-hour tick, 2026-10-04).
+    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
@@ -3029,9 +3035,6 @@ ${pageTail}`;
       ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
 
-    // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
-    // the seller looks for them (job-watch.js): the new job ids since the last tick, read by eth_call.
-    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
 
     // The day's detail counts, folded together isolate by isolate (rollupDetail);
     // just after midnight the day before gets its last pass.

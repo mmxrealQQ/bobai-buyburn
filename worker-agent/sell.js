@@ -406,6 +406,19 @@ export const AGENT_SERVICE = {
   'lp-placement': 'lp_tier_plan',
 };
 
+// AN AGENT'S OWN ENDPOINT SELLS ITS OWN SERVICE — unless the request plainly
+// asks for another of ours (2026-10-04). Selling a portfolio rebalance to
+// somebody asking where their LP range should go answers a question nobody
+// asked; the honest reply names the agent that does it. Open or matching
+// wording still gets this agent's quote.
+const SLUG_OF = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
+function misdirected(forced, wanted, data) {
+  const guessed = pickService(wanted, data?.service);
+  if (!forced || !guessed || guessed.id === forced) return null;
+  const there = `https://agent.brainonbnb.com/${SLUG_OF[guessed.id]}/a2a`;
+  return `This agent sells ${forced} (${SERVICES[forced].name}). What you describe is ${guessed.id} (${guessed.name}): ask ${there} for it over the ERC-8183 escrow, or buy it per answer over x402 at https://agent.brainonbnb.com/answer?service=${guessed.id}.`;
+}
+
 export async function handleA2A(request, env, opts = {}) {
   let body;
   try { body = await request.json(); } catch { return rpcErr(null, -32700, 'not JSON'); }
@@ -451,6 +464,8 @@ export async function handleA2A(request, env, opts = {}) {
   if (skill === 'negotiate-erc8183-job') {
     if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const elsewhere = misdirected(forced, wanted, data);
+    if (elsewhere) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     if (!service || (service.id === 'lp_position_plan' && !forced)) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
@@ -484,6 +499,8 @@ export async function handleA2A(request, env, opts = {}) {
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const elsewhere = misdirected(forced, wanted, data);
+    if (elsewhere) return rpcOk(id, { accepted: false, reason: elsewhere });
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     // The position plan is sold through the escrow by the DeFi agent alone
     // (2026-10-04, its own identity and endpoint /defi-agent). On the shared

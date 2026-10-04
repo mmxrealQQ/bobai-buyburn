@@ -1489,6 +1489,9 @@ export default {
           page: 'https://brainonbnb.com/defi',
           transactions: 'https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
         },
+        // Owner = the wallet whose transactions are the agent's work; agentWallet =
+        // the provider key that signs quotes and deliveries (2026-10-04).
+        owner: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
         provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
         source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
         additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],

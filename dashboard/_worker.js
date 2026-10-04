@@ -1340,7 +1340,11 @@ export default {
       // is not a crawler is still counted one by one.
       if (!COUNTED_API.has(url.pathname)) {
         if (family !== 'crawler') count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`]);
-        else if (Math.random() < 0.05) count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`], 20);
+        else if (Math.random() < 0.05) {
+          // Which bot — its self-declared name only (e.g. "gptbot"), to decide whether one crawler is worth a block.
+          const bot = (String(request.headers.get('user-agent') || '').toLowerCase().match(/[a-z0-9._-]*(bot|crawl|spider|slurp|scan)[a-z0-9._-]*/) || ['unnamed'])[0].slice(0, 32);
+          count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`, `crawlerua:${bot}`], 20);
+        }
       }
       else {
         const route = url.pathname.slice(5);

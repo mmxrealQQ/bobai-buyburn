@@ -74,5 +74,20 @@ const TX = '0x' + 'ab'.repeat(32);
   }
   ok('no source file carries a control byte' + (bad.length ? ` — ${bad.slice(0, 5).join(', ')}` : ''), bad.length === 0);
 }
+// USD1 BY EIP-3009 (2026-10-04): the pure field checks before any signature is
+// recovered or gas spent — each rule must refuse its own bad case and pass the good one.
+{
+  const { eip3009Mismatch } = await import('../worker-agent/x402-eip3009.js');
+  const payTo = '0x690E950214980BC329823A2DB2fD90C06Bd54dE4', price = 100000000000000000n, now = 1_800_000_000;
+  const good = { signature: '0x' + 'ab'.repeat(65), authorization: { from: '0x' + '11'.repeat(20), to: payTo, value: '100000000000000000', validAfter: String(now - 60), validBefore: String(now + 300), nonce: '0x' + '22'.repeat(32) } };
+  const w = (patch, sig) => ({ signature: sig ?? good.signature, authorization: { ...good.authorization, ...patch } });
+  ok('eip3009: a payment that meets the terms passes', eip3009Mismatch(good, { payTo, price, now }) === null);
+  ok('eip3009: another recipient is refused', /to must be/.test(eip3009Mismatch(w({ to: '0x' + '33'.repeat(20) }), { payTo, price, now }) || ''));
+  ok('eip3009: less than the price is refused', /below the price/.test(eip3009Mismatch(w({ value: '99999999999999999' }), { payTo, price, now }) || ''));
+  ok('eip3009: not valid yet is refused', /not valid yet/.test(eip3009Mismatch(w({ validAfter: String(now + 10) }), { payTo, price, now }) || ''));
+  ok('eip3009: expiring before it can settle is refused', /expires too soon/.test(eip3009Mismatch(w({ validBefore: String(now + 10) }), { payTo, price, now }) || ''));
+  ok('eip3009: a malformed nonce is refused', /nonce/.test(eip3009Mismatch(w({ nonce: '0x1234' }), { payTo, price, now }) || ''));
+  ok('eip3009: a short signature is refused', /signature/.test(eip3009Mismatch(w({}, '0x1234'), { payTo, price, now }) || ''));
+}
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

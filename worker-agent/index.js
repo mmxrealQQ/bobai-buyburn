@@ -28,6 +28,7 @@
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
+import { eip3009Accepts, isEip3009, settleEip3009 } from './x402-eip3009.js';
 import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
@@ -990,7 +991,19 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   let check, tx, asset = 'USD1';
   let queued = null;
   const inner = parsed.kind === 'x402' && parsed.value && parsed.value.payload;
-  if (inner && inner.permit2Authorization) {
+  if (isEip3009(inner)) {
+    // USD1 BY EIP-3009, SETTLED HERE (x402-eip3009.js, 2026-10-04): checked,
+    // simulated and sent from the provider wallet; the transaction it produces
+    // is then read like any direct USD1 transfer and claimed once.
+    const st = await settleEip3009(env, inner, { payTo, price });
+    if (!st.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: st.stage, reason: st.reason, ...(st.tx ? { tx: st.tx } : {}) } };
+    tx = st.tx;
+    check = await verifyPayment(env, tx, payTo, price);
+    for (let i = 0; i < 2 && !check.ok; i++) { await new Promise((r) => setTimeout(r, 1500)); check = await verifyPayment(env, tx, payTo, price); }
+    // Our own receipt said success; a receipt endpoint a block behind must not
+    // turn a settled payment into a refused one.
+    if (!check.ok) check = { ok: true, paid: st.value, from: st.from };
+  } else if (inner && inner.permit2Authorization) {
     // A PERMIT2 PAYMENT IS SETTLED BY US, NOT THE FACILITATOR (2026-09-24, A8;
     // the operator's go, route 2). Its settle reverted inside the facilitator
     // twice on a payment that settles on chain. Here, with no key and nothing
@@ -1066,6 +1079,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       x402Version: 2,
       accepts: [
         dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
@@ -1085,7 +1099,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or in USD1 by EIP-3009 (accepts[1]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -1417,7 +1431,7 @@ export default {
           // x-operator-token: the revoke route's lock (session-revoke.js). A
           // header the preflight does not name is a fetch the browser refuses
           // before it leaves the page — "Failed to fetch", no status, no body.
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,x-operator-token',
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token',
         },
       });
 
@@ -2649,7 +2663,8 @@ ${pageTail}`;
       }
       if (request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
-        const proof = request.headers.get('PAYMENT-SIGNATURE');
+        // X-PAYMENT is the x402 v1 header (Mandate's relay sends it); PAYMENT-SIGNATURE the v2 one.
+        const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
         const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
         // terms = asked the price; paid:<status> = came back with a proof.
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);

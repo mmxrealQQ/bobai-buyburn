@@ -284,10 +284,20 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
 // The reason a seller gave for not quoting, when its reply carries one in the
 // plain shape { accepted: false, reason }. Anything else is not guessed at. The
 // text is a stranger's and is shown on our page: one line, capped.
-export const declineReason = (result) => {
-  if (!result || typeof result !== 'object' || result.accepted !== false || typeof result.reason !== 'string') return null;
-  const where = typeof result.buy_it_here === 'string' ? ` Buy it here: ${result.buy_it_here}` : '';
-  return (result.reason + where).replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+export const declineReason = (result, depth = 0) => {
+  if (!result || typeof result !== 'object' || depth > 6) return null;
+  // The SDK dialect declines inside the message: parts[0].data.response
+  // { accepted:false, reason } (ChainHelix, 2026-10-04: "pools must be a
+  // non-empty array…" was reported as "carries no price").
+  if (result.accepted === false && typeof result.reason === 'string') {
+    const where = typeof result.buy_it_here === 'string' ? ` Buy it here: ${result.buy_it_here}` : '';
+    return (result.reason + where).replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+  }
+  for (const v of Array.isArray(result) ? result : Object.values(result)) {
+    const r = declineReason(v, depth + 1);
+    if (r) return r;
+  }
+  return null;
 };
 
 const findQuote = (node, depth = 0) => {
@@ -300,6 +310,13 @@ const findQuote = (node, depth = 0) => {
   // Dialect A: a provider and a price together are unambiguous.
   if (/^0x[a-fA-F0-9]{40}$/.test(node.provider || '') && node.price != null) {
     return normalize({ ...node, dialect: 'flat' });
+  }
+  // An UNSIGNED envelope (LingoAI, 2026-10-04): the SDK's shape with an empty
+  // negotiation_hash, an accepted response, and the payee as provider_address.
+  // It is a plain quote — priced and addressed, nothing to anchor byte for
+  // byte — so it is read as the flat dialect.
+  if (!node.negotiation_hash && /^0x[a-fA-F0-9]{40}$/.test(node.provider_address || '') && node.response?.accepted === true && node.response?.terms?.price != null) {
+    return normalize({ dialect: 'flat', provider: node.provider_address, price: node.response.terms.price, currency: node.response.terms.currency, estimated_completion_seconds: node.response.estimated_completion_seconds, quote_expires_at: node.response.quote_expires_at, service: node.response.terms.deliverables, unsigned: true });
   }
   // Dialect B: the envelope is identified by a negotiation hash plus an
   // accepted response carrying terms. Requiring `accepted` keeps a rejected

@@ -357,7 +357,9 @@ function exampleLinks(serviceId, service) {
   return {
     price: {
       x402: `0.10 USD1 per answer (or the same in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
-      ...(serviceId === 'lp_position_plan' ? {} : { escrow: `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)` }),
+      escrow: serviceId === 'lp_position_plan'
+        ? '0.10 $U through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
+        : `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)`,
     },
     buy: `https://agent.brainonbnb.com/answer?service=${serviceId}`,
     terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',

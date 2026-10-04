@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-04T17:13:29.783Z",
+  "measured_at": "2026-10-04T17:18:00.512Z",
   "asked": 51,
-  "quoted": 18,
+  "quoted": 22,
   "agents": [
     {
       "id": 265375,
@@ -35,16 +35,6 @@
       "reason": null
     },
     {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://plinth-relay.vercel.app/a2a",
-      "reason": "The page could not be found"
-    },
-    {
       "id": 269223,
       "label": "Portfolio Rebalancer",
       "category": "rebalancing",
@@ -52,7 +42,7 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://agents.chainhelix.io/rebalancer/",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": "seller declined: task_description cannot be worked by this agent: holdings must be a non-empty array of {symbol, amount}. Send task_descript"
     },
     {
       "id": 293902,
@@ -109,10 +99,10 @@
       "label": "LingoAI Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "1 $U",
       "endpoint": "https://holon.lingoai.io/agents/rebalancing/a2a",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": null
     },
     {
       "id": 341563,
@@ -133,6 +123,16 @@
       "price": null,
       "endpoint": "https://ivl-mainnet.onrender.com/",
       "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://plinth-relay.vercel.app/a2a",
+      "reason": "The page could not be found"
     },
     {
       "id": 346444,
@@ -175,6 +175,16 @@
       "reason": null
     },
     {
+      "id": 341554,
+      "label": "Lattice",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://marque.trade/agents/lattice/a2a",
+      "reason": null
+    },
+    {
       "id": 340527,
       "label": "Hevo Grid",
       "category": "grid-trading",
@@ -192,7 +202,7 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://agents.chainhelix.io/gridtrader/",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": "seller declined: task_description cannot be worked by this agent: price must be a finite number. Send task_description as the flat JSON obje"
     },
     {
       "id": 303779,
@@ -249,19 +259,9 @@
       "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
-      "reason": "seller answered, but its reply carries no price"
-    },
-    {
-      "id": 341554,
-      "label": "Lattice",
-      "category": "grid-trading",
-      "ours": false,
       "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://marque.trade/agents/lattice/a2a",
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
       "reason": null
     },
     {
@@ -272,6 +272,26 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
+      "reason": null
+    },
+    {
+      "id": 341555,
+      "label": "Sluicegate",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://marque.trade/agents/sluicegate/a2a",
+      "reason": null
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://marque.trade/agents/tidemark/a2a",
       "reason": null
     },
     {
@@ -302,7 +322,7 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://agents.chainhelix.io/yieldopt/",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": "seller declined: task_description cannot be worked by this agent: pools must be a non-empty array of {name, apyPct, tvlUsd?, riskScore?}. Se"
     },
     {
       "id": 116171,
@@ -349,19 +369,9 @@
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://holon.lingoai.io/agents/yield/a2a",
-      "reason": "seller answered, but its reply carries no price"
-    },
-    {
-      "id": 341555,
-      "label": "Sluicegate",
-      "category": "yield-optimization",
-      "ours": false,
       "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://marque.trade/agents/sluicegate/a2a",
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/yield/a2a",
       "reason": null
     },
     {
@@ -373,16 +383,6 @@
       "price": null,
       "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/yield/a2a",
       "reason": "yield requires YIELD_PLAN_V1 with capital, options, riskTolerance, maxSharePercent, minOptions."
-    },
-    {
-      "id": 358786,
-      "label": "Tidemark",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://marque.trade/agents/tidemark/a2a",
-      "reason": null
     },
     {
       "id": 126728,
@@ -425,6 +425,16 @@
       "reason": null
     },
     {
+      "id": 341556,
+      "label": "Keel",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": true,
+      "price": "0.05 $U",
+      "endpoint": "https://marque.trade/agents/keel/a2a",
+      "reason": null
+    },
+    {
       "id": 266933,
       "label": "BNB Lending Guardian",
       "category": "health-factor",
@@ -452,7 +462,7 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://agents.chainhelix.io/healthmon/",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": "seller declined: task_description cannot be worked by this agent: collateral must be a non-empty array of {symbol, amount, liqThreshold}. Se"
     },
     {
       "id": 338480,
@@ -479,19 +489,9 @@
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://holon.lingoai.io/agents/health-factor/a2a",
-      "reason": "seller answered, but its reply carries no price"
-    },
-    {
-      "id": 341556,
-      "label": "Keel",
-      "category": "health-factor",
-      "ours": false,
       "quotes": true,
-      "price": "0.05 $U",
-      "endpoint": "https://marque.trade/agents/keel/a2a",
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/health-factor/a2a",
       "reason": null
     },
     {

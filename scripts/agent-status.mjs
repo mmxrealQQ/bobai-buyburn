@@ -63,6 +63,15 @@ for (const id of OURS) {
   if (a && !a.listedOnMarque) todo.push(`#${id}: Marque listing — ${(a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ').slice(0, 160)}`);
 }
 
+head('Dolphin (lists ERC-8004 agents that answer its check, by itself)');
+{
+  const dl = [...(((await get(`https://www.dolphinamp.xyz/api/v1/agents?owner=${PROVIDER}`))?.agents) || []), ...(((await get(`https://www.dolphinamp.xyz/api/v1/agents?owner=${CAMPAIGN}`))?.agents) || [])];
+  for (const id of OURS) {
+    const a = dl.find((x) => String(x.tokenId) === String(id));
+    line(!!a?.listed, `#${id} on Dolphin`, a ? `${a.status}, listed since ${String(a.listedSince || '').slice(0, 10)}, ${a.category}` : 'not indexed yet');
+  }
+}
+
 head('8004scan (the explorer most people check)');
 for (const id of OURS) {
   const a = (await get(`https://8004scan.io/api/v1/public/agents/56/${id}`))?.data;

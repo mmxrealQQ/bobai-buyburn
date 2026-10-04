@@ -3400,7 +3400,7 @@ function awayBits(since) {
   const runs = S.burns.filter(e => Date.parse(e.time) > since), burned = runs.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
   const rows = CH.rows.filter(r => r.t > since), buys = rows.reduce((a, r) => a + (r.b || 0), 0), sells = rows.reduce((a, r) => a + (r.s || 0), 0);
   const before = [...CH.rows].reverse().find(r => r.t <= since), last = CH.rows[CH.rows.length - 1];
-  const ch = before && last && before.c ? (last.c / before.c - 1) * 100 : null;
+  const ch = before && last ? usdCh({ o: before.c, ou: before.u }, last) : null; // in USD (2026-10-04)
   const drops = (S.nft.drops || []).filter(n => n.ts * 1000 > since).length;
   const liqBnb = S.liq.filter(l => Date.parse(l.time) > since).reduce((a, l) => a + (+l.bnb || 0), 0);
   const man = S.man.filter(l => Date.parse(l.time) > since), manBnb = man.reduce((a, l) => a + (+l.bnb || 0), 0), manBob = man.reduce((a, l) => a + (+l.bobai || 0), 0);
@@ -3675,7 +3675,7 @@ function candles() {
   const out = []; let prev = null;
   for (const r of CH.rows) {
     const o = prev ? prev.c : r.c;
-    out.push({ t: r.t, o, c: r.c, h: Math.max(o, r.c, r.h || 0), l: Math.min(o, r.c, r.l || Infinity), v: r.v || 0, n: (r.b || 0) + (r.s || 0), b: r.b || 0, s: r.s || 0, u: r.u || S.bnbP });
+    out.push({ t: r.t, o, c: r.c, h: Math.max(o, r.c, r.h || 0), l: Math.min(o, r.c, r.l || Infinity), v: r.v || 0, n: (r.b || 0) + (r.s || 0), b: r.b || 0, s: r.s || 0, u: r.u || S.bnbP, ou: (prev ? prev.u : r.u) || S.bnbP });
     prev = r;
   }
   // the live candle, from the last close to the price now
@@ -3683,7 +3683,7 @@ function candles() {
   if (last && now > 0) {
     const lv = CH.live && CH.live.since === last.t ? CH.live : (CH.live = { since: last.t, h: Math.max(last.c, now), l: Math.min(last.c, now), v: 0, n: 0 });
     lv.h = Math.max(lv.h, now); lv.l = Math.min(lv.l, now);
-    out.push({ t: last.t + CH.min * 60e3, o: last.c, c: now, h: lv.h, l: lv.l, v: lv.v, n: lv.n, b: 0, s: 0, u: S.bnbP, live: true });
+    out.push({ t: last.t + CH.min * 60e3, o: last.c, c: now, h: lv.h, l: lv.l, v: lv.v, n: lv.n, b: 0, s: 0, u: S.bnbP, ou: last.u || S.bnbP, live: true });
   }
   return out;
 }
@@ -3704,9 +3704,16 @@ function chartBox(w, h) {
   const floor = term && term.offsetParent ? term.getBoundingClientRect().top - wr.top - 30 : h - 150;
   return { x0: Math.max(28, w * 0.03), x1: Math.min(w * 0.6, fr.left - wr.left + fr.width * 0.2), y0: Math.max(132, h * 0.19), y1: floor, n: 144 };
 }
+// IN USD, LIKE EVERY OTHER SCREEN (operator, 2026-10-04: the chip read -6.2 % 24h, DexScreener -4.17 %, Binance -4.16 %):
+// the candles are priced in BNB, and BNB itself had gained 2.6 % that day. Each end is priced with BNB's dollar rate of
+// its own time (u at the close, ou at the open), so a change is what a holder's dollars did.
+function usdCh(a, b) {
+  const o = a?.o * (a?.ou || a?.u || S.bnbP), c = b?.c * (b?.u || S.bnbP);
+  return o > 0 && c > 0 ? (c / o - 1) * 100 : null;
+}
 function chartChange(cs) {
-  const now = cs[cs.length - 1]?.c, first = cs.find(c => c.t >= Date.now() - 86400e3 + CH.min * 60e3) || cs[0];
-  return now && first ? (now / first.o - 1) * 100 : null;
+  const first = cs.find(c => c.t >= Date.now() - 86400e3 + CH.min * 60e3) || cs[0];
+  return usdCh(first, cs[cs.length - 1]);
 }
 function drawChart(now) {
   if (!opened) return;
@@ -3905,7 +3912,7 @@ function drawCx(now) {
 }
 function cxPaintHead() {
   const all = cxCandles(); if (!all.length) return;
-  const ch = CX.tf === '24H' ? chartChange(candles()) : (all[all.length - 1].c / all[0].o - 1) * 100;
+  const ch = CX.tf === '24H' ? chartChange(candles()) : usdCh(all[0], all[all.length - 1]);
   cxEl.querySelector('.cx-px').textContent = '$' + (S.price ? S.price.toPrecision(5) : '…');
   const c = cxEl.querySelector('.cx-ch'); c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}`; c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
@@ -4112,7 +4119,7 @@ function tlCandles(t0, t1) {
   const out = [];
   for (const c of all) {                             // hours from the ten-minute candles
     const t = Math.ceil(c.t / step) * step, last = out[out.length - 1];
-    if (last && last.t === t) { last.c = c.c; last.h = Math.max(last.h, c.h); last.l = Math.min(last.l, c.l); last.v += c.v; last.n += c.n; last.b += c.b || 0; last.s += c.s || 0; last.live = c.live; }
+    if (last && last.t === t) { last.c = c.c; last.h = Math.max(last.h, c.h); last.l = Math.min(last.l, c.l); last.v += c.v; last.n += c.n; last.b += c.b || 0; last.s += c.s || 0; last.live = c.live; last.u = c.u; }
     else out.push({ ...c, t });
   }
   return out;
@@ -4195,7 +4202,7 @@ function drawTl(now) {
     // ONE 24H FIGURE (2026-10-03: the mood chip said -0.2 %, the timeline +0.50 % 24H — the timeline measured from its own
     // first candle): live, the 24H head reads chartChange like the chip and the big chart; a replay keeps its window's own
     const cc = mode === 'live' && winKey === '24H' ? chartChange(candles()) : null;
-    const ch = cc ?? (cs[cs.length - 1].c / cs[0].o - 1) * 100, upc = ch >= 0;
+    const ch = cc ?? usdCh(cs[0], cs[cs.length - 1]) ?? 0, upc = ch >= 0;
     window.__btTlCh = mode === 'live' ? [winKey, ch] : null; // same24h.mjs: the figure the timeline head shows
     tx.textAlign = 'left'; tx.font = '700 9px ' + mono; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText('$BOBAI', TL0 + 2, 11);
     tx.fillStyle = '#f3efe6'; const pt = '$' + (cs[cs.length - 1].c * S.bnbP).toPrecision(4); tx.fillText(pt, TL0 + 44, 11);

@@ -1,0 +1,7 @@
+{
+  "name": "bobai-bnb-sdk-tools",
+  "private": true,
+  "type": "module",
+  "description": "Hire and check tools on the official BNB Agent SDK, kept apart from the root package (its optional peer pins @altananetwork/sdk 0.7.1, the root uses 0.8.0).",
+  "dependencies": { "@bnbagent/sdk": "0.6.0", "viem": "^2.21.0", "dotenv": "^17.0.0" }
+}

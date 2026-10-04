@@ -1455,7 +1455,10 @@ export default {
     // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
     // in both dialects: BNB's signed quote and our flat one.
     if (path === '/defi-agent/a2a' && request.method === 'POST') return await handleA2A(request, env, { agent: 'defi-agent' });
-    if (path === '/defi-agent' || path === '/defi-agent/a2a' || path === '/defi-agent/.well-known/agent-card.json' || path === '/defi-agent/.well-known/agent.json') {
+    // The BNB Agent SDK buyer reads the card at <A2A endpoint>/.well-known/
+    // agent-card.json — under the endpoint, not the origin — so both spellings
+    // are served under /defi-agent/a2a as well.
+    if (path === '/defi-agent' || path === '/defi-agent/a2a' || /^\/defi-agent(\/a2a)?\/\.well-known\/agent(-card)?\.json$/.test(path)) {
       const s = SERVICES.lp_position_plan;
       return json({
         protocolVersion: '0.3.0',
@@ -1493,7 +1496,11 @@ export default {
       });
     }
 
-    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json') {
+    // Also under /a2a (2026-10-04): the BNB Agent SDK buyer looks for the card
+    // beneath the A2A endpoint the registration names, which for our five is
+    // https://agent.brainonbnb.com/a2a — that path answered 404, and to every
+    // SDK marketplace our agents had no readable card.
+    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json' || path === '/a2a/.well-known/agent-card.json' || path === '/a2a/.well-known/agent.json') {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',
@@ -1634,6 +1641,13 @@ export default {
         status: 'https://agent.brainonbnb.com/status',
         human_readable: 'https://brainonbnb.com/registry',
       });
+    }
+
+    // What the funded-job watcher last saw (job-watch.js): the cursor, our
+    // jobs still waiting to be funded, and the last tick that touched one.
+    if (path === '/jobs/watch') {
+      const [cursor, open, retry, last] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last'].map((k) => env.AGENT.get(k)));
+      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain
@@ -2898,7 +2912,7 @@ ${pageTail}`;
     }
 
     // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
-    // the seller looks for them (job-watch.js). One logs read, one KV write.
-    ctx.waitUntil(watchFundedJobs(env, (m, p) => rpc(m, p, [LOGS_RPC, 'https://bsc.publicnode.com'])).catch(() => {}));
+    // the seller looks for them (job-watch.js): the new job ids since the last tick, read by eth_call.
+    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
   },
 };

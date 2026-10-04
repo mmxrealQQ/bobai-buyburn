@@ -55,7 +55,7 @@ import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
 import { lpPositionPlan } from './lp-service.js';
-import { decodeJob, ERC8183 } from './hire.js';
+import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 
@@ -149,7 +149,7 @@ const LP_AGENT_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
 // thing being verified, so it is read from the chain and not from what the
 // buyer told us.
 // ---------------------------------------------------------------------------
-async function readJob(jobId) {
+export async function readJob(jobId) {
   const data = '0xbf22c457' + BigInt(jobId).toString(16).padStart(64, '0');
   for (let i = 0; i < RPCS.length * 2; i++) {
     try {
@@ -513,6 +513,21 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   }
   if (job.status !== 'FUNDED') {
     return { error: `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.` };
+  }
+  // A JOB THAT EXPIRES INSIDE THE DISPUTE WINDOW CANNOT BE DELIVERED
+  // (2026-10-04). The kernel refuses submit() with 0x15e5dd74 when the job
+  // would expire before the policy's window (7 days) closes — found on two
+  // jobs funded through mandatemarkets.com with a 6-day expiry. Saying so
+  // before any work keeps the watcher from computing and retrying an answer
+  // the chain will not take; the buyer's budget returns at expiry.
+  {
+    const windowSec = await readDisputeWindow(async (to, data) => {
+      const r = await fetch(RPCS[0], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }), signal: AbortSignal.timeout(10000) });
+      return (await r.json()).result;
+    });
+    if (job.expired_at && job.expired_at < Math.floor(Date.now() / 1000) + windowSec) {
+      return { error: `job ${jobId} expires ${new Date(job.expired_at * 1000).toISOString()}, inside the escrow's ${Math.round(windowSec / 86400)}-day dispute window, so the kernel refuses any delivery (0x15e5dd74). Nothing was worked; the budget returns to the buyer at expiry (claimRefund). Create the job with an expiry at least ${Math.round(windowSec / 86400) + 1} days out.`, permanent: true };
+    }
   }
   // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
   // the policy only when its evaluator and hook are the router. Anyone can

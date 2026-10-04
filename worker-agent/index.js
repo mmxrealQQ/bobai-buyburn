@@ -1500,7 +1500,11 @@ export default {
     // beneath the A2A endpoint the registration names, which for our five is
     // https://agent.brainonbnb.com/a2a — that path answered 404, and to every
     // SDK marketplace our agents had no readable card.
-    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json' || path === '/a2a/.well-known/agent-card.json' || path === '/a2a/.well-known/agent.json') {
+    // And on a GET of the endpoint itself (2026-10-04): Marque's builder probe
+    // reads the card from the endpoint URL the registration names and called
+    // ours "not a recognisable A2A agent card" — a GET here returned a usage
+    // note. The card carries the same skills and the example message.
+    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json' || path === '/a2a/.well-known/agent-card.json' || path === '/a2a/.well-known/agent.json' || (path === '/a2a' && request.method === 'GET')) {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',

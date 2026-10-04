@@ -165,19 +165,22 @@ const num = (v, dp = 2) => Number(v) / 1e18;
  * Reads one account's Venus position and returns its health factor.
  * Read-only: it calls view functions and signs nothing.
  */
-export async function healthFactor(account) {
+export async function healthFactor(account, { block: atBlock = null, rpcs = null } = {}) {
   if (!/^0x[a-fA-F0-9]{40}$/.test(String(account || ''))) {
     throw new Error('not an address');
   }
 
   // Round 1: which markets is this account in, what does the protocol itself
   // say about its liquidity, and which oracle is authoritative right now.
-  const block = await pinnedBlock();
+  // A past block (a task "for this block only") needs an archive-capable
+  // endpoint, passed in as rpcs; the default stays one block behind the head.
+  const via = rpcs || BATCH_RPCS;
+  const block = atBlock ? '0x' + Number(atBlock).toString(16) : await pinnedBlock();
   const [assetsRaw, liqRaw, oracleRaw] = await batchCall([
     { to: UNITROLLER, data: SEL.getAssetsIn + addrArg(account) },
     { to: UNITROLLER, data: SEL.getAccountLiquidity + addrArg(account) },
     { to: UNITROLLER, data: SEL.oracle },
-  ], { block });
+  ], { block, rpcs: via });
 
   const oracle = addrAt(oracleRaw, 0);
   const venusError = Number(uint(liqRaw, 0));
@@ -205,7 +208,7 @@ export async function healthFactor(account) {
     calls.push({ to: oracle, data: SEL.getUnderlyingPrice + addrArg(m) });
     calls.push({ to: m, data: SEL.symbol });
   }
-  const res = await batchCall(calls, { block });
+  const res = await batchCall(calls, { block, rpcs: via });
 
   let weightedCollateral = 0n; // collateral after the protocol's own haircut
   let rawCollateral = 0n;      // before it, so the haircut is visible
@@ -265,6 +268,10 @@ export async function healthFactor(account) {
         // Against liquidation (the threshold); what may still be borrowed is the factor's.
         counts_as_collateral_usd: num(weightedUsd),
         counts_toward_borrowing_usd: num(borrowableUsd),
+        // The oracle's raw answer (1e36 / token decimals scaled) and the raw
+        // supply, for callers that price a move in one market.
+        oracle_price_raw: price.toString(),
+        supplied_underlying_raw: underlying.toString(),
       });
     }
   }

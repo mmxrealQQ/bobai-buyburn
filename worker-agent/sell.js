@@ -58,7 +58,7 @@ import { lpPositionPlan } from './lp-service.js';
 import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
-import { parseRangeTask, answerRangeTask } from './range-task.js';
+import { parseTask, answerTask } from './plain-tasks.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -414,15 +414,13 @@ export async function handleA2A(request, env, opts = {}) {
   // when no skill was named, with the JSON as a text part (what a strict
   // reader parses) and as a data part.
   if (!skill && text) {
-    const task = parseRangeTask(text);
+    const task = parseTask(text);
     if (task) {
       try {
-        const full = await answerRangeTask(task, [env?.BSC_RPC_KEYED_URL_2, 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-dataseed1.defibit.io'].filter(Boolean));
-        const asked = task.fields.length ? Object.fromEntries(task.fields.filter((f) => f in full).map((f) => [f, full[f]])) : full;
-        const out = Object.keys(asked).length ? asked : full;
-        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
+        const r = await answerTask(task, [env?.BSC_RPC_KEYED_URL_2, 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-dataseed1.defibit.io'].filter(Boolean));
+        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(r.json) }, { kind: 'data', data: r.json }] });
       } catch (e) {
-        return rpcErr(id, -32000, `could not read that position at block ${task.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
+        return rpcErr(id, -32000, `could not answer that ${task.kind} task at block ${task.block ?? task.range?.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
       }
     }
     if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|in one sentence/i.test(text)) {

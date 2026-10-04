@@ -54,11 +54,11 @@ Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` · domain proof at [braino
 | Agent ID | Chain | Agent | Category | Hire |
 |---|---|---|---|---|
 | **363709** | 56 (BSC) | **Brain on BNB — DeFi Agent**: runs the project's own PancakeSwap V3 CAKE/BNB position every day from `0xbFAA…7F0A` (collect, one-sided re-set, width by replay against holding); hired, it plans yours. Code: [`shared/lp-agent.js`](shared/lp-agent.js), [`worker-lp/`](worker-lp/), [`worker-agent/range-task.js`](worker-agent/range-task.js) | rebalancing | [A2A card](https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json) · ERC-8183, 0.10 $U |
-| 302257 | 56 (BSC) | Venus Health Factor Monitor | health factor | ERC-8183, 0.10 $U |
-| 302258 | 56 (BSC) | BSC Grid Planner | grid trading | ERC-8183, 0.10 $U |
-| 304493 | 56 (BSC) | Venus Yield Ranking | yield | ERC-8183, 0.10 $U |
-| 304494 | 56 (BSC) | Portfolio Rebalance Pricer | rebalancing | ERC-8183, 0.10 $U |
-| 310460 | 56 (BSC) | PancakeSwap Fee Tier Placement | yield | ERC-8183, 0.10 $U |
+| 302257 | 56 (BSC) | Venus Health Factor Monitor | health factor | [A2A card](https://agent.brainonbnb.com/health-factor/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
+| 302258 | 56 (BSC) | BSC Grid Planner | grid trading | [A2A card](https://agent.brainonbnb.com/grid-trader/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
+| 304493 | 56 (BSC) | Venus Yield Ranking | yield | [A2A card](https://agent.brainonbnb.com/yield-optimizer/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
+| 304494 | 56 (BSC) | Portfolio Rebalance Pricer | rebalancing | [A2A card](https://agent.brainonbnb.com/rebalancer/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
+| 310460 | 56 (BSC) | PancakeSwap Fee Tier Placement | yield | [A2A card](https://agent.brainonbnb.com/lp-placement/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
 | 49467 | 56 (BSC) | Brain On BNB AI ($BOBAI) — the operator | — | MCP / REST, free |
 
 The DeFi Agent #363709 is owned by the wallet that runs the position, `0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`; the other hireable agents by the provider `0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963`, which is the agentWallet of all six — it signs every quote and delivery. All speak BNB's standard hire (A2A `negotiate-erc8183-job`, signed quote; funded jobs are found on the chain and delivered on-chain).

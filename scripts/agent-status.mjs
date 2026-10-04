@@ -49,7 +49,10 @@ if (hiredCheck && hiredCheck.state !== 'pass') todo.push('3 completed hires of #
 line(false, 'registration form submitted', 'not machine-checkable — confirm with the operator once: https://forms.gle/jzTajVNZEgukeoYT9');
 
 head('Marketplace listings of our agents');
-const mdRungs = Object.fromEntries((((await get('https://www.mandatemarkets.com/api/v1/agents?all=1&limit=400'))?.data?.agents) || []).map((x) => [String(x.tokenId), `${x.rung} ${x.rungName}`]));
+const mdRungs = {};
+for (const q of ['hireable=1&limit=100', 'all=1&limit=200', 'all=1&limit=200&offset=200']) {
+  for (const x of ((await get(`https://www.mandatemarkets.com/api/v1/agents?${q}`))?.data?.agents) || []) mdRungs[String(x.tokenId)] = `${x.rung} ${x.rungName}`;
+}
 const mo = (await get(`https://marque.trade/api/v1/phase2/owner/${PROVIDER}`))?.agents || [];
 const mo2 = (await get(`https://marque.trade/api/v1/phase2/owner/${CAMPAIGN}`))?.agents || [];
 for (const id of OURS) {

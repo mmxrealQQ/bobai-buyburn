@@ -47,6 +47,22 @@
 
 Nothing above is a roadmap — it is all live, or finished and still public.
 
+## Our agents on the ERC-8004 registry (BNB Smart Chain, chain 56)
+
+Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` · domain proof at [brainonbnb.com/.well-known/agent-registration.json](https://brainonbnb.com/.well-known/agent-registration.json)
+
+| Agent ID | Chain | Agent | Category | Hire |
+|---|---|---|---|---|
+| **363709** | 56 (BSC) | **Brain on BNB — DeFi Agent**: runs the project's own PancakeSwap V3 CAKE/BNB position every day from `0xbFAA…7F0A` (collect, one-sided re-set, width by replay against holding); hired, it plans yours. Code: [`shared/lp-agent.js`](shared/lp-agent.js), [`worker-lp/`](worker-lp/), [`worker-agent/range-task.js`](worker-agent/range-task.js) | rebalancing | [A2A card](https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json) · ERC-8183, 0.10 $U |
+| 302257 | 56 (BSC) | Venus Health Factor Monitor | health factor | ERC-8183, 0.10 $U |
+| 302258 | 56 (BSC) | BSC Grid Planner | grid trading | ERC-8183, 0.10 $U |
+| 304493 | 56 (BSC) | Venus Yield Ranking | yield | ERC-8183, 0.10 $U |
+| 304494 | 56 (BSC) | Portfolio Rebalance Pricer | rebalancing | ERC-8183, 0.10 $U |
+| 310460 | 56 (BSC) | PancakeSwap Fee Tier Placement | yield | ERC-8183, 0.10 $U |
+| 49467 | 56 (BSC) | Brain On BNB AI ($BOBAI) — the operator | — | MCP / REST, free |
+
+All hireable agents are owned by the provider wallet `0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963` and speak BNB's standard hire (A2A `negotiate-erc8183-job`, signed quote; funded jobs are found on the chain and delivered on-chain).
+
 ## MCP server
 
 Live remote MCP endpoint (streamable HTTP, JSON-RPC 2.0, protocol `2025-06-18`, no auth, CORS open):

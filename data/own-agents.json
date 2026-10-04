@@ -48,6 +48,15 @@
       "registered_at": "2026-08-28T05:39:45.780Z",
       "recategorised_at": "2026-08-31",
       "updated_at": "2026-09-09T16:13:41.601Z"
+    },
+    "defi-agent": {
+      "id": 363709,
+      "name": "Brain on BNB — DeFi Agent",
+      "category": "rebalancing",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0xbd0aeb72f43930f95dfc984f439da1a4fd69f38e382820e1fd2379447d39b667",
+      "block": 125681731,
+      "registered_at": "2026-10-04T13:09:05.496Z"
     }
   }
 }

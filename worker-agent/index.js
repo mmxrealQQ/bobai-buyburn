@@ -1573,7 +1573,7 @@ export default {
             // lists a price without the channel had a client negotiating an
             // escrow job for a service no seller id answers.
             ...(s.id === 'lp_position_plan'
-              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: 'x402, per answer; not sold through the ERC-8183 escrow' }
+              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: `x402, per answer, at this endpoint; through the ERC-8183 escrow only by the DeFi agent #363709 at ${SELF_ORIGIN}/defi-agent/a2a` }
               : { escrow: true, channel: 'ERC-8183 escrow at this agent, or per answer over x402 at ' + `${SELF_ORIGIN}/answer?service=${s.id}` }),
           })),
         ],

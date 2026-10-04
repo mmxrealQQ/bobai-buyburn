@@ -109,6 +109,7 @@ export const SOLD_BY = {
   yield_plan: { slug: 'yield-optimizer', agent: 304493 },
   rebalance_plan: { slug: 'rebalancer', agent: 304494 },
   lp_tier_plan: { slug: 'lp-placement', agent: 310460 },
+  lp_position_plan: { slug: 'defi-agent', agent: 363709 },
 };
 
 // The five things somebody can pay us to deliver, in the same shape as the

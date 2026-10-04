@@ -54,14 +54,14 @@ export async function watchFundedJobs(env, rpc) {
     if (!job || String(job.provider).toLowerCase() !== me) continue;
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
-    else if (job.status === 'OPEN') nextOpen[id] = Date.now();
+    else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
   }
   // Ours that were created unfunded: funded since?
   for (const [id, since] of Object.entries(open)) {
     if (nextOpen[id]) continue;
     const job = await readJob(id);
     if (job?.status === 'FUNDED') toDeliver.add(String(id));
-    else if (job?.status === 'OPEN' && Date.now() - since < OPEN_FOR) nextOpen[id] = since;
+    else if (job?.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now() && Date.now() - since < OPEN_FOR) nextOpen[id] = since;
     else if (!job && Date.now() - since < OPEN_FOR) nextOpen[id] = since;   // read failed: keep
   }
 

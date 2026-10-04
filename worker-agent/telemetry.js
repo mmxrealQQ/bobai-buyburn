@@ -40,6 +40,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
+import { lpPositionPlan } from './lp-service.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 
 const KEY = 'telemetry:latest';
@@ -372,6 +373,28 @@ async function probeYield() {
 // The rebalancer, run against a deliberately awkward reference portfolio: one
 // deep pool and one thin taxed one. A rebalancer that only ever reports cheap
 // corrections has not been tested on anything that matters.
+// The DeFi agent (#363709), probed the way a buyer's job runs it: its own
+// position plan, from the same code, on its own wallet.
+async function probeDefiAgent(env) {
+  const at = new Date().toISOString();
+  const attempt = {};
+  try {
+    const plan = await withSecondChance(() => lpPositionPlan({ address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' }, env), attempt);
+    return {
+      ready: true,
+      checked_at: at,
+      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
+      headline: plan.verdict ? String(plan.verdict).slice(0, 220) : 'position read, no verdict formed',
+      measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
+      last_error: null,
+    };
+  } catch (e) {
+    return notReady(e, at, attempt);
+  }
+}
+
 async function probeRebalance() {
   const at = new Date().toISOString();
   const attempt = {};
@@ -541,13 +564,14 @@ export async function refreshTelemetry(env) {
   // Jobs first: the health-factor probe carries the last real delivery as its
   // proof of arithmetic, so it needs the answer before it runs.
   const jobs = await ownJobs(env);
-  const [peers, hf, grid, yld, reb, lp] = await Promise.all([
+  const [peers, hf, grid, yld, reb, lp, defi] = await Promise.all([
     Promise.all(PEERS.map(askPeer)),
     probeHealthFactor(jobs.last.health_factor || null),
     probeGrid(),
     probeYield(),
     probeRebalance(),
     probeLpTiers(),
+    probeDefiAgent(env),
   ]);
 
   // Null means the job list could not be read, and stays null. A KV failure
@@ -616,6 +640,21 @@ export async function refreshTelemetry(env) {
         ...split('lp_tier_plan'),
         last_delivery: jobs.last.lp_tier_plan || null,
         ...lp,
+      },
+      // The DeFi agent (2026-10-04): no probe of its own here — its live
+      // state is its own position, published at /lp/agent every run.
+      {
+        id: 363709,
+        name: 'Brain on BNB — DeFi Agent',
+        category: 'rebalancing',
+        origin: 'https://agent.brainonbnb.com/defi-agent',
+        hireable: 'ERC-8183 (signed quote, negotiate-erc8183-job)',
+        price: '0.10 $U',
+        jobs_delivered: delivered('lp_position_plan'),
+        ...split('lp_position_plan'),
+        last_delivery: jobs.last.lp_position_plan || null,
+        live_state: 'https://agent.brainonbnb.com/lp/agent',
+        ...defi,
       },
     ],
     peers,

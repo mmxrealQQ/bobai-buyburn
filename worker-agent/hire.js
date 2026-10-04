@@ -685,7 +685,11 @@ export async function handleHire(url, body, env, opts = {}) {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
       outcome: neg.error, agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
     });
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
+    // An agent that sells per call over x402 instead of through the escrow
+    // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
+    // its own 402 states a price. Read it — nothing is paid — and hand it on.
+    const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}) } };
   }
 
   const q = neg.quote;
@@ -919,7 +923,35 @@ async function registrationOf(id) {
     }
   } catch { return null; }
   const endpoints = (doc?.services || doc?.endpoints || []).map((x) => x?.endpoint).filter((e) => typeof e === 'string' && /^https:\/\//.test(e));
-  return endpoints.length ? { id, endpoints } : null;
+  return endpoints.length ? { id, endpoints, services: (doc?.services || []).filter((x) => x && typeof x.endpoint === 'string') } : null;
+}
+
+// THE x402 OFFER OF AN AGENT that does not negotiate an escrow job
+// (2026-10-04): the x402 endpoint its registration names, asked once without
+// payment, read for its accepts[] — price, token, payee. Nothing is paid.
+const TOKENS = {
+  '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d': 'USD1',
+  '0xce24439f2d9c6a2289f741120fe202248b666666': '$U',
+  '0x55d398326f99059ff775485246999027b3197955': 'USDT',
+  '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC',
+};
+export async function x402Offer(id) {
+  const reg = await registrationOf(id);
+  const svc = (reg?.services || []).find((x) => /x402/i.test(String(x.name || '')));
+  const url = svc?.endpoint || (reg?.endpoints || []).find((e) => /\/x402\//i.test(e));
+  if (!url) return null;
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!r || r.status !== 402) return null;
+  let req = await r.clone().json().catch(() => null);
+  const hdr = r.headers.get('payment-required');
+  if ((!req || !Array.isArray(req.accepts)) && hdr) { try { req = JSON.parse(atob(hdr)); } catch { /* none */ } }
+  const offers = (req?.accepts || []).slice(0, 4).map((a) => {
+    const atomic = String(a.maxAmountRequired ?? a.amount ?? '');
+    const sym = TOKENS[String(a.asset || '').toLowerCase()] || (a.extra?.symbol || a.extra?.name || 'token');
+    const amount = /^\d+$/.test(atomic) ? Number(BigInt(atomic)) / 1e18 : null;
+    return { price: amount != null ? `${amount} ${sym}` : null, asset: a.asset || null, payTo: a.payTo || null, method: a.extra?.assetTransferMethod || a.extra?.transferMethod || a.scheme || null };
+  }).filter((o) => o.price && o.payTo);
+  return offers.length ? { url, offers, note: 'Sold per call over x402, not through the ERC-8183 escrow: pay with your own x402 client at this URL.' } : null;
 }
 
 // Returns { endpoint, skill } — the skill being whatever the seller's own card

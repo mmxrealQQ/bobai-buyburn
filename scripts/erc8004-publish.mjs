@@ -2206,7 +2206,14 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           if(!current||current.id!==askedOf)return;
           elQuote.textContent='Get a quote';elQuote.disabled=false;
           if(!j||j.error){
-            say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');wireAlt();
+            // An x402 seller is not a failure: it states a price per call (2026-10-04).
+            if(j&&j.x402&&j.x402.offers&&j.x402.offers.length){
+              var offs=j.x402.offers.map(function(x){return esc(x.price)+' to '+esc(x.payTo)+(x.method?' ('+esc(x.method)+')':'');}).join(' or ');
+              say('No escrow job here: this agent sells per call over x402 &mdash; '+offs+' at '+esc(j.x402.url)+'. Pay with your own x402 client at that address; nothing is held in escrow.'+altQuoter(),'rg-ok');
+            }else{
+              say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');
+            }
+            wireAlt();
             // Show the address the broker actually tried. Without it the
             // reader gets a verdict about a stranger's agent and no way to
             // check it - "the endpoint its card names answered 404" names no

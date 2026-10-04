@@ -3707,6 +3707,13 @@ function chartBox(w, h) {
 // IN USD, LIKE EVERY OTHER SCREEN (operator, 2026-10-04: the chip read -6.2 % 24h, DexScreener -4.17 %, Binance -4.16 %):
 // the candles are priced in BNB, and BNB itself had gained 2.6 % that day. Each end is priced with BNB's dollar rate of
 // its own time (u at the close, ou at the open), so a change is what a holder's dollars did.
+// BNB's dollar rate at a time: the ledger candle that holds it, the live rate for the last minutes (minute candles of the
+// 1H views carried today's rate on both ends, so their change stayed a BNB change)
+function bnbAt(t) {
+  if (t >= Date.now() - CH.min * 60e3) return S.bnbP;
+  let u = 0; for (const r of CH.rows) { if (r.t > t) break; if (r.u) u = r.u; }
+  return u || S.bnbP;
+}
 function usdCh(a, b) {
   const o = a?.o * (a?.ou || a?.u || S.bnbP), c = b?.c * (b?.u || S.bnbP);
   return o > 0 && c > 0 ? (c / o - 1) * 100 : null;
@@ -3804,7 +3811,7 @@ function minuteCandles() {
   if (!prev) return [];
   const out = [];
   for (let t = start + ms, i = 0; t <= end; t += ms) {
-    const c = { t, o: prev, c: prev, h: prev, l: prev, v: 0, n: 0, b: 0, s: 0, u: S.bnbP };
+    const c = { t, o: prev, c: prev, h: prev, l: prev, v: 0, n: 0, b: 0, s: 0, u: bnbAt(t), ou: bnbAt(t - ms) };
     for (; i < sw.length && sw[i].t < t; i++) { const p = sw[i].bnb / sw[i].bobai; c.c = p; c.h = Math.max(c.h, p); c.l = Math.min(c.l, p); c.v += sw[i].bnb; c.n++; c[sw[i].buy ? 'b' : 's']++; }
     if (t === end && pxBnb()) { c.c = pxBnb(); c.h = Math.max(c.h, c.c); c.l = Math.min(c.l, c.c); c.live = true; }
     out.push(c); prev = c.c;
@@ -3899,7 +3906,7 @@ function drawCx(now) {
   // the crosshair and the candle's figures
   const o = cxEl.querySelector('.cx-o');
   if (CX.hover >= 0 && CX.hover < cs.length) {
-    const c = cs[CX.hover], x = X(CX.hover), f = v => '$' + (v * c.u).toPrecision(5), chg = (c.c / c.o - 1) * 100;
+    const c = cs[CX.hover], x = X(CX.hover), f = v => '$' + (v * c.u).toPrecision(5), chg = usdCh(c, c) ?? 0;
     g.setLineDash([2, 3]); g.strokeStyle = 'rgba(236,234,245,.4)'; g.beginPath(); g.moveTo(x + 0.5, y0); g.lineTo(x + 0.5, H - 18); g.stroke(); g.setLineDash([]);
     const here = marks.filter(m => m.i === CX.hover).slice(0, 4), key = CX.hover + ':' + here.length + ':' + c.c;
     if (o.dataset.k !== key) {
@@ -4107,7 +4114,7 @@ function tlCandles(t0, t1) {
     let prev = before ? before.c : sw.length ? sw[0].bnb / sw[0].bobai : pxBnb(); if (!prev) return [];
     const out = [];
     for (let t = Math.floor(t0 / step) * step + step, i = 0; t <= t1 + step; t += step) {
-      const c = { t, o: prev, c: prev, h: prev, l: prev, v: 0, n: 0, b: 0, s: 0 };
+      const c = { t, o: prev, c: prev, h: prev, l: prev, v: 0, n: 0, b: 0, s: 0, u: bnbAt(t), ou: bnbAt(t - step) };
       for (; i < sw.length && sw[i].t < t; i++) { const p = sw[i].bnb / sw[i].bobai; c.c = p; c.h = Math.max(c.h, p); c.l = Math.min(c.l, p); c.v += sw[i].bnb; c.n++; if (!sw[i].ours) c[sw[i].buy ? 'b' : 's']++; }
       if (mode === 'live' && t > Date.now() && pxBnb()) { c.c = pxBnb(); c.h = Math.max(c.h, c.c); c.l = Math.min(c.l, c.c); c.live = true; }
       out.push(c); prev = c.c;
@@ -4271,7 +4278,7 @@ function candleTip(h) {
   const px = c.o && c.c ? (c.o + c.c) / 2 : c.c, bob = px > 0 ? c.v / px : 0;
   const fig = `${bob > 1 ? '≈ ' + cmp(bob) + ' BOBAI · ' : ''}${bnbF(c.v)}${u ? ' · ' + $amt(c.v * u) : ''}`;
   const tot = c.v > 0 && (n > 1 && tr.length || !tr.length) ? ` · ${fig}${n > 1 ? ' in all' : ''}` : '';
-  const chg = c.o ? (c.c / c.o - 1) * 100 : 0;
+  const chg = usdCh(c, c) ?? 0;
   return { time: `${fmt(t0)} – ${new Date(t1).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, head: head + tot, chg, rows,
     note: '' };
 }

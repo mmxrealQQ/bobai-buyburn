@@ -761,7 +761,8 @@ section('The marketplace, from the front door');
   // The voluntary tip (2026-09-26): a 402 at the amount the tipper names, into the same wallet as the paid
   // services, refusals before any money; and every free answer from outside names it in its thank-you note.
   const tip = await fetch(`${AGENT}/tip?usd=2`).then(async (r) => ({ status: r.status, j: await r.json().catch(() => null) })).catch(() => null);
-  ok('a tip answers 402 at the amount asked, USDC and USD1', !!tip && tip.status === 402 && tip.j?.accepts?.length === 2 && tip.j.accepts.every((a) => a.maxAmountRequired === '2000000000000000000'));
+  // USD1 by EIP-3009 joined USDC (Permit2) and the plain USD1 transfer on 2026-10-04.
+  ok('a tip answers 402 at the amount asked, USD1 by EIP-3009, USDC and USD1', !!tip && tip.status === 402 && tip.j?.accepts?.length === 3 && tip.j.accepts.every((a) => a.maxAmountRequired === '2000000000000000000') && tip.j.accepts.some((a) => a.extra?.assetTransferMethod === 'eip3009'));
   ok('a tip goes to the same wallet as the paid answers', !!tip?.j && tip.j.accepts.every((a) => a.payTo === x402cat?.instructions?.match(/Pay to\*\*: `(0x[0-9a-fA-F]{40})`/)?.[1]));
   ok('a tip below the floor is refused before any payment', (await fetch(`${AGENT}/tip?usd=0.01`)).status === 400);
   ok('a tip with a made-up proof is refused', (await fetch(`${AGENT}/tip`, { headers: { 'PAYMENT-SIGNATURE': '0x' + '12'.repeat(32) } })).status === 402);

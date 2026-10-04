@@ -1173,6 +1173,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
+        eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
@@ -1217,6 +1218,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
+        eip3009Accepts({ payTo, amountAtomic: WATCH_PRICE_USD1.toString(), description: `Pool watch for ${WATCH_DAYS} days`, resource }),
         dexterAccepts({
           payTo,
           amountAtomic: WATCH_PRICE_USD1.toString(),

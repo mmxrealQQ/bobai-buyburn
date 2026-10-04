@@ -280,7 +280,11 @@ try {
       id: a.id,
       name: a.name,
       description: svc ? svc.deliverables : null,
-      endpoints: ['https://agent.brainonbnb.com/a2a'],
+      // The DeFi Agent has its own endpoint and card (2026-10-04); the other
+      // five share the counter at /a2a.
+      endpoints: slug === 'defi-agent'
+        ? ['https://agent.brainonbnb.com/defi-agent/a2a', 'https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json']
+        : ['https://agent.brainonbnb.com/a2a'],
       speaks: ['a2a', 'x402'],
       // What it can be asked for, named the way the seller names it. Empty
       // tools on purpose: see the merge below.
@@ -290,7 +294,10 @@ try {
       example: svc ? EXAMPLES[svc.id] || null : null,
       attributes: [{ trait_type: 'Category', value: a.category }],
       ours: true,
-      provider: a.owner,
+      // The payee is the agentWallet where it differs from the owner (the DeFi
+      // Agent: owned by the wallet that runs the position, paid through the
+      // provider that signs its quotes).
+      provider: a.agent_wallet || a.owner,
     };
   });
   // OUR DEFINITION WINS, rather than being dropped when the census already has

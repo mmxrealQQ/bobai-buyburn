@@ -663,7 +663,7 @@ export async function refreshTelemetry(env) {
     // of the per-agent counts can never exceed the number of deliverables
     // examined. When the count was origin-wide, one job produced a sum of two.
     jobs_counted_from: { deliverables_examined: jobs.byService ? Object.values(jobs.byService).reduce((n, v) => n + v, 0) : null, truncated: jobs.truncated },
-    method: 'Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
+    method: 'Our own entries are measured by running the service against a reference input, through the same code a paid job runs (the DeFi Agent: its own position plan). The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
     cadence: 'every 15 minutes',
   };
 

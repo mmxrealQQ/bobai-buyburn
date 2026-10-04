@@ -25,7 +25,10 @@ async function pay(signer, from) {
   const authorization = { from, to: PAYTO, value: '100000000000000000', validAfter: String(now - 60), validBefore: String(now + 300), nonce };
   const signature = await signer.signTypedData({ domain: DOMAIN, types: TYPES, primaryType: 'TransferWithAuthorization', message: { ...authorization, value: BigInt(authorization.value), validAfter: BigInt(authorization.validAfter), validBefore: BigInt(authorization.validBefore) } });
   const header = Buffer.from(JSON.stringify({ x402Version: 1, scheme: 'exact', network: 'eip155:56', payload: { signature, authorization } })).toString('base64');
-  const r = await fetch(`${BASE}/answer?service=yield_plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': header }, body: JSON.stringify({ task: 'where is the best yield on BNB Chain for USDT right now' }), signal: AbortSignal.timeout(120000) });
+  // --get: pay by GET with the task in the query, the way some x402 clients (Mandate's house agents) are called.
+  const r = process.argv.includes('--get')
+    ? await fetch(`${BASE}/answer?service=yield_plan&task=${encodeURIComponent('where is the best yield on BNB Chain for USDT right now')}`, { headers: { 'X-PAYMENT': header }, signal: AbortSignal.timeout(120000) })
+    : await fetch(`${BASE}/answer?service=yield_plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': header }, body: JSON.stringify({ task: 'where is the best yield on BNB Chain for USDT right now' }), signal: AbortSignal.timeout(120000) });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 

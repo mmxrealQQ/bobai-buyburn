@@ -2696,12 +2696,23 @@ ${pageTail}`;
         if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or in USDC by standard x402 — or the same price in $BOBAI, quoted on each 402`,
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer — USD1 by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or the same price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
-          how: 'POST /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then POST again with PAYMENT-SIGNATURE and a body naming the task.',
+          how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
           catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
         });
+        // A PAID GET (2026-10-04): x402 clients that pay by GET — the way
+        // Mandate's own house agents are called — send the payment in a header
+        // and the task in the query (?task=… or the service's fields). It is
+        // sold exactly like the POST; without a payment header a GET is terms.
+        const getProof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
+        if (getProof) {
+          const q = Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service'));
+          const out = await sellAnswer(env, ctx, payTo, id, { task: q.task || '', params: q }, getProof);
+          note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:paid:${out.status}`);
+          return json(out.body, out.status, out.headers || {});
+        }
         const out = await sellAnswer(env, ctx, payTo, id, {}, null);
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:terms`);
         return json(out.body, out.status, out.headers || {});

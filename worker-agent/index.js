@@ -1557,7 +1557,7 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain on BNB — DeFi Agent',
-        description: 'The agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
         url: `${SELF_ORIGIN}/defi-agent/a2a`,
         preferredTransport: 'JSONRPC',
         version: '1.0.0',

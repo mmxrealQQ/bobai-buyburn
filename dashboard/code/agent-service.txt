@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 15565 lines.
+# one fetch. 48 files, 15712 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3576,7 +3576,7 @@ export const DELIVERIES = Object.values(SERVICES).map((s) => ({
   price: s.price_display,
   agent: SOLD_BY[s.id]?.agent ?? null,
   where: SOLD_BY[s.id] ? `https://brainonbnb.com/registry#cat-${s.category === 'health-factor-monitoring' ? 'health-factor' : s.category}` : null,
-  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, send 0.10 USD1, repeat with the transaction hash, and the same document comes straight back.',
+  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain transfer whose hash you send — and the same document comes straight back.',
   x402: `POST https://agent.brainonbnb.com/answer?service=${s.id}`,
 }));
 
@@ -5897,10 +5897,20 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
 // The reason a seller gave for not quoting, when its reply carries one in the
 // plain shape { accepted: false, reason }. Anything else is not guessed at. The
 // text is a stranger's and is shown on our page: one line, capped.
-export const declineReason = (result) => {
-  if (!result || typeof result !== 'object' || result.accepted !== false || typeof result.reason !== 'string') return null;
-  const where = typeof result.buy_it_here === 'string' ? ` Buy it here: ${result.buy_it_here}` : '';
-  return (result.reason + where).replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+export const declineReason = (result, depth = 0) => {
+  if (!result || typeof result !== 'object' || depth > 6) return null;
+  // The SDK dialect declines inside the message: parts[0].data.response
+  // { accepted:false, reason } (ChainHelix, 2026-10-04: "pools must be a
+  // non-empty array…" was reported as "carries no price").
+  if (result.accepted === false && typeof result.reason === 'string') {
+    const where = typeof result.buy_it_here === 'string' ? ` Buy it here: ${result.buy_it_here}` : '';
+    return (result.reason + where).replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+  }
+  for (const v of Array.isArray(result) ? result : Object.values(result)) {
+    const r = declineReason(v, depth + 1);
+    if (r) return r;
+  }
+  return null;
 };
 
 const findQuote = (node, depth = 0) => {
@@ -5913,6 +5923,13 @@ const findQuote = (node, depth = 0) => {
   // Dialect A: a provider and a price together are unambiguous.
   if (/^0x[a-fA-F0-9]{40}$/.test(node.provider || '') && node.price != null) {
     return normalize({ ...node, dialect: 'flat' });
+  }
+  // An UNSIGNED envelope (LingoAI, 2026-10-04): the SDK's shape with an empty
+  // negotiation_hash, an accepted response, and the payee as provider_address.
+  // It is a plain quote — priced and addressed, nothing to anchor byte for
+  // byte — so it is read as the flat dialect.
+  if (!node.negotiation_hash && /^0x[a-fA-F0-9]{40}$/.test(node.provider_address || '') && node.response?.accepted === true && node.response?.terms?.price != null) {
+    return normalize({ dialect: 'flat', provider: node.provider_address, price: node.response.terms.price, currency: node.response.terms.currency, estimated_completion_seconds: node.response.estimated_completion_seconds, quote_expires_at: node.response.quote_expires_at, service: node.response.terms.deliverables, unsigned: true });
   }
   // Dialect B: the envelope is identified by a negotiation hash plus an
   // accepted response carrying terms. Requiring `accepted` keeps a rejected
@@ -6281,7 +6298,11 @@ export async function handleHire(url, body, env, opts = {}) {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
       outcome: neg.error, agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
     });
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
+    // An agent that sells per call over x402 instead of through the escrow
+    // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
+    // its own 402 states a price. Read it — nothing is paid — and hand it on.
+    const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}) } };
   }
 
   const q = neg.quote;
@@ -6515,7 +6536,35 @@ async function registrationOf(id) {
     }
   } catch { return null; }
   const endpoints = (doc?.services || doc?.endpoints || []).map((x) => x?.endpoint).filter((e) => typeof e === 'string' && /^https:\/\//.test(e));
-  return endpoints.length ? { id, endpoints } : null;
+  return endpoints.length ? { id, endpoints, services: (doc?.services || []).filter((x) => x && typeof x.endpoint === 'string') } : null;
+}
+
+// THE x402 OFFER OF AN AGENT that does not negotiate an escrow job
+// (2026-10-04): the x402 endpoint its registration names, asked once without
+// payment, read for its accepts[] — price, token, payee. Nothing is paid.
+const TOKENS = {
+  '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d': 'USD1',
+  '0xce24439f2d9c6a2289f741120fe202248b666666': '$U',
+  '0x55d398326f99059ff775485246999027b3197955': 'USDT',
+  '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC',
+};
+export async function x402Offer(id) {
+  const reg = await registrationOf(id);
+  const svc = (reg?.services || []).find((x) => /x402/i.test(String(x.name || '')));
+  const url = svc?.endpoint || (reg?.endpoints || []).find((e) => /\/x402\//i.test(e));
+  if (!url) return null;
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!r || r.status !== 402) return null;
+  let req = await r.clone().json().catch(() => null);
+  const hdr = r.headers.get('payment-required');
+  if ((!req || !Array.isArray(req.accepts)) && hdr) { try { req = JSON.parse(atob(hdr)); } catch { /* none */ } }
+  const offers = (req?.accepts || []).slice(0, 4).map((a) => {
+    const atomic = String(a.maxAmountRequired ?? a.amount ?? '');
+    const sym = TOKENS[String(a.asset || '').toLowerCase()] || (a.extra?.symbol || a.extra?.name || 'token');
+    const amount = /^\d+$/.test(atomic) ? Number(BigInt(atomic)) / 1e18 : null;
+    return { price: amount != null ? `${amount} ${sym}` : null, asset: a.asset || null, payTo: a.payTo || null, method: a.extra?.assetTransferMethod || a.extra?.transferMethod || a.scheme || null };
+  }).filter((o) => o.price && o.payTo);
+  return offers.length ? { url, offers, note: 'Sold per call over x402, not through the ERC-8183 escrow: pay with your own x402 client at this URL.' } : null;
 }
 
 // Returns { endpoint, skill } — the skill being whatever the seller's own card
@@ -6675,7 +6724,7 @@ import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -6694,6 +6743,14 @@ import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mj
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES, DEFI_AGENT_ID, AGENT_REGISTRY } from '../shared/agent-registrations.js';
+// Each agent's card name equals its on-chain registration's name (scripts/lib/own-agents.mjs).
+const OWN_CARDS = {
+  'health-factor': { id: 302257, name: 'Brain on BNB — Venus Health Factor Monitor' },
+  'grid-trader': { id: 302258, name: 'Brain on BNB — BSC Grid Planner' },
+  'yield-optimizer': { id: 304493, name: 'Brain on BNB — Venus Yield Ranking' },
+  rebalancer: { id: 304494, name: 'Brain on BNB — Portfolio Rebalance Pricer' },
+  'lp-placement': { id: 310460, name: 'Brain on BNB — PancakeSwap Fee Tier Placement' },
+};
 import { watchFundedJobs } from './job-watch.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
@@ -6980,7 +7037,7 @@ async function flushDetail(env) {
 // isolate that wakes again after being folded loses its later increments — a
 // small undercount, never a double count.
 const ROLL_AFTER = 30 * 60 * 1000;
-const ROLL_READS = 600;
+const ROLL_READS = 300; // shares the invocation's operation budget with the census and the watcher
 async function rollupDetail(env, day) {
   const key = `detailsum:${day}`;
   const doc = JSON.parse((await env.AGENT.get(key)) || '{"names":{},"rolled":{}}');
@@ -7715,8 +7772,10 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
-        dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        // USD1 by EIP-3009 first (2026-10-04): the BNB Chain norm, and what
+        // clients that read only accepts[0] (Mandate's relay among them) pay.
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
@@ -7736,7 +7795,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or in USD1 by EIP-3009 (accepts[1]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -8106,7 +8165,7 @@ export default {
         payment: {
           protocol: 'x402', network: NETWORK, payTo,
           // What a 402 here accepts, in the order the accepts[] carries it.
-          accepts: ['USDC by standard x402 (accepts[0], Permit2), settled by us within ten minutes', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
+          accepts: ['answers: USD1 by EIP-3009 (accepts[0], signed TransferWithAuthorization in X-PAYMENT or PAYMENT-SIGNATURE, settled by us at once)', 'USDC by standard x402 (Permit2), settled by us within ten minutes', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
           asset: USD1, symbol: 'USD1',
         },
         start_here: { find: 'https://agent.brainonbnb.com/find?q=venus+health+factor', example_answer: 'https://agent.brainonbnb.com/example?service=health_factor', hire: 'https://agent.brainonbnb.com/hire?agent=302257&task=health+factor', card: 'https://agent.brainonbnb.com/.well-known/agent.json' },
@@ -8134,6 +8193,43 @@ export default {
     // Both spellings (2026-09-18): agent.json is what the BNB reference agents
     // serve and what our own dispatcher tries first on strangers, and GET /
     // pointed at it here while it returned 404.
+    // THE FIVE, EACH WITH ITS OWN CARD AND ENDPOINT (2026-10-04): the shared
+    // /a2a card ("hireable agents", nine skills) matched none of their
+    // registrations, and 8004scan graded all five "broken" while the DeFi Agent
+    // with its own card read "healthy". Same shape as the DeFi Agent's below:
+    // name = the registration's name, one service, its own id.
+    {
+      const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
+      if (m) {
+        const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
+        if (request.method === 'POST' && m[2] && !m[3]) return await handleA2A(request, env, { agent: slug });
+        return json({
+          protocolVersion: '0.3.0',
+          name: card.name,
+          description: s.deliverables,
+          url: `${SELF_ORIGIN}/${slug}/a2a`,
+          preferredTransport: 'JSONRPC',
+          version: '1.0.0',
+          category: s.category,
+          provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
+          capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+          registrations: [{ agentId: card.id, agentRegistry: AGENT_REGISTRY }],
+          supportedTrust: ['reputation'],
+          trustRegistries: TRUST_REGISTRIES,
+          defaultInputModes: ['application/json', 'text/plain'],
+          defaultOutputModes: ['application/json'],
+          skills: [
+            { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category] },
+            { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
+            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: '0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402)', escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+          ],
+          provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+          additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
+          documentationUrl: 'https://brainonbnb.com/registry',
+        });
+      }
+    }
+
     // THE DEFI AGENT, AS AN AGENT OF ITS OWN (2026-10-04). The six services
     // share one A2A endpoint and one card; a marketplace listing ONE agent
     // needs a card that is about that agent — its name, its category, its
@@ -8149,7 +8245,7 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain on BNB — DeFi Agent',
-        description: 'The agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
         url: `${SELF_ORIGIN}/defi-agent/a2a`,
         preferredTransport: 'JSONRPC',
         version: '1.0.0',
@@ -8479,7 +8575,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
-        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
+        }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
       return json(nr.body, nr.status);
@@ -8501,7 +8597,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
-        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
+        }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
       ctx.waitUntil(bump(env, 'hire'));
@@ -9288,12 +9384,23 @@ ${pageTail}`;
         if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or in USDC by standard x402 — or the same price in $BOBAI, quoted on each 402`,
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer — USD1 by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or the same price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
-          how: 'POST /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then POST again with PAYMENT-SIGNATURE and a body naming the task.',
+          how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
           catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
         });
+        // A PAID GET (2026-10-04): x402 clients that pay by GET — the way
+        // Mandate's own house agents are called — send the payment in a header
+        // and the task in the query (?task=… or the service's fields). It is
+        // sold exactly like the POST; without a payment header a GET is terms.
+        const getProof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
+        if (getProof) {
+          const q = Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service'));
+          const out = await sellAnswer(env, ctx, payTo, id, { task: q.task || '', params: q }, getProof);
+          note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:paid:${out.status}`);
+          return json(out.body, out.status, out.headers || {});
+        }
         const out = await sellAnswer(env, ctx, payTo, id, {}, null);
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:terms`);
         return json(out.body, out.status, out.headers || {});
@@ -9544,6 +9651,12 @@ ${pageTail}`;
   },
 
   async scheduled(event, env, ctx) {
+    // FIRST, every tick: jobs funded the BNB-SDK way never send notify_funded,
+    // so the seller looks for them (job-watch.js) — ahead of the heavy tasks,
+    // so a buyer's paid job never waits behind the census or the rollup for
+    // the invocation's operation budget (job 56905 was delivered 2 min into
+    // the top-of-hour tick, 2026-10-04).
+    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
@@ -9621,9 +9734,6 @@ ${pageTail}`;
       ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
 
-    // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
-    // the seller looks for them (job-watch.js): the new job ids since the last tick, read by eth_call.
-    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
 
     // The day's detail counts, folded together isolate by isolate (rollupDetail);
     // just after midnight the day before gets its last pass.
@@ -12718,7 +12828,31 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
 
 // opts.agent: an endpoint that belongs to ONE of our agents (/defi-agent/a2a)
 // sells that agent's service whatever the prose says.
-const AGENT_SERVICE = { 'defi-agent': 'lp_position_plan' };
+// One endpoint per agent (2026-10-04): /<slug>/a2a sells that agent's one
+// service. The five used to share /a2a and one card that matched none of their
+// registrations — 8004scan graded all five "broken" while the DeFi Agent, with
+// a card of its own, read "healthy".
+export const AGENT_SERVICE = {
+  'defi-agent': 'lp_position_plan',
+  'health-factor': 'health_factor',
+  'grid-trader': 'grid_plan',
+  'yield-optimizer': 'yield_plan',
+  rebalancer: 'rebalance_plan',
+  'lp-placement': 'lp_tier_plan',
+};
+
+// AN AGENT'S OWN ENDPOINT SELLS ITS OWN SERVICE — unless the request plainly
+// asks for another of ours (2026-10-04). Selling a portfolio rebalance to
+// somebody asking where their LP range should go answers a question nobody
+// asked; the honest reply names the agent that does it. Open or matching
+// wording still gets this agent's quote.
+const SLUG_OF = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
+function misdirected(forced, wanted, data) {
+  const guessed = pickService(wanted, data?.service);
+  if (!forced || !guessed || guessed.id === forced) return null;
+  const there = `https://agent.brainonbnb.com/${SLUG_OF[guessed.id]}/a2a`;
+  return `This agent sells ${forced} (${SERVICES[forced].name}). What you describe is ${guessed.id} (${guessed.name}): ask ${there} for it over the ERC-8183 escrow, or buy it per answer over x402 at https://agent.brainonbnb.com/answer?service=${guessed.id}.`;
+}
 
 export async function handleA2A(request, env, opts = {}) {
   let body;
@@ -12765,6 +12899,8 @@ export async function handleA2A(request, env, opts = {}) {
   if (skill === 'negotiate-erc8183-job') {
     if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const elsewhere = misdirected(forced, wanted, data);
+    if (elsewhere) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     if (!service || (service.id === 'lp_position_plan' && !forced)) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
@@ -12798,6 +12934,8 @@ export async function handleA2A(request, env, opts = {}) {
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const elsewhere = misdirected(forced, wanted, data);
+    if (elsewhere) return rpcOk(id, { accepted: false, reason: elsewhere });
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     // The position plan is sold through the escrow by the DeFi agent alone
     // (2026-10-04, its own identity and endpoint /defi-agent). On the shared
@@ -12921,7 +13059,16 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
   }
 
-  const fromChain = extractParams(String(job.description || ''), {});
+  // A signed (SDK) description is JSON whose currency and verifying_contract
+  // are addresses too — the first address in the raw text was the $U token,
+  // read as "the wallet to plan for" (job 56905, 2026-10-04). Only the
+  // buyer's own words are read: the task and the terms.
+  const humanText = (() => {
+    const raw = String(job.description || '');
+    try { const d = JSON.parse(raw); if (d && (d.task || d.terms)) return [d.task, d.terms?.deliverables, d.terms?.quality_standards].filter(Boolean).join(' '); } catch { /* not JSON */ }
+    return raw;
+  })();
+  const fromChain = extractParams(humanText, {});
   const asked = extractParams(String(text || ''), data.params || data);
   const params = { ...asked, ...fromChain, service: service.id };
   let result;

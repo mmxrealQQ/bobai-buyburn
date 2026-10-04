@@ -133,6 +133,35 @@ export async function signedQuote({ data, service, account, chainId, verifyingCo
   };
 }
 
+// The BUYER's half (2026-10-04): the on-chain job description an SDK buyer
+// writes for a signed quote — buildJobDescription(result) of the SDK. The
+// seller re-derives negotiation_hash from exactly these fields, so Brain
+// Plaza's hire button must write this and not a summary of its own. Returns
+// null when the envelope is not one (no hash, not accepted, no price).
+export function jobDescriptionFromEnvelope(env) {
+  const response = env?.response || {}, request = env?.request || {};
+  const terms = response.terms || {};
+  if (!env?.negotiation_hash || response.accepted === false || !terms.price || !terms.currency) return null;
+  const t = { deliverables: sanitizeForClaim(terms.deliverables ?? ''), quality_standards: sanitizeForClaim(terms.quality_standards ?? '') };
+  if (Array.isArray(terms.success_criteria) && terms.success_criteria.length) t.success_criteria = terms.success_criteria.map(sanitizeForClaim);
+  const content = {
+    version: 1,
+    negotiated_at: env.negotiated_at || response.negotiated_at || Math.floor(Date.now() / 1000),
+    task: sanitizeForClaim(request.task_description ?? ''),
+    terms: t,
+    price: terms.price,
+    currency: terms.currency,
+  };
+  const exp = env.quote_expires_at || response.quote_expires_at;
+  if (exp != null) content.quote_expires_at = exp;
+  if (env.chain_id != null) content.chain_id = env.chain_id;
+  if (env.verifying_contract != null) content.verifying_contract = getAddress(env.verifying_contract);
+  content.negotiation_hash = env.negotiation_hash;
+  if (env.provider_sig) content.provider_sig = env.provider_sig;
+  const s = canonicalJson(content);
+  return s.length > MAX_DESCRIPTION_BYTES ? null : s;
+}
+
 // The SDK's agentMessage(): what the reference buyer reads the quote out of
 // (reply.result.parts[0].data).
 export const agentMessage = (data) => ({ kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'data', data }] });

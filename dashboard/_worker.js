@@ -1330,7 +1330,11 @@ export default {
       // Named in the detail and kept out of the public total since 2026-09-21:
       // that day 2,240 of them had arrived by 05:30 UTC, all but four from one
       // crawler — "requests answered" is not the word for a path nobody serves.
-      if (!COUNTED_API.has(url.pathname)) count(null, ['rest:unknown', `uaunknown:${family}`]);
+      // WHAT it asks for (2026-10-04: 96,926 such requests that day — what does
+      // one crawler want 97k times?). Only the first segment under /api/, cut
+      // and cleaned, so the name says the shape and never carries an argument.
+      const seg = (url.pathname.split('/')[2] || '').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 24) || 'root';
+      if (!COUNTED_API.has(url.pathname)) count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`]);
       else {
         const route = url.pathname.slice(5);
         count('rest', fromSite ? [`rest:site:${route}`] : [`rest:ext:${route}`, `ua:${family}`]);
@@ -1609,6 +1613,21 @@ export default {
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
 
+
+    // AN /api/ PATH WE DO NOT SERVE IS A 404 (2026-10-04). It fell through to the
+    // asset fallback and came back as the whole front page with a 200 — 96,926
+    // times that day, nearly all one crawler, and to an agent with a typo it
+    // read as "the API answers HTML". Every real route has returned above; what
+    // reaches here gets the list of the real ones.
+    if (url.pathname.startsWith('/api/')) {
+      const index = url.pathname === '/api/';
+      return new Response(JSON.stringify({
+        ...(index ? { what: 'The free REST mirror of the $BOBAI MCP tools. Every route is a GET.' } : { error: 'no such route', path: url.pathname.slice(0, 120) }),
+        routes: [...COUNTED_API].sort(),
+        docs: 'https://brainonbnb.com/llms.txt',
+        mcp: 'https://brainonbnb.com/mcp',
+      }, null, 2), { status: index ? 200 : 404, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+    }
 
     const response = await env.ASSETS.fetch(request);
     const secure = (h) => {

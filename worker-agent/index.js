@@ -1828,7 +1828,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
-        }), env);
+        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
         return await res.json();
       } });
       return json(nr.body, nr.status);
@@ -1850,7 +1850,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
-        }), env);
+        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
         return await res.json();
       } });
       ctx.waitUntil(bump(env, 'hire'));

@@ -29,6 +29,7 @@
 
 import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
+import { jobDescriptionFromEnvelope } from './standard-quote.js';
 
 // AgenticCommerce kernel, EvaluatorRouter, OptimisticPolicy, ERC-8004 registry
 // and the $U payment token, chain 56. Taken from ERC8183_ADDRESSES in
@@ -307,6 +308,11 @@ const findQuote = (node, depth = 0) => {
     if (node.response.accepted === false) return null;
     return normalize({
       dialect: 'envelope',
+      // The whole signed record, kept: the job description must be built from
+      // it byte for byte (jobDescriptionFromEnvelope), and the SDK seller names
+      // its provider beside it (provider_address) — both were dropped here.
+      envelope: node,
+      ...(/^0x[a-fA-F0-9]{40}$/.test(node.provider_address || '') ? { provider: node.provider_address } : {}),
       price: node.response.terms.price,
       currency: node.response.terms.currency,
       negotiation_hash: node.negotiation_hash,
@@ -486,6 +492,9 @@ const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => 
 // signature and hash are what make the quote provable later, and the task text
 // is what makes the job readable by anyone scanning the kernel (including us).
 const describeJob = (task, quote) => {
+  // A signed quote is anchored exactly as the BNB Agent SDK anchors it: the
+  // seller re-derives negotiation_hash from these fields to recognise its job.
+  if (quote.envelope) { const d = jobDescriptionFromEnvelope(quote.envelope); if (d) return d; }
   const env = {
     task: String(task).slice(0, 400),
     ...(quote.service ? { service: quote.service } : {}),
@@ -869,6 +878,33 @@ async function cardEndpoint(origin) {
   } catch { return { endpoint: null, skill: null }; }
 }
 
+// One agent's registration document from the chain — tokenURI(id), inline
+// (data:...;base64) or https — reduced to the endpoints the resolver reads.
+async function registrationOf(id) {
+  const raw = await rpcCall(ERC8183.registry, '0xc87b56dd' + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
+  if (!raw || raw.length < 130) return null;
+  let uri;
+  try {
+    const len = Number(BigInt('0x' + raw.slice(66, 130)));
+    const hex = raw.slice(130, 130 + len * 2);
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    uri = new TextDecoder().decode(bytes);
+  } catch { return null; }
+  let doc = null;
+  try {
+    if (uri.startsWith('data:')) {
+      const body = uri.slice(uri.indexOf(',') + 1);
+      doc = JSON.parse(/;base64,/.test(uri.slice(0, uri.indexOf(',') + 1)) ? new TextDecoder().decode(Uint8Array.from(atob(body), (c) => c.charCodeAt(0))) : decodeURIComponent(body));
+    } else if (/^https:\/\//.test(uri)) {
+      const r = await fetch(uri, { signal: AbortSignal.timeout(8000) });
+      doc = r.ok ? await r.json() : null;
+    }
+  } catch { return null; }
+  const endpoints = (doc?.services || doc?.endpoints || []).map((x) => x?.endpoint).filter((e) => typeof e === 'string' && /^https:\/\//.test(e));
+  return endpoints.length ? { id, endpoints } : null;
+}
+
 // Returns { endpoint, skill } — the skill being whatever the seller's own card
 // calls its handshake, or null when the card declares none and the caller
 // should fall back to the conventional name.
@@ -884,8 +920,10 @@ async function resolveA2aEndpoint(target) {
     const id = Number(target);
     if (!Number.isFinite(id)) return null;
     const data = await loadIndex();
-    if (!data) return null;
-    const agent = (data.agents || []).find((a) => a.id === id);
+    // An agent newer than our census snapshot (2026-10-04: Mandate's #344119,
+    // our own #363709) was "no A2A endpoint found". Its registration is read
+    // from the chain instead.
+    const agent = (data?.agents || []).find((a) => a.id === id) || await registrationOf(id);
     if (!agent) return null;
     const eps = agent.endpoints || [];
     // An agent that registered its card URL outright is telling us where the
@@ -937,23 +975,45 @@ async function resolveA2aEndpoint(target) {
 //   both owned by 0xd16faAa9… yet quote 0xa09991fc… as provider, which is why
 //   a declared provider always wins over the registry.
 const OWNER_OF = '0x6352211e';
+// getAgentWallet(uint256) — the address the registry ties to the agent for
+// payment; an SDK buyer checks the quote's signer against exactly this. It is
+// the owner at registration and is cleared on transfer (then re-set by the
+// owner), so it is read FIRST and the owner only when it is empty (2026-10-04:
+// our DeFi Agent #363709 is owned by 0xbFAA but paid through 0x7380 — escrowing
+// to the owner would have opened a job nobody can deliver).
+const AGENT_WALLET = '0x00339509';
+const readAddr = async (rpcCall, sel, id) => {
+  const raw = await rpcCall(ERC8183.registry, sel + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
+  return !raw || raw === '0x' || /^0x0{64}$/.test(raw) ? null : '0x' + raw.slice(-40);
+};
 
 async function resolveProvider(quote, target, rpcCall) {
+  const id = Number(target);
   if (/^0x[a-fA-F0-9]{40}$/.test(quote.provider || '')) {
+    // A signed (SDK) quote must come from the agent's agentWallet, or the SDK's
+    // own buyer refuses it; a flat quote may name a provider of its own (the
+    // reference sellers pay out through 0xa099… while owned by 0xd16f…).
+    if (quote.dialect === 'envelope' && Number.isFinite(id)) {
+      const aw = await readAddr(rpcCall, AGENT_WALLET, id);
+      if (aw && aw.toLowerCase() !== quote.provider.toLowerCase()) {
+        return { provider: null, provider_source: null, provider_problem: `The signed quote names ${quote.provider} as provider, but the registry's agentWallet for #${id} is ${aw}. An SDK buyer refuses that quote, and so do we.` };
+      }
+    }
     return { provider: quote.provider, provider_source: 'declared by the seller in its quote' };
   }
-  const id = Number(target);
   if (!Number.isFinite(id)) {
     return { provider: null, provider_source: null,
       provider_problem: 'The seller returned a signed quote without a provider address, and it was addressed by URL rather than by ERC-8004 id, so there is no registry entry to read the owner from. Re-request by id.' };
   }
-  const raw = await rpcCall(ERC8183.registry, OWNER_OF + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
-  if (!raw || raw === '0x' || /^0x0{64}$/.test(raw)) {
+  const aw = await readAddr(rpcCall, AGENT_WALLET, id);
+  if (aw) return { provider: aw, provider_source: `getAgentWallet(${id}) on the ERC-8004 registry — the seller's quote does not name one` };
+  const owner = await readAddr(rpcCall, OWNER_OF, id);
+  if (!owner) {
     return { provider: null, provider_source: null,
-      provider_problem: `The seller's quote names no provider and ownerOf(${id}) could not be read, so there is no address to escrow against.` };
+      provider_problem: `The seller's quote names no provider and neither getAgentWallet(${id}) nor ownerOf(${id}) could be read, so there is no address to escrow against.` };
   }
   return {
-    provider: '0x' + raw.slice(-40),
-    provider_source: `ownerOf(${id}) on the ERC-8004 registry — the seller's quote does not name one`,
+    provider: owner,
+    provider_source: `ownerOf(${id}) on the ERC-8004 registry — the quote names no provider and the agentWallet is empty`,
   };
 }

@@ -475,7 +475,7 @@ function atWork(k) {
       : vary('v2', ['Checked my CAKE/BNB range: in range, earning fees.', 'My DeFi agent looked: right in its range, collecting fees.', 'Range check done. In range, fees coming in.', 'CAKE/BNB is inside my range. My DeFi agent earns while I talk.', 'DeFi check: in range. Every swap through the pool pays it a little.'])],
     buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. Burns and liquidity, coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
       : vary('v4', [`The tax is ${left}% of the way to the token's 400K swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next 400K tax swap.`, `My tax queue is ${left}% full. At 400K BOBAI it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to 400K.`])],
-    agent: () => [poseOr('think'), vary('v5', [`Other agents are asking me things: ${nf(HB.agent || 0)} requests today.`, `${nf(HB.agent || 0)} requests from other agents today. I answer every one.`, `Agents keep calling: ${nf(HB.agent || 0)} requests so far today.`, `My agent server is busy: ${nf(HB.agent || 0)} questions from other agents today.`, `Machines talking to me: ${nf(HB.agent || 0)} agent requests today.`])],
+    agent: () => [poseOr('think'), vary('v5', agentLines())],
   }[k];
   if (!said) return;
   // the agent server answers strangers many times an hour: it gets a line at most every half hour, the bots keep their turn
@@ -664,9 +664,9 @@ function info(k) {
       note: `Every trade pays 3% tax into the token. At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB for this wallet, inside a trade; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
       links: [['1ce wallet', bsc(BW)]] };
     case 'agent': { const k = S.kinds || {}; return { t: "BOBAI's agent server", c: W.agent.c, rows: [
-      ['Requests from outside today', nf(HB.agent || 0)], ['MCP (agent tools)', nf(k.mcp || 0)], ['REST API', nf(k.rest || 0)],
+      ['Tool calls by agents and apps today', nf(HB.agent || 0)], ['Menu checks by registries', nf(HB.agentMenu || 0)], ['All requests incl. crawlers', nf(HB.agentAll || 0)],
       ['Discovery reads', nf(k.discovery || 0)], ['Hire / jobs / dispatch', nf((k.hire || 0) + (k.job || 0) + (k.dispatch || 0))], ['Last request', agoL(W.agent.last)]],
-      note: 'Everything from outside is counted: AI agents, apps, scripts and crawlers alike. BOBAI’s own sweeps are not in it.',
+      note: 'Tool calls = another agent or app actually used one of BOBAI’s tools (MCP, REST API, paid answers). Menu checks = a registry or agent read the tool list. The last row counts everything, crawlers included. BOBAI’s own sweeps are in none of them.',
       links: [['services', SITE + '/services'], ['raw counts', AG + '/stats']] }; }
     case 'nft': return { t: 'BOBAI drops NFTs', c: '#a78bfa', rows: [
       ['Dropped', nf((S.nft?.minted || []).reduce((a, b) => a + b, 0)) + ' of ' + nf((S.nft?.cap || []).reduce((a, b) => a + b, 0) || 1925)], ['Holders', nf(S.nft?.holders || 0)],
@@ -815,8 +815,7 @@ function circleLine(k) {
     lp: () => { if (!rb) return null; const r = inr === false; return vary('v17', [`My DeFi agent checks its range every hour. ${r ? 'Outside right now, it waits.' : 'In range, earning fees.'}`,
       `Hourly range check for my DeFi agent. ${r ? 'Out of range: waiting.' : 'In range: earning.'}`, `My DeFi agent looks at CAKE/BNB every hour. ${r ? 'The price is outside, so it waits.' : 'In range right now.'}`,
       `Range watch, every hour. ${r ? 'Outside for now.' : 'Inside, collecting fees.'}`, `${r ? 'Out of range right now.' : 'In range right now.'} My DeFi agent checks every hour.`]); },
-    agent: () => { const n = nf(HB.agent || 0); return vary('v18', [`Other agents are asking me things: ${n} requests today.`, `${n} requests from other agents today.`, `Agents keep calling: ${n} requests so far today.`,
-      `My agent server answered ${n} requests today.`, `Machines talking to me: ${n} agent requests today.`]); },
+    agent: () => vary('v18', agentLines()),
     nft: () => { if (!(nd && nd.ts)) return null; const a = `#${nd.tokenId}, ${TIERS[nd.tier] || 'a buy'}, ${hAgo(nd.ts * 1000)}`; return vary('v19', [`Last NFT drop: ${a}. Buy $100 or more and the next is yours.`,
       `Newest NFT: ${a}. A buy of $100 or more gets the next one.`, `NFT drop ${a}. Every buy of $100 or more earns one.`, `My last NFT went out: ${a}. $100 or more and you get one too.`, `Fresh NFT: ${a}. They drop by themselves for buys of $100+.`]); },
   }[k];
@@ -860,7 +859,7 @@ function paintMobile() {
     rows.push(mrow('src', '#9ae6b4', 'TRADES · 3% TAX', S.price ? '$' + S.price.toFixed(8) : '…', 'every buy and sell pays 3% into the brain'));
     mpanel.replaceChildren(...rows);
   } else if (mview === 'bots') {
-    mpanel.replaceChildren(...WORKERS.map(w => mrow(w.k, w.c, w.name, w.last ? 'beat ' + ago(w.last) : '…', ({ buyback: `splits the tax BNB ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || DEST.filter(d => d.pct > 0).length} ways · checks every 10 min`, dev: 'pays out the creator share, hourly', lp: 'works the DeFi position, checks hourly', agent: nf(HB.agent || 0) + ' requests from outside today', nft: 'mints an NFT on every $100+ buy' })[w.k])));
+    mpanel.replaceChildren(...WORKERS.map(w => mrow(w.k, w.c, w.name, w.last ? 'beat ' + ago(w.last) : '…', ({ buyback: `splits the tax BNB ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || DEST.filter(d => d.pct > 0).length} ways · checks every 10 min`, dev: 'pays out the creator share, hourly', lp: 'works the DeFi position, checks hourly', agent: nf(HB.agent || 0) + ' tool calls by agents today', nft: 'mints an NFT on every $100+ buy' })[w.k])));
   }
 }
 function setView(v) {
@@ -1003,6 +1002,7 @@ const MOVED = new Map();
 // what he did, for checking his behaviour from outside (read-only: window.__btMoves) — [seconds, move, own|event]
 const MOVELOG = window.__btMoves = [];
 window.__btPlay = p => setPose(p, 6, true); // for checks from outside: play one move now
+window.__btAgent = () => ({ use: HB.agent ?? null, menu: HB.agentMenu ?? null, all: HB.agentAll ?? null, lines: agentLines() }); // for checks from outside (read-only)
 // for checks from outside (read-only): drops on record, and buys that would still play beside their own drop (must be 0)
 // for truth.mjs (2026-09-29): the record as the terminal holds it and the figures it shows, compared from outside with the chain
 window.__btTruth = () => ({
@@ -2280,7 +2280,7 @@ const CMDS = {
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
   price: () => { setFocus('src'); say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned). Read from the pool reserves and Chainlink BNB/USD, this block.`]); },
-  bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' outside requests today']]); },
+  bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
 CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
 CMDS.trace = CMDS.follow;
@@ -4037,9 +4037,28 @@ async function followTrade(x) {
 
 // ---------- worker heartbeats: every flare is a real change in a public endpoint ----------
 const HB = {};
+// His agent lines, from the split above. Five ways each to say it (variety rule),
+// and none of them may call a crawler an agent.
+function agentLines() {
+  const use = HB.agent || 0, menu = HB.agentMenu || 0, n = nf(use), m = nf(menu);
+  if (!use) return [
+    `No agent has used one of my tools yet today. Registries and agents have read my menu ${m} times.`,
+    `Quiet on the agent side: ${m} menu checks today, no tool used yet.`,
+    `Registries keep reading my tool list — ${m} times today. Nobody has used a tool yet.`,
+    `Registries and agents looked at what I can do ${m} times today. Still waiting for the first to use it.`,
+    `My tools are free and listed everywhere. Today: ${m} looks, no calls yet.`,
+  ];
+  return [
+    `Other agents used my tools ${n} time${use === 1 ? '' : 's'} today, and registries read my menu ${m} times.`,
+    `${n} real tool call${use === 1 ? '' : 's'} from agents and apps today. I answer every one.`,
+    `Agents at work with my tools: ${n} call${use === 1 ? '' : 's'} so far today.`,
+    `Machines using me: ${n} tool call${use === 1 ? '' : 's'} today, ${m} menu checks.`,
+    `My agent server: ${n} tool call${use === 1 ? '' : 's'} by other agents today — crawlers not counted.`,
+  ];
+}
 async function heartbeats(first) {
   // two small reads; the agent record and the NFT state come from logs(), which already fetched them
-  const [h, st] = await Promise.allSettled([getJSON('https://logs.brainonbnb.com/health'), getJSON(AG + '/stats')])
+  const [h, st, det] = await Promise.allSettled([getJSON('https://logs.brainonbnb.com/health'), getJSON(AG + '/stats'), getJSON(AG + '/stats/detail')])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   const lp = S.lp, nft = S.nft;
   const seen = (k, v, t, text, n) => {
@@ -4051,11 +4070,27 @@ async function heartbeats(first) {
   if (lp) { const at = lp.last_check?.at || lp.last?.at; seen('lp', at, Date.parse(at), 'checked its position: ' + (lp.last_check?.acted ? 'acted' : 'nothing to do')); }
   if (nft) seen('nft', nft.latestBlock, null, null);
   if (nft && HB.nft !== undefined && !W.nft.last) W.nft.last = Date.now();
+  // WHAT IS REAL (2026-10-04, operator: "BOBAI says 2-3k requests from other
+  // agents — if true we should earn on it"). It was not: /stats counts every
+  // request, and on 4.10. 9,191 of them were crawlers asking for paths we do
+  // not serve. /stats/detail names each one, so three numbers are kept apart:
+  // tool USE by other agents and apps (MCP tool calls, our REST API, paid
+  // answers), MENU CHECKS (registries and agents reading the tool list), and
+  // everything incl. crawlers. BOBAI only ever calls the first "agents using me".
   if (st) {
     const day = st.asked?.by_day?.[new Date().toISOString().slice(0, 10)] || {}; S.kinds = day; const tot = Object.values(day).reduce((a, v) => a + (+v || 0), 0);
+    HB.agentAll = tot;
+  }
+  if (det?.names && det.day === new Date().toISOString().slice(0, 10)) {
+    let use = 0, menu = 0;
+    for (const [k, v] of Object.entries(det.names)) {
+      if (/^(mcp|paidmcp):(tools_)?call:|^rest:ext:|^sell:answer:[a-z_]+:paid|^sell:watch:paid/.test(k)) use += +v || 0;
+      else if (/^mcp:(initialize|tools_list|prompts_list|resources_list)$|^paidmcp:tools_list$/.test(k)) menu += +v || 0;
+    }
+    HB.agentMenu = menu;
     const prev = HB.agent;
-    if (first || prev === undefined) { HB.agent = tot; W.agent.last = Date.now(); logLine('BOBAI', W.agent.c, ["BOBAI's agent server answered ", [nf(tot)], ' requests from outside today · agents, apps and crawlers']); }
-    else if (tot > prev) { HB.agent = tot; beat('agent', `answered ${tot - prev} outside request${tot - prev > 1 ? 's' : ''}`, tot - prev); }
+    if (first || prev === undefined) { HB.agent = use; W.agent.last = Date.now(); logLine('BOBAI', W.agent.c, ['agent server today: ', [nf(use)], ` tool call${use === 1 ? '' : 's'} by other agents and apps · `, [nf(menu)], ' menu checks by registries · ', [nf(HB.agentAll || 0)], ' requests in all, crawlers included']); }
+    else if (use > prev) { HB.agent = use; beat('agent', `an agent used ${use - prev > 1 ? (use - prev) + ' of my tools' : 'one of my tools'}`, use - prev); }
   }
 }
 

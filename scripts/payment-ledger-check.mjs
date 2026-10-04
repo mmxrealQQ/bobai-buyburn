@@ -84,6 +84,7 @@ const TX = '0x' + 'ab'.repeat(32);
   ok('eip3009: a payment that meets the terms passes', eip3009Mismatch(good, { payTo, price, now }) === null);
   ok('eip3009: another recipient is refused', /to must be/.test(eip3009Mismatch(w({ to: '0x' + '33'.repeat(20) }), { payTo, price, now }) || ''));
   ok('eip3009: less than the price is refused', /below the price/.test(eip3009Mismatch(w({ value: '99999999999999999' }), { payTo, price, now }) || ''));
+  ok('eip3009: more than the price is refused, not charged', /above the price/.test(eip3009Mismatch(w({ value: '100000000000000001' }), { payTo, price, now }) || ''));
   ok('eip3009: not valid yet is refused', /not valid yet/.test(eip3009Mismatch(w({ validAfter: String(now + 10) }), { payTo, price, now }) || ''));
   ok('eip3009: expiring before it can settle is refused', /expires too soon/.test(eip3009Mismatch(w({ validBefore: String(now + 10) }), { payTo, price, now }) || ''));
   ok('eip3009: a malformed nonce is refused', /nonce/.test(eip3009Mismatch(w({ nonce: '0x1234' }), { payTo, price, now }) || ''));

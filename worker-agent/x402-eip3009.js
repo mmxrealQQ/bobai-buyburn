@@ -65,6 +65,9 @@ export function eip3009Mismatch(inner, { payTo, price, now = Math.floor(Date.now
   if (String(a.to || '').toLowerCase() !== String(payTo).toLowerCase()) return `authorization.to must be ${payTo}`;
   let value; try { value = BigInt(a.value); } catch { return 'authorization.value is not a number'; }
   if (value < BigInt(price)) return `authorization.value ${value} is below the price ${price}`;
+  // "exact" means exact: a buyer who signed more than the price by mistake is
+  // refused, not charged the difference.
+  if (value > BigInt(price)) return `authorization.value ${value} is above the price ${price} — sign exactly the price`;
   if (Number(a.validAfter || 0) > now) return 'the authorization is not valid yet';
   if (Number(a.validBefore || 0) < now + MIN_WINDOW) return 'the authorization expires too soon to settle';
   if (!/^0x[0-9a-fA-F]{64}$/.test(a.nonce || '')) return 'authorization.nonce must be 32 bytes of hex';

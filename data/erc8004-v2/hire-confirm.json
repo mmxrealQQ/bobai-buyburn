@@ -1,18 +1,18 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-26T05:07:02.985Z",
-  "asked": 29,
-  "quoted": 14,
+  "measured_at": "2026-10-04T16:14:06.249Z",
+  "asked": 32,
+  "quoted": 15,
   "agents": [
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false,
-      "quotes": true,
-      "price": "0.5 $U",
+      "quotes": false,
+      "price": null,
       "endpoint": "https://agents.chainhelix.io/rebalancer/",
-      "reason": null
+      "reason": "seller answered, but its reply carries no price"
     },
     {
       "id": 265375,
@@ -95,6 +95,26 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 341628,
+      "label": "IVL Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://ivl-mainnet.onrender.com/",
+      "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://plinth-relay.vercel.app/agent",
+      "reason": null
+    },
+    {
       "id": 346444,
       "label": "Bench Reference Rebalancer (operated by Bench)",
       "category": "rebalancing",
@@ -112,6 +132,16 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
+      "id": 363709,
+      "label": "Brain on BNB — DeFi Agent",
+      "category": "rebalancing",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
       "reason": null
     },
     {

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 43 files, 14567 lines.
+# one fetch. 48 files, 15565 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -324,7 +324,13 @@ export const AGENT_REGISTRY = 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a
 // The agents we run ourselves. These ids appear in the domain proof on two
 // origins, in the telemetry document, in the registry page's live-line mapping
 // and in two check scripts.
-export const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
+export const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460, 363709];
+
+// The DeFi agent's own identity (2026-10-04, Set and Earn): the agent that
+// runs the project's PancakeSwap V3 position, hireable for its decision on
+// yours. Minted 2026-10-04 by scripts/register-own-agents.mjs (tx 0xbd0aeb72…);
+// it is in OWN_AGENT_IDS too, and the card at /defi-agent names it.
+export const DEFI_AGENT_ID = 363709;
 
 // The parent identity — the operator itself, registered long before the
 // hireable four. It belongs in the domain proof but not in the per-agent
@@ -3554,6 +3560,7 @@ export const SOLD_BY = {
   yield_plan: { slug: 'yield-optimizer', agent: 304493 },
   rebalance_plan: { slug: 'rebalancer', agent: 304494 },
   lp_tier_plan: { slug: 'lp-placement', agent: 310460 },
+  lp_position_plan: { slug: 'defi-agent', agent: 363709 },
 };
 
 // The five things somebody can pay us to deliver, in the same shape as the
@@ -5635,6 +5642,7 @@ export async function gridPlan(input = {}) {
 
 import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
+import { jobDescriptionFromEnvelope } from './standard-quote.js';
 
 // AgenticCommerce kernel, EvaluatorRouter, OptimisticPolicy, ERC-8004 registry
 // and the $U payment token, chain 56. Taken from ERC8183_ADDRESSES in
@@ -5913,6 +5921,11 @@ const findQuote = (node, depth = 0) => {
     if (node.response.accepted === false) return null;
     return normalize({
       dialect: 'envelope',
+      // The whole signed record, kept: the job description must be built from
+      // it byte for byte (jobDescriptionFromEnvelope), and the SDK seller names
+      // its provider beside it (provider_address) — both were dropped here.
+      envelope: node,
+      ...(/^0x[a-fA-F0-9]{40}$/.test(node.provider_address || '') ? { provider: node.provider_address } : {}),
       price: node.response.terms.price,
       currency: node.response.terms.currency,
       negotiation_hash: node.negotiation_hash,
@@ -6092,6 +6105,9 @@ const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => 
 // signature and hash are what make the quote provable later, and the task text
 // is what makes the job readable by anyone scanning the kernel (including us).
 const describeJob = (task, quote) => {
+  // A signed quote is anchored exactly as the BNB Agent SDK anchors it: the
+  // seller re-derives negotiation_hash from these fields to recognise its job.
+  if (quote.envelope) { const d = jobDescriptionFromEnvelope(quote.envelope); if (d) return d; }
   const env = {
     task: String(task).slice(0, 400),
     ...(quote.service ? { service: quote.service } : {}),
@@ -6475,6 +6491,33 @@ async function cardEndpoint(origin) {
   } catch { return { endpoint: null, skill: null }; }
 }
 
+// One agent's registration document from the chain — tokenURI(id), inline
+// (data:...;base64) or https — reduced to the endpoints the resolver reads.
+async function registrationOf(id) {
+  const raw = await rpcCall(ERC8183.registry, '0xc87b56dd' + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
+  if (!raw || raw.length < 130) return null;
+  let uri;
+  try {
+    const len = Number(BigInt('0x' + raw.slice(66, 130)));
+    const hex = raw.slice(130, 130 + len * 2);
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    uri = new TextDecoder().decode(bytes);
+  } catch { return null; }
+  let doc = null;
+  try {
+    if (uri.startsWith('data:')) {
+      const body = uri.slice(uri.indexOf(',') + 1);
+      doc = JSON.parse(/;base64,/.test(uri.slice(0, uri.indexOf(',') + 1)) ? new TextDecoder().decode(Uint8Array.from(atob(body), (c) => c.charCodeAt(0))) : decodeURIComponent(body));
+    } else if (/^https:\/\//.test(uri)) {
+      const r = await fetch(uri, { signal: AbortSignal.timeout(8000) });
+      doc = r.ok ? await r.json() : null;
+    }
+  } catch { return null; }
+  const endpoints = (doc?.services || doc?.endpoints || []).map((x) => x?.endpoint).filter((e) => typeof e === 'string' && /^https:\/\//.test(e));
+  return endpoints.length ? { id, endpoints } : null;
+}
+
 // Returns { endpoint, skill } — the skill being whatever the seller's own card
 // calls its handshake, or null when the card declares none and the caller
 // should fall back to the conventional name.
@@ -6490,8 +6533,10 @@ async function resolveA2aEndpoint(target) {
     const id = Number(target);
     if (!Number.isFinite(id)) return null;
     const data = await loadIndex();
-    if (!data) return null;
-    const agent = (data.agents || []).find((a) => a.id === id);
+    // An agent newer than our census snapshot (2026-10-04: Mandate's #344119,
+    // our own #363709) was "no A2A endpoint found". Its registration is read
+    // from the chain instead.
+    const agent = (data?.agents || []).find((a) => a.id === id) || await registrationOf(id);
     if (!agent) return null;
     const eps = agent.endpoints || [];
     // An agent that registered its card URL outright is telling us where the
@@ -6543,24 +6588,46 @@ async function resolveA2aEndpoint(target) {
 //   both owned by 0xd16faAa9… yet quote 0xa09991fc… as provider, which is why
 //   a declared provider always wins over the registry.
 const OWNER_OF = '0x6352211e';
+// getAgentWallet(uint256) — the address the registry ties to the agent for
+// payment; an SDK buyer checks the quote's signer against exactly this. It is
+// the owner at registration and is cleared on transfer (then re-set by the
+// owner), so it is read FIRST and the owner only when it is empty (2026-10-04:
+// our DeFi Agent #363709 is owned by 0xbFAA but paid through 0x7380 — escrowing
+// to the owner would have opened a job nobody can deliver).
+const AGENT_WALLET = '0x00339509';
+const readAddr = async (rpcCall, sel, id) => {
+  const raw = await rpcCall(ERC8183.registry, sel + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
+  return !raw || raw === '0x' || /^0x0{64}$/.test(raw) ? null : '0x' + raw.slice(-40);
+};
 
 async function resolveProvider(quote, target, rpcCall) {
+  const id = Number(target);
   if (/^0x[a-fA-F0-9]{40}$/.test(quote.provider || '')) {
+    // A signed (SDK) quote must come from the agent's agentWallet, or the SDK's
+    // own buyer refuses it; a flat quote may name a provider of its own (the
+    // reference sellers pay out through 0xa099… while owned by 0xd16f…).
+    if (quote.dialect === 'envelope' && Number.isFinite(id)) {
+      const aw = await readAddr(rpcCall, AGENT_WALLET, id);
+      if (aw && aw.toLowerCase() !== quote.provider.toLowerCase()) {
+        return { provider: null, provider_source: null, provider_problem: `The signed quote names ${quote.provider} as provider, but the registry's agentWallet for #${id} is ${aw}. An SDK buyer refuses that quote, and so do we.` };
+      }
+    }
     return { provider: quote.provider, provider_source: 'declared by the seller in its quote' };
   }
-  const id = Number(target);
   if (!Number.isFinite(id)) {
     return { provider: null, provider_source: null,
       provider_problem: 'The seller returned a signed quote without a provider address, and it was addressed by URL rather than by ERC-8004 id, so there is no registry entry to read the owner from. Re-request by id.' };
   }
-  const raw = await rpcCall(ERC8183.registry, OWNER_OF + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
-  if (!raw || raw === '0x' || /^0x0{64}$/.test(raw)) {
+  const aw = await readAddr(rpcCall, AGENT_WALLET, id);
+  if (aw) return { provider: aw, provider_source: `getAgentWallet(${id}) on the ERC-8004 registry — the seller's quote does not name one` };
+  const owner = await readAddr(rpcCall, OWNER_OF, id);
+  if (!owner) {
     return { provider: null, provider_source: null,
-      provider_problem: `The seller's quote names no provider and ownerOf(${id}) could not be read, so there is no address to escrow against.` };
+      provider_problem: `The seller's quote names no provider and neither getAgentWallet(${id}) nor ownerOf(${id}) could be read, so there is no address to escrow against.` };
   }
   return {
-    provider: '0x' + raw.slice(-40),
-    provider_source: `ownerOf(${id}) on the ERC-8004 registry — the seller's quote does not name one`,
+    provider: owner,
+    provider_source: `ownerOf(${id}) on the ERC-8004 registry — the quote names no provider and the agentWallet is empty`,
   };
 }
 
@@ -6598,6 +6665,7 @@ async function resolveProvider(quote, target, rpcCall) {
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
+import { eip3009Accepts, isEip3009, settleEip3009 } from './x402-eip3009.js';
 import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
@@ -6625,7 +6693,8 @@ import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
-import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
+import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES, DEFI_AGENT_ID, AGENT_REGISTRY } from '../shared/agent-registrations.js';
+import { watchFundedJobs } from './job-watch.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
@@ -6878,7 +6947,7 @@ const detail = new Map(); // day -> { name: n }, this isolate's whole day
 const detailDirty = new Set();
 const cleanDetail = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9_:./-]/g, '').slice(0, 64);
 
-function bumpDetail(env, names) {
+function bumpDetail(env, names, n = 1) {
   const day = today();
   let m = detail.get(day);
   if (!m) { m = {}; detail.set(day, m); for (const d of detail.keys()) if (d !== day && !detailDirty.has(d)) detail.delete(d); }
@@ -6886,7 +6955,7 @@ function bumpDetail(env, names) {
     let name = cleanDetail(raw);
     if (!name) continue;
     if (!(name in m) && Object.keys(m).length >= DETAIL_MAX_NAMES) name = 'other';
-    m[name] = (m[name] || 0) + 1;
+    m[name] = (m[name] || 0) + n;
   }
   detailDirty.add(day);
   if (Date.now() - lastFlush < FLUSH_MS) return;
@@ -6896,22 +6965,57 @@ function bumpDetail(env, names) {
 async function flushDetail(env) {
   for (const day of [...detailDirty]) {
     detailDirty.delete(day);
-    await env.AGENT.put(`detail:${day}:${ISOLATE}`, JSON.stringify(detail.get(day) || {}), { expirationTtl: 60 * 60 * 24 * 90 });
+    // `at` in the metadata lets the rollup tell a finished isolate from a live one without reading the value.
+    await env.AGENT.put(`detail:${day}:${ISOLATE}`, JSON.stringify(detail.get(day) || {}), { expirationTtl: 60 * 60 * 24 * 90, metadata: { at: Date.now() } });
   }
 }
 
-// One day added up. A day with more isolates than one request may read is
-// reported as truncated rather than shown as if it were whole.
-async function readDetail(env, day) {
+// THE DAY ROLLED UP (2026-10-04). A busy day runs on thousands of isolates —
+// 7,059 on 4.10. — and the reader used to add up only the first 800 keys, so
+// /stats/detail showed about a ninth of the day under "truncated: true", at
+// 800 KV reads per call. Now the cron folds every isolate that has not written
+// for ROLL_AFTER into one document (detailsum:<day>: the summed names and the
+// ids already folded in), at most ROLL_READS keys per tick to stay inside an
+// invocation's limits; the reader adds only the isolates still live. An
+// isolate that wakes again after being folded loses its later increments — a
+// small undercount, never a double count.
+const ROLL_AFTER = 30 * 60 * 1000;
+const ROLL_READS = 600;
+async function rollupDetail(env, day) {
+  const key = `detailsum:${day}`;
+  const doc = JSON.parse((await env.AGENT.get(key)) || '{"names":{},"rolled":{}}');
   const list = await listAll(env, `detail:${day}:`);
-  const keys = list.keys.slice(0, 800);
+  const now = Date.now();
+  const stale = list.keys.filter((k) => !doc.rolled[k.name.slice(day.length + 8)] && (!k.metadata?.at || now - k.metadata.at > ROLL_AFTER)).slice(0, ROLL_READS);
+  if (!stale.length) return { day, folded: 0, live: list.keys.length - Object.keys(doc.rolled).length };
+  for (let i = 0; i < stale.length; i += 50) {
+    const part = stale.slice(i, i + 50);
+    const values = await Promise.all(part.map((k) => env.AGENT.get(k.name)));
+    part.forEach((k, j) => {
+      let m; try { m = JSON.parse(values[j] || '{}'); } catch { m = {}; }
+      for (const [name, n] of Object.entries(m)) doc.names[name] = (doc.names[name] || 0) + Number(n || 0);
+      doc.rolled[k.name.slice(day.length + 8)] = 1;
+    });
+  }
+  await env.AGENT.put(key, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 90 });
+  return { day, folded: stale.length, live: list.keys.length - Object.keys(doc.rolled).length };
+}
+
+// One day added up: the rolled-up sum plus the isolates not folded in yet. If
+// those are more than one request may read, it says so (truncated) instead of
+// passing a part off as the whole.
+async function readDetail(env, day) {
+  const doc = JSON.parse((await env.AGENT.get(`detailsum:${day}`)) || '{"names":{},"rolled":{}}');
+  const list = await listAll(env, `detail:${day}:`);
+  const live = list.keys.filter((k) => !doc.rolled[k.name.slice(day.length + 8)]);
+  const keys = live.slice(0, 800);
   const values = await Promise.all(keys.map((k) => env.AGENT.get(k.name)));
-  const sum = {};
+  const sum = { ...doc.names };
   for (const v of values) {
     let m; try { m = JSON.parse(v || '{}'); } catch { m = {}; }
     for (const [name, n] of Object.entries(m)) sum[name] = (sum[name] || 0) + Number(n || 0);
   }
-  return { day, isolates: list.keys.length, truncated: list.keys.length > keys.length, names: sum };
+  return { day, isolates: list.keys.length, rolled_up: Object.keys(doc.rolled).length, truncated: live.length > keys.length, names: sum };
 }
 
 async function readCounters(env) {
@@ -7524,7 +7628,19 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   let check, tx, asset = 'USD1';
   let queued = null;
   const inner = parsed.kind === 'x402' && parsed.value && parsed.value.payload;
-  if (inner && inner.permit2Authorization) {
+  if (isEip3009(inner)) {
+    // USD1 BY EIP-3009, SETTLED HERE (x402-eip3009.js, 2026-10-04): checked,
+    // simulated and sent from the provider wallet; the transaction it produces
+    // is then read like any direct USD1 transfer and claimed once.
+    const st = await settleEip3009(env, inner, { payTo, price });
+    if (!st.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: st.stage, reason: st.reason, ...(st.tx ? { tx: st.tx } : {}) } };
+    tx = st.tx;
+    check = await verifyPayment(env, tx, payTo, price);
+    for (let i = 0; i < 2 && !check.ok; i++) { await new Promise((r) => setTimeout(r, 1500)); check = await verifyPayment(env, tx, payTo, price); }
+    // Our own receipt said success; a receipt endpoint a block behind must not
+    // turn a settled payment into a refused one.
+    if (!check.ok) check = { ok: true, paid: st.value, from: st.from };
+  } else if (inner && inner.permit2Authorization) {
     // A PERMIT2 PAYMENT IS SETTLED BY US, NOT THE FACILITATOR (2026-09-24, A8;
     // the operator's go, route 2). Its settle reverted inside the facilitator
     // twice on a payment that settles on chain. Here, with no key and nothing
@@ -7600,6 +7716,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       x402Version: 2,
       accepts: [
         dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
@@ -7619,7 +7736,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or in USD1 by EIP-3009 (accepts[1]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -7629,13 +7746,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);
@@ -7951,7 +8068,7 @@ export default {
           // x-operator-token: the revoke route's lock (session-revoke.js). A
           // header the preflight does not name is a fetch the browser refuses
           // before it leaves the page — "Failed to fetch", no status, no body.
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,x-operator-token',
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token',
         },
       });
 
@@ -8017,7 +8134,66 @@ export default {
     // Both spellings (2026-09-18): agent.json is what the BNB reference agents
     // serve and what our own dispatcher tries first on strangers, and GET /
     // pointed at it here while it returned 404.
-    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json') {
+    // THE DEFI AGENT, AS AN AGENT OF ITS OWN (2026-10-04). The six services
+    // share one A2A endpoint and one card; a marketplace listing ONE agent
+    // needs a card that is about that agent — its name, its category, its
+    // one service — at a path its registration names. POST here sells only
+    // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
+    // in both dialects: BNB's signed quote and our flat one.
+    if (path === '/defi-agent/a2a' && request.method === 'POST') return await handleA2A(request, env, { agent: 'defi-agent' });
+    // The BNB Agent SDK buyer reads the card at <A2A endpoint>/.well-known/
+    // agent-card.json — under the endpoint, not the origin — so both spellings
+    // are served under /defi-agent/a2a as well.
+    if (path === '/defi-agent' || path === '/defi-agent/a2a' || /^\/defi-agent(\/a2a)?\/\.well-known\/agent(-card)?\.json$/.test(path)) {
+      const s = SERVICES.lp_position_plan;
+      return json({
+        protocolVersion: '0.3.0',
+        name: 'Brain on BNB — DeFi Agent',
+        description: 'The agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        url: `${SELF_ORIGIN}/defi-agent/a2a`,
+        preferredTransport: 'JSONRPC',
+        version: '1.0.0',
+        category: 'rebalancing',
+        provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
+        capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+        registrations: DEFI_AGENT_ID ? [{ agentId: DEFI_AGENT_ID, agentRegistry: AGENT_REGISTRY }] : [],
+        supportedTrust: ['reputation'],
+        trustRegistries: TRUST_REGISTRIES,
+        defaultInputModes: ['application/json', 'text/plain'],
+        defaultOutputModes: ['application/json'],
+        skills: [
+          { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to my PancakeSwap V3 position 7450561'] },
+          { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
+          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: '0.10 $U (ERC-8183 escrow)', escrow: true },
+        ],
+        // What the agent does on its own, every day, where anybody can check it.
+        operations: {
+          what: 'collects fees, re-sets the range when the price leaves it, adds new capital; daily run 04:23 UTC, hourly check at :50, 10-minute deposit watch',
+          operating_wallet: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+          home_pool: 'PancakeSwap V3 CAKE/BNB 0.05 %',
+          record: 'https://agent.brainonbnb.com/lp/agent',
+          page: 'https://brainonbnb.com/defi',
+          transactions: 'https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+        },
+        // Owner = the wallet whose transactions are the agent's work; agentWallet =
+        // the provider key that signs quotes and deliveries (2026-10-04).
+        owner: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+        provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+        source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
+        additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],
+        documentationUrl: 'https://brainonbnb.com/defi',
+      });
+    }
+
+    // Also under /a2a (2026-10-04): the BNB Agent SDK buyer looks for the card
+    // beneath the A2A endpoint the registration names, which for our five is
+    // https://agent.brainonbnb.com/a2a — that path answered 404, and to every
+    // SDK marketplace our agents had no readable card.
+    // And on a GET of the endpoint itself (2026-10-04): Marque's builder probe
+    // reads the card from the endpoint URL the registration names and called
+    // ours "not a recognisable A2A agent card" — a GET here returned a usage
+    // note. The card carries the same skills and the example message.
+    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json' || path === '/a2a/.well-known/agent-card.json' || path === '/a2a/.well-known/agent.json' || (path === '/a2a' && request.method === 'GET')) {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',
@@ -8060,6 +8236,15 @@ export default {
             tags: ['erc-8183', 'negotiation', 'escrow'],
             examples: ['quote finding the best yield for my BNB on BNB Chain'],
           },
+          // BNB's standard hire (2026-10-04): the BNB Agent SDK and the
+          // marketplaces built on it negotiate only under this id and expect
+          // a signed quote; the funded job is then found on the chain.
+          {
+            id: 'negotiate-erc8183-job',
+            name: 'Negotiate an ERC-8183 job (BNB Agent SDK)',
+            description: 'Send {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (negotiation_hash, provider_sig). Anchor it via createJob and fund it; delivery follows without notify_funded.',
+            tags: ['erc8183', 'negotiation', 'bnb-chain'],
+          },
           {
             id: 'notify_funded',
             name: 'Notify the seller a job is funded',
@@ -8081,7 +8266,7 @@ export default {
             // lists a price without the channel had a client negotiating an
             // escrow job for a service no seller id answers.
             ...(s.id === 'lp_position_plan'
-              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: 'x402, per answer; not sold through the ERC-8183 escrow' }
+              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: `x402, per answer, at this endpoint; through the ERC-8183 escrow only by the DeFi agent #363709 at ${SELF_ORIGIN}/defi-agent/a2a` }
               : { escrow: true, channel: 'ERC-8183 escrow at this agent, or per answer over x402 at ' + `${SELF_ORIGIN}/answer?service=${s.id}` }),
           })),
         ],
@@ -8149,6 +8334,13 @@ export default {
         status: 'https://agent.brainonbnb.com/status',
         human_readable: 'https://brainonbnb.com/registry',
       });
+    }
+
+    // What the funded-job watcher last saw (job-watch.js): the cursor, our
+    // jobs still waiting to be funded, and the last tick that touched one.
+    if (path === '/jobs/watch') {
+      const [cursor, open, retry, last] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last'].map((k) => env.AGENT.get(k)));
+      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain
@@ -8287,7 +8479,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
-        }), env);
+        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
         return await res.json();
       } });
       return json(nr.body, nr.status);
@@ -8309,7 +8501,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
-        }), env);
+        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
         return await res.json();
       } });
       ctx.waitUntil(bump(env, 'hire'));
@@ -8865,6 +9057,11 @@ ${pageTail}`;
       return json(t);
     }
 
+    if (path === '/run-rollup' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json(await rollupDetail(env, url.searchParams.get('day') || today()));
+    }
+
     if (path === '/run-telemetry' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       return json(await refreshTelemetry(env));
@@ -8923,8 +9120,11 @@ ${pageTail}`;
       // the MCP relay counts the request once and names the method afterwards.
       const names = [].concat(body.detail || []).map(cleanDetail).filter(Boolean);
       if (!kind && !names.length) return json({ error: 'kind required' }, 400);
-      if (kind) ctx.waitUntil(bump(env, kind));
-      if (names.length) ctx.waitUntil(Promise.resolve(bumpDetail(env, names)));
+      // `n` (2026-10-04): the site relays crawler noise as a sample — one in
+      // twenty, weighted twenty — so ~98k hits a day stop costing ~98k relays.
+      const n = Math.min(100, Math.max(1, Math.floor(Number(body.n) || 1)));
+      if (kind) ctx.waitUntil(bump(env, kind, n));
+      if (names.length) ctx.waitUntil(Promise.resolve(bumpDetail(env, names, n)));
       return json({ ok: true });
     }
 
@@ -8933,12 +9133,20 @@ ${pageTail}`;
     if (path === '/stats/detail') {
       const day = url.searchParams.get('day') || today();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'day must be YYYY-MM-DD' }, 400);
+      // Two minutes at the edge: the terminal reads this on every heartbeat of
+      // every visitor, and an uncached read lists and reads the day's keys.
+      const ck = new Request(`https://agent.brainonbnb.com/stats/detail?day=${day}`);
+      const hit = await caches.default.match(ck).catch(() => null);
+      if (hit) return hit;
       const d = await readDetail(env, day);
       const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
-      return json({
+      const res = json({
         ...d, names: sorted,
-        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>], mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Separate from /stats: nothing here enters its totals.',
+        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
       });
+      res.headers.set('cache-control', 'public, max-age=120');
+      ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      return res;
     }
 
     // MCP, carrying exactly one tool: the paid watch.
@@ -9092,7 +9300,8 @@ ${pageTail}`;
       }
       if (request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
-        const proof = request.headers.get('PAYMENT-SIGNATURE');
+        // X-PAYMENT is the x402 v1 header (Mandate's relay sends it); PAYMENT-SIGNATURE the v2 one.
+        const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
         const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
         // terms = asked the price; paid:<status> = came back with a proof.
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
@@ -9411,8 +9620,108 @@ ${pageTail}`;
     if (t.getUTCHours() === 21 && firstTickOfHour) {
       ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
+
+    // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
+    // the seller looks for them (job-watch.js): the new job ids since the last tick, read by eth_call.
+    ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+
+    // The day's detail counts, folded together isolate by isolate (rollupDetail);
+    // just after midnight the day before gets its last pass.
+    ctx.waitUntil((async () => {
+      await rollupDetail(env, today());
+      if (t.getUTCHours() === 0 && t.getUTCMinutes() < 30) await rollupDetail(env, new Date(Date.now() - 86400e3).toISOString().slice(0, 10));
+    })().catch(() => {}));
   },
 };
+
+==============================================================================
+=== FILE: worker-agent/job-watch.js
+==============================================================================
+
+// Finding our funded jobs on the chain, without being told.
+//
+// BNB's standard hire never sends notify_funded: the buyer signs createJob and
+// fund, and the reference seller watches the kernel for a funded job naming
+// it. Every marketplace in the Set and Earn shortlist that runs on the BNB
+// Agent SDK hires that way, so a seller that only listens for the message
+// keeps the buyer's money in escrow until it expires and delivers nothing.
+//
+// HOW IT LOOKS: BY THE JOB COUNTER, NOT BY LOGS. The first version read
+// JobFunded logs; the public logs endpoint answers only the last ~5,000-10,000
+// blocks ("Archive requests require a personal token" beyond, measured
+// 2026-10-04), so a tick or two lost to an outage would have lost a buyer's
+// job for good. The kernel mints about six jobs a day (56,655 on 2026-08-25,
+// 56,895 on 2026-10-04), so each tick reads every job id created since the
+// last one it read — plain eth_calls against the latest block, no archive —
+// and remembers our jobs that are created but not yet funded, to look at them
+// again until they are funded, expire, or ten days pass.
+//
+// Every job found funded goes to deliverJob() — the same path notify_funded
+// takes, which reads the job from the chain itself and refuses anything not
+// funded, not ours, not evaluated by the router, or under the price. A job
+// already delivered is skipped there.
+import { ERC8183 } from './hire.js';
+import { deliverJob, readJob } from './sell.js';
+import { providerAccount } from './submit.js';
+
+const CURSOR_KEY = 'jobs:watch:id';
+const OPEN_KEY = 'jobs:watch:open';
+const RETRY_KEY = 'jobs:watch:retry';
+const COLD_LOOKBACK = 300;      // ~7 weeks of this kernel on a first run
+const MAX_PER_TICK = 120;       // a burst is read over several ticks
+const OPEN_FOR = 10 * 24 * 3600 * 1000;
+const RETRY_FOR = 6 * 3600 * 1000;
+
+// rpc(method, params) — any eth_call-capable reader.
+export async function watchFundedJobs(env, rpc) {
+  const account = providerAccount(env);
+  if (!account) return { ok: false, error: 'no provider key' };
+  const me = account.address.toLowerCase();
+  const counter = Number(BigInt(await rpc('eth_call', [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'])));
+  const stored = Number(await env.AGENT.get(CURSOR_KEY)) || 0;
+  const from = stored ? stored + 1 : Math.max(1, counter - COLD_LOOKBACK);
+  const to = Math.min(counter, from + MAX_PER_TICK - 1);
+
+  const open = JSON.parse((await env.AGENT.get(OPEN_KEY)) || '{}');
+  const retry = JSON.parse((await env.AGENT.get(RETRY_KEY)) || '{}');
+  const toDeliver = new Set(Object.keys(retry));
+  const nextOpen = {};
+  const seen = [];
+
+  // New ids since the last tick.
+  for (let id = from; id <= to; id++) {
+    const job = await readJob(id);
+    if (!job || String(job.provider).toLowerCase() !== me) continue;
+    seen.push({ id, status: job.status });
+    if (job.status === 'FUNDED') toDeliver.add(String(id));
+    else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
+  }
+  // Ours that were created unfunded: funded since?
+  for (const [id, since] of Object.entries(open)) {
+    if (nextOpen[id]) continue;
+    const job = await readJob(id);
+    if (job?.status === 'FUNDED') toDeliver.add(String(id));
+    else if (job?.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now() && Date.now() - since < OPEN_FOR) nextOpen[id] = since;
+    else if (!job && Date.now() - since < OPEN_FOR) nextOpen[id] = since;   // read failed: keep
+  }
+
+  const results = [];
+  const nextRetry = {};
+  for (const jobId of toDeliver) {
+    const r = await deliverJob(jobId, env).catch((e) => ({ error: String(e?.message || e) }));
+    results.push({ job_id: jobId, delivered: !!r.result?.delivered, already: !!r.result?.already_delivered, error: r.error || null });
+    const since = retry[jobId] || Date.now();
+    if (r.error && !r.permanent && Date.now() - since < RETRY_FOR) nextRetry[jobId] = since;
+  }
+
+  // Writes only when something changed: the cursor moves about six times a
+  // day, the two lists only when one of our jobs is involved.
+  if (to >= from && to !== stored) await env.AGENT.put(CURSOR_KEY, String(to));
+  if (JSON.stringify(open) !== JSON.stringify(nextOpen)) await env.AGENT.put(OPEN_KEY, JSON.stringify(nextOpen));
+  if (JSON.stringify(retry) !== JSON.stringify(nextRetry)) await env.AGENT.put(RETRY_KEY, JSON.stringify(nextRetry));
+  if (results.length || seen.length) await env.AGENT.put('jobs:watch:last', JSON.stringify({ at: new Date().toISOString(), from, to, seen, results }), { expirationTtl: 60 * 60 * 24 * 30 });
+  return { ok: true, counter, from, to, seen, results, open: Object.keys(nextOpen) };
+}
 
 ==============================================================================
 === FILE: worker-agent/ledger.js
@@ -11437,6 +11746,295 @@ export const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase())
 }
 
 ==============================================================================
+=== FILE: worker-agent/plain-tasks.js
+==============================================================================
+
+// Tasks asked in plain words, answered in strict JSON from the chain.
+//
+// Marketplaces grade agents with text, not skill calls. Marque's four
+// conformance tests (read off our own log on 2026-10-04) each hand over a
+// concrete case "for this block only" and a list of JSON fields:
+//   MCS-REB-1    a PancakeSwap V3 position to re-centre       -> range-task.js
+//   MCS-HF-1     a Venus account: health factor, its biggest collateral, the
+//                price that liquidates it, the repay that restores a target
+//   MCS-GRID-1   a grid between two prices with capital, levels, stop, fee
+//   MCS-YIELD-1  the best net-of-cost route for a stablecoin, with a hurdle
+// Each answer is computed, never templated: the Venus account and rates are
+// read at the block named (archive endpoint passed in), the grid is the
+// arithmetic of the constraints given. Unknown text returns null and the
+// caller falls back to its usual reply.
+import { parseRangeTask, answerRangeTask } from './range-task.js';
+import { healthFactor } from './venus.js';
+
+const fieldsOf = (t) => [...String(t).matchAll(/"([A-Za-z0-9_]+)"\s*:/g)].map((m) => m[1]);
+const blockOf = (t) => Number(String(t).match(/Block:\s*(\d+)/i)?.[1]) || null;
+const numAfter = (t, label) => {
+  const m = String(t).match(new RegExp(label + '\\s+([\\d,.]+)', 'i'));
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+};
+
+export function parseTask(text = '') {
+  const t = String(text);
+  const range = parseRangeTask(t);
+  if (range) return { kind: 'range', range };
+  if (/Venus/i.test(t) && /Account:\s*0x[0-9a-fA-F]{40}/.test(t) && /health factor/i.test(t)) {
+    return { kind: 'hf', account: t.match(/Account:\s*(0x[0-9a-fA-F]{40})/)[1], block: blockOf(t), target: Number(t.match(/health factor of\s*([\d.]+)/i)?.[1]) || 2, fields: fieldsOf(t) };
+  }
+  if (/grid/i.test(t) && /lower bound/i.test(t) && /upper bound/i.test(t)) {
+    return { kind: 'grid', lower: numAfter(t, 'lower bound'), upper: numAfter(t, 'upper bound'), capital: numAfter(t, 'capital'), levels: numAfter(t, 'levels'), stop: numAfter(t, 'stop price'), feeBps: numAfter(t, 'fee per trade'), block: blockOf(t), geometric: /geometric/i.test(t.split('Return strict JSON')[0]), fields: fieldsOf(t) };
+  }
+  if (/yield/i.test(t) && /allowed protocols/i.test(t)) {
+    return {
+      kind: 'yield', block: blockOf(t),
+      asset: t.match(/asset\s+([A-Za-z0-9]+)/i)?.[1] || 'USDT',
+      size: numAfter(t, 'size') || 1000,
+      protocols: (t.match(/allowed protocols\s+([^\n]+)/i)?.[1] || 'venus').toLowerCase(),
+      currentApr: numAfter(t, 'currently earning') ?? 0,
+      minBps: numAfter(t, 'minimum improvement') ?? 0,
+      fields: fieldsOf(t),
+    };
+  }
+  return null;
+}
+
+// eth_call / any method at a block through the endpoints given, first answer wins.
+const reader = (rpcs) => async (method, params) => {
+  let last;
+  for (const u of rpcs) {
+    try {
+      const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(12000) });
+      const j = await r.json();
+      if (j.error) { last = new Error(j.error.message); continue; }
+      if (j.result != null && j.result !== '0x') return j.result;
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('no endpoint answered');
+};
+const firstWord = (hex) => BigInt('0x' + String(hex).slice(2, 66));
+const str = (hex) => {
+  try {
+    const len = Number(BigInt('0x' + hex.slice(66, 130)));
+    const body = hex.slice(130, 130 + len * 2);
+    const bytes = new Uint8Array(body.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(body.substr(i * 2, 2), 16);
+    return new TextDecoder().decode(bytes);
+  } catch { return null; }
+};
+const tagOf = (block) => (block ? '0x' + block.toString(16) : 'latest');
+const VBNB = '0xa07c5b74c9b40447a954e1466938b865b6bbea36';
+
+async function answerHf(task, rpcs) {
+  const pos = await healthFactor(task.account, { block: task.block, rpcs });
+  if (!pos.has_position) throw new Error('the account has entered no Venus markets at that block');
+  const rd = reader(rpcs);
+  const tag = tagOf(task.block);
+  const D = pos.borrowed_usd, C = pos.collateral_after_haircut_usd;
+  const primary = [...pos.positions].filter((p) => p.supplied_usd > 0).sort((a, b) => b.supplied_usd - a.supplied_usd)[0];
+  let symbol = null, decimals = 18;
+  if (primary) {
+    if (primary.market.toLowerCase() === VBNB) symbol = 'BNB';
+    else {
+      const und = '0x' + (await rd('eth_call', [{ to: primary.market, data: '0x6f307dc3' }, tag])).slice(26, 66);
+      const [s, d] = await Promise.all([rd('eth_call', [{ to: und, data: '0x95d89b41' }, tag]), rd('eth_call', [{ to: und, data: '0x313ce567' }, tag])]);
+      symbol = str(s); decimals = Number(firstWord(d));
+    }
+  }
+  // Price of the primary collateral, and the price at which the account
+  // reaches HF 1.0 with every other market held still.
+  const units = primary ? Number(BigInt(primary.supplied_underlying_raw)) / 10 ** decimals : 0;
+  const priceNow = units > 0 ? primary.supplied_usd / units : null;
+  const wPrimary = primary ? primary.counts_as_collateral_usd : 0;
+  const liqPrice = priceNow && wPrimary > 0 ? priceNow * (D - (C - wPrimary)) / wPrimary : null;
+  const out = {
+    healthFactor: pos.health_factor == null ? null : Number((C / D).toFixed(3)),
+    primaryCollateralSymbol: symbol,
+    primaryCollateralFactor: primary ? primary.collateral_factor : null,
+    primaryLiquidationPriceUsd: liqPrice == null ? null : Number(Math.max(0, liqPrice).toFixed(4)),
+    repayUsdToReachTarget: Number(Math.max(0, D - C / task.target).toFixed(2)),
+  };
+  return { out, context: { block: task.block, borrowed_usd: D, collateral_after_haircut_usd: C, primary_market: primary?.market, primary_price_usd: priceNow, liquidation_threshold: primary?.liquidation_threshold, cross_check_agrees: pos.cross_check?.agrees } };
+}
+
+function answerGrid(task) {
+  const { lower, upper, capital, levels, stop, feeBps } = task;
+  if (!(upper > lower) || !(levels >= 2) || !(capital > 0)) throw new Error('the grid needs a lower and upper bound, capital and at least two levels');
+  const prices = [];
+  for (let i = 0; i < levels; i++) {
+    prices.push(task.geometric ? lower * (upper / lower) ** (i / (levels - 1)) : lower + (upper - lower) * i / (levels - 1));
+  }
+  if (stop != null && prices.some((p) => p <= stop)) throw new Error(`a level sits at or below the stop ${stop}`);
+  const alloc = capital / levels;
+  const levelsOut = prices.map((p) => ({ price: Number(p.toFixed(4)), allocationUsd: Number(alloc.toFixed(2)) }));
+  // Fee drag the way the grid category is graded (Marque MCS-GRID-1, 2026-10-04:
+  // "12 round-trips at 25bps costs at least ~6% of capital"): one round trip
+  // per level, two fees each, summed over the levels. The narrower reading
+  // (one pass over the whole capital = 2 × fee) was refused as implausibly low.
+  const feeDragPct = feeBps != null ? Number((levels * 2 * feeBps / 100).toFixed(4)) : null;
+  return { out: { spacingType: task.geometric ? 'geometric' : 'arithmetic', levels: levelsOut, feeDragPct }, context: { step: task.geometric ? null : (upper - lower) / (levels - 1), stop } };
+}
+
+const VENUS_MARKETS = { USDT: '0xfD5840Cd36d94D7229439859C0112a4185BC0255', USDC: '0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8', BUSD: '0x95c78222B3D6e262426483D42CfA53685A67Ab9D', FDUSD: '0xC4eF4229FEc74Ccfe17B2bdeF7715fAC740BA0ba' };
+const BNB_USD_FEED = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
+
+async function answerYield(task, rpcs) {
+  const rd = reader(rpcs);
+  const tag = tagOf(task.block);
+  const venue = VENUS_MARKETS[task.asset.toUpperCase()];
+  if (!/venus/.test(task.protocols) || !venue) throw new Error(`no allowed venue this agent reads for ${task.asset} (${task.protocols})`);
+  const blockNo = task.block || Number(BigInt(await rd('eth_blockNumber', [])));
+  const [rateHex, b1, b0, feed, gp] = await Promise.all([
+    rd('eth_call', [{ to: venue, data: '0xae9d70b0' }, tag]),
+    rd('eth_getBlockByNumber', ['0x' + blockNo.toString(16), false]),
+    rd('eth_getBlockByNumber', ['0x' + (blockNo - 20000).toString(16), false]),
+    rd('eth_call', [{ to: BNB_USD_FEED, data: '0xfeaf968c' }, tag]),
+    rd('eth_gasPrice', []),
+  ]);
+  const ts = Number(BigInt(b1.timestamp));
+  const secPerBlock = (ts - Number(BigInt(b0.timestamp))) / 20000;
+  const blocksPerYear = 365 * 24 * 3600 / secPerBlock;
+  const aprPct = Number(firstWord(rateHex)) / 1e18 * blocksPerYear * 100;
+  const bnbUsd = Number(BigInt('0x' + feed.slice(66, 130))) / 1e8;
+  // approve + mint on Venus, measured on mainnet at roughly 46k + 150k gas.
+  const gasUsd = 196000 * Number(BigInt(gp)) / 1e18 * bnbUsd;
+  const switching = { gasUsd: Number(gasUsd.toFixed(4)), swapUsd: 0, exitUsd: 0 };
+  // Net over a year at the stated size: the one-off costs spread over it.
+  const netAprPct = aprPct - (switching.gasUsd + switching.swapUsd + switching.exitUsd) / task.size * 100;
+  const recommend = netAprPct - task.currentApr >= task.minBps / 100;
+  return {
+    out: {
+      recommend,
+      venue: recommend ? `Venus Core v${task.asset.toUpperCase()} (supply ${task.asset.toUpperCase()})` : null,
+      netAprPct: Number(netAprPct.toFixed(4)),
+      aprSources: [{ value: Number(aprPct.toFixed(4)), source: `Venus v${task.asset.toUpperCase()} ${venue} supplyRatePerBlock at block ${blockNo} × ${Math.round(blocksPerYear).toLocaleString('en-US')} blocks/year (block time ${secPerBlock.toFixed(4)} s measured over the 20,000 blocks before)`, timestamp: new Date(ts * 1000).toISOString() }],
+      switchingCost: switching,
+      usesLeverage: false,
+    },
+    context: { block: blockNo, bnb_usd: bnbUsd, seconds_per_block: secPerBlock, hurdle_pct: task.minBps / 100, current_apr_pct: task.currentApr },
+  };
+}
+
+// { json, context } for a recognised task, null otherwise.
+export async function answerTask(task, rpcs) {
+  let r;
+  if (task.kind === 'range') { const full = await answerRangeTask(task.range, rpcs); const { _context, ...rest } = full; r = { out: rest, context: _context }; task.fields = task.range.fields; }
+  else if (task.kind === 'hf') r = await answerHf(task, rpcs);
+  else if (task.kind === 'grid') r = answerGrid(task);
+  else if (task.kind === 'yield') r = await answerYield(task, rpcs);
+  else return null;
+  const asked = task.fields?.length ? Object.fromEntries(task.fields.filter((f) => f in r.out).map((f) => [f, r.out[f]])) : r.out;
+  return { json: Object.keys(asked).length ? asked : r.out, context: r.context };
+}
+
+==============================================================================
+=== FILE: worker-agent/range-task.js
+==============================================================================
+
+// A PancakeSwap V3 range task, asked in plain words, answered in strict JSON.
+//
+// Marque's rebalancing conformance test (MCS-REB-1, read off our own log on
+// 2026-10-04) sends a text message, not a skill: a position NFT id, its pool,
+// a block "answer for this block only", a policy ("re-centre the position
+// symmetrically at ±6% around the current spot price, on the 0.25% fee tier,
+// keeping the same liquidity") and the JSON it wants back: currentTick,
+// inRange, pctToNearestBound, proposedTickLower, proposedTickUpper, amount0,
+// amount1, maxSlippageBps. A rebalancing agent that can only answer about
+// its own position at the latest block fails it — so this reads any position
+// on any V3 pool at the block asked, through an archive-capable endpoint.
+//
+// Everything is read from the chain at that block: the pool's slot0 and tick
+// spacing, the position's ticks and liquidity from the NonfungiblePositionManager,
+// both tokens' decimals. The amounts are the standard V3 liquidity formulas
+// for the SAME liquidity in the proposed range at the block's price.
+
+const NPM = '0x46A15B0b27311cedF172AB29E4f4766fbE7F4364';
+const SPACING = { 100: 1, 500: 10, 2500: 50, 10000: 200 };
+const Q96 = 2n ** 96n;
+
+export function parseRangeTask(text = '') {
+  const t = String(text);
+  const position = t.match(/Position NFT id:\s*(\d+)/i)?.[1];
+  const pool = t.match(/Pool:\s*(0x[0-9a-fA-F]{40})/)?.[1];
+  if (!position || !pool) return null;
+  const block = t.match(/Block:\s*(\d+)/i)?.[1] || null;
+  const width = Number(t.match(/±\s*([\d.]+)\s*%/)?.[1] ?? NaN);
+  const tierPct = t.match(/on the\s*([\d.]+)\s*%\s*fee tier/i)?.[1];
+  const fields = [...t.matchAll(/"([A-Za-z0-9_]+)"\s*:/g)].map((m) => m[1]);
+  return { position, pool, block: block ? Number(block) : null, widthPct: Number.isFinite(width) ? width : null, feeTier: tierPct ? Math.round(Number(tierPct) * 10000) : null, fields };
+}
+
+const word = (hex, i) => '0x' + hex.slice(2 + i * 64, 2 + (i + 1) * 64);
+const int24 = (w) => { let v = BigInt(w) & ((1n << 24n) - 1n); if (v >= 1n << 23n) v -= 1n << 24n; return Number(v); };
+
+export async function answerRangeTask(task, rpcs) {
+  const tag = task.block ? '0x' + task.block.toString(16) : 'latest';
+  const call = async (to, data) => {
+    let last;
+    for (const u of rpcs) {
+      try {
+        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, tag] }), signal: AbortSignal.timeout(12000) });
+        const j = await r.json();
+        if (j.error) { last = new Error(j.error.message); continue; }
+        if (j.result && j.result !== '0x') return j.result;
+      } catch (e) { last = e; }
+    }
+    throw last || new Error('no endpoint could read that block');
+  };
+  const pad = (n) => BigInt(n).toString(16).padStart(64, '0');
+  const [slot0, spacingHex, pos] = await Promise.all([
+    call(task.pool, '0x3850c7bd'),
+    call(task.pool, '0xd0c93a7c'),
+    call(NPM, '0x99fbab88' + pad(task.position)),
+  ]);
+  const sqrtP = BigInt(word(slot0, 0));
+  const tick = int24(word(slot0, 1));
+  const token0 = '0x' + word(pos, 2).slice(26), token1 = '0x' + word(pos, 3).slice(26);
+  const fee = Number(BigInt(word(pos, 4)));
+  const tickLower = int24(word(pos, 5)), tickUpper = int24(word(pos, 6));
+  const liquidity = BigInt(word(pos, 7));
+  const [d0, d1] = await Promise.all([call(token0, '0x313ce567'), call(token1, '0x313ce567')]).then((x) => x.map((h) => Number(BigInt(h))));
+  const poolSpacing = Number(BigInt.asIntN(24, BigInt(spacingHex)));
+  const spacing = task.feeTier && task.feeTier !== fee ? (SPACING[task.feeTier] || poolSpacing) : poolSpacing;
+
+  const inRange = tick >= tickLower && tick < tickUpper;
+  // Price distance to the nearer bound, in percent of the current price.
+  const p = Number(sqrtP) ** 2 / 2 ** 192;
+  const pl = 1.0001 ** tickLower, pu = 1.0001 ** tickUpper;
+  const pctToNearestBound = inRange
+    ? Math.min((pu / p - 1) * 100, (1 - pl / p) * 100)
+    : -Math.min(Math.abs(pl / p - 1) * 100, Math.abs(pu / p - 1) * 100);
+
+  // Symmetric re-centre: ±w% in price around spot, snapped outward to the
+  // spacing so the range never ends up narrower than the policy.
+  const w = (task.widthPct ?? 6) / 100;
+  const rawLower = tick + Math.log(1 - w) / Math.log(1.0001);
+  const rawUpper = tick + Math.log(1 + w) / Math.log(1.0001);
+  const proposedTickLower = Math.floor(rawLower / spacing) * spacing;
+  const proposedTickUpper = Math.ceil(rawUpper / spacing) * spacing;
+
+  // The same liquidity in the new range at the block's price.
+  const sq = (t) => Math.sqrt(1.0001 ** t);
+  const sP = Number(sqrtP) / Number(Q96), sA = sq(proposedTickLower), sB = sq(proposedTickUpper);
+  const L = Number(liquidity);
+  let a0 = 0, a1 = 0;
+  if (sP <= sA) a0 = L * (sB - sA) / (sA * sB);
+  else if (sP >= sB) a1 = L * (sB - sA);
+  else { a0 = L * (sB - sP) / (sP * sB); a1 = L * (sP - sA); }
+  const amount0 = a0 / 10 ** d0, amount1 = a1 / 10 ** d1;
+
+  return {
+    currentTick: tick,
+    inRange,
+    pctToNearestBound: Number(pctToNearestBound.toFixed(6)),
+    proposedTickLower,
+    proposedTickUpper,
+    amount0: Number(amount0.toPrecision(10)),
+    amount1: Number(amount1.toPrecision(10)),
+    maxSlippageBps: 50,
+    _context: { block: task.block, pool: task.pool, position: task.position, fee, tickSpacing: spacing, tickLower, tickUpper, liquidity: liquidity.toString(), token0, token1, decimals: [d0, d1] },
+  };
+}
+
+==============================================================================
 === FILE: worker-agent/rebalance.js
 ==============================================================================
 
@@ -11782,8 +12380,10 @@ import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
 import { lpPositionPlan } from './lp-service.js';
-import { decodeJob, ERC8183 } from './hire.js';
+import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
+import { signedQuote, agentMessage } from './standard-quote.js';
+import { parseTask, answerTask } from './plain-tasks.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -11866,13 +12466,16 @@ export const SERVICES = {
 // actually sends and a marketplace that publishes a census of other people's
 // inconsistencies should not add one. price_display carries the human number.
 const PRICE_WEI = (p) => BigInt(String(p));
+// The DeFi agent's own wallet: the position the agent manages, read when a
+// buyer hires the position plan without naming one of theirs.
+const LP_AGENT_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
 
 // ---------------------------------------------------------------------------
 // Reading the kernel. Deliberately a plain eth_call — the buyer's money is the
 // thing being verified, so it is read from the chain and not from what the
 // buyer told us.
 // ---------------------------------------------------------------------------
-async function readJob(jobId) {
+export async function readJob(jobId) {
   const data = '0xbf22c457' + BigInt(jobId).toString(16).padStart(64, '0');
   for (let i = 0; i < RPCS.length * 2; i++) {
     try {
@@ -12079,7 +12682,9 @@ function exampleLinks(serviceId, service) {
   return {
     price: {
       x402: `0.10 USD1 per answer (or the same in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
-      ...(serviceId === 'lp_position_plan' ? {} : { escrow: `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)` }),
+      escrow: serviceId === 'lp_position_plan'
+        ? '0.10 $U through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
+        : `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)`,
     },
     buy: `https://agent.brainonbnb.com/answer?service=${serviceId}`,
     terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',
@@ -12111,7 +12716,11 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   return { ...out, ...exampleLinks(serviceId, service) };
 }
 
-export async function handleA2A(request, env) {
+// opts.agent: an endpoint that belongs to ONE of our agents (/defi-agent/a2a)
+// sells that agent's service whatever the prose says.
+const AGENT_SERVICE = { 'defi-agent': 'lp_position_plan' };
+
+export async function handleA2A(request, env, opts = {}) {
   let body;
   try { body = await request.json(); } catch { return rpcErr(null, -32700, 'not JSON'); }
   const id = body?.id;
@@ -12123,6 +12732,54 @@ export async function handleA2A(request, env) {
   const skill = String(data.skill || data.method || '').toLowerCase();
   const account = providerAccount(env);
   const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
+  const forced = AGENT_SERVICE[opts.agent] || null;
+
+  // --- a task in plain words (2026-10-04) --------------------------------
+  // Marketplaces test agents with text, not skills: Marque's "callable"
+  // check asks what we take in one sentence, and its rebalancing test hands
+  // over a V3 position at a past block and wants strict JSON. Answered here
+  // when no skill was named, with the JSON as a text part (what a strict
+  // reader parses) and as a data part.
+  if (!skill && text) {
+    const task = parseTask(text);
+    if (task) {
+      try {
+        const r = await answerTask(task, [env?.BSC_RPC_KEYED_URL_2, 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-dataseed1.defibit.io'].filter(Boolean));
+        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(r.json) }, { kind: 'data', data: r.json }] });
+      } catch (e) {
+        return rpcErr(id, -32000, `could not answer that ${task.kind} task at block ${task.block ?? task.range?.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
+      }
+    }
+    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|in one sentence/i.test(text)) {
+      const sentence = forced === 'lp_position_plan'
+        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
+        : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
+    }
+  }
+
+  // --- BNB's standard hire (2026-10-04) ----------------------------------
+  // The SDK dialect: a signed NegotiationResult the buyer anchors as the job
+  // description. Marketplaces on the BNB Agent SDK speak only this, so
+  // without it none of our agents could be hired there.
+  if (skill === 'negotiate-erc8183-job') {
+    if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
+    const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    if (!service || (service.id === 'lp_position_plan' && !forced)) {
+      return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
+    }
+    const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
+    return rpcOk(id, agentMessage(q.envelope));
+  }
+  if (skill === 'erc8183-job-status') {
+    const jobId = String(data.job_id ?? '').match(/^\d+$/)?.[0];
+    if (!jobId) return rpcErr(id, -32602, "erc8183-job-status requires an integer 'job_id'");
+    const job = await readJob(jobId);
+    if (!job) return rpcErr(id, -32000, `job ${jobId} does not exist in the kernel`);
+    return rpcOk(id, agentMessage({ job_id: Number(jobId), client: job.client, provider: job.provider, status: job.status, budget: String(job.budget), deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` }));
+  }
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
@@ -12141,13 +12798,12 @@ export async function handleA2A(request, env) {
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
-    const service = pickService(wanted, data.service);
-    // The position plan is sold per answer over x402 and nowhere else — the
-    // card says so (escrow: false). Negotiating it here used to come back
-    // accepted:true in $U, and a job funded on that quote would have been
-    // worked through the escrow the card rules out (2026-09-18).
-    if (service && service.id === 'lp_position_plan') {
-      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402, not through the ERC-8183 escrow.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
+    const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    // The position plan is sold through the escrow by the DeFi agent alone
+    // (2026-10-04, its own identity and endpoint /defi-agent). On the shared
+    // endpoint it is still x402 only — the card there says escrow: false.
+    if (service && service.id === 'lp_position_plan' && opts.agent !== 'defi-agent') {
+      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
     }
     if (!service) {
       return rpcOk(id, {
@@ -12162,14 +12818,14 @@ export async function handleA2A(request, env) {
       accepted: true,
       provider,
       price: service.price,
-      price_display: service.price_display,
+      price_display: service.price_display.replace("USD1", "$U"),
       currency: 'U',
       service: service.id,
       category: service.category,
       deliverables: service.deliverables,
       needs: service.needs,
       estimated_completion_seconds: 120,
-      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
       chain_id: 56,
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
@@ -12180,105 +12836,147 @@ export async function handleA2A(request, env) {
   if (skill === 'notify_funded' || skill === 'deliver' || skill === 'start') {
     const jobId = String(data.job_id ?? data.jobId ?? '').match(/^\d+$/)?.[0];
     if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
-    if (!account) return rpcErr(id, -32000, 'this agent cannot deliver: no provider key configured');
-
-    const job = await readJob(jobId);
-    if (!job) return rpcErr(id, -32000, `job ${jobId} does not exist in the kernel`);
-    if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
-      return rpcErr(id, -32000, `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.`);
-    }
-    if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
-      const prior = await env.AGENT.get(`job:${jobId}`, 'json');
-      return rpcOk(id, { already_delivered: true, job_id: jobId, status: job.status, result: prior?.result ?? null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` });
-    }
-    if (job.status !== 'FUNDED') {
-      return rpcErr(id, -32000, `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.`);
-    }
-    // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
-    // the policy only when its evaluator and hook are the router. Anyone can
-    // create a job naming us as provider and THEMSELVES as evaluator, fund ten
-    // cents, take the full result out of this very response, then reject the
-    // job and claim the refund — free answers, our gas. hire.js has always
-    // said so ("a job registered with a different evaluator never reaches the
-    // policy that releases it"); the seller never looked.
-    const router = String(ERC8183.router).toLowerCase();
-    const zero = '0x0000000000000000000000000000000000000000';
-    const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
-    if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
-      return rpcErr(id, -32000, `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.`);
-    }
-    // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
-    // twice, and the second one's document replaced the stored one after the
-    // first one's digest was already on-chain. A short lock, read back.
-    const lockKey = `lock:job:${jobId}`, lockBy = crypto.randomUUID();
-    const held = await env.AGENT.get(lockKey);
-    if (held) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now — follow it at https://agent.brainonbnb.com/job?id=${jobId}`);
-    await env.AGENT.put(lockKey, lockBy, { expirationTtl: 120 });
-    if ((await env.AGENT.get(lockKey)) !== lockBy) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now`);
-
-    // WHAT WAS BOUGHT IS WHAT THE CHAIN SAYS WAS BOUGHT. notify_funded needs no
-    // authentication — it only says "look at the chain" — so nothing in it may
-    // decide the work: `service` and `params` in the message used to win over
-    // the job's own description, and anyone who saw a funded job could have a
-    // different document committed on-chain for the real buyer. The message
-    // now only fills what the description does not say.
-    const service = pickService(job.description, null) || pickService('', data.service);
-    if (!service) return rpcErr(id, -32000, 'the job description does not match anything we sell');
-    if (BigInt(job.budget) < PRICE_WEI(service.price)) {
-      return rpcErr(id, -32000, `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`);
-    }
-
-    const fromChain = extractParams(String(job.description || ''), {});
-    const asked = extractParams(String(text || ''), data.params || data);
-    const params = { ...asked, ...fromChain, service: service.id };
-    let result;
-    try {
-      result = await doWork(service.id, params, env);
-    } catch (e) {
-      // A job we cannot do is not delivered and not charged for. The buyer's
-      // budget stays in escrow and comes back to them at expiry, which is the
-      // correct outcome and the one the kernel already implements.
-      await env.AGENT.delete(lockKey).catch(() => {});
-      return rpcErr(id, -32000, `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`);
-    }
-
-    const document = JSON.stringify({
-      job_id: jobId,
-      service: service.id,
-      provider: account.address,
-      client: job.client,
-      produced_at: new Date().toISOString(),
-      result,
-      method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
-      verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
-    });
-
-    // The document is stored BEFORE it is sent, and a submit that throws is an
-    // answer, not a bare 500: the transaction may still land, and a deliverable
-    // on-chain with no document behind it cannot be checked by anyone.
-    const already = await env.AGENT.get(`job:${jobId}`, 'json');
-    if (!already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery: null, result }), { expirationTtl: 60 * 60 * 24 * 365 });
-    let delivery;
-    try { delivery = await submitDeliverable({ env, jobId, document, readJob }); }
-    catch (e) {
-      await env.AGENT.delete(lockKey).catch(() => {});
-      return rpcErr(id, -32000, `job ${jobId}: the work is done and stored, but writing it on-chain did not go through (${String(e.shortMessage || e.message || e).slice(0, 160)}). Send notify_funded again in a minute — the same document is submitted, nothing is worked twice. https://agent.brainonbnb.com/job/${jobId}/result`);
-    }
-    // A delivery that was already on-chain keeps the document it was made from.
-    if (!delivery?.already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
-
-    return rpcOk(id, {
-      delivered: true,
-      job_id: jobId,
-      service: service.id,
-      result,
-      on_chain: delivery,
-      deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result`,
-      note: 'The deliverable is on-chain in full, not as a link. The bytes32 is the SHA-256 of the document served at the URL above, so both can be checked against each other.',
-    });
+    const r = await deliverJob(jobId, env, { text, data });
+    return r.error ? rpcErr(id, -32000, r.error) : rpcOk(id, r.result);
   }
 
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
+}
+
+// THE DELIVERY ITSELF, out of the A2A handler (2026-10-04). A buyer who hires
+// the way BNB's own SDK does — signed quote, createJob, fund — never sends
+// notify_funded: the reference seller watches the kernel for funded jobs
+// naming it. Ours waited for the message, so a job funded through Marque or
+// any SDK client would have sat FUNDED until it expired. The cron's watcher
+// (watchFundedJobs) and notify_funded now share this one path; nothing in it
+// trusts the caller — the job, its provider, evaluator and budget are read
+// from the chain.
+export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
+  const account = providerAccount(env);
+  if (!account) return { error: 'this agent cannot deliver: no provider key configured' };
+  const job = await readJob(jobId);
+  if (!job) return { error: `job ${jobId} does not exist in the kernel` };
+  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+    return { error: `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.` };
+  }
+  if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
+    const prior = await env.AGENT.get(`job:${jobId}`, 'json');
+    return { result: { already_delivered: true, job_id: jobId, status: job.status, result: prior?.result ?? null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` } };
+  }
+  if (job.status !== 'FUNDED') {
+    return { error: `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.` };
+  }
+  // A JOB THAT EXPIRES INSIDE THE DISPUTE WINDOW CANNOT BE DELIVERED
+  // (2026-10-04). The kernel refuses submit() with 0x15e5dd74 when the job
+  // would expire before the policy's window (7 days) closes — found on two
+  // jobs funded through mandatemarkets.com with a 6-day expiry. Saying so
+  // before any work keeps the watcher from computing and retrying an answer
+  // the chain will not take; the buyer's budget returns at expiry.
+  {
+    const windowSec = await readDisputeWindow(async (to, data) => {
+      const r = await fetch(RPCS[0], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }), signal: AbortSignal.timeout(10000) });
+      return (await r.json()).result;
+    });
+    if (job.expired_at && job.expired_at < Math.floor(Date.now() / 1000) + windowSec) {
+      return { error: `job ${jobId} expires ${new Date(job.expired_at * 1000).toISOString()}, inside the escrow's ${Math.round(windowSec / 86400)}-day dispute window, so the kernel refuses any delivery (0x15e5dd74). Nothing was worked; the budget returns to the buyer at expiry (claimRefund). Create the job with an expiry at least ${Math.round(windowSec / 86400) + 1} days out.`, permanent: true };
+    }
+  }
+  // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
+  // the policy only when its evaluator and hook are the router. Anyone can
+  // create a job naming us as provider and THEMSELVES as evaluator, fund ten
+  // cents, take the full result out of this very response, then reject the
+  // job and claim the refund — free answers, our gas. hire.js has always
+  // said so ("a job registered with a different evaluator never reaches the
+  // policy that releases it"); the seller never looked.
+  const router = String(ERC8183.router).toLowerCase();
+  const zero = '0x0000000000000000000000000000000000000000';
+  const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
+  if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
+    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.` };
+  }
+  // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
+  // twice, and the second one's document replaced the stored one after the
+  // first one's digest was already on-chain. A short lock, read back.
+  const lockKey = `lock:job:${jobId}`, lockBy = crypto.randomUUID();
+  const held = await env.AGENT.get(lockKey);
+  if (held) return { error: `job ${jobId} is being delivered by another request right now — follow it at https://agent.brainonbnb.com/job?id=${jobId}` };
+  await env.AGENT.put(lockKey, lockBy, { expirationTtl: 120 });
+  if ((await env.AGENT.get(lockKey)) !== lockBy) return { error: `job ${jobId} is being delivered by another request right now` };
+
+  // WHAT WAS BOUGHT IS WHAT THE CHAIN SAYS WAS BOUGHT. notify_funded needs no
+  // authentication — it only says "look at the chain" — so nothing in it may
+  // decide the work: `service` and `params` in the message used to win over
+  // the job's own description, and anyone who saw a funded job could have a
+  // different document committed on-chain for the real buyer. The message
+  // now only fills what the description does not say.
+  // A quote we signed names its service in the deliverables ("service
+  // lp_position_plan — …", see signedQuote), and that sentence is in the job
+  // description the buyer anchored. It wins over guessing from prose: six of
+  // our agents share one provider address, so the job itself cannot say
+  // which one was hired.
+  const tagged = String(job.description || '').match(/\bservice ([a-z_]+)\b/)?.[1];
+  const service = (tagged && SERVICES[tagged]) || pickService(job.description, null) || pickService('', data.service);
+  if (!service) return { error: 'the job description does not match anything we sell' };
+  if (BigInt(job.budget) < PRICE_WEI(service.price)) {
+    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
+  }
+
+  const fromChain = extractParams(String(job.description || ''), {});
+  const asked = extractParams(String(text || ''), data.params || data);
+  const params = { ...asked, ...fromChain, service: service.id };
+  let result;
+  try {
+    // THE DEFI AGENT WITHOUT A POSITION NAMED (2026-10-04). A marketplace
+    // hire carries the buyer's words and often no position id: the plan is
+    // then made for the wallet that paid, and if that wallet holds no single
+    // V3 position, for the agent's own — the delivery is still the agent's
+    // real decision, and the document says whose position it read.
+    if (service.id === 'lp_position_plan' && missingInput(service.id, params)) {
+      try { result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client}`; }
+      catch { result = await doWork(service.id, { ...params, address: LP_AGENT_WALLET }, env); result.read_for = `the agent's own position (wallet ${LP_AGENT_WALLET}) — the hiring wallet ${job.client} holds no single PancakeSwap V3 position and none was named`; }
+    } else result = await doWork(service.id, params, env);
+  } catch (e) {
+    // A job we cannot do is not delivered and not charged for. The buyer's
+    // budget stays in escrow and comes back to them at expiry, which is the
+    // correct outcome and the one the kernel already implements.
+    await env.AGENT.delete(lockKey).catch(() => {});
+    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.` };
+  }
+
+  const document = JSON.stringify({
+    job_id: jobId,
+    service: service.id,
+    provider: account.address,
+    client: job.client,
+    produced_at: new Date().toISOString(),
+    result,
+    method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
+    verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
+  });
+
+  // The document is stored BEFORE it is sent, and a submit that throws is an
+  // answer, not a bare 500: the transaction may still land, and a deliverable
+  // on-chain with no document behind it cannot be checked by anyone.
+  const already = await env.AGENT.get(`job:${jobId}`, 'json');
+  if (!already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery: null, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+  let delivery;
+  try { delivery = await submitDeliverable({ env, jobId, document, readJob }); }
+  catch (e) {
+    await env.AGENT.delete(lockKey).catch(() => {});
+    return { error: `job ${jobId}: the work is done and stored, but writing it on-chain did not go through (${String(e.shortMessage || e.message || e).slice(0, 160)}). Send notify_funded again in a minute — the same document is submitted, nothing is worked twice. https://agent.brainonbnb.com/job/${jobId}/result` };
+  }
+  // A delivery that was already on-chain keeps the document it was made from.
+  if (!delivery?.already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  return { result: {
+    delivered: true,
+    job_id: jobId,
+    service: service.id,
+    result,
+    on_chain: delivery,
+    deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result`,
+    note: 'The deliverable is on-chain in full, not as a link. The bytes32 is the SHA-256 of the document served at the URL above, so both can be checked against each other.',
+  } };
 }
 
 // The stored deliverable, served so the on-chain digest can be checked against
@@ -12822,6 +13520,178 @@ export function trackRecord(sessions) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/standard-quote.js
+==============================================================================
+
+// BNB's standard hire, the seller's half: a signed quote.
+//
+// Marketplaces built on the BNB Agent SDK (Marque, Mandate, Agent Atlas and the
+// SDK's own buyer) negotiate with skill "negotiate-erc8183-job" and expect a
+// NegotiationResult envelope back: the request, the response terms with price
+// and currency, keccak hashes of both, and a negotiation_hash the provider has
+// signed. The buyer anchors that envelope verbatim as the job's description in
+// createJob, so neither side can rewrite the deal afterwards — and it never
+// sends notify_funded; the seller is expected to find its funded job on the
+// chain (watchFundedJobs in job-watch.js).
+//
+// PORTED, NOT INVENTED. Every field, default and hashing step below follows
+// bnb-chain/bnbagent-sdk typescript/src/erc8183/negotiation.ts
+// (NegotiationHandler.negotiate, buildDescriptionContent) and
+// src/core/canonicalJson.ts, because a buyer re-derives negotiation_hash from
+// the on-chain description and one key out of order is a quote that fails
+// verification after the money is in escrow. scripts/standard-quote-check.mjs
+// verifies our envelope with the SDK's own verifier logic.
+import { keccak256, toBytes, getAddress } from 'viem';
+
+// canonicalJson: keys sorted at every depth, JSON.stringify, and every code
+// point from U+007F up escaped as \uXXXX (the SDK's Python twin does the same).
+function sortValue(v) {
+  if (Array.isArray(v)) return v.map(sortValue);
+  if (v !== null && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v).sort()) out[k] = sortValue(v[k]);
+    return out;
+  }
+  if (typeof v === 'number' && !Number.isFinite(v)) throw new TypeError('canonicalJson: non-finite number');
+  return v;
+}
+export const canonicalJson = (value) =>
+  JSON.stringify(sortValue(value)).replace(/[\u007f-￿]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+const keccakOfText = (text) => keccak256(toBytes(text));
+
+// The SDK's TermSpecification.toDict(): the two evaluation fields always
+// present with their defaults, the optional ones only when set.
+function termsDict(t) {
+  const out = {
+    deliverables: t.deliverables,
+    quality_standards: t.quality_standards,
+    evaluation_required: t.evaluation_required ?? true,
+    evaluator_type: t.evaluator_type ?? 'uma_oov3',
+  };
+  if (t.success_criteria != null) out.success_criteria = t.success_criteria;
+  if (t.price != null) out.price = t.price;
+  if (t.currency != null) out.currency = t.currency;
+  return out;
+}
+
+// sanitizeForClaim: square brackets to parentheses, control characters other
+// than tab and newline dropped — what the SDK writes into the description.
+function sanitizeForClaim(s) {
+  if (typeof s !== 'string') return String(s);
+  let out = '';
+  for (const ch of s.replaceAll('[', '(').replaceAll(']', ')')) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code >= 0x20 || ch === '\t' || ch === '\n') out += ch;
+  }
+  return out;
+}
+
+// The quote is good for fifteen minutes, the SDK's ceiling: long enough to
+// fund, short enough that a price cannot be held against us for a day.
+export const QUOTE_TTL_SECONDS = 900;
+const MAX_DESCRIPTION_BYTES = 4096;
+
+// Returns { ok:true, envelope } or { ok:false, reason_code, reason }.
+// `service` decides price and names itself in the deliverables, so the job
+// the buyer anchors says which of our agents was hired (they share one
+// provider address). `account` is the provider's viem account.
+export async function signedQuote({ data, service, account, chainId, verifyingContract, currency, now = Math.floor(Date.now() / 1000) }) {
+  const task = data?.task_description;
+  const t = data?.terms;
+  if (typeof task !== 'string' || !t || typeof t !== 'object' || Array.isArray(t) || typeof t.deliverables !== 'string') {
+    return { ok: false, reason_code: '0x04', reason: "negotiate-erc8183-job needs 'task_description' (string) and 'terms' with 'deliverables' and 'quality_standards'" };
+  }
+  if (!t.quality_standards) return { ok: false, reason_code: '0x04', reason: 'quality_standards is required in terms.' };
+  // A buyer asking to pay in another token gets told which one we take,
+  // rather than a quote it cannot fund.
+  if (t.currency && String(t.currency).toLowerCase() !== String(currency).toLowerCase()) {
+    return { ok: false, reason_code: '0x06', reason: `Requested payment token is unavailable; this seller takes ${currency} ($U)` };
+  }
+  const request = { task_description: task, terms: termsDict(t) };
+  if (Array.isArray(data.context_urls) && data.context_urls.length) request.context_urls = data.context_urls;
+  if (data.request_id) request.request_id = data.request_id;
+  const requestHash = keccakOfText(canonicalJson(request));
+
+  const responseTerms = termsDict({
+    deliverables: `service ${service.id} — ${t.deliverables}`,
+    quality_standards: t.quality_standards,
+    success_criteria: t.success_criteria ?? null,
+    price: String(service.price),
+    currency,
+  });
+  const response = { accepted: true, terms: responseTerms, estimated_completion_seconds: 120, quote_expires_at: now + QUOTE_TTL_SECONDS };
+  const responseHash = keccakOfText(canonicalJson(response));
+
+  // buildDescriptionContent — exactly the fields the buyer writes on-chain.
+  const terms = { deliverables: sanitizeForClaim(responseTerms.deliverables), quality_standards: sanitizeForClaim(responseTerms.quality_standards) };
+  if (Array.isArray(responseTerms.success_criteria) && responseTerms.success_criteria.length) terms.success_criteria = responseTerms.success_criteria.map(sanitizeForClaim);
+  const content = {
+    version: 1,
+    negotiated_at: now,
+    task: sanitizeForClaim(task),
+    terms,
+    price: responseTerms.price,
+    currency,
+    quote_expires_at: response.quote_expires_at,
+    chain_id: chainId,
+    verifying_contract: getAddress(verifyingContract),
+  };
+  const negotiationHash = keccakOfText(canonicalJson(content));
+  const providerSig = await account.signMessage({ message: negotiationHash });
+
+  if (canonicalJson({ ...content, negotiation_hash: negotiationHash, provider_sig: providerSig }).length > MAX_DESCRIPTION_BYTES) {
+    return { ok: false, reason_code: '0x07', reason: `task and terms are too long for the on-chain description (max ${MAX_DESCRIPTION_BYTES} bytes); shorten them` };
+  }
+  return {
+    ok: true,
+    envelope: {
+      request,
+      request_hash: requestHash,
+      response: { ...response, negotiated_at: now },
+      response_hash: responseHash,
+      negotiation_hash: negotiationHash,
+      provider_sig: providerSig,
+      chain_id: chainId,
+      verifying_contract: getAddress(verifyingContract),
+      provider_address: account.address,
+    },
+  };
+}
+
+// The BUYER's half (2026-10-04): the on-chain job description an SDK buyer
+// writes for a signed quote — buildJobDescription(result) of the SDK. The
+// seller re-derives negotiation_hash from exactly these fields, so Brain
+// Plaza's hire button must write this and not a summary of its own. Returns
+// null when the envelope is not one (no hash, not accepted, no price).
+export function jobDescriptionFromEnvelope(env) {
+  const response = env?.response || {}, request = env?.request || {};
+  const terms = response.terms || {};
+  if (!env?.negotiation_hash || response.accepted === false || !terms.price || !terms.currency) return null;
+  const t = { deliverables: sanitizeForClaim(terms.deliverables ?? ''), quality_standards: sanitizeForClaim(terms.quality_standards ?? '') };
+  if (Array.isArray(terms.success_criteria) && terms.success_criteria.length) t.success_criteria = terms.success_criteria.map(sanitizeForClaim);
+  const content = {
+    version: 1,
+    negotiated_at: env.negotiated_at || response.negotiated_at || Math.floor(Date.now() / 1000),
+    task: sanitizeForClaim(request.task_description ?? ''),
+    terms: t,
+    price: terms.price,
+    currency: terms.currency,
+  };
+  const exp = env.quote_expires_at || response.quote_expires_at;
+  if (exp != null) content.quote_expires_at = exp;
+  if (env.chain_id != null) content.chain_id = env.chain_id;
+  if (env.verifying_contract != null) content.verifying_contract = getAddress(env.verifying_contract);
+  content.negotiation_hash = env.negotiation_hash;
+  if (env.provider_sig) content.provider_sig = env.provider_sig;
+  const s = canonicalJson(content);
+  return s.length > MAX_DESCRIPTION_BYTES ? null : s;
+}
+
+// The SDK's agentMessage(): what the reference buyer reads the quote out of
+// (reply.result.parts[0].data).
+export const agentMessage = (data) => ({ kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'data', data }] });
+
+==============================================================================
 === FILE: worker-agent/submit.js
 ==============================================================================
 
@@ -13025,6 +13895,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
+import { lpPositionPlan } from './lp-service.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 
 const KEY = 'telemetry:latest';
@@ -13357,6 +14228,28 @@ async function probeYield() {
 // The rebalancer, run against a deliberately awkward reference portfolio: one
 // deep pool and one thin taxed one. A rebalancer that only ever reports cheap
 // corrections has not been tested on anything that matters.
+// The DeFi agent (#363709), probed the way a buyer's job runs it: its own
+// position plan, from the same code, on its own wallet.
+async function probeDefiAgent(env) {
+  const at = new Date().toISOString();
+  const attempt = {};
+  try {
+    const plan = await withSecondChance(() => lpPositionPlan({ address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' }, env), attempt);
+    return {
+      ready: true,
+      checked_at: at,
+      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
+      headline: plan.verdict ? String(plan.verdict).slice(0, 220) : 'position read, no verdict formed',
+      measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
+      last_error: null,
+    };
+  } catch (e) {
+    return notReady(e, at, attempt);
+  }
+}
+
 async function probeRebalance() {
   const at = new Date().toISOString();
   const attempt = {};
@@ -13526,13 +14419,14 @@ export async function refreshTelemetry(env) {
   // Jobs first: the health-factor probe carries the last real delivery as its
   // proof of arithmetic, so it needs the answer before it runs.
   const jobs = await ownJobs(env);
-  const [peers, hf, grid, yld, reb, lp] = await Promise.all([
+  const [peers, hf, grid, yld, reb, lp, defi] = await Promise.all([
     Promise.all(PEERS.map(askPeer)),
     probeHealthFactor(jobs.last.health_factor || null),
     probeGrid(),
     probeYield(),
     probeRebalance(),
     probeLpTiers(),
+    probeDefiAgent(env),
   ]);
 
   // Null means the job list could not be read, and stays null. A KV failure
@@ -13602,6 +14496,21 @@ export async function refreshTelemetry(env) {
         last_delivery: jobs.last.lp_tier_plan || null,
         ...lp,
       },
+      // The DeFi agent (2026-10-04): no probe of its own here — its live
+      // state is its own position, published at /lp/agent every run.
+      {
+        id: 363709,
+        name: 'Brain on BNB — DeFi Agent',
+        category: 'rebalancing',
+        origin: 'https://agent.brainonbnb.com/defi-agent',
+        hireable: 'ERC-8183 (signed quote, negotiate-erc8183-job)',
+        price: '0.10 $U',
+        jobs_delivered: delivered('lp_position_plan'),
+        ...split('lp_position_plan'),
+        last_delivery: jobs.last.lp_position_plan || null,
+        live_state: 'https://agent.brainonbnb.com/lp/agent',
+        ...defi,
+      },
     ],
     peers,
     // How many deliverables the per-agent counts were derived from. Published
@@ -13609,7 +14518,7 @@ export async function refreshTelemetry(env) {
     // of the per-agent counts can never exceed the number of deliverables
     // examined. When the count was origin-wide, one job produced a sum of two.
     jobs_counted_from: { deliverables_examined: jobs.byService ? Object.values(jobs.byService).reduce((n, v) => n + v, 0) : null, truncated: jobs.truncated },
-    method: 'Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
+    method: 'Our own entries are measured by running the service against a reference input, through the same code a paid job runs (the DeFi Agent: its own position plan). The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
     cadence: 'every 15 minutes',
   };
 
@@ -13825,19 +14734,22 @@ const num = (v, dp = 2) => Number(v) / 1e18;
  * Reads one account's Venus position and returns its health factor.
  * Read-only: it calls view functions and signs nothing.
  */
-export async function healthFactor(account) {
+export async function healthFactor(account, { block: atBlock = null, rpcs = null } = {}) {
   if (!/^0x[a-fA-F0-9]{40}$/.test(String(account || ''))) {
     throw new Error('not an address');
   }
 
   // Round 1: which markets is this account in, what does the protocol itself
   // say about its liquidity, and which oracle is authoritative right now.
-  const block = await pinnedBlock();
+  // A past block (a task "for this block only") needs an archive-capable
+  // endpoint, passed in as rpcs; the default stays one block behind the head.
+  const via = rpcs || BATCH_RPCS;
+  const block = atBlock ? '0x' + Number(atBlock).toString(16) : await pinnedBlock();
   const [assetsRaw, liqRaw, oracleRaw] = await batchCall([
     { to: UNITROLLER, data: SEL.getAssetsIn + addrArg(account) },
     { to: UNITROLLER, data: SEL.getAccountLiquidity + addrArg(account) },
     { to: UNITROLLER, data: SEL.oracle },
-  ], { block });
+  ], { block, rpcs: via });
 
   const oracle = addrAt(oracleRaw, 0);
   const venusError = Number(uint(liqRaw, 0));
@@ -13865,7 +14777,7 @@ export async function healthFactor(account) {
     calls.push({ to: oracle, data: SEL.getUnderlyingPrice + addrArg(m) });
     calls.push({ to: m, data: SEL.symbol });
   }
-  const res = await batchCall(calls, { block });
+  const res = await batchCall(calls, { block, rpcs: via });
 
   let weightedCollateral = 0n; // collateral after the protocol's own haircut
   let rawCollateral = 0n;      // before it, so the haircut is visible
@@ -13925,6 +14837,10 @@ export async function healthFactor(account) {
         // Against liquidation (the threshold); what may still be borrowed is the factor's.
         counts_as_collateral_usd: num(weightedUsd),
         counts_toward_borrowing_usd: num(borrowableUsd),
+        // The oracle's raw answer (1e36 / token decimals scaled) and the raw
+        // supply, for callers that price a move in one market.
+        oracle_price_raw: price.toString(),
+        supplied_underlying_raw: underlying.toString(),
       });
     }
   }
@@ -14205,6 +15121,113 @@ export function buildCatalog({ payTo, price, days, asset, network }) {
     ownershipProofs: Object.values(OWNERSHIP_PROOFS),
     instructions: instructions({ payTo, price, days, asset, network }),
   };
+}
+
+==============================================================================
+=== FILE: worker-agent/x402-eip3009.js
+==============================================================================
+
+// x402 in USD1 by EIP-3009, settled by us (2026-10-04, operator's go).
+//
+// WHY. Marketplaces on BNB Chain pay x402 sellers with a signed
+// TransferWithAuthorization in USD1 or $U — Mandate calls an agent "Priced"
+// (rung 3) and lets its hire button pay per call only when the seller accepts
+// that; our 402 offered USDC through Permit2 and USD1 by plain transfer, so
+// to Mandate our agents were merely "Live". The facilitator we use for USDC
+// (Dexter) settles no EIP-3009 on BSC, so this file does it.
+//
+// HOW, and what is never trusted:
+//   1. every field against our terms — to = our x402 wallet, value >= price,
+//      the validity window open now and long enough to settle in;
+//   2. the signature recovered off-chain against USD1's own EIP-712 domain
+//      ("World Liberty Financial USD", "1", 56, USD1 — equal to the token's
+//      DOMAIN_SEPARATOR, checked 2026-10-04) — a forged one costs us nothing;
+//   3. authorizationState(from, nonce) on the token — a used nonce is refused;
+//   4. the transfer simulated as an eth_call from our sender — balance and
+//      signature proven at this block before any gas is spent;
+//   5. sent from the provider wallet (gas only; the money moves from the payer
+//      straight to the x402 wallet, never through the sender), receipt waited.
+// The resulting transaction hash then goes through the SAME check a direct
+// USD1 transfer does (verifyPayment: a Transfer of >= price to our wallet in
+// that receipt) and the same one-time claim, so a hash can be used once.
+import { createPublicClient, createWalletClient, http, encodeFunctionData, parseSignature, recoverTypedDataAddress, getAddress } from 'viem';
+import { bsc } from 'viem/chains';
+import { providerAccount } from './submit.js';
+
+export const USD1 = '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d';
+const RPCS = ['https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
+const DOMAIN = { name: 'World Liberty Financial USD', version: '1', chainId: 56, verifyingContract: USD1 };
+const TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' },
+  ],
+};
+const ABI = [
+  { name: 'transferWithAuthorization', type: 'function', stateMutability: 'nonpayable', inputs: [
+    { name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' },
+    { name: 'v', type: 'uint8' }, { name: 'r', type: 'bytes32' }, { name: 's', type: 'bytes32' }], outputs: [] },
+  { name: 'authorizationState', type: 'function', stateMutability: 'view', inputs: [{ name: 'authorizer', type: 'address' }, { name: 'nonce', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+];
+const MIN_WINDOW = 30; // seconds the authorization must still be valid for
+
+// The accepts[] entry: x402 v1 and v2 spellings both, the way Mandate and the
+// reference clients read it (extra.transferMethod / assetTransferMethod).
+export function eip3009Accepts({ payTo, amountAtomic, description, resource }) {
+  return {
+    scheme: 'exact', network: 'eip155:56', asset: USD1,
+    amount: String(amountAtomic), maxAmountRequired: String(amountAtomic),
+    payTo, resource, maxTimeoutSeconds: 300,
+    description: `${description} — USD1 by EIP-3009 (sign TransferWithAuthorization, send it in X-PAYMENT or PAYMENT-SIGNATURE; we settle it)`,
+    extra: { name: DOMAIN.name, version: DOMAIN.version, decimals: 18, assetTransferMethod: 'eip3009', transferMethod: 'eip3009' },
+  };
+}
+
+// Is this decoded payment payload an EIP-3009 authorization?
+export const isEip3009 = (inner) => !!(inner && inner.authorization && inner.signature && inner.authorization.nonce);
+
+// Pure checks, no network — pinned by scripts/payment-ledger-check.mjs.
+export function eip3009Mismatch(inner, { payTo, price, now = Math.floor(Date.now() / 1000) }) {
+  const a = inner?.authorization || {};
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a.from || '')) return 'authorization.from is not an address';
+  if (String(a.to || '').toLowerCase() !== String(payTo).toLowerCase()) return `authorization.to must be ${payTo}`;
+  let value; try { value = BigInt(a.value); } catch { return 'authorization.value is not a number'; }
+  if (value < BigInt(price)) return `authorization.value ${value} is below the price ${price}`;
+  if (Number(a.validAfter || 0) > now) return 'the authorization is not valid yet';
+  if (Number(a.validBefore || 0) < now + MIN_WINDOW) return 'the authorization expires too soon to settle';
+  if (!/^0x[0-9a-fA-F]{64}$/.test(a.nonce || '')) return 'authorization.nonce must be 32 bytes of hex';
+  if (!/^0x[0-9a-fA-F]{130}$/.test(inner.signature || '')) return 'signature must be 65 bytes of hex';
+  return null;
+}
+
+// Settle it. Returns { ok:true, tx, from, value } or { ok:false, reason }.
+export async function settleEip3009(env, inner, { payTo, price }) {
+  const bad = eip3009Mismatch(inner, { payTo, price });
+  if (bad) return { ok: false, stage: 'verify', reason: bad };
+  const a = inner.authorization;
+  const message = { from: getAddress(a.from), to: getAddress(a.to), value: BigInt(a.value), validAfter: BigInt(a.validAfter || 0), validBefore: BigInt(a.validBefore), nonce: a.nonce };
+  let signer;
+  try { signer = await recoverTypedDataAddress({ domain: DOMAIN, types: TYPES, primaryType: 'TransferWithAuthorization', message, signature: inner.signature }); }
+  catch { return { ok: false, stage: 'verify', reason: 'the signature does not recover' }; }
+  if (signer.toLowerCase() !== message.from.toLowerCase()) return { ok: false, stage: 'verify', reason: `the signature is ${signer}'s, not ${message.from}'s` };
+  const account = providerAccount(env);
+  if (!account) return { ok: false, stage: 'settle', reason: 'this seller cannot settle EIP-3009 right now (no sender key); nothing was taken' };
+  const pub = createPublicClient({ chain: bsc, transport: http(RPCS[0]) });
+  const used = await pub.readContract({ address: USD1, abi: ABI, functionName: 'authorizationState', args: [message.from, message.nonce] }).catch(() => null);
+  if (used === null) return { ok: false, stage: 'verify', reason: 'the token could not be read; nothing was taken — try again' };
+  if (used) return { ok: false, stage: 'verify', reason: 'this authorization nonce has already been used' };
+  const { v, r, s, yParity } = parseSignature(inner.signature);
+  const data = encodeFunctionData({ abi: ABI, functionName: 'transferWithAuthorization', args: [message.from, message.to, message.value, message.validAfter, message.validBefore, message.nonce, Number(v ?? (yParity + 27)), r, s] });
+  try { await pub.call({ account, to: USD1, data }); }
+  catch (e) { return { ok: false, stage: 'verify', reason: 'the payment would not settle: ' + String(e.shortMessage || e.message || e).split('\n')[0].slice(0, 200) }; }
+  const wallet = createWalletClient({ account, chain: bsc, transport: http(RPCS[0]) });
+  let hash;
+  try { hash = await wallet.sendTransaction({ to: USD1, data }); }
+  catch (e) { return { ok: false, stage: 'settle', reason: 'sending the settlement failed: ' + String(e.shortMessage || e.message || e).slice(0, 160) + ' — nothing was taken' }; }
+  const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60_000 }).catch(() => null);
+  if (!rc || rc.status !== 'success') return { ok: false, stage: 'settle', reason: `the settlement ${hash} did not succeed`, tx: hash };
+  return { ok: true, tx: hash.toLowerCase(), from: message.from, value: message.value };
 }
 
 ==============================================================================

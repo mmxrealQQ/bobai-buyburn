@@ -1,15 +1,15 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-09-26T05:04:57.405Z",
-  "registered_ids": 358439,
-  "reachable_ids": 909,
-  "independent_operators": 105,
-  "operators_speaking_a_protocol": 48,
+  "measured_at": "2026-10-04T16:11:20.994Z",
+  "registered_ids": 363836,
+  "reachable_ids": 921,
+  "independent_operators": 109,
+  "operators_speaking_a_protocol": 51,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
       "operator": "brainonbnb.com",
-      "instances": 6,
+      "instances": 7,
       "distinct_capabilities": 2,
       "ids": [
         49467,
@@ -17,7 +17,8 @@
         302258,
         304493,
         304494,
-        310460
+        310460,
+        363709
       ],
       "best_id": 49467,
       "name": "Brain On BNB AI ($BOBAI)",
@@ -165,7 +166,7 @@
       ],
       "best_id": 113284,
       "name": "Topaz Agent",
-      "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain.",
+      "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain, Robinhood Chain, Base, Ethereum and Arc.",
       "image": "https://raw.githubusercontent.com/topazdex/assets/refs/heads/main/token-logo.png",
       "speaks": [
         "mcp",
@@ -190,71 +191,71 @@
         },
         {
           "name": "topaz_get_protocol_stats",
-          "description": "Get Topaz DEX protocol overview including TVL, volume, fees, TOPAZ price, pool count, gauge count, and current epoch."
+          "description": "Get the Topaz protocol overview per chain — TVL, 24h/7d volume and fees, pool and live-gauge counts — plus five-chain totals. BNB Chain also reports the TOPAZ p"
         },
         {
           "name": "topaz_get_pool_stats",
-          "description": "Get top Topaz pools sorted by TVL, volume, fees, or APR. Returns pool pair, type, TVL, volume, fee APR, emission APR, bribe APR, and total APR."
+          "description": "Get top Topaz pools on one chain or across all five, sorted by TVL, volume, fees, or APR. Returns chain, pool pair, type, TVL, volume, fee APR, emission APR (TO"
         },
         {
           "name": "topaz_get_gauge_stats",
-          "description": "Get active Topaz gauges with emission APR, pool fee APR, bribe APR, staked TVL, and vote weights — served from the Topaz Stats API snapshot (near-real-time, ref"
+          "description": "Get active Topaz gauges on one chain or across all five with emission APR, pool fee APR, bribe APR, staked TVL, and vote weights. lpEmissionApr is the reward AP"
         },
         {
           "name": "topaz_quote_swap",
-          "description": "Get a swap quote for a token pair on Topaz. Uses quote.topazdex.com smart order routing across CL and v2 stable/volatile pools, including splits and mixed route"
+          "description": "Get a swap quote for a token pair on one Topaz chain (BNB Chain, Robinhood, Base, Ethereum or Arc). Uses quote.topazdex.com smart order routing across that chai"
         },
         {
           "name": "topaz_build_swap_calldata",
-          "description": "Build wallet-ready swap calldata that a user can sign and broadcast. Returns ALL ordered calls: ERC20 zero-reset/approve, Permit2.approve, swap, and both allowa"
+          "description": "Build wallet-ready swap calldata on one Topaz chain that a user can sign and broadcast. Returns ALL ordered calls: ERC20 zero-reset/approve, Permit2.approve, sw"
         },
         {
           "name": "topaz_recommend_lp",
-          "description": "Recommend the best LP positions on Topaz using the Stats API snapshot (near-real-time, ~15 min) for instant APR breakdowns. lpEmissionApr = TOPAZ emission APR f"
+          "description": "Recommend the best LP positions on Topaz — on one chain or ranked across all five — using indexed APR breakdowns. lpEmissionApr = emission APR for staked LPs (T"
         },
         {
           "name": "topaz_recommend_votes",
-          "description": "Recommend veTOPAZ gauge vote allocations for the current epoch. Analyzes fee returns, bribe incentives, and protocol liquidity needs to suggest optimal vote dis"
+          "description": "Recommend gauge vote allocations for the current epoch on one Topaz chain. Votes are chain-local: a BNB Chain veTOPAZ NFT votes BNB Chain gauges, and an xTOPAZ "
         },
         {
           "name": "topaz_build_vote_calldata",
-          "description": "Build wallet-ready calldata for Voter.vote() to cast veTOPAZ gauge votes. Validates ownership, epoch timing, and gauge existence before building."
+          "description": "Build wallet-ready gauge vote calldata on one Topaz chain. On BNB Chain it calls Voter.vote() for a veTOPAZ NFT; on Robinhood/Base/Ethereum/Arc it calls XTopazV"
         },
         {
           "name": "topaz_recommend_bribe_campaign",
-          "description": "Plan a bribe incentive campaign to attract liquidity for a token on Topaz. Analyzes existing pools, vote distribution, and budget to recommend optimal bribe str"
+          "description": "Plan a bribe incentive campaign to attract liquidity for a token on one Topaz chain. Analyzes that chain's pools, vote distribution, and budget to recommend a b"
         },
         {
           "name": "topaz_build_bribe_deposit_calldata",
-          "description": "Build calldata to deposit a bribe incentive on a Topaz pool's gauge. Validates the pool has a gauge, the token is whitelisted, and includes approval if needed."
+          "description": "Build calldata to deposit a bribe incentive on a Topaz pool's gauge on one chain. Validates the pool has a live gauge on that chain's Voter, the token is whitel"
         },
         {
           "name": "topaz_get_ve_stats",
-          "description": "Get veTOPAZ stats: total TOPAZ locked, total voting power, foundation wallet info."
+          "description": "Get veTOPAZ stats from the BNB Chain hub, where TOPAZ is locked into veTOPAZ NFTs: total TOPAZ locked, total voting power, foundation wallet info. For xTOPAZ ba"
         },
         {
           "name": "topaz_get_epoch_info",
-          "description": "Get current epoch timing information: when the epoch started, when voting ends, how much time remains, and whether we're in a restricted window."
+          "description": "Get current epoch timing information: when the epoch started, when voting ends, how much time remains, and whether we're in a restricted window. All five Topaz "
         },
         {
           "name": "topaz_get_pool_by_pair",
-          "description": "Look up all Topaz pools (v2 volatile, v2 stable, and v3 at each tick spacing) for a specific token pair. Returns pool addresses, types, TVL, volume, and gauge s"
+          "description": "Look up all Topaz pools (v2 volatile, v2 stable, and v3 at each tick spacing) for a specific token pair on one chain or on every chain where both tokens resolve"
         },
         {
           "name": "topaz_check_vote_eligibility",
-          "description": "Check whether a veTOPAZ NFT can vote right now. Checks: voting window, last voted epoch, ownership/approval, veNFT balance. Use this before building vote callda"
+          "description": "Check whether a voting position can vote right now on one Topaz chain: a veTOPAZ NFT on BNB Chain, or an xTOPAZ voting position on Robinhood/Base/Ethereum/Arc. "
         },
         {
           "name": "topaz_get_route_alternatives",
-          "description": "DEPRECATED compatibility alias. Use quoteSwap with includeAlternatives=true. Returns v2 and v3 options side by side."
+          "description": "DEPRECATED compatibility alias. Use quoteSwap with includeAlternatives=true. Returns route options side by side."
         },
         {
           "name": "topaz_compare_pool_options",
-          "description": "Compare LP options for a pair across v2 volatile, v2 stable, and v3 CL pools. Shows TVL, APR breakdown, and trade-offs for each. Use when a user asks 'should I "
+          "description": "Compare LP options for a pair across v2 volatile, v2 stable, and v3 CL pools — on one chain or on every Topaz chain where the pair trades. Shows TVL, APR breakd"
         },
         {
           "name": "topaz_get_wallet_token_balances",
-          "description": "Get token balances for a wallet: BNB, WBNB, TOPAZ, USDT, USDC, BTCB, ETH, and other major tokens. Use this to understand what a user holds before recommending a"
+          "description": "Get a wallet's token balances on one Topaz chain or all five: the native gas asset (BNB, ETH, or USDC on Arc), wrapped native, TOPAZ/xTOPAZ, stablecoins and oth"
         },
         {
           "name": "topaz_get_ve_nfts",
@@ -298,7 +299,7 @@
         },
         {
           "name": "topaz_get_cl_position_by_id",
-          "description": "Get detailed info and optional health guidance for a specific CL (v3) position by NFT tokenId. Returns pool, tokens, tick range, current tick, in-range status, "
+          "description": "Get detailed info and optional health guidance for a specific CL (v3) position by NFT tokenId on one Topaz chain. Returns pool, tokens, tick range, current tick"
         },
         {
           "name": "topaz_get_cl_position_health",
@@ -306,15 +307,15 @@
         },
         {
           "name": "topaz_get_user_dex_positions",
-          "description": "Get a wallet's Topaz DEX liquidity positions: v3 CL positions (staked in gauges and held unstaked in the wallet), v2 LP positions (loose and gauge-staked), in-r"
+          "description": "Get a wallet's Topaz DEX liquidity positions on one chain or all five: v3 CL positions (staked in gauges and held unstaked in the wallet), v2 LP positions (loos"
         },
         {
           "name": "topaz_get_claimables",
-          "description": "Get claimable rewards for one specific veTOPAZ NFT: voting fees, bribes, and rebase. This does not scan LP gauge emissions; use the wallet-wide claimables tool "
+          "description": "Get claimable voting rewards for one specific voting position on one Topaz chain: fees and bribes (plus rebase for a BNB Chain veTOPAZ NFT). On Robinhood/Base/E"
         },
         {
           "name": "topaz_get_all_claimables",
-          "description": "Get wallet-wide claimables across staked LP gauge emissions, veNFT voting fees/bribes, and veNFT rebase. Automatically finds the wallet's positions and veNFTs, "
+          "description": "Get wallet-wide claimables on one chain or all five: staked LP gauge emissions (TOPAZ on BNB Chain, xTOPAZ on spokes), voting fees/bribes for veTOPAZ NFTs and x"
         },
         {
           "name": "topaz_simulate_cl_range",
@@ -322,26 +323,27 @@
         },
         {
           "name": "topaz_compare_hold_lp_vote",
-          "description": "Compare the expected outcomes of holding tokens vs LPing vs voting with veTOPAZ. Use when a user asks 'should I LP or vote?' or 'what's the best use of my TOPAZ"
+          "description": "Compare the expected outcomes of holding tokens vs LPing vs voting on one Topaz chain. Voting means a veTOPAZ lock on BNB Chain, or an xTOPAZ voting position on"
         },
         {
           "name": "topaz_estimate_bribe_roi",
-          "description": "Estimate the ROI of a bribe campaign: expected vote capture, liquidity attraction, cost-effectiveness, and whether to bribe now vs seed LP first. Use for bribe "
+          "description": "Estimate the ROI of a bribe campaign on one Topaz chain: expected vote capture, liquidity attraction, cost-effectiveness, and whether to bribe now vs seed LP fi"
         },
         {
           "name": "topaz_recommend_protocol_actions",
-          "description": "Generate internal protocol strategy: which pools to support with votes/bribes, which to avoid, expected impact. Use when the Topaz team asks 'what should we sup"
+          "description": "Generate internal protocol strategy for one Topaz chain or all five: which pools to support with votes/bribes, which to avoid, expected impact. Use when the Top"
         },
         {
           "name": "topaz_get_weekly_strategy",
-          "description": "Generate a comprehensive weekly ve(3,3) strategy report with protocol overview, top gauges, recommended votes, LP recommendations, recent bribes, and market ins"
+          "description": "Generate a weekly ve(3,3) strategy report for one Topaz chain or all five: protocol overview, top gauges, recommended votes (per chain — votes are chain-local),"
         },
         {
           "name": "topaz_get_bribe_markets",
-          "description": "Get the current bribe/incentive markets across all Topaz gauges for the active epoch — total bribe + fee rewards per gauge and the derived dollars-per-vote, ran"
+          "description": "Get the current bribe/incentive markets for the active epoch on one Topaz chain or across all five — total bribe + fee rewards per gauge and the derived dollars"
         }
       ],
       "skills": [
+        "Five Chains",
         "Swap Quote",
         "Swap Build",
         "LP Recommend",
@@ -362,7 +364,10 @@
         "veTOPAZ Strategy",
         "Relay Monitor",
         "veTOPAZ Alerts",
-        "DEX Positions"
+        "DEX Positions",
+        "xTOPAZ",
+        "xTOPAZ Actions",
+        "Concentrated Liquidity"
       ],
       "trust_models": [
         "reputation"
@@ -727,8 +732,8 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 248,
-      "distinct_capabilities": 3,
+      "instances": 252,
+      "distinct_capabilities": 4,
       "ids": [
         116170,
         116171,
@@ -752,15 +757,13 @@
         118457,
         118501,
         119713,
-        119976,
-        120028,
-        120090,
-        120154,
         120184,
         120189,
         120305,
         121885,
+        123759,
         123764,
+        123765,
         123767,
         123941,
         124183,
@@ -779,7 +782,9 @@
         126392,
         126473,
         126708,
-        126745
+        127863,
+        128233,
+        128725
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -1005,39 +1010,6 @@
       ]
     },
     {
-      "operator": "up.railway.app",
-      "instances": 4,
-      "distinct_capabilities": 2,
-      "ids": [
-        342465,
-        342524,
-        342525,
-        338747
-      ],
-      "best_id": 342465,
-      "name": "Escrow Route",
-      "description": "Reviews escrow and offramp release conditions, counterparty readiness, and settlement risk.",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://croo-escrow-route-v2-production.up.railway.app/.well-known/agent-card.json",
-        "https://croo-escrow-route-v2-production.up.railway.app/mcp"
-      ],
-      "tools": [
-        {
-          "name": "escrow-route",
-          "description": "Reviews escrow and offramp release conditions, counterparty readiness, and settlement risk. The buyer receives an escrow-route review with release conditions, c"
-        }
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
       "operator": "alphatrack.space",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1134,7 +1106,7 @@
     },
     {
       "operator": "4lpha.tech",
-      "instances": 44,
+      "instances": 46,
       "distinct_capabilities": 1,
       "ids": [
         96179,
@@ -1180,7 +1152,9 @@
         346171,
         348979,
         350847,
-        355556
+        355556,
+        361758,
+        361907
       ],
       "best_id": 96179,
       "name": "4lpha single agent",
@@ -1365,6 +1339,35 @@
       "agent_card": "https://www.synergix.lol/.well-known/agent.json"
     },
     {
+      "operator": "marque.trade",
+      "instances": 6,
+      "distinct_capabilities": 6,
+      "ids": [
+        341553,
+        341554,
+        341555,
+        341556,
+        341557,
+        358786
+      ],
+      "best_id": 341553,
+      "name": "Bound",
+      "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it ne",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://marque.trade/agents/bound/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Read a V3 range",
+        "Propose a legal re-centre",
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded"
+      ]
+    },
+    {
       "operator": "genesis-marketplace-one.vercel.app",
       "instances": 4,
       "distinct_capabilities": 4,
@@ -1483,7 +1486,7 @@
       ],
       "best_id": 269223,
       "name": "Portfolio Rebalancer",
-      "description": "rebalancer-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
+      "description": "rebalancer-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain. Input that c",
       "image": null,
       "speaks": [
         "a2a"
@@ -1522,29 +1525,26 @@
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
     },
     {
-      "operator": "marque.trade",
-      "instances": 5,
-      "distinct_capabilities": 5,
+      "operator": "ivl-mainnet.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
       "ids": [
-        341553,
-        341554,
-        341555,
-        341556,
-        341557
+        341628
       ],
-      "best_id": 341553,
-      "name": "Bound",
-      "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it ne",
+      "best_id": 341628,
+      "name": "IVL Rebalancer",
+      "description": "ERC-8183 seller agent (ivlrebalancer-agent) — negotiate + notify_funded + free preview over A2A.",
       "image": null,
       "speaks": [
         "a2a"
       ],
       "endpoints": [
-        "https://marque.trade/agents/bound/.well-known/agent-card.json"
+        "https://ivl-mainnet.onrender.com/.well-known/agent-card.json"
       ],
       "skills": [
-        "Read a V3 range",
-        "Propose a legal re-centre"
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)",
+        "Preview the rebalance plan (free)"
       ]
     },
     {
@@ -1653,28 +1653,6 @@
       ],
       "endpoints": [
         "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "explainer-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        270213
-      ],
-      "best_id": 270213,
-      "name": "TermiX Advantage Report Explainer",
-      "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",
@@ -1861,6 +1839,28 @@
       ]
     },
     {
+      "operator": "plinth-relay.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        363619
+      ],
+      "best_id": 363619,
+      "name": "Plinth keeper",
+      "description": "Plinth keeper (plinthkeeper-agent): keeps Plinth's capital-protected bStock savings vaults on BSC mainnet. Rebalances around the clock, cuts risk before earnings and US macro releases, and pulls the safe leg out of unhealthy lending markets",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://plinth-relay.vercel.app/agent/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1909,6 +1909,75 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "up.railway.app",
+      "instances": 4,
+      "distinct_capabilities": 1,
+      "ids": [
+        342524,
+        338747,
+        342465,
+        342525
+      ],
+      "best_id": 342524,
+      "name": "DoraFusion AI",
+      "description": "Builds read-only token and portfolio risk signals using DoraFusion strategy tools and explicit limitations.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://croo-dorafusion-production.up.railway.app/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "veris-agent-1.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        350048
+      ],
+      "best_id": 350048,
+      "name": "studio-agent",
+      "description": "Project and agent due diligence with trust reports.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Trust audit",
+        "Trust comparison"
+      ]
+    },
+    {
+      "operator": "veris-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        345702
+      ],
+      "best_id": 345702,
+      "name": "VERIS",
+      "description": "Trust verification and due diligence for projects and agents.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Project due diligence",
+        "Agent due diligence"
       ]
     },
     {
@@ -2196,6 +2265,22 @@
       ]
     },
     {
+      "operator": "bedrock-agentcore.eu-central-1.amazonaws.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        361660
+      ],
+      "best_id": 361660,
+      "name": "Firstshare Checker",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bedrock-agentcore.eu-central-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aeu-central-1%3A040949441028%3Aruntime%2Ffirstsharechecker-RmW82x6XtT/invocations/.well-known/agent-card.json?qualifier=DEFAULT"
+      ]
+    },
+    {
       "operator": "bedrock-agentcore.us-east-1.amazonaws.com",
       "instances": 9,
       "distinct_capabilities": 0,
@@ -2463,6 +2548,22 @@
       ]
     },
     {
+      "operator": "explainer-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        270213
+      ],
+      "best_id": 270213,
+      "name": "TermiX Advantage Report Explainer",
+      "description": "Explains ERC-8004 identity and ERC-8183 job-escrow hiring to beginners",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "ezcto.fun",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2559,6 +2660,24 @@
       ]
     },
     {
+      "operator": "greateck.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        359180
+      ],
+      "best_id": 359180,
+      "name": "Mizan Best-Execution Router",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://mizan.greateck.com/erc8183",
+        "https://mizan.greateck.com/api/route/{TICKER}?usd={USD}",
+        "https://mizan.greateck.com"
+      ]
+    },
+    {
       "operator": "guardrail-delta.vercel.app",
       "instances": 4,
       "distinct_capabilities": 0,
@@ -2597,22 +2716,6 @@
       ],
       "trust_models": [
         "reputation"
-      ]
-    },
-    {
-      "operator": "ivl-mainnet.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        341628
-      ],
-      "best_id": 341628,
-      "name": "IVL Rebalancer",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://ivl-mainnet.onrender.com/.well-known/agent-card.json"
       ]
     },
     {
@@ -2711,15 +2814,14 @@
     },
     {
       "operator": "misquote-api.onrender.com",
-      "instances": 6,
+      "instances": 5,
       "distinct_capabilities": 0,
       "ids": [
         323262,
         323332,
         323333,
         323334,
-        331590,
-        331592
+        331590
       ],
       "best_id": 323262,
       "name": "Warden",
@@ -3037,35 +3139,20 @@
       ]
     },
     {
-      "operator": "veris-agent-1.onrender.com",
+      "operator": "vigil-two-pink.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
       "ids": [
-        350048
+        361597
       ],
-      "best_id": 350048,
-      "name": "studio-agent",
+      "best_id": 361597,
+      "name": "Vigil Sentinel",
       "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
-        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
-      ]
-    },
-    {
-      "operator": "veris-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        345702
-      ],
-      "best_id": 345702,
-      "name": "VERIS",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+        "https://vigil-two-pink.vercel.app/api/agent-mcp",
+        "https://vigil-two-pink.vercel.app/api/agent-status"
       ]
     },
     {
@@ -3095,12 +3182,13 @@
       ],
       "best_id": 345716,
       "name": "ZERU",
-      "description": null,
+      "description": "AI-powered crypto project research and risk analysis agent.",
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://zeru-agent.onrender.com"
-      ]
+      ],
+      "agent_card": "https://zeru-agent.onrender.com/.well-known/agent-card.json"
     },
     {
       "operator": "zkasuran.dev",

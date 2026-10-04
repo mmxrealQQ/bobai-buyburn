@@ -2548,7 +2548,7 @@ ${pageTail}`;
       // Two minutes at the edge: the terminal reads this on every heartbeat of
       // every visitor, and an uncached read lists and reads the day's keys.
       const ck = new Request(`https://agent.brainonbnb.com/stats/detail?day=${day}`);
-      const hit = await caches.default.match(ck).catch(() => null);
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null; // no Cache API outside Workers (tests)
       if (hit) return hit;
       const d = await readDetail(env, day);
       const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
@@ -2557,7 +2557,7 @@ ${pageTail}`;
         note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
       });
       res.headers.set('cache-control', 'public, max-age=120');
-      ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      if (globalThis.caches) ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
       return res;
     }
 

@@ -169,9 +169,16 @@ for (const [name, addr] of list) {
       w ? `±10% took $${w.fees_usd_in_window.toFixed(6)}, full range $${full.fees_usd_in_window.toFixed(6)}` : 'no ±10% row');
     // And the size has to be used too: ten times the capital in the same range
     // collects close to ten times as much while it is small against the pool.
-    const big = await R.rangePlan(addr, { capitalUsd: 10000 });
-    const b1 = rows.find((r) => r.width_pct === 2), b10 = big.ranges.find((r) => r.width_pct === 2);
-    const ratio = b1 && b10 && b1.fees_usd_in_window > 0 ? b10.fees_usd_in_window / b1.fees_usd_in_window : null;
+    // The two sizes are two live calls; a swap landing between them moves the
+    // window (10.47× on 2026-10-04, 9.77× a minute later). Outside the band, both
+    // are measured again back to back and the second pair decides.
+    const pair = async (small) => {
+      const big = await R.rangePlan(addr, { capitalUsd: 10000 });
+      const b1 = small.find((r) => r.width_pct === 2), b10 = big.ranges.find((r) => r.width_pct === 2);
+      return b1 && b10 && b1.fees_usd_in_window > 0 ? b10.fees_usd_in_window / b1.fees_usd_in_window : null;
+    };
+    let ratio = await pair(rows);
+    if (ratio == null || ratio <= 8 || ratio >= 10.2) ratio = await pair((await R.rangePlan(addr, { capitalUsd: 1000 })).ranges);
     ok('SELF: ten times the capital collects close to ten times the fees',
       ratio != null && ratio > 8 && ratio < 10.2,
       ratio == null ? 'could not compare' : `${ratio.toFixed(2)}× — under 10 because the position dilutes itself`);

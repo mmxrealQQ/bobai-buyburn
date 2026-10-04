@@ -121,10 +121,18 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('the referer alone says so too', details().join() === 'rest:site:links', details().join());
   await call('/api/links', { headers: { 'user-agent': 'node' } });
   ok('a caller from outside: rest:ext and its family', details().join() === 'rest:ext:links,ua:node', details().join());
-  await call('/api/made-up-by-a-crawler', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; SomeBot/1.0)' } });
-  ok('a route we do not serve is "unknown", a crawler is no browser — and it is not a request answered: no kind', details().join() === 'rest:unknown,uaunknown:crawler' && kinds() === '', `${details().join()} | ${kinds()}`);
+  // Crawler noise is relayed as a sample since 2026-10-04: one in twenty, weighted twenty, with the bot's name.
+  const realRandom = Math.random;
+  try {
+    Math.random = () => 0.01;
+    await call('/api/made-up-by-a-crawler', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; SomeBot/1.0)' } });
+    ok('a crawler on a route we do not serve: "unknown", sampled at weight 20, named — and not a request answered', details().join() === 'rest:unknown,uaunknown:crawler,unknownpath:made-up-by-a-crawler,crawlerua:somebot' && posted.every((p) => p.n === 20) && kinds() === '', `${details().join()} | n ${posted.map((p) => p.n).join()} | ${kinds()}`);
+    Math.random = () => 0.5;
+    await call('/api/made-up-by-a-crawler', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; SomeBot/1.0)' } });
+    ok('… and the other nineteen in twenty are not relayed at all', posted.length === 0, `${posted.length} relayed`);
+  } finally { Math.random = realRandom; }
   await call('/api/.env', { headers: { 'sec-fetch-site': 'same-origin', referer: 'https://brainonbnb.com/', 'user-agent': 'Mozilla/5.0 Chrome' } });
-  ok('and it stays "unknown" when it claims to come from our own page', details().join() === 'rest:unknown,uaunknown:browser', details().join());
+  ok('a browser on an unknown path is counted one by one, path segment named, even when it claims our own page', details().join() === 'rest:unknown,uaunknown:browser,unknownpath:.env' && !posted.some((p) => p.n), details().join());
   await rpc('tools/list', undefined, { 'user-agent': 'bobai-smoke-test' });
   ok('our smoke test posts nothing', posted.length === 0, JSON.stringify(posted));
   // Our own agent worker asks over /mcp every hour. The headers are the ones

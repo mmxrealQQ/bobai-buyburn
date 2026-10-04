@@ -23,6 +23,12 @@ export const AGENT_REGISTRY = 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a
 // and in two check scripts.
 export const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
 
+// The DeFi agent's own identity (2026-10-04, Set and Earn): the agent that
+// runs the project's PancakeSwap V3 position, hireable for its decision on
+// yours. null until scripts/register-own-agents.mjs has minted it; then the
+// id goes here AND into OWN_AGENT_IDS, and the card at /defi-agent names it.
+export const DEFI_AGENT_ID = null;
+
 // The parent identity — the operator itself, registered long before the
 // hireable four. It belongs in the domain proof but not in the per-agent
 // telemetry, which is why the two lists are not the same length.

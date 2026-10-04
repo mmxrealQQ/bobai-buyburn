@@ -55,7 +55,8 @@ import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
-import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
+import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES, DEFI_AGENT_ID, AGENT_REGISTRY } from '../shared/agent-registrations.js';
+import { watchFundedJobs } from './job-watch.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
@@ -1447,6 +1448,51 @@ export default {
     // Both spellings (2026-09-18): agent.json is what the BNB reference agents
     // serve and what our own dispatcher tries first on strangers, and GET /
     // pointed at it here while it returned 404.
+    // THE DEFI AGENT, AS AN AGENT OF ITS OWN (2026-10-04). The six services
+    // share one A2A endpoint and one card; a marketplace listing ONE agent
+    // needs a card that is about that agent — its name, its category, its
+    // one service — at a path its registration names. POST here sells only
+    // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
+    // in both dialects: BNB's signed quote and our flat one.
+    if (path === '/defi-agent/a2a' && request.method === 'POST') return await handleA2A(request, env, { agent: 'defi-agent' });
+    if (path === '/defi-agent' || path === '/defi-agent/a2a' || path === '/defi-agent/.well-known/agent-card.json' || path === '/defi-agent/.well-known/agent.json') {
+      const s = SERVICES.lp_position_plan;
+      return json({
+        protocolVersion: '0.3.0',
+        name: 'Brain on BNB — DeFi Agent',
+        description: 'The agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        url: `${SELF_ORIGIN}/defi-agent/a2a`,
+        preferredTransport: 'JSONRPC',
+        version: '1.0.0',
+        category: 'rebalancing',
+        provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
+        capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+        registrations: DEFI_AGENT_ID ? [{ agentId: DEFI_AGENT_ID, agentRegistry: AGENT_REGISTRY }] : [],
+        supportedTrust: ['reputation'],
+        trustRegistries: TRUST_REGISTRIES,
+        defaultInputModes: ['application/json', 'text/plain'],
+        defaultOutputModes: ['application/json'],
+        skills: [
+          { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to my PancakeSwap V3 position 7450561'] },
+          { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
+          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: '0.10 $U (ERC-8183 escrow)', escrow: true },
+        ],
+        // What the agent does on its own, every day, where anybody can check it.
+        operations: {
+          what: 'collects fees, re-sets the range when the price leaves it, adds new capital; daily run 04:23 UTC, hourly check at :50, 10-minute deposit watch',
+          operating_wallet: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+          home_pool: 'PancakeSwap V3 CAKE/BNB 0.05 %',
+          record: 'https://agent.brainonbnb.com/lp/agent',
+          page: 'https://brainonbnb.com/defi',
+          transactions: 'https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+        },
+        provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+        source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
+        additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],
+        documentationUrl: 'https://brainonbnb.com/defi',
+      });
+    }
+
     if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json') {
       return json({
         protocolVersion: '0.3.0',
@@ -1489,6 +1535,15 @@ export default {
             description: 'Ask for a price. Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
             tags: ['erc-8183', 'negotiation', 'escrow'],
             examples: ['quote finding the best yield for my BNB on BNB Chain'],
+          },
+          // BNB's standard hire (2026-10-04): the BNB Agent SDK and the
+          // marketplaces built on it negotiate only under this id and expect
+          // a signed quote; the funded job is then found on the chain.
+          {
+            id: 'negotiate-erc8183-job',
+            name: 'Negotiate an ERC-8183 job (BNB Agent SDK)',
+            description: 'Send {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (negotiation_hash, provider_sig). Anchor it via createJob and fund it; delivery follows without notify_funded.',
+            tags: ['erc8183', 'negotiation', 'bnb-chain'],
           },
           {
             id: 'notify_funded',
@@ -2841,5 +2896,9 @@ ${pageTail}`;
     if (t.getUTCHours() === 21 && firstTickOfHour) {
       ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
+
+    // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
+    // the seller looks for them (job-watch.js). One logs read, one KV write.
+    ctx.waitUntil(watchFundedJobs(env, (m, p) => rpc(m, p, [LOGS_RPC, 'https://bsc.publicnode.com'])).catch(() => {}));
   },
 };

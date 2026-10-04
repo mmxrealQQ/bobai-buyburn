@@ -57,6 +57,7 @@ import { lpTierPlan } from './lp-tiers.js';
 import { lpPositionPlan } from './lp-service.js';
 import { decodeJob, ERC8183 } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
+import { signedQuote, agentMessage } from './standard-quote.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -139,6 +140,9 @@ export const SERVICES = {
 // actually sends and a marketplace that publishes a census of other people's
 // inconsistencies should not add one. price_display carries the human number.
 const PRICE_WEI = (p) => BigInt(String(p));
+// The DeFi agent's own wallet: the position the agent manages, read when a
+// buyer hires the position plan without naming one of theirs.
+const LP_AGENT_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
 
 // ---------------------------------------------------------------------------
 // Reading the kernel. Deliberately a plain eth_call — the buyer's money is the
@@ -384,7 +388,11 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   return { ...out, ...exampleLinks(serviceId, service) };
 }
 
-export async function handleA2A(request, env) {
+// opts.agent: an endpoint that belongs to ONE of our agents (/defi-agent/a2a)
+// sells that agent's service whatever the prose says.
+const AGENT_SERVICE = { 'defi-agent': 'lp_position_plan' };
+
+export async function handleA2A(request, env, opts = {}) {
   let body;
   try { body = await request.json(); } catch { return rpcErr(null, -32700, 'not JSON'); }
   const id = body?.id;
@@ -396,6 +404,30 @@ export async function handleA2A(request, env) {
   const skill = String(data.skill || data.method || '').toLowerCase();
   const account = providerAccount(env);
   const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
+  const forced = AGENT_SERVICE[opts.agent] || null;
+
+  // --- BNB's standard hire (2026-10-04) ----------------------------------
+  // The SDK dialect: a signed NegotiationResult the buyer anchors as the job
+  // description. Marketplaces on the BNB Agent SDK speak only this, so
+  // without it none of our agents could be hired there.
+  if (skill === 'negotiate-erc8183-job') {
+    if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
+    const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    if (!service || (service.id === 'lp_position_plan' && !forced)) {
+      return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
+    }
+    const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
+    return rpcOk(id, agentMessage(q.envelope));
+  }
+  if (skill === 'erc8183-job-status') {
+    const jobId = String(data.job_id ?? '').match(/^\d+$/)?.[0];
+    if (!jobId) return rpcErr(id, -32602, "erc8183-job-status requires an integer 'job_id'");
+    const job = await readJob(jobId);
+    if (!job) return rpcErr(id, -32000, `job ${jobId} does not exist in the kernel`);
+    return rpcOk(id, agentMessage({ job_id: Number(jobId), client: job.client, provider: job.provider, status: job.status, budget: String(job.budget), deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` }));
+  }
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
@@ -414,13 +446,12 @@ export async function handleA2A(request, env) {
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
-    const service = pickService(wanted, data.service);
-    // The position plan is sold per answer over x402 and nowhere else — the
-    // card says so (escrow: false). Negotiating it here used to come back
-    // accepted:true in $U, and a job funded on that quote would have been
-    // worked through the escrow the card rules out (2026-09-18).
-    if (service && service.id === 'lp_position_plan') {
-      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402, not through the ERC-8183 escrow.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
+    const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    // The position plan is sold through the escrow by the DeFi agent alone
+    // (2026-10-04, its own identity and endpoint /defi-agent). On the shared
+    // endpoint it is still x402 only — the card there says escrow: false.
+    if (service && service.id === 'lp_position_plan' && opts.agent !== 'defi-agent') {
+      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
     }
     if (!service) {
       return rpcOk(id, {
@@ -435,14 +466,14 @@ export async function handleA2A(request, env) {
       accepted: true,
       provider,
       price: service.price,
-      price_display: service.price_display,
+      price_display: service.price_display.replace("USD1", "$U"),
       currency: 'U',
       service: service.id,
       category: service.category,
       deliverables: service.deliverables,
       needs: service.needs,
       estimated_completion_seconds: 120,
-      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
       chain_id: 56,
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
@@ -453,105 +484,132 @@ export async function handleA2A(request, env) {
   if (skill === 'notify_funded' || skill === 'deliver' || skill === 'start') {
     const jobId = String(data.job_id ?? data.jobId ?? '').match(/^\d+$/)?.[0];
     if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
-    if (!account) return rpcErr(id, -32000, 'this agent cannot deliver: no provider key configured');
-
-    const job = await readJob(jobId);
-    if (!job) return rpcErr(id, -32000, `job ${jobId} does not exist in the kernel`);
-    if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
-      return rpcErr(id, -32000, `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.`);
-    }
-    if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
-      const prior = await env.AGENT.get(`job:${jobId}`, 'json');
-      return rpcOk(id, { already_delivered: true, job_id: jobId, status: job.status, result: prior?.result ?? null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` });
-    }
-    if (job.status !== 'FUNDED') {
-      return rpcErr(id, -32000, `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.`);
-    }
-    // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
-    // the policy only when its evaluator and hook are the router. Anyone can
-    // create a job naming us as provider and THEMSELVES as evaluator, fund ten
-    // cents, take the full result out of this very response, then reject the
-    // job and claim the refund — free answers, our gas. hire.js has always
-    // said so ("a job registered with a different evaluator never reaches the
-    // policy that releases it"); the seller never looked.
-    const router = String(ERC8183.router).toLowerCase();
-    const zero = '0x0000000000000000000000000000000000000000';
-    const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
-    if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
-      return rpcErr(id, -32000, `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.`);
-    }
-    // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
-    // twice, and the second one's document replaced the stored one after the
-    // first one's digest was already on-chain. A short lock, read back.
-    const lockKey = `lock:job:${jobId}`, lockBy = crypto.randomUUID();
-    const held = await env.AGENT.get(lockKey);
-    if (held) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now — follow it at https://agent.brainonbnb.com/job?id=${jobId}`);
-    await env.AGENT.put(lockKey, lockBy, { expirationTtl: 120 });
-    if ((await env.AGENT.get(lockKey)) !== lockBy) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now`);
-
-    // WHAT WAS BOUGHT IS WHAT THE CHAIN SAYS WAS BOUGHT. notify_funded needs no
-    // authentication — it only says "look at the chain" — so nothing in it may
-    // decide the work: `service` and `params` in the message used to win over
-    // the job's own description, and anyone who saw a funded job could have a
-    // different document committed on-chain for the real buyer. The message
-    // now only fills what the description does not say.
-    const service = pickService(job.description, null) || pickService('', data.service);
-    if (!service) return rpcErr(id, -32000, 'the job description does not match anything we sell');
-    if (BigInt(job.budget) < PRICE_WEI(service.price)) {
-      return rpcErr(id, -32000, `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`);
-    }
-
-    const fromChain = extractParams(String(job.description || ''), {});
-    const asked = extractParams(String(text || ''), data.params || data);
-    const params = { ...asked, ...fromChain, service: service.id };
-    let result;
-    try {
-      result = await doWork(service.id, params, env);
-    } catch (e) {
-      // A job we cannot do is not delivered and not charged for. The buyer's
-      // budget stays in escrow and comes back to them at expiry, which is the
-      // correct outcome and the one the kernel already implements.
-      await env.AGENT.delete(lockKey).catch(() => {});
-      return rpcErr(id, -32000, `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`);
-    }
-
-    const document = JSON.stringify({
-      job_id: jobId,
-      service: service.id,
-      provider: account.address,
-      client: job.client,
-      produced_at: new Date().toISOString(),
-      result,
-      method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
-      verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
-    });
-
-    // The document is stored BEFORE it is sent, and a submit that throws is an
-    // answer, not a bare 500: the transaction may still land, and a deliverable
-    // on-chain with no document behind it cannot be checked by anyone.
-    const already = await env.AGENT.get(`job:${jobId}`, 'json');
-    if (!already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery: null, result }), { expirationTtl: 60 * 60 * 24 * 365 });
-    let delivery;
-    try { delivery = await submitDeliverable({ env, jobId, document, readJob }); }
-    catch (e) {
-      await env.AGENT.delete(lockKey).catch(() => {});
-      return rpcErr(id, -32000, `job ${jobId}: the work is done and stored, but writing it on-chain did not go through (${String(e.shortMessage || e.message || e).slice(0, 160)}). Send notify_funded again in a minute — the same document is submitted, nothing is worked twice. https://agent.brainonbnb.com/job/${jobId}/result`);
-    }
-    // A delivery that was already on-chain keeps the document it was made from.
-    if (!delivery?.already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
-
-    return rpcOk(id, {
-      delivered: true,
-      job_id: jobId,
-      service: service.id,
-      result,
-      on_chain: delivery,
-      deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result`,
-      note: 'The deliverable is on-chain in full, not as a link. The bytes32 is the SHA-256 of the document served at the URL above, so both can be checked against each other.',
-    });
+    const r = await deliverJob(jobId, env, { text, data });
+    return r.error ? rpcErr(id, -32000, r.error) : rpcOk(id, r.result);
   }
 
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
+}
+
+// THE DELIVERY ITSELF, out of the A2A handler (2026-10-04). A buyer who hires
+// the way BNB's own SDK does — signed quote, createJob, fund — never sends
+// notify_funded: the reference seller watches the kernel for funded jobs
+// naming it. Ours waited for the message, so a job funded through Marque or
+// any SDK client would have sat FUNDED until it expired. The cron's watcher
+// (watchFundedJobs) and notify_funded now share this one path; nothing in it
+// trusts the caller — the job, its provider, evaluator and budget are read
+// from the chain.
+export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
+  const account = providerAccount(env);
+  if (!account) return { error: 'this agent cannot deliver: no provider key configured' };
+  const job = await readJob(jobId);
+  if (!job) return { error: `job ${jobId} does not exist in the kernel` };
+  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+    return { error: `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.` };
+  }
+  if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
+    const prior = await env.AGENT.get(`job:${jobId}`, 'json');
+    return { result: { already_delivered: true, job_id: jobId, status: job.status, result: prior?.result ?? null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` } };
+  }
+  if (job.status !== 'FUNDED') {
+    return { error: `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.` };
+  }
+  // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
+  // the policy only when its evaluator and hook are the router. Anyone can
+  // create a job naming us as provider and THEMSELVES as evaluator, fund ten
+  // cents, take the full result out of this very response, then reject the
+  // job and claim the refund — free answers, our gas. hire.js has always
+  // said so ("a job registered with a different evaluator never reaches the
+  // policy that releases it"); the seller never looked.
+  const router = String(ERC8183.router).toLowerCase();
+  const zero = '0x0000000000000000000000000000000000000000';
+  const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
+  if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
+    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.` };
+  }
+  // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
+  // twice, and the second one's document replaced the stored one after the
+  // first one's digest was already on-chain. A short lock, read back.
+  const lockKey = `lock:job:${jobId}`, lockBy = crypto.randomUUID();
+  const held = await env.AGENT.get(lockKey);
+  if (held) return { error: `job ${jobId} is being delivered by another request right now — follow it at https://agent.brainonbnb.com/job?id=${jobId}` };
+  await env.AGENT.put(lockKey, lockBy, { expirationTtl: 120 });
+  if ((await env.AGENT.get(lockKey)) !== lockBy) return { error: `job ${jobId} is being delivered by another request right now` };
+
+  // WHAT WAS BOUGHT IS WHAT THE CHAIN SAYS WAS BOUGHT. notify_funded needs no
+  // authentication — it only says "look at the chain" — so nothing in it may
+  // decide the work: `service` and `params` in the message used to win over
+  // the job's own description, and anyone who saw a funded job could have a
+  // different document committed on-chain for the real buyer. The message
+  // now only fills what the description does not say.
+  // A quote we signed names its service in the deliverables ("service
+  // lp_position_plan — …", see signedQuote), and that sentence is in the job
+  // description the buyer anchored. It wins over guessing from prose: six of
+  // our agents share one provider address, so the job itself cannot say
+  // which one was hired.
+  const tagged = String(job.description || '').match(/\bservice ([a-z_]+)\b/)?.[1];
+  const service = (tagged && SERVICES[tagged]) || pickService(job.description, null) || pickService('', data.service);
+  if (!service) return { error: 'the job description does not match anything we sell' };
+  if (BigInt(job.budget) < PRICE_WEI(service.price)) {
+    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
+  }
+
+  const fromChain = extractParams(String(job.description || ''), {});
+  const asked = extractParams(String(text || ''), data.params || data);
+  const params = { ...asked, ...fromChain, service: service.id };
+  let result;
+  try {
+    // THE DEFI AGENT WITHOUT A POSITION NAMED (2026-10-04). A marketplace
+    // hire carries the buyer's words and often no position id: the plan is
+    // then made for the wallet that paid, and if that wallet holds no single
+    // V3 position, for the agent's own — the delivery is still the agent's
+    // real decision, and the document says whose position it read.
+    if (service.id === 'lp_position_plan' && missingInput(service.id, params)) {
+      try { result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client}`; }
+      catch { result = await doWork(service.id, { ...params, address: LP_AGENT_WALLET }, env); result.read_for = `the agent's own position (wallet ${LP_AGENT_WALLET}) — the hiring wallet ${job.client} holds no single PancakeSwap V3 position and none was named`; }
+    } else result = await doWork(service.id, params, env);
+  } catch (e) {
+    // A job we cannot do is not delivered and not charged for. The buyer's
+    // budget stays in escrow and comes back to them at expiry, which is the
+    // correct outcome and the one the kernel already implements.
+    await env.AGENT.delete(lockKey).catch(() => {});
+    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.` };
+  }
+
+  const document = JSON.stringify({
+    job_id: jobId,
+    service: service.id,
+    provider: account.address,
+    client: job.client,
+    produced_at: new Date().toISOString(),
+    result,
+    method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
+    verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
+  });
+
+  // The document is stored BEFORE it is sent, and a submit that throws is an
+  // answer, not a bare 500: the transaction may still land, and a deliverable
+  // on-chain with no document behind it cannot be checked by anyone.
+  const already = await env.AGENT.get(`job:${jobId}`, 'json');
+  if (!already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery: null, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+  let delivery;
+  try { delivery = await submitDeliverable({ env, jobId, document, readJob }); }
+  catch (e) {
+    await env.AGENT.delete(lockKey).catch(() => {});
+    return { error: `job ${jobId}: the work is done and stored, but writing it on-chain did not go through (${String(e.shortMessage || e.message || e).slice(0, 160)}). Send notify_funded again in a minute — the same document is submitted, nothing is worked twice. https://agent.brainonbnb.com/job/${jobId}/result` };
+  }
+  // A delivery that was already on-chain keeps the document it was made from.
+  if (!delivery?.already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  return { result: {
+    delivered: true,
+    job_id: jobId,
+    service: service.id,
+    result,
+    on_chain: delivery,
+    deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result`,
+    note: 'The deliverable is on-chain in full, not as a link. The bytes32 is the SHA-256 of the document served at the URL above, so both can be checked against each other.',
+  } };
 }
 
 // The stored deliverable, served so the on-chain digest can be checked against

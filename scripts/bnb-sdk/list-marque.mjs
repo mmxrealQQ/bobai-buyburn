@@ -4,7 +4,7 @@
 // claim/verify (claimToken) -> probe (callable) -> declare (category) ->
 // claim/test (the category's assertion test, e.g. MCS-REB-1). One off-chain
 // signature by the owner wallet; no transaction, nothing spent.
-// Usage (repo root): node scripts/bnb-sdk/list-marque.mjs <tokenId> <endpoint> <category>
+// Usage (repo root): node scripts/bnb-sdk/list-marque.mjs <tokenId> <endpoint> <category> [--from defi]
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -12,12 +12,15 @@ import { privateKeyToAccount } from 'viem/accounts';
 dotenv.config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: true });
 const SITE = 'https://marque.trade';
 const TESTS = { yield: 'MCS-YIELD-1', grid: 'MCS-GRID-1', rebalancing: 'MCS-REB-1', health_factor: 'MCS-HF-1' };
-const [tokenId, endpoint, category] = process.argv.slice(2);
+const rawArgs = process.argv.slice(2);
+const fromDefi = rawArgs.includes('--from') && rawArgs[rawArgs.indexOf('--from') + 1] === 'defi';
+const [tokenId, endpoint, category] = rawArgs.filter((a, i) => a !== '--from' && rawArgs[i - 1] !== '--from');
 if (!/^\d+$/.test(tokenId || '') || !/^https:\/\//.test(endpoint || '') || !TESTS[category]) {
   console.log('usage: node scripts/bnb-sdk/list-marque.mjs <tokenId> <https endpoint> <yield|grid|rebalancing|health_factor>');
   process.exit(1);
 }
-const pk = process.env.AGENT_PROVIDER_PRIVATE_KEY;
+// --from defi: the owner is the DeFi wallet 0xbFAA (the DeFi Agent #363709 since 2026-10-04).
+const pk = process.env[fromDefi ? 'LP_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
 const account = privateKeyToAccount(pk.startsWith('0x') ? pk : `0x${pk}`);
 const post = async (p, body) => {
   const r = await fetch(SITE + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });

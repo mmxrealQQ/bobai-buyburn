@@ -15,23 +15,39 @@
 //
 // The kernel calls are the official SDK's (@bnbagent/sdk ERC8183Client).
 // A bare run spends nothing. Usage (repo root):
-//   node scripts/bnb-sdk/hire-mandate.mjs <tokenId> <subject 0x…> [--confirm]
+//   node scripts/bnb-sdk/hire-mandate.mjs <tokenId> <subject 0x…> [--from defi] [--rpc URL] [--confirm]
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { getAddress, formatUnits } from 'viem';
 import { ERC8183Client } from '@bnbagent/sdk/erc8183';
 import { EVMWalletProvider } from '@bnbagent/sdk/wallets';
+import { resolveNetwork } from '@bnbagent/sdk';
 
 dotenv.config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: true });
 const SITE = 'https://www.mandatemarkets.com';
 const MAX_PRICE = 50000000000000000n; // 0.05 $U
-const confirm = process.argv.includes('--confirm');
-const [tokenId, subject] = process.argv.slice(2).filter((a) => a !== '--confirm');
+// --from defi: the DeFi wallet 0xbFAA (campaign wallet, owns #363709); --rpc URL: another node.
+// Paymaster off: a sponsored hire does not count as paid by our own wallet.
+const raw = process.argv.slice(2);
+const opt = (n) => { const i = raw.indexOf(n); return i >= 0 ? raw[i + 1] : null; };
+const RPC = opt('--rpc') || 'https://bsc-dataseed1.defibit.io';
+const NETWORK = { ...resolveNetwork('bsc-mainnet'), rpcUrl: RPC, usePaymaster: false };
+const confirm = raw.includes('--confirm');
+const [tokenId, subject] = raw.filter((a, i) => a !== '--confirm' && !['--from', '--rpc'].includes(a) && !['--from', '--rpc'].includes(raw[i - 1]));
 if (!/^\d+$/.test(tokenId || '') || !/^0x[0-9a-fA-F]{40}$/.test(subject || '')) {
   console.log('usage: node scripts/bnb-sdk/hire-mandate.mjs <tokenId> <subject 0x…> [--confirm]');
   process.exit(1);
 }
-const pk = process.env.AGENT_PROVIDER_PRIVATE_KEY;
+// Never race worker-lp for 0xbFAA's nonce: it may send at xx:09-xx:12 of each
+// ten minutes, xx:49-xx:52 and 04:20-04:30 UTC.
+if (confirm && opt('--from') === 'defi' && !RPC.includes('127.0.0.1')) {
+  const n = new Date(), mm = n.getUTCMinutes(), hh = n.getUTCHours();
+  if ([9, 0, 1, 2].includes(mm % 10) || (mm >= 49 && mm <= 52) || (hh === 4 && mm >= 20 && mm <= 30)) {
+    console.log(`REFUSED: UTC ${hh}:${String(mm).padStart(2, '0')} is a minute the DeFi agent may send from 0xbFAA — run again in a few minutes`);
+    process.exit(1);
+  }
+}
+const pk = process.env[opt('--from') === 'defi' ? 'LP_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
 const wallet = new EVMWalletProvider({ password: 'bobai-hire', privateKey: pk.startsWith('0x') ? pk : `0x${pk}` });
 
 const page = await (await fetch(`${SITE}/agents/${tokenId}`)).text();
@@ -47,7 +63,7 @@ console.log(`  description  ${description}`);
 if (budget > MAX_PRICE) { console.log('  REFUSED: above the cap'); process.exit(1); }
 if (!confirm) { console.log('  -> nothing sent (no --confirm)'); process.exit(0); }
 
-const client = await ERC8183Client.create({ walletProvider: wallet, network: 'bsc-mainnet' });
+const client = await ERC8183Client.create({ walletProvider: wallet, network: NETWORK });
 const created = await client.createJob({ provider: getAddress(provider), expiredAt: BigInt(Math.floor(Date.now() / 1000) + 9 * 24 * 3600), description });
 const jobId = created.jobId;
 console.log(`  createJob    job ${jobId}  https://bscscan.com/tx/${created.transactionHash}`);
@@ -55,6 +71,6 @@ await client.registerJob(jobId);
 await client.setBudget(jobId, budget);
 const funded = await client.fund(jobId, budget);
 console.log(`  fund         https://bscscan.com/tx/${funded.transactionHash}`);
-const reg = await fetch(`${SITE}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId: String(jobId), tx: funded.transactionHash, subject: getAddress(subject) }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
+const reg = RPC.includes('127.0.0.1') ? { skipped: 'local fork — not registered with Mandate' } : await fetch(`${SITE}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId: String(jobId), tx: funded.transactionHash, subject: getAddress(subject) }) }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
 console.log(`  mandate      ${JSON.stringify(reg).slice(0, 240)}`);
 console.log(`  follow       ${SITE}/api/v1/wallets/${wallet.address}/hires`);

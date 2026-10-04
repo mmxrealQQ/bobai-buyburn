@@ -21,20 +21,39 @@ import { getAddress, formatUnits } from 'viem';
 import { ERC8004Agent, AgentURIGenerator } from '@bnbagent/sdk/erc8004';
 import { ERC8183Client, buildJobDescription, verifyQuoteSignature } from '@bnbagent/sdk/erc8183';
 import { EVMWalletProvider } from '@bnbagent/sdk/wallets';
+import { resolveNetwork } from '@bnbagent/sdk';
 
 dotenv.config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: true });
-const NETWORK = 'bsc-mainnet';
 const MAX_PRICE = 500000000000000000n; // 0.5 $U
 
-const args = process.argv.slice(2).filter((a) => a !== '--confirm');
-const confirm = process.argv.includes('--confirm');
+// --from defi: hire from the DeFi wallet 0xbFAA, the Set and Earn campaign
+// wallet since it owns #363709 (default: the provider 0x7380).
+// --rpc URL: another node (a local anvil fork for a rehearsal).
+// The SDK's mainnet config sends through NodeReal's paymaster by default; a
+// sponsored hire is not "paid by your own wallet" (Mandate's rule), so the
+// paymaster is switched off and we pay our own gas.
+const raw = process.argv.slice(2);
+const opt = (n) => { const i = raw.indexOf(n); return i >= 0 ? raw[i + 1] : null; };
+const RPC = opt('--rpc') || 'https://bsc-dataseed1.defibit.io';
+const NETWORK = { ...resolveNetwork('bsc-mainnet'), rpcUrl: RPC, usePaymaster: false };
+const confirm = raw.includes('--confirm');
+const args = raw.filter((a, i) => a !== '--confirm' && !['--from', '--rpc'].includes(a) && !['--from', '--rpc'].includes(raw[i - 1]));
 const [agentId, task, deliverables] = args;
 if (!/^\d+$/.test(agentId || '') || !task) {
-  console.log('usage: node scripts/bnb-sdk/hire.mjs <agentId> "<task>" ["<deliverables>"] [--confirm]');
+  console.log('usage: node scripts/bnb-sdk/hire.mjs <agentId> "<task>" ["<deliverables>"] [--from defi] [--rpc URL] [--confirm]');
   process.exit(1);
 }
-const pk = process.env.AGENT_PROVIDER_PRIVATE_KEY;
-if (!pk) throw new Error('no AGENT_PROVIDER_PRIVATE_KEY in .env');
+// Never race worker-lp for 0xbFAA's nonce: it may send at xx:09-xx:12 of each
+// ten minutes, xx:49-xx:52 and 04:20-04:30 UTC.
+if (confirm && opt('--from') === 'defi' && !RPC.includes('127.0.0.1')) {
+  const n = new Date(), mm = n.getUTCMinutes(), hh = n.getUTCHours();
+  if ([9, 0, 1, 2].includes(mm % 10) || (mm >= 49 && mm <= 52) || (hh === 4 && mm >= 20 && mm <= 30)) {
+    console.log(`REFUSED: UTC ${hh}:${String(mm).padStart(2, '0')} is a minute the DeFi agent may send from 0xbFAA — run again in a few minutes`);
+    process.exit(1);
+  }
+}
+const pk = process.env[opt('--from') === 'defi' ? 'LP_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
+if (!pk) throw new Error('no key for that wallet in .env');
 const wallet = new EVMWalletProvider({ password: 'bobai-hire', privateKey: pk.startsWith('0x') ? pk : `0x${pk}` });
 
 const sendSkill = async (url, data) => {
@@ -57,8 +76,8 @@ async function olderDialect() {
   if (budget > MAX_PRICE) { console.log(`  REFUSED: above the ${formatUnits(MAX_PRICE, 18)} $U cap`); process.exit(1); }
   if (!confirm) { console.log('  -> nothing sent (no --confirm)'); return; }
   const account = privateKeyToAccount(pk.startsWith('0x') ? pk : `0x${pk}`);
-  const pub = createPublicClient({ chain: bsc, transport: http('https://bsc-dataseed1.defibit.io') });
-  const wc = createWalletClient({ account, chain: bsc, transport: http('https://bsc-dataseed1.defibit.io') });
+  const pub = createPublicClient({ chain: bsc, transport: http(RPC) });
+  const wc = createWalletClient({ account, chain: bsc, transport: http(RPC) });
   const send = async (label, tx) => {
     const hash = await wc.sendTransaction(tx);
     const rc = await pub.waitForTransactionReceipt({ hash });

@@ -2209,6 +2209,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             // An x402 seller is not a failure: it states a price per call (2026-10-04).
             if(j&&j.x402&&j.x402.offers&&j.x402.offers.length){
               var offs=j.x402.offers.map(function(x){return esc(x.price)+' to '+esc(x.payTo)+(x.method?' ('+esc(x.method)+')':'');}).join(' or ');
+              elSub.textContent='Agent #'+current.id+' · sold per call over x402, not through the escrow';
               say('No escrow job here: this agent sells per call over x402 &mdash; '+offs+' at '+esc(j.x402.url)+'. Pay with your own x402 client at that address; nothing is held in escrow.'+altQuoter(),'rg-ok');
             }else{
               say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');

@@ -1286,13 +1286,13 @@ export default {
     // address, no argument, no IP. It goes into /stats/detail and into none of
     // the public totals. kind may be null: the MCP request is counted once
     // here, and handleMcp names its method once the body has been read.
-    const count = (kind, detail) => {
+    const count = (kind, detail, n = 1) => {
       if (!env.HIT_SECRET || isSelfTest) return;
       ctx.waitUntil(
         fetch('https://agent.brainonbnb.com/hit', {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET },
-          body: JSON.stringify({ ...(kind ? { kind } : {}), ...(detail ? { detail } : {}) }),
+          body: JSON.stringify({ ...(kind ? { kind } : {}), ...(detail ? { detail } : {}), ...(n > 1 ? { n } : {}) }),
           signal: AbortSignal.timeout(3000),
         }).catch(() => {}),
       );
@@ -1334,7 +1334,14 @@ export default {
       // one crawler want 97k times?). Only the first segment under /api/, cut
       // and cleaned, so the name says the shape and never carries an argument.
       const seg = (url.pathname.split('/')[2] || '').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 24) || 'root';
-      if (!COUNTED_API.has(url.pathname)) count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`]);
+      // Crawler noise is relayed as a sample: one in twenty, weighted twenty.
+      // The day's count stays right on average and the relay — one request to
+      // the agent worker per hit, ~98k a day — shrinks twentyfold. Anyone who
+      // is not a crawler is still counted one by one.
+      if (!COUNTED_API.has(url.pathname)) {
+        if (family !== 'crawler') count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`]);
+        else if (Math.random() < 0.05) count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`], 20);
+      }
       else {
         const route = url.pathname.slice(5);
         count('rest', fromSite ? [`rest:site:${route}`] : [`rest:ext:${route}`, `ua:${family}`]);

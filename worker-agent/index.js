@@ -309,7 +309,7 @@ const detail = new Map(); // day -> { name: n }, this isolate's whole day
 const detailDirty = new Set();
 const cleanDetail = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9_:./-]/g, '').slice(0, 64);
 
-function bumpDetail(env, names) {
+function bumpDetail(env, names, n = 1) {
   const day = today();
   let m = detail.get(day);
   if (!m) { m = {}; detail.set(day, m); for (const d of detail.keys()) if (d !== day && !detailDirty.has(d)) detail.delete(d); }
@@ -317,7 +317,7 @@ function bumpDetail(env, names) {
     let name = cleanDetail(raw);
     if (!name) continue;
     if (!(name in m) && Object.keys(m).length >= DETAIL_MAX_NAMES) name = 'other';
-    m[name] = (m[name] || 0) + 1;
+    m[name] = (m[name] || 0) + n;
   }
   detailDirty.add(day);
   if (Date.now() - lastFlush < FLUSH_MS) return;
@@ -2469,8 +2469,11 @@ ${pageTail}`;
       // the MCP relay counts the request once and names the method afterwards.
       const names = [].concat(body.detail || []).map(cleanDetail).filter(Boolean);
       if (!kind && !names.length) return json({ error: 'kind required' }, 400);
-      if (kind) ctx.waitUntil(bump(env, kind));
-      if (names.length) ctx.waitUntil(Promise.resolve(bumpDetail(env, names)));
+      // `n` (2026-10-04): the site relays crawler noise as a sample — one in
+      // twenty, weighted twenty — so ~98k hits a day stop costing ~98k relays.
+      const n = Math.min(100, Math.max(1, Math.floor(Number(body.n) || 1)));
+      if (kind) ctx.waitUntil(bump(env, kind, n));
+      if (names.length) ctx.waitUntil(Promise.resolve(bumpDetail(env, names, n)));
       return json({ ok: true });
     }
 

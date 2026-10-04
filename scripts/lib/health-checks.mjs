@@ -404,6 +404,35 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
   // on the address alone, so every caller — the stdio MCP server included —
   // was answered for $250 whatever it asked. This call asks for $100.
   ok('Agents', 'the route check answers at the size that was asked', route?.size_usd === 100, `asked 100, answered ${route?.size_usd}`);
+
+  // THE HIRE AND PAY SURFACES OF 2026-10-04, checked daily.
+  const getJ = (u, init) => fetch(u, { ...(init || {}), signal: AbortSignal.timeout(30000) }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) })).catch(() => ({ status: 0, body: null }));
+  // 1. Each agent of ours answers at its own endpoint with a card whose name and id are its registration's.
+  const CARDS = { 'health-factor': [302257, 'Brain on BNB — Venus Health Factor Monitor'], 'grid-trader': [302258, 'Brain on BNB — BSC Grid Planner'], 'yield-optimizer': [304493, 'Brain on BNB — Venus Yield Ranking'], rebalancer: [304494, 'Brain on BNB — Portfolio Rebalance Pricer'], 'lp-placement': [310460, 'Brain on BNB — PancakeSwap Fee Tier Placement'], 'defi-agent': [363709, 'Brain on BNB — DeFi Agent'] };
+  const cardBad = [];
+  for (const [slug, [id, name]] of Object.entries(CARDS)) {
+    const c = (await getJ(`${AGENT}/${slug}/a2a/.well-known/agent-card.json`)).body;
+    if (!c || c.name !== name || !(c.registrations || []).some((r) => r.agentId === id) || !(c.skills || []).some((s) => s.id === 'negotiate-erc8183-job')) cardBad.push(slug);
+  }
+  ok('Agents', 'each of our six agents has its own card matching its registration', cardBad.length === 0, cardBad.length ? `wrong or missing: ${cardBad.join(', ')}` : 'six cards');
+  // 2. BNB's standard hire: a signed quote naming the agentWallet.
+  const sq = (await getJ(`${AGENT}/defi-agent/a2a`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'health', parts: [{ kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: 'health check: plan for position 7575224', terms: { deliverables: 'plan', quality_standards: 'on-chain' } } }] } } }) })).body;
+  const env = sq?.result?.parts?.[0]?.data;
+  ok('Agents', 'a signed ERC-8183 quote comes back, naming the agentWallet', /^0x[0-9a-f]{64}$/i.test(env?.negotiation_hash || '') && /^0x[0-9a-f]{130}$/i.test(env?.provider_sig || '') && String(env?.provider_address || '').toLowerCase() === '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', env ? `provider ${env.provider_address}` : JSON.stringify(sq).slice(0, 120));
+  // 3. The funded-job watcher keeps up with the kernel.
+  const watch = (await getJ(`${AGENT}/jobs/watch`)).body;
+  const counterHex = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6', data: '0x50355d76' }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result).catch(() => null);
+  const counter = counterHex ? Number(BigInt(counterHex)) : null;
+  ok('Agents', 'the funded-job watcher is level with the escrow kernel', counter != null && watch?.cursor_job_id != null && counter - watch.cursor_job_id <= 30 && !Object.keys(watch.retrying || {}).length, `kernel ${counter} · cursor ${watch?.cursor_job_id} · retrying ${Object.keys(watch?.retrying || {}).length}`);
+  // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
+  const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
+  ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));
+  // 5. An /api/ path we do not serve is a 404, not the front page.
+  const u404 = await fetch(SITE + '/api/health-check-no-such-route').catch(() => null);
+  ok('Site', 'an unknown /api/ path is a 404 with the route list', u404?.status === 404 && /json/.test(u404.headers.get('content-type') || ''), u404 ? `${u404.status} ${u404.headers.get('content-type')}` : 'no answer');
+  // 6. The day's statistics are counted whole (rolled up), not a sample.
+  const det = (await getJ(`${AGENT}/stats/detail?day=${new Date(Date.now() - 86400e3).toISOString().slice(0, 10)}`)).body;
+  ok('Agents', "yesterday's request statistics are whole, not truncated", det && det.truncated === false, det ? `${det.isolates} isolates, ${det.rolled_up} rolled up` : 'no answer');
   const rt = route?.round_trip || {};
   const tx = route?.transfer_tax || {};
   const implied = (1 - (tx.buy_pct || 0) / 100) * (1 - (tx.sell_pct || 0) / 100);

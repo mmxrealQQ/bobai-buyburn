@@ -224,7 +224,8 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a"
+        "https://agent.brainonbnb.com/health-factor/a2a",
+        "https://agent.brainonbnb.com/health-factor/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",
@@ -274,7 +275,8 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a"
+        "https://agent.brainonbnb.com/grid-trader/a2a",
+        "https://agent.brainonbnb.com/grid-trader/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",
@@ -325,7 +327,8 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a"
+        "https://agent.brainonbnb.com/yield-optimizer/a2a",
+        "https://agent.brainonbnb.com/yield-optimizer/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",
@@ -375,7 +378,8 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a"
+        "https://agent.brainonbnb.com/rebalancer/a2a",
+        "https://agent.brainonbnb.com/rebalancer/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",
@@ -426,7 +430,8 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a"
+        "https://agent.brainonbnb.com/lp-placement/a2a",
+        "https://agent.brainonbnb.com/lp-placement/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",
@@ -22114,7 +22119,7 @@
       "name": "Brain on BNB — DeFi Agent",
       "endpoints": [
         "https://agent.brainonbnb.com/defi-agent/a2a",
-        "https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json"
+        "https://agent.brainonbnb.com/defi-agent/a2a/.well-known/agent-card.json"
       ],
       "speaks": [
         "a2a",

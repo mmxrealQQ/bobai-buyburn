@@ -1,3 +1,10 @@
+# Applebot guessed ~98,000 /api/ paths a day from our app names (2026-10-04:
+# /api/brainscreener, /api/game, /api/worldcup, none of which exist). /api/ is
+# the data interface for agents and tools, not pages to index.
+User-agent: Applebot
+Disallow: /api/
+Allow: /
+
 User-agent: *
 Allow: /
 

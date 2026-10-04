@@ -1109,13 +1109,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);

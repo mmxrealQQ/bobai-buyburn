@@ -52,8 +52,16 @@ const decodeDoc = (uri) => {
 };
 
 (async () => {
-  const pk = process.env.AGENT_PROVIDER_PRIVATE_KEY;
-  if (!pk) die('No AGENT_PROVIDER_PRIVATE_KEY in .env');
+  // --from defi (2026-10-04): the DeFi Agent #363709 is owned by the DeFi
+  // wallet 0xbFAA, so its document is signed by that key; it never sends in
+  // the minutes worker-lp may send from the same wallet.
+  const fromDefi = process.argv.includes('--from') && process.argv[process.argv.indexOf('--from') + 1] === 'defi';
+  if (fromDefi && confirm) {
+    const n = new Date(), mm = n.getUTCMinutes(), hh = n.getUTCHours();
+    if ([9, 0, 1, 2].includes(mm % 10) || (mm >= 49 && mm <= 52) || (hh === 4 && mm >= 20 && mm <= 30)) die(`UTC ${hh}:${String(mm).padStart(2, '0')} is a minute the DeFi agent may send from 0xbFAA — run again in a few minutes`);
+  }
+  const pk = process.env[fromDefi ? 'LP_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
+  if (!pk) die('No key for that wallet in .env');
   const account = privateKeyToAccount(pk.startsWith('0x') ? pk : `0x${pk}`);
 
   let state;
@@ -70,7 +78,9 @@ const decodeDoc = (uri) => {
 
     const owner = await publicClient.readContract({ address: REGISTRY, abi: ABI, functionName: 'ownerOf', args: [BigInt(rec.id)] });
     if (owner.toLowerCase() !== account.address.toLowerCase()) {
-      die(`#${rec.id} is owned by ${owner}, not by the signer. setAgentURI would revert.`);
+      console.log(`  #${rec.id}  ${agent.slug}: owned by ${owner}, not the signer — skipped${owner.toLowerCase() === '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a' ? ' (run again with --from defi)' : ''}.
+`);
+      continue;
     }
 
     const current = decodeDoc(await publicClient.readContract({ address: REGISTRY, abi: ABI, functionName: 'tokenURI', args: [BigInt(rec.id)] }));

@@ -465,7 +465,7 @@ async function a2aCall(url, data, timeoutMs = 15000) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       jsonrpc: '2.0', id: 1, method: 'message/send',
-      params: { message: { role: 'user', messageId: 'dispatch-' + Date.now(), parts: [{ kind: 'data', data }] } },
+      params: { message: { kind: 'message', role: 'user', messageId: 'dispatch-' + Date.now(), parts: [{ kind: 'data', data }] } }, // kind is required by the A2A Message schema (strict sellers refuse without it)
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });

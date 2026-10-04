@@ -1735,7 +1735,7 @@ export default {
         method: 'message/send',
         example: {
           jsonrpc: '2.0', id: 1, method: 'message/send',
-          params: { message: { role: 'user', messageId: 'example', parts: [{ kind: 'data', data: { skill: 'list' } }] } },
+          params: { message: { kind: 'message', role: 'user', messageId: 'example', parts: [{ kind: 'data', data: { skill: 'list' } }] } },
         },
         skills: ['list — what is for sale', 'negotiate — get a quote', 'notify_funded — deliver a job whose escrow is funded'],
         services: Object.values(SERVICES).map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, price_display: x.price_display })),
@@ -1890,7 +1890,7 @@ export default {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
-            params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
+            params: { message: { kind: 'message', role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
         }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
@@ -1912,7 +1912,7 @@ export default {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
-            params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
+            params: { message: { kind: 'message', role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
         }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });

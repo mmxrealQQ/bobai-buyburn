@@ -49,13 +49,14 @@ if (hiredCheck && hiredCheck.state !== 'pass') todo.push('3 completed hires of #
 line(false, 'registration form submitted', 'not machine-checkable — confirm with the operator once: https://forms.gle/jzTajVNZEgukeoYT9');
 
 head('Marketplace listings of our agents');
+const mdRungs = Object.fromEntries((((await get('https://www.mandatemarkets.com/api/v1/agents?all=1&limit=400'))?.data?.agents) || []).map((x) => [String(x.tokenId), `${x.rung} ${x.rungName}`]));
 const mo = (await get(`https://marque.trade/api/v1/phase2/owner/${PROVIDER}`))?.agents || [];
 const mo2 = (await get(`https://marque.trade/api/v1/phase2/owner/${CAMPAIGN}`))?.agents || [];
 for (const id of OURS) {
   const a = [...mo2, ...mo].find((x) => String(x.agentId) === String(id) && x.quality?.checks?.[0]?.pass !== false) || [...mo2, ...mo].find((x) => String(x.agentId) === String(id));
   const md = (await get(`https://www.mandatemarkets.com/api/v1/qualify/${id}`))?.data;
   const live = md?.checks?.find((c) => c.id === 'live')?.state;
-  line(!!a?.listedOnMarque && live === 'pass', `#${id} ${a?.name || md?.name || ''}`, `Marque ${a ? (a.listedOnMarque ? 'listed ' + a.quality?.passed + '/5' : 'NOT listed: ' + (a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.id + ' ' + (c.reason || '').slice(0, 70)).join('; ')) : 'unknown'} · Mandate live ${live || '?'}`);
+  line(!!a?.listedOnMarque && live === 'pass', `#${id} ${a?.name || md?.name || ''}`, `Marque ${a ? (a.listedOnMarque ? 'listed ' + a.quality?.passed + '/5' : 'NOT listed: ' + (a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.id + ' ' + (c.reason || '').slice(0, 70)).join('; ')) : 'unknown'} · Mandate live ${live || '?'}, rung ${mdRungs[String(id)] || '?'}`);
   if (a && !a.listedOnMarque) todo.push(`#${id}: Marque listing — ${(a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ').slice(0, 160)}`);
 }
 

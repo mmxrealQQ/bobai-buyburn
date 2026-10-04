@@ -624,7 +624,16 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
   }
 
-  const fromChain = extractParams(String(job.description || ''), {});
+  // A signed (SDK) description is JSON whose currency and verifying_contract
+  // are addresses too — the first address in the raw text was the $U token,
+  // read as "the wallet to plan for" (job 56905, 2026-10-04). Only the
+  // buyer's own words are read: the task and the terms.
+  const humanText = (() => {
+    const raw = String(job.description || '');
+    try { const d = JSON.parse(raw); if (d && (d.task || d.terms)) return [d.task, d.terms?.deliverables, d.terms?.quality_standards].filter(Boolean).join(' '); } catch { /* not JSON */ }
+    return raw;
+  })();
+  const fromChain = extractParams(humanText, {});
   const asked = extractParams(String(text || ''), data.params || data);
   const params = { ...asked, ...fromChain, service: service.id };
   let result;

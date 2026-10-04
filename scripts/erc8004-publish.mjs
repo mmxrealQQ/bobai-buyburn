@@ -213,6 +213,11 @@ const SEED_TASKS = {
   yield_plan: 'where is the best yield on BNB Chain for USDT right now',
   rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":1000}] — what should the range be`,
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_TOKEN}, placing $1000 of liquidity`,
+  // The DeFi Agent (2026-10-04): without its own seed the panel fell back to
+  // the category's sentence — a portfolio rebalance — and the agent rightly
+  // declined it. Our own position, as a sentence that works; a visitor puts
+  // in their position id or wallet.
+  lp_position_plan: 'what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
 };
 const seedTask = (svc) => SEED_TASKS[svc.id] || null;
 
@@ -670,14 +675,32 @@ const repChip = (id) => {
 
 const REPUTATION_ADDR = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63';
 
+// A HOST IS NOT ALWAYS A FLEET (2026-10-04). Agents whose category is only
+// derived from their words are shown collapsed per operator, which is right
+// for clone fleets ("Grid Agent 1…9 by 4LPHA"). marque.trade hosts six
+// DIFFERENT agents — Bound, Lattice, Sluicegate, Keel, … — and the collapsed
+// row took the first one's name ("Bound", no category), so all six vanished
+// from the page, Keel's hire button with them. A host whose agents all carry
+// different names once digits are stripped, and no more than eight of them,
+// is a set of distinct agents: each is listed on its own.
+const hostOf = (a) => { try { return new URL((a.endpoints || [])[0]).host; } catch { return ''; } };
+const distinctHosts = (() => {
+  const byHost = new Map();
+  for (const a of directory) { const h = hostOf(a); if (!h) continue; if (!byHost.has(h)) byHost.set(h, []); byHost.get(h).push(String(a.name || '').toLowerCase().replace(/\d+/g, '').replace(/\s+/g, ' ').trim()); }
+  const out = new Set();
+  for (const [h, names] of byHost) if (names.length > 1 && names.length <= 8 && new Set(names).size === names.length) out.add(h);
+  return out;
+})();
+
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
   const attrsFor = (id) => (ownAgents.find((x) => x.id === id)?.attributes) || [];
 
   for (const a of directory) {
+    const own = distinctHosts.has(hostOf(a));
     const hit = classifyAgent({ ...a, attributes: attrsFor(a.id) })
-      .find((m) => m.category === cat.id && m.source !== 'derived');
+      .find((m) => m.category === cat.id && (m.source !== 'derived' || own));
     if (!hit) continue;
     let host = '';
     try { host = new URL((a.endpoints || [])[0]).host; } catch { /* no endpoint */ }
@@ -697,6 +720,7 @@ const categorised = CATEGORIES.map((cat) => {
   const claimed = new Set(rows.map((r) => r.label));
 
   for (const o of operators) {
+    if (distinctHosts.has(o.operator)) continue; // its agents are listed one by one above
     const hit = classifyAgent({
       name: o.name || o.operator, description: o.description,
       tools: o.tools, skills: o.skills, declared_services: o.declared_services,

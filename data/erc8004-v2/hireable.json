@@ -62,6 +62,18 @@
       "ours": false
     },
     {
+      "id": 340460,
+      "label": "LingoAI Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 341563,
+      "label": "marketplace-operated-rebalance-planner",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 341628,
       "label": "IVL Rebalancer",
       "category": "rebalancing",
@@ -84,7 +96,8 @@
       "id": 363709,
       "label": "Brain on BNB — DeFi Agent",
       "category": "rebalancing",
-      "ours": true
+      "ours": true,
+      "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
     },
     {
       "id": 269233,
@@ -95,6 +108,12 @@
     {
       "id": 340527,
       "label": "Hevo Grid",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 269224,
+      "label": "Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
@@ -117,8 +136,26 @@
       "ours": false
     },
     {
+      "id": 338477,
+      "label": "PancakeSwap Grid Trader",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 336623,
+      "label": "Gridwright",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 340455,
       "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 341554,
+      "label": "Lattice",
       "category": "grid-trading",
       "ours": false
     },
@@ -142,14 +179,56 @@
       "ours": false
     },
     {
+      "id": 269226,
+      "label": "Yield Allocator",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
       "ours": false
     },
     {
+      "id": 338478,
+      "label": "BNB Chain Yield Router",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 336622,
       "label": "RangeKeeper",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 336624,
+      "label": "YieldRouter",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 340456,
+      "label": "LingoAI Yield Optimiser",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 341555,
+      "label": "Sluicegate",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 341564,
+      "label": "marketplace-operated-yield-planner",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -188,6 +267,42 @@
     {
       "id": 270183,
       "label": "AgentCensus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 269228,
+      "label": "Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 338480,
+      "label": "Venus Liquidation Guard",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 336625,
+      "label": "HealthSentinel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 340458,
+      "label": "LingoAI Health Factor Sentinel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 341556,
+      "label": "Keel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false
     },

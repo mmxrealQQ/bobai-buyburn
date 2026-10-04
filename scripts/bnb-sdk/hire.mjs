@@ -37,7 +37,7 @@ const opt = (n) => { const i = raw.indexOf(n); return i >= 0 ? raw[i + 1] : null
 const RPC = opt('--rpc') || 'https://bsc-dataseed1.defibit.io';
 const NETWORK = { ...resolveNetwork('bsc-mainnet'), rpcUrl: RPC, usePaymaster: false };
 const confirm = raw.includes('--confirm');
-const args = raw.filter((a, i) => a !== '--confirm' && !['--from', '--rpc'].includes(a) && !['--from', '--rpc'].includes(raw[i - 1]));
+const args = raw.filter((a, i) => a !== '--confirm' && a !== '--no-notify' && !['--from', '--rpc'].includes(a) && !['--from', '--rpc'].includes(raw[i - 1]));
 const [agentId, task, deliverables] = args;
 if (!/^\d+$/.test(agentId || '') || !task) {
   console.log('usage: node scripts/bnb-sdk/hire.mjs <agentId> "<task>" ["<deliverables>"] [--from defi] [--rpc URL] [--confirm]');
@@ -158,6 +158,10 @@ await client.setBudget(jobId, price);
 const funded = await client.fund(jobId, price);
 console.log(`  fund         ${formatUnits(price, 18)} $U  https://bscscan.com/tx/${funded.transactionHash}`);
 // 5. the push some sellers wait for
-const pushed = await sendSkill(messageUrl, { skill: 'notify_funded', job_id: Number(jobId) }).catch((e) => ({ error: { message: String(e) } }));
-console.log(`  notify       ${pushed.error ? 'seller: ' + pushed.error.message.slice(0, 120) : 'sent'}`);
+// --no-notify: prove a seller that watches the chain delivers without the push (our job-watch.js)
+if (raw.includes('--no-notify')) console.log('  notify       not sent (--no-notify): the seller has to find the funded job on the chain');
+else {
+  const pushed = await sendSkill(messageUrl, { skill: 'notify_funded', job_id: Number(jobId) }).catch((e) => ({ error: { message: String(e) } }));
+  console.log(`  notify       ${pushed.error ? 'seller: ' + pushed.error.message.slice(0, 120) : 'sent'}`);
+}
 console.log(`  follow       https://marque.trade/api/v1/phase2/wallet/${wallet.address}`);

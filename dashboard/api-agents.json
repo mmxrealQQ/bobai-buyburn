@@ -22133,7 +22133,7 @@
         }
       ],
       "description": "What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that ended the most ahead against simply holding over the last week when every width was replayed over the recorded prices (its fees, less the gas of its re-sets, plus where it stood against a wallet that held), the width in use kept unless another leads it by a tenth — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.",
-      "seed": null,
+      "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "example": "https://agent.brainonbnb.com/example?service=lp_position_plan",
       "attributes": [
         {

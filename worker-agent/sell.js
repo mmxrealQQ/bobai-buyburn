@@ -58,6 +58,7 @@ import { lpPositionPlan } from './lp-service.js';
 import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
+import { parseRangeTask, answerRangeTask } from './range-task.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -405,6 +406,32 @@ export async function handleA2A(request, env, opts = {}) {
   const account = providerAccount(env);
   const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
   const forced = AGENT_SERVICE[opts.agent] || null;
+
+  // --- a task in plain words (2026-10-04) --------------------------------
+  // Marketplaces test agents with text, not skills: Marque's "callable"
+  // check asks what we take in one sentence, and its rebalancing test hands
+  // over a V3 position at a past block and wants strict JSON. Answered here
+  // when no skill was named, with the JSON as a text part (what a strict
+  // reader parses) and as a data part.
+  if (!skill && text) {
+    const task = parseRangeTask(text);
+    if (task) {
+      try {
+        const full = await answerRangeTask(task, [env?.BSC_RPC_KEYED_URL_2, 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-dataseed1.defibit.io'].filter(Boolean));
+        const asked = task.fields.length ? Object.fromEntries(task.fields.filter((f) => f in full).map((f) => [f, full[f]])) : full;
+        const out = Object.keys(asked).length ? asked : full;
+        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
+      } catch (e) {
+        return rpcErr(id, -32000, `could not read that position at block ${task.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
+      }
+    }
+    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|in one sentence/i.test(text)) {
+      const sentence = forced === 'lp_position_plan'
+        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
+        : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
+    }
+  }
 
   // --- BNB's standard hire (2026-10-04) ----------------------------------
   // The SDK dialect: a signed NegotiationResult the buyer anchors as the job

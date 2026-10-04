@@ -327,22 +327,57 @@ function bumpDetail(env, names) {
 async function flushDetail(env) {
   for (const day of [...detailDirty]) {
     detailDirty.delete(day);
-    await env.AGENT.put(`detail:${day}:${ISOLATE}`, JSON.stringify(detail.get(day) || {}), { expirationTtl: 60 * 60 * 24 * 90 });
+    // `at` in the metadata lets the rollup tell a finished isolate from a live one without reading the value.
+    await env.AGENT.put(`detail:${day}:${ISOLATE}`, JSON.stringify(detail.get(day) || {}), { expirationTtl: 60 * 60 * 24 * 90, metadata: { at: Date.now() } });
   }
 }
 
-// One day added up. A day with more isolates than one request may read is
-// reported as truncated rather than shown as if it were whole.
-async function readDetail(env, day) {
+// THE DAY ROLLED UP (2026-10-04). A busy day runs on thousands of isolates —
+// 7,059 on 4.10. — and the reader used to add up only the first 800 keys, so
+// /stats/detail showed about a ninth of the day under "truncated: true", at
+// 800 KV reads per call. Now the cron folds every isolate that has not written
+// for ROLL_AFTER into one document (detailsum:<day>: the summed names and the
+// ids already folded in), at most ROLL_READS keys per tick to stay inside an
+// invocation's limits; the reader adds only the isolates still live. An
+// isolate that wakes again after being folded loses its later increments — a
+// small undercount, never a double count.
+const ROLL_AFTER = 30 * 60 * 1000;
+const ROLL_READS = 600;
+async function rollupDetail(env, day) {
+  const key = `detailsum:${day}`;
+  const doc = JSON.parse((await env.AGENT.get(key)) || '{"names":{},"rolled":{}}');
   const list = await listAll(env, `detail:${day}:`);
-  const keys = list.keys.slice(0, 800);
+  const now = Date.now();
+  const stale = list.keys.filter((k) => !doc.rolled[k.name.slice(day.length + 8)] && (!k.metadata?.at || now - k.metadata.at > ROLL_AFTER)).slice(0, ROLL_READS);
+  if (!stale.length) return { day, folded: 0, live: list.keys.length - Object.keys(doc.rolled).length };
+  for (let i = 0; i < stale.length; i += 50) {
+    const part = stale.slice(i, i + 50);
+    const values = await Promise.all(part.map((k) => env.AGENT.get(k.name)));
+    part.forEach((k, j) => {
+      let m; try { m = JSON.parse(values[j] || '{}'); } catch { m = {}; }
+      for (const [name, n] of Object.entries(m)) doc.names[name] = (doc.names[name] || 0) + Number(n || 0);
+      doc.rolled[k.name.slice(day.length + 8)] = 1;
+    });
+  }
+  await env.AGENT.put(key, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 90 });
+  return { day, folded: stale.length, live: list.keys.length - Object.keys(doc.rolled).length };
+}
+
+// One day added up: the rolled-up sum plus the isolates not folded in yet. If
+// those are more than one request may read, it says so (truncated) instead of
+// passing a part off as the whole.
+async function readDetail(env, day) {
+  const doc = JSON.parse((await env.AGENT.get(`detailsum:${day}`)) || '{"names":{},"rolled":{}}');
+  const list = await listAll(env, `detail:${day}:`);
+  const live = list.keys.filter((k) => !doc.rolled[k.name.slice(day.length + 8)]);
+  const keys = live.slice(0, 800);
   const values = await Promise.all(keys.map((k) => env.AGENT.get(k.name)));
-  const sum = {};
+  const sum = { ...doc.names };
   for (const v of values) {
     let m; try { m = JSON.parse(v || '{}'); } catch { m = {}; }
     for (const [name, n] of Object.entries(m)) sum[name] = (sum[name] || 0) + Number(n || 0);
   }
-  return { day, isolates: list.keys.length, truncated: list.keys.length > keys.length, names: sum };
+  return { day, isolates: list.keys.length, rolled_up: Object.keys(doc.rolled).length, truncated: live.length > keys.length, names: sum };
 }
 
 async function readCounters(env) {
@@ -2371,6 +2406,11 @@ ${pageTail}`;
       return json(t);
     }
 
+    if (path === '/run-rollup' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json(await rollupDetail(env, url.searchParams.get('day') || today()));
+    }
+
     if (path === '/run-telemetry' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       return json(await refreshTelemetry(env));
@@ -2439,12 +2479,20 @@ ${pageTail}`;
     if (path === '/stats/detail') {
       const day = url.searchParams.get('day') || today();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'day must be YYYY-MM-DD' }, 400);
+      // Two minutes at the edge: the terminal reads this on every heartbeat of
+      // every visitor, and an uncached read lists and reads the day's keys.
+      const ck = new Request(`https://agent.brainonbnb.com/stats/detail?day=${day}`);
+      const hit = await caches.default.match(ck).catch(() => null);
+      if (hit) return hit;
       const d = await readDetail(env, day);
       const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
-      return json({
+      const res = json({
         ...d, names: sorted,
-        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>], mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Separate from /stats: nothing here enters its totals.',
+        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
       });
+      res.headers.set('cache-control', 'public, max-age=120');
+      ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      return res;
     }
 
     // MCP, carrying exactly one tool: the paid watch.
@@ -2921,5 +2969,12 @@ ${pageTail}`;
     // Every tick — jobs funded the BNB-SDK way never send notify_funded, so
     // the seller looks for them (job-watch.js): the new job ids since the last tick, read by eth_call.
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+
+    // The day's detail counts, folded together isolate by isolate (rollupDetail);
+    // just after midnight the day before gets its last pass.
+    ctx.waitUntil((async () => {
+      await rollupDetail(env, today());
+      if (t.getUTCHours() === 0 && t.getUTCMinutes() < 30) await rollupDetail(env, new Date(Date.now() - 86400e3).toISOString().slice(0, 10));
+    })().catch(() => {}));
   },
 };

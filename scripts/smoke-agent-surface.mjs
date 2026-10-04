@@ -503,7 +503,10 @@ section('The written numbers match the measured ones');
   const n = (x) => Number(x).toLocaleString('en-US');
   const censusFigures = api ? [api.registered_ids, api.registrations.parses, api.reachability.reachable,
     api.reachability.answering_mcp, api.reachability.a2a_callable] : [];
-  const quoted = censusFigures.filter((v) => txt.includes(n(v)));
+  // A whole number only: "EIP-3009" contains "300", which was today's MCP
+  // count (2026-10-04) — a substring is not a transcribed figure.
+  const asNumber = (s) => new RegExp(`(^|[^0-9.,])${s.replace(/[.,]/g, (c) => '\\' + c)}(?![0-9]|[.,][0-9])`);
+  const quoted = censusFigures.filter((v) => asNumber(n(v)).test(txt));
   ok('llms.txt names no census count of its own',
     !!api && quoted.length === 0,
     quoted.length ? `it hardcodes ${quoted.map(n).join(', ')} — correct today, stale tomorrow; point at the JSON instead`

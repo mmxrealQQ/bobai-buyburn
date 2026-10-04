@@ -393,7 +393,18 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
 
 // opts.agent: an endpoint that belongs to ONE of our agents (/defi-agent/a2a)
 // sells that agent's service whatever the prose says.
-const AGENT_SERVICE = { 'defi-agent': 'lp_position_plan' };
+// One endpoint per agent (2026-10-04): /<slug>/a2a sells that agent's one
+// service. The five used to share /a2a and one card that matched none of their
+// registrations — 8004scan graded all five "broken" while the DeFi Agent, with
+// a card of its own, read "healthy".
+export const AGENT_SERVICE = {
+  'defi-agent': 'lp_position_plan',
+  'health-factor': 'health_factor',
+  'grid-trader': 'grid_plan',
+  'yield-optimizer': 'yield_plan',
+  rebalancer: 'rebalance_plan',
+  'lp-placement': 'lp_tier_plan',
+};
 
 export async function handleA2A(request, env, opts = {}) {
   let body;

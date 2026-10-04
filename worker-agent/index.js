@@ -38,7 +38,7 @@ import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -57,6 +57,14 @@ import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mj
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES, DEFI_AGENT_ID, AGENT_REGISTRY } from '../shared/agent-registrations.js';
+// Each agent's card name equals its on-chain registration's name (scripts/lib/own-agents.mjs).
+const OWN_CARDS = {
+  'health-factor': { id: 302257, name: 'Brain on BNB — Venus Health Factor Monitor' },
+  'grid-trader': { id: 302258, name: 'Brain on BNB — BSC Grid Planner' },
+  'yield-optimizer': { id: 304493, name: 'Brain on BNB — Venus Yield Ranking' },
+  rebalancer: { id: 304494, name: 'Brain on BNB — Portfolio Rebalance Pricer' },
+  'lp-placement': { id: 310460, name: 'Brain on BNB — PancakeSwap Fee Tier Placement' },
+};
 import { watchFundedJobs } from './job-watch.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
@@ -1497,6 +1505,43 @@ export default {
     // Both spellings (2026-09-18): agent.json is what the BNB reference agents
     // serve and what our own dispatcher tries first on strangers, and GET /
     // pointed at it here while it returned 404.
+    // THE FIVE, EACH WITH ITS OWN CARD AND ENDPOINT (2026-10-04): the shared
+    // /a2a card ("hireable agents", nine skills) matched none of their
+    // registrations, and 8004scan graded all five "broken" while the DeFi Agent
+    // with its own card read "healthy". Same shape as the DeFi Agent's below:
+    // name = the registration's name, one service, its own id.
+    {
+      const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
+      if (m) {
+        const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
+        if (request.method === 'POST' && m[2] && !m[3]) return await handleA2A(request, env, { agent: slug });
+        return json({
+          protocolVersion: '0.3.0',
+          name: card.name,
+          description: s.deliverables,
+          url: `${SELF_ORIGIN}/${slug}/a2a`,
+          preferredTransport: 'JSONRPC',
+          version: '1.0.0',
+          category: s.category,
+          provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
+          capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+          registrations: [{ agentId: card.id, agentRegistry: AGENT_REGISTRY }],
+          supportedTrust: ['reputation'],
+          trustRegistries: TRUST_REGISTRIES,
+          defaultInputModes: ['application/json', 'text/plain'],
+          defaultOutputModes: ['application/json'],
+          skills: [
+            { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category] },
+            { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
+            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: '0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402)', escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+          ],
+          provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+          additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
+          documentationUrl: 'https://brainonbnb.com/registry',
+        });
+      }
+    }
+
     // THE DEFI AGENT, AS AN AGENT OF ITS OWN (2026-10-04). The six services
     // share one A2A endpoint and one card; a marketplace listing ONE agent
     // needs a card that is about that agent — its name, its category, its
@@ -1842,7 +1887,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
-        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
+        }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
       return json(nr.body, nr.status);
@@ -1864,7 +1909,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
             params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
-        }), env, new URL(endpoint).pathname.startsWith('/defi-agent') ? { agent: 'defi-agent' } : {}); // the DeFi Agent's own endpoint keeps its own service
+        }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
       ctx.waitUntil(bump(env, 'hire'));

@@ -280,11 +280,9 @@ try {
       id: a.id,
       name: a.name,
       description: svc ? svc.deliverables : null,
-      // The DeFi Agent has its own endpoint and card (2026-10-04); the other
-      // five share the counter at /a2a.
-      endpoints: slug === 'defi-agent'
-        ? ['https://agent.brainonbnb.com/defi-agent/a2a', 'https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json']
-        : ['https://agent.brainonbnb.com/a2a'],
+      // Every agent of ours has its own endpoint and card since 2026-10-04
+      // (/<slug>/a2a); the shared /a2a counter stays for old links.
+      endpoints: [`https://agent.brainonbnb.com/${slug}/a2a`, `https://agent.brainonbnb.com/${slug}/a2a/.well-known/agent-card.json`],
       speaks: ['a2a', 'x402'],
       // What it can be asked for, named the way the seller names it. Empty
       // tools on purpose: see the merge below.

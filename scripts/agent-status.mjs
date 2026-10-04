@@ -60,6 +60,13 @@ for (const id of OURS) {
   if (a && !a.listedOnMarque) todo.push(`#${id}: Marque listing — ${(a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ').slice(0, 160)}`);
 }
 
+head('8004scan (the explorer most people check)');
+for (const id of OURS) {
+  const a = (await get(`https://8004scan.io/api/v1/public/agents/56/${id}`))?.data;
+  const sv = a?.scores?.breakdown?.dimensions?.service;
+  line(!!sv && sv.score >= 60, `#${id} service score`, sv ? `${Math.round(sv.score)} · ${sv.details?.health_status} / ${sv.details?.integrity_tier} · checked ${String(a.updated_at || '').slice(0, 16)}` : 'not indexed yet');
+}
+
 head('Real use today (rolled-up /stats/detail)');
 const day = new Date().toISOString().slice(0, 10);
 const det = (await get(`${AG}/stats/detail?day=${day}&r=${Date.now()}`)) || { names: {} };

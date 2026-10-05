@@ -1030,7 +1030,11 @@
 #bt .hw-grabi{transform:translateY(5%);transition:transform 1s ease}
 #bt .hw-grab.on .hw-grabi{transform:none;transition:transform 2.4s ease}
 /* the bots that circle the brain are small ghosts, each in its bot's colour */
-#bt .hw-bg{position:absolute;left:0;top:0;width:var(--bg,22px);opacity:0;will-change:transform;filter:drop-shadow(0 0 5px var(--c,#fff))}
+/* the glow is drawn once behind the ghost (a soft disc in its bot's colour), not a filter: a drop-shadow on six pieces
+ * that move every frame was redrawn every frame — the page fell from 21 to 8 frames a second (2026-10-06) */
+#bt .hw-bg{position:absolute;left:0;top:0;width:var(--bg,22px);opacity:0;will-change:transform,opacity}
+#bt .hw-bg::before{content:"";position:absolute;inset:-45%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--c,#fff) 55%,transparent),transparent);z-index:-1}
+#bt .hw-bg img{position:relative}
 /* the switch, easier to see: larger, with a slow glow; its name says what a click does */
 #bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:24px;min-width:24px;padding:0 3px;margin-top:0;border-width:1.5px;border-color:#ff9d3c;box-shadow:0 0 0 0 rgba(255,138,30,.55);animation:bt-hw-ring 3.6s ease-out infinite}
 #bt .hw-sw svg{width:16px;height:16px}
@@ -1060,3 +1064,7 @@
 /* the switch's name folds out UNDER it on a wide screen (2026-10-05: beside it, it lay over MOMENTS and the clock) */
 #bt .bt-win:not(.portrait) .hw-sw .hw-t{left:50%;top:calc(100% + 6px);transform:translateX(-50%) scaleY(0);transform-origin:50% 0;white-space:nowrap}
 #bt .bt-win:not(.portrait) .hw-sw.hw-say .hw-t,#bt .bt-win:not(.portrait) .hw-sw:hover .hw-t,#bt .bt-win:not(.portrait) .hw-sw:focus-visible .hw-t{transform:translateX(-50%) scaleY(1)}
+/* a phone: the skeleton hand that reaches down from the top and steals the moon */
+#bt .hw-mh{position:absolute;left:0;top:0;opacity:0;will-change:transform;transition:opacity .5s ease}
+#bt .hw-mh.on{opacity:1;transition:opacity .4s ease}
+#bt .hw-mhi{transform:rotate(180deg);filter:drop-shadow(0 0 6px rgba(0,0,0,.7)) drop-shadow(0 0 8px rgba(200,210,255,.25))}

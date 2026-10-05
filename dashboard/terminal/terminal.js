@@ -1595,7 +1595,10 @@ function speak(text, ms = 5200) {
   LIFE.sayUntil = performance.now() + ms;
   if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
   FACE.talkUntil = performance.now() + Math.min(3200, text.length * 22 + 500); // he says it while it types
-  let i = 0; const step = () => { if (id !== typing) return; bubble.textContent = text.slice(0, ++i); if (i < text.length) setTimeout(step, REDUCED ? 0 : 22); };
+  // typed by the clock, 22 ms a letter: on a slow device the timer fires late, and one letter per tick left a long line
+  // unfinished when its time was up (2026-10-06, a hello line broke off at "We build this to")
+  const t0 = performance.now(); let i = 0;
+  const step = () => { if (id !== typing) return; i = Math.min(text.length, Math.max(i + 1, Math.floor((performance.now() - t0) / 22))); bubble.textContent = text.slice(0, i); if (i < text.length) setTimeout(step, REDUCED ? 0 : 22); };
   step();
 }
 function placeBubble() {
@@ -4904,10 +4907,11 @@ window.__btHwSeason = hwSeason;
     + '<div class="hw-i hw-cl"><div class="hw-clip"><div class="hw-ball"><img alt="" draggable="false" data-hw="balloon"></div><div class="hw-clo">' + spr('clown', ['grin', 'blink']) + '</div></div><div class="hw-burst"><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s></div></div>'
     + '<div class="hw-i hw-pk a">' + spr('pumpkin', ['right', 'scream']) + '<i></i></div>'
     + '<div class="hw-i hw-cd"><img alt="" draggable="false" data-hw="candles"><i></i></div>'
-    + '<div class="hw-i hw-hd"><div class="hw-clip"><div class="hw-hdi">' + spr('hand', ['grab']) + '</div></div></div>';
+    + '<div class="hw-i hw-hd"><div class="hw-clip"><div class="hw-hdi">' + spr('hand', ['grab']) + '</div></div></div>'
+    + '<div class="hw-mh"><div class="hw-mhi">' + spr('hand', ['grab']) + '</div></div>'; /* a phone: the hand that steals the moon */
   win.insertBefore(el, win.querySelector('.vign'));
   const $h = s => el.querySelector(s);
-  const pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
+  const mh = $h('.hw-mh'), pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
   const BG = [...el.querySelectorAll('.hw-bg')];
   const ORBS = [...el.querySelectorAll('.hw-o')], sp = $h('.hw-o[data-k="defi"]'), cat = $h('.hw-o[data-k="creator"]');
   // only the two that look for a free edge are watched for something moving over them; the costumes sit on their lights
@@ -5005,7 +5009,7 @@ window.__btHwSeason = hwSeason;
     const mr = cl3(dia * 0.64, 16, 54); /* the picture's moon is a little larger than the painted one it covers */ M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
     // where the painted moon lies against his head (1280, 1366: the moon picture covered the bots' names beside his
     // brain) only the dim painted one stays — far behind, it covers nothing
-    if (M1 && A.figScreen && A.figHpx) { const fs = A.figScreen, fh = A.figHpx, fw = A.figW, hd = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); if (cut(M1, hd, 14) && (M1.t + M1.b) / 2 > hd.t) M1 = null; } /* beside the head, not above it */
+    if (M1 && !portrait && A.figScreen && A.figHpx) { /* never on a phone: there the painted moon alone was the complaint */ const fs = A.figScreen, fh = A.figHpx, fw = A.figW, hd = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); if (cut(M1, hd, 14) && (M1.t + M1.b) / 2 > hd.t) M1 = null; } /* beside the head, not above it */
     return M1;
   }
   function lights(v) {
@@ -5020,7 +5024,7 @@ window.__btHwSeason = hwSeason;
   function fly() {
     if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!win.offsetWidth || !A.figHpx) return;
     const g = Math.round(cl3(A.figHpx * (portrait ? 0.0525 : 0.0575), 11, 20)); /* 25% up again (operator: "a tiny bit larger") */ if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
-    for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i]; e.style.transform = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)'; e.style.opacity = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); }
+    for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i], tf = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)', op = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); if (e._tf !== tf) e.style.transform = e._tf = tf; if (e._op !== op) e.style.opacity = e._op = op; } /* written only when changed */
   }
   function load() {
     for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (!i.getAttribute('src')) { i.addEventListener('load', () => { sig = ''; }, { once: true }); i.src = BASE + 'hw/' + i.dataset.hw + '.webp' + Q; } });
@@ -5253,11 +5257,38 @@ window.__btHwSeason = hwSeason;
     after(secs * 1000 - 1700, () => { gh.style.opacity = '0'; }); after(secs * 1000 + 100, () => { ghOn = false; });
     return true;
   }
+  // A PHONE: THE HAND STEALS THE MOON (operator, 2026-10-05: "the hand must come on the phone too — maybe it grabs the
+  // moon?"): a skeleton hand reaches down from the top edge, closes round the moon, everybody takes fright, and it pulls
+  // the moon up out of the window; a little later the moon is back in its place. The phone's painting has no moon of
+  // its own any more (hw/back-tall.webp), so nothing stays behind.
+  let mhOn = false;
+  function moonGrab() {
+    if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED) return false;
+    const m = mo._b, hi = mh.querySelector('img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
+    const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, up = -(m.b + 24); // fingertips at the moon's middle; then both go out over the top
+    mhOn = true; frame(mh, '');
+    Object.assign(mh.style, { left: (m.l + m.r) / 2 - hw / 2 + 'px', width: hw + 'px', transition: 'none', transform: 'translateY(' + (-hh - 12) + 'px)' });
+    void mh.offsetWidth; mh.classList.add('on');
+    Object.assign(mh.style, { transition: 'transform 2s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px)' });
+    after(2100, () => { frame(mh, 'grab'); scare(true); });
+    after(2700, () => {
+      const go = 'transform 1.4s cubic-bezier(.6,0,.85,.35)';
+      Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + up) + 'px)' });
+      Object.assign(mo.style, { transition: go + ',opacity 1.2s ease', transform: 'translateY(' + up + 'px)' });
+    });
+    after(4300, () => { mh.classList.remove('on'); frame(mh, ''); scare(false); });
+    after(10500, () => { // the moon comes back, quietly, where it was
+      Object.assign(mo.style, { transition: 'none', opacity: '0', transform: '' }); void mo.offsetWidth;
+      Object.assign(mo.style, { transition: '', opacity: '' }); mhOn = false;
+    });
+    return true;
+  }
   // the hand comes up behind the timeline, gropes, grabs twice, and is gone
   // a scene looks once more at its spot before it starts: placed while the joke button stood elsewhere, the hand came up
   // behind it, unseen (1440x900, 2026-10-05)
   const stale = e => { read(); if (e._c && walls.some(w => cut(e._c, w, 1))) { sig = ''; since = Math.max(since, 2); tick(); return true; } return false; };
   function handScene() {
+    if (portrait) return moonGrab();
     if (!hd._b || hd.classList.contains('up') || cl.classList.contains('act')) return false;
     if (stale(hd) && !hd._b) return false;
     hd.classList.add('up'); frame(hd, '');
@@ -5307,14 +5338,15 @@ window.__btHwSeason = hwSeason;
     // THE DIRECTOR (operator: "far too nervous"): one thing at a time, in turn, with a long breath between
     if (!REDUCED) {
       const SHOW = [clownScene, batRun, roam, handScene, grabScene, batRun, roam]; let i = 0;
-      const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || !!grabT || ghOn || bat.classList.contains('fly');
+      const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
       loop(22000, 34000, () => { if (busy() || win.classList.contains('in-moment')) return; for (let n = 0; n < SHOW.length; n++) if (SHOW[i++ % SHOW.length]()) break; }, 9000);
     }
   }
   function stop() {
     for (const id of T) clearTimeout(id); T.clear(); clearInterval(grabT); grabT = 0; grab.classList.remove('on'); scared = false; ghOn = false;
     cl.classList.remove('act', 'ball', 'up1', 'up2'); hd.classList.remove('up'); bat.classList.remove('fly'); pkA.classList.remove('blip'); for (const p of [pkA, cd, ...ORBS]) p.classList.remove('shake'); gh.style.opacity = '0';
-    for (const root of [pkA, ...ORBS, gh, hd]) frame(root, ''); frame(cl, ''); batO.classList.remove('hw-fr');
+    mh.classList.remove('on'); mhOn = false; Object.assign(mo.style, { transition: '', opacity: '', transform: '' });
+    for (const root of [pkA, ...ORBS, gh, hd, mh]) frame(root, ''); frame(cl, ''); batO.classList.remove('hw-fr');
   }
 
   // looked at every few seconds, moved only when the window changed or something now lies over a piece
@@ -5359,7 +5391,7 @@ window.__btHwSeason = hwSeason;
   // said once at the start, so the small pumpkin is understood
   setTimeout(() => hint(5000), 3600);
   set(on, false);
-  window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
+  window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), moonOut: () => mhOn, grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
     // the scene's own lights at the stations: hidden with the look, back exactly as they were without it
     lit: () => DEST.filter(d => d.pct > 0).every(d => d.obj ? d.obj.visible : d.orb.visible) && coreOrb.visible, stands: () => stands(),
     // the share card photographs the scene as it always was: the painting steps out for that one frame

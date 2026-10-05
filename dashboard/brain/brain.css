@@ -90,6 +90,7 @@ body.bp-winon{overflow:hidden}
   .bp-h{gap:8px;padding:0 10px}
   .bp-tick{display:none}
   .bp-soc{gap:4px}
+  .bp-sw{margin-left:auto} /* phone (operator, 2026-10-05): logo and socials left, Classic and Buy at the right edge — the ticker that pushed them there is hidden here */
   .bp-logo span{display:none}
   .bp-grid{display:grid;grid-template-columns:1fr 1fr;height:auto;padding:8px;gap:8px}
   .bp-center{grid-column:1/-1;order:-1;height:calc(100svh - 54px - 16px);border-radius:16px}

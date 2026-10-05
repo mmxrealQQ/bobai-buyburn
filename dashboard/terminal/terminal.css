@@ -813,3 +813,226 @@
 #bt .mdc[data-act=loud]{box-shadow:0 0 14px var(--mb)}
 #bt .mdc[data-act=loud] .mi{animation-duration:.8s}
 #bt .mdc[data-act=quiet] .mi{animation-duration:5s}
+
+/* ===== HALLOWEEN (2026-10-05): the surroundings only — a layer of its own under BOBAI, the labels and every window,
+ * and a few pieces around a destination's window. Nothing existing is restyled; with the switch off (or outside the
+ * season) the terminal is as before. Motion obeys ?calm only, like the rest of the terminal (see REDUCED in terminal.js). */
+#bt .hw{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:0;visibility:hidden;transition:opacity .9s ease,visibility 0s .9s}
+#bt .hw-on .hw{opacity:1;visibility:visible;transition:opacity .9s ease}
+#bt .bt-win:not(.hw-on) .hw *{animation-play-state:paused!important}
+#bt .hw-i{position:absolute;left:0;top:0;opacity:0;transition:opacity 1.2s ease}
+#bt .hw-i.put{opacity:1}
+#bt .hw-i:not(.put){transition-duration:.2s}
+#bt .hw img,#bt .hw-d img,#bt .hw-dw img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+/* a small character: its frames lie on each other, one shows */
+#bt .hw-s{display:block;position:relative}
+#bt .hw-s img{opacity:0}
+#bt .hw-s img + img{position:absolute;left:0;top:0}
+#bt .hw-s img.on{opacity:1}
+/* ground mist above the timeline */
+#bt .hw-fog{position:absolute;left:-20%;right:-20%;bottom:112px;height:22%;opacity:.7;
+  background:radial-gradient(38% 62% at 18% 100%,rgba(150,130,210,.2),transparent 70%),radial-gradient(34% 52% at 52% 100%,rgba(110,170,190,.13),transparent 70%),radial-gradient(40% 70% at 86% 100%,rgba(170,120,200,.17),transparent 70%);
+  animation:bt-hw-fog 46s ease-in-out infinite alternate}
+#bt .hw-fog.b{height:18%;opacity:.85;
+  background:radial-gradient(30% 60% at 34% 100%,rgba(255,150,70,.08),transparent 70%),radial-gradient(42% 66% at 70% 100%,rgba(120,160,215,.17),transparent 70%);
+  animation-duration:61s;animation-direction:alternate-reverse}
+#bt .portrait .hw-fog{bottom:170px;height:16%}
+@keyframes bt-hw-fog{from{transform:translateX(-6%)}to{transform:translateX(6%)}}
+/* cobwebs in the top corners */
+#bt .hw-web{position:absolute;top:0;width:clamp(110px,24%,280px);opacity:.5}
+#bt .hw-web.l{left:0}
+#bt .hw-web.r{right:0;transform:scaleX(-1)}
+/* a chain of blocks hangs from the top and sways */
+#bt .hw-hc{transform-origin:50% 0;animation:bt-hw-swing 5.7s ease-in-out infinite alternate}
+@keyframes bt-hw-swing{from{transform:rotate(-3.5deg)}to{transform:rotate(3.5deg)}}
+/* the moon, a sticker like the rest */
+#bt .hw-mo img{animation:bt-hw-bob 9s ease-in-out infinite alternate;filter:drop-shadow(0 0 10px rgba(210,215,255,.28))}
+/* the ghost drags a chain of blocks behind it */
+#bt .hw-chn{position:absolute;top:58%;right:62%;width:150%!important;max-width:none;transform-origin:100% 50%;animation:bt-hw-drag 2.3s ease-in-out infinite alternate}
+#bt .hw-gh.rtl .hw-chn{right:auto;left:62%;transform-origin:0 50%;animation-name:bt-hw-dragr}
+@keyframes bt-hw-drag{from{transform:rotate(7deg)}to{transform:rotate(-5deg)}}
+@keyframes bt-hw-dragr{from{transform:scaleX(-1) rotate(7deg)}to{transform:scaleX(-1) rotate(-5deg)}}
+/* wax candles on the candle chart */
+#bt .hw-cd i{position:absolute;left:5%;top:-12%;width:90%;height:60%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,190,90,.3),transparent);animation:bt-hw-flick 3.1s ease-in-out infinite}
+#bt .hw-cd.shake img{animation:bt-hw-shake .11s linear infinite}
+#bt .portrait .hw-web{width:34%;opacity:.42}
+/* the stone platform under BOBAI: its foot fades into the mist (on a phone sooner — the buyback ring lies right below) */
+#bt .hw-da img{-webkit-mask-image:linear-gradient(#000 74%,transparent 98%);mask-image:linear-gradient(#000 74%,transparent 98%)}
+#bt .portrait .hw-da img{-webkit-mask-image:linear-gradient(#000 34%,transparent 72%);mask-image:linear-gradient(#000 34%,transparent 72%)}
+/* far lightning, and the face that stands in the sky every third time */
+#bt .hw-fl{position:absolute;inset:0;opacity:0;background:radial-gradient(95% 62% at 42% 0,rgba(205,218,255,.95),transparent 72%)}
+#bt .hw-face{position:absolute;left:50%;top:8%;width:40%;transform:translateX(-50%);opacity:0;filter:saturate(.3) brightness(1.3) blur(.7px)}
+#bt .portrait .hw-face{width:74%;top:13%}
+/* the clown behind BOBAI: he rises behind him (this layer lies under the figure) and is gone the moment BOBAI moves */
+#bt .hw-grab{position:absolute;left:0;top:0;opacity:0;transition:opacity .9s ease;will-change:opacity}
+#bt .hw-grab.on{opacity:1;transition:opacity 1.6s ease}
+#bt .hw-grab.fast{transition:opacity .25s ease}
+#bt .hw-grabi{transform:translateY(24%) scale(.94);transform-origin:50% 100%;transition:transform 1s ease}
+#bt .hw-grab.on .hw-grabi{transform:none;transition:transform 2.6s cubic-bezier(.2,.6,.3,1)}
+#bt .hw-grab.on .hw-s{animation:bt-hw-loom 2.4s ease-in-out infinite alternate}
+@keyframes bt-hw-loom{from{transform:translateY(0) rotate(-1.2deg)}to{transform:translateY(-5px) rotate(1.2deg)}}
+/* the costumes: every station of the chain's work wears one, on its own light. Each breathes a little, out of step */
+#bt .hw-o > *{animation:bt-hw-bob 4.3s ease-in-out infinite alternate;filter:drop-shadow(0 0 6px rgba(0,0,0,.75)) drop-shadow(0 0 5px rgba(240,185,11,.22))}
+#bt .hw-o:nth-of-type(2n) > *{animation-duration:5.1s;animation-delay:-1.7s}
+#bt .hw-o:nth-of-type(3n) > *{animation-duration:3.7s;animation-delay:-2.9s}
+#bt .hw-o.shake > *{animation:bt-hw-shake .11s linear infinite}
+#bt .hw-ob{display:block}
+#bt .hw-ob b{display:block;position:relative}
+#bt .hw-ob img.d{position:absolute;left:0;top:0;animation:bt-hw-wd .34s steps(1) infinite}
+#bt .hw-ob img:not(.d){animation:bt-hw-wu .34s steps(1) infinite}
+#bt .hw-pk.a .hw-s{animation:bt-hw-bob 5.3s ease-in-out infinite alternate}
+#bt .hw-pk.a.shake .hw-s{animation:bt-hw-shake .11s linear infinite}
+/* they play together. The bat carries a trade to the brain pumpkin and comes back; the pumpkin takes it with a blink of light */
+#bt .hw-o[data-k=src]{transition:transform 2.8s cubic-bezier(.4,0,.3,1),opacity 1.2s ease}
+#bt .hw-o[data-k=src].fly{transform:translate(var(--fx,0),var(--fy,0)) scale(.8);transition:transform 2.6s cubic-bezier(.5,0,.4,1),opacity 1.2s ease}
+#bt .hw-pk.a.blip::before{animation:none;opacity:1;transform:scale(1.25);transition:transform .25s ease,opacity .25s ease}
+/* the spider at the DeFi agent lets itself down on its thread and climbs back */
+#bt .hw-o[data-k=defi]::before{content:"";position:absolute;left:50%;top:6%;width:1px;height:0;background:linear-gradient(rgba(230,225,255,.1),rgba(230,225,255,.55));animation:bt-hw-sth 13s ease-in-out infinite}
+#bt .hw-o[data-k=defi] > *{animation:bt-hw-sdn 13s ease-in-out infinite}
+@keyframes bt-hw-sth{0%,52%,100%{height:0}66%,82%{height:46%}}
+@keyframes bt-hw-sdn{0%,52%,100%{transform:translateY(0)}66%,82%{transform:translateY(42%)}74%{transform:translateY(42%) rotate(6deg)}}
+#bt .hw-o[data-k=defi].shake > *{animation:bt-hw-shake .11s linear infinite}
+/* the cauldron at the liquidity boost bubbles */
+#bt .hw-o[data-k=liq]::before,#bt .hw-o[data-k=liq]::after{content:"";position:absolute;z-index:1;left:38%;top:16%;width:11%;aspect-ratio:1;border-radius:50%;border:1px solid rgba(120,240,215,.75);background:rgba(90,230,200,.22);opacity:0;animation:bt-hw-bub 2.7s ease-in infinite}
+#bt .hw-o[data-k=liq]::after{left:56%;width:8%;animation-duration:3.4s;animation-delay:-1.3s}
+@keyframes bt-hw-bub{0%{opacity:0;transform:translateY(0) scale(.5)}20%{opacity:.9}100%{opacity:0;transform:translateY(-260%) scale(1.15)}}
+/* (older) stickers */
+#bt .hw-sk img{animation:bt-hw-bob 4.1s ease-in-out infinite alternate;filter:drop-shadow(0 0 5px rgba(255,140,40,.55))}
+#bt .hw-sk.put{opacity:.92}
+#bt .hw-hs{position:absolute;top:8%;width:var(--hs,22px)}
+#bt .hw-hs.a{left:26%}
+#bt .hw-hs.b{left:66%;top:16%}
+#bt .hw-hs u{display:block;width:1px;height:var(--tl,44px);margin:0 auto;background:linear-gradient(rgba(230,225,255,.05),rgba(230,225,255,.5));transform-origin:50% 0;animation:bt-hw-yoyo 7.3s ease-in-out infinite alternate}
+#bt .hw-hs img{animation:bt-hw-yoyoi 7.3s ease-in-out infinite alternate}
+#bt .hw-hs.b u,#bt .hw-hs.b img{animation-duration:9.7s;animation-delay:-3s}
+#bt .hw-hs.a{--tl:52px}
+#bt .hw-hs.b{--tl:34px}
+@keyframes bt-hw-yoyo{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
+@keyframes bt-hw-yoyoi{from{transform:translateY(calc(var(--tl,44px)*-.55))}to{transform:translateY(0)}}
+/* the cat: the two glowing eyes belong to somebody */
+#bt .hw-cat .hw-s{filter:drop-shadow(0 0 4px rgba(150,130,255,.4))}
+#bt .hw-cat::after{content:"";position:absolute;left:10%;right:10%;bottom:-3%;height:12%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.5),transparent)}
+/* the skeleton hand behind the timeline's edge */
+#bt .hw-hdi{position:absolute;left:0;bottom:0;width:100%;transform:translateY(106%);transition:transform .9s cubic-bezier(.5,0,.6,1)}
+#bt .hw-hd.up .hw-hdi{transform:translateY(3%);transition:transform 1.3s cubic-bezier(.2,.7,.3,1)}
+#bt .hw-hd.up .hw-s{transform-origin:50% 100%;animation:bt-hw-grope 1s ease-in-out infinite alternate}
+@keyframes bt-hw-grope{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}
+/* bats: two frames of a wing beat */
+#bt .hw-bat{position:absolute;left:0;top:var(--y);width:var(--s);transform:translate(-80px,0);animation:bt-hw-fly var(--d) linear var(--dl) infinite}
+#bt .hw-bat.rv{animation-name:bt-hw-flyr}
+#bt .hw-bat b,#bt .hw-burst b{display:block;position:relative;animation:bt-hw-wave 1.7s ease-in-out infinite alternate}
+#bt .hw-bat img.d,#bt .hw-burst img.d{position:absolute;left:0;top:0;animation:bt-hw-wd .3s steps(1) infinite}
+#bt .hw-bat img:not(.d),#bt .hw-burst img:not(.d){animation:bt-hw-wu .3s steps(1) infinite}
+@keyframes bt-hw-wu{0%{opacity:1}50%{opacity:0}}
+@keyframes bt-hw-wd{0%{opacity:0}50%{opacity:1}}
+@keyframes bt-hw-fly{0%{transform:translate(-80px,0)}26%,100%{transform:translate(calc(var(--w,1400px) + 80px),-46px)}}
+@keyframes bt-hw-flyr{0%{transform:translate(calc(var(--w,1400px) + 80px),0)}30%,100%{transform:translate(-80px,34px)}}
+@keyframes bt-hw-wave{from{transform:translateY(-7px)}to{transform:translateY(7px)}}
+/* the ghost floats through (placed and moved by the script), bobbing */
+#bt .hw-gh{position:absolute;left:0;top:0;opacity:0;will-change:transform}
+#bt .hw-ghb{animation:bt-hw-bob 3.4s ease-in-out infinite alternate;filter:drop-shadow(0 0 7px rgba(190,200,255,.45))}
+@keyframes bt-hw-bob{from{transform:translateY(-6px) rotate(-3deg)}to{transform:translateY(6px) rotate(3deg)}}
+/* the spider lets itself down, has a look, and climbs back */
+#bt .hw-sp u{position:absolute;left:50%;top:0;width:1px;height:var(--L,90px);margin-left:-.5px;background:linear-gradient(rgba(230,225,255,.08),rgba(230,225,255,.5));transform-origin:50% 0;transform:scaleY(0);animation:bt-hw-thr 33s ease-in-out 3s infinite}
+#bt .hw-spb{position:relative;transform:translateY(-130%);animation:bt-hw-spi 33s ease-in-out 3s infinite}
+@keyframes bt-hw-thr{0%,5%{transform:scaleY(0)}19%{transform:scaleY(1)}23%{transform:scaleY(.93)}27%,58%{transform:scaleY(1)}74%,100%{transform:scaleY(0)}}
+@keyframes bt-hw-spi{0%,5%{transform:translateY(-130%)}19%{transform:translateY(var(--L,90px))}23%{transform:translateY(calc(var(--L,90px)*.93))}27%{transform:translateY(var(--L,90px)) rotate(0)}40%{transform:translateY(var(--L,90px)) rotate(6deg)}50%{transform:translateY(var(--L,90px)) rotate(-5deg)}58%{transform:translateY(var(--L,90px)) rotate(0)}74%,100%{transform:translateY(-130%)}}
+/* pumpkins: a candle inside, so the light breathes; they shake when the clown shows */
+#bt .hw-pk::before{content:"";position:absolute;inset:-34% -30% -18%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,140,40,.22),transparent);animation:bt-hw-flick 3.7s ease-in-out infinite}
+#bt .hw-pk::after{content:"";position:absolute;left:6%;right:6%;bottom:-6%;height:16%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,150,50,.36),transparent);filter:blur(4px)}
+#bt .hw-pk .hw-s{z-index:1}
+#bt .hw-pk i{position:absolute;z-index:2;left:14%;top:28%;width:72%;height:62%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,190,90,.26),transparent);animation:bt-hw-flick 2.9s ease-in-out -1.1s infinite}
+#bt .hw-pk.b::before{animation-duration:4.3s;animation-delay:-2s}
+#bt .hw-pk.b i{left:40%;top:0;width:60%;height:70%;animation-duration:3.3s}
+#bt .hw-pk.shake .hw-s,#bt .hw-cat.shake .hw-s{animation:bt-hw-shake .11s linear infinite}
+@keyframes bt-hw-flick{0%,100%{opacity:.55}18%{opacity:.95}31%{opacity:.6}47%{opacity:1}58%{opacity:.7}74%{opacity:.9}86%{opacity:.5}}
+@keyframes bt-hw-shake{0%{transform:translate(-1.5px,0) rotate(-1.2deg)}50%{transform:translate(1.5px,-1px) rotate(1.2deg)}100%{transform:translate(-1.5px,0) rotate(-1.2deg)}}
+/* the clown behind the log box: the balloon rises first, then he takes hold of the edge and looks over it */
+#bt .hw-clip{position:absolute;inset:0;overflow:hidden}
+#bt .hw-clo{position:absolute;left:0;bottom:0;width:var(--cw,70px);transform:translateY(106%);transition:transform 1.5s cubic-bezier(.5,0,.3,1)}
+#bt .hw-cl.up1 .hw-clo{transform:translateY(56%);transition-duration:2s}
+#bt .hw-cl.up2 .hw-clo{transform:translateY(3%);transition-duration:1s}
+#bt .hw-ball{position:absolute;left:calc(var(--cw,70px)*.84);bottom:calc(var(--cw,70px)*.16);width:calc(var(--cw,70px)*.5);transform:translateY(125%);transition:transform 1.6s cubic-bezier(.5,0,.6,1)}
+#bt .hw-cl.ball .hw-ball{transform:translateY(0);transition:transform 2.6s cubic-bezier(.2,.6,.3,1)}
+#bt .hw-ball img{transform-origin:50% 100%;animation:bt-hw-sway 3.1s ease-in-out infinite alternate}
+@keyframes bt-hw-sway{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}
+/* bats burst out from behind the log when he shows */
+#bt .hw-burst{position:absolute;left:calc(var(--cw,70px)*.5);bottom:10%;width:0;height:0}
+#bt .hw-burst s{position:absolute;left:-16px;top:-10px;width:32px;opacity:0;text-decoration:none}
+#bt .hw-burst.go s{animation:bt-hw-burst 2.4s cubic-bezier(.2,.6,.3,1) both}
+#bt .hw-burst s:nth-child(1){--bx:-150px;--by:-190px}
+#bt .hw-burst s:nth-child(2){--bx:120px;--by:-230px;animation-delay:.12s!important;width:26px}
+#bt .hw-burst s:nth-child(3){--bx:-40px;--by:-270px;animation-delay:.22s!important;width:22px}
+#bt .hw-burst s:nth-child(4){--bx:230px;--by:-150px;animation-delay:.3s!important;width:28px}
+@keyframes bt-hw-burst{0%{opacity:0;transform:translate(0,0) scale(.5)}12%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translate(var(--bx),var(--by)) scale(1.1)}}
+/* a destination's window: somebody behind it, a spider under it, a web in its corner */
+#bt .hw-d{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility 0s .3s}
+#bt .hw-d.on{opacity:1;visibility:visible;transition:opacity .5s ease .3s}
+#bt .hw-dp{position:absolute;overflow:hidden}
+#bt .hw-dpi{position:absolute;left:0;top:0;width:var(--pw,54px);transform:translateX(-106%);transition:transform .5s ease}
+#bt .hw-d.go .hw-dpi{transform:translateX(-44%);transition:transform 1.9s cubic-bezier(.5,0,.3,1) 1.1s}
+#bt .hw-d.top .hw-dpi{transform:translateY(106%)}
+#bt .hw-d.top.go .hw-dpi{transform:translateY(24%)}
+#bt .hw-dpi .hw-s{display:none}
+#bt .hw-d[data-who=ghost] .hw-dpi .hw-s[data-n=ghost],#bt .hw-d[data-who=clown] .hw-dpi .hw-s[data-n=clown]{display:block}
+#bt .hw-d[data-who=ghost] .hw-dpi{filter:drop-shadow(0 0 6px rgba(190,200,255,.45))}
+#bt .hw-ds{position:absolute;width:28px}
+#bt .hw-ds u{display:block;width:1px;height:30px;margin:0 auto;background:linear-gradient(rgba(230,225,255,.15),rgba(230,225,255,.55));transform-origin:50% 0;transform:scaleY(0);transition:transform .3s ease}
+#bt .hw-ds .hw-s{transform:translateY(-58px);opacity:0;transition:transform .3s ease,opacity .2s ease}
+#bt .hw-d.go .hw-ds u{transform:scaleY(1);transition:transform 1.3s cubic-bezier(.3,1.3,.5,1) .5s}
+#bt .hw-d.go .hw-ds .hw-s{transform:translateY(-4px);opacity:1;transition:transform 1.3s cubic-bezier(.3,1.3,.5,1) .5s,opacity .3s ease .5s}
+#bt .hw-dw{position:absolute;z-index:7;width:92px;pointer-events:none;opacity:0;transform:scaleX(-1);transition:opacity .4s ease}
+#bt .hw-dw.on{opacity:.42;transition:opacity .9s ease .4s}
+#bt .portrait .hw-dw{z-index:8}
+#bt .portrait .hw-d{z-index:6}
+/* calm (?calm only): everything stands still; the spider stays in view, nobody flies or peeks */
+#bt .hw-calm *,#bt .hw-calm *::before{animation:none!important}
+#bt .hw-calm .hw-bat,#bt .hw-calm .hw-gh{display:none}
+#bt .hw-calm .hw-sp u{transform:none}
+#bt .hw-calm .hw-spb{transform:translateY(var(--L,90px))}
+/* the switch: a small pumpkin badge at the right end of the LIVE pill (operator, 2026-10-05: "right beside LIVE, always in
+ * sight, and it can always fold out"). The script pins it there (--sx/--sy) in both layouts, so it takes no room in the
+ * title row; on a phone it steps down beside the mood chip while BOBAI's line lies over the pill's row. Its name folds
+ * out beside it on a tap or under the mouse; switched off it is struck through and dashed, and stays where it is. */
+#bt .hw-sw{--hf:#ff8a1e;--hs:#ffb469;--he:#1d1006;position:absolute;z-index:7;left:var(--sx,0);top:var(--sy,18px);opacity:0;display:flex;box-sizing:border-box;align-items:center;justify-content:center;height:22px;min-width:22px;margin:0;padding:0 3px;
+  border-radius:999px;border:1px solid rgba(255,138,30,.7);background:rgba(8,6,10,.9);color:#ffb469;font:700 .56rem var(--mono);letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+  cursor:pointer;pointer-events:auto;transition:border-color .3s ease}
+#bt .bt-win:not(.portrait) .hw-sw{height:20px;min-width:20px;padding:0 2px;margin-top:1px}
+#bt .hw-sw.hw-in{opacity:1;transition:opacity .5s ease,border-color .3s ease}
+#bt .portrait .hw-sw.hw-in{transition:opacity .5s ease,border-color .3s ease,left .25s ease,top .25s ease} /* the step down beside the mood chip while he speaks */
+#bt .hw-sw::after{content:"";position:absolute;inset:-8px}
+#bt .hw-sw svg{flex:none;display:block;width:14px;height:14px;overflow:visible}
+#bt .hw-sw .hw-x{display:none}
+#bt .hw-sw[aria-pressed=false]{--hf:transparent;--hs:#ffb469;--he:#ffb469;border-style:dashed;border-color:#ffb469}
+#bt .hw-sw[aria-pressed=false] .hw-x{display:block}
+#bt .hw-sw:hover{border-color:#ffd9a8}
+#bt .hw-sw:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+#bt .hw-sw .hw-t{position:absolute;z-index:2;left:calc(100% + 6px);top:50%;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,138,30,.55);background:rgba(10,7,12,.95);
+  transform:translateY(-50%) scaleX(0);transform-origin:0 50%;opacity:0;pointer-events:none;transition:transform .3s ease,opacity .3s ease}
+#bt .hw-sw .hw-t::after{content:attr(data-t)}
+#bt .hw-sw.hw-say .hw-t,#bt .bt-win:not(.portrait) .hw-sw:hover .hw-t,#bt .hw-sw:focus-visible .hw-t{transform:translateY(-50%) scaleX(1);opacity:1}
+/* CALM (operator, 2026-10-05: "far too nervous"): what stands, stands still. These rules come last and win. */
+#bt .hw-o > *,#bt .hw-pk.a .hw-s,#bt .hw-mo img,#bt .hw-sk img,#bt .hw-pk i{animation:none}
+#bt .hw-o[data-k=defi]::before{display:none}
+#bt .hw-pk::before{animation-duration:8s}
+#bt .hw-cd i{animation-duration:7s}
+#bt .hw-hc{animation-duration:12s}
+#bt .hw-ghb{animation-duration:5s}
+#bt .hw-grab.on .hw-s{animation:none}
+#bt .hw-ob img.d{animation:none;opacity:0}
+#bt .hw-ob img:not(.d){animation:none;opacity:1}
+#bt .hw-o.fly .hw-ob img.d{animation:bt-hw-wd .34s steps(1) infinite}
+#bt .hw-o.fly .hw-ob img:not(.d){animation:bt-hw-wu .34s steps(1) infinite}
+#bt .hw-o[data-k=liq]::before{animation-duration:6s}
+#bt .hw-o[data-k=liq]::after{animation-duration:8s}
+#bt .hw-o > *{filter:drop-shadow(0 0 7px rgba(0,0,0,.8)) drop-shadow(0 0 9px rgba(240,185,11,.3))}
+/* the clown behind BOBAI steps out of the dark */
+#bt .hw-grabi{transform:translateY(5%);transition:transform 1s ease}
+#bt .hw-grab.on .hw-grabi{transform:none;transition:transform 2.4s ease}
+/* the bots that circle the brain are small ghosts, each in its bot's colour */
+#bt .hw-bg{position:absolute;left:0;top:0;width:var(--bg,22px);opacity:0;will-change:transform;filter:drop-shadow(0 0 5px var(--c,#fff))}
+/* the switch, easier to see: larger, with a slow glow; its name says what a click does */
+#bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:24px;min-width:24px;padding:0 3px;margin-top:0;border-width:1.5px;border-color:#ff9d3c;box-shadow:0 0 0 0 rgba(255,138,30,.55);animation:bt-hw-ring 3.6s ease-out infinite}
+#bt .hw-sw svg{width:16px;height:16px}
+@keyframes bt-hw-ring{0%{box-shadow:0 0 0 0 rgba(255,138,30,.6)}60%,100%{box-shadow:0 0 0 9px rgba(255,138,30,0)}}
+#bt .hw-sw .hw-t{font-size:.6rem;color:#ffd9a8;box-shadow:0 6px 18px rgba(0,0,0,.6)}

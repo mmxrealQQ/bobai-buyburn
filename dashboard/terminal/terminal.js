@@ -2430,9 +2430,11 @@ async function shareCard() {
   const btn = $('shr'); btn.disabled = true;
   try {
     // 1) the scene this instant, copied off (the drawing buffer is only valid right after a render)
+    if (window.__btHw) window.__btHw.hide(true); /* the card shows the scene as it always was: the Halloween night steps out for this one frame */
     useBloom ? composer.render() : renderer.render(scene, camera);
     const snap = document.createElement('canvas'); snap.width = renderer.domElement.width; snap.height = renderer.domElement.height;
     snap.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    if (window.__btHw) window.__btHw.hide(false);
     // same origin: a foreign image would taint the canvas
     const logo = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = '/logo.webp'; });
     const now = Date.now(), poseNow = fig.querySelector('img.on') || fig.querySelector('img[data-p="idle"]');
@@ -4827,3 +4829,451 @@ addEventListener('keydown', e => {
   if (scnEl.classList.contains('on')) { e.stopImmediatePropagation(); scnShow(false); }
   else if (momentEl.classList.contains('held')) { e.stopImmediatePropagation(); holdRelease(); momentUntil = 0; }
 }, true);
+
+// ================= HALLOWEEN (2026-10-05) =================
+// Operator (2026-10-05, after three rounds): "only the surroundings — the terminal's function and BOBAI's own animations
+// stay; scary but also sweet; LESS IS MORE, but what is there is super, with detail, and everything in ONE style; the
+// backdrop can go, the stone is super — build it like that; it must have to do with a blockchain; a switch that is
+// always in sight; on a phone no display error, rather less". So: a handful of pieces in the stone's own 3D look, with
+// muted colours, in a layer of their own UNDER BOBAI, the labels and every window (z 1, no pointer events):
+//   THE IDEA     every station of BOBAI's work on the chain wears a costume (operator: "you can use the next-buyback
+//                ring as the brain pumpkin, and the points like burn BOBAI"): the buyback ring holds the BRAIN PUMPKIN
+//                (its candle is the charge), the BOBAI burn a skull and the BOB burn a coffin (burned is gone for
+//                good), the liquidity boost a bubbling cauldron, the DeFi agent a spider (it spins the web), the
+//                Giggle pot a pail of sweets (it is for children), the creator a black cat, the trades a bat.
+//                Each sits ON its own light and nowhere else — so nothing is scattered, and everything means something
+//                With the look on, the six stations and the ring's core show ONLY their costume (operator: "at the six
+//                points only the Halloween symbols"): the scene's own lights there are hidden and come back with the
+//                switch. The bots that circle the brain are small ghosts ("the small ghosts that fly round the brain").
+//   CALM         operator: "far too nervous" — nothing bobs, shakes or flickers; ONE thing happens at a time, with
+//                long pauses (the director below); the bat beats its wings only while it flies
+//   the stone    a carved platform under his feet: a chain of blocks runs round it
+//   the clown    a frightened red balloon rises behind the log box (a phone: behind the view tabs), two gloves take
+//                hold of the edge, he looks, grins, blinks and sinks. And now and then he rises BEHIND BOBAI, about
+//                BOBAI's size, hands out to grab — only while BOBAI stands, gone the moment he moves
+//   blockchain   the ghost that floats through drags a chain of blocks; scared wax candles stand on the candle chart;
+//                the one cobweb (top right) is a network with glowing nodes; a skull looks out of the BOBAI burn
+//   and          a skeleton hand behind the timeline, a spider on its thread, two bats, a moon where the sky has room
+//   windows      a destination's window gets a web in its corner, a spider under it, somebody peeking from behind it
+// Every piece looks for a free spot (never over a label, a button or the log's text) and stays away where there is
+// none; a phone gets fewer. Pictures: temp/terminal/gen-prop.js (gpt-image-2.5, frames as edits of one base) ->
+// prop_pack.py (colours muted there). Season: October until 1 November (UTC), every year; ?hw=1 shows it outside the
+// season, ?hw=0 never. The switch at the LIVE pill is remembered (localStorage bt-hw).
+const hwSeason = (t = Date.now()) => { const d = new Date(t), m = d.getUTCMonth(); return m === 9 || (m === 10 && d.getUTCDate() < 2); };
+window.__btHwSeason = hwSeason;
+(() => {
+  const q = new URLSearchParams(location.search).get('hw');
+  if (q === '0' || (q !== '1' && !hwSeason())) return;
+  let on = true; try { on = localStorage.getItem('bt-hw') !== '0'; } catch {}
+  const R = (a, b) => a + Math.random() * (b - a), cl3 = (v, a, b) => Math.max(a, Math.min(b, v));
+  // the pictures carry this file's own ?v=: a repainted picture under the same name came out of the browser's cache
+  // as the old one (2026-10-05, "the old pumpkin is still somewhere and just comes")
+  const Q = new URL(import.meta.url).search;
+  // a small character: its base picture and its frames on top of each other, one of them shown
+  const spr = (name, frames) => '<span class="hw-s" data-n="' + name + '">' + [''].concat(frames).map(f => '<img alt="" decoding="async" draggable="false" data-hw="' + name + (f ? '_' + f : '') + '" data-f="' + f + '"' + (f ? '' : ' class="on"') + '>').join('') + '</span>';
+  const frame = (root, f, name) => {
+    const s = root.querySelector('.hw-s' + (name ? '[data-n="' + name + '"]' : '')); if (!s) return;
+    const t = s.querySelector('img[data-f="' + f + '"]'); if (!t || !t.complete || !t.naturalWidth) return; // a frame not loaded yet is no frame
+    for (const i of s.children) i.classList.toggle('on', i === t);
+  };
+  const batH = '<b><img alt="" draggable="false" data-hw="bat"><img alt="" draggable="false" class="d" data-hw="bat_down"></b>';
+  const el = document.createElement('div'); el.className = 'hw' + (REDUCED ? ' hw-calm' : ''); el.setAttribute('aria-hidden', 'true');
+  // LESS IS MORE (operator, 2026-10-05: "so much small stuff, it is no fun"): five things stand (stone, pumpkin, cat, web
+  // with its spider, the skull in the burn), four things happen, one at a time (the clown with his balloon, the clown
+  // behind BOBAI, the skeleton hand, the ghost with its chain of blocks). Moon and candles are built but not placed.
+  const EXTRAS = true; // operator after the layout picture: "the moon can come in too, and more blockchain Halloween" -> moon, candles on the candle chart, a chain of blocks hanging from the top
+  el.innerHTML = ''
+    + '<div class="hw-i hw-mo"><img alt="" draggable="false" data-hw="moon"></div>'
+    + '<div class="hw-i hw-hc"><img alt="" draggable="false" data-hw="chain_v"></div>'
+    + '<div class="hw-i hw-da"><img alt="" draggable="false" data-hw="dais"></div>'
+    + '<div class="hw-grab"><div class="hw-grabi">' + spr('stalker', ['grab']) + '</div></div>'
+    + WORKERS.map(w => '<div class="hw-bg" style="--c:' + w.c + '"><img alt="" draggable="false" data-hw="ghost"></div>').join('')
+    + '<div class="hw-i hw-o" data-k="burnA"><img alt="" draggable="false" data-hw="skull"></div>'
+    + '<div class="hw-i hw-o" data-k="burnB"><img alt="" draggable="false" data-hw="coffin"></div>'
+    + '<div class="hw-i hw-o" data-k="liq"><img alt="" draggable="false" data-hw="cauldron"></div>'
+    + '<div class="hw-i hw-o" data-k="defi">' + spr('spider', ['blink']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="giggle"><img alt="" draggable="false" data-hw="candy"></div>'
+    + '<div class="hw-i hw-o" data-k="creator">' + spr('cat', ['blink', 'hiss']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="src"><span class="hw-ob">' + batH + '</span></div>'
+    + '<div class="hw-web r"><img alt="" draggable="false" data-hw="web"></div>' /* one web, top right (operator, 2026-10-05: less is more) */
+    + '<div class="hw-gh"><div class="hw-ghb"><img class="hw-chn" alt="" draggable="false" data-hw="chain">' + spr('ghost', ['peek', 'hide']) + '</div></div>'
+    + '<div class="hw-i hw-cl"><div class="hw-clip"><div class="hw-ball"><img alt="" draggable="false" data-hw="balloon"></div><div class="hw-clo">' + spr('clown', ['grin', 'blink']) + '</div></div><div class="hw-burst"><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s></div></div>'
+    + '<div class="hw-i hw-pk a">' + spr('pumpkin', ['right', 'scream']) + '<i></i></div>'
+    + '<div class="hw-i hw-cd"><img alt="" draggable="false" data-hw="candles"><i></i></div>'
+    + '<div class="hw-i hw-hd"><div class="hw-clip"><div class="hw-hdi">' + spr('hand', ['grab']) + '</div></div></div>';
+  win.insertBefore(el, win.querySelector('.vign'));
+  const $h = s => el.querySelector(s);
+  const pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
+  const BG = [...el.querySelectorAll('.hw-bg')];
+  const ORBS = [...el.querySelectorAll('.hw-o')], sp = $h('.hw-o[data-k="defi"]'), cat = $h('.hw-o[data-k="creator"]');
+  // only the two that look for a free edge are watched for something moving over them; the costumes sit on their lights
+  const PIECES = [cl, hd, cd, mo, hc], ALL = [da, pkA, ...ORBS, ...PIECES]; // the platform is ground: it is placed, never moved out of anything's way
+  // the destinations' windows: somebody behind it (under the window), a web in its corner (over it)
+  const dl = document.createElement('div'); dl.className = 'hw-d'; dl.setAttribute('aria-hidden', 'true');
+  dl.innerHTML = '<div class="hw-dp"><div class="hw-dpi">' + spr('ghost', ['peek', 'hide']) + spr('clown', ['grin', 'blink']) + '</div></div><div class="hw-ds"><u></u>' + spr('spider', ['blink']) + '</div>';
+  const dw = document.createElement('div'); dw.className = 'hw-dw'; dw.setAttribute('aria-hidden', 'true'); dw.innerHTML = '<img alt="" draggable="false" data-hw="web">';
+  win.insertBefore(dl, detail); detail.after(dw);
+
+  // the switch: a small pumpkin at the LIVE pill (operator, 2026-10-05: "beside LIVE, not beside the mood — there it gets
+  // into BOBAI's face"): under the pill on a wide screen, to its right on a phone
+  const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw'; sw.id = 'bt-hw';
+  sw.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 6.6c0-2 .9-3.2 3-3.6" fill="none" stroke="var(--hs)" stroke-width="1.8" stroke-linecap="round"/><ellipse cx="12" cy="14" rx="9.2" ry="7.3" fill="var(--hf)" stroke="var(--hs)" stroke-width="1.5"/><path d="M7.4 12.6l1.7-2.6 1.7 2.6zM13.2 12.6l1.7-2.6 1.7 2.6zM7.6 15.4q4.4 3.6 8.8 0l-1.7.3-1.3 1.2-1.4-1-1.4 1-1.3-1.2z" fill="var(--he)"/><path class="hw-x" d="M3.5 21.5L20.5 3.5" fill="none" stroke="#ffb469" stroke-width="2.2" stroke-linecap="round"/></svg><span class="hw-t"></span>';
+  // A badge at the pill's right end, pinned there by the script and taking no room: as a piece of the title row it
+  // squeezed the title on every desktop size and pushed the last button out of a 1280 window (halloween.mjs rule 3).
+  // Wide: it sits in the gap between the pill and the clock. Phone: beside the pill — and it steps down beside the mood
+  // chip while BOBAI's line lies over the pill's row, so it is never out of sight.
+  const livePill = $('live'); livePill.after(sw);
+  function swPlace() {
+    const h = sw.parentElement.getBoundingClientRect(), lv = livePill.getBoundingClientRect(), c = moodChip.getBoundingClientRect(); if (!lv.width) return;
+    let x = lv.right - h.left + (portrait ? 7 : -9), y = lv.top - h.top + (lv.height - 22) / 2; /* wide: half on the pill's empty right end, half in the gap before the clock */
+    if (portrait && win.classList.contains('talking')) { x = c.width ? c.right - h.left + 6 : 12; y = c.width ? c.top - h.top + (c.height - 22) / 2 : 62; }
+    sw.style.setProperty('--sx', x + 'px'); sw.style.setProperty('--sy', y + 'px');
+    // shown only once the title row has settled, and without a slide: at the start it travelled in from the corner
+    // while the row was still finding its width (operator, 2026-10-05: "it moves strangely at the beginning")
+    if (!sw._in && performance.now() - swT0 > 3200) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); }
+  }
+  const swT0 = performance.now();
+  new MutationObserver(swPlace).observe(win, { attributes: true, attributeFilter: ['class'] });
+  let sayT = 0;
+  // its name folds out beside it, over whatever is there, for a moment. The class is hw-say, NOT say: `#bt .say` is
+  // BOBAI's speech bubble (opacity 0, scale .6) — with it the button vanished for as long as its name showed (2026-10-05,
+  // operator: "click off and the button goes too")
+  const hint = ms => { sw.classList.add('hw-say'); clearTimeout(sayT); sayT = setTimeout(() => sw.classList.remove('hw-say'), ms); };
+
+  // ---- the night behind everything: a painting fixed to the camera, drawn first, faded in by its brightness ----
+  let back = null, backKey = '', backTo = 0, backLit = 0;
+  // the night far behind: the calm painting, nearly without colour and dim (operator, 2026-10-05: first "the backdrop
+  // can go", then "though the backdrop is not so bad") — a horizon, not a picture
+  const BACKDROP = true;
+  const BACK_LIT = 0.6; // how bright the painting stands behind the scene (1 = as painted)
+  const backFade = () => {
+    if (!back) return; const to = on ? BACK_LIT : 0, from = backLit, t0 = performance.now(); clearInterval(backTo);
+    if (to === from) { back.visible = to > 0; return; }
+    if (to > 0) back.visible = true;
+    // by the clock, not by the tick count: a busy page fires the timer late and the fade must still end on time
+    backTo = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / 1400); backLit = from + (to - from) * k; back.material.color.setScalar(backLit); if (k >= 1) { back.visible = to > 0; clearInterval(backTo); } }, 40);
+  };
+  function sizeBack() {
+    if (!back) return; const va = camera.aspect, h = 2 * 40 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.07, t = back.material.map, ta = back._ta;
+    back.scale.set(h * va, h, 1);
+    // cover the window: a wider window loses a strip below (the moon stays), a narrower one a strip at the right (the wide painting's moon is on its left)
+    if (va > ta) { t.repeat.set(1, ta / va); t.offset.set(0, (1 - ta / va) * 0.62); } else { t.repeat.set(va / ta, 1); t.offset.set((1 - va / ta) * (backKey === 'wide' ? 0.2 : 0.85), 0); } /* the tall painting's moon is on its right */
+  }
+  function loadBack() {
+    const key = portrait ? 'tall' : 'wide'; if (key === backKey) return; backKey = key;
+    new THREE.TextureLoader().load(BASE + 'hw/back-' + key + '.webp' + Q, tex => {
+      if (key !== backKey) { tex.dispose(); return; }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      if (!back) {
+        // opaque and first in line (the scene's solid pieces are drawn before anything see-through), writing no depth
+        back = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, color: 0x000000, depthTest: false, depthWrite: false, fog: false, toneMapped: false }));
+        back.renderOrder = -100; back.frustumCulled = false; back.position.z = -40; back.visible = false;
+        if (!camera.parent) scene.add(camera); camera.add(back);
+        // the night breathes: a slow drift inside the painting's spare margin
+        back.onBeforeRender = () => { const t = performance.now() / 1000; back.position.x = Math.sin(t / 23) * 0.1; back.position.y = Math.cos(t / 31) * 0.07; }; /* a breath, no more: the moon sticker sits on the painted moon */
+      } else { back.material.map.dispose(); back.material.map = tex; back.material.needsUpdate = true; }
+      back._ta = tex.image.width / tex.image.height; sizeBack(); backFade(); sig = ''; /* the moon takes its place on the painted one */
+    });
+  }
+  function lights(v) {
+    for (const d of DEST) { if (!(d.pct > 0)) continue; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; }
+    coreOrb.visible = v;
+  }
+  // the bots' ghosts ride on the bots' own places, frame by frame (behind the brain they pale, like the bots' names)
+  let flying = false, gsz = 22;
+  function fly() {
+    if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!win.offsetWidth || !A.figHpx) return;
+    for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i]; e.style.transform = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)'; e.style.opacity = w.pos.z > A.head.z ? '.95' : '.38'; }
+  }
+  function load() {
+    for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (!i.getAttribute('src')) { i.addEventListener('load', () => { sig = ''; }, { once: true }); i.src = BASE + 'hw/' + i.dataset.hw + '.webp' + Q; } });
+    if (BACKDROP) loadBack();
+  }
+
+  // ---- finding free spots (all in window pixels) ----
+  const box = (x, y, w, h) => ({ l: x, t: y, r: x + w, b: y + h });
+  const cut = (a, b, pad = 0) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
+  // a piece's place; c = the part of it that must stay free (a thread or a rising balloon may pass behind things)
+  const put = (e, b, c) => { if (!b) { e.classList.remove('put'); e._b = e._c = null; return; } Object.assign(e.style, { left: b.l + 'px', top: b.t + 'px', width: b.r - b.l + 'px', height: b.b - b.t + 'px' }); e.classList.add('put'); e._b = b; e._c = c || b; };
+  let walls = [], term = null, sig = '', hudB = 60;
+  function read() {
+    const r = win.getBoundingClientRect(); walls = []; term = null;
+    for (const e of win.querySelectorAll('.lab, .joke, .hud > *, .ttl > *, .term, .tl, .mtabs, .phase, .rclk, .chart-open, .bt-big')) {
+      const b = e.getBoundingClientRect(); if (b.width < 2 || b.height < 2) continue;
+      const w = { l: b.left - r.left, t: b.top - r.top, r: b.right - r.left, b: b.bottom - r.top, e };
+      if (e.classList.contains('term')) term = w; else if (!e.classList.contains('ttl')) walls.push(w);
+    }
+    // the title itself is bare text inside .ttl: its box comes from a range over the row's contents
+    const tt = win.querySelector('.ttl'); if (tt) { const g = document.createRange(); g.selectNodeContents(tt); const b = g.getBoundingClientRect(); if (b.width > 2) walls.push({ l: b.left - r.left, t: b.top - r.top, r: b.right - r.left, b: b.bottom - r.top, e: tt }); }
+    hudB = 0; for (const w of walls) if (w.e && w.e.closest('.hud')) hudB = Math.max(hudB, w.b);
+    // the scene's own lights are no elements: the destinations' orbs, the buyback ring and the trades' orb keep their room too
+    if (A.figHpx) { const o = (v, rad, k) => { const p = toScreen(v); walls.push({ l: p.x - rad, t: p.y - rad, r: p.x + rad, b: p.y + rad, e: null, k }); };
+      for (const d of DEST) if (d.pct > 0) o(d.pos, A.figHpx * (portrait ? 0.07 : 0.1), d.k); o(A.core, A.figHpx * (portrait ? 0.12 : 0.21), 'core'); o(A.src, A.figHpx * 0.06, 'src'); }
+    return r;
+  }
+  const free = (b, pad = 5, withTerm = true) => b.l >= 2 && !walls.some(w => cut(b, w, pad)) && !(withTerm && term && cut(b, term, pad));
+  function place() {
+    if (!A.figScreen || !A.figHpx) return false;
+    const r = read(), W = r.width, H = r.height, fs = A.figScreen, fh = A.figHpx, fw = A.figW, feet = fs.y + fh * 0.405; /* the ground line just in front of his shoes (the figure's box reaches further down) */
+    el.style.setProperty('--w', W + 'px'); el.style.setProperty('--h', H + 'px');
+    gsz = cl3(fh * 0.085, 15, 30); el.style.setProperty('--bg', gsz + 'px');
+    const trunk = box(fs.x - fw * 0.2, fs.y - fh * 0.5, fw * 0.4, fh), head = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); // his trunk and his head: nothing of ours hides behind them
+    const taken = [];
+    const him = b => cut(b, trunk) || cut(b, head);
+    const ok = (b, pad, withTerm, near = 2) => free(b, pad, withTerm) && b.r <= W - 2 && !him(b) && !taken.some(t => cut(b, t, near));
+    // --- the clown first (wide screens): behind the log box, his gloves on its top edge, his balloon beside him
+    let C = null, Cc = null;
+    if (!portrait && term && term.r - term.l > 200) {
+      const tw = term.r - term.l, cw = cl3(tw * 0.21, 56, 82), ch = cw * 219 / 230, bw = cw * 1.36;
+      for (const f of [0.7, 0.52, 0.84, 0.36, 0.2]) {
+        const l = term.l + tw * f - cw / 2, rest = box(l, term.t + 2 - ch, cw, ch);
+        if (l >= term.l + 4 && l + cw <= term.r - 4 && l + bw <= W - 4 && ok(box(rest.l, rest.t + ch * 0.12, cw, ch * 0.88), 3, false)) { C = box(l, term.t + 2 - bw, bw, bw); Cc = rest; cl.style.setProperty('--cw', cw + 'px'); break; }
+      }
+    }
+    // a phone has no log box in view: there he comes up behind the row of view tabs, at the bottom of the scene. A wide
+    // screen whose log box has no free edge: behind the timeline (operator: "the clown with the balloon is missing")
+    if (portrait || !C) {
+      const mt = walls.find(w => w.e && w.e.classList.contains(portrait ? 'mtabs' : 'tl'));
+      if (mt) {
+        const cw = cl3(W * 0.17, 50, 70), ch = cw * 219 / 230, bw = cw * 1.36; let best = null, bestN = 99;
+        for (const f of portrait ? [0.34, 0.66, 0.5, 0.16, 0.84, 0.25, 0.75] : [0.62, 0.74, 0.5, 0.86, 0.4]) {
+          const l = cl3(W * f - cw / 2, 4, W - bw - 4), rest = box(l, mt.t - ch, cw, ch - 3), n = walls.filter(w => w.e !== mt.e && cut(box(rest.l, rest.t + ch * 0.2, cw, ch * 0.7), w, 2)).length + (term && cut(rest, term, 2) ? 5 : 0);
+          if (n < bestN) { bestN = n; best = [l, rest]; if (!n) break; }
+        }
+        if (best) { C = box(best[0], mt.t + 2 - bw, bw, bw); Cc = bestN ? null : best[1]; cl.style.setProperty('--cw', cw + 'px'); }
+      }
+    }
+    put(cl, C, Cc || (C ? box(-9, -9, 1, 1) : null)); if (Cc) taken.push(Cc);
+    // --- the stone platform under his feet (ground, so it asks nobody)
+    const dW = cl3(fw * (portrait ? 1.3 : 1.9), 90, portrait ? 280 : 580), dH = dW * 260 / 640;
+    put(da, box(fs.x - dW / 2, feet - dH * 0.2, dW, dH));
+    // --- the brain pumpkin lives in the buyback ring: the ring charges round it
+    { const c = toScreen(A.core), z = cl3(fh * (portrait ? 0.15 : 0.215), 30, 96); put(pkA, box(c.x - z / 2, c.y - z * 0.52, z, z * 260 / 253)); }
+    // --- every station wears its costume, on its own light
+    const stage = fh * (portrait ? 0.11 : 0.138), SZ = { burnA: 0.92, burnB: 1.05, liq: 1.12, defi: 1.2, giggle: 1.08, creator: 1.15, src: 1.25 };
+    for (const o of ORBS) {
+      const k = o.dataset.k, d = k === 'src' ? null : D[k]; if (d && !(d.pct > 0)) { put(o, null); continue; }
+      const c = toScreen(d ? d.pos : A.src), i = o.querySelector('img'), z = cl3(stage * SZ[k], 20, 60), ar = i.naturalWidth ? i.naturalHeight / i.naturalWidth : 1;
+      const w = ar > 1.25 ? z / ar * 1.15 : z;
+      // it leans away from its label: the label stands right of the light on a wide screen, under it on a phone
+      put(o, k === 'src' || portrait ? box(c.x - w / 2, c.y - w * ar * (portrait ? 0.66 : 0.54), w, w * ar) : box(c.x - w * 0.64, c.y - w * ar * 0.54, w, w * ar));
+    }
+    // --- the skeleton hand (wide screens): it comes up behind the timeline's top edge
+    let H1 = null, Hc = null; const tl = walls.find(w => w.e && w.e.classList.contains('tl'));
+    if (!portrait && tl) {
+      const hi = hd.querySelector('img'), hw = cl3(H * 0.07, 44, 66), hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.7);
+      for (const f of [0.76, 0.7, 0.82, 0.64, 0.88, 0.58, 0.94, 0.52, 0.46, 0.4, 0.34]) {
+        const l = W * f - hw / 2, rest = box(l, tl.t - hh, hw, hh - 3);
+        if (!walls.some(w => w.e !== tl.e && cut(rest, w, 4)) && !(term && cut(rest, term, 4)) && !him(rest) && !taken.some(t => cut(rest, t, 2))) { H1 = box(l, tl.t + 2 - hh, hw, hh); Hc = rest; break; }
+      }
+    }
+    put(hd, H1, Hc); if (Hc) taken.push(Hc);
+    // --- wax candles on the candle chart: they stand on the timeline's top edge (wide screens)
+    let D1 = null;
+    if (EXTRAS && !portrait && tl) {
+      const dh = cl3(H * 0.075, 40, 62), dwd = dh * 177 / 200;
+      for (const f of [0.9, 0.82, 0.7, 0.58, 0.46, 0.36]) {
+        const b = box(W * f - dwd / 2, tl.t + 4 - dh, dwd, dh), c = box(b.l, b.t, dwd, dh - 8);
+        if (!walls.some(w => w.e !== tl.e && cut(c, w, 4)) && !(term && cut(c, term, 4)) && !him(c) && !taken.some(t => cut(c, t, 4))) { D1 = b; put(cd, b, c); taken.push(c); break; }
+      }
+    }
+    if (!D1) put(cd, null);
+    // --- a moon where the sky has room: left of his head, under the title row
+    let M1 = null;
+    { const top = fs.y - fh * 0.5, gap = top - hudB, mr = cl3(fh * 0.13, 20, 46);
+      if (EXTRAS && gap > mr * 1.6) for (const fx of portrait ? [0.82, 0.14] : [fs.x / W - fw * 1.05 / W, fs.x / W + fw * 1.0 / W, 0.5]) {
+        const b = box(W * fx - mr, hudB + gap * 0.46 - mr, mr * 2, mr * 2); if (ok(b, 6, true)) { M1 = b; break; }
+      } }
+    // with the far night behind: ONE moon — the sticker sits exactly on the painted one (where it stands in the window
+    // follows from how the painting is cut to the window, see sizeBack)
+    if (BACKDROP && back && back._ta) {
+      const va = W / H, ta = back._ta, wide = backKey === 'wide', mx = wide ? 0.341 : 0.816, my = wide ? 0.259 : 0.184, md = wide ? 0.056 : 0.073; let x, y, dia;
+      if (va > ta) { const ry = ta / va, oy = (1 - ry) * 0.62; x = mx * W; y = (1 - ((1 - my) - oy) / ry) * H; dia = md * W; }
+      else { const rx = va / ta, ox = (1 - rx) * (wide ? 0.2 : 0.85); x = (mx - ox) / rx * W; y = my * H; dia = md * W / rx; }
+      // the painting is drawn 7% larger than the window (sizeBack), about its middle
+      x = W / 2 + (x - W / 2) * 1.07; y = H / 2 + (y - H / 2) * 1.07; dia *= 1.07;
+      const mr = cl3(dia * 0.74, 16, 60); M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
+    }
+    if (M1 && walls.some(w => w.e && w.e.closest('.hud') && cut(M1, w, 2))) M1 = null; // a small window: the painted moon alone
+    put(mo, M1, M1 ? box(-9, -9, 1, 1) : null); if (M1) taken.push(M1);
+    // --- a chain of blocks hangs from the top edge, in a free column (it may pass behind the title row's buttons; its lower half must be free)
+    let C1 = null;
+    { const chh = cl3(H * 0.27, 90, 240), cw2 = chh * 96 / 300;
+      for (const f of portrait ? [0.9, 0.08] : [0.6, 0.52, 0.68, 0.44, 0.36, 0.76, 0.28]) { const b = box(W * f - cw2 / 2, -chh * 0.06, cw2, chh), rest = box(b.l, hudB + 4, cw2, Math.max(8, b.b - hudB - 4)); if (b.l >= 2 && b.r <= W - 2 && b.b > hudB + 30 && !walls.some(w => cut(rest, w, 5)) && !him(rest) && !taken.some(t => cut(rest, t, 4))) { C1 = b; put(hc, b, rest); taken.push(rest); break; } } }
+    if (!C1) put(hc, null);
+    if (BACKDROP && (portrait ? 'tall' : 'wide') !== backKey && on) loadBack();
+    sizeBack();
+    return true;
+  }
+  const sigNow = () => { const r = win.getBoundingClientRect(), t = win.querySelector('.term'), tb = t ? t.getBoundingClientRect() : null; return [r.width | 0, r.height | 0, portrait, tb ? (tb.top - r.top) | 0 : 0, tb ? tb.width | 0 : 0, (A.figHpx || 0) | 0].join('|'); };
+
+  // ---- the destinations' windows ----
+  let dKey = '';
+  function detailDecor() {
+    const open = on && detail.classList.contains('on');
+    if (!open) { if (dKey) { dKey = ''; dl.classList.remove('on', 'go'); dw.classList.remove('on'); } return; }
+    const r = win.getBoundingClientRect(), d = detail.getBoundingClientRect(), b = { l: d.left - r.left, t: d.top - r.top, r: d.right - r.left, b: d.bottom - r.top };
+    if (b.r - b.l < 40) return;
+    const dp = dl.querySelector('.hw-dp'), ds = dl.querySelector('.hw-ds'), pw = portrait ? 46 : 54, ph = pw * 1.1;
+    dl.classList.toggle('top', portrait);
+    // a phone's window is a sheet at the bottom: somebody looks over its top edge. A wide screen's stands at the left: around its right edge.
+    if (portrait) Object.assign(dp.style, { left: b.r - pw - 26 + 'px', top: b.t + 3 - ph * 0.8 + 'px', width: pw + 'px', height: ph * 0.8 + 'px' });
+    else Object.assign(dp.style, { left: b.r - 3 + 'px', top: b.t + 30 + 'px', width: pw * 0.66 + 'px', height: ph + 'px' });
+    dp.style.setProperty('--pw', pw + 'px');
+    Object.assign(dw.style, { left: b.r - 92 + 'px', top: b.t + 'px' });
+    const room = !portrait && b.b + 78 < (term ? term.t : r.height - 120);
+    ds.style.display = room ? '' : 'none'; if (room) Object.assign(ds.style, { left: b.l + (b.r - b.l) * 0.3 - 14 + 'px', top: b.b - 1 + 'px' });
+    const k = detail.dataset.k || 'x';
+    if (k !== dKey) {
+      dKey = k; const who = Math.random() < 0.5 ? 'clown' : 'ghost'; dl.dataset.who = who; frame(dl, '', who);
+      dl.classList.remove('go'); void dl.offsetWidth; dl.classList.add('on', 'go'); dw.classList.add('on');
+      after(2500, () => { if (dKey === k) frame(dl, who === 'clown' ? 'grin' : 'peek', who); });
+      after(4300, () => { if (dKey === k && who === 'clown') { frame(dl, 'blink', who); after(170, () => frame(dl, 'grin', who)); } });
+    }
+  }
+  new MutationObserver(() => detailDecor()).observe(detail, { attributes: true, attributeFilter: ['class', 'data-k'] });
+
+  // ---- the life of the cast: timers that die with the switch ----
+  const T = new Set();
+  const after = (ms, fn) => { const id = setTimeout(() => { T.delete(id); if (on) fn(); }, ms); T.add(id); return id; };
+  const live = () => on && !document.hidden && win.offsetWidth > 0 && sig !== '';
+  const loop = (min, max, fn, first) => { const go = () => { if (live()) fn(); after(R(min, max), go); }; after(first == null ? R(min, max) : first, go); };
+  let scared = false, ghOn = false;
+  function scare(v) {
+    scared = v;
+    frame(pkA, v ? 'scream' : ''); frame(sp, v ? 'blink' : ''); frame(cat, v ? 'hiss' : ''); if (ghOn) frame(gh, v ? 'hide' : '');
+  }
+  // the clown: balloon first, then the gloves and the eyes, the grin, a blink, and down again
+  function clownScene() {
+    if (!cl._b || cl.classList.contains('act') || win.classList.contains('in-moment')) return false;
+    cl.classList.add('act', 'ball'); frame(cl, '');
+    after(1900, () => cl.classList.add('up1'));
+    after(3900, () => { scare(true); const bu = cl.querySelector('.hw-burst'); bu.classList.add('go'); after(2600, () => bu.classList.remove('go')); });
+    after(4900, () => cl.classList.add('up2'));
+    after(6000, () => frame(cl, 'grin'));
+    after(7500, () => frame(cl, 'blink')); after(7680, () => frame(cl, 'grin'));
+    after(9300, () => cl.classList.remove('up1', 'up2', 'ball'));
+    after(10800, () => { frame(cl, ''); scare(false); cl.classList.remove('act'); });
+    return true;
+  }
+  // THE BAT CARRIES A TRADE: it leaves its post at TRADES, flies to the brain pumpkin in the buyback ring (the way the
+  // tax of every trade goes) and back
+  const bat = $h('.hw-o[data-k="src"]');
+  function batRun() {
+    if (!bat._b || !pkA._b || bat.classList.contains('fly') || scared) return false;
+    const dx = (pkA._b.l + pkA._b.r) / 2 - (bat._b.l + bat._b.r) / 2, dy = pkA._b.t - (bat._b.t + bat._b.b) / 2 - 6;
+    bat.style.setProperty('--fx', dx + 'px'); bat.style.setProperty('--fy', dy + 'px'); bat.classList.add('fly');
+    after(2600, () => { pkA.classList.add('blip'); after(500, () => pkA.classList.remove('blip')); });
+    after(6400, () => bat.classList.remove('fly'));
+    return true;
+  }
+  // THE GHOST OF WHAT WAS BURNED: it rises out of the skull at the BOBAI burn and floats away through the window,
+  // dragging its chain of blocks; the cat hisses as it passes
+  function roam() {
+    if (ghOn || !A.figScreen || REDUCED) return false; const r = win.getBoundingClientRect(), W = r.width, H = r.height;
+    const gs = cl3(A.figHpx * 0.2, 38, 68), sk = $h('.hw-o[data-k="burnA"]')._b, secs = cl3(W / 46, 12, 26);
+    // from the skull (or, where the burn has no light, from the edge) to the far side, a little upward
+    const x0 = sk ? (sk.l + sk.r) / 2 - gs / 2 : W + 12, y0 = sk ? sk.t - gs * 0.4 : cl3(R(hudB + 8, A.figScreen.y - A.figHpx * 0.1), 44, H * 0.55), ltr = x0 < W / 2;
+    const dx = ltr ? W - x0 + gs + 24 : -(x0 + 2 * gs + 24), dy = cl3(hudB + 30 - y0, -H * 0.2, H * 0.12);
+    ghOn = true; frame(gh, scared ? 'hide' : ''); gh.classList.toggle('rtl', !ltr);
+    Object.assign(gh.style, { width: gs + 'px', top: y0 + 'px', left: x0 + 'px', transition: 'none', transform: 'translate(0,0) scale(.3)', opacity: '0' });
+    void gh.offsetWidth;
+    Object.assign(gh.style, { transition: 'transform ' + secs + 's cubic-bezier(.3,0,.7,1), opacity 1.6s ease', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(1)', opacity: '.94' });
+    after(secs * 420, () => { if (!scared) { frame(cat, 'hiss'); after(1300, () => { if (!scared) frame(cat, ''); }); } });
+    // it wails twice on its way (the frame with the wide mouth)
+    after(secs * 280, () => { if (!scared) frame(gh, 'peek'); }); after(secs * 400, () => { if (!scared) frame(gh, ''); }); after(secs * 600, () => { if (!scared) frame(gh, 'peek'); }); after(secs * 720, () => { if (!scared) frame(gh, ''); });
+    after(secs * 1000 - 1700, () => { gh.style.opacity = '0'; }); after(secs * 1000 + 100, () => { ghOn = false; });
+    return true;
+  }
+  // the hand comes up behind the timeline, gropes, grabs twice, and is gone
+  function handScene() {
+    if (!hd._b || hd.classList.contains('up') || cl.classList.contains('act')) return false;
+    hd.classList.add('up'); frame(hd, '');
+    after(1600, () => frame(hd, 'grab')); after(2000, () => frame(hd, '')); after(2500, () => frame(hd, 'grab')); after(3000, () => frame(hd, ''));
+    after(3900, () => hd.classList.remove('up'));
+    return true;
+  }
+  // the clown behind BOBAI (operator, 2026-10-05: "sometimes a clown is behind BOBAI and wants to grab him — his head,
+  // his hands and fingers show, BOBAI notices nothing; he may only come while BOBAI stands"): he rises behind him (the
+  // layer lies under the figure), closes his fingers twice and sinks; the moment BOBAI starts a move he is gone
+  const stands = () => !ownBusy() && !(VID.on && VID.cur && /^idle/.test(VID.cur)) && !win.classList.contains('in-moment') && !win.classList.contains('talking') && !detail.classList.contains('on');
+  let grabT = 0;
+  function grabEnd(fast) { clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on'); if (scared && !cl.classList.contains('act')) scare(false); }
+  function grabScene() {
+    if (grabT || !A.figScreen || cl.classList.contains('act') || !stands()) return false;
+    // a whole figure with legs and shoes, standing BEHIND BOBAI on the stone, a head taller and half a step to the side
+    // (operator: "he shall stand behind BOBAI, with legs and all")
+    const r = win.getBoundingClientRect(), fs = A.figScreen, fh = A.figHpx, fw = A.figW, gi = grab.querySelector('img'), ar = gi.naturalWidth ? gi.naturalWidth / gi.naturalHeight : 0.7;
+    const ghh = Math.min(fh * 1.24, fs.y + fh * 0.39 - Math.max(4, portrait ? hudB - 6 : 4)), gw = ghh * ar, side = fs.x > r.width / 2 ? -1 : 1;
+    Object.assign(grab.style, { width: gw + 'px', height: ghh + 'px', left: cl3(fs.x - gw / 2 + side * fw * 0.3, 2, r.width - gw - 2) + 'px', top: fs.y + fh * 0.39 - ghh + 'px' });
+    frame(grab, ''); grab.classList.remove('fast'); void grab.offsetWidth; grab.classList.add('on');
+    const t0 = performance.now(); let n = 0;
+    grabT = setInterval(() => {
+      const t = performance.now() - t0;
+      if (!on || !stands()) return grabEnd(true);
+      if (t > 2600 && !scared) scare(true); // everybody sees him — except BOBAI
+      const want = (t > 3200 && t < 3900) || (t > 4500 && t < 5300) ? 'grab' : ''; if (n++ % 1 === 0) frame(grab, want);
+      if (t > 6400) grabEnd(false);
+    }, 200);
+    return true;
+  }
+  function start() {
+    loop(7000, 13000, () => { if (!scared) frame(pkA, Math.random() < 0.5 ? 'right' : ''); });
+    loop(6000, 12000, () => { if (!scared) { frame(sp, 'blink'); after(170, () => { if (!scared) frame(sp, ''); }); } });
+    loop(5000, 11000, () => { if (!scared) { frame(cat, 'blink'); after(190, () => { if (!scared) frame(cat, ''); }); } });
+    // THE DIRECTOR (operator: "far too nervous"): one thing at a time, in turn, with a long breath between
+    if (!REDUCED) {
+      const SHOW = [clownScene, batRun, roam, handScene, grabScene, batRun, roam]; let i = 0;
+      const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || !!grabT || ghOn || bat.classList.contains('fly');
+      loop(22000, 34000, () => { if (busy() || win.classList.contains('in-moment')) return; for (let n = 0; n < SHOW.length; n++) if (SHOW[i++ % SHOW.length]()) break; }, 9000);
+    }
+  }
+  function stop() {
+    for (const id of T) clearTimeout(id); T.clear(); clearInterval(grabT); grabT = 0; grab.classList.remove('on'); scared = false; ghOn = false;
+    cl.classList.remove('act', 'ball', 'up1', 'up2'); hd.classList.remove('up'); bat.classList.remove('fly'); pkA.classList.remove('blip'); for (const p of [pkA, cd, ...ORBS]) p.classList.remove('shake'); gh.style.opacity = '0';
+    for (const root of [pkA, sp, gh, cat, hd]) frame(root, ''); frame(cl, '');
+  }
+
+  // looked at every few seconds, moved only when the window changed or something now lies over a piece
+  let since = 0;
+  function tick() {
+    if (!on || !win.offsetWidth) { since = 0; return; }
+    detailDecor(); swPlace(); lights(false); // the tax phase's own redraw may have lit a station again
+    if (++since < 2) return; // the labels settle first
+    const s = sigNow();
+    if (s !== sig) { if (place()) sig = s; return; }
+    if (cl.classList.contains('act') || hd.classList.contains('up')) return; // nobody is moved in the middle of a scene
+    read();
+    for (const e of PIECES) if (e._c && walls.some(w => cut(e._c, w, 1))) { sig = ''; break; }
+  }
+  setInterval(tick, 1500);
+  // a new window size (the enlarge button, a turned phone): the pieces step aside at once and come back where they now fit
+  let lastWH = '';
+  if (window.ResizeObserver) new ResizeObserver(() => {
+    const r = win.getBoundingClientRect(), k = (r.width | 0) + 'x' + (r.height | 0); if (k === lastWH) return;
+    const first = !lastWH; lastWH = k; sig = ''; since = Math.min(since, 1);
+    if (!first) { for (const e of ALL) put(e, null); cl.classList.remove('act', 'ball', 'up1', 'up2'); hd.classList.remove('up'); sizeBack(); swPlace(); }
+  }).observe(win);
+
+  function set(v, byHand) {
+    const was = on; on = v; win.classList.toggle('hw-on', on); sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+    sw.title = on ? 'Halloween look is on — click for the standard terminal' : 'Halloween look is off — click to bring it back';
+    sw.setAttribute('aria-label', sw.title); sw.querySelector('.hw-t').dataset.t = on ? (portrait ? 'Halloween on · tap = off' : 'Halloween on · click = off') : (portrait ? 'Halloween off · tap = on' : 'Halloween off · click = on'); /* shown by CSS, so the chip's own text stays the mood alone */
+    stop();
+    if (on) { load(); sig = ''; start(); if (!flying) { flying = true; requestAnimationFrame(fly); } } else { for (const e of ALL) put(e, null); detailDecor(); }
+    lights(!on);
+    swPlace();
+    backFade();
+    if (byHand) { try { localStorage.setItem('bt-hw', on ? '1' : '0'); } catch {} hint(4500); }
+  }
+  sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
+  // said once at the start, so the small pumpkin is understood
+  setTimeout(() => hint(9000), 3600);
+  set(on, false);
+  window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), grab: () => grabScene(), bat: () => batRun(),
+    // the scene's own lights at the stations: hidden with the look, back exactly as they were without it
+    lit: () => DEST.filter(d => d.pct > 0).every(d => d.obj ? d.obj.visible : d.orb.visible) && coreOrb.visible, stands: () => stands(),
+    // the share card photographs the scene as it always was: the painting steps out for that one frame
+    hide: v => { if (back) back.visible = !v && on && backLit > 0; },
+    boxes: () => ({ placed: sig !== '', clown: cl._b ? (cl._c && cl._c.l >= 0 ? cl._c : cl._b) : null, clownFree: !!(cl._c && cl._c.l >= 0), pumpkin: pkA._b, hand: hd._c, candles: cd._c, moon: mo._b, chain: hc._c, dais: da._b, orbs: Object.fromEntries(ORBS.map(o => [o.dataset.k, o._b])), grab: grab.classList.contains('on'), back: back && back.visible ? +backLit.toFixed(2) : 0, backKey }) };
+})();

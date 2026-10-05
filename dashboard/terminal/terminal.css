@@ -866,7 +866,7 @@
 /* the clown behind BOBAI: he rises behind him (this layer lies under the figure) and is gone the moment BOBAI moves */
 #bt .hw-grab{position:absolute;left:0;top:0;opacity:0;transition:opacity .9s ease;will-change:opacity}
 #bt .hw-grab.on{opacity:1;transition:opacity 1.6s ease}
-#bt .hw-grab.fast{transition:opacity .25s ease}
+#bt .hw-grab.fast{transition:opacity .7s ease}
 #bt .hw-grabi{transform:translateY(24%) scale(.94);transform-origin:50% 100%;transition:transform 1s ease}
 #bt .hw-grab.on .hw-grabi{transform:none;transition:transform 2.6s cubic-bezier(.2,.6,.3,1)}
 #bt .hw-grab.on .hw-s{animation:bt-hw-loom 2.4s ease-in-out infinite alternate}
@@ -1036,3 +1036,19 @@
 #bt .hw-sw svg{width:16px;height:16px}
 @keyframes bt-hw-ring{0%{box-shadow:0 0 0 0 rgba(255,138,30,.6)}60%,100%{box-shadow:0 0 0 9px rgba(255,138,30,0)}}
 #bt .hw-sw .hw-t{font-size:.6rem;color:#ffd9a8;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+/* a fright: one hop, once (when a clown shows, or under the mouse or a finger) */
+#bt .hw-o.jolt > *,#bt .hw-pk.a.jolt .hw-s{animation:bt-hw-jolt .72s cubic-bezier(.3,1.6,.5,1) 1}
+@keyframes bt-hw-jolt{0%{transform:none}22%{transform:translateY(-22%) scale(1.14) rotate(-7deg)}46%{transform:translateY(0) scale(.94) rotate(5deg)}68%{transform:translateY(-7%) rotate(-3deg)}100%{transform:none}}
+/* the switch, once more (operator, 2026-10-05: "larger, easier to see, further right — it cuts into LIVE — and it may
+ * say on/off"): a pill with ON / OFF. Wide: a piece of the title row after LIVE where the row has the room (.hw-flow) */
+#bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:26px;min-width:26px;padding:0 8px 0 5px;gap:5px;font-size:.6rem;letter-spacing:.12em;background:rgba(20,10,2,.92)}
+#bt .hw-sw .hw-oo{font-weight:800;color:#ffb469}
+#bt .hw-sw[aria-pressed=false] .hw-oo{color:#ffd9a8}
+#bt .hw-sw svg{width:17px;height:17px}
+#bt .bt-win:not(.portrait) .hw-sw.hw-flow{position:relative;left:auto;top:auto;flex:none;margin:0 0 0 -4px}
+/* the switch never slides and is there from the first moment; where the title row has no room for it (a 1280 screen)
+ * it is the small badge on the pill's end, without the word */
+#bt .hw-sw.hw-in,#bt .portrait .hw-sw.hw-in{transition:opacity .35s ease,border-color .3s ease}
+#bt .bt-win:not(.portrait) .hw-sw.hw-min{height:22px;min-width:22px;padding:0 2px}
+#bt .bt-win:not(.portrait) .hw-sw.hw-min .hw-oo{display:none}
+#bt .bt-win:not(.portrait) .hw-sw.hw-min svg{width:15px;height:15px}

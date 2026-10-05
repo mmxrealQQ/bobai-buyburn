@@ -4944,7 +4944,10 @@ window.__btHwSeason = hwSeason;
     sw.classList.toggle('hw-flow', !portrait && flowOk); sw.classList.toggle('hw-min', !portrait && !flowOk);
     const lv = livePill.getBoundingClientRect(); if (!lv.width) return;
     // phone: beside the pill, always (operator: "it shall stay at LIVE, also while the speech bubble shows")
-    sw.style.setProperty('--sx', lv.right - h.left + (portrait ? 8 : -7) + 'px'); sw.style.setProperty('--sy', lv.top - h.top + (lv.height - 26) / 2 + 'px');
+    // a tight wide row (1280, 1366): the badge hangs just under the pill's right end — beside it, it covered the clock's
+    // first digit (operator, 2026-10-05: option 1, "under LIVE")
+    if (!portrait && !flowOk) { sw.style.setProperty('--sx', lv.right - h.left - 22 + 'px'); sw.style.setProperty('--sy', lv.bottom - h.top + 4 + 'px'); }
+    else { sw.style.setProperty('--sx', lv.right - h.left + (portrait ? 8 : -7) + 'px'); sw.style.setProperty('--sy', lv.top - h.top + (lv.height - 26) / 2 + 'px'); }
     if (!sw._in) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); } // there from the start, placed before it shows
   }
   const swT0 = performance.now();
@@ -5000,6 +5003,9 @@ window.__btHwSeason = hwSeason;
     // the painting is drawn 7% larger than the window (sizeBack), about its middle
     x = W / 2 + (x - W / 2) * 1.07; y = H / 2 + (y - H / 2) * 1.07; dia *= 1.07;
     const mr = cl3(dia * 0.64, 16, 54); /* the picture's moon is a little larger than the painted one it covers */ M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
+    // where the painted moon lies against his head (1280, 1366: the moon picture covered the bots' names beside his
+    // brain) only the dim painted one stays — far behind, it covers nothing
+    if (M1 && A.figScreen && A.figHpx) { const fs = A.figScreen, fh = A.figHpx, fw = A.figW, hd = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); if (cut(M1, hd, 14) && (M1.t + M1.b) / 2 > hd.t) M1 = null; } /* beside the head, not above it */
     return M1;
   }
   function lights(v) {
@@ -5013,7 +5019,7 @@ window.__btHwSeason = hwSeason;
   let flying = false, gsz = 0;
   function fly() {
     if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!win.offsetWidth || !A.figHpx) return;
-    const g = Math.round(cl3(A.figHpx * (portrait ? 0.042 : 0.046), 9, 16)); if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
+    const g = Math.round(cl3(A.figHpx * (portrait ? 0.0525 : 0.0575), 11, 20)); /* 25% up again (operator: "a tiny bit larger") */ if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
     for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i]; e.style.transform = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)'; e.style.opacity = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); }
   }
   function load() {
@@ -5034,11 +5040,15 @@ window.__btHwSeason = hwSeason;
     e._b = b; e._c = c || b;
     if (far) { e.classList.remove('put'); e._mv = setTimeout(go, 260); } else go();
   };
-  let walls = [], term = null, sig = '', hudB = 60;
+  let walls = [], term = null, sig = '', hudB = 60, jokeAt = null;
   function read() {
     const r = win.getBoundingClientRect(); walls = []; term = null;
     for (const e of win.querySelectorAll('.lab, .joke, .hud > *, .ttl > *, .term, .tl, .mtabs, .phase, .rclk, .chart-open, .bt-big')) {
-      const b = e.getBoundingClientRect(); if (b.width < 2 || b.height < 2) continue;
+      let b = e.getBoundingClientRect();
+      // the joke button changes its width with its words ("TELLING YOU SOMETHING", 240 px) and hides while a clip
+      // plays: its widest footprint, at its last place, always stays clear (the hand came up behind it, 1440x900)
+      if (e === jokeBtn) { if (b.width >= 2) jokeAt = { cx: (b.left + b.right) / 2 - r.left, t: b.top - r.top, b: b.bottom - r.top }; if (!jokeAt) continue; walls.push({ l: jokeAt.cx - 130, t: jokeAt.t, r: jokeAt.cx + 130, b: jokeAt.b, e }); continue; }
+      if (b.width < 2 || b.height < 2) continue;
       const w = { l: b.left - r.left, t: b.top - r.top, r: b.right - r.left, b: b.bottom - r.top, e };
       if (e.classList.contains('term')) term = w; else if (!e.classList.contains('ttl')) walls.push(w);
     }
@@ -5109,6 +5119,12 @@ window.__btHwSeason = hwSeason;
         if (!walls.some(w => w.e !== tl.e && cut(rest, w, 4)) && !(term && cut(rest, term, 4)) && !him(rest) && !taken.some(t => cut(rest, t, 2))) { H1 = box(l, tl.t + 2 - hh, hw, hh); Hc = rest; break; }
       }
       // no free spot (operator: "the skeleton hand still comes, doesn't it?"): it comes up where the least stands before it
+      // no free spot on the timeline's edge (1366x768): it rises out of the stone, beside his feet, on the side away from
+      // the buyback ring — behind the joke button it was never seen
+      // (the clown's resting place does not count: hand and clown never come at the same time, handScene waits for him)
+      if (!H1) { const feet = fs.y + fh * 0.36, core = toScreen(A.core), side = core.x > fs.x ? -1 : 1;
+        for (const k of [0.62, 0.8, 0.5, 0.95]) { const l = fs.x + side * fw * k - hw / 2, ov = term && l < term.r && l + hw > term.l ? Math.min(feet, term.t) : feet, rest = box(l, feet - hh, hw, ov - (feet - hh) - 3);
+          if (rest.l >= 4 && rest.r <= W - 4 && rest.b - rest.t > hh * 0.55 && !walls.some(w => cut(rest, w, 3)) && !(term && cut(rest, term, 0)) && !cut(rest, trunk, 2)) { H1 = box(l, feet + 2 - hh, hw, hh); Hc = rest; break; } } } /* its foot may pass behind the log box's roof (1440x900): the box is drawn over this layer */
       if (!H1) { let bestN = 99; for (const f of [0.7, 0.82, 0.58, 0.9, 0.46]) { const l = W * f - hw / 2, rest = box(l, tl.t - hh, hw, hh - 3), n = walls.filter(w => w.e !== tl.e && cut(rest, w, 2)).length + (term && cut(rest, term, 2) ? 4 : 0) + taken.filter(t => cut(rest, t, 2)).length * 2; if (n < bestN) { bestN = n; H1 = box(l, tl.t + 2 - hh, hw, hh); } } Hc = box(-9, -9, 1, 1); }
     }
     put(hd, H1, Hc); if (Hc) taken.push(Hc);
@@ -5197,6 +5213,7 @@ window.__btHwSeason = hwSeason;
   // the clown: balloon first, then the gloves and the eyes, the grin, a blink, and down again
   function clownScene() {
     if (!cl._b || cl.classList.contains('act') || win.classList.contains('in-moment')) return false;
+    if (stale(cl) && !cl._b) return false;
     cl.classList.add('act', 'ball'); frame(cl, '');
     after(1900, () => cl.classList.add('up1'));
     after(3900, () => { scare(true); const bu = cl.querySelector('.hw-burst'); bu.classList.add('go'); after(2600, () => bu.classList.remove('go')); });
@@ -5237,8 +5254,12 @@ window.__btHwSeason = hwSeason;
     return true;
   }
   // the hand comes up behind the timeline, gropes, grabs twice, and is gone
+  // a scene looks once more at its spot before it starts: placed while the joke button stood elsewhere, the hand came up
+  // behind it, unseen (1440x900, 2026-10-05)
+  const stale = e => { read(); if (e._c && walls.some(w => cut(e._c, w, 1))) { sig = ''; since = Math.max(since, 2); tick(); return true; } return false; };
   function handScene() {
     if (!hd._b || hd.classList.contains('up') || cl.classList.contains('act')) return false;
+    if (stale(hd) && !hd._b) return false;
     hd.classList.add('up'); frame(hd, '');
     after(1600, () => frame(hd, 'grab')); after(2000, () => frame(hd, '')); after(2500, () => frame(hd, 'grab')); after(3000, () => frame(hd, ''));
     after(3900, () => hd.classList.remove('up'));

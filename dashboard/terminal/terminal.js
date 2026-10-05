@@ -1045,7 +1045,9 @@ window.__btPx = () => [S.price, S.priceAt || 0, S.hist.length, S.hist.length ? S
 // big chart's line for the newest candle
 window.__btTestDetail = { focus: k => setFocus(k), queue: n => { const was = S.queued, wb = S.walletBnb; S.queued = n ?? MIN_DISPATCH + 2688; S.walletBnb = 0; const h = vizOf('core'); S.queued = was; S.walletBnb = wb; return h; }, // no BNB waiting to split: that state has its own board
   swap: (usd, sell) => { const x = { kind: 'trade', id: 'test-s' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtest' + Date.now() }; S.hist.push(x); chartSwap(x); },
-  cx: () => { openCx(true); CX.hover = cxCandles().length - 1; } };
+  cx: () => { openCx(true); CX.hover = cxCandles().length - 1; },
+  // a hard day (ch = the day's change in %): the kinds of his next eight own moments, a word of heart, the moves his market lines may take
+  hard: ch => { LIFE.combo = { ...(LIFE.combo || { key: 'down-loud', trend: 'down', act: 'loud' }), ch }; OWN_BAG = []; const kinds = []; for (let i = 0; i < 8; i++) kinds.push(ownKind()); OWN_BAG = []; return { kinds, line: heartLine(), moves: actsNow().map(a => a[0]) }; } };
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
 const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle'];
@@ -1873,7 +1875,11 @@ function ownKind() {
   // MOOD FIRST, THEN WHAT HE DOES, THEN A JOKE (operator, 2026-10-01; it was one of each): of every eight moments of his
   // own four are his mood, three what he does (in a calm market one of them an invitation to try the screen), one a
   // joke — the joke button is there for more. Shuffled so the same kind never comes twice in a row.
-  const kinds = LIFE.combo && LIFE.combo.act !== 'loud' ? ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'invite', 'joke'] : ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'work', 'joke'];
+  // A HARD DAY (operator, 2026-10-05, at −42%: "BOBAI has to motivate in this difficult time too, and not make so many
+  // jokes — people are tilted"): with the day at −15% or worse no joke of his own comes; three of eight moments are a
+  // word of heart instead (heartLine). The joke button still tells one to whoever asks for it.
+  const kinds = HARD_DAY() ? ['mood', 'mood', 'heart', 'work', 'heart', 'work', 'heart', 'work']
+    : LIFE.combo && LIFE.combo.act !== 'loud' ? ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'invite', 'joke'] : ['mood', 'mood', 'mood', 'mood', 'work', 'work', 'work', 'joke'];
   const apart = b => b.every((k, i) => !i || k !== b[i - 1] || k === 'mood' && b.filter(x => x === 'mood').length > b.length / 2);
   if (!OWN_BAG.length) { let n = 0; do OWN_BAG = [...kinds].sort(() => Math.random() - 0.5); while (++n < 200 && (OWN_BAG[0] === ownLast || !apart(OWN_BAG))); }
   return (ownLast = OWN_BAG.shift());
@@ -2142,10 +2148,26 @@ function lifeTick(now) {
 // said "No trades for a bit" seconds after a buy; "Green morning" came in the evening, "Nobody sells in here" in an hour
 // with sells. A line about a quiet chain needs 15 minutes without a trade, the morning one the morning, the last no sell.
 const QUIET_LINE = /quiet|no trades|low volume|nothing happening|slow market|nobody is looking/i;
+// the day at −15% or worse (the same 24H figure the chip shows)
+const HARD_DAY = () => (LIFE.combo?.ch ?? 0) <= -15;
+// A WORD OF HEART FOR A HARD DAY: what is true and does not change, said plainly — never a promise about the price.
+// Eight ways, remembered like every line; the two that name a move (hard hat, diamond hands) play it.
+function heartLine() {
+  const ch = Math.abs(LIFE.combo?.ch ?? 0).toFixed(0), wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
+  return vary('v30', ['Rough day, I know. I am still here, and every bot of mine is still working.',
+    'Red days test everyone. What does not change: the LP is burned, the contract has no owner, the bots keep running.',
+    `${ch}% down in a day hurts. Every sell paid its 3% too, and that is already on its way to the burns.`,
+    'I cannot promise a price. I can promise the work: every burn, every step, on-chain, today like every day.',
+    wk > 0 ? `Breathe. Zoom out. This week alone I burned ${cmp(wk)} BOBAI, and I am not done.` : 'Breathe. Zoom out. The burns do not stop on a red day.',
+    'To everyone still here on a day like this: thank you. I see you, and I keep building.',
+    'Builders build on red days too. Hard hat on.',
+    'Diamond hands are made on days like this. I hold with you.']);
+}
 function actsNow() {
   const traded = S.hist.some(x => !x.taxSwap && x.t >= Date.now() - 900e3), h = new Date().getHours(), sells = (LIFE.flow?.s || 0) > 0;
-  const L = [...(ACTS[LIFE.mood] || ACTS.flat), ...dayActs()], ok = L.filter(([, l]) => typeof l !== 'string' ||
-    !(traded && QUIET_LINE.test(l)) && !(/\bmorning\b/i.test(l) && (h < 5 || h >= 11)) && !(sells && /nobody sells/i.test(l)));
+  // on a hard day he does not laugh or dance about it (the lines with those moves wait for a better one)
+  const hard = HARD_DAY(), L = [...(ACTS[LIFE.mood] || ACTS.flat), ...dayActs()], ok = L.filter(([p, l]) => !(hard && (p === 'laugh' || p === 'dance')) && (typeof l !== 'string' ||
+    !(traded && QUIET_LINE.test(l)) && !(/\bmorning\b/i.test(l) && (h < 5 || h >= 11)) && !(sells && /nobody sells/i.test(l))));
   return ok.length ? ok : L;
 }
 // a clip of a move still playing or waiting to (his calm rest take does not count)
@@ -2156,6 +2178,7 @@ function ownMoment(act) {
   act = act || (() => { const L = actsNow(), ok = L.filter(([p]) => flowPose(p) === p); return pick(ok.length ? ok : L); });
   const k = ownKind(), log = got => { (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), k, got]); return true; }; // for checks from outside
   if (k === 'mood') { tellMood(6400); return log('mood'); }
+  if (k === 'heart') { const l = heartLine(), named = moveForLine(l, null); setPose(named || poseOr(pick(['hodl', 'think', 'walk'].filter(p => flowPose(p) === p).concat('hodl'))), 6, !!named); speak(l, 7200); return log('heart'); }
   if (k === 'joke' && tellJoke(6500)) return log('joke');
   if (k === 'invite') { const l = inviteLine(); if (l) { const named = moveForLine(l, null); setPose(named || moodMove(), 6, !!named); speak(l, 6800); return log('invite'); } }
   log('work');
@@ -3363,7 +3386,7 @@ function bobaiTap() {
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${cmp(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
     () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : 'The price is in its range, so it earns fees.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
-    () => { if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } },
+    () => { if (HARD_DAY()) { const l = heartLine(); setPose(moveForLine(l, null) || poseOr('hodl'), 6); speak(l, 7000); } else if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } }, // a tap on a hard day: a word of heart, not a joke
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
     () => { const line = saidMood(moodLine()); setPose(moveForLine(line, moodMove()), 6); speak(line, 6400); },
     () => { const r = recallLine(); if (r) { setPose(poseOr(r[0]), 6); speak(r[1], 6400); } else { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // what happened this hour (2026-10-01)

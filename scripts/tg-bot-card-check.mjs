@@ -49,5 +49,20 @@ ok('a table one day late is caught (the detector is not blind)', stale !== table
 
 ok('/bot is registered, listed in /help and answered', /command: 'bot'/.test(tg) && /\/bot — What the bot does/.test(tg) && /case '\/bot':/.test(tg));
 
+// /tax (2026-10-05): the live tax card — registered, in /help, answered as /tax and /buyback; its charge bar never
+// rounds up (97% is not full), the dollars use the BOBAI and BNB price, a missing read says so instead of a 0
+ok('/tax is registered, listed in /help and answered (also /buyback)', /command: 'tax'/.test(tg) && /\/tax — Tax live/.test(tg) && /case '\/tax':/.test(tg) && /case '\/buyback':/.test(tg));
+const taxSrc = cut('export function formatTaxCard', '\n}\n').replace('export ', '') + '\n}';
+const helpers = cut('const fmtAmt = ', 'const approxUsd');
+const formatTaxCard = new Function('formatUsd', 'formatNumber', 'BOT_WALLET', 'TAX_GAS_RESERVE', 'TAX_MIN_SPLIT', `${helpers}\n${taxSrc}\nreturn formatTaxCard;`)(
+  (n) => '$' + n.toFixed(2), (n) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : n.toFixed(0)), '0xdeFC', 0.003, 0.004);
+const now = Date.parse('2026-10-05T06:00:00Z'), log = [{ time: '2026-10-04T07:51:00Z', totalBnb: '0.05', bobaiBurned: '50000', bobBurned: '1' }, { time: '2026-10-05T04:00:00Z', totalBnb: '0.04', bobaiBurned: '20000', bobBurned: '0' }];
+const tc = formatTaxCard({ queued: 388000, minDispatch: 400000, walletBnb: 0.0103, price: 0.0004, bnbUsd: 800 }, log, now);
+ok('/tax: 97% shows nine bars, queued tax in $, the wallet BNB above the gas reserve, the last run and the 24 h count',
+  /<b>97%<\/b> charged\n▰{9}▱\n/.test(tc) && /388\.0K of 400\.0K BOBAI tax queued in the token \(≈\$155\.20\)/.test(tc) && /\+ 0\.0073 BNB .*\(≈\$5\.84\)/.test(tc)
+  && /Last buyback: <b>2h 0m ago<\/b>\n0\.0400 BNB \(≈\$32\.00\) → 20\.0K BOBAI burned/.test(tc) && /Last 24h: <b>2<\/b> buybacks · 70\.0K BOBAI burned/.test(tc), tc.split('\n').slice(2, 5).join(' | '));
+const tf = formatTaxCard({ queued: null, minDispatch: null, walletBnb: null, price: null, bnbUsd: null }, [], now);
+ok('/tax: a failed read says so (no 0%, no $0)', /could not read the token/.test(tf) && /log did not answer/.test(tf) && !/\b0%|\$0/.test(tf));
+
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

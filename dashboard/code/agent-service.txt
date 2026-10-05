@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 15712 lines.
+# one fetch. 48 files, 15733 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4626,7 +4626,7 @@ async function a2aCall(url, data, timeoutMs = 15000) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       jsonrpc: '2.0', id: 1, method: 'message/send',
-      params: { message: { role: 'user', messageId: 'dispatch-' + Date.now(), parts: [{ kind: 'data', data }] } },
+      params: { message: { kind: 'message', role: 'user', messageId: 'dispatch-' + Date.now(), parts: [{ kind: 'data', data }] } }, // kind is required by the A2A Message schema (strict sellers refuse without it)
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -6290,7 +6290,7 @@ export async function handleHire(url, body, env, opts = {}) {
       hint: 'Pass an https:// A2A endpoint directly, or an ERC-8004 id that appears in https://brainonbnb.com/api-agents.json',
     } };
   }
-  const { endpoint, skill, source } = resolved;
+  const { endpoint, skill, source, example } = resolved;
 
   const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null, skill || 'negotiate', source);
   if (!neg.ok) {
@@ -6302,7 +6302,7 @@ export async function handleHire(url, body, env, opts = {}) {
     // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
     // its own 402 states a price. Read it — nothing is paid — and hand it on.
     const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}) } };
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
   }
 
   const q = neg.quote;
@@ -6481,6 +6481,18 @@ function negotiationSkill(card) {
 // perfectly good skill list. An earlier draft of this returned null the moment
 // the url was missing and threw the skill away with it — which happened to work
 // only because the name it then guessed was the name they use.
+// The first worked example of a work skill (not the negotiation or delivery
+// skills) that parses as a JSON object — the shape the seller says it reads.
+function exampleOf(card) {
+  for (const k of card?.skills || []) {
+    if (/negotiat|notify|status|deliver/i.test(String(k.id || ''))) continue;
+    for (const e of [].concat(k.examples || [])) {
+      if (typeof e !== 'string') continue;
+      try { const o = JSON.parse(e); if (o && typeof o === 'object' && !Array.isArray(o)) return e.slice(0, 1500); } catch { /* prose */ }
+    }
+  }
+  return null;
+}
 async function cardAt(cardUrl) {
   const none = { endpoint: null, skill: null };
   const r = await fetch(cardUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
@@ -6488,6 +6500,10 @@ async function cardAt(cardUrl) {
   const card = await r.json().catch(() => null);
   if (!card) return none;
   const skill = negotiationSkill(card);
+  // The seller's own worked example of its task (2026-10-04): some read only a
+  // JSON task and say so — ChainHelix declines plain English and points at the
+  // example in its card. Kept so a declined quote can hand it to the buyer.
+  const example = exampleOf(card);
   const iface = (card.supportedInterfaces || []).find((i) => i.url);
   const raw = iface?.url || card.url;
   if (!raw) return { endpoint: null, skill };
@@ -6500,7 +6516,7 @@ async function cardAt(cardUrl) {
     // including at its own loopback, is reported as it stands rather than
     // quietly rewritten into something that looks reachable.
     if (u.hostname === o.hostname) u.protocol = o.protocol;
-    return { endpoint: u.href, skill };
+    return { endpoint: u.href, skill, example };
   } catch { return { endpoint: null, skill }; }
 }
 
@@ -6596,7 +6612,7 @@ async function resolveA2aEndpoint(target) {
     const cardUrl = eps.find((e) => /agent-card\.json$|\/\.well-known\//i.test(e));
     if (cardUrl) {
       const c = await cardAt(cardUrl);
-      if (c?.endpoint) return { endpoint: c.endpoint, skill: c.skill, source: 'card' };
+      if (c?.endpoint) return { endpoint: c.endpoint, skill: c.skill, example: c.example, source: 'card' };
       if (c?.skill) { /* keep the name; the endpoint still has to be resolved below */ }
     }
     const direct = eps.find((e) => /\/a2a(\/|$)/i.test(e));
@@ -7859,6 +7875,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
+        eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
@@ -7903,6 +7920,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     const requirements = {
       x402Version: 2,
       accepts: [
+        eip3009Accepts({ payTo, amountAtomic: WATCH_PRICE_USD1.toString(), description: `Pool watch for ${WATCH_DAYS} days`, resource }),
         dexterAccepts({
           payTo,
           amountAtomic: WATCH_PRICE_USD1.toString(),
@@ -8419,7 +8437,7 @@ export default {
         method: 'message/send',
         example: {
           jsonrpc: '2.0', id: 1, method: 'message/send',
-          params: { message: { role: 'user', messageId: 'example', parts: [{ kind: 'data', data: { skill: 'list' } }] } },
+          params: { message: { kind: 'message', role: 'user', messageId: 'example', parts: [{ kind: 'data', data: { skill: 'list' } }] } },
         },
         skills: ['list — what is for sale', 'negotiate — get a quote', 'notify_funded — deliver a job whose escrow is funded'],
         services: Object.values(SERVICES).map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, price_display: x.price_display })),
@@ -8574,7 +8592,7 @@ export default {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
-            params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
+            params: { message: { kind: 'message', role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
         }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
@@ -8596,7 +8614,7 @@ export default {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
-            params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
+            params: { message: { kind: 'message', role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
         }), env, AGENT_SERVICE[new URL(endpoint).pathname.split('/')[1]] ? { agent: new URL(endpoint).pathname.split('/')[1] } : {}); // an agent's own endpoint keeps its own service
         return await res.json();
       } });
@@ -9232,7 +9250,7 @@ ${pageTail}`;
       // Two minutes at the edge: the terminal reads this on every heartbeat of
       // every visitor, and an uncached read lists and reads the day's keys.
       const ck = new Request(`https://agent.brainonbnb.com/stats/detail?day=${day}`);
-      const hit = await caches.default.match(ck).catch(() => null);
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null; // no Cache API outside Workers (tests)
       if (hit) return hit;
       const d = await readDetail(env, day);
       const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
@@ -9241,7 +9259,7 @@ ${pageTail}`;
         note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
       });
       res.headers.set('cache-control', 'public, max-age=120');
-      ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      if (globalThis.caches) ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
       return res;
     }
 
@@ -15341,6 +15359,9 @@ export function eip3009Mismatch(inner, { payTo, price, now = Math.floor(Date.now
   if (String(a.to || '').toLowerCase() !== String(payTo).toLowerCase()) return `authorization.to must be ${payTo}`;
   let value; try { value = BigInt(a.value); } catch { return 'authorization.value is not a number'; }
   if (value < BigInt(price)) return `authorization.value ${value} is below the price ${price}`;
+  // "exact" means exact: a buyer who signed more than the price by mistake is
+  // refused, not charged the difference.
+  if (value > BigInt(price)) return `authorization.value ${value} is above the price ${price} — sign exactly the price`;
   if (Number(a.validAfter || 0) > now) return 'the authorization is not valid yet';
   if (Number(a.validBefore || 0) < now + MIN_WINDOW) return 'the authorization expires too soon to settle';
   if (!/^0x[0-9a-fA-F]{64}$/.test(a.nonce || '')) return 'authorization.nonce must be 32 bytes of hex';

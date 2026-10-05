@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4801 lines.
+# one fetch. 12 files, 4871 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2756,6 +2756,7 @@ const BOT_COMMANDS = [
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
+  { command: 'tax',      description: 'Tax live: next buyback charge, last buyback, last 24 h (also /buyback)' },
   { command: 'worldcup', description: "Worldcup '26 tipgame — final results" },
 ];
 
@@ -2771,7 +2772,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v16-bot';
+const COMMANDS_VERSION = 'v17-tax';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2967,6 +2968,61 @@ export function botBurnsFromLog(burns) {
 // Billions read as B; the shared formatNumber stops at M because no BOBAI figure reaches 1e9.
 const fmtAmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : formatNumber(n);
 const approxUsd = (amount, price) => price ? ` (≈${formatUsd(amount * price)})` : '';
+
+// ==================== TAX STATUS (/tax, /buyback) ====================
+
+// THE TAX, LIVE (operator, 2026-10-05: "a buyback command where you see the tax status — numbers must be right, USD
+// too"). The same figures as the website's tax tile (dashboard/app.js): the token queues its 3% as BOBAI in itself and
+// sends it on once it holds minDispatch(); the buyback wallet splits what it holds above its 0.003 BNB gas reserve once
+// that is more than 0.004 BNB (worker/index.js GAS_RESERVE + MIN_BNB), every 10 minutes. The last runs come from the
+// bot's own log (burns.json). The split itself stays on /bot.
+const TAX_GAS_RESERVE = 0.003, TAX_MIN_SPLIT = 0.004;
+const WBNB_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+async function readTaxOnchain() {
+  const balOf = (a) => '0x70a08231' + a.slice(2).toLowerCase().padStart(64, '0');
+  const [qHex, mdHex, nHex, wHex, pair] = await Promise.all([
+    rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balOf(BOBAI_TOKEN) }, 'latest']),
+    rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: '0x110395bd' }, 'latest']),  // minDispatch()
+    rpcCall('eth_getBalance', [BOT_WALLET, 'latest']),
+    rpcCall('eth_call', [{ to: WBNB_TOKEN, data: balOf(BOT_WALLET) }, 'latest']),
+    readPairOnchain(),
+  ]);
+  const u18 = (h) => (h ? Number(hexToBigInt(h)) / 1e18 : null);
+  const native = u18(nHex), wrapped = u18(wHex);
+  return { queued: u18(qHex), minDispatch: u18(mdHex), walletBnb: native === null ? null : native + (wrapped || 0),
+    price: pair ? pair.price : null, bnbUsd: pair ? pair.bnbUsd : await getBnbUsd() };
+}
+
+export function formatTaxCard(t, burns = [], nowMs = Date.now()) {
+  const span = (ms) => { const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
+  const usd = (n) => (n > 0 ? ` (≈${formatUsd(n)})` : '');
+  const out = ['💸 <b>BOBAI Tax — live</b>', ''];
+  if (t.queued !== null && t.minDispatch > 0) {
+    const pct = Math.min(t.queued / t.minDispatch * 100, 100), full = Math.floor(pct / 10);  // 97% is not a full bar
+    out.push(`🔋 Next buyback: <b>${pct < 10 ? pct.toFixed(1) : pct.toFixed(0)}%</b> charged`,
+      '▰'.repeat(full) + '▱'.repeat(10 - full),
+      `🧠 ${fmtAmt(t.queued)} of ${fmtAmt(t.minDispatch)} BOBAI tax queued in the token${usd(t.queued * (t.price || 0))}`);
+  } else {
+    out.push('🔋 Next buyback: <i>could not read the token right now</i>');
+  }
+  const split = t.walletBnb !== null && t.walletBnb > TAX_MIN_SPLIT ? t.walletBnb - TAX_GAS_RESERVE : 0;
+  if (split > 0) out.push(`💰 + ${split.toFixed(4)} BNB in the bot wallet, split on its next run${usd(split * (t.bnbUsd || 0))}`);
+  out.push('⚡ At 100% the token sends the tax on; the bot splits it within 10 minutes.', '');
+  const runs = (Array.isArray(burns) ? burns : []).filter((e) => e && Date.parse(e.time) > 0).sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+  const last = runs[runs.length - 1];
+  if (last) {
+    const bnb = +last.totalBnb || 0, bobai = +last.bobaiBurned || 0, bob = +last.bobBurned || 0;
+    out.push(`🔥 Last buyback: <b>${span(nowMs - Date.parse(last.time))} ago</b>`,
+      `${bnb.toFixed(4)} BNB${usd(bnb * (t.bnbUsd || 0))} → ${fmtAmt(bobai)} BOBAI${bob > 0 ? ` + ${fmtAmt(bob)} BOB` : ''} burned`);
+    const day = runs.filter((e) => Date.parse(e.time) >= nowMs - 86400000), b24 = day.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
+    out.push(`📊 Last 24h: <b>${day.length}</b> buyback${day.length === 1 ? '' : 's'}${day.length ? ` · ${fmtAmt(b24)} BOBAI burned${usd(b24 * (t.price || 0))}` : ''}`);
+  } else {
+    out.push('🔥 Last buyback: <i>the bot log did not answer</i>');
+  }
+  out.push('', `⚙️ Who gets what → /bot · 🔥 /burn · <a href="https://bscscan.com/address/${BOT_WALLET}">Bot wallet</a>`);
+  return out.join('\n');
+}
+
 
 // ==================== LP AGENT DAILY REPORT ====================
 
@@ -3242,6 +3298,19 @@ async function handleCommand(msg, env) {
       break;
     }
 
+    case '/tax':
+    case 'tax':
+    case '/buyback':
+    case 'buyback': {
+      let burns = [];
+      try {
+        const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
+        if (r.ok) burns = await r.json();
+      } catch { /* the chain figures still show; the last run says the log did not answer */ }
+      reply = formatTaxCard(await readTaxOnchain(), burns);
+      break;
+    }
+
     case '/liq':
     case 'liq':
     case 'liquidity':
@@ -3413,6 +3482,7 @@ Here's what I can do:
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
+💸 /tax — Tax live: next buyback charge, last buyback, last 24 h
 🏆 /worldcup — Worldcup '26 tipgame, final results
 
 💡 <i>I also post alerts for buys & burns!</i>

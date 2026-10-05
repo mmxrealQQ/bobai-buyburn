@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4306 lines.
+# one fetch. 7 files, 4312 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2713,6 +2713,12 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
               var offs=j.x402.offers.map(function(x){return esc(x.price)+' to '+esc(x.payTo)+(x.method?' ('+esc(x.method)+')':'');}).join(' or ');
               elSub.textContent='Agent #'+current.id+' · sold per call over x402, not through the escrow';
               say('No escrow job here: this agent sells per call over x402 &mdash; '+offs+' at '+esc(j.x402.url)+'. Pay with your own x402 client at that address; nothing is held in escrow.'+altQuoter(),'rg-ok');
+            }else if(j&&j.example){
+              // The seller reads only a JSON task and its card carries its own example (2026-10-04):
+              // offered in one click instead of a dead end.
+              say('The agent did not quote: '+esc(j.error||'no answer')+'<br>Its card carries its own example of the task it reads: <code>'+esc(j.example)+'</code> <button type="button" class="rg-useex" style="font:inherit;cursor:pointer;margin-left:6px">Use its example &rarr;</button>','rg-err');
+              var ub=document.querySelector('.rg-useex');
+              if(ub)ub.addEventListener('click',function(){elTask.value=j.example;seeded='';elTask.focus();});
             }else{
               say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');
             }

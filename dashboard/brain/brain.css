@@ -355,3 +355,29 @@ body.bp-winon{overflow:hidden}
 #bt .hud .bt-big[hidden]{display:none}
 body.bp-big{overflow:hidden}
 body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
+
+/* 07 MORE (2026-10-05): the Classic footer's links as a small card and a window; the cards above it give a little */
+.bp-side .bw-card.bw-mini{flex:.36;justify-content:center}
+.bw-mini .bw-viz,.bw-mini .bw-v{display:none}
+.bw-mini .bw-l{margin-top:2px}
+#w08 .bw-frame{width:min(760px,100%)}
+.bw-more .mo-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.bw-more .mo-a{display:flex;flex-direction:column;gap:3px;padding:13px 15px;border-radius:12px;border:1px solid var(--bp-line);background:rgba(255,255,255,.02);text-decoration:none;color:var(--bp-text);transition:border-color .2s}
+.bw-more .mo-a:hover,.bw-more .mo-a:focus-visible{border-color:var(--bp-line2);outline:none}
+.bw-more .mo-a b{font:700 14px 'Space Grotesk',sans-serif;color:#f3efe6}
+.bw-more .mo-a span{font:500 12px/1.45 'Space Grotesk',sans-serif;color:var(--bp-muted)}
+.bw-more .mo-f{margin:14px 2px 0;font:600 11px/1.6 var(--bp-mono);color:var(--bp-muted)}
+.bw-more .mo-f a{color:var(--bp-gold);text-decoration:none}
+@media (max-width:559px){.bw-more .mo-g{grid-template-columns:1fr}}
+/* the roadmap window (operator, 2026-10-05: "must be adapted and corrected"): what is shipped is gold in every phase
+   (two of them were blue), the cards start right under the track and span its width */
+#w06 .rm.rma .rp{color:var(--bp-gold)}
+#w06 .rm.rma::before{background:linear-gradient(90deg,var(--bp-gold),transparent)}
+#w06 .bw-body .sec{padding:0;margin:0}
+#w06 .bw-body .sh,#w06 .bw-body .blk-head{display:none}
+#w06 .rmg{margin:14px 0 0;grid-template-columns:repeat(4,1fr)}
+#w06 .bob-sub{color:inherit;font-size:.9em}
+@media (max-width:900px){#w06 .rmg{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:559px){#w06 .rmg{grid-template-columns:1fr}}
+.bw-more{padding:4px 16px 18px}
+#w06 .rmg{padding:0 16px 16px}

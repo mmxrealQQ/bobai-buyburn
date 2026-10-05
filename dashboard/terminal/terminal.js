@@ -1043,7 +1043,7 @@ window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; 
 window.__btPx = () => [S.price, S.priceAt || 0, S.hist.length, S.hist.length ? S.hist[S.hist.length - 1].t : 0, (typeof cxCandles === 'function' && cxCandles().at(-1)?.c * S.bnbP) || 0]; // the live price, when it was read, the swaps seen, the open chart's last close in $ (chartlive.mjs)
 // qa/details.mjs (2026-10-05): a board opened and repainted, a full tax queue, a small swap read by the page and the
 // big chart's line for the newest candle
-window.__btTestDetail = { focus: k => setFocus(k), queue: n => { const was = S.queued; S.queued = n ?? MIN_DISPATCH + 2688; const h = vizOf('core'); S.queued = was; return h; },
+window.__btTestDetail = { focus: k => setFocus(k), queue: n => { const was = S.queued, wb = S.walletBnb; S.queued = n ?? MIN_DISPATCH + 2688; S.walletBnb = 0; const h = vizOf('core'); S.queued = was; S.walletBnb = wb; return h; }, // no BNB waiting to split: that state has its own board
   swap: (usd, sell) => { const x = { kind: 'trade', id: 'test-s' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtest' + Date.now() }; S.hist.push(x); chartSwap(x); },
   cx: () => { openCx(true); CX.hover = cxCandles().length - 1; } };
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
@@ -3426,7 +3426,7 @@ const SEEN_KEY = 'bobai-bt-seen';
 let seenBefore = 0;
 try { seenBefore = +localStorage.getItem(SEEN_KEY) || 0; } catch {}
 function markSeen() { try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch {} }
-function sinceWords(ms) { const m = Math.round(ms / 60e3), h = Math.round(ms / 3600e3), d = Math.round(ms / 86400e3); return m < 90 ? m + ' minutes' : h < 36 ? h + ' hours' : d + ' days'; }
+function sinceWords(ms) { const m = Math.round(ms / 60e3), h = Math.round(ms / 3600e3), d = Math.round(ms / 86400e3); return m < 90 ? m + ' minutes' : h < 36 ? h + ' hours' : Math.max(2, d) + ' days'; } // from 36 hours on it is days, and never "1 days" (2026-10-05: 35.6 h read "1 days away")
 // ONLY REAL, CURRENT FIGURES (operator, 2026-09-29: "he told me 0 burns, everything 0, though a lot happened — if he
 // says it, the data must be correct and current"): on a slow connection he greeted before the trade ledger had come
 // and counted from the few swaps the page had seen itself. He now speaks only once the burn record, the NFT drops and
@@ -3730,7 +3730,7 @@ function candles() {
   const out = []; let prev = null;
   for (const r of CH.rows) {
     const o = prev ? prev.c : r.c;
-    out.push({ t: r.t, o, c: r.c, h: Math.max(o, r.c, r.h || 0), l: Math.min(o, r.c, r.l || Infinity), v: r.v || 0, n: (r.b || 0) + (r.s || 0), b: r.b || 0, s: r.s || 0, u: r.u || S.bnbP, ou: (prev ? prev.u : r.u) || S.bnbP });
+    out.push({ t: r.t, o, c: r.c, h: Math.max(o, r.c, r.h || 0), l: Math.min(o, r.c, r.l || Infinity), v: r.v || 0, n: (r.b || 0) + (r.s || 0), b: r.b || 0, s: r.s || 0, u: r.u || S.bnbP, ou: (prev ? prev.u : r.u) || S.bnbP, x: r.x || null });
     prev = r;
   }
   // the live candle, from the last close to the price now
@@ -3966,9 +3966,10 @@ function drawCx(now) {
     // THE CANDLE'S TRADES AS THE PAGE READ THEM, AT ONCE (operator, 2026-10-05: "on the timeline the candle shows the buy
     // or sell with its BOBAI and USD; in OPEN CHART it comes a little late"): this list came from the record of scenes and
     // the ledger's counts, which arrive with the next ledger read — the timeline reads every swap itself. Now the same here.
-    const tr = S.hist.filter(x => x.t > c.t - span && x.t <= c.t && !x.taxSwap && x.usd >= 0.01).sort((a, b) => a.t - b.t);
+    const { tr, cut, led } = candleTrades(c, c.t - span, c.t, 10);
     const here = [...marks.filter(m => m.i === CX.hover && !/^(buy|sell|BOBAI (bought|sold)) /.test(m.txt)).slice(0, 3).map(m => ({ c: m.c, g: m.g, txt: m.txt })),
-      ...tr.slice(-5).map(x => ({ c: x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC, g: x.buy ? '▲' : '▼', txt: `${x.ours ? whoTraded(x) : ''}${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}` }))];
+      ...tr.map(x => ({ c: x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC, g: x.buy ? '▲' : '▼', txt: `${x.ours ? whoTraded(x) : ''}${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}` })),
+      ...(cut ? [{ c: '#a0a2c0', g: '+', txt: `${cut} smaller` }] : led && c.n > tr.length ? [{ c: '#a0a2c0', g: '+', txt: `${c.n - tr.length} under $100` }] : [])];
     const key = CX.hover + ':' + here.length + ':' + c.c + ':' + (tr.at(-1)?.tx || '');
     if (o.dataset.k !== key) {
       o.dataset.k = key;
@@ -4224,7 +4225,7 @@ function tlCandles(t0, t1) {
   const out = [];
   for (const c of all) {                             // hours from the ten-minute candles
     const t = Math.ceil(c.t / step) * step, last = out[out.length - 1];
-    if (last && last.t === t) { last.c = c.c; last.h = Math.max(last.h, c.h); last.l = Math.min(last.l, c.l); last.v += c.v; last.n += c.n; last.b += c.b || 0; last.s += c.s || 0; last.live = c.live; last.u = c.u; }
+    if (last && last.t === t) { last.c = c.c; last.h = Math.max(last.h, c.h); last.l = Math.min(last.l, c.l); last.v += c.v; last.n += c.n; last.b += c.b || 0; last.s += c.s || 0; last.live = c.live; last.u = c.u; if (c.x) last.x = [...(last.x || []), ...c.x]; }
     else out.push({ ...c, t });
   }
   return out;
@@ -4364,12 +4365,24 @@ function describe(x) {
 // THE CANDLE UNDER THE MOUSE (2026-09-30, operator: "show it when the mouse is over the candle, not only on the green
 // arrow above — and the same for sells"): its minutes, its buys and sells, every trade of it this page read (in BOBAI,
 // BNB and dollars at that hour's BNB price), and the candle's total only when it holds more than one trade
+// THE TRADES OF A CANDLE, THE BIG ONES NEVER LEFT OUT (operator, 2026-10-05: "over the candle all buys and sells are in
+// it — please all correct"; a $9.5K sell was not named). The page reads every swap of about the last hour itself; a
+// candle older than that takes the trades of $100 and more that the ledger keeps with it (rows' x, from 2026-10-05).
+// More than `max`: the largest stay, in the order they happened, and the rest is counted.
+function candleTrades(c, t0, t1, max) {
+  let tr = S.hist.filter(x => x.t > t0 && x.t <= t1 && !x.taxSwap && x.usd >= 0.01), led = false;
+  if (!tr.length && c.x && c.x.length) { led = true; tr = c.x.map(([buy, bnb, bobai, tx, to], i) => ({ buy: !!buy, bnb, bobai, usd: bnb * (c.u || S.bnbP), tx, t: t0 + i, ours: OURS.includes(to || ''), who: to || '' })); }
+  const cut = Math.max(0, tr.length - max);
+  if (cut) tr = [...tr].sort((a, b) => b.usd - a.usd).slice(0, max);
+  return { tr: tr.sort((a, b) => a.t - b.t), cut, led };
+}
+const tradeRow = x => [x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC, `${x.ours ? whoTraded(x) : ''}${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)}`];
 function candleTip(h) {
   const c = h.c, t0 = c.t - h.step, t1 = c.t, u = c.u || bnbUsdAt(t1), n = (c.b || 0) + (c.s || 0);
   const fmt = t => new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-  const tr = S.hist.filter(x => x.t > t0 && x.t <= t1 && !x.taxSwap && x.usd >= 0.01).sort((a, b) => a.t - b.t);
-  const rows = tr.slice(0, 6).map(x => [x.buy ? BUYC : x.ours ? '#F0B90B' : SELLC, `${x.ours ? whoTraded(x) : ''}${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)}`]);
-  if (tr.length > 6) rows.push(['#a0a2c0', `+ ${tr.length - 6} more`]);
+  const { tr, cut, led } = candleTrades(c, t0, t1, 8);
+  const rows = tr.map(tradeRow);
+  if (cut) rows.push(['#a0a2c0', `+ ${cut} smaller`]); else if (led && n > tr.length) rows.push(['#a0a2c0', `+ ${n - tr.length} under $100`]);
   const head = !n ? 'no trade' : `${c.b ? c.b + (c.b === 1 ? ' buy' : ' buys') : ''}${c.b && c.s ? ' · ' : ''}${c.s ? c.s + (c.s === 1 ? ' sell' : ' sells') : ''}`;
   // the candle's own figures from the ledger (BNB, its dollars, and its BOBAI at the candle's price): as the total when
   // it holds more than one listed trade, or on their own when its single trades are older than the page's read (~1 h) —

@@ -39,6 +39,7 @@ if (args.includes('--top')) pages = pages.filter((p) => !p.includes('/'));
 const EXEMPT = {
   'brainscreener/debug-ua.html': 'debug utility, not a public page',
   'brainscreener/404.html': 'error page',
+  '404.html': 'error page',
   'worldcup/app/for-designer.html': 'internal reference, not linked publicly',
   'worldcup/app/reset.html': 'utility',
 };

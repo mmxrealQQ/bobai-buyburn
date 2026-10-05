@@ -31,7 +31,8 @@ for (const [name, fold] of [['worker-tg-bot', foldBot], ['worker-nft-mint', fold
 function A_out() { return 1153098061941368145333235n; } function B_out() { return 1134472845979883642332390n; } function A_in() { return 243572282181837097n; }
 
 // Two copies of one rule: the text must be the same, and each loop must read the fold.
-const src = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+// line endings are not the fold: a working copy checked out with CRLF read as "no fold found" (2026-10-05)
+const src = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const fn = (s) => (s.match(/export function foldBuysByTx\(logs\) \{[\s\S]*?\n\}\n/) || [''])[0];
 const bot = src('../worker-tg-bot/index.js'), mint = src('../worker-nft-mint/index.js');
 ok('the two workers carry the same fold, letter for letter', fn(bot).length > 200 && fn(bot) === fn(mint));

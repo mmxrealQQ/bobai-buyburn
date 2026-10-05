@@ -63,7 +63,10 @@
     const el = viz('06'); if (!el || el.dataset.done) return;
     const ph = $$('#w06 .rm'); if (!ph.length) return;
     el.innerHTML = `<div class="cv-road">${ph.map((p) => `<span class="${p.classList.contains('rmd') ? 'done' : p.classList.contains('rmn') ? 'next' : 'on'}"><i></i><em>${p.querySelector('h3')?.textContent || ''}</em></span>`).join('')}</div>`;
-    const act = ph.filter((p) => !p.classList.contains('rmn')).pop(); const v = $('[data-open="w06"] .bw-v'); if (v && act) v.textContent = act.querySelector('.rp')?.textContent.replace(/\s+—.*/, '') + ' · ' + (act.querySelector('h3')?.textContent || '');
+    // "What comes next" names what comes next (2026-10-05: it showed the last shipped phase), with how many are shipped under it
+    const act = ph.filter((p) => !p.classList.contains('rmn')).pop(), next = ph.find((p) => p.classList.contains('rmn')), v = $('[data-open="w06"] .bw-v'), l = $('[data-open="w06"] .bw-l');
+    if (v && (next || act)) v.textContent = next ? 'Next · ' + (next.querySelector('h3')?.textContent || '') : act.querySelector('.rp')?.textContent.replace(/\s+—.*/, '') + ' · ' + (act.querySelector('h3')?.textContent || '');
+    if (l && next) l.textContent = `${ph.filter((p) => !p.classList.contains('rmn')).length} of ${ph.length} phases shipped`;
     el.dataset.done = 1;
   }
 

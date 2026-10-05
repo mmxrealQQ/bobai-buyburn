@@ -487,6 +487,10 @@ async function recordSwapBucket(env) {
   const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
   let buys = 0, sells = 0, volWei = 0n, hi = 0, lo = 0;
+  // THE BIG TRADES BY NAME (2026-10-05, operator: a $9.5K sell stood in its candle only as "6 sells, 17 BNB in all" once
+  // the page's own read of the chain, about an hour, had passed it). Each transaction's swaps of one side are one trade;
+  // the ones worth $100 or more are kept with the bucket, the six largest at most: [buy 1/0, BNB, BOBAI, tx, the swap's recipient] — the recipient tells a bot of ours from a trader.
+  const byTx = new Map();
   for (const log of logs) {
     const b = parseInt(log.blockNumber, 16);
     if (b < from || b > latest) continue;
@@ -494,16 +498,23 @@ async function recordSwapBucket(env) {
     if (d.length < 256) continue;
     const amount0In = BigInt('0x' + d.slice(0, 64)), amount1In = BigInt('0x' + d.slice(64, 128));
     const amount0Out = BigInt('0x' + d.slice(128, 192)), amount1Out = BigInt('0x' + d.slice(192, 256));
-    if (amount1In > 0n && amount0Out > 0n) buys++;
+    const isBuy = amount1In > 0n && amount0Out > 0n;
+    if (isBuy) buys++;
     else if (amount0In > 0n && amount1Out > 0n) sells++;
     else continue;
     volWei += amount1In + amount1Out;
+    { const k = (log.transactionHash || '') + (isBuy ? ':b' : ':s'), e = byTx.get(k) || { buy: isBuy ? 1 : 0, bnb: 0n, bobai: 0n, tx: log.transactionHash || '', to: '0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase() };
+      e.bnb += amount1In + amount1Out; e.bobai += amount0In + amount0Out; byTx.set(k, e); }
     // the swap's own price, BNB per BOBAI: the candle's wick (the bucket's close is the reserves after it)
     const px = Number(amount1In + amount1Out) / Number(amount0In + amount0Out);
     if (px > 0 && Number.isFinite(px)) { hi = Math.max(hi, px); lo = lo ? Math.min(lo, px) : px; }
   }
   const pair = await readPairOnchain();
   const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
+  if (pair && pair.bnbUsd > 0) {
+    const big = [...byTx.values()].map((e) => [e.buy, Number(e.bnb) / 1e18, Number(e.bobai) / 1e18, e.tx, e.to]).filter((e) => e[1] * pair.bnbUsd >= 100).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (big.length) bucket.big = big;
+  }
   const cutoff = Date.now() - LEDGER_KEEP_HOURS * 3600 * 1000;
   const kept = ledger.filter((x) => x.t >= cutoff).concat(bucket);
   await env.KV.put(SWAP_LEDGER_KEY, JSON.stringify(kept));
@@ -3029,7 +3040,7 @@ export default {
     // The Brain Terminal draws BOBAI's chart from it: one ten-minute bucket per candle, the close from the pool's
     // reserves, the wicks from the swaps' own prices. Public on-chain figures only; one KV read, cached a minute.
     if (url.pathname === '/candles' && request.method === 'GET') {
-      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, b: x.buys, s: x.sells, u: x.bnb_usd }));
+      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, b: x.buys, s: x.sells, u: x.bnb_usd, ...(x.big ? { x: x.big } : {}) }));
       return new Response(JSON.stringify({ minutes: BUCKET_MINUTES, source: 'PancakeSwap pool Swap events + reserves, read every ten minutes', rows }), {
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*' },
       });

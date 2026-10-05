@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 15733 lines.
+# one fetch. 48 files, 15854 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3485,7 +3485,7 @@ export const CAPABILITIES = {
     // The check an agent runs before a trade, in one call. Live since
     // 2026-09-20 over MCP and REST but missing here, so /services, /stats and
     // the x402 page never named the one thing a trading agent comes for.
-    { name: 'before a trade: can I get in, can I get out', where: 'https://brainonbnb.com/api/preflight?address=0x...&usd=250 · MCP tool bsc_token_preflight', example: 'https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. About 4.5 KB. No "safe" and no score.' },
+    { name: 'before a trade: can I get in, can I get out', where: 'https://brainonbnb.com/api/preflight?address=0x...&usd=250 · MCP tool bsc_token_preflight', example: 'https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. A short answer. No "safe" and no score.' },
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
@@ -3563,7 +3563,7 @@ export const SOLD_BY = {
   lp_position_plan: { slug: 'defi-agent', agent: 363709 },
 };
 
-// The five things somebody can pay us to deliver, in the same shape as the
+// The six things somebody can pay us to deliver, in the same shape as the
 // capability groups above so that one renderer handles all of it. `needs` is
 // carried through verbatim: what a service wants from you is part of knowing
 // whether you can use it, and a price without that is half an answer.
@@ -5184,6 +5184,8 @@ export async function handleDispatch(url, body, env, opts = {}) {
 // caches. No KV. The list is small enough to filter in memory.
 
 import { classifyAgent, CATEGORY_IDS, categoryOf } from './categories.js';
+import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
+const OWN = new Set([...OWN_AGENT_IDS].map(Number));
 
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 const CACHE_MS = 10 * 60 * 1000;
@@ -5295,6 +5297,9 @@ export function score(agent, ts, w = null) {
   return s;
 }
 
+// What the census records per agent under `speaks` (scripts/erc8004-publish.mjs).
+const PROTOCOLS = ['mcp', 'a2a', 'x402'];
+
 export async function handleFind(url) {
   const q = url.searchParams.get('q') || '';
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get('limit')) || 10));
@@ -5309,6 +5314,16 @@ export async function handleFind(url) {
     return { status: 400, body: {
       error: `unknown category "${wantCategory}"`,
       categories: CATEGORY_IDS,
+    } };
+  }
+  // A protocol the census never records (2026-10-05) is said to be one, with the
+  // values it does record — "grpc" was answered "nothing exposes that yet".
+  const unknownSpeaks = needs.filter((n) => !PROTOCOLS.includes(n));
+  if (unknownSpeaks.length) {
+    return { status: 400, body: {
+      error: `unknown protocol ${unknownSpeaks.map((n) => `"${n.slice(0, 20)}"`).join(', ')} in speaks`,
+      speaks_values: PROTOCOLS,
+      usage: 'speaks=mcp, speaks=a2a, speaks=x402, or several comma-separated (all must hold)',
     } };
   }
 
@@ -5349,8 +5364,10 @@ export async function handleFind(url) {
   const scored = pool
     .map((a) => ({ a, s: score(a, ts, weights) }))
     .filter((x) => (ts.length ? x.s > 0 : true))
-    .sort((x, y) => y.s - x.s || x.a.id - y.a.id)
+    // at an equal match other operators' agents stand before ours, as on the Plaza page (2026-10-05)
+    .sort((x, y) => y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id)
     .slice(0, limit);
+  const more = pool.filter((a) => (ts.length ? score(a, ts, weights) > 0 : true)).length - scored.length;
 
   return {
     status: 200,
@@ -5361,6 +5378,8 @@ export async function handleFind(url) {
       categories_available: CATEGORY_IDS,
       searched: pool.length,
       returned: scored.length,
+      // the rest is one parameter away, and says so (2026-10-05: a category of 19 showed 10 and no way on)
+      ...(more > 0 ? { not_shown: more, more: `add &limit=25 (the most one answer carries); ${more} more matched` } : {}),
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
       note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
@@ -6976,9 +6995,20 @@ const FLUSH_MS = 5 * 60 * 1000;
 const pending = new Map();
 let lastFlush = 0, flushing = null;
 
+// The paid events are written at once (2026-10-05): they come a few a week, so
+// an evicted isolate lost them outright and /stats showed 3 answers sold next
+// to 5 answer payments in the ledger. One write each costs nothing at that rate.
+// Every call site hands bump() to ctx.waitUntil, so the write outlives the reply.
+const FLUSH_AT_ONCE = new Set(['answer_sold', 'tip', 'watch_created']);
+
 async function bump(env, kind, n = 1) {
   const key = `count:${kind}:${today()}`;
   pending.set(key, (pending.get(key) || 0) + n);
+  if (FLUSH_AT_ONCE.has(kind)) {
+    // A flush already running took its snapshot before this key; wait for it, then write.
+    if (flushing) await flushing.catch(() => {});
+    return flushCounters(env);
+  }
   if (Date.now() - lastFlush < FLUSH_MS) return;
   return flushCounters(env);
 }
@@ -7776,6 +7806,16 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
 // The escrow stays for buyers who want a kernel between them and the seller;
 // this is for an agent that wants the answer now and has a wallet.
 const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
+
+// How to pay, in the order of accepts[] (2026-10-05): one sentence for every
+// 402 here. /tip and /watch still called USDC "accepts[0]" after USD1 by
+// EIP-3009 moved in front of it. `headers` is what that route reads the
+// signed payload from; `direct` names what a plain transfer may send.
+const payWays = ({ amount, payTo, direct = `${amount} USD1`, headers = 'X-PAYMENT or PAYMENT-SIGNATURE' }) =>
+  `Pay ${amount} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in ${headers} — we settle it), `
+  + `or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), `
+  + `or send ${direct} to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>`;
+
 async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
@@ -7799,7 +7839,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         },
         ...(bobai ? [{
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
-          description: `${description} — the same price in $BOBAI (${bobai.tokens.toLocaleString('en-US')} BOBAI at this quote, a tenth of slack included): direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
+          // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
+          description: `${description} — the same price in $BOBAI: send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the full price at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
       ],
@@ -7811,7 +7853,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -7891,7 +7933,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
         error: 'payment required',
         what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
-        how: `Pay ${amt.usd} USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${amt.usd} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        how: `${payWays({ amount: String(amt.usd), payTo })}.`,
         where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
@@ -7912,9 +7954,9 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // The 402 itself. accepts[] is an array because a second scheme
     // (eip3009, once a facilitator is in place) will sit beside this one
     // rather than replace it.
-    // Two ways to pay the same price into the same wallet. The first is
-    // standard x402 that any stock client can execute unattended; the
-    // second is our own direct transfer, which needs no facilitator and
+    // Three ways to pay the same price into the same wallet, in this order:
+    // USD1 signed by EIP-3009, USDC by standard x402 (Permit2) that a stock
+    // client can execute unattended, and our own direct transfer, which needs
     // no signature support. A client takes whichever it can do.
     const resource = 'https://agent.brainonbnb.com/watch';
     const requirements = {
@@ -7947,11 +7989,12 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
       body: {
         error: 'payment required',
         what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
-        // Both assets named (2026-09-18): accepts[0] is the facilitator route
-        // and settles in USDC, the direct route is USD1 — a client that budgets
-        // off the one-asset sentence holds the wrong token for the other route.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — either lands in the same wallet`,
-        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        // Both assets named (2026-09-18): the standard x402 route settles in
+        // USDC, the other two in USD1 — a client that budgets off a one-asset
+        // sentence holds the wrong token for the other route. In accepts[]
+        // order since 2026-10-05 (payWays). This POST reads PAYMENT-SIGNATURE only.
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet`,
+        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE' })}.`,
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -8145,7 +8188,8 @@ export default {
           // x-operator-token: the revoke route's lock (session-revoke.js). A
           // header the preflight does not name is a fetch the browser refuses
           // before it leaves the page — "Failed to fetch", no status, no body.
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token',
+          // The MCP ones (2026-10-05): this preflight answers for /mcp too, so a browser MCP client was refused here.
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token,Mcp-Protocol-Version,Mcp-Session-Id,Authorization,Accept,X-BOBAI-Thanks',
         },
       });
 
@@ -8453,8 +8497,9 @@ export default {
     // What the funded-job watcher last saw (job-watch.js): the cursor, our
     // jobs still waiting to be funded, and the last tick that touched one.
     if (path === '/jobs/watch') {
-      const [cursor, open, retry, last] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last'].map((k) => env.AGENT.get(k)));
-      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
+      const [cursor, open, retry, last, refused] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last', 'jobs:watch:refused'].map((k) => env.AGENT.get(k)));
+      // refused: funded jobs that will not be delivered, each with its reason (2026-10-05)
+      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), refused: JSON.parse(refused || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain
@@ -8635,7 +8680,11 @@ export default {
       // SUBMITTED is not COMPLETED, and the difference is money: a
       // deliverable exists, the escrow has not released. Saying so here keeps
       // anyone reading this endpoint from counting one as the other.
-      const means = job.status === 'SUBMITTED'
+      // A FUNDED JOB WE WILL NOT DELIVER SAYS WHY (2026-10-05): job 56887 read "Waiting on the provider to deliver"
+      // while the kernel had refused the delivery for good (expiry inside the dispute window)
+      const refusedWhy = job.status === 'FUNDED' ? (await env.AGENT.get('jobs:watch:refused', 'json').catch(() => null))?.[String(id)]?.reason || null : null;
+      const means = refusedWhy ? `Escrow holds the budget, and the provider will not deliver: ${refusedWhy}`
+        : job.status === 'SUBMITTED'
         ? 'A deliverable is on-chain and the dispute window is running. The escrow has not released yet.'
         : job.status === 'COMPLETED' ? 'Delivered and the escrow released to the provider.'
         : job.status === 'OPEN' ? 'Created but not funded. Nothing is at stake yet.'
@@ -9209,7 +9258,7 @@ ${pageTail}`;
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 by direct transfer, USDC through the facilitator, or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
+          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 signed by EIP-3009 and settled by us, or by direct transfer; USDC by standard x402 through Permit2; or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
           '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
           '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
@@ -9281,7 +9330,8 @@ ${pageTail}`;
       const cors = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        // The headers a browser-based MCP client sends (2026-10-05), as on brainonbnb.com/mcp.
+        'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept, X-BOBAI-Thanks',
         'Content-Type': 'application/json',
       };
       const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
@@ -9298,8 +9348,11 @@ ${pageTail}`;
 
       let body;
       try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
+      // A JSON-RPC batch is said to be one (2026-10-05), not answered "Method not found: undefined".
+      if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
       const { id, method, params } = body || {};
-      if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+      if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
+      if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
 
       if (method === 'initialize') {
         return rpcOk(id, {
@@ -9454,7 +9507,7 @@ ${pageTail}`;
         // Both schemes in accepts[] are quoted, because only one of them is
         // USD1: a client that takes the facilitator route pays the same amount
         // in USDC, and a price line naming one asset hides the other.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 — either lands in the same wallet`,
+        price: terms.body.price,
         buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional, found from the token (its PancakeSwap V2 pair with WBNB, or with quote)',
         how: terms.body.how,
         accepts: terms.body.accepts,
@@ -9798,7 +9851,20 @@ const RETRY_KEY = 'jobs:watch:retry';
 const COLD_LOOKBACK = 300;      // ~7 weeks of this kernel on a first run
 const MAX_PER_TICK = 120;       // a burst is read over several ticks
 const OPEN_FOR = 10 * 24 * 3600 * 1000;
-const RETRY_FOR = 6 * 3600 * 1000;
+// A delivery that failed for a passing reason (an RPC, a source that did not
+// answer) is tried again every tick for three days — it was six hours, after
+// which the job was forgotten while its budget stayed in escrow (2026-10-05).
+const RETRY_FOR = 3 * 24 * 3600 * 1000;
+// Jobs we will not deliver, with the reason, for /jobs/watch: a refusal used
+// to leave no trace, and the buyer of job 56887 (expiry inside the dispute
+// window) could not learn why nothing came (2026-10-05).
+export const REFUSED_KEY = 'jobs:watch:refused';
+// An id the kernel has minted but no RPC would read: the cursor waits at it
+// instead of walking past (a job read as "not ours" for want of an answer was
+// lost for good). After six hours of that it moves on, so one unreadable id
+// can never stop the watch.
+const STUCK_KEY = 'jobs:watch:stuck';
+const STUCK_FOR = 6 * 3600 * 1000;
 
 // rpc(method, params) — any eth_call-capable reader.
 export async function watchFundedJobs(env, rpc) {
@@ -9808,7 +9874,7 @@ export async function watchFundedJobs(env, rpc) {
   const counter = Number(BigInt(await rpc('eth_call', [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'])));
   const stored = Number(await env.AGENT.get(CURSOR_KEY)) || 0;
   const from = stored ? stored + 1 : Math.max(1, counter - COLD_LOOKBACK);
-  const to = Math.min(counter, from + MAX_PER_TICK - 1);
+  let to = Math.min(counter, from + MAX_PER_TICK - 1);
 
   const open = JSON.parse((await env.AGENT.get(OPEN_KEY)) || '{}');
   const retry = JSON.parse((await env.AGENT.get(RETRY_KEY)) || '{}');
@@ -9818,8 +9884,15 @@ export async function watchFundedJobs(env, rpc) {
 
   // New ids since the last tick.
   for (let id = from; id <= to; id++) {
-    const job = await readJob(id);
-    if (!job || String(job.provider).toLowerCase() !== me) continue;
+    const job = (await readJob(id)) || (await readJob(id));
+    if (!job) {
+      // every id up to the counter exists: no answer is a failed read
+      const stuck = JSON.parse((await env.AGENT.get(STUCK_KEY)) || 'null');
+      if (stuck?.id === id && Date.now() - stuck.since > STUCK_FOR) { await env.AGENT.delete(STUCK_KEY); continue; }
+      if (stuck?.id !== id) await env.AGENT.put(STUCK_KEY, JSON.stringify({ id, since: Date.now() }), { expirationTtl: 60 * 60 * 24 * 7 });
+      to = id - 1; break;
+    }
+    if (String(job.provider).toLowerCase() !== me) continue;
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
     else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
@@ -9834,12 +9907,18 @@ export async function watchFundedJobs(env, rpc) {
   }
 
   const results = [];
-  const nextRetry = {};
+  const nextRetry = {}, refusedNow = {};
   for (const jobId of toDeliver) {
     const r = await deliverJob(jobId, env).catch((e) => ({ error: String(e?.message || e) }));
     results.push({ job_id: jobId, delivered: !!r.result?.delivered, already: !!r.result?.already_delivered, error: r.error || null });
     const since = retry[jobId] || Date.now();
     if (r.error && !r.permanent && Date.now() - since < RETRY_FOR) nextRetry[jobId] = since;
+    else if (r.error) refusedNow[jobId] = { at: new Date().toISOString(), reason: String(r.error).slice(0, 300) };
+  }
+  if (Object.keys(refusedNow).length) {
+    const old = JSON.parse((await env.AGENT.get(REFUSED_KEY)) || '{}');
+    const all = Object.entries({ ...old, ...refusedNow }).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 20);
+    if (Object.keys(refusedNow).some((k) => old[k]?.reason !== refusedNow[k].reason)) await env.AGENT.put(REFUSED_KEY, JSON.stringify(Object.fromEntries(all)));
   }
 
   // Writes only when something changed: the cursor moves about six times a
@@ -10654,21 +10733,26 @@ export async function lpPositionPlan(params = {}, env = null) {
     ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
-  const rb = strip(rebalance);
-  if (rb && rb.why) lines.push(`Re-set: ${rb.why}`);
+  // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with
+  // seventeen digits, and ticks shown beside "nothing to re-set" say what they are
+  const dot = (s) => (/[.!?]$/.test(String(s).trim()) ? String(s).trim() : `${String(s).trim()}.`);
+  const tidy = (x) => (x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'number' && /_bnb$/.test(k) ? Number(v.toFixed(6)) : v])) : x);
+  const rb = tidy(strip(rebalance));
+  if (rb && rb.why && (rb.new_ticks || rb.trade)) rb.note = 'No re-set is due. new_ticks and trade describe the re-set that would apply if one were due right now.';
+  if (rb && rb.why) lines.push(`Re-set: ${dot(rb.why)}`);
   else if (rb && rb.new_ticks) lines.push(`Re-set due: the agent would move the range to ticks ${rb.new_ticks.join(' … ')} (±${rb.width_pct}%, ${rb.width_basis || 'from the width record'}).`);
   // The width record is measured on the agent's own pool (review 2026-09-21): on any other pool the
   // width is borrowed, and the answer says so instead of passing it off as this pool's own measurement.
   const foreignPool = String(facts.pool?.address || '').toLowerCase() !== String(HOME_POOL.pool).toLowerCase();
   if (foreignPool && rb && (rb.new_ticks || rb.width_pct)) lines.push(`The width comes from the price record of ${HOME_POOL.label}, the pool this agent runs on; this pool's own swings may call for a different one.`);
-  const ic = strip(increase);
-  if (ic && ic.why) lines.push(`Grow: ${ic.why}`);
+  const ic = tidy(strip(increase));
+  if (ic && ic.why) lines.push(`Grow: ${dot(ic.why)}`);
   else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
   return {
     ...facts,
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
-    width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
+    width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, expected_net_basis: 'the width record\'s own figure: fees net of re-sets over hours_of_prices of recorded prices. It is a different measure from the last week against holding, which stands in rebalance.width_basis', hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
     verdict: lines.join(' '),
     what_this_is_not: 'An execution. This agent signs nothing on your position; it tells you what it would do, from the same code that runs its own. Measurement, not advice.',
     measured_at: new Date().toISOString(),
@@ -12923,6 +13007,16 @@ export async function handleA2A(request, env, opts = {}) {
     if (!service || (service.id === 'lp_position_plan' && !forced)) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
     }
+    // WHAT THE WORK CANNOT START WITHOUT IS ASKED BEFORE THE QUOTE IS SIGNED
+    // (2026-10-05). An SDK buyer never sends params after funding: a quote
+    // signed for "rebalance my holdings" with no holdings named became a
+    // funded job nobody could deliver, its budget held until expiry. The
+    // two services that can read the hiring wallet instead (the Venus health
+    // factor, the position plan) are quoted; deliverJob falls back to it.
+    const need = missingInput(service.id, extractParams([data.task_description, data.terms?.deliverables].filter(Boolean).join(' '), data.params || {}));
+    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan') {
+      return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
+    }
     const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage(q.envelope));
@@ -13048,7 +13142,7 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   const zero = '0x0000000000000000000000000000000000000000';
   const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
   if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
-    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.` };
+    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.`, permanent: true };
   }
   // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
   // twice, and the second one's document replaced the stored one after the
@@ -13072,9 +13166,9 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   // which one was hired.
   const tagged = String(job.description || '').match(/\bservice ([a-z_]+)\b/)?.[1];
   const service = (tagged && SERVICES[tagged]) || pickService(job.description, null) || pickService('', data.service);
-  if (!service) return { error: 'the job description does not match anything we sell' };
+  if (!service) return { error: 'the job description does not match anything we sell', permanent: true };
   if (BigInt(job.budget) < PRICE_WEI(service.price)) {
-    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
+    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`, permanent: true };
   }
 
   // A signed (SDK) description is JSON whose currency and verifying_contract
@@ -13099,13 +13193,17 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     if (service.id === 'lp_position_plan' && missingInput(service.id, params)) {
       try { result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client}`; }
       catch { result = await doWork(service.id, { ...params, address: LP_AGENT_WALLET }, env); result.read_for = `the agent's own position (wallet ${LP_AGENT_WALLET}) — the hiring wallet ${job.client} holds no single PancakeSwap V3 position and none was named`; }
+    } else if (service.id === 'health_factor' && missingInput(service.id, params)) {
+      // no account named (2026-10-05): the wallet that paid is the one read, and the document says so
+      result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client} — no account was named in the task`;
     } else result = await doWork(service.id, params, env);
   } catch (e) {
     // A job we cannot do is not delivered and not charged for. The buyer's
     // budget stays in escrow and comes back to them at expiry, which is the
     // correct outcome and the one the kernel already implements.
     await env.AGENT.delete(lockKey).catch(() => {});
-    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.` };
+    // an input the job never named will not appear by trying again; anything else may pass (the watcher retries)
+    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`, ...(missingInput(service.id, params) ? { permanent: true } : {}) };
   }
 
   const document = JSON.stringify({
@@ -14541,6 +14639,9 @@ async function ownJobs(env) {
     read.forEach((jobId, i) => {
       const rec = stored[i];
       if (!rec) return;
+      // the document is stored before the on-chain submit: one whose submit never went through is not a delivery
+      // (2026-10-05: job 56887, refused by the kernel, counted as delivered with tx null)
+      if (!rec.delivery) return;
       let doc = null;
       try { doc = JSON.parse(rec.document); } catch { /* keep null */ }
       const service = doc?.service ?? null;
@@ -15157,6 +15258,8 @@ LP_WATCH_POOL = "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56"
 // endpoint does not charge is worse than no catalogue — it is a public,
 // machine-readable lie, and an agent that budgeted against it fails at payment.
 
+import { SOLD_BY } from './catalog.js';
+
 // Signatures over the bare origin string, EIP-191, by the wallet that receives
 // payment. Generated offline by scripts/x402-catalog-proof.mjs; the private key
 // is deliberately absent from this worker.
@@ -15196,6 +15299,13 @@ const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/tip',
 ];
 
+// Counted from SOLD_BY (2026-10-05): the sentence said "5 of the 6" after the
+// sixth seller (lp_position_plan, the DeFi Agent) had joined the escrow.
+function escrowSold() {
+  const n = ANSWER_IDS.filter((id) => SOLD_BY[id]).length;
+  return n === ANSWER_IDS.length ? `All ${n} answers` : `${n} of the ${ANSWER_IDS.length} answers`;
+}
+
 function instructions({ payTo, price, days, asset, network }) {
   return `# Brain On BNB AI — agent service
 
@@ -15204,22 +15314,28 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 
 ## Payment
 
-- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`) by direct transfer; the facilitator route (way 1 below, \`accepts[0]\` in every 402) settles the same amount in USDC
+- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`); the standard x402 route (way 2 below) settles the same amount in USDC
 - **Pay to**: \`${payTo}\`
-- **Header**: send proof in \`PAYMENT-SIGNATURE\`
+- **Header**: \`PAYMENT-SIGNATURE\` (x402 v2) on every resource; \`/answer\` and \`/tip\` also read \`X-PAYMENT\` (the v1 header)
 
-Two ways to pay the same price into the same wallet, advertised side by side in
-every 402. A client takes whichever it can execute:
+Three ways to pay the same price into the same wallet, advertised side by side
+in every 402 in this order. A client takes whichever it can execute:
 
-1. **Standard x402**, scheme \`exact\`, USDC through Permit2 (accepts[0]). The
+1. **USD1 by EIP-3009** (accepts[0]), scheme \`exact\`: sign a
+   \`TransferWithAuthorization\` to the address above and send the x402 payload
+   in the header. We settle it on chain at once and pay its gas; the answer
+   comes back with the transaction.
+2. **Standard x402**, scheme \`exact\`, USDC through Permit2 (accepts[1]). The
    answer comes back at once; we settle the signed transfer on chain within
    ten minutes and pay its gas. A stock x402 v2 client does this unattended
    once it allows the asset: the official client ships with no default asset
    on BNB Chain, so add USDC \`0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d\` on
    \`eip155:56\` to its \`spendControls.allowedAssets\`.
-2. **Direct transfer** — send USD1 yourself, then repeat the request with the
-   transaction hash in \`PAYMENT-SIGNATURE\`. Needs no facilitator and no
-   signature support, which is why it exists.
+3. **Direct transfer** (accepts[2]) — send USD1 yourself, then repeat the
+   request with the transaction hash in \`PAYMENT-SIGNATURE\`. Needs no
+   facilitator and no signature support, which is why it exists. A per-answer
+   402 also offers the same price in $BOBAI this way, quoted at the moment of
+   the 402.
 
 ## Paid resources
 
@@ -15234,7 +15350,7 @@ Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the
 intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 
-${ANSWER_IDS.length - 1} of the ${ANSWER_IDS.length} answers are also sold through the ERC-8183 escrow on
+${escrowSold()} are also sold through the ERC-8183 escrow on
 \`https://brainonbnb.com/registry\`, at the same price, for a buyer who wants
 a kernel between them and the seller. Here there is no job and no dispute
 window: the money moves, the document comes back.
@@ -15657,6 +15773,7 @@ const apyFromRate = (ratePerBlock, blocksPerYear) => {
 // if it does not answer, the result says the figures are unconfirmed rather
 // than quietly presenting one source as two.
 async function venusPublished() {
+  venusPublished.why = null;
   try {
     // limit=100: the API pages at 20 by default, and the core pool has 55
     // markets — without it the "second source" could cover a third of them
@@ -15664,8 +15781,11 @@ async function venusPublished() {
     // Worker fetch is what the API has been refusing.
     const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56&limit=100', {
       headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; brainonbnb-yield/1.0; +https://brainonbnb.com)' },
-      signal: AbortSignal.timeout(15000),
+      // 6 s, not 15 (2026-10-05): the API answers in a fraction of a second or not at all, and the buyer waited the difference
+      signal: AbortSignal.timeout(6000),
     });
+    // WHY it did not answer goes into the document (2026-10-05): "did not answer" for days on end, with the reason swallowed here
+    if (!r.ok) { venusPublished.why = `HTTP ${r.status}`; return null; }
     const j = await r.json();
     const arr = j.result?.markets || j.result || [];
     const by = new Map();
@@ -15677,8 +15797,9 @@ async function venusPublished() {
         symbol: m.symbol,
       });
     }
+    if (!by.size) venusPublished.why = 'an answer without markets';
     return by.size ? by : null;
-  } catch { return null; }
+  } catch (e) { venusPublished.why = e?.name === 'TimeoutError' ? 'no answer within 6 s' : String(e?.message || e).slice(0, 80); return null; }
 }
 
 /**
@@ -15881,7 +16002,7 @@ export async function yieldPlan(input = {}) {
         ? { disagreements, note: 'Our figure and Venus\'s own published APY differ on these markets by more than 0.1 points. Rates move between their snapshot and our block, but a large gap is a reason to read the market directly before acting.' }
         : { note: confirmed > 0
           ? 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.'
-          : 'Venus\'s own API did not answer this time, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.' }),
+          : `Venus's own API did not answer this time${venusPublished.why ? ` (${venusPublished.why})` : ''}, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.` }),
     },
     ...(excluded.length ? { excluded_from_ranking: excluded } : {}),
     oracle,

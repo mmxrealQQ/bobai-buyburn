@@ -113,6 +113,7 @@ const apyFromRate = (ratePerBlock, blocksPerYear) => {
 // if it does not answer, the result says the figures are unconfirmed rather
 // than quietly presenting one source as two.
 async function venusPublished() {
+  venusPublished.why = null;
   try {
     // limit=100: the API pages at 20 by default, and the core pool has 55
     // markets — without it the "second source" could cover a third of them
@@ -120,8 +121,11 @@ async function venusPublished() {
     // Worker fetch is what the API has been refusing.
     const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56&limit=100', {
       headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; brainonbnb-yield/1.0; +https://brainonbnb.com)' },
-      signal: AbortSignal.timeout(15000),
+      // 6 s, not 15 (2026-10-05): the API answers in a fraction of a second or not at all, and the buyer waited the difference
+      signal: AbortSignal.timeout(6000),
     });
+    // WHY it did not answer goes into the document (2026-10-05): "did not answer" for days on end, with the reason swallowed here
+    if (!r.ok) { venusPublished.why = `HTTP ${r.status}`; return null; }
     const j = await r.json();
     const arr = j.result?.markets || j.result || [];
     const by = new Map();
@@ -133,8 +137,9 @@ async function venusPublished() {
         symbol: m.symbol,
       });
     }
+    if (!by.size) venusPublished.why = 'an answer without markets';
     return by.size ? by : null;
-  } catch { return null; }
+  } catch (e) { venusPublished.why = e?.name === 'TimeoutError' ? 'no answer within 6 s' : String(e?.message || e).slice(0, 80); return null; }
 }
 
 /**
@@ -337,7 +342,7 @@ export async function yieldPlan(input = {}) {
         ? { disagreements, note: 'Our figure and Venus\'s own published APY differ on these markets by more than 0.1 points. Rates move between their snapshot and our block, but a large gap is a reason to read the market directly before acting.' }
         : { note: confirmed > 0
           ? 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.'
-          : 'Venus\'s own API did not answer this time, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.' }),
+          : `Venus's own API did not answer this time${venusPublished.why ? ` (${venusPublished.why})` : ''}, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.` }),
     },
     ...(excluded.length ? { excluded_from_ranking: excluded } : {}),
     oracle,

@@ -61,6 +61,28 @@ const norm = (t) => String(t)
   .trim()
   .toLowerCase();
 
+// ONE ?v= PER SHARED FILE (2026-10-05): the sub-pages loaded app.js?v=90 and
+// styles.css?v=53 while the homepage loaded ?v=99 / ?v=55, so a visitor coming
+// from a sub-page could run a cached old app.js against new markup. Every page
+// that loads app.js or styles.css must use the same number for it; the
+// homepage's number is the reference (else the most common one).
+const CACHE_KEYED = /(?:href|src)=["'](?:\.\.\/|\/)*(app\.js|styles\.css)\?v=(\d+)/g;
+const cacheKeyDrift = (pageMap) => {
+  const seen = {}; // file -> [{page, v}]
+  for (const [p, s] of Object.entries(pageMap)) {
+    for (const m of s.matchAll(CACHE_KEYED)) (seen[m[1]] ||= []).push({ page: p, v: m[2] });
+  }
+  const out = [];
+  for (const [file, uses] of Object.entries(seen)) {
+    const home = uses.find((u) => u.page === 'index.html');
+    const count = {}; for (const u of uses) count[u.v] = (count[u.v] || 0) + 1;
+    const ref = home ? home.v : Object.entries(count).sort((a, b) => b[1] - a[1])[0][0];
+    const off = new Set();
+    for (const u of uses) if (u.v !== ref && !off.has(u.page + u.v)) { off.add(u.page + u.v); out.push({ page: u.page, file, v: u.v, ref }); }
+  }
+  return out;
+};
+
 // Rule-level comparison against the shared stylesheet.
 //
 // Deliberately blunt about what it will not claim: anything inside an @-block
@@ -163,6 +185,17 @@ if (args.includes('--self-test')) {
   if (wayBack('<p>a page with no exit at all</p><a href="/nft/">sideways</a>'))
     fails.push('a page with no link home is being passed as having a way back');
 
+  // One ?v= per shared file, both directions: a page with an older number is
+  // reported, pages that agree (also via /app.js and ../styles.css) are not.
+  {
+    const agree = { 'index.html': '<link href="styles.css?v=55"><script src="app.js?v=100"></script>',
+      'faq.html': '<link rel="stylesheet" href="/styles.css?v=55">', 'nft/x.html': '<script src="../app.js?v=100"></script>' };
+    if (cacheKeyDrift(agree).length) fails.push('pages that use the same ?v= are being reported as drifting');
+    const drift = cacheKeyDrift({ ...agree, 'token.html': '<script src="app.js?v=90"></script>' });
+    if (!(drift.length === 1 && drift[0].page === 'token.html' && drift[0].file === 'app.js' && drift[0].ref === '100'))
+      fails.push('a page loading app.js?v=90 beside the homepage\'s ?v=100 is not reported');
+  }
+
   // And the file must contain no control characters. One backspace byte, from
   // a \b that a tool turned into 0x08, is what made the regex unmatchable in
   // the first place and it was invisible in every editor.
@@ -175,7 +208,7 @@ if (args.includes('--self-test')) {
     for (const f of fails) console.error(`  x ${f}`);
     process.exit(1);
   }
-  console.log('self-test passed: scripts are stripped, real markup survives, dead links are still caught, no control characters');
+  console.log('self-test passed: scripts are stripped, real markup survives, dead links are still caught, ?v= drift is caught both ways, no control characters');
   process.exit(0);
 }
 
@@ -352,6 +385,8 @@ for (const p of pages) {
     }
   }
 }
+
+for (const d of cacheKeyDrift(html)) add(d.page, 'med', `${d.file}?v=${d.v} while the homepage loads ?v=${d.ref}`, 'one number per file on every page');
 
 // ---- report ----
 const bySeverity = { high: [], med: [], low: [] };

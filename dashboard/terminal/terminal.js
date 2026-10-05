@@ -395,7 +395,7 @@ function buildStreams() {
     streams.push({ d, curve, pts, n, off: Float32Array.from({ length: n }, () => Math.random()), jit: Array.from({ length: n }, () => [rnd(-1, 1) * width, rnd(-1, 1) * width, rnd(-1, 1) * width]), spd: Float32Array.from({ length: n }, () => rnd(0.8, 1.2)) });
   }
 }
-const tmpV = new THREE.Vector3(), cA = new THREE.Color(), cB = new THREE.Color('#fff4d6');
+const tmpV = new THREE.Vector3(), cA = new THREE.Color(), cB = new THREE.Color('#fff4d6'), TMPC = new THREE.Color();
 function updStreams(dt) {
   for (const s of streams) {
     const P3 = s.pts.geometry.attributes.position.array, C3 = s.pts.geometry.attributes.color.array;
@@ -408,7 +408,7 @@ function updStreams(dt) {
       const taper = Math.sin(t * Math.PI);
       P3[i * 3] = tmpV.x + s.jit[i][0] * taper; P3[i * 3 + 1] = tmpV.y + s.jit[i][1] * taper; P3[i * 3 + 2] = tmpV.z + s.jit[i][2] * taper;
       const br = (0.7 + boost * 0.7) * (0.35 + 0.65 * taper) * clamp(introK * 1.5 - 0.5, 0, 1);
-      const c = cA.clone().lerp(cB, boost * 0.5);
+      const c = TMPC.copy(cA).lerp(cB, boost * 0.5); // one colour object for all, not 500 new ones a frame (2026-10-05)
       C3[i * 3] = c.r * br; C3[i * 3 + 1] = c.g * br; C3[i * 3 + 2] = c.b * br;
     }
     s.pts.geometry.attributes.position.needsUpdate = true; s.pts.geometry.attributes.color.needsUpdate = true;
@@ -473,7 +473,9 @@ function atWork(k) {
     lp: () => [poseOr('defi'), inr === false ? vary('v1', ['Checked my CAKE/BNB range: the price stepped outside, so I wait beside it.', 'My DeFi agent looked: the price is outside its range. It waits, it does not chase.',
       'Range check done. Outside for now, so no fees. Patience is part of the strategy.', 'CAKE/BNB moved out of my range. My DeFi agent sits tight until it comes back.', 'DeFi check: out of range at the moment. Waiting is cheaper than chasing.'])
       : vary('v2', ['Checked my CAKE/BNB range: in range, earning fees.', 'My DeFi agent looked: right in its range, collecting fees.', 'Range check done. In range, fees coming in.', 'CAKE/BNB is inside my range. My DeFi agent earns while I talk.', 'DeFi check: in range. Every swap through the pool pays it a little.'])],
-    buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. Burns and liquidity, coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
+    buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. The burns are coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
+      : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next trades, then my bot splits it.', `Full queue: ${cmp(S.queued)} BOBAI of tax, waiting for the next trade to swap it.`, 'The tax queue reached its mark. One of the next trades carries the swap, then the burns follow.',
+        'Queue full, swap pending. The token does it inside a trade, not on a timer.', `${cmp(S.queued)} BOBAI of tax is ready. The next trade or two turns it into BNB for my bots.`])
       : vary('v4', [`The tax is ${left}% of the way to the token's 400K swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next 400K tax swap.`, `My tax queue is ${left}% full. At 400K BOBAI it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to 400K.`])],
     agent: () => [poseOr('think'), vary('v5', agentLines())],
   }[k];
@@ -719,7 +721,11 @@ function vizOf(k) {
     case 'giggle': return barsHtml(perDay(S.burns, bt, e => e.giggleBnb), 'BNB INTO THE POT, PER DAY', n4);
     case 'creator': case 'dev': return barsHtml(perDay(S.burns, bt, e => e.creatorBnb), 'CREATOR SHARE IN, PER DAY', n4);
     case 'defi': case 'lp': return rangeHtml();
-    case 'core': case 'buyback': { const c = clamp(charge, 0, 1); if (splitBnb() > 0) return ringHtml([[1, '#F0B90B', 'READY TO SPLIT', bnbF(splitBnb())]], '100%', 'SWAPPED · SPLIT AT THE NEXT CHECK'); return ringHtml([[c, '#F0B90B', 'COLLECTED', cmp(S.queued)], [1 - c, 'rgba(255,255,255,.08)', 'TO THE SWAP', cmp(Math.max(0, MIN_DISPATCH - S.queued))]], Math.round(c * 100) + '%', 'TAX TO THE NEXT SWAP · ' + cmp(MIN_DISPATCH) + ' BOBAI'); }
+    case 'core': case 'buyback': { const c = clamp(charge, 0, 1); if (splitBnb() > 0) return ringHtml([[1, '#F0B90B', 'READY TO SPLIT', bnbF(splitBnb())]], '100%', 'SWAPPED · SPLIT AT THE NEXT CHECK');
+      // the queue is full and the token has not swapped yet: it does so inside a trade, so the board says it waits for one
+      // (operator, 2026-10-05: "402,688 BOBAI queued, but it is not sent yet?")
+      if (S.queued >= MIN_DISPATCH) return ringHtml([[1, '#F0B90B', 'COLLECTED', cmp(S.queued)]], 'FULL', 'FULL · THE TOKEN SWAPS IT INSIDE ONE OF THE NEXT TRADES');
+      return ringHtml([[c, '#F0B90B', 'COLLECTED', cmp(S.queued)], [1 - c, 'rgba(255,255,255,.08)', 'TO THE SWAP', cmp(Math.max(0, MIN_DISPATCH - S.queued))]], Math.round(c * 100) + '%', 'TAX TO THE NEXT SWAP · ' + cmp(MIN_DISPATCH) + ' BOBAI'); }
     case 'nft': { const m = (S.nft?.minted || []).reduce((a, b) => a + b, 0), cap = (S.nft?.cap || []).reduce((a, b) => a + b, 0) || 1925; return ringHtml([[m, '#a78bfa', 'DROPPED', nf(m)], [Math.max(0, cap - m), 'rgba(255,255,255,.08)', 'STILL TO EARN', nf(cap - m)]], Math.round(m / cap * 100) + '%', 'THE COLLECTION'); }
     case 'agent': { const q = S.kinds || {}; return hbarsHtml([['MCP', +q.mcp || 0], ['REST', +q.rest || 0], ['DISCOVERY', +q.discovery || 0], ['HIRE · JOBS', (+q.hire || 0) + (+q.job || 0) + (+q.dispatch || 0)]], 'REQUESTS FROM OUTSIDE, TODAY'); }
     case 'src': return '<canvas class="fl-c fl-spark"></canvas>';
@@ -737,11 +743,16 @@ function paintDetail(k) {
   const rows = document.createElement('div'); rows.className = 'dr';
   for (const [a, b] of d.rows.slice(0, k === 'follow' ? 99 : 5)) { const r = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = a; const s2 = document.createElement('b'); s2.textContent = b; r.append(s1, s2); rows.append(r); }
   // the diagram takes the paragraph's place; a trade being followed keeps its sentence (it tells a path, not a figure)
-  const viz = k === 'follow' ? '' : vizOf(k), n = document.createElement(viz ? 'div' : 'p');
-  if (viz) { n.className = 'dv'; n.innerHTML = viz; } else n.textContent = d.note;
+  // a repaint while the diagram is still drawing itself (hover, then the click that pins it) keeps the diagram on screen:
+  // made anew, its ring drew a second time (operator, 2026-10-05: "the yellow circle loads twice")
+  const keep = !fresh && detail.classList.contains('draw') && k !== 'follow' ? detail.querySelector('.dv') : null;
+  const viz = keep || k === 'follow' ? '' : vizOf(k), n = keep || document.createElement(viz ? 'div' : 'p');
+  if (keep) { /* as it is */ } else if (viz) { n.className = 'dv'; n.innerHTML = viz; } else n.textContent = d.note;
   const l = document.createElement('div'); l.className = 'dl';
   for (const [a, u] of d.links) if (u) { const e = document.createElement('a'); e.href = u; e.target = '_blank'; e.rel = 'noopener'; e.textContent = a + ' ↗'; l.append(e); }
-  detail.replaceChildren(h, rows, n, l);
+  // the kept diagram is not taken out and put back (that alone starts its animation again): the rest is renewed around it
+  if (keep) { for (const c of [...detail.children]) if (c !== keep) c.remove(); detail.prepend(h, rows); detail.append(l); }
+  else detail.replaceChildren(h, rows, n, l);
   const sc = n.querySelector('canvas.fl-spark'); if (sc) requestAnimationFrame(() => drawSpark(sc, { t: Date.now(), col: '#9ae6b4', lab: 'NOW' }));
 }
 function setFocus(k) {
@@ -775,7 +786,7 @@ function joyMove() {
 // EACH CIRCLE, ITS OWN NEWS (operator, 2026-10-01: "hovering the circles — buyback, BOB burn, BOBAI burn, liquidity, DeFi,
 // Giggle — the matching animation and a current, smart line about exactly that circle, what its bot did"): a hover or tap
 // used to play the move in silence (and the joke button said "telling you something"). Every line reads the live figures.
-const hAgo = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+const hAgo = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); const d = Math.floor(m / 1440); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : d === 1 ? 'a day ago' : `${d} days ago`; }; // whole hours and days, never "1 days ago" (2026-10-05)
 function circleLine(k) {
   const lb = S.burns.filter(e => +e.bobaiBurned > 0).at(-1), wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3);
   const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range, ll = S.liq.at(-1), dv = S.dev.at?.(-1), nd = S.nft?.drops?.[0];
@@ -808,7 +819,7 @@ function circleLine(k) {
     core: () => { const u = `$${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)}`, s = splitBnb() > 0; return vary('v14', [`Right now ${u} of tax is charging my next buyback.${s ? ' My bot splits it at its next check.' : ''}`,
       `${u} of tax waiting in my brain for the next buyback.${s ? ' The split is next.' : ''}`, `My brain holds ${u} of tax right now.${s ? ' Ready to split.' : ' Still charging.'}`,
       `The next buyback is worth ${u} so far.${s ? ' My bot splits it soon.' : ''}`, `Charging: ${u} of tax for my next buyback.${s ? ' Split coming at the next check.' : ''}`]); },
-    buyback: () => { const s = splitBnb() > 0, x = s ? `${bnbF(splitBnb())} is ready to split.` : `Last check ${hAgo(W.buyback.last || Date.now())}.`; return vary('v15', [`My buyback bot checks every 10 minutes. ${x}`,
+    buyback: () => { const s = splitBnb() > 0, x = s ? `${bnbF(splitBnb())} is ready to split.` : W.buyback.last ? `Last check ${hAgo(W.buyback.last)}.` : `${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% charged for the next one.`; /* no heartbeat read: no invented "1 min ago" (2026-10-05) */ return vary('v15', [`My buyback bot checks every 10 minutes. ${x}`,
       `Every 10 minutes my buyback bot looks at its wallet. ${x}`, `Buyback bot, on duty every 10 minutes. ${x}`, `${x} My buyback bot checks every 10 minutes.`, `Ten minutes, check, split, repeat. ${x}`]); },
     dev: () => { if (!dv) return 'My dev bot runs hourly and pays the creator share.'; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)); return vary('v16', [`My dev bot runs hourly. Last payout ${b}, ${t}.`,
       `Dev bot, hourly. It paid ${b} ${t}.`, `Every hour my dev bot pays the creator share. Last time: ${b}, ${t}.`, `${b} paid out ${t}. My dev bot runs every hour.`, `Hourly dev bot. Newest payout ${b}, ${t}.`]); },
@@ -1030,6 +1041,11 @@ window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientR
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
 window.__btPx = () => [S.price, S.priceAt || 0, S.hist.length, S.hist.length ? S.hist[S.hist.length - 1].t : 0, (typeof cxCandles === 'function' && cxCandles().at(-1)?.c * S.bnbP) || 0]; // the live price, when it was read, the swaps seen, the open chart's last close in $ (chartlive.mjs)
+// qa/details.mjs (2026-10-05): a board opened and repainted, a full tax queue, a small swap read by the page and the
+// big chart's line for the newest candle
+window.__btTestDetail = { focus: k => setFocus(k), queue: n => { const was = S.queued; S.queued = n ?? MIN_DISPATCH + 2688; const h = vizOf('core'); S.queued = was; return h; },
+  swap: (usd, sell) => { const x = { kind: 'trade', id: 'test-s' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtest' + Date.now() }; S.hist.push(x); chartSwap(x); },
+  cx: () => { openCx(true); CX.hover = cxCandles().length - 1; } };
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
 const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle'];
@@ -1102,7 +1118,7 @@ const JOKE_RECENT = [];
 // THE LINE NAMES THE MOVE (operator, 2026-10-01: "when he talks about the moon, the moon clip should come"): a line that
 // names one of his moves plays that move — a mood line used to take any of the mood's moves (cheer under "is this the
 // moon?") and every joke laughed, also about push-ups or coffee. Only a move he can play now; otherwise the usual one.
-const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own/i, 'bull'],
+const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own|\bbull\b(?! market)/i, 'bull'], [/hard hat|stack(ing)? blocks|block on the stack|builder mode/i, 'build'],
   [/push-?ups?/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug']];
 function moveForLine(t, fallback) { for (const [rx, p] of LINE_MOVES) if (rx.test(t || '') && flowPose(p) === p) return p; return fallback; }
 function freshJoke() {
@@ -1249,8 +1265,8 @@ function vidInit() {
   if (!REDUCED && ENTRANCES.length) { fig.classList.add('away'); setTimeout(() => { if (!/-enter-/.test(VID.cur || '')) fig.classList.remove('away'); }, 25e3); }
   VID.wide = new Set(); fetch(`${BASE}anim/wide.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : []).then(l => { for (const c of l) VID.wide.add(c); }).catch(() => {});
   fetch(`${BASE}anim/clips.json`, { cache: 'no-cache' }).then(r => r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : Promise.reject())
-    .then(list => { for (const p of list) if (wanted.includes(p)) VID.have.add(p); const e = !GREETED && enterTake(); if (e) prefetchClip(e); else fig.classList.remove('away'); if (!VID.cur && GREETED) vidRest(); prefetchClip(waveTake() || 'idle'); }) // the greeting's wave, fetched while the page boots
-    .catch(() => { fig.classList.remove('away'); for (const p of wanted) fetch(`${BASE}anim/${p}.pack.mp4`, { method: 'HEAD' }).then(r => { if (r.ok && /^video\//.test(r.headers.get('content-type') || '')) VID.have.add(p); }).catch(() => {}); });
+    .then(list => { for (const p of list) if (wanted.includes(p)) VID.have.add(p); VID.listed = true; const e = !GREETED && enterTake(); if (e) prefetchClip(e); else fig.classList.remove('away'); if (!VID.cur && GREETED) vidRest(); prefetchClip(waveTake() || 'idle'); }) // the greeting's wave, fetched while the page boots
+    .catch(() => { fig.classList.remove('away'); Promise.allSettled(wanted.map(p => fetch(`${BASE}anim/${p}.pack.mp4`, { method: 'HEAD' }).then(r => { if (r.ok && /^video\//.test(r.headers.get('content-type') || '')) VID.have.add(p); }))).then(() => { VID.listed = true; }); });
 }
 // Every clip begins and ends in his standing still, so clip -> clip never shows a seam. Between moves he stands in
 // the calm rest takes, one after the other (vidRest); the still shows only while no clip can play.
@@ -1356,7 +1372,10 @@ function vidMove(p, urgent) {
   if (!VID.v || REDUCED) return;
   const takes = moveTakes(p); if (!takes.length) return;
   if (!urgent && VID.go) return; // a scene is waiting for its move: his own moves wait too
-  if (VID.move === p) return;
+  // the same move again: nothing to do — except for the chain's next event of the same kind while the first one's take
+  // is in its last seconds (2026-10-05: two NICE BUYs in a row, the second board came 6.7 s after the first, the 8 s
+  // take was still on, nothing was queued and he stood in his rest take beside the second board): its next take follows
+  if (VID.move === p && !(urgent && VID.on && !VID.want && (VID.v.duration || 8) - VID.v.currentTime < 3.5)) return;
   // his own move (a joke, a gesture) never queues behind a move that is playing; the chain's events do (a burst is
   // thinned where it belongs, in moment(): a clip dropped here would leave its board on screen without him moving)
   if (!urgent && VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur)) return;
@@ -1417,6 +1436,7 @@ function waveHello() {
   if (/-v2$/.test(c)) { if (!STRETCH_BAG.length) STRETCH_BAG = [...STRETCH].sort(() => Math.random() - 0.5); line = STRETCH_BAG.shift(); }
   else { if (!HELLO_BAG.length) HELLO_BAG = [...HELLO].sort(() => Math.random() - 0.5); line = HELLO_BAG.shift(); }
   speak(line, 5600); if (later) holdSay(); // after the rest take: the line waits for the move
+  LIFE.next = Math.max(LIFE.next, performance.now() + 16e3); // his next own moment waits out the wave and its line (2026-10-05: it spoke over a held wave line 3 s later)
   return true;
 }
 function vidIdle() {
@@ -1722,7 +1742,7 @@ const MOOD_BUILD = {
     'Up days are a good time to check the receipts. Every burn and every liquidity add on this screen has its transaction.',
     'Price up, LP still burned. The deeper the pool, the calmer the candles.'],
   side: ['Sideways is when building happens. The bots check every ten minutes, the LP stays burned, the DeFi agent works its range.',
-    'No drama, just mechanics: every trade pays 3%, the bot splits it into burns, liquidity, the DeFi agent and the Giggle pot.',
+    'No drama, just mechanics: every trade pays 3%, and my bot splits it between the circles you see around me.', // true in every tax phase, the creator share included (2026-10-05)
     'Flat days are honest days. The tax queue fills, the token swaps it at 400K BOBAI, and my bot splits the BNB.',
     'While the chart rests, the bots do not. Every ten minutes they check, split and write it all on-chain.',
     'Quiet chart, loud receipts: every step my bots take is a transaction anyone can check on BscScan.',
@@ -1886,7 +1906,7 @@ function recallLine() {
   return null;
 }
 const WORK = [
-  ['cheer', () => recallLine()?.[1] ?? null, () => recallLine()?.[0]],
+  ['cheer', () => (WORK.r = recallLine())?.[1] ?? null, () => WORK.r?.[0]], // read once: a second read marked a second variant as said
   ['think', () => { const w = chartWords(); return w ? `My chart, last 24 hours: ${w.s}, ${nf(w.n)} trades. I read every single one.` : null; }],
   ['think', () => { const w = chartWords(); return w ? (Math.abs(w.ch) < 1.5 ? `${w.s} in a day. Calm chart, busy bots.` : w.ch > 0 ? `${w.s} today. Green candles look good on me.` : `${w.s} today. Red candles, same work: every trade still pays 3%.`) : null; }],
   ['hodl', () => `${cmp(S.queued)} BOBAI of tax in my pocket. The next buyback is charging.`],
@@ -2095,7 +2115,7 @@ function lifeTick(now) {
   // push-ups, no moon at 'wen moon'; use every animation"). Half of his moments used to be a work line said standing
   // still, and moves without a clip yet (think, hodl, bull) stood still too. Now the move comes from the market's list,
   // only among moves that have a clip, the least recent first; the line is the move's own or a work figure.
-  const act = () => { const L = [...(ACTS[LIFE.mood] || ACTS.flat), ...dayActs()], ok = L.filter(([p]) => flowPose(p) === p);
+  const act = () => { const L = actsNow(), ok = L.filter(([p]) => flowPose(p) === p);
     // the moves he has not shown for longest first (a few of them, so he is not predictable), then a line not said lately
     const moves = [...new Set(ok.map(([p]) => p))].filter(p => !RECENT.includes(p)).sort((a, b) => (MOVED.get(a) || 0) - (MOVED.get(b) || 0)).slice(0, 3);
     const fresh = ok.filter(([p]) => moves.includes(p)); return pick(fresh.length ? fresh : ok.length ? ok : L); };
@@ -2118,12 +2138,22 @@ function lifeTick(now) {
   const pz = (LIFEFAST ? pause / 12 : pause) / ACT * (alone && !REDUCED ? 0.8 : 1); // ?lifefast: the same life, twelve times the pace — for checking it (2026-09-27)
   LIFE.next = now + 8e3 + pz; LIFE.idleAt = now + 8e3 + pz * (0.4 + Math.random() * 0.2);
 }
+// THE MARKET'S LINES THAT ARE TRUE RIGHT NOW (2026-10-05): a sideways day counts as 'flat' also when it trades, and he
+// said "No trades for a bit" seconds after a buy; "Green morning" came in the evening, "Nobody sells in here" in an hour
+// with sells. A line about a quiet chain needs 15 minutes without a trade, the morning one the morning, the last no sell.
+const QUIET_LINE = /quiet|no trades|low volume|nothing happening|slow market|nobody is looking/i;
+function actsNow() {
+  const traded = S.hist.some(x => !x.taxSwap && x.t >= Date.now() - 900e3), h = new Date().getHours(), sells = (LIFE.flow?.s || 0) > 0;
+  const L = [...(ACTS[LIFE.mood] || ACTS.flat), ...dayActs()], ok = L.filter(([, l]) => typeof l !== 'string' ||
+    !(traded && QUIET_LINE.test(l)) && !(/\bmorning\b/i.test(l) && (h < 5 || h >= 11)) && !(sells && /nobody sells/i.test(l)));
+  return ok.length ? ok : L;
+}
 // a clip of a move still playing or waiting to (his calm rest take does not count)
 const ownBusy = () => !!(VID.v && !REDUCED && (VID.go || (VID.want && VID.want.p !== 'idle') || (VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur))));
 // one moment of his own, of the kind the even bag hands out: his mood with its move, a joke with its laugh, or what he is
 // doing (a work figure, his hard hat, or a move that fits the market). A joke that cannot laugh right now becomes work.
 function ownMoment(act) {
-  act = act || (() => { const L = [...(ACTS[LIFE.mood] || ACTS.flat), ...dayActs()], ok = L.filter(([p]) => flowPose(p) === p); return pick(ok.length ? ok : L); });
+  act = act || (() => { const L = actsNow(), ok = L.filter(([p]) => flowPose(p) === p); return pick(ok.length ? ok : L); });
   const k = ownKind(), log = got => { (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), k, got]); return true; }; // for checks from outside
   if (k === 'mood') { tellMood(6400); return log('mood'); }
   if (k === 'joke' && tellJoke(6500)) return log('joke');
@@ -2131,8 +2161,11 @@ function ownMoment(act) {
   log('work');
   const r = Math.random();
   // his hard hat: building on BNB Chain — half the time explained the way today's market needs it
-  if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend]; setPose(poseOr('build'), 6, false); speak(mb && Math.random() < 0.5 ? pick(mb) : pick(BUILD), 6600); return true; }
-  if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { const named = moveForLine(line, null); setPose(named || poseOr(RECENT.includes(mv) ? act()[0] : mv), 6, !!named); speak(line, 5600); return true; } }
+  // a line that names the hard hat or the blocks comes with them, however lately he wore it (2026-10-05)
+  if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend], line = mb && Math.random() < 0.5 ? pick(mb) : pick(BUILD), named = moveForLine(line, null); setPose(named || poseOr('build'), 6, !!named); speak(line, 6600); return true; }
+  // a work line keeps the move that shows what it says, also when that move was seen lately (2026-10-05: it took any
+  // other move then — "This week I burned…" with a coffee again — and marked a line of that move as said)
+  if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { setPose(moveForLine(line, null) || poseOr(mv), 6, true); speak(line, 5600); return true; } }
   const [p, l0] = act(), own = typeof l0 === 'function' ? l0() : l0, line = MOVE_LINES[p] && (!own || Math.random() < 0.4) ? pick(MOVE_LINES[p]) : own, named = moveForLine(line, null); setPose(named || poseOr(p), 6, !!named); speak(line, 5600); return true;
 }
 // the chain interrupts: a moment of his real work gets a line of its own
@@ -2176,8 +2209,8 @@ function react(kind, x) {
         `${bnbF(x.bnb)} and ${cmp(x.bobai)} BOBAI from the dev wallet, straight into my pool. The LP? Burned.`, `My pool just got deeper: ${bnbF(x.bnb)} + ${cmp(x.bobai)} BOBAI from the dev wallet, LP burned.`, `A dev add of ${bnbF(x.bnb)}. ${nf(x.lpBurned, 1)} LP tokens to the dead address, as always.`]
       : [`More liquidity, and I burn the LP. Deeper pool, forever.`, `Added to the pool and burned the LP. Nobody can pull that. Not even me.`, `Deeper pool, smoother trades. The LP tokens? Burned.`,
         `Liquidity in, LP out to the dead address. The pool only grows.`, `Another liquidity add, locked forever. That is how a pool should be.`],
-    tax: [`Swapping my collected tax to BNB. The bots take it from here.`, `Tax pile to BNB. Next stop: burns, liquidity, the pot.`, `The tax queue was full, so the token swaps it to BNB. My bot splits it next.`,
-      `Collected tax becomes BNB now. Burns and liquidity are next in line.`, `Tax swap! The BNB goes to my buyback bot for splitting.`],
+    tax: [`Swapping my collected tax to BNB. The bots take it from here.`, `Tax pile to BNB. Next stop: my buyback bot, then the burns.`, `The tax queue was full, so the token swaps it to BNB. My bot splits it next.`,
+      `Collected tax becomes BNB now. The burns are next in line.`, `Tax swap! The BNB goes to my buyback bot for splitting.`],
   }[kind];
   if (lines) speak(vary('react-' + kind + (kind === 'buy' && x.usd >= ALERT_USD ? '-big' : '') + (kind === 'liq' && x?.dev ? '-dev' : ''), lines), kind === 'run' ? 5200 : kind === 'liq' ? 5000 : 4400);
 }
@@ -2187,7 +2220,7 @@ function nearObj(e) {
   const r = win.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, pxU = r.height / viewH;
   let best = null, bd = 1e9;
   const test = (v, rad, k) => { const s = toScreen(v), d = Math.hypot(s.x - x, s.y - y); if (d < rad && d < bd) { bd = d; best = k; } };
-  for (const d of DEST) test(d.pos, d.R * d.mScale * pxU + 12, d.k);
+  for (const d of DEST) if (d.pct > 0) test(d.pos, d.R * d.mScale * pxU + 12, d.k); // a share the phase has ended is not there to tap
   for (const w of WORKERS) test(w.pos, 22, w.k);
   test(A.core, 48, 'core'); test(A.src, 30, 'src');
   return best;
@@ -2618,7 +2651,7 @@ function takeChain({ at = Date.now(), bnbP, price, bobP, bobDead, bobaiDead, que
   paintBob();
   const queuedUsd = S.queued * S.price + splitBnb() * bnbP;
   coreLab.querySelector('.v').textContent = '$' + nf(queuedUsd, 2);
-  coreLab.querySelector('.s').innerHTML = `<span>${nf(S.queued)} BOBAI tax</span>` + (splitBnb() > 0 ? ` <span>+ ${splitBnb().toFixed(4)} BNB to split</span>` : ''); // two lines, not wrapped at random ("…0.0031 / BNB", 2026-09-28)
+  coreLab.querySelector('.s').innerHTML = `<span>${nf(S.queued)} BOBAI tax</span>` + (splitBnb() > 0 ? ` <span>+ ${splitBnb().toFixed(4)} BNB to split</span>` : S.queued >= MIN_DISPATCH ? ' <span>full · swaps inside a next trade</span>' : ''); // two lines, not wrapped at random ("…0.0031 / BNB", 2026-09-28)
   charge = splitBnb() > 0 ? 1 : clamp(S.queued / MIN_DISPATCH, 0, 1); // BNB ready in 1ce = split at the next check
   S.lpPct = lpPct;
   paintLogs();
@@ -2680,8 +2713,11 @@ function buildEvents() {
   for (const l of liq) ev.push({ id: 'l' + l.time, t: Date.parse(l.time), kind: 'liq', l });
   for (const l of S.man) ev.push({ id: 'm' + l.time, t: Date.parse(l.time), kind: 'liq', l });
   const STEP = { collect: 'collected its pool fees', increase: 'put new capital to work', rebalance: 'moved its range to the price', ladder: 'reset its reserve range', sweep: 'swept payments in' };
+  // a run that acted stands in the history AND is the last check until the next look (up to ten minutes): once, not twice
+  // (2026-10-05: its scene, log line and mark came double in that window)
+  const lpSeen = new Set();
   for (const r of [...(S.lp?.history || []), ...(S.lp?.last_check ? [S.lp.last_check] : [])]) {
-    if (r.dry) continue;
+    if (r.dry || lpSeen.has(r.at)) continue; lpSeen.add(r.at);
     for (const [k, v] of Object.entries(r.steps || {})) for (const s of (Array.isArray(v) ? v : [v]))
       if (s?.acted && STEP[k]) ev.push({ id: 'd' + r.at + k + (s.source || ''), t: Date.parse(r.at) + 5, kind: 'defi', step: STEP[k], key: k, s });
   }
@@ -3323,7 +3359,7 @@ function bobaiTap() {
   const left = W.buyback.last ? Math.max(0, Math.ceil((W.buyback.last + 600e3 - Date.now()) / 60e3)) : null;
   const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range;
   const kinds = [
-    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? `My bot splits it in ${left || 1} min.` : `At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
+    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${cmp(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
     () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : 'The price is in its range, so it earns fees.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
@@ -3380,7 +3416,7 @@ function afterWindow() {
   if (!l || winTalked.has(k) || mode !== 'live' || QUEUE.length || now < sceneUntil || now < (LIFE.winAt || 0)) return;
   winTalked.add(k); LIFE.winAt = now + 40e3;
   // an answer to the visitor goes before his own idle move (one caught mid-move stood frozen through the window); the chain still goes first
-  setTimeout(() => { if (QUEUE.length || performance.now() < sceneUntil || document.body.classList.contains('bp-winon')) return; setPose(poseOr(l[0]), 6); speak(vary(l[1]), 5400); LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); }, 700);
+  setTimeout(() => { if (QUEUE.length || performance.now() < sceneUntil || document.body.classList.contains('bp-winon')) return; setPose(flowPose(l[0]) === l[0] ? l[0] : poseOr(l[0]), 6); /* a move known by its clip alone (nft) plays too */ speak(vary(l[1]), 5400); LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); }, 700);
 }
 // the first words when a builder opens the terminal
 // HE KNOWS YOU CAME BACK (2026-09-28, operator: "more intelligent, more alive, more real"): this browser keeps when
@@ -3416,12 +3452,15 @@ function awayBits(since) {
   const liqBnb = S.liq.filter(l => Date.parse(l.time) > since).reduce((a, l) => a + (+l.bnb || 0), 0);
   const man = S.man.filter(l => Date.parse(l.time) > since), manBnb = man.reduce((a, l) => a + (+l.bnb || 0), 0), manBob = man.reduce((a, l) => a + (+l.bobai || 0), 0);
   const bits = [];
-  if (buys || sells) bits.push(`${nf(buys)} buy${buys === 1 ? '' : 's'} and ${nf(sells)} sell${sells === 1 ? '' : 's'}`);
+  // away longer than the ledger reaches back (seven days) or than the drop list is long: the count is said as what it
+  // is (2026-10-05: twelve days away, and a week's trades were told as the twelve days')
+  const from = CH.rows[0]?.t || 0, short = from > since + 3600e3, all = S.nft.drops || [], dropsCut = all.length >= 100 && drops === all.length;
+  if (buys || sells) bits.push(`${nf(buys)} buy${buys === 1 ? '' : 's'} and ${nf(sells)} sell${sells === 1 ? '' : 's'}${short ? ` in the last ${sinceWords(Date.now() - from)} alone` : ''}`);
   if (ch != null && Math.abs(ch) >= 0.1) bits.push(`price ${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%`);
   if (runs.length) bits.push(`${runs.length} burn run${runs.length > 1 ? 's' : ''}, ${cmp(burned)} BOBAI burned`);
   if (liqBnb > 0) bits.push(`${bnbF(liqBnb)} into liquidity, LP burned`);
   if (manBnb > 0) bits.push(`the dev wallet added ${bnbF(manBnb)} + ${cmp(manBob)} BOBAI to the pool`);
-  if (drops) bits.push(`${drops} NFT drop${drops > 1 ? 's' : ''}`);
+  if (drops) bits.push(`${dropsCut ? 'more than ' : ''}${drops} NFT drop${drops > 1 ? 's' : ''}`);
   if (!runs.length) bits.push(`the next buyback is ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% charged`);
   return bits.length === 1 && !runs.length ? null : bits.join(', '); // null: nothing happened but the charge
 }
@@ -3457,6 +3496,11 @@ function greet(tries = 0) {
   // a returning visitor is greeted with what happened: wait for the record (up to ~12 s), never count from half of it
   const gap = Date.now() - seenBefore;
   if (seenBefore && gap >= 20 * 60e3 && gap <= 30 * 86400e3 && !backReady() && tries < 24) { setTimeout(() => greet(tries + 1), 500); return; }
+  // THE CLIP LIST STILL ON ITS WAY (2026-10-05, a slow first visit: the list came at 19 s, the greeting was due at 14 s):
+  // with no clip known the wave was refused and he said his hello standing still. The greeting waits for the list, in
+  // all up to ~12 s; a moment of the chain that took the stage meanwhile goes first (qa/latelist.mjs)
+  if (!VID.listed && VID.v && !REDUCED && tries < 24) { setTimeout(() => greet(tries + 1), 500); return; }
+  if (tries && (mode !== 'live' || QUEUE.length || performance.now() < sceneUntil) && tries < 40) { setTimeout(() => greet(tries + 1), 500); return; }
   SAID_HI = true; LIFE.saidHi = true; // once per visit, however often the terminal is shown again
   // FIVE HELLOS FOR EACH TIME OF DAY, SIX WAYS ON (operator, 2026-10-02: "the greeting is almost always the same")
   const h = new Date().getHours(), hi = pick(h < 11 ? ['gm', 'Good morning', 'Morning', 'gm gm', 'Rise and shine'] : h < 17 ? ['Hey', 'Hi there', 'Hello', 'Good afternoon', 'Welcome'] : h < 22 ? ['Good evening', 'Evening', 'Hey there', 'Hi', 'Welcome in'] : ['Still up? Me too, always', 'Night owl', 'Late shift', 'Hello, night builder', 'Up late? Same here']);
@@ -3694,7 +3738,7 @@ function candles() {
   if (last && now > 0) {
     const lv = CH.live && CH.live.since === last.t ? CH.live : (CH.live = { since: last.t, h: Math.max(last.c, now), l: Math.min(last.c, now), v: 0, n: 0 });
     lv.h = Math.max(lv.h, now); lv.l = Math.min(lv.l, now);
-    out.push({ t: last.t + CH.min * 60e3, o: last.c, c: now, h: lv.h, l: lv.l, v: lv.v, n: lv.n, b: 0, s: 0, u: S.bnbP, ou: last.u || S.bnbP, live: true });
+    out.push({ t: last.t + CH.min * 60e3, o: last.c, c: now, h: lv.h, l: lv.l, v: lv.v, n: lv.n, b: lv.b || 0, s: lv.s || 0, u: S.bnbP, ou: last.u || S.bnbP, live: true });
   }
   return out;
 }
@@ -3702,7 +3746,7 @@ function candles() {
 function chartSwap(x) {
   if (!(x.bnb > 0 && x.bobai > 0)) return;
   const p = x.bnb / x.bobai;
-  if (CH.live) { CH.live.h = Math.max(CH.live.h, p); CH.live.l = Math.min(CH.live.l, p); CH.live.v += x.bnb; CH.live.n++; }
+  if (CH.live) { CH.live.h = Math.max(CH.live.h, p); CH.live.l = Math.min(CH.live.l, p); CH.live.v += x.bnb; CH.live.n++; if (!x.taxSwap) CH.live[x.buy ? 'b' : 's'] = (CH.live[x.buy ? 'b' : 's'] || 0) + 1; }
   CH.flashes.push({ p, c: x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC, at: performance.now(), usd: x.usd, buy: x.buy, ours: x.ours });
   if (CH.flashes.length > 6) CH.flashes.shift();
   CH.dirty = true;
@@ -3839,8 +3883,8 @@ function cxMarks(cs, span) {
     if (x.t <= t0 || x.t > t1) continue;
     // a swap of BOBAI's own buyback run is that run's ◆ already (a candle shows two marks: it would push others out)
     if (x.kind === 'trade' && x.ours && events.some(y => y.kind === 'run' && Math.abs(y.t - x.t) < 5 * 60e3)) continue;
-    const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbF(x.l.bnb)} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbF(x.l.bnb)}, LP burned`]
-      : x.kind === 'defi' ? ['●', D.defi.c, `DeFi agent ${x.step}`] : x.kind === 'dev' ? ['■', D.creator.c, `dev bot paid out ${bnbF(+x.d.availableBnb)} of the creator share`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
+    const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbF(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbF(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))}, LP burned`]
+      : x.kind === 'defi' ? ['●', D.defi.c, `DeFi agent ${x.step}`] : x.kind === 'dev' ? ['■', D.creator.c, `dev bot paid out ${bnbF(+x.d.availableBnb)} · ${$amt(+x.d.availableBnb * bnbUsdAt(x.t))} of the creator share`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
       : x.kind === 'trade' ? (x.ours ? ['◆', '#F0B90B', `BOBAI ${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}`] : [x.buy ? '▲' : '▼', x.buy ? BUYC : SELLC, `${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}`]) : null;
     if (!k) continue;
     const i = cs.findIndex(c => c.t >= x.t); out.push({ i: i < 0 ? cs.length - 1 : i, g: k[0], c: k[1], txt: k[2], t: x.t });
@@ -3919,7 +3963,13 @@ function drawCx(now) {
   if (CX.hover >= 0 && CX.hover < cs.length) {
     const c = cs[CX.hover], x = X(CX.hover), f = v => '$' + (v * c.u).toPrecision(5), chg = usdCh(c, c) ?? 0;
     g.setLineDash([2, 3]); g.strokeStyle = 'rgba(236,234,245,.4)'; g.beginPath(); g.moveTo(x + 0.5, y0); g.lineTo(x + 0.5, H - 18); g.stroke(); g.setLineDash([]);
-    const here = marks.filter(m => m.i === CX.hover).slice(0, 4), key = CX.hover + ':' + here.length + ':' + c.c;
+    // THE CANDLE'S TRADES AS THE PAGE READ THEM, AT ONCE (operator, 2026-10-05: "on the timeline the candle shows the buy
+    // or sell with its BOBAI and USD; in OPEN CHART it comes a little late"): this list came from the record of scenes and
+    // the ledger's counts, which arrive with the next ledger read — the timeline reads every swap itself. Now the same here.
+    const tr = S.hist.filter(x => x.t > c.t - span && x.t <= c.t && !x.taxSwap && x.usd >= 0.01).sort((a, b) => a.t - b.t);
+    const here = [...marks.filter(m => m.i === CX.hover && !/^(buy|sell|BOBAI (bought|sold)) /.test(m.txt)).slice(0, 3).map(m => ({ c: m.c, g: m.g, txt: m.txt })),
+      ...tr.slice(-5).map(x => ({ c: x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC, g: x.buy ? '▲' : '▼', txt: `${x.ours ? whoTraded(x) : ''}${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}` }))];
+    const key = CX.hover + ':' + here.length + ':' + c.c + ':' + (tr.at(-1)?.tx || '');
     if (o.dataset.k !== key) {
       o.dataset.k = key;
       o.innerHTML = `<b>${new Date(c.t - span).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</b> O ${f(c.o)} H ${f(c.h)} L ${f(c.l)} C <i style="color:${chg >= 0 ? BUYC : SELLC}">${f(c.c)} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</i>`
@@ -4099,6 +4149,8 @@ async function heartbeats(first) {
       else if (/^mcp:(initialize|tools_list|prompts_list|resources_list)$|^paidmcp:tools_list$/.test(k)) menu += +v || 0;
     }
     HB.agentMenu = menu;
+    // a new UTC day starts the count again (2026-10-05: a tab open across midnight kept yesterday's total as "today")
+    const newDay = HB.agentDay && HB.agentDay !== det.day; HB.agentDay = det.day; if (newDay) HB.agent = use;
     const prev = HB.agent;
     if (first || prev === undefined) { HB.agent = use; W.agent.last = Date.now(); logLine('BOBAI', W.agent.c, ['agent server today: ', [nf(use)], ` tool call${use === 1 ? '' : 's'} by other agents and apps · `, [nf(menu)], ' menu checks by registries · ', [nf(HB.agentAll || 0)], ' requests in all, crawlers included']); }
     else if (use > prev) { HB.agent = use; beat('agent', `an agent used ${use - prev > 1 ? (use - prev) + ' of my tools' : 'one of my tools'}`, use - prev); }
@@ -4180,7 +4232,8 @@ function tlCandles(t0, t1) {
 let tlHits = [], tlCandleHits = []; // the candles as drawn (x, the candle, its span): the mouse finds them (2026-09-30)
 function drawTl(now) {
   const r = tl.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2); if (!r.width) return;
-  if (tl.width !== Math.round(r.width * dpr)) { tl.width = r.width * dpr; tl.height = r.height * dpr; }
+  // rounded on both sides: a fractional width (125% scaling) never equalled the truncated one and the canvas was made anew on every draw (2026-10-05)
+  if (tl.width !== Math.round(r.width * dpr) || tl.height !== Math.round(r.height * dpr)) { tl.width = Math.round(r.width * dpr); tl.height = Math.round(r.height * dpr); }
   tx.setTransform(dpr, 0, 0, dpr, 0, 0); tx.clearRect(0, 0, r.width, r.height);
   if (mode === 'live') from = Date.now() - WIN; // the window walks with the clock
   const w = r.width, h = r.height, ph = mode === 'replay' ? playhead : Date.now(), x1 = w - 14, base = h - 15;
@@ -4573,7 +4626,7 @@ function frame(now) {
   // (no ambient flashes since 2026-09-26, operator: "the brain lights up and shines a bit much — only on actions on the
   // chain": the brain fires only for what really happened — a trade, a burn, liquidity, a step of a bot)
   // the labels wait for the intro title to go (2026-09-27: on a slow line 'BRAIN ONLINE' was typed over the buyback label)
-  if (introK > 0.7 && $('intro').classList.contains('out')) { labs.querySelectorAll('.lab').forEach(l => l.classList.add('show')); }
+  if (introK > 0.7 && $('intro').classList.contains('out')) { labs.querySelectorAll('.lab:not(.show)').forEach(l => l.classList.add('show')); }
   placeLabels(); fitPortrait(now);
   stepReplay(now);
   // The two canvases of candles are drawn at most 30 times a second, not every frame: at 60 fps the timeline redrew
@@ -4720,6 +4773,9 @@ function holdRelease() {
   momentEl.classList.remove('held'); clearTimeout(momentTimer);
   stkCancel(); momentEl.classList.remove('go', 'defi', 'story'); win.classList.remove('in-moment', 'story-on');
   if (heldPaused) { heldPaused = false; paused = false; rpLabel(); }
+  // let go by a second tap, the stage is free again (2026-10-05: only Esc and the 20 s limit cleared this — after a tap
+  // it stayed at Infinity and every smaller board was skipped until a bigger moment came)
+  momentUntil = 0;
 }
 function holdToggle(e) {
   if (!momentEl.classList.contains('go')) return;

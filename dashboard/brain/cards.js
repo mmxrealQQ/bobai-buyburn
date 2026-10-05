@@ -1,11 +1,10 @@
 // The cards live (2026-09-26): every closed window shows one small picture of what is inside it, drawn from the same
 // reads the page already made — the homepage's figures (window.__bobaiNums, app.js), the phase table
-// (window.__bobaiPhase), the TG bot's candle ledger — and the text of the window itself. No card invents a number.
+// (window.__bobaiPhase) — and the text of the window itself. No card invents a number.
 (() => {
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const GOLD = '#F0B90B', UP = '#35e07a', DOWN = '#ff4d6d';
   const NUMS = () => window.__bobaiNums || {};
-  const nf = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const cmp = (n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
   const viz = (n) => { const c = $(`[data-open="w${n}"] .bw-viz`); return c; };
   const canvasIn = (el, h) => {
@@ -15,9 +14,6 @@
     const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };
   };
 
-  // the TG bot's candle ledger (read for the page's own use; the chart itself lives in the terminal)
-  let rows = [];
-  async function candles() { try { const j = await (await fetch('https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles')).json(); rows = (j.rows || []).filter((r) => r.c > 0 && r.t >= Date.now() - 86400e3); } catch {} }
   // 01 THE TOKEN: the supply, burned against circulating
   function draw01() {
     const el = viz('01'), c = NUMS().chain; if (!el || !c || !c.bobaiDead) return;
@@ -88,25 +84,12 @@
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI';
   }
-  // 05 NFT COLLECTION: the newest drop's own card image, and how many of the 1,925 are out
-  const NFT_T = ['nice-buy', 'big-buy', 'huge-buy', 'whale-buy', 'thunder-buy', 'kraken-buy'], NFT_R = ['common', 'uncommon', 'rare', 'mythical', 'legendary', 'ancient', 'immortal'];
-  let nftAt = 0;
-  async function draw05n() {
-    if (Date.now() - nftAt < 60e3) return; nftAt = Date.now();
-    const card = $('[data-open="page:/nft"]'); if (!card) return;
-    try {
-      const st = await (await fetch('/api/nft/state')).json(), d = (st.drops || [])[0];
-      const minted = (st.minted || []).reduce((a, b) => a + b, 0), cap = (st.cap || []).reduce((a, b) => a + b, 0) || 1925;
-      const v = card.querySelector('.bw-v'); if (v) v.textContent = nf(minted);
-      const l = card.querySelector('.bw-l'); if (l) l.textContent = `minted of ${nf(cap)} · ${nf(st.holders || 0)} holders`;
-      if (d && NFT_T[d.tier] && NFT_R[d.rarity]) card.querySelector('.bw-viz').innerHTML = `<div class="cv-nft"><img src="/nft/cards/${NFT_T[d.tier]}-${NFT_R[d.rarity]}.jpg" alt="" loading="lazy"><span>#${d.tokenId}<br><b>$${nf(+d.usd || 0)} buy</b><br>${NFT_R[d.rarity]}</span></div>`;
-    } catch {}
-  }
   function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
-  candles();
-  setTimeout(all, 1500); setInterval(all, 30000); setInterval(candles, 120e3);
+  // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both
+  // gone (2026-10-05). The periodic ticks skip while the tab is hidden; the next 'bobai:nums' on return redraws.
+  setTimeout(all, 1500); setInterval(() => { if (!document.hidden) all(); }, 30000);
   // (05 is the chart now; the agent server's count lives in the terminal's BOTS view)
-  draw07(); setInterval(draw07, 6000);
+  draw07(); setInterval(() => { if (!document.hidden) draw07(); }, 6000);
 })();

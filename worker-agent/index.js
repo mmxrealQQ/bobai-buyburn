@@ -274,9 +274,20 @@ const FLUSH_MS = 5 * 60 * 1000;
 const pending = new Map();
 let lastFlush = 0, flushing = null;
 
+// The paid events are written at once (2026-10-05): they come a few a week, so
+// an evicted isolate lost them outright and /stats showed 3 answers sold next
+// to 5 answer payments in the ledger. One write each costs nothing at that rate.
+// Every call site hands bump() to ctx.waitUntil, so the write outlives the reply.
+const FLUSH_AT_ONCE = new Set(['answer_sold', 'tip', 'watch_created']);
+
 async function bump(env, kind, n = 1) {
   const key = `count:${kind}:${today()}`;
   pending.set(key, (pending.get(key) || 0) + n);
+  if (FLUSH_AT_ONCE.has(kind)) {
+    // A flush already running took its snapshot before this key; wait for it, then write.
+    if (flushing) await flushing.catch(() => {});
+    return flushCounters(env);
+  }
   if (Date.now() - lastFlush < FLUSH_MS) return;
   return flushCounters(env);
 }
@@ -1074,6 +1085,16 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
 // The escrow stays for buyers who want a kernel between them and the seller;
 // this is for an agent that wants the answer now and has a wallet.
 const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
+
+// How to pay, in the order of accepts[] (2026-10-05): one sentence for every
+// 402 here. /tip and /watch still called USDC "accepts[0]" after USD1 by
+// EIP-3009 moved in front of it. `headers` is what that route reads the
+// signed payload from; `direct` names what a plain transfer may send.
+const payWays = ({ amount, payTo, direct = `${amount} USD1`, headers = 'X-PAYMENT or PAYMENT-SIGNATURE' }) =>
+  `Pay ${amount} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in ${headers} — we settle it), `
+  + `or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), `
+  + `or send ${direct} to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>`;
+
 async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
@@ -1097,7 +1118,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         },
         ...(bobai ? [{
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
-          description: `${description} — the same price in $BOBAI (${bobai.tokens.toLocaleString('en-US')} BOBAI at this quote, a tenth of slack included): direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
+          // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
+          description: `${description} — the same price in $BOBAI: send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the full price at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
       ],
@@ -1109,7 +1132,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USD1 by EIP-3009 (accepts[0]: sign TransferWithAuthorization to ${payTo} and send the x402 payload in X-PAYMENT or PAYMENT-SIGNATURE — we settle it), or in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -1189,7 +1212,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
         error: 'payment required',
         what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
-        how: `Pay ${amt.usd} USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${amt.usd} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        how: `${payWays({ amount: String(amt.usd), payTo })}.`,
         where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
@@ -1210,9 +1233,9 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // The 402 itself. accepts[] is an array because a second scheme
     // (eip3009, once a facilitator is in place) will sit beside this one
     // rather than replace it.
-    // Two ways to pay the same price into the same wallet. The first is
-    // standard x402 that any stock client can execute unattended; the
-    // second is our own direct transfer, which needs no facilitator and
+    // Three ways to pay the same price into the same wallet, in this order:
+    // USD1 signed by EIP-3009, USDC by standard x402 (Permit2) that a stock
+    // client can execute unattended, and our own direct transfer, which needs
     // no signature support. A client takes whichever it can do.
     const resource = 'https://agent.brainonbnb.com/watch';
     const requirements = {
@@ -1245,11 +1268,12 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
       body: {
         error: 'payment required',
         what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
-        // Both assets named (2026-09-18): accepts[0] is the facilitator route
-        // and settles in USDC, the direct route is USD1 — a client that budgets
-        // off the one-asset sentence holds the wrong token for the other route.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — either lands in the same wallet`,
-        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        // Both assets named (2026-09-18): the standard x402 route settles in
+        // USDC, the other two in USD1 — a client that budgets off a one-asset
+        // sentence holds the wrong token for the other route. In accepts[]
+        // order since 2026-10-05 (payWays). This POST reads PAYMENT-SIGNATURE only.
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet`,
+        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE' })}.`,
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -1443,7 +1467,8 @@ export default {
           // x-operator-token: the revoke route's lock (session-revoke.js). A
           // header the preflight does not name is a fetch the browser refuses
           // before it leaves the page — "Failed to fetch", no status, no body.
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token',
+          // The MCP ones (2026-10-05): this preflight answers for /mcp too, so a browser MCP client was refused here.
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token,Mcp-Protocol-Version,Mcp-Session-Id,Authorization,Accept,X-BOBAI-Thanks',
         },
       });
 
@@ -1751,8 +1776,9 @@ export default {
     // What the funded-job watcher last saw (job-watch.js): the cursor, our
     // jobs still waiting to be funded, and the last tick that touched one.
     if (path === '/jobs/watch') {
-      const [cursor, open, retry, last] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last'].map((k) => env.AGENT.get(k)));
-      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
+      const [cursor, open, retry, last, refused] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last', 'jobs:watch:refused'].map((k) => env.AGENT.get(k)));
+      // refused: funded jobs that will not be delivered, each with its reason (2026-10-05)
+      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), refused: JSON.parse(refused || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain
@@ -1933,7 +1959,11 @@ export default {
       // SUBMITTED is not COMPLETED, and the difference is money: a
       // deliverable exists, the escrow has not released. Saying so here keeps
       // anyone reading this endpoint from counting one as the other.
-      const means = job.status === 'SUBMITTED'
+      // A FUNDED JOB WE WILL NOT DELIVER SAYS WHY (2026-10-05): job 56887 read "Waiting on the provider to deliver"
+      // while the kernel had refused the delivery for good (expiry inside the dispute window)
+      const refusedWhy = job.status === 'FUNDED' ? (await env.AGENT.get('jobs:watch:refused', 'json').catch(() => null))?.[String(id)]?.reason || null : null;
+      const means = refusedWhy ? `Escrow holds the budget, and the provider will not deliver: ${refusedWhy}`
+        : job.status === 'SUBMITTED'
         ? 'A deliverable is on-chain and the dispute window is running. The escrow has not released yet.'
         : job.status === 'COMPLETED' ? 'Delivered and the escrow released to the provider.'
         : job.status === 'OPEN' ? 'Created but not funded. Nothing is at stake yet.'
@@ -2507,7 +2537,7 @@ ${pageTail}`;
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 by direct transfer, USDC through the facilitator, or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
+          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 signed by EIP-3009 and settled by us, or by direct transfer; USDC by standard x402 through Permit2; or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
           '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
           '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
@@ -2579,7 +2609,8 @@ ${pageTail}`;
       const cors = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        // The headers a browser-based MCP client sends (2026-10-05), as on brainonbnb.com/mcp.
+        'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept, X-BOBAI-Thanks',
         'Content-Type': 'application/json',
       };
       const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
@@ -2596,8 +2627,11 @@ ${pageTail}`;
 
       let body;
       try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
+      // A JSON-RPC batch is said to be one (2026-10-05), not answered "Method not found: undefined".
+      if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
       const { id, method, params } = body || {};
-      if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+      if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
+      if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
 
       if (method === 'initialize') {
         return rpcOk(id, {
@@ -2752,7 +2786,7 @@ ${pageTail}`;
         // Both schemes in accepts[] are quoted, because only one of them is
         // USD1: a client that takes the facilitator route pays the same amount
         // in USDC, and a price line naming one asset hides the other.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 — either lands in the same wallet`,
+        price: terms.body.price,
         buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional, found from the token (its PancakeSwap V2 pair with WBNB, or with quote)',
         how: terms.body.how,
         accepts: terms.body.accepts,

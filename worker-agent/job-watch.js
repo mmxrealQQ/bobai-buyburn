@@ -30,7 +30,20 @@ const RETRY_KEY = 'jobs:watch:retry';
 const COLD_LOOKBACK = 300;      // ~7 weeks of this kernel on a first run
 const MAX_PER_TICK = 120;       // a burst is read over several ticks
 const OPEN_FOR = 10 * 24 * 3600 * 1000;
-const RETRY_FOR = 6 * 3600 * 1000;
+// A delivery that failed for a passing reason (an RPC, a source that did not
+// answer) is tried again every tick for three days — it was six hours, after
+// which the job was forgotten while its budget stayed in escrow (2026-10-05).
+const RETRY_FOR = 3 * 24 * 3600 * 1000;
+// Jobs we will not deliver, with the reason, for /jobs/watch: a refusal used
+// to leave no trace, and the buyer of job 56887 (expiry inside the dispute
+// window) could not learn why nothing came (2026-10-05).
+export const REFUSED_KEY = 'jobs:watch:refused';
+// An id the kernel has minted but no RPC would read: the cursor waits at it
+// instead of walking past (a job read as "not ours" for want of an answer was
+// lost for good). After six hours of that it moves on, so one unreadable id
+// can never stop the watch.
+const STUCK_KEY = 'jobs:watch:stuck';
+const STUCK_FOR = 6 * 3600 * 1000;
 
 // rpc(method, params) — any eth_call-capable reader.
 export async function watchFundedJobs(env, rpc) {
@@ -40,7 +53,7 @@ export async function watchFundedJobs(env, rpc) {
   const counter = Number(BigInt(await rpc('eth_call', [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'])));
   const stored = Number(await env.AGENT.get(CURSOR_KEY)) || 0;
   const from = stored ? stored + 1 : Math.max(1, counter - COLD_LOOKBACK);
-  const to = Math.min(counter, from + MAX_PER_TICK - 1);
+  let to = Math.min(counter, from + MAX_PER_TICK - 1);
 
   const open = JSON.parse((await env.AGENT.get(OPEN_KEY)) || '{}');
   const retry = JSON.parse((await env.AGENT.get(RETRY_KEY)) || '{}');
@@ -50,8 +63,15 @@ export async function watchFundedJobs(env, rpc) {
 
   // New ids since the last tick.
   for (let id = from; id <= to; id++) {
-    const job = await readJob(id);
-    if (!job || String(job.provider).toLowerCase() !== me) continue;
+    const job = (await readJob(id)) || (await readJob(id));
+    if (!job) {
+      // every id up to the counter exists: no answer is a failed read
+      const stuck = JSON.parse((await env.AGENT.get(STUCK_KEY)) || 'null');
+      if (stuck?.id === id && Date.now() - stuck.since > STUCK_FOR) { await env.AGENT.delete(STUCK_KEY); continue; }
+      if (stuck?.id !== id) await env.AGENT.put(STUCK_KEY, JSON.stringify({ id, since: Date.now() }), { expirationTtl: 60 * 60 * 24 * 7 });
+      to = id - 1; break;
+    }
+    if (String(job.provider).toLowerCase() !== me) continue;
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
     else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
@@ -66,12 +86,18 @@ export async function watchFundedJobs(env, rpc) {
   }
 
   const results = [];
-  const nextRetry = {};
+  const nextRetry = {}, refusedNow = {};
   for (const jobId of toDeliver) {
     const r = await deliverJob(jobId, env).catch((e) => ({ error: String(e?.message || e) }));
     results.push({ job_id: jobId, delivered: !!r.result?.delivered, already: !!r.result?.already_delivered, error: r.error || null });
     const since = retry[jobId] || Date.now();
     if (r.error && !r.permanent && Date.now() - since < RETRY_FOR) nextRetry[jobId] = since;
+    else if (r.error) refusedNow[jobId] = { at: new Date().toISOString(), reason: String(r.error).slice(0, 300) };
+  }
+  if (Object.keys(refusedNow).length) {
+    const old = JSON.parse((await env.AGENT.get(REFUSED_KEY)) || '{}');
+    const all = Object.entries({ ...old, ...refusedNow }).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 20);
+    if (Object.keys(refusedNow).some((k) => old[k]?.reason !== refusedNow[k].reason)) await env.AGENT.put(REFUSED_KEY, JSON.stringify(Object.fromEntries(all)));
   }
 
   // Writes only when something changed: the cursor moves about six times a

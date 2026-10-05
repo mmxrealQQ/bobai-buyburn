@@ -14,26 +14,26 @@
       "ours": false
     },
     {
-      "id": 340471,
-      "label": "Hevo Rebalance",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 340460,
       "label": "LingoAI Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
+      "id": 363619,
+      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 293902,
-      "label": "mandaterebalance-agent",
+      "id": 340471,
+      "label": "Hevo Rebalance",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false
     },
@@ -50,14 +50,26 @@
       "ours": false
     },
     {
-      "id": 338475,
-      "label": "PancakeSwap v3 Range Keeper",
+      "id": 336622,
+      "label": "RangeKeeper",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 336622,
-      "label": "RangeKeeper",
+      "id": 342379,
+      "label": "PancakeSwap LP Range Check",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 293902,
+      "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 338475,
+      "label": "PancakeSwap v3 Range Keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -70,12 +82,6 @@
     {
       "id": 341628,
       "label": "IVL Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -100,12 +106,6 @@
       "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
     },
     {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 269224,
       "label": "Grid Trader",
       "category": "grid-trading",
@@ -124,6 +124,12 @@
       "ours": false
     },
     {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 340527,
       "label": "Hevo Grid",
       "category": "grid-trading",
@@ -136,14 +142,26 @@
       "ours": false
     },
     {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 324936,
       "label": "Sentinels Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 331131,
-      "label": "LatticeLatch",
+      "id": 342380,
+      "label": "Grid Ladder Planner",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 345085,
+      "label": "GuardRail GridBot",
       "category": "grid-trading",
       "ours": false
     },
@@ -167,12 +185,6 @@
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
     },
     {
-      "id": 269226,
-      "label": "Yield Allocator",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -181,6 +193,12 @@
     {
       "id": 341555,
       "label": "Sluicegate",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 269226,
+      "label": "Yield Allocator",
       "category": "yield-optimization",
       "ours": false
     },
@@ -203,6 +221,30 @@
       "ours": false
     },
     {
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 342378,
+      "label": "BSC Yield Router",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 345086,
+      "label": "GuardRail Yield Router",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
@@ -211,12 +253,6 @@
     {
       "id": 338478,
       "label": "BNB Chain Yield Router",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 336622,
-      "label": "RangeKeeper",
       "category": "yield-optimization",
       "ours": false
     },
@@ -289,6 +325,18 @@
       "ours": false
     },
     {
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 342377,
+      "label": "Venus Health Factor Watch",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
       "id": 338480,
       "label": "Venus Liquidation Guard",
       "category": "health-factor",
@@ -297,12 +345,6 @@
     {
       "id": 336625,
       "label": "HealthSentinel",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false
     },

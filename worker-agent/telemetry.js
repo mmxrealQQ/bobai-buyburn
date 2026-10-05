@@ -521,6 +521,9 @@ async function ownJobs(env) {
     read.forEach((jobId, i) => {
       const rec = stored[i];
       if (!rec) return;
+      // the document is stored before the on-chain submit: one whose submit never went through is not a delivery
+      // (2026-10-05: job 56887, refused by the kernel, counted as delivered with tx null)
+      if (!rec.delivery) return;
       let doc = null;
       try { doc = JSON.parse(rec.document); } catch { /* keep null */ }
       const service = doc?.service ?? null;

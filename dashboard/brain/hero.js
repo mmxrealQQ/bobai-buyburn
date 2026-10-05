@@ -26,9 +26,10 @@
     const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
     const R = 50, C = 2 * Math.PI * R; let off = 0;
     const arcs = parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="65" cy="65" stroke="${c}" stroke-dasharray="${Math.max(0, len - 2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" style="filter:drop-shadow(0 0 4px ${c})"/>`; off += len; return s; }).join('');
-    const q = N().chain;
+    // the same next-buyback figure as the Classic tile (2026-10-05): app.js publishes it with the bot's gas reserve left out
+    const q = N().chain, sBnb = q ? (q.splitBnb ?? (q.walletBnb > 0.004 ? q.walletBnb - 0.003 : 0)) : 0, nextUsd = q ? (q.nextBuybackUsd ?? q.queuedBobai * q.priceUsd + sBnb * q.bnbUsd) : 0;
     strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · THE TABLE IN FORCE</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul>${parts.map(([v, c, l]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b></li>`).join('')}</ul></div></div>`
-      + (q ? fig('NEXT BUYBACK CHARGING', '$' + nf(q.queuedBobai * q.priceUsd + q.walletBnb * q.bnbUsd, 2), 1) + fig('TAX IN THE TOKEN', cmp(q.queuedBobai) + ' BOBAI') + fig('BNB IN THE BOT', q.walletBnb.toFixed(4) + ' BNB') : '');
+      + (q ? fig('NEXT BUYBACK CHARGING', '$' + nf(nextUsd, 2), 1) + fig('TAX IN THE TOKEN', cmp(q.queuedBobai) + ' BOBAI') + fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB') : '');
   }
   // 03 PROOF: thirty days of burns, BOBAI and $BOB, one bar a day
   async function w03(win) {
@@ -40,7 +41,7 @@
     for (const e of b) { const i = 29 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 30) { A[i] += +e.bobaiBurned || 0; Bnb[i] += +e.bobaiBurnBnb || 0; Runs[i]++; } }
     const tot = b.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     const h = strip(win);
-    h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot), 1) + fig('LAST 7 DAYS', cmp(n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI') + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))
+    h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot), 1) + fig('LAST 7 DAYS', cmp(n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI') + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toISOString().replace('T', ' ').slice(0, 16) + ' UTC')
       + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90"></canvas><div class="bbt" hidden></div></div></div>`;
     const cv = $('canvas', h), tip = $('.bbt', h);
     let hi = -1;
@@ -55,7 +56,7 @@
     // one day's figures: the date (UTC, as the bars count), BOBAI burned, worth today at the live price, the BNB that bought it
     const show = (i) => {
       hi = i; draw(); if (i < 0) { tip.hidden = true; return; }
-      const N = window.__bobaiNums || {}, px = N.priceUsd || (window.__btPrice && window.__btPrice()) || 0, d = new Date((today - (29 - i)) * 86400e3).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
+      const N = window.__bobaiNums || {}, px = (N.chain && N.chain.priceUsd) || (window.__btPrice && window.__btPrice()) || 0, d = new Date((today - (29 - i)) * 86400e3).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
       tip.innerHTML = A[i]
         ? `<b>${d}</b><span>${cmp(A[i])} BOBAI burned</span><span>${px ? `worth $${nf(A[i] * px, 2)} today` : ''}${px && Bnb[i] ? ' · ' : ''}${Bnb[i] ? `bought with ${Bnb[i].toFixed(4)} BNB` : ''}</span><i>${Runs[i]} bot run${Runs[i] === 1 ? '' : 's'}</i>`
         : `<b>${d}</b><span>no burn run that day</span>`;

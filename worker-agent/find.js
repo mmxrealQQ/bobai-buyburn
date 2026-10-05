@@ -16,6 +16,8 @@
 // caches. No KV. The list is small enough to filter in memory.
 
 import { classifyAgent, CATEGORY_IDS, categoryOf } from './categories.js';
+import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
+const OWN = new Set([...OWN_AGENT_IDS].map(Number));
 
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 const CACHE_MS = 10 * 60 * 1000;
@@ -127,6 +129,9 @@ export function score(agent, ts, w = null) {
   return s;
 }
 
+// What the census records per agent under `speaks` (scripts/erc8004-publish.mjs).
+const PROTOCOLS = ['mcp', 'a2a', 'x402'];
+
 export async function handleFind(url) {
   const q = url.searchParams.get('q') || '';
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get('limit')) || 10));
@@ -141,6 +146,16 @@ export async function handleFind(url) {
     return { status: 400, body: {
       error: `unknown category "${wantCategory}"`,
       categories: CATEGORY_IDS,
+    } };
+  }
+  // A protocol the census never records (2026-10-05) is said to be one, with the
+  // values it does record — "grpc" was answered "nothing exposes that yet".
+  const unknownSpeaks = needs.filter((n) => !PROTOCOLS.includes(n));
+  if (unknownSpeaks.length) {
+    return { status: 400, body: {
+      error: `unknown protocol ${unknownSpeaks.map((n) => `"${n.slice(0, 20)}"`).join(', ')} in speaks`,
+      speaks_values: PROTOCOLS,
+      usage: 'speaks=mcp, speaks=a2a, speaks=x402, or several comma-separated (all must hold)',
     } };
   }
 
@@ -181,8 +196,10 @@ export async function handleFind(url) {
   const scored = pool
     .map((a) => ({ a, s: score(a, ts, weights) }))
     .filter((x) => (ts.length ? x.s > 0 : true))
-    .sort((x, y) => y.s - x.s || x.a.id - y.a.id)
+    // at an equal match other operators' agents stand before ours, as on the Plaza page (2026-10-05)
+    .sort((x, y) => y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id)
     .slice(0, limit);
+  const more = pool.filter((a) => (ts.length ? score(a, ts, weights) > 0 : true)).length - scored.length;
 
   return {
     status: 200,
@@ -193,6 +210,8 @@ export async function handleFind(url) {
       categories_available: CATEGORY_IDS,
       searched: pool.length,
       returned: scored.length,
+      // the rest is one parameter away, and says so (2026-10-05: a category of 19 showed 10 and no way on)
+      ...(more > 0 ? { not_shown: more, more: `add &limit=25 (the most one answer carries); ${more} more matched` } : {}),
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
       note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',

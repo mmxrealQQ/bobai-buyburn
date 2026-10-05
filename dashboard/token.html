@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
   <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=53" as="style">
-  <link rel="stylesheet" href="styles.css?v=53">
+  <link rel="preload" href="styles.css?v=55" as="style">
+  <link rel="stylesheet" href="styles.css?v=55">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
@@ -69,10 +69,12 @@
         <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI<br><span class="ts-inline" id="ts-inline-bobai"></span></div></div>
+        <div class="ta" id="tf-liq-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle" style="color:inherit">Giggle pot</a></div></div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="/#giggle" style="color:inherit">Giggle pot</a></div></div>
       </div>
       <div class="tax-schedule">
         <div class="ts-head">
@@ -266,9 +268,9 @@
       </div>
       <div class="lb-cd-caption" id="bb3-cd-label">until the boost ends</div>
       <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">0</div></div>
-        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">0</div></div>
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">--</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">--</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">--</div></div>
       </div>
       <div class="lb-table" style="margin-top:20px">
         <div class="txw">
@@ -284,6 +286,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=90" defer></script>
+<script src="app.js?v=100" defer></script>
 </body>
 </html>

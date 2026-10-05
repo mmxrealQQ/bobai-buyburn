@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4312 lines.
+# one fetch. 7 files, 4314 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1123,7 +1123,7 @@ const OUR_RATER = String((() => {
 const isOurs = (client) => !!OUR_RATER && String(client).toLowerCase() === OUR_RATER;
 // One rendered measurement, with the rater attached. Two parties measuring the
 // same agent is the whole reason to read this registry, so both are printed.
-const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : ''}`;
+const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? (/^\d+\s*(m|min|h|d|w|mo|y)\w*$/i.test(String(v.window).trim()) ? ` over ${esc(v.window)}` : ` (${esc(v.window)})`) : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : ''}`;
 const METRIC_LABEL = { uptime: 'uptime', responseTime: 'response', liveness: 'liveness' };
 const OPERATIONAL_TAGS = new Set(['uptime', 'responsetime', 'latency', 'liveness']);
 
@@ -1391,7 +1391,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
   return `    <div class="rg-box" id="cat-${cat.id}">
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, ${fmt(ids)} registry ids once fleets are collapsed` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
       </div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
@@ -2172,7 +2172,7 @@ ${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => 
 
     ${jobCensus ? `<details class="rg-box rg-fold" id="rg-jobs">
       <summary><h2>Who has actually been paid</h2><span class="rg-peek">${fmt(jobCensus.jobCounter)} escrow jobs, read one at a time</span></summary>
-      <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter reads ${fmt(jobCensus.jobCounter)}. That figure gets quoted as a working agent economy. We read every one of those ${fmt(jobCensus.total)} jobs, one at a time, and this is what they are made of.</p>
+      <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter read ${fmt(jobCensus.jobCounter)} when we last read it through${jobCensus.measuredAt ? ` (${esc(String(jobCensus.measuredAt).slice(0, 10))})` : ''}. That figure gets quoted as a working agent economy. We read every one of those ${fmt(jobCensus.total)} jobs, one at a time, and this is what they are made of.</p>
 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">${fmt(jobCensus.jobCounter)}</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
@@ -3020,7 +3020,9 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           watchDelivery();
         })
         .catch(function(){
-          say('Escrow is funded, but the delivery request did not go through. Send it yourself: POST '+AGENT+'/a2a with skill notify_funded and job_id '+esc(jobId)+'.','rg-err');
+          // the same door again, not our own agent's (2026-10-05: this named AGENT/a2a for every seller — a notice for a
+          // stranger's job sent to us is declined as "not ours")
+          say('Escrow is funded, but the delivery request did not go through. Send it again: POST '+AGENT+'/hire/notify with {"agent":"'+esc(String(current&&current.id||''))+'","job_id":'+esc(jobId)+'} — or wait: a seller that watches the escrow delivers by itself. Job <b>#'+esc(jobId)+'</b> · <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>','rg-err');
         });
     }
   })();

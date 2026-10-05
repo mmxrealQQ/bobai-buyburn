@@ -1,7 +1,7 @@
 {
-  "resolvedAt": "2026-09-07T05:46:54.884Z",
+  "resolvedAt": "2026-10-05T06:29:08.055Z",
   "population": "ERC-8004 agents carrying an http endpoint",
-  "agents": 1877,
+  "agents": 1985,
   "unread": 0,
   "owners": {
     "0x89e9e1ab11dd1b138b1dce6d6a4a0926aafd5029": [
@@ -6512,6 +6512,30 @@
       {
         "id": 141495,
         "name": "test"
+      },
+      {
+        "id": 336505,
+        "name": "4lpha LP 7791b2d8"
+      },
+      {
+        "id": 336749,
+        "name": "LP Agent 1 by 4LPHA"
+      },
+      {
+        "id": 337153,
+        "name": "Grid Agent 1 by 4LPHA"
+      },
+      {
+        "id": 337272,
+        "name": "LP Agent 1 by 4LPHA"
+      },
+      {
+        "id": 337848,
+        "name": "Grid Agent 1 by 4LPHA"
+      },
+      {
+        "id": 337849,
+        "name": "LP Agent 1 by 4LPHA"
       }
     ],
     "0x444441d9abbd95d4c38ae62ae60cecb183244444": [
@@ -8644,6 +8668,10 @@
       {
         "id": 331131,
         "name": "LatticeLatch"
+      },
+      {
+        "id": 338110,
+        "name": "AllowanceLatch"
       }
     ],
     "0x999561c6c239c9ef660dfbe38cc2ce6bd0c2ecba": [
@@ -8676,6 +8704,538 @@
       {
         "id": 331794,
         "name": "SMEAI Reference Grid Viability Checker"
+      }
+    ],
+    "0xf0564c9d12e7777482509a42f4f1b078032de94b": [
+      {
+        "id": 332588,
+        "name": "WhaleScope"
+      }
+    ],
+    "0xb0f7681668f916eed97da066d31aa295d34727c0": [
+      {
+        "id": 334760,
+        "name": "BNB Agent Studio Mainnet Seller"
+      }
+    ],
+    "0x54c06cc2623aaa2dcc38b17fa07ad2e99b363c90": [
+      {
+        "id": 336161,
+        "name": "MANDATE Assay Office"
+      }
+    ],
+    "0xa17e5b37b8987df7aacd00fe37a64ce9dccd0133": [
+      {
+        "id": 336622,
+        "name": "RangeKeeper"
+      }
+    ],
+    "0xee011fc24c9037908a819352b4485573483849f1": [
+      {
+        "id": 336623,
+        "name": "Gridwright"
+      }
+    ],
+    "0xe588cd118a7d960a5f64788ed2f61e873dac97e4": [
+      {
+        "id": 336624,
+        "name": "YieldRouter"
+      }
+    ],
+    "0x037ffbf18df73812ec29d024abb7e79dbb4356c8": [
+      {
+        "id": 336625,
+        "name": "HealthSentinel"
+      }
+    ],
+    "0x8a1960ac9ebcb0b0f88926728f10d94962695db2": [
+      {
+        "id": 338165,
+        "name": "AlphaTrack"
+      }
+    ],
+    "0xa06db692d7e28356f80199ff77e22a0ef02a3518": [
+      {
+        "id": 338253,
+        "name": "HyperliquidVault"
+      }
+    ],
+    "0x442b37739e704094337c68977843e5dbe2a5d298": [
+      {
+        "id": 338265,
+        "name": "SwapGod"
+      }
+    ],
+    "0x38c6fc4a5525b37f9545423a7132157f69ce08da": [
+      {
+        "id": 338475,
+        "name": "PancakeSwap v3 Range Keeper"
+      },
+      {
+        "id": 338477,
+        "name": "PancakeSwap Grid Trader"
+      },
+      {
+        "id": 338478,
+        "name": "BNB Chain Yield Router"
+      },
+      {
+        "id": 338480,
+        "name": "Venus Liquidation Guard"
+      },
+      {
+        "id": 338481,
+        "name": "BNB Chain Token Safety"
+      }
+    ],
+    "0x273987e9d86d5231b0be928aba88129ac479ca9d": [
+      {
+        "id": 338492,
+        "name": "Trading Agent 1 by 4LPHA"
+      },
+      {
+        "id": 338550,
+        "name": "LP Agent 2 by 4LPHA"
+      },
+      {
+        "id": 338672,
+        "name": "Lending Agent 1 by 4LPHA"
+      },
+      {
+        "id": 340032,
+        "name": "LP Agent 1 by 4LPHA"
+      },
+      {
+        "id": 340232,
+        "name": "Lending Agent 2 by 4LPHA"
+      },
+      {
+        "id": 340548,
+        "name": "Lending Agent 3 by 4LPHA"
+      },
+      {
+        "id": 340786,
+        "name": "Grid Agent 1 by 4LPHA"
+      },
+      {
+        "id": 340882,
+        "name": "Trading Agent 2 by 4LPHA"
+      },
+      {
+        "id": 341245,
+        "name": "Trading Agent 3 by 4LPHA"
+      },
+      {
+        "id": 341264,
+        "name": "Lending Agent 4 by 4LPHA"
+      },
+      {
+        "id": 341401,
+        "name": "Trading Agent 1 by 4LPHA"
+      },
+      {
+        "id": 343180,
+        "name": "Grid Agent 1 by 4LPHA"
+      },
+      {
+        "id": 346171,
+        "name": "Grid Agent 2 by 4LPHA"
+      },
+      {
+        "id": 348979,
+        "name": "Grid Agent 1 by 4LPHA"
+      },
+      {
+        "id": 350847,
+        "name": "Grid Agent 2 by 4LPHA"
+      },
+      {
+        "id": 355556,
+        "name": "Grid Agent 3 by 4LPHA"
+      },
+      {
+        "id": 361758,
+        "name": "TradFi Trade Agent 1 by 4LPHA"
+      },
+      {
+        "id": 361907,
+        "name": "TradFi Schedule Agent 1 by 4LPHA"
+      }
+    ],
+    "0x85eb68dd5c2367f80e365ace2a2794fc108833cf": [
+      {
+        "id": 338747,
+        "name": "Bercy BNB Pay Agent"
+      }
+    ],
+    "0x0683406742c8e5fda38692bda855e72676ccdda6": [
+      {
+        "id": 340455,
+        "name": "LingoAI Grid Trading Agent"
+      },
+      {
+        "id": 340456,
+        "name": "LingoAI Yield Optimiser"
+      },
+      {
+        "id": 340458,
+        "name": "LingoAI Health Factor Sentinel"
+      },
+      {
+        "id": 340460,
+        "name": "LingoAI Portfolio Rebalancer"
+      },
+      {
+        "id": 340463,
+        "name": "LingoAI Personal Holon"
+      }
+    ],
+    "0x75a0c2d1df51c07982de3ff031e5232518676b19": [
+      {
+        "id": 340471,
+        "name": "Hevo Rebalance"
+      },
+      {
+        "id": 340502,
+        "name": "Hevo Rebalance"
+      },
+      {
+        "id": 340527,
+        "name": "Hevo Grid"
+      },
+      {
+        "id": 340532,
+        "name": "Hevo Yield"
+      },
+      {
+        "id": 340533,
+        "name": "Hevo Sentinel"
+      }
+    ],
+    "0xce6f9c8360c522985da487e303c3692a7362df48": [
+      {
+        "id": 341225,
+        "name": "yieldrouter — capacity-aware yield optimisation"
+      }
+    ],
+    "0xcbeff6ca672291209630cac525201342023fe002": [
+      {
+        "id": 341493,
+        "name": "studio-agent"
+      }
+    ],
+    "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6": [
+      {
+        "id": 341553,
+        "name": "Bound"
+      }
+    ],
+    "0x5aaf7b5b2170986c59279682bd714c475ae8c718": [
+      {
+        "id": 341554,
+        "name": "Lattice"
+      }
+    ],
+    "0x253f7ad5d52099c4a2293418a661e9974dfb5e84": [
+      {
+        "id": 341555,
+        "name": "Sluicegate"
+      }
+    ],
+    "0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00": [
+      {
+        "id": 341556,
+        "name": "Keel"
+      }
+    ],
+    "0x1f0d0ef5a279888e3b86c8a99a8a99f19fcec587": [
+      {
+        "id": 341557,
+        "name": "Redcell"
+      }
+    ],
+    "0x96a91427bf3dc47b2bbae4bb3fd86f34e1b06bff": [
+      {
+        "id": 341563,
+        "name": "marketplace-operated-rebalance-planner"
+      }
+    ],
+    "0x81935983f9b1c88d0057c8e9d451cdd12358c9e9": [
+      {
+        "id": 341564,
+        "name": "marketplace-operated-yield-planner"
+      }
+    ],
+    "0x3230768bd8ec81c1764974cf813a7ebc248cdaff": [
+      {
+        "id": 341565,
+        "name": "marketplace-operated-loan-health-check"
+      }
+    ],
+    "0x6d19d43fc2cd226b135ed5f9f82b366ac864b703": [
+      {
+        "id": 341628,
+        "name": "IVL Rebalancer"
+      }
+    ],
+    "0x3a24656f75312b0250eb377c8f8b08aa539b867b": [
+      {
+        "id": 342133,
+        "name": "Bazar Contract Safety"
+      }
+    ],
+    "0xcd10d44703d6989290e0a8219f345fa0a5bf4c64": [
+      {
+        "id": 342377,
+        "name": "Venus Health Factor Watch"
+      },
+      {
+        "id": 342378,
+        "name": "BSC Yield Router"
+      },
+      {
+        "id": 342379,
+        "name": "PancakeSwap LP Range Check"
+      },
+      {
+        "id": 342380,
+        "name": "Grid Ladder Planner"
+      }
+    ],
+    "0xd7d09385f8b0439a3e00e4ce7e5650341b11b297": [
+      {
+        "id": 342465,
+        "name": "Escrow Route"
+      }
+    ],
+    "0xe36496a02412840a0041db34603cb774b96d720d": [
+      {
+        "id": 342524,
+        "name": "DoraFusion AI"
+      }
+    ],
+    "0x99d2a39b993ea6e5548fdcd1027f24a58e276bb2": [
+      {
+        "id": 342525,
+        "name": "YieldShare Vault"
+      }
+    ],
+    "0xcb7a8c2a82e73cbabc37fdeabc9c9e9ae6208bfe": [
+      {
+        "id": 342542,
+        "name": "Pygmalion - AI KOL Agent & Studio"
+      }
+    ],
+    "0x2986d627e830b85e3ffff09975c8018a72803d2e": [
+      {
+        "id": 342543,
+        "name": "Peach Talk"
+      }
+    ],
+    "0xe7de1f99e78192171c80cc5a9aa6bf4f4644e63e": [
+      {
+        "id": 343019,
+        "name": "SinonTester"
+      }
+    ],
+    "0xa847f3bbf69e8a888b59bc8729ce787e0db5be97": [
+      {
+        "id": 345084,
+        "name": "GuardRail LP Guardian"
+      },
+      {
+        "id": 345085,
+        "name": "GuardRail GridBot"
+      },
+      {
+        "id": 345086,
+        "name": "GuardRail Yield Router"
+      },
+      {
+        "id": 345087,
+        "name": "GuardRail Health Guard"
+      }
+    ],
+    "0x74d10fe7d826eecc1405aa84f1ea07ebb83c4a05": [
+      {
+        "id": 345218,
+        "name": "RKE-Demo - Goo"
+      }
+    ],
+    "0xf86fb6c5afd8e91a5cb1113f44a102021fb14e7d": [
+      {
+        "id": 345702,
+        "name": "VERIS"
+      },
+      {
+        "id": 345716,
+        "name": "ZERU"
+      },
+      {
+        "id": 346127,
+        "name": "SENTINEL"
+      }
+    ],
+    "0x164fb22b34bb187e739627efac0c70a3fdd8b942": [
+      {
+        "id": 346444,
+        "name": "Bench Reference Rebalancer (operated by Bench)"
+      }
+    ],
+    "0x44039f53891202631b810cc96aa6314aa10f9282": [
+      {
+        "id": 349979,
+        "name": "moon"
+      }
+    ],
+    "0x6df5698866aaeaa56b6cde076070ae986779d084": [
+      {
+        "id": 350048,
+        "name": "studio-agent"
+      }
+    ],
+    "0x9a6712ee9163ed84aa0bff4ce26f8689e540885e": [
+      {
+        "id": 350586,
+        "name": "ZERU"
+      }
+    ],
+    "0x0b2ad4a58d0bf21620bf35e91de76b99a6f46625": [
+      {
+        "id": 350675,
+        "name": "SENTINEL"
+      }
+    ],
+    "0xab30c5350f4b7b76419e815ebeab68121322ade1": [
+      {
+        "id": 350725,
+        "name": "StellarScout"
+      }
+    ],
+    "0x155f9e706eadb64e5c9d4f6a83f1d8198969b869": [
+      {
+        "id": 354342,
+        "name": "lean-agente-aprendizaje"
+      }
+    ],
+    "0x0252c0bf648d7f8b4b6f56b891671c2946c532bb": [
+      {
+        "id": 354349,
+        "name": "lean-agente-aprendizaje"
+      }
+    ],
+    "0x76df4fb0f1549323c84313e7a1ec16d39a4d67d7": [
+      {
+        "id": 354396,
+        "name": "lean-agente-aprendizaje"
+      }
+    ],
+    "0x24face6372d6d2c290bae74dcc9ebdaf94dc7051": [
+      {
+        "id": 355088,
+        "name": "EmberPhoenix"
+      }
+    ],
+    "0xa46835231cd599fc8552bb03300613d5b7347734": [
+      {
+        "id": 355990,
+        "name": "Agent"
+      }
+    ],
+    "0x4607d23fdb5ffa0343c3baf400253b9873301801": [
+      {
+        "id": 356363,
+        "name": "ObsidianEcho"
+      }
+    ],
+    "0x0c7befc9ccbd7f8e6bb1dd8323eb00e228515f17": [
+      {
+        "id": 356692,
+        "name": "CosmicFireFalcon"
+      }
+    ],
+    "0x217b12956c4252921770ccd59327da7acfa7afcd": [
+      {
+        "id": 357093,
+        "name": "SilentPulse"
+      }
+    ],
+    "0x8a44209246c8dfa9bb5001363074f15b0cb00209": [
+      {
+        "id": 357564,
+        "name": "studio-agent"
+      }
+    ],
+    "0x9ef3eb8da1431330524b1007ca4459a99caaeec4": [
+      {
+        "id": 357614,
+        "name": "holdover-agent"
+      }
+    ],
+    "0x4ff4a2f215f3dedd2cee1c6d2b66035b0200d418": [
+      {
+        "id": 358509,
+        "name": "Covenant"
+      }
+    ],
+    "0x8122991297dc98dc5c735fde90a501528922afdc": [
+      {
+        "id": 358786,
+        "name": "Tidemark"
+      }
+    ],
+    "0xec826634f755cafa1c4fb6603a46560b6d50d63b": [
+      {
+        "id": 359180,
+        "name": "Mizan Best-Execution Router"
+      }
+    ],
+    "0xfed7efe949b9f2b9b108c34c4a20ee637f740501": [
+      {
+        "id": 359598,
+        "name": "Agent"
+      }
+    ],
+    "0xb9dc47f8c8dba18d3a20c56f0ff52d43b47b84ae": [
+      {
+        "id": 361083,
+        "name": "ObsidianScout"
+      }
+    ],
+    "0x9157d8c792a49fedad7a245ee2339de712fa8bb0": [
+      {
+        "id": 361138,
+        "name": "CrystalSage"
+      }
+    ],
+    "0xdbfe5c4d0256d2459bb216cab905999ca41be349": [
+      {
+        "id": 361597,
+        "name": "Vigil Sentinel"
+      }
+    ],
+    "0x86502596665183ef82047a8c9772eb25dbb01b14": [
+      {
+        "id": 361660,
+        "name": "Firstshare Checker"
+      }
+    ],
+    "0x4a0b41d1d60738bfa532cd16782e68bd27368385": [
+      {
+        "id": 362349,
+        "name": "Mayor Tom"
+      }
+    ],
+    "0xb12a1e4e0e22a97e266ed7a6bfc4133f699b1a1b": [
+      {
+        "id": 363619,
+        "name": "Plinth keeper"
+      }
+    ],
+    "0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a": [
+      {
+        "id": 363709,
+        "name": "Brain on BNB — DeFi Agent"
       }
     ]
   }

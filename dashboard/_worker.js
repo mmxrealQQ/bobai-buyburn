@@ -391,7 +391,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; each answer carries a short thank-you note with where a voluntary tip would go — never required, and the answer is the same either way.';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -754,7 +754,7 @@ const MCP_TOOLS = [
   // self-reported is the escrow: every job, who was paid, and whether the money
   // actually moved. Optionally filtered to one provider address, because that
   // is the shape of the real question — "should I hire this one".
-  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow actually released — per provider. A registration is self-reported; a funded job is somebody else\'s money. Pass an address to get one provider\'s balance, or nothing for the whole kernel.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional provider address (0x…). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
+  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow actually released — per provider. A registration is self-reported; a funded job is somebody else\'s money. Pass an address to get one provider\'s balance, or nothing for the whole kernel. A dated snapshot of the last full read, not a live call: measured_at says when.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional provider address (0x…). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
@@ -762,7 +762,7 @@ const MCP_TOOLS = [
   { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), lp.custody (who holds the LP of a V2 pair, wallet by wallet, the deployer flagged; complete from the pair\'s own logs when it is under an hour old; V3 positions not read), holders (the largest wallets with exchange, lock and burn addresses named apart, or unknown: true with the reason when there is no real list yet), age (pool and token, from the first block their code existed), activity (swaps, buys vs sells, unique traders, volume and the largest sell over the window read), flow (who sold over that window: the deployer and wallets it funded, netted against liquidity they added back to the same pair, top holders selling over a quarter of their balance, and for a pool under an hour old the launch-block buyers still holding), venues[] (the scanned pool first, pools under $100 left out) and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   // NAMED preflight, with no verb a router refuses (see pancakeswap_best_route
   // below): "pretrade" splits into a word our own dispatcher would not call.
-  { name: 'bsc_token_preflight', description: 'For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). About 3.5 KB - built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_token_preflight', description: 'For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_range_plan', description: 'For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the one every interface answers with a preset. This does not model and does not forecast. It replays: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of a stated size is walked through the swaps that really happened in a live window and asked, at each one, whether it was in range and what share of the active liquidity it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price walked out. Impermanent loss is not in it, and it is worst exactly where the fees are best. The window is about an hour and travels with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap V3 pool address to pin the pool' }, capitalUsd: { type: 'number', description: 'Size of the position in dollars, optional - defaults to 1000' }, quote: { type: 'string', description: 'The other side of the pair, optional: BNB, USDT, USDC, USD1 or BUSD, or its address. Without it the quote with the deepest V3 pool is used, so pass it whenever a pair was named (CAKE/BNB)' } }, required: ['address'], additionalProperties: false } },
   // NAMED best_route AND NOT swap_route, deliberately. Our own dispatcher — and
@@ -801,6 +801,18 @@ const DEPRECATED_TOOL_NAMES = {
   bobai_how_to_buy: 'bobai_purchase_guide',
 };
 
+// A trade size that is given but does not read as a positive number is
+// refused (2026-10-05): `usd=1,000`, `abc`, `-5` or `0` were silently
+// answered for the default size, which reads like an answer at the size asked.
+// Absent (or empty) still means the default.
+function sizeArg(args, key, example) {
+  const raw = args?.[key];
+  if (raw == null || String(raw).trim() === '') return undefined;
+  const n = Number(typeof raw === 'string' ? raw.trim() : raw);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${key} must be a positive number, e.g. ${example} (got "${String(raw).slice(0, 20)}").`);
+  return n;
+}
+
 async function runTool(rawName, args) {
   const name = DEPRECATED_TOOL_NAMES[rawName] || rawName;
   switch (name) {
@@ -808,6 +820,12 @@ async function runTool(rawName, args) {
       const q = encodeURIComponent(String(args?.query || '').slice(0, 200));
       const sp = args?.speaks ? '&speaks=' + encodeURIComponent(String(args.speaks).slice(0, 40)) : '';
       const r = await fetch(`https://agent.brainonbnb.com/find?q=${q}${sp}&limit=10`, { signal: AbortSignal.timeout(9000) });
+      // A 400 is the search's own plain-words refusal (an unknown category or
+      // protocol, 2026-10-05) and is passed on; only the rest is an outage.
+      if (r.status === 400) {
+        const j = await r.json().catch(() => null);
+        throw new Error(j?.error ? `${j.error}${j.speaks_values ? ` — speaks takes ${j.speaks_values.join(', ')}` : ''}` : 'Brain Plaza search refused the request');
+      }
       if (!r.ok) throw new Error('Brain Plaza search is unavailable right now');
       return await r.json();
     }
@@ -838,9 +856,9 @@ async function runTool(rawName, args) {
     case 'bsc_token_preflight': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
-      const usd = Number(args?.usd);
+      const usd = sizeArg(args, 'usd', 250);
       try {
-        return await preflight(m[0].toLowerCase(), { usd: usd > 0 ? usd : undefined }, WORKER_ENV);
+        return await preflight(m[0].toLowerCase(), { usd }, WORKER_ENV);
       } catch (e) {
         if (/too many subrequests/i.test(String(e?.message || ''))) {
           throw new Error(
@@ -871,7 +889,7 @@ async function runTool(rawName, args) {
     case 'pancakeswap_range_plan': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or PancakeSwap V3 pool address (0x followed by 40 hex characters), or a link containing one.');
-      const capitalUsd = Number(args?.capitalUsd);
+      const capitalUsd = sizeArg(args, 'capitalUsd', 1000);
       // The named pair's other side (2026-09-27): an address, or one of the
       // quote symbols the pool search knows. A quote that reads as neither is
       // refused rather than dropped, or the answer is about another pair again.
@@ -881,7 +899,7 @@ async function runTool(rawName, args) {
         : (qIn.match(/0x[a-fA-F0-9]{40}/)?.[0]?.toLowerCase() || QUOTES.find(([, s]) => s === qSym)?.[0]);
       if (qIn && !quote) throw new Error(`quote "${qIn.slice(0, 20)}" is not one this tool searches — give ${QUOTES.map(([, s]) => s).join(', ')} or an address.`);
       try {
-        return await rangePlan(m[0].toLowerCase(), { capitalUsd: capitalUsd > 0 ? capitalUsd : undefined, quote });
+        return await rangePlan(m[0].toLowerCase(), { capitalUsd, quote });
       } catch (e) {
         throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Range replay failed.'));
       }
@@ -889,9 +907,9 @@ async function runTool(rawName, args) {
     case 'pancakeswap_best_route': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or PancakeSwap pool address (0x followed by 40 hex characters), or a link containing one.');
-      const usd = Number(args?.usd);
+      const usd = sizeArg(args, 'usd', 250);
       try {
-        return await swapRoute(m[0].toLowerCase(), { usd: usd > 0 ? usd : undefined });
+        return await swapRoute(m[0].toLowerCase(), { usd });
       } catch (e) {
         throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Route check failed.'));
       }
@@ -918,7 +936,10 @@ async function runTool(rawName, args) {
       const r = await fetch('https://brainonbnb.com/api-jobs.json', { signal: AbortSignal.timeout(9000) });
       if (!r.ok) throw new Error('employment census unavailable');
       const j = await r.json();
-      const want = String(args?.address || '').toLowerCase();
+      const want = String(args?.address || '').trim().toLowerCase();
+      // A malformed address is the caller's mistake, not "never hired"
+      // (2026-10-05): answering it with jobs: 0 read like a measurement.
+      if (want && !/^0x[0-9a-f]{40}$/.test(want)) throw new Error('address must be a provider address: 0x followed by 40 hex characters. Omit it for the whole kernel.');
       if (want) {
         const p = (j.providers || []).find((x) => x.address === want);
         if (!p) {
@@ -1019,7 +1040,9 @@ async function handleMcp(request, note = () => {}) {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    // The headers a browser-based MCP client sends (2026-10-05): with only
+    // Content-Type allowed, its preflight failed before the first call.
+    'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept, X-BOBAI-Thanks',
     'Content-Type': 'application/json',
   };
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -1029,7 +1052,10 @@ async function handleMcp(request, note = () => {}) {
   }
   let body;
   try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }
+  // A JSON-RPC batch is said to be one (2026-10-05), not answered "Method not found: undefined".
+  if (Array.isArray(body)) return new Response(JSON.stringify(rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.')), { headers: cors });
   const { id, method, params } = body || {};
+  if (typeof method !== 'string') return new Response(JSON.stringify(rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.')), { headers: cors });
   if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
   if (method === 'initialize') note(['mcp:initialize', `mcp:client:${MCP_CLIENT(body?.params?.clientInfo?.name)}`]);
   else if (method === 'tools/call') note(`mcp:call:${MCP_TOOLS.some((t) => t.name === params?.name) ? params.name : 'unknown'}`);
@@ -1137,7 +1163,7 @@ const A2A_CARD = {
       description: 'A position of your size replayed through the swaps that really happened: fees per candidate width, time in range, edge crossings. REST: /api/range-plan?address=0x…&capitalUsd=1000',
       tags: ['defi', 'bsc', 'liquidity', 'pancakeswap', 'v3'] },
     { id: 'token_preflight', name: 'Before any trade: one check at your size',
-      description: 'For an agent about to trade any token on BNB Chain. One call: what stops the trade (the sell does not go through from a fresh address, nothing quotes, half the money gone on a round trip), what to weigh (tax high, unknown or changeable; a size that moves the price; LP that can be withdrawn; contract flags — each with its figure and the line it was measured against), then the best route, the slippage in bps this size needs and the round trip with the measured transfer tax. About 3 KB; no "safe", no score. MCP: bsc_token_preflight. REST: /api/preflight?address=0x…&usd=250',
+      description: 'For an agent about to trade any token on BNB Chain. One call: what stops the trade (the sell does not go through from a fresh address, nothing quotes, half the money gone on a round trip), what to weigh (tax high, unknown or changeable; a size that moves the price; LP that can be withdrawn; contract flags — each with its figure and the line it was measured against), then the best route, the slippage in bps this size needs and the round trip with the measured transfer tax. A short answer; no "safe", no score. MCP: bsc_token_preflight. REST: /api/preflight?address=0x…&usd=250',
       tags: ['defi', 'bsc', 'trading', 'risk', 'pancakeswap', 'four.meme'] },
     { id: 'best_route', name: 'Which pool to swap through',
       description: 'Which of the pools a pair lives in returns the most at your size, and the round trip with the measured transfer tax applied between the legs. REST: /api/best-route?address=0x…&usd=250',
@@ -1433,7 +1459,7 @@ export default {
         // 502 body with its own "error code: 502" text, so the plain-words
         // answer never reached an agent (MCP delivered it, REST did not).
         const msg = e.message || String(e);
-        const bad = /Invalid BSC address|Give a BSC token/.test(msg);
+        const bad = /Invalid BSC address|Give a BSC token|must be a positive number/.test(msg);
         const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$/i.test(msg);
         return new Response(JSON.stringify({ error: msg }), { status: bad ? 400 : infra ? 503 : 422, headers });
       }

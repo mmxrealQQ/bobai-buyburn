@@ -27,7 +27,7 @@ function run(text, log) {
   const els = {}; let painted = null;
   const document = { getElementById: (id) => (els[id] ||= { textContent: '' }) };
   const paintRows = (id, rows) => { painted = { id, rows }; };
-  const f = new Function('document', 'paintRows', 'ggUsd', `let GG_BNB=0;${text};ggdata(arguments[3]);return GG_BNB;`);
+  const f = new Function('document', 'paintRows', 'ggUsd', `let GG_BNB=0;const NUMS={},GG_END=Date.parse('2026-11-20T00:01:00Z');${text};ggdata(arguments[3]);return GG_BNB;`);
   const total = f(document, paintRows, () => {}, log);
   const cells = (painted ? painted.rows : []).map((r) => [...r.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]));
   return { total, count: els['gg-count']?.textContent, head: els['gg-bnb']?.textContent, rows: cells.map((c) => ({ time: c[0], bnb: parseFloat(c[1]), pot: parseFloat(c[2]) })), body: painted?.id };

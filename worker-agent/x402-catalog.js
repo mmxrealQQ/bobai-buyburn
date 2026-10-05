@@ -16,6 +16,8 @@
 // endpoint does not charge is worse than no catalogue — it is a public,
 // machine-readable lie, and an agent that budgeted against it fails at payment.
 
+import { SOLD_BY } from './catalog.js';
+
 // Signatures over the bare origin string, EIP-191, by the wallet that receives
 // payment. Generated offline by scripts/x402-catalog-proof.mjs; the private key
 // is deliberately absent from this worker.
@@ -55,6 +57,13 @@ const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/tip',
 ];
 
+// Counted from SOLD_BY (2026-10-05): the sentence said "5 of the 6" after the
+// sixth seller (lp_position_plan, the DeFi Agent) had joined the escrow.
+function escrowSold() {
+  const n = ANSWER_IDS.filter((id) => SOLD_BY[id]).length;
+  return n === ANSWER_IDS.length ? `All ${n} answers` : `${n} of the ${ANSWER_IDS.length} answers`;
+}
+
 function instructions({ payTo, price, days, asset, network }) {
   return `# Brain On BNB AI — agent service
 
@@ -63,22 +72,28 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 
 ## Payment
 
-- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`) by direct transfer; the facilitator route (way 1 below, \`accepts[0]\` in every 402) settles the same amount in USDC
+- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`); the standard x402 route (way 2 below) settles the same amount in USDC
 - **Pay to**: \`${payTo}\`
-- **Header**: send proof in \`PAYMENT-SIGNATURE\`
+- **Header**: \`PAYMENT-SIGNATURE\` (x402 v2) on every resource; \`/answer\` and \`/tip\` also read \`X-PAYMENT\` (the v1 header)
 
-Two ways to pay the same price into the same wallet, advertised side by side in
-every 402. A client takes whichever it can execute:
+Three ways to pay the same price into the same wallet, advertised side by side
+in every 402 in this order. A client takes whichever it can execute:
 
-1. **Standard x402**, scheme \`exact\`, USDC through Permit2 (accepts[0]). The
+1. **USD1 by EIP-3009** (accepts[0]), scheme \`exact\`: sign a
+   \`TransferWithAuthorization\` to the address above and send the x402 payload
+   in the header. We settle it on chain at once and pay its gas; the answer
+   comes back with the transaction.
+2. **Standard x402**, scheme \`exact\`, USDC through Permit2 (accepts[1]). The
    answer comes back at once; we settle the signed transfer on chain within
    ten minutes and pay its gas. A stock x402 v2 client does this unattended
    once it allows the asset: the official client ships with no default asset
    on BNB Chain, so add USDC \`0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d\` on
    \`eip155:56\` to its \`spendControls.allowedAssets\`.
-2. **Direct transfer** — send USD1 yourself, then repeat the request with the
-   transaction hash in \`PAYMENT-SIGNATURE\`. Needs no facilitator and no
-   signature support, which is why it exists.
+3. **Direct transfer** (accepts[2]) — send USD1 yourself, then repeat the
+   request with the transaction hash in \`PAYMENT-SIGNATURE\`. Needs no
+   facilitator and no signature support, which is why it exists. A per-answer
+   402 also offers the same price in $BOBAI this way, quoted at the moment of
+   the 402.
 
 ## Paid resources
 
@@ -93,7 +108,7 @@ Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the
 intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 
-${ANSWER_IDS.length - 1} of the ${ANSWER_IDS.length} answers are also sold through the ERC-8183 escrow on
+${escrowSold()} are also sold through the ERC-8183 escrow on
 \`https://brainonbnb.com/registry\`, at the same price, for a buyer who wants
 a kernel between them and the seller. Here there is no job and no dispute
 window: the money moves, the document comes back.

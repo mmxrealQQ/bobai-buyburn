@@ -37,7 +37,7 @@
 | 🏛 **[Brain Plaza](https://brainonbnb.com/registry)** | ERC-8004 agent census and ERC-8183 hiring on BNB Chain — search agents that actually answer, see who has been paid |
 | 💵 **[Paid answers](https://brainonbnb.com/services)** | Six answers sold over x402 for 0.10 USD1 (or the same in $BOBAI). Agents pay without a page |
 | 📚 **[The Library](https://brainonbnb.com/library)** · **[Source mirror](https://brainonbnb.com/source)** | Every subsystem as a readable bundle, plus `git clone https://brainonbnb.com/source.git` — a second copy on infrastructure we run ourselves |
-| 🤖 **AI-agent rails** | Remote MCP server in the [official MCP registry](https://registry.modelcontextprotocol.io) (as far as we can tell, the first memecoin there), 21 read-only on-chain tools, plain-REST mirror, [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) on-chain identity `#49467` — details below |
+| 🤖 **AI-agent rails** | Remote MCP server in the [official MCP registry](https://registry.modelcontextprotocol.io) (as far as we can tell, the first memecoin there), read-only on-chain tools, plain-REST mirror, [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) on-chain identity `#49467` — details below |
 | 🖼️ **[NFT buy-drop](https://brainonbnb.com/nft/)** | Buy ≥ $100 of $BOBAI → a collectible NFT auto-mints to your wallet. 1925 supply, tiered rarity, [renounced contract](https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d) |
 | 💬 **[Telegram bot](https://t.me/bobai_official)** | Live buy/burn alerts, price & security commands, and a whale tracker with 1d/7d/30d holdings trends |
 | 🧠 **[brainScreener](https://brainonbnb.com/brainscreener/)** | 13 free self-tests (IQ, ADHD screening & more) — runs in your browser, no signup |
@@ -107,7 +107,7 @@ docker build -t bobai-mcp . && docker run -i bobai-mcp
 
 No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridges stdio clients to the hosted endpoint: `npx -y mcp-remote https://brainonbnb.com/mcp`
 
-### Tools (21, all read-only)
+### Tools (all read-only; the same list as the hosted `tools/list`)
 
 **Brain Plaza & PancakeSwap (any token, any wallet — not just $BOBAI)**
 

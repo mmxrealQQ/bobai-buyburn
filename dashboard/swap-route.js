@@ -249,7 +249,10 @@ export async function swapRoute(input, opts = {}) {
     refusals.push(`An immediate round trip returns ${(100 + roundTripPct).toFixed(1)}% of what went in. Whatever the cause, it is not a cost anybody would accept knowingly.`);
 
   return {
-    tool: 'pancakeswap_swap_route',
+    // The live name (2026-10-05): the tool was renamed to pancakeswap_best_route
+    // so a router that refuses mutating verbs can reach it (_worker.js); the
+    // answer still carried the old name a caller cannot call.
+    tool: 'pancakeswap_best_route',
     token: { address: token, symbol: sym, decimals: dec },
     quote: { address: quote, symbol: quoteSym },
     size_usd: usd,

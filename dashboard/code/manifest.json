@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 6773,
-   "zipBytes": 171702,
-   "txtBytes": 530974,
-   "sha256": "bcfc216e9b315411",
+   "lines": 6778,
+   "zipBytes": 172059,
+   "txtBytes": 531859,
+   "sha256": "59805a4a1962d939",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -332,7 +332,7 @@
    "lines": 7061,
    "zipBytes": 154555,
    "txtBytes": 464500,
-   "sha256": "0230b1421f1bcbda",
+   "sha256": "085aa7e934c8054a",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1283,
-   "zipBytes": 26520,
-   "txtBytes": 68896,
-   "sha256": "ff911c78fc4947e2",
+   "lines": 1284,
+   "zipBytes": 26532,
+   "txtBytes": 68954,
+   "sha256": "7e22b40f60b2b53f",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2460,
-   "zipBytes": 68183,
-   "txtBytes": 196007,
-   "sha256": "73712585a4481e6a",
+   "lines": 2515,
+   "zipBytes": 69996,
+   "txtBytes": 201205,
+   "sha256": "05ad0846a151db30",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 48,
-   "lines": 15733,
-   "zipBytes": 351471,
-   "txtBytes": 988483,
-   "sha256": "82d87ee48fffa441",
+   "lines": 15854,
+   "zipBytes": 355011,
+   "txtBytes": 997919,
+   "sha256": "59010f349a6d0cf1",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -727,10 +727,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4312,
-   "zipBytes": 92164,
-   "txtBytes": 261580,
-   "sha256": "acecec4b1736dc0b",
+   "lines": 4314,
+   "zipBytes": 92349,
+   "txtBytes": 262205,
+   "sha256": "8eeca4aa8cb39e51",
    "reqs": [
     {
      "what": "Node 18+ and time",

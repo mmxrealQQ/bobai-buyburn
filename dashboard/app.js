@@ -1,9 +1,9 @@
-// Ausgelagert aus index.html: der Block war 28 KB und musste bei JEDEM
-// Seitenaufruf mit dem Dokument uebertragen und geparst werden, obwohl er zum
-// Anzeigen der Seite nicht gebraucht wird. Als eigene Datei mit defer laedt er
-// parallel zum Parsen, blockiert nichts und liegt beim naechsten Aufruf im
-// Cache — davon profitiert vor allem das Aktualisieren auf dem Handy.
-// Versionierung ueber ?v= im <script>-Tag, siehe index.html.
+// Moved out of index.html: the block was 28 KB and had to be sent and parsed
+// with the document on EVERY page view, although showing the page does not
+// need it. As its own file with defer it loads in parallel with parsing,
+// blocks nothing and sits in the cache on the next visit — which helps
+// refreshing on a phone most of all.
+// Versioned via ?v= in the <script> tag, see index.html.
 // A share printed at three decimals lies at both ends: 99.9996% shows as a flat
 // 100.000% and 0.0004% as 0.000%. Same rule as pc() in scanner.js, one decimal deeper.
 function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<100)?'>99.999%':v.toFixed(3)+'%'}
@@ -161,23 +161,23 @@ function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<10
 }();
 
 // Fade-in observer.
-// Dieser Block hat die Seite auf dem Handy "kaputt" aussehen lassen: alle 45
-// .fi-Elemente stehen auf opacity:0, bis der Observer sie freigibt — und der
-// laeuft erst, wenn der Parser das Ende dieses 130-KB-Dokuments erreicht hat.
-// Bis dahin war unterhalb des Heros nur Schwarz. Drei Aenderungen:
-//   - rootMargin: freigeben, BEVOR das Element in den Blick kommt, statt erst
-//     bei 8% Sichtbarkeit. Man scrollt jetzt nie in leere Flaechen hinein.
-//   - unobserve nach dem Einblenden: jedes Element wird nur einmal gebraucht.
-//   - Sicherheitsnetz: fehlt der IntersectionObserver oder geht sonst etwas
-//     schief, ist nach spaetestens 5s garantiert alles sichtbar. Eine Seite
-//     darf nie dauerhaft unsichtbaren Inhalt haben.
+// This block made the page look "broken" on a phone: all 45 .fi elements sit
+// at opacity:0 until the observer releases them — and it only ran once the
+// parser reached the end of this 130 KB document. Until then everything
+// below the hero was black. Three changes:
+//   - rootMargin: release BEFORE the element comes into view instead of at
+//     8% visibility. You never scroll into empty space any more.
+//   - unobserve after fading in: each element is needed only once.
+//   - Safety net: if the IntersectionObserver is missing or anything else
+//     goes wrong, everything is visible after 5 s at the latest. A page must
+//     never keep content invisible for good.
 !function(){
-  // Kein IntersectionObserver oder schon gescrollt? Dann gar nichts
-  // verstecken — lieber ohne Effekt als mit leeren Flaechen. Wer bereits
-  // scrollt, wuerde sonst Inhalt verschwinden sehen.
+  // No IntersectionObserver, or already scrolled? Then hide nothing at all —
+  // better no effect than empty space. Someone already scrolling would
+  // otherwise see content disappear.
   if(!('IntersectionObserver'in window)||scrollY>0)return;
   const vh=innerHeight;
-  // Nur was sicher unter dem Bildrand liegt. Alles Sichtbare bleibt sichtbar.
+  // Only what is safely below the fold. Everything visible stays visible.
   const hidden=[...document.querySelectorAll('.fi')]
     .filter(el=>el.getBoundingClientRect().top>vh*1.1);
   hidden.forEach(el=>el.classList.add('pre'));
@@ -185,15 +185,15 @@ function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<10
     if(x.isIntersecting){x.target.classList.remove('pre');ob.unobserve(x.target)}
   }),{rootMargin:'400px 0px',threshold:0});
   hidden.forEach(el=>ob.observe(el));
-  // Sicherheitsnetz: nach 5s ist garantiert nichts mehr versteckt.
+  // Safety net: after 5 s nothing is hidden any more, guaranteed.
   setTimeout(()=>hidden.forEach(el=>el.classList.remove('pre')),5000);
 }();
 
-// Shimmer nur auf dem, was gerade sichtbar ist. Der Effekt animiert
-// background-position und laeuft damit zwingend auf dem Main-Thread — bei 21
-// Elementen gleichzeitig kostet das dauerhaft Rechenzeit, auch fuer die 19,
-// die gerade niemand sieht. Sichtbar bleibt der Effekt derselbe.
-// Ohne IntersectionObserver (sehr alte Browser) laeuft er ueberall, wie frueher.
+// Shimmer only on what is visible right now. The effect animates
+// background-position and so has to run on the main thread — on 21 elements
+// at once that costs CPU all the time, including for the 19 nobody is looking
+// at. What you see of the effect stays the same.
+// Without IntersectionObserver (very old browsers) it runs everywhere, as before.
 !function(){
   const els=document.querySelectorAll('.sh h2 em,.tc .b');
   if(!('IntersectionObserver'in window)){els.forEach(e=>e.classList.add('shim-on'));return}
@@ -217,11 +217,11 @@ function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))retu
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
       DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
-// Kein '?t='+Date.now() mehr. Der Zusatz machte jede URL einmalig und damit
-// jedes Caching unmoeglich — burns.json (~88 KB) kam so bei jedem Aufruf und
-// jedem Aktualisieren komplett neu. Die Frische regelt jetzt der Server:
-// /logs/* liefert max-age=120 (der Bot schreibt nur alle 10 Minuten), die
-// statische Reserve max-age=0 + must-revalidate, also 304 statt 88 KB.
+// No more '?t='+Date.now(). It made every URL unique and so ruled out any
+// caching — burns.json (~88 KB) came down in full on every visit and every
+// refresh. Freshness is now the server's job: /logs/* sends max-age=120
+// (the bot writes only every 10 minutes), the static fallback max-age=0 +
+// must-revalidate, so a 304 instead of 88 KB.
 async function gj(n){let r=null;
   try{r=await fetch('/logs/'+n)}catch(e){}
   if(!r||!r.ok){try{r=await fetch('https://logs.brainonbnb.com/logs/'+n)}catch(e){}}
@@ -282,7 +282,7 @@ async function rpcBatch(calls){
 // which on an English page is not a cosmetic difference but a different number.
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 function setBig(id,v,sym){put(id,nf(v)+' '+sym)}
-// Setzt einen Wert und nimmt dem Feld gleichzeitig den "laedt"-Zustand.
+// Sets a value and takes the field out of its "loading" state at the same time.
 function put(id,txt){const e=document.getElementById(id);if(!e)return;
   e.textContent=txt;e.classList.remove('ld')}
 async function chain(){
@@ -307,7 +307,7 @@ async function chain(){
       call(BOBP,'0x0902f1ac'),            // 15 BOB/WBNB reserves, to price the BOB burned
       call(BOBAI,'0x110395bd'),           // 16 minDispatch(): queued tax at which the token sends it on
     ]);
-  }catch(e){return}
+  }catch(e){return false}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
   // blank the rest of the bar.
   try{put('wallet-bnb',(u18(q[0])+u18(q[1])).toFixed(4)+' BNB')}catch(e){}
@@ -358,7 +358,9 @@ async function chain(){
     // The Brain Terminal reads these instead of a chain read of its own: one source, one figure.
     NUMS.chain={at:Date.now(),bobDead:bobAmt,bobaiDead:bAmt,priceUsd:pU,bnbUsd:bnbP,
       bobUsdPrice:(()=>{try{const hH=q[15];return Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){return 0}})(),
-      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1]),minDispatch:u18(q[16])};
+      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1]),minDispatch:u18(q[16]),
+      // the next buyback as the tile above shows it, gas reserve excluded (2026-10-05: the Brain strip used the full wallet)
+      splitBnb:sBnb,nextBuybackUsd:pendUsd};
     depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
   // LP lock lives in its own try: it reads two extra words of the same batch, and
@@ -400,6 +402,7 @@ async function chain(){
       el.classList.remove('ld');
     }
   }catch(e){}
+  return true;
 }
 // WHERE THE LOCKED LIQUIDITY COMES FROM.
 // A full scan of every LP transfer into the dead address (blocks 88990359 to
@@ -619,20 +622,23 @@ async function logs(){
   const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
   if(burns)NUMS.burns=burns;if(bb)NUMS.liq=bb;
   bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);bbsrc(bb);ggdata(burns);
+  return !!(burns&&bb);
 }
 // Static file, appended once per manual run: read once at load, and fetched
 // directly rather than through gj() — that helper probes the log worker first,
 // which would cost two 404s per page load for a file the worker never serves.
 fetch('liq-runs.json').then(r=>r.ok?r.json():null).then(mansrc).catch(()=>{});
 gj('liq-boost-log.json').then(lbdata);
-let busy=false;
+let busy=false,lastOk='';
 async function go(){
   if(busy)return;busy=true;
   try{
-    await Promise.all([chain(),logs()]);
+    const [okC,okL]=await Promise.all([chain(),logs()]);
     numsOut();
-    const el=document.getElementById('last-update');
-    if(el)el.textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+    // a failed read says so (2026-10-05): "Updated" used to be stamped even when no RPC answered
+    const el=document.getElementById('last-update'),now=new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+    if(okC&&okL)lastOk=now;
+    if(el)el.textContent=okC&&okL?'Updated '+now:(okC?'Log':'Chain')+' read failed — figures '+(lastOk?'from '+lastOk.slice(11):'not loaded yet')+', retrying';
   }finally{busy=false}
 }
 go();setInterval(go,30000);
@@ -844,18 +850,18 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     if(n>=1000)return'$'+Math.round(n).toLocaleString('en-US');
     return'$'+n.toFixed(2);
   }
-  // WC26 is settled — the BOBAI amount is a frozen archive snapshot (one read),
-  // but the USD equivalent keeps tracking the live GeckoTerminal price (same
-  // source as the worldcup app, so both pages show the same USD figure).
-  // Fallbacks: on-chain price from chain() (window.__bobaiPx) → stored snapshot.
-  let poolTotal=0,snapshotPrice=0,gtPrice=0;
+  // WC26 is settled — the BOBAI amount is a frozen archive snapshot (one read).
+  // Its dollar value comes from this page's own on-chain price (chain() sets
+  // window.__bobaiPx and calls render); the GeckoTerminal poll went 2026-10-05
+  // (on-chain only). Before the first chain read: the stored snapshot price.
+  let poolTotal=0,snapshotPrice=0;
   function render(){
     if(!poolTotal)return;
-    const px=(gtPrice>0?gtPrice:(window.__bobaiPx>0?window.__bobaiPx:snapshotPrice));
+    const live=window.__bobaiPx>0,px=live?window.__bobaiPx:snapshotPrice;
     const tb=document.getElementById('tg-pool-bobai');
     const tu=document.getElementById('tg-pool-usd');
     if(tb)tb.textContent=fmtBobai(poolTotal)+' BOBAI';
-    if(tu)tu.textContent=px>0?fmtUsd(poolTotal*px):'';
+    if(tu)tu.textContent=px>0?fmtUsd(poolTotal*px)+(live?' at today\'s price':' at the snapshot price'):'';
   }
   window.__tgPoolRender=render;
   async function load(){
@@ -870,16 +876,7 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       render();
     }catch(_){}
   }
-  async function loadGt(){
-    try{
-      const r=await fetch('https://api.geckoterminal.com/api/v2/networks/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6');
-      if(!r.ok)return;
-      const j=await r.json();
-      const px=parseFloat(j?.data?.attributes?.base_token_price_usd)||0;
-      if(px>0){gtPrice=px;render()}
-    }catch(_){}
-  }
-  load();loadGt();setInterval(loadGt,60000);
+  load();
 }();
 
 // === GIGGLE ACADEMY POT COUNTDOWN — to the start before Sep 17, to the end during the window ===
@@ -994,9 +991,10 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     if(pC)pC.textContent=active?active.creatorPct:'~1%';
     if(pB)pB.textContent=active?active.bobPct:'~1%';
     if(pA)pA.textContent=active?active.bobaiPct:'~1%';
-    // The two extra boxes of the flow exist only while their program runs.
+    // The extra boxes of the flow exist only while their program runs.
     const showBox=(id,pct)=>{const box=document.getElementById(id),arrow=document.getElementById(id+'-arrow'),p=box&&box.querySelector('.p');const on=!!pct;if(box)box.style.display=on?'':'none';if(arrow)arrow.style.display=on?'':'none';if(p&&on)p.textContent=pct};
-    showBox('tf-lp',active&&active.lpPct);showBox('tf-giggle',active&&active.gigglePct);
+    // the liquidity share got its own box (2026-10-05): five boxes summed to 2.5% of the 3%
+    showBox('tf-liq',active&&active.liqPct);showBox('tf-lp',active&&active.lpPct);showBox('tf-giggle',active&&active.gigglePct);
     // The "How it works" card two rows up used to state a flat ~1/1/1 while the
     // panel right below it showed the campaign split. One page cannot say two
     // things about the same tax, so the card reads from the same schedule — and
@@ -1204,6 +1202,8 @@ function fillLpSeries(){
     .then(d => {
       const pts = d && Array.isArray(d.points) ? d.points : [];
       const s = d && d.summary;
+      // a failed fetch is not an empty series (2026-10-05): only a real answer with no points says "no run yet"
+      if(!d){ sum.innerHTML = 'The series did not answer just now. The record: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.'; return; }
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
       // One line, not the portfolio again: the portfolio above already says
       // what went in and what came out. The table is the evidence.

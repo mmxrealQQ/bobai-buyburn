@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-04T20:33:43.589Z",
-  "asked": 51,
-  "quoted": 26,
+  "measured_at": "2026-10-05T08:07:55.446Z",
+  "asked": 58,
+  "quoted": 27,
   "agents": [
+    {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.5 $U",
+      "endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "reason": null
+    },
     {
       "id": 265375,
       "label": "BNB LP Range Rebalancer",
@@ -12,16 +22,6 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
-      "reason": null
-    },
-    {
-      "id": 340471,
-      "label": "Hevo Rebalance",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "8 $U",
-      "endpoint": "https://hevo-rebalance.fly.dev/",
       "reason": null
     },
     {
@@ -35,6 +35,16 @@
       "reason": null
     },
     {
+      "id": 340471,
+      "label": "Hevo Rebalance",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "8 $U",
+      "endpoint": "https://hevo-rebalance.fly.dev/",
+      "reason": null
+    },
+    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
       "category": "rebalancing",
@@ -43,26 +53,6 @@
       "price": "1 $U",
       "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
       "reason": null
-    },
-    {
-      "id": 269223,
-      "label": "Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "0.5 $U",
-      "endpoint": "https://agents.chainhelix.io/rebalancer/",
-      "reason": null
-    },
-    {
-      "id": 293902,
-      "label": "mandaterebalance-agent",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
-      "reason": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply"
     },
     {
       "id": 331131,
@@ -85,16 +75,6 @@
       "reason": "Missing Authentication Token"
     },
     {
-      "id": 338475,
-      "label": "PancakeSwap v3 Range Keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://hallmark-agents.vercel.app/a2a/rebalancer",
-      "reason": "rebalancer has no skill \"negotiate\""
-    },
-    {
       "id": 336622,
       "label": "RangeKeeper",
       "category": "rebalancing",
@@ -103,6 +83,46 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://plinth-relay.vercel.app/agent",
+      "reason": null
+    },
+    {
+      "id": 342379,
+      "label": "PancakeSwap LP Range Check",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
+      "id": 293902,
+      "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
+      "reason": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply"
+    },
+    {
+      "id": 338475,
+      "label": "PancakeSwap v3 Range Keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://hallmark-agents.vercel.app/a2a/rebalancer",
+      "reason": "rebalancer has no skill \"negotiate\""
     },
     {
       "id": 341563,
@@ -123,16 +143,6 @@
       "price": null,
       "endpoint": "https://ivl-mainnet.onrender.com/",
       "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://plinth-relay.vercel.app/a2a",
-      "reason": "The page could not be found"
     },
     {
       "id": 346444,
@@ -165,13 +175,13 @@
       "reason": null
     },
     {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
+      "id": 269224,
+      "label": "Grid Trader",
       "category": "grid-trading",
       "ours": false,
       "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "price": "0.5 $U",
+      "endpoint": "https://agents.chainhelix.io/gridtrader/",
       "reason": null
     },
     {
@@ -195,6 +205,16 @@
       "reason": null
     },
     {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "reason": null
+    },
+    {
       "id": 340527,
       "label": "Hevo Grid",
       "category": "grid-trading",
@@ -202,16 +222,6 @@
       "quotes": true,
       "price": "10 $U",
       "endpoint": "https://hevo-grid.fly.dev/",
-      "reason": null
-    },
-    {
-      "id": 269224,
-      "label": "Grid Trader",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "0.5 $U",
-      "endpoint": "https://agents.chainhelix.io/gridtrader/",
       "reason": null
     },
     {
@@ -225,6 +235,16 @@
       "reason": "Grid requires GRID_PLAN_V1 with pair, lowerPrice, upperPrice, capital, gridCount."
     },
     {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
+      "reason": "Missing Authentication Token"
+    },
+    {
       "id": 324936,
       "label": "Sentinels Grid Trader",
       "category": "grid-trading",
@@ -235,14 +255,24 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
     },
     {
-      "id": 331131,
-      "label": "LatticeLatch",
+      "id": 342380,
+      "label": "Grid Ladder Planner",
       "category": "grid-trading",
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
-      "reason": "Missing Authentication Token"
+      "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
+      "id": 345085,
+      "label": "GuardRail GridBot",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://guardrail-delta.vercel.app/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
       "id": 338477,
@@ -295,6 +325,16 @@
       "reason": null
     },
     {
+      "id": 269226,
+      "label": "Yield Allocator",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.5 $U",
+      "endpoint": "https://agents.chainhelix.io/yieldopt/",
+      "reason": null
+    },
+    {
       "id": 358786,
       "label": "Tidemark",
       "category": "yield-optimization",
@@ -325,14 +365,44 @@
       "reason": null
     },
     {
-      "id": 269226,
-      "label": "Yield Allocator",
+      "id": 336622,
+      "label": "RangeKeeper",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": true,
-      "price": "0.5 $U",
-      "endpoint": "https://agents.chainhelix.io/yieldopt/",
-      "reason": null
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
+      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+    },
+    {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
+    },
+    {
+      "id": 342378,
+      "label": "BSC Yield Router",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
+      "id": 345086,
+      "label": "GuardRail Yield Router",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://guardrail-delta.vercel.app/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
       "id": 116171,
@@ -353,16 +423,6 @@
       "price": null,
       "endpoint": "https://hallmark-agents.vercel.app/a2a/yield",
       "reason": "yield has no skill \"negotiate\""
-    },
-    {
-      "id": 336622,
-      "label": "RangeKeeper",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
       "id": 336624,
@@ -425,6 +485,16 @@
       "reason": null
     },
     {
+      "id": 269228,
+      "label": "Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": true,
+      "price": "0.5 $U",
+      "endpoint": "https://agents.chainhelix.io/healthmon/",
+      "reason": null
+    },
+    {
       "id": 340458,
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
@@ -465,14 +535,24 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 269228,
-      "label": "Health Factor Monitor",
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false,
-      "quotes": true,
-      "price": "0.5 $U",
-      "endpoint": "https://agents.chainhelix.io/healthmon/",
-      "reason": null
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/loan-health/a2a",
+      "reason": "loan-health requires LOAN_HEALTH_V1 with collateral, debt, targetHealthFactor, alertLevels."
+    },
+    {
+      "id": 342377,
+      "label": "Venus Health Factor Watch",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
       "id": 338480,
@@ -493,16 +573,6 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/health-sentinel",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/loan-health/a2a",
-      "reason": "loan-health requires LOAN_HEALTH_V1 with collateral, debt, targetHealthFactor, alertLevels."
     },
     {
       "id": 302257,

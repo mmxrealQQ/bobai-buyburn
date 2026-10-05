@@ -174,21 +174,26 @@ export async function lpPositionPlan(params = {}, env = null) {
     ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
-  const rb = strip(rebalance);
-  if (rb && rb.why) lines.push(`Re-set: ${rb.why}`);
+  // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with
+  // seventeen digits, and ticks shown beside "nothing to re-set" say what they are
+  const dot = (s) => (/[.!?]$/.test(String(s).trim()) ? String(s).trim() : `${String(s).trim()}.`);
+  const tidy = (x) => (x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'number' && /_bnb$/.test(k) ? Number(v.toFixed(6)) : v])) : x);
+  const rb = tidy(strip(rebalance));
+  if (rb && rb.why && (rb.new_ticks || rb.trade)) rb.note = 'No re-set is due. new_ticks and trade describe the re-set that would apply if one were due right now.';
+  if (rb && rb.why) lines.push(`Re-set: ${dot(rb.why)}`);
   else if (rb && rb.new_ticks) lines.push(`Re-set due: the agent would move the range to ticks ${rb.new_ticks.join(' … ')} (±${rb.width_pct}%, ${rb.width_basis || 'from the width record'}).`);
   // The width record is measured on the agent's own pool (review 2026-09-21): on any other pool the
   // width is borrowed, and the answer says so instead of passing it off as this pool's own measurement.
   const foreignPool = String(facts.pool?.address || '').toLowerCase() !== String(HOME_POOL.pool).toLowerCase();
   if (foreignPool && rb && (rb.new_ticks || rb.width_pct)) lines.push(`The width comes from the price record of ${HOME_POOL.label}, the pool this agent runs on; this pool's own swings may call for a different one.`);
-  const ic = strip(increase);
-  if (ic && ic.why) lines.push(`Grow: ${ic.why}`);
+  const ic = tidy(strip(increase));
+  if (ic && ic.why) lines.push(`Grow: ${dot(ic.why)}`);
   else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
   return {
     ...facts,
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
-    width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
+    width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, expected_net_basis: 'the width record\'s own figure: fees net of re-sets over hours_of_prices of recorded prices. It is a different measure from the last week against holding, which stands in rebalance.width_basis', hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
     verdict: lines.join(' '),
     what_this_is_not: 'An execution. This agent signs nothing on your position; it tells you what it would do, from the same code that runs its own. Measurement, not advice.',
     measured_at: new Date().toISOString(),

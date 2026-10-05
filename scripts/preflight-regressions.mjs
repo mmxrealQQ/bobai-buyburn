@@ -202,5 +202,20 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('a V3 pool gets no pointer to a watch that cannot read it', v3.keep_watching === null);
 }
 
+// A size that is given but unreadable is refused, not answered at 250 (2026-10-05). sizeArg is lifted out of
+// the site worker as text (importing the worker pulls in the whole site), and all three sized tools must use it.
+{
+  const fs = await import('node:fs');
+  const w = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/_worker.js'), 'utf8');
+  const src = w.match(/function sizeArg\([\s\S]*?\n\}/)?.[0];
+  ok('the site worker has one sizeArg, and no tool reads Number(args?.usd) or Number(args?.capitalUsd) itself', !!src && !/Number\(args\?\.(usd|capitalUsd)\)/.test(w));
+  const sizeArg = src ? new Function(src + '\nreturn sizeArg;')() : () => { throw new Error('missing'); };
+  const refused = (v) => { try { sizeArg({ usd: v }, 'usd', 250); return false; } catch (e) { return /usd must be a positive number, e\.g\. 250/.test(e.message); } };
+  ok('usd=1,000, abc, -5, 0 and Infinity are refused in plain words', ['1,000', 'abc', '-5', '0', 0, 'Infinity'].every(refused));
+  ok('… absent or empty is the default, and 500 / "500" / " 1e3 " read as numbers', sizeArg({}, 'usd', 250) === undefined && sizeArg({ usd: '' }, 'usd', 250) === undefined
+    && sizeArg({ usd: 500 }, 'usd', 250) === 500 && sizeArg({ usd: '500' }, 'usd', 250) === 500 && sizeArg({ usd: ' 1e3 ' }, 'usd', 250) === 1000);
+  ok('… and the REST route answers that refusal with 400, not 422', /const bad = \/[^\n]*must be a positive number/.test(w));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

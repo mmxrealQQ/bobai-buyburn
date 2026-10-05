@@ -470,6 +470,16 @@ export async function handleA2A(request, env, opts = {}) {
     if (!service || (service.id === 'lp_position_plan' && !forced)) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
     }
+    // WHAT THE WORK CANNOT START WITHOUT IS ASKED BEFORE THE QUOTE IS SIGNED
+    // (2026-10-05). An SDK buyer never sends params after funding: a quote
+    // signed for "rebalance my holdings" with no holdings named became a
+    // funded job nobody could deliver, its budget held until expiry. The
+    // two services that can read the hiring wallet instead (the Venus health
+    // factor, the position plan) are quoted; deliverJob falls back to it.
+    const need = missingInput(service.id, extractParams([data.task_description, data.terms?.deliverables].filter(Boolean).join(' '), data.params || {}));
+    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan') {
+      return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
+    }
     const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage(q.envelope));
@@ -595,7 +605,7 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   const zero = '0x0000000000000000000000000000000000000000';
   const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
   if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
-    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.` };
+    return { error: `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.`, permanent: true };
   }
   // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
   // twice, and the second one's document replaced the stored one after the
@@ -619,9 +629,9 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   // which one was hired.
   const tagged = String(job.description || '').match(/\bservice ([a-z_]+)\b/)?.[1];
   const service = (tagged && SERVICES[tagged]) || pickService(job.description, null) || pickService('', data.service);
-  if (!service) return { error: 'the job description does not match anything we sell' };
+  if (!service) return { error: 'the job description does not match anything we sell', permanent: true };
   if (BigInt(job.budget) < PRICE_WEI(service.price)) {
-    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}` };
+    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`, permanent: true };
   }
 
   // A signed (SDK) description is JSON whose currency and verifying_contract
@@ -646,13 +656,17 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     if (service.id === 'lp_position_plan' && missingInput(service.id, params)) {
       try { result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client}`; }
       catch { result = await doWork(service.id, { ...params, address: LP_AGENT_WALLET }, env); result.read_for = `the agent's own position (wallet ${LP_AGENT_WALLET}) — the hiring wallet ${job.client} holds no single PancakeSwap V3 position and none was named`; }
+    } else if (service.id === 'health_factor' && missingInput(service.id, params)) {
+      // no account named (2026-10-05): the wallet that paid is the one read, and the document says so
+      result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client} — no account was named in the task`;
     } else result = await doWork(service.id, params, env);
   } catch (e) {
     // A job we cannot do is not delivered and not charged for. The buyer's
     // budget stays in escrow and comes back to them at expiry, which is the
     // correct outcome and the one the kernel already implements.
     await env.AGENT.delete(lockKey).catch(() => {});
-    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.` };
+    // an input the job never named will not appear by trying again; anything else may pass (the watcher retries)
+    return { error: `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`, ...(missingInput(service.id, params) ? { permanent: true } : {}) };
   }
 
   const document = JSON.stringify({

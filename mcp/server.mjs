@@ -16,7 +16,9 @@ import { createInterface } from 'node:readline';
 
 const BASE = 'https://brainonbnb.com';
 const PROTOCOL = '2025-06-18';
-const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' };
+const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.4.0' };
+// The same introduction the hosted server gives on initialize (MCP_INSTRUCTIONS in dashboard/_worker.js).
+const INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way.';
 
 const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS = [
@@ -25,9 +27,9 @@ const TOOLS = [
   // header called it the same server). Each is a plain GET on the REST mirror.
   { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools it exposes rather than self-reported categories.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'what you need done' }, speaks: { type: 'string', description: 'optional: mcp, a2a or x402' } }, required: ['query'], additionalProperties: false }, rest: 'https://agent.brainonbnb.com/find', params: { query: 'q', speaks: 'speaks' } },
   { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: registered, readable, reachable, by operator; every figure with the timestamp of its measurement.', inputSchema: noArgs, rest: '/api-registry.json' },
-  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain: the ERC-8183 job escrow read job by job — created, funded, delivered, released — optionally for one provider address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'optional: one provider address (0x…)' } }, additionalProperties: false }, rest: '/api-jobs.json' },
+  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain: the ERC-8183 job escrow read job by job — created, funded, delivered, released — optionally for one provider address. A dated snapshot of the last full read, not a live call: measured_at says when.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'optional: one provider address (0x…)' } }, additionalProperties: false }, rest: '/api-jobs.json' },
   { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool: cost per size (impact + swap fee + transfer tax measured from executed trades), the USD size that moves the price 1%, share of liquidity, LP burned or not and who holds the rest (lp.custody), holders (or unknown), pool and token age, the last hour of swaps (activity) and who sold in it — deployer, top holders, launch snipers (flow), a sell simulated from a fresh address. Read tax.measured before using the cost columns; quotable: false with a reason is an answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token or pool address, or a link containing one' } }, required: ['address'], additionalProperties: false }, rest: '/api/pool-scan', params: { address: 'address' } },
-  { name: 'bsc_token_preflight', description: 'Before any trade on BNB Smart Chain, in one call and at your size: stop[] (the sell does not go through, nothing quotes, half the money gone on a round trip), caution[] (tax high, unknown or changeable; size moves the price; deeper pool elsewhere; LP withdrawable, by whom, or already withdrawn; holders unknown or concentrated; deployer selling (net of liquidity it added back) or top holder selling, launch sniped; contract flags), then route, pay/receive, slippage in bps needed, round trip with the measured transfer tax, 1% depth, LP burned and its largest holder, age, recent swaps and who sold (flow). About 3.5 KB; no "safe", no score.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token or pool address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false }, rest: '/api/preflight' },
+  { name: 'bsc_token_preflight', description: 'Before any trade on BNB Smart Chain, in one call and at your size: stop[] (the sell does not go through, nothing quotes, half the money gone on a round trip), caution[] (tax high, unknown or changeable; size moves the price; deeper pool elsewhere; LP withdrawable, by whom, or already withdrawn; holders unknown or concentrated; deployer selling (net of liquidity it added back) or top holder selling, launch sniped; contract flags), then route, pay/receive, slippage in bps needed, round trip with the measured transfer tax, 1% depth, LP burned and its largest holder, age, recent swaps and who sold (flow). A short answer; no "safe", no score.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token or pool address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false }, rest: '/api/preflight', params: { address: 'address', usd: 'usd' } },
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider: the up-to-five PancakeSwap pools a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%), compared on what each actually paid its providers per $1,000 over a live window; the window is returned.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' } }, required: ['address'], additionalProperties: false }, rest: '/api/fee-tiers', params: { address: 'address' } },
   { name: 'pancakeswap_range_plan', description: 'For a PancakeSwap V3 position: which price range. A position of the given size is replayed through the swaps that really happened; per candidate width the fees it would have collected, time in range and edge crossings.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, capitalUsd: { type: 'number', description: 'the capital to place, in USD' }, quote: { type: 'string', description: 'optional: the other side of the pair (BNB, USDT, USDC, USD1, BUSD or an address); without it the deepest V3 quote is used' } }, required: ['address'], additionalProperties: false }, rest: '/api/range-plan', params: { address: 'address', capitalUsd: 'capitalUsd', quote: 'quote' } },
   { name: 'pancakeswap_best_route', description: 'Before a swap on PancakeSwap: which of the pools a pair lives in returns the most at this size, and what comes back if the proceeds are sold straight back, with the measured transfer tax applied between the legs.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, usd: { type: 'number', description: 'the trade size in USD' } }, required: ['address'], additionalProperties: false }, rest: '/api/best-route', params: { address: 'address', usd: 'usd' } },
@@ -59,7 +61,12 @@ const PROMPTS = [
 
 async function fetchJson(path) {
   const res = await fetch(path.startsWith('http') ? path : BASE + path, { headers: { accept: 'application/json' } });
-  if (!res.ok) throw new Error(`GET ${path} -> HTTP ${res.status}`);
+  if (!res.ok) {
+    // The REST mirror answers a refusal in plain words ({"error": "..."}); that
+    // sentence is the answer, not "HTTP 400" (2026-10-05).
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ? String(body.error) : body ? JSON.stringify(body) : `GET ${path} -> HTTP ${res.status}`);
+  }
   return res.json();
 }
 
@@ -70,6 +77,20 @@ async function runTool(name, args) {
     const address = String(args?.address || '');
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
     return fetchJson('/api/wallet?address=' + address);
+  }
+  // The employment census is one static file; the hosted tool narrows it to
+  // one provider in the worker, so this does the same here (2026-10-05: the
+  // address was accepted and ignored).
+  if (name === 'bnb_agent_employment') {
+    const want = String(args?.address || '').trim().toLowerCase();
+    if (want && !/^0x[0-9a-f]{40}$/.test(want)) throw new Error('address must be a provider address: 0x followed by 40 hex characters. Omit it for the whole kernel.');
+    const j = await fetchJson(tool.rest);
+    if (want) {
+      const p = (j.providers || []).find((x) => x.address === want);
+      if (!p) return { address: want, jobs: 0, note: 'This address does not appear as a provider on any job in the kernel.', measured_at: j.measured_at, source: j.source };
+      return { ...p, of_all_jobs: j.jobs?.read, measured_at: j.measured_at, method: j.method, source: j.source };
+    }
+    return { ...j.jobs, top_providers: (j.providers || []).slice(0, 10), measured_at: j.measured_at, method: j.method, full_data: BASE + tool.rest, human_readable: BASE + '/registry' };
   }
   // The measurement tools pass their arguments through as query parameters,
   // named as the REST mirror names them.
@@ -133,15 +154,23 @@ const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 
 async function handle(req) {
-  const { id, method, params } = req;
+  if (Array.isArray(req)) return send(err(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per line.'));
+  const { id, method, params } = req || {};
   if (typeof method !== 'string') { if (id !== undefined) send(err(id, -32600, 'Invalid request')); return; }
   if (method.startsWith('notifications/')) return;
   try {
-    if (method === 'initialize') return send(ok(id, { protocolVersion: PROTOCOL, capabilities: { tools: {}, resources: {}, prompts: {} }, serverInfo: SERVER_INFO }));
-    if (method === 'tools/list') return send(ok(id, { tools: TOOLS.map(({ rest, ...t }) => t) }));
+    if (method === 'initialize') return send(ok(id, { protocolVersion: PROTOCOL, capabilities: { tools: {}, resources: {}, prompts: {} }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS }));
+    if (method === 'tools/list') return send(ok(id, { tools: TOOLS.map(({ rest, params: _p, ...t }) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false } })) }));
     if (method === 'tools/call') {
-      const out = await runTool(params?.name, params?.arguments || {});
-      return send(ok(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] }));
+      // As on the hosted server: a tool that refuses ("that is not a BSC
+      // token") has answered, so the model reads it as a result with isError
+      // rather than a JSON-RPC error many clients swallow.
+      try {
+        const out = await runTool(params?.name, params?.arguments || {});
+        return send(ok(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] }));
+      } catch (e) {
+        return send(ok(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true }));
+      }
     }
     if (method === 'resources/list') return send(ok(id, { resources: RESOURCES }));
     if (method === 'resources/templates/list') return send(ok(id, { resourceTemplates: [] }));

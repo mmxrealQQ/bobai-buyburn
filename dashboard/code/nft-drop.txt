@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1283 lines.
+# one fetch. 10 files, 1284 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -22,6 +22,7 @@
 <title>BOBAI Buy Drops · NFT Collection · brainonbnb</title>
 <meta name="description" content="Auto-minted NFTs awarded for every $BOBAI buy of $100 or more on BNB Chain. 1,925 collectibles · 6 buy tiers · 7 rarities.">
 <link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://brainonbnb.com/nft/">
 <!-- Fonts as an early <link>, NOT as an @import inside the inline <style>: an
      @import is invisible to the preload scanner, so the browser would have to
      parse the whole document before it even begins the handshake. Weights cut

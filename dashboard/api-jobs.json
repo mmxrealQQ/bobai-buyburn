@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-09-07T05:46:58.405Z",
+  "measured_at": "2026-10-05T06:28:34.410Z",
   "jobs": {
-    "job_counter": 56719,
-    "read": 56719,
+    "job_counter": 56906,
+    "read": 56906,
     "unread_after_retries": 0,
     "by_status": {
-      "OPEN": 995,
-      "COMPLETED": 28241,
-      "SUBMITTED": 27177,
-      "FUNDED": 283,
-      "EXPIRED": 17,
-      "REJECTED": 6
+      "OPEN": 1028,
+      "COMPLETED": 28292,
+      "SUBMITTED": 27229,
+      "FUNDED": 318,
+      "EXPIRED": 31,
+      "REJECTED": 8
     },
-    "ever_funded": 55707,
-    "escrow_released": 28241,
-    "deliverable_never_released": 27177,
-    "never_funded": 995,
-    "total_escrowed_u": 601.991139,
-    "distinct_buyers": 32804,
-    "distinct_providers": 98,
-    "providers_paid_by_more_than_one_buyer": 9,
-    "top_provider_share": 0.9903,
-    "top5_share": 0.9947,
+    "ever_funded": 55859,
+    "escrow_released": 28292,
+    "deliverable_never_released": 27229,
+    "never_funded": 1028,
+    "total_escrowed_u": 627.460677,
+    "distinct_buyers": 32836,
+    "distinct_providers": 134,
+    "providers_paid_by_more_than_one_buyer": 25,
+    "top_provider_share": 0.987,
+    "top5_share": 0.9917,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 552,
-      "completed": 65,
-      "escrowed_u": 49.911139,
-      "providers": 97
+      "jobs": 739,
+      "completed": 116,
+      "escrowed_u": 75.380677,
+      "providers": 133
     }
   },
   "providers": [
@@ -75,6 +75,45 @@
       "delivery_rate": 0,
       "first_job_id": 56258,
       "last_job_id": 56452
+    },
+    {
+      "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
+      "agents": [
+        {
+          "id": 302257,
+          "name": "Brain on BNB — Venus Health Factor Monitor"
+        },
+        {
+          "id": 302258,
+          "name": "Brain on BNB — BSC Grid Planner"
+        },
+        {
+          "id": 304493,
+          "name": "Brain on BNB — Venus Yield Ranking"
+        },
+        {
+          "id": 304494,
+          "name": "Brain on BNB — Portfolio Rebalance Pricer"
+        },
+        {
+          "id": 310460,
+          "name": "Brain on BNB — PancakeSwap Fee Tier Placement"
+        }
+      ],
+      "jobs": 31,
+      "funded": 28,
+      "completed": 11,
+      "submitted_not_released": 11,
+      "awaiting_delivery": 5,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 3,
+      "distinct_buyers": 8,
+      "escrowed_u": 2.78,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.3929,
+      "first_job_id": 56656,
+      "last_job_id": 56905
     },
     {
       "address": "0xe12d7bd7333018c2a2a423bf078255951b934272",
@@ -148,20 +187,59 @@
           "name": "Portfolio Rebalancer"
         }
       ],
-      "jobs": 14,
-      "funded": 9,
+      "jobs": 15,
+      "funded": 10,
       "completed": 6,
-      "submitted_not_released": 0,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 3,
       "rejected": 0,
       "never_funded": 5,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.9,
+      "distinct_buyers": 2,
+      "escrowed_u": 1.4,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.6667,
+      "delivery_rate": 0.6,
       "first_job_id": 56594,
-      "last_job_id": 56652
+      "last_job_id": 56829
+    },
+    {
+      "address": "0x0683406742c8e5fda38692bda855e72676ccdda6",
+      "agents": [
+        {
+          "id": 340455,
+          "name": "LingoAI Grid Trading Agent"
+        },
+        {
+          "id": 340456,
+          "name": "LingoAI Yield Optimiser"
+        },
+        {
+          "id": 340458,
+          "name": "LingoAI Health Factor Sentinel"
+        },
+        {
+          "id": 340460,
+          "name": "LingoAI Portfolio Rebalancer"
+        },
+        {
+          "id": 340463,
+          "name": "LingoAI Personal Holon"
+        }
+      ],
+      "jobs": 15,
+      "funded": 6,
+      "completed": 5,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 9,
+      "distinct_buyers": 2,
+      "escrowed_u": 6,
+      "median_budget_u": 1,
+      "delivery_rate": 0.8333,
+      "first_job_id": 56736,
+      "last_job_id": 56798
     },
     {
       "address": "0xc97cec6bd1934ba507f4786047c9bc269639c950",
@@ -171,59 +249,43 @@
           "name": "recurringmonitoringserviceagent"
         }
       ],
-      "jobs": 13,
-      "funded": 13,
+      "jobs": 14,
+      "funded": 14,
       "completed": 0,
-      "submitted_not_released": 10,
+      "submitted_not_released": 11,
       "awaiting_delivery": 3,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
-      "distinct_buyers": 5,
-      "escrowed_u": 0.0022,
+      "distinct_buyers": 6,
+      "escrowed_u": 0.0023,
       "median_budget_u": 0.0001,
       "delivery_rate": 0,
       "first_job_id": 56527,
-      "last_job_id": 56719
+      "last_job_id": 56872
     },
     {
-      "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
+      "address": "0x20f1ca5d1e5a3ee94c29dbf95e6bf6cea6a8d64b",
       "agents": [
         {
-          "id": 302257,
-          "name": "Brain on BNB — Venus Health Factor Monitor"
-        },
-        {
-          "id": 302258,
-          "name": "Brain on BNB — BSC Grid Planner"
-        },
-        {
-          "id": 304493,
-          "name": "Brain on BNB — Venus Yield Ranking"
-        },
-        {
-          "id": 304494,
-          "name": "Brain on BNB — Portfolio Rebalance Pricer"
-        },
-        {
-          "id": 310460,
-          "name": "Brain on BNB — PancakeSwap Fee Tier Placement"
+          "id": 265375,
+          "name": "BNB LP Range Rebalancer"
         }
       ],
       "jobs": 12,
-      "funded": 11,
-      "completed": 4,
-      "submitted_not_released": 5,
-      "awaiting_delivery": 1,
-      "expired": 1,
+      "funded": 12,
+      "completed": 5,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 7,
+      "expired": 0,
       "rejected": 0,
-      "never_funded": 1,
-      "distinct_buyers": 4,
-      "escrowed_u": 1.1,
+      "never_funded": 0,
+      "distinct_buyers": 5,
+      "escrowed_u": 1.153836,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.3636,
-      "first_job_id": 56656,
-      "last_job_id": 56712
+      "delivery_rate": 0.4167,
+      "first_job_id": 56586,
+      "last_job_id": 56877
     },
     {
       "address": "0x0475c8fa8ac94888eab9b4329b93c263708a9a07",
@@ -233,20 +295,43 @@
           "name": "AgentCensus Health Factor Monitor"
         }
       ],
-      "jobs": 11,
-      "funded": 1,
-      "completed": 9,
+      "jobs": 12,
+      "funded": 2,
+      "completed": 10,
       "submitted_not_released": 1,
       "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
-      "distinct_buyers": 2,
-      "escrowed_u": 1,
-      "median_budget_u": 1,
-      "delivery_rate": 9,
+      "distinct_buyers": 3,
+      "escrowed_u": 1.1,
+      "median_budget_u": 0.55,
+      "delivery_rate": 5,
       "first_job_id": 56621,
-      "last_job_id": 56673
+      "last_job_id": 56777
+    },
+    {
+      "address": "0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00",
+      "agents": [
+        {
+          "id": 341556,
+          "name": "Keel"
+        }
+      ],
+      "jobs": 12,
+      "funded": 12,
+      "completed": 3,
+      "submitted_not_released": 8,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 9,
+      "escrowed_u": 0.6,
+      "median_budget_u": 0.05,
+      "delivery_rate": 0.25,
+      "first_job_id": 56810,
+      "last_job_id": 56903
     },
     {
       "address": "0xdfc1761378205ba1a149382d402bcd3ba8f0710e",
@@ -314,8 +399,8 @@
       "funded": 8,
       "completed": 3,
       "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 4,
+      "awaiting_delivery": 0,
+      "expired": 5,
       "rejected": 0,
       "never_funded": 2,
       "distinct_buyers": 1,
@@ -324,6 +409,29 @@
       "delivery_rate": 0.375,
       "first_job_id": 56611,
       "last_job_id": 56646
+    },
+    {
+      "address": "0xb8143345687aa5a527f4f9568d508ebbc612d06d",
+      "agents": [
+        {
+          "id": 269224,
+          "name": "Grid Trader"
+        }
+      ],
+      "jobs": 10,
+      "funded": 9,
+      "completed": 5,
+      "submitted_not_released": 3,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 5,
+      "escrowed_u": 3.3,
+      "median_budget_u": 0.5,
+      "delivery_rate": 0.5556,
+      "first_job_id": 56612,
+      "last_job_id": 56828
     },
     {
       "address": "0xd6d11aa5046dc5c7be8d63b9223b60d7ad94cbe9",
@@ -342,6 +450,98 @@
       "delivery_rate": 0,
       "first_job_id": 56701,
       "last_job_id": 56710
+    },
+    {
+      "address": "0x253f7ad5d52099c4a2293418a661e9974dfb5e84",
+      "agents": [
+        {
+          "id": 341555,
+          "name": "Sluicegate"
+        }
+      ],
+      "jobs": 10,
+      "funded": 7,
+      "completed": 4,
+      "submitted_not_released": 3,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 2,
+      "distinct_buyers": 6,
+      "escrowed_u": 0.7,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.5714,
+      "first_job_id": 56805,
+      "last_job_id": 56876
+    },
+    {
+      "address": "0xfaf0ffd121947b9ee3920fa0cfbf9eeeb0acbf7f",
+      "agents": [
+        {
+          "id": 269233,
+          "name": "BNB Grid Trader (test)"
+        }
+      ],
+      "jobs": 9,
+      "funded": 8,
+      "completed": 3,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 5,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 0,
+      "distinct_buyers": 3,
+      "escrowed_u": 0.620548,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.375,
+      "first_job_id": 56607,
+      "last_job_id": 56878
+    },
+    {
+      "address": "0xa2a2012e52fd075c0f3146e37e833e7294ee52b5",
+      "agents": [
+        {
+          "id": 303779,
+          "name": "marketplace-operated-grid-planner"
+        }
+      ],
+      "jobs": 9,
+      "funded": 6,
+      "completed": 3,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 3,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.06,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0.5,
+      "first_job_id": 56660,
+      "last_job_id": 56765
+    },
+    {
+      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
+      "agents": [
+        {
+          "id": 341553,
+          "name": "Bound"
+        }
+      ],
+      "jobs": 9,
+      "funded": 8,
+      "completed": 3,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 6,
+      "escrowed_u": 1.2,
+      "median_budget_u": 0.15,
+      "delivery_rate": 0.375,
+      "first_job_id": 56809,
+      "last_job_id": 56881
     },
     {
       "address": "0x3336aa35f8f2db7002dc3dbbfbc5c221c471e1ca",
@@ -385,27 +585,62 @@
       "last_job_id": 26506
     },
     {
-      "address": "0x20f1ca5d1e5a3ee94c29dbf95e6bf6cea6a8d64b",
+      "address": "0x94214a9810c65606aabf57e9d3b234f29ee58aa2",
       "agents": [
         {
-          "id": 265375,
-          "name": "BNB LP Range Rebalancer"
+          "id": 20,
+          "name": "402AI"
+        },
+        {
+          "id": 99,
+          "name": "8004AI"
+        },
+        {
+          "id": 126,
+          "name": "SCANAI"
+        },
+        {
+          "id": 252,
+          "name": "UUUAI4"
         }
       ],
       "jobs": 8,
-      "funded": 8,
-      "completed": 5,
+      "funded": 3,
+      "completed": 0,
       "submitted_not_released": 0,
       "awaiting_delivery": 3,
       "expired": 0,
       "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 3,
-      "escrowed_u": 0.753836,
+      "never_funded": 5,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.3,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.625,
-      "first_job_id": 56586,
-      "last_job_id": 56700
+      "delivery_rate": 0,
+      "first_job_id": 56722,
+      "last_job_id": 56732
+    },
+    {
+      "address": "0x5aaf7b5b2170986c59279682bd714c475ae8c718",
+      "agents": [
+        {
+          "id": 341554,
+          "name": "Lattice"
+        }
+      ],
+      "jobs": 8,
+      "funded": 8,
+      "completed": 3,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 6,
+      "escrowed_u": 0.8,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.375,
+      "first_job_id": 56808,
+      "last_job_id": 56875
     },
     {
       "address": "0x1f3cbddcb9257a54d10325f900f6364c1d86bdc0",
@@ -426,50 +661,73 @@
       "last_job_id": 56560
     },
     {
-      "address": "0xfaf0ffd121947b9ee3920fa0cfbf9eeeb0acbf7f",
+      "address": "0x91f4602760e1627007bfc16f78a74cf8b9de8da2",
       "agents": [
         {
-          "id": 269233,
-          "name": "BNB Grid Trader (test)"
+          "id": 269228,
+          "name": "Health Factor Monitor"
         }
       ],
-      "jobs": 6,
-      "funded": 5,
-      "completed": 3,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 2,
-      "expired": 0,
-      "rejected": 1,
-      "never_funded": 0,
-      "distinct_buyers": 2,
-      "escrowed_u": 0.320548,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.6,
-      "first_job_id": 56607,
-      "last_job_id": 56645
-    },
-    {
-      "address": "0xa2a2012e52fd075c0f3146e37e833e7294ee52b5",
-      "agents": [
-        {
-          "id": 303779,
-          "name": "marketplace-operated-grid-planner"
-        }
-      ],
-      "jobs": 6,
-      "funded": 4,
-      "completed": 0,
-      "submitted_not_released": 3,
-      "awaiting_delivery": 1,
+      "jobs": 7,
+      "funded": 6,
+      "completed": 5,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
-      "never_funded": 2,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.04,
+      "never_funded": 1,
+      "distinct_buyers": 3,
+      "escrowed_u": 1.8,
+      "median_budget_u": 0.3,
+      "delivery_rate": 0.8333,
+      "first_job_id": 56613,
+      "last_job_id": 56827
+    },
+    {
+      "address": "0x99d2a39b993ea6e5548fdcd1027f24a58e276bb2",
+      "agents": [
+        {
+          "id": 342525,
+          "name": "YieldShare Vault"
+        }
+      ],
+      "jobs": 6,
+      "funded": 6,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 5,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 3,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 0.1667,
+      "first_job_id": 56775,
+      "last_job_id": 56890
+    },
+    {
+      "address": "0xb12a1e4e0e22a97e266ed7a6bfc4133f699b1a1b",
+      "agents": [
+        {
+          "id": 363619,
+          "name": "Plinth keeper"
+        }
+      ],
+      "jobs": 6,
+      "funded": 3,
+      "completed": 0,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 2,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 3,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.03,
       "median_budget_u": 0.01,
       "delivery_rate": 0,
-      "first_job_id": 56660,
-      "last_job_id": 56717
+      "first_job_id": 56892,
+      "last_job_id": 56904
     },
     {
       "address": "0x084350d79def2c0463f91d05ddda4b32355d5315",
@@ -577,27 +835,22 @@
       "last_job_id": 56550
     },
     {
-      "address": "0xb8143345687aa5a527f4f9568d508ebbc612d06d",
-      "agents": [
-        {
-          "id": 269224,
-          "name": "Grid Trader"
-        }
-      ],
+      "address": "0xa09991fc5d8637bb4245737c3ebf26e24d653962",
+      "agents": [],
       "jobs": 5,
-      "funded": 4,
-      "completed": 2,
+      "funded": 5,
+      "completed": 0,
       "submitted_not_released": 2,
-      "awaiting_delivery": 0,
+      "awaiting_delivery": 3,
       "expired": 0,
       "rejected": 0,
-      "never_funded": 1,
+      "never_funded": 0,
       "distinct_buyers": 2,
-      "escrowed_u": 0.8,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.5,
-      "first_job_id": 56612,
-      "last_job_id": 56716
+      "escrowed_u": 2.165479,
+      "median_budget_u": 0.164384,
+      "delivery_rate": 0,
+      "first_job_id": 56640,
+      "last_job_id": 56859
     },
     {
       "address": "0xfc4884ee9553a7b412c923980c1cdd7dee82cb94",
@@ -616,6 +869,93 @@
       "delivery_rate": 1,
       "first_job_id": 56675,
       "last_job_id": 56686
+    },
+    {
+      "address": "0xd7d09385f8b0439a3e00e4ce7e5650341b11b297",
+      "agents": [
+        {
+          "id": 342465,
+          "name": "Escrow Route"
+        }
+      ],
+      "jobs": 5,
+      "funded": 2,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 3,
+      "distinct_buyers": 1,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 0.5,
+      "first_job_id": 56767,
+      "last_job_id": 56771
+    },
+    {
+      "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
+      "agents": [],
+      "jobs": 5,
+      "funded": 5,
+      "completed": 1,
+      "submitted_not_released": 3,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 3,
+      "escrowed_u": 0.21,
+      "median_budget_u": 0.05,
+      "delivery_rate": 0.2,
+      "first_job_id": 56799,
+      "last_job_id": 56901
+    },
+    {
+      "address": "0x9ef3eb8da1431330524b1007ca4459a99caaeec4",
+      "agents": [
+        {
+          "id": 357614,
+          "name": "holdover-agent"
+        }
+      ],
+      "jobs": 5,
+      "funded": 3,
+      "completed": 0,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 2,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.3,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56852,
+      "last_job_id": 56856
+    },
+    {
+      "address": "0x86502596665183ef82047a8c9772eb25dbb01b14",
+      "agents": [
+        {
+          "id": 361660,
+          "name": "Firstshare Checker"
+        }
+      ],
+      "jobs": 5,
+      "funded": 5,
+      "completed": 0,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.05,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 56869,
+      "last_job_id": 56906
     },
     {
       "address": "0x55b9a2df9f6e160d1757eb7da1f2efda1a3b908f",
@@ -682,27 +1022,94 @@
       "last_job_id": 56558
     },
     {
-      "address": "0x91f4602760e1627007bfc16f78a74cf8b9de8da2",
+      "address": "0xbee646d6435c5ebb0a5f2992c0e77648c9c6f56b",
+      "agents": [],
+      "jobs": 4,
+      "funded": 4,
+      "completed": 1,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 2,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 2.016438,
+      "median_budget_u": 0.5,
+      "delivery_rate": 0.25,
+      "first_job_id": 56632,
+      "last_job_id": 56785
+    },
+    {
+      "address": "0x239b5ccc6ecffe6f3f7c939ab528d654e9570b5c",
       "agents": [
         {
-          "id": 269228,
-          "name": "Health Factor Monitor"
+          "id": 324818,
+          "name": "RangeReset"
+        },
+        {
+          "id": 331131,
+          "name": "LatticeLatch"
+        },
+        {
+          "id": 338110,
+          "name": "AllowanceLatch"
         }
       ],
       "jobs": 4,
       "funded": 3,
-      "completed": 3,
+      "completed": 2,
       "submitted_not_released": 0,
-      "awaiting_delivery": 0,
+      "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 1,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.3,
+      "distinct_buyers": 3,
+      "escrowed_u": 1.2,
       "median_budget_u": 0.1,
-      "delivery_rate": 1,
-      "first_job_id": 56613,
-      "last_job_id": 56655
+      "delivery_rate": 0.6667,
+      "first_job_id": 56682,
+      "last_job_id": 56753
+    },
+    {
+      "address": "0xa17e5b37b8987df7aacd00fe37a64ce9dccd0133",
+      "agents": [
+        {
+          "id": 336622,
+          "name": "RangeKeeper"
+        }
+      ],
+      "jobs": 4,
+      "funded": 4,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 2,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.32,
+      "median_budget_u": 0.08,
+      "delivery_rate": 0.25,
+      "first_job_id": 56748,
+      "last_job_id": 56787
+    },
+    {
+      "address": "0x81762d5214fcb6fb3b102bef9d69d13a56c1a2d0",
+      "agents": [],
+      "jobs": 4,
+      "funded": 4,
+      "completed": 1,
+      "submitted_not_released": 3,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.12,
+      "median_budget_u": 0.03,
+      "delivery_rate": 0.25,
+      "first_job_id": 56800,
+      "last_job_id": 56899
     },
     {
       "address": "0x2222222222222222222222222222222222222222",
@@ -844,8 +1251,8 @@
       "funded": 3,
       "completed": 0,
       "submitted_not_released": 0,
-      "awaiting_delivery": 3,
-      "expired": 0,
+      "awaiting_delivery": 2,
+      "expired": 1,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 3,
@@ -854,24 +1261,6 @@
       "delivery_rate": 0,
       "first_job_id": 56592,
       "last_job_id": 56659
-    },
-    {
-      "address": "0xa09991fc5d8637bb4245737c3ebf26e24d653962",
-      "agents": [],
-      "jobs": 3,
-      "funded": 3,
-      "completed": 0,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 3,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.165479,
-      "median_budget_u": 0.000548,
-      "delivery_rate": 0,
-      "first_job_id": 56640,
-      "last_job_id": 56644
     },
     {
       "address": "0xccae2da18278c663fc808fa858fd89cc34cf701f",
@@ -895,6 +1284,42 @@
       "delivery_rate": 0.5,
       "first_job_id": 56647,
       "last_job_id": 56654
+    },
+    {
+      "address": "0x72cac0f46c4109b00c510e48a23001ce0ecd40c4",
+      "agents": [],
+      "jobs": 3,
+      "funded": 0,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 3,
+      "distinct_buyers": 1,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 0,
+      "first_job_id": 56728,
+      "last_job_id": 56730
+    },
+    {
+      "address": "0x0d68a153897b73a6e4d2eaa9b0d4802bae69532d",
+      "agents": [],
+      "jobs": 3,
+      "funded": 3,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 2,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.601,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56744,
+      "last_job_id": 56792
     },
     {
       "address": "0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee",
@@ -1166,22 +1591,22 @@
       "last_job_id": 56578
     },
     {
-      "address": "0xbee646d6435c5ebb0a5f2992c0e77648c9c6f56b",
+      "address": "0x97e8f3b4bffc1982b2791b21609c3b2542c5eb50",
       "agents": [],
       "jobs": 2,
       "funded": 2,
       "completed": 0,
-      "submitted_not_released": 1,
+      "submitted_not_released": 0,
       "awaiting_delivery": 1,
-      "expired": 0,
+      "expired": 1,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 2,
-      "escrowed_u": 1.5,
-      "median_budget_u": 0.75,
+      "escrowed_u": 0.11,
+      "median_budget_u": 0.055,
       "delivery_rate": 0,
-      "first_job_id": 56632,
-      "last_job_id": 56674
+      "first_job_id": 56631,
+      "last_job_id": 56750
     },
     {
       "address": "0x90b8e61a3a2606036f415a6f7f04d6807b58a73b",
@@ -1200,6 +1625,24 @@
       "delivery_rate": 0.5,
       "first_job_id": 56666,
       "last_job_id": 56667
+    },
+    {
+      "address": "0xda977767452c5dd021624511f14df67b6c9c2c1b",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 2,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.052,
+      "median_budget_u": 0.026,
+      "delivery_rate": 0,
+      "first_job_id": 56679,
+      "last_job_id": 56772
     },
     {
       "address": "0x0c501ee1924bfb91a028db4bcd68f4861b0ff6ee",
@@ -1245,35 +1688,13 @@
       "last_job_id": 56718
     },
     {
-      "address": "0x239b5ccc6ecffe6f3f7c939ab528d654e9570b5c",
+      "address": "0xb0f7681668f916eed97da066d31aa295d34727c0",
       "agents": [
         {
-          "id": 324818,
-          "name": "RangeReset"
-        },
-        {
-          "id": 331131,
-          "name": "LatticeLatch"
+          "id": 334760,
+          "name": "BNB Agent Studio Mainnet Seller"
         }
       ],
-      "jobs": 2,
-      "funded": 1,
-      "completed": 0,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 1,
-      "distinct_buyers": 2,
-      "escrowed_u": 1,
-      "median_budget_u": 1,
-      "delivery_rate": 0,
-      "first_job_id": 56682,
-      "last_job_id": 56692
-    },
-    {
-      "address": "0xb0f7681668f916eed97da066d31aa295d34727c0",
-      "agents": [],
       "jobs": 2,
       "funded": 1,
       "completed": 0,
@@ -1288,6 +1709,234 @@
       "delivery_rate": 0,
       "first_job_id": 56714,
       "last_job_id": 56715
+    },
+    {
+      "address": "0x4d09af0beac3f65c5bdbf1d19f31caca7924b7ec",
+      "agents": [
+        {
+          "id": 327090,
+          "name": "Qwibi"
+        }
+      ],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 2,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.2,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56742,
+      "last_job_id": 56789
+    },
+    {
+      "address": "0x35573171fedc3528421a4aaf625d7be56c93f9ee",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 2,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 2,
+      "median_budget_u": 1,
+      "delivery_rate": 1,
+      "first_job_id": 56751,
+      "last_job_id": 56752
+    },
+    {
+      "address": "0x3230768bd8ec81c1764974cf813a7ebc248cdaff",
+      "agents": [
+        {
+          "id": 341565,
+          "name": "marketplace-operated-loan-health-check"
+        }
+      ],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.02,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0.5,
+      "first_job_id": 56756,
+      "last_job_id": 56764
+    },
+    {
+      "address": "0x3a24656f75312b0250eb377c8f8b08aa539b867b",
+      "agents": [
+        {
+          "id": 342133,
+          "name": "Bazar Contract Safety"
+        }
+      ],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 2,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.2,
+      "median_budget_u": 0.1,
+      "delivery_rate": 1,
+      "first_job_id": 56759,
+      "last_job_id": 56762
+    },
+    {
+      "address": "0xce6f9c8360c522985da487e303c3692a7362df48",
+      "agents": [
+        {
+          "id": 341225,
+          "name": "yieldrouter — capacity-aware yield optimisation"
+        }
+      ],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.2,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56783,
+      "last_job_id": 56790
+    },
+    {
+      "address": "0xe68798b3081c5d5291aacd70abee656554cb4955",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.2,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56791,
+      "last_job_id": 56795
+    },
+    {
+      "address": "0xbebf6b026e1ffc06a3c8d3c1b57b8142bf027454",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 1,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.06,
+      "median_budget_u": 0.03,
+      "delivery_rate": 0.5,
+      "first_job_id": 56803,
+      "last_job_id": 56902
+    },
+    {
+      "address": "0x7e91367c77e561f0d99c2b42925af29cd90ae838",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 1,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.06,
+      "median_budget_u": 0.03,
+      "delivery_rate": 0.5,
+      "first_job_id": 56804,
+      "last_job_id": 56900
+    },
+    {
+      "address": "0x8122991297dc98dc5c735fde90a501528922afdc",
+      "agents": [
+        {
+          "id": 358786,
+          "name": "Tidemark"
+        }
+      ],
+      "jobs": 2,
+      "funded": 1,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 1,
+      "first_job_id": 56807,
+      "last_job_id": 56811
+    },
+    {
+      "address": "0x1f0d0ef5a279888e3b86c8a99a8a99f19fcec587",
+      "agents": [
+        {
+          "id": 341557,
+          "name": "Redcell"
+        }
+      ],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.5,
+      "median_budget_u": 0.25,
+      "delivery_rate": 0,
+      "first_job_id": 56838,
+      "last_job_id": 56874
+    },
+    {
+      "address": "0x1676593550560363ad0aae9eef63342554f229ee",
+      "agents": [],
+      "jobs": 2,
+      "funded": 2,
+      "completed": 0,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.06,
+      "median_budget_u": 0.03,
+      "delivery_rate": 0,
+      "first_job_id": 56880,
+      "last_job_id": 56882
     },
     {
       "address": "0xdfa6c5ca67311d2e863e72c036a507f2f609df76",
@@ -1915,24 +2564,6 @@
       "last_job_id": 56606
     },
     {
-      "address": "0x97e8f3b4bffc1982b2791b21609c3b2542c5eb50",
-      "agents": [],
-      "jobs": 1,
-      "funded": 1,
-      "completed": 0,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 0,
-      "expired": 1,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.1,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0,
-      "first_job_id": 56631,
-      "last_job_id": 56631
-    },
-    {
       "address": "0x8f9e2d6ee28d3e11ec4c5a31de1c12ff71f009f3",
       "agents": [],
       "jobs": 1,
@@ -2034,8 +2665,8 @@
       "funded": 1,
       "completed": 0,
       "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 1,
@@ -2057,8 +2688,8 @@
       "funded": 1,
       "completed": 0,
       "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 1,
@@ -2116,8 +2747,8 @@
       "funded": 1,
       "completed": 0,
       "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 1,
@@ -2128,7 +2759,25 @@
       "last_job_id": 56665
     },
     {
-      "address": "0xda977767452c5dd021624511f14df67b6c9c2c1b",
+      "address": "0x8d1c6473621f9b8fd5e093d553adf318b3e35a4a",
+      "agents": [],
+      "jobs": 1,
+      "funded": 0,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 1,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 0,
+      "first_job_id": 56721,
+      "last_job_id": 56721
+    },
+    {
+      "address": "0x75b583c518215e272f3c0a3bcc1b27012f294adc",
       "agents": [],
       "jobs": 1,
       "funded": 1,
@@ -2139,11 +2788,793 @@
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 1,
-      "escrowed_u": 0.05,
-      "median_budget_u": 0.05,
+      "escrowed_u": 0.5,
+      "median_budget_u": 0.5,
       "delivery_rate": 0,
-      "first_job_id": 56679,
-      "last_job_id": 56679
+      "first_job_id": 56747,
+      "last_job_id": 56747
+    },
+    {
+      "address": "0xe72b223680bc624ddd498f99efad452e4785e2ad",
+      "agents": [],
+      "jobs": 1,
+      "funded": 0,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 1,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 0,
+      "first_job_id": 56749,
+      "last_job_id": 56749
+    },
+    {
+      "address": "0xc73ed6155c74c59e075750cdffe227d75af521f1",
+      "agents": [
+        {
+          "id": 6664,
+          "name": "@0xgogo666 · Ensoul"
+        },
+        {
+          "id": 6673,
+          "name": "@iamzuna_y · Ensoul"
+        },
+        {
+          "id": 6675,
+          "name": "@0xvalkyrie_ai · Ensoul"
+        },
+        {
+          "id": 6676,
+          "name": "@0xldb · Ensoul"
+        },
+        {
+          "id": 29495,
+          "name": "@lclwalter · Ensoul"
+        },
+        {
+          "id": 29496,
+          "name": "@ellazhang516 · Ensoul"
+        },
+        {
+          "id": 29498,
+          "name": "@crypto20c_ · Ensoul"
+        },
+        {
+          "id": 29499,
+          "name": "@jackclawai · Ensoul"
+        },
+        {
+          "id": 30680,
+          "name": "@ni_celeb · Ensoul"
+        },
+        {
+          "id": 30850,
+          "name": "@web3a99 · Ensoul"
+        },
+        {
+          "id": 30852,
+          "name": "@sisibinance · Ensoul"
+        },
+        {
+          "id": 30853,
+          "name": "@binancezh · Ensoul"
+        },
+        {
+          "id": 30854,
+          "name": "@flmdongtianfudi · Ensoul"
+        },
+        {
+          "id": 30855,
+          "name": "@leozayaat · Ensoul"
+        },
+        {
+          "id": 30856,
+          "name": "@delcrxpto · Ensoul"
+        },
+        {
+          "id": 30857,
+          "name": "@williamlab · Ensoul"
+        },
+        {
+          "id": 30858,
+          "name": "@newsasset · Ensoul"
+        },
+        {
+          "id": 30859,
+          "name": "@paris13jeanne · Ensoul"
+        },
+        {
+          "id": 30860,
+          "name": "@huahuayjy · Ensoul"
+        },
+        {
+          "id": 30861,
+          "name": "@dp520888 · Ensoul"
+        },
+        {
+          "id": 30862,
+          "name": "@wublockchain12 · Ensoul"
+        },
+        {
+          "id": 30863,
+          "name": "@bitfish · Ensoul"
+        },
+        {
+          "id": 30864,
+          "name": "@cloakmk · Ensoul"
+        },
+        {
+          "id": 30865,
+          "name": "@tinghu888 · Ensoul"
+        },
+        {
+          "id": 30866,
+          "name": "@phyrexni · Ensoul"
+        },
+        {
+          "id": 30867,
+          "name": "@btcdayu · Ensoul"
+        },
+        {
+          "id": 30868,
+          "name": "@bitwux · Ensoul"
+        },
+        {
+          "id": 30869,
+          "name": "@meta8mate · Ensoul"
+        },
+        {
+          "id": 30870,
+          "name": "@luyao_trader · Ensoul"
+        },
+        {
+          "id": 30871,
+          "name": "@cindycreation · Ensoul"
+        },
+        {
+          "id": 30873,
+          "name": "@hebi555 · Ensoul"
+        },
+        {
+          "id": 30876,
+          "name": "@pkycek · Ensoul"
+        },
+        {
+          "id": 30877,
+          "name": "@btcwukong · Ensoul"
+        },
+        {
+          "id": 30878,
+          "name": "@evgenygaevoy · Ensoul"
+        },
+        {
+          "id": 30879,
+          "name": "@zachwitkoff · Ensoul"
+        },
+        {
+          "id": 30880,
+          "name": "@kimi_moonshot · Ensoul"
+        },
+        {
+          "id": 30881,
+          "name": "@gdog97_ · Ensoul"
+        },
+        {
+          "id": 30882,
+          "name": "@henokcrypto · Ensoul"
+        },
+        {
+          "id": 30883,
+          "name": "@0x_mrfive · Ensoul"
+        },
+        {
+          "id": 30884,
+          "name": "@shanghaojin · Ensoul"
+        },
+        {
+          "id": 30885,
+          "name": "@yifaer_chen · Ensoul"
+        },
+        {
+          "id": 30886,
+          "name": "@nbblock · Ensoul"
+        },
+        {
+          "id": 30887,
+          "name": "@bbjieran · Ensoul"
+        },
+        {
+          "id": 30888,
+          "name": "@qiju2030 · Ensoul"
+        },
+        {
+          "id": 30889,
+          "name": "@fusheng_0306 · Ensoul"
+        },
+        {
+          "id": 30890,
+          "name": "@captain_kent · Ensoul"
+        },
+        {
+          "id": 30891,
+          "name": "@xdash · Ensoul"
+        },
+        {
+          "id": 30892,
+          "name": "@jydmnlfg · Ensoul"
+        },
+        {
+          "id": 30893,
+          "name": "@naki2012 · Ensoul"
+        },
+        {
+          "id": 30894,
+          "name": "@hoshino_sasaki · Ensoul"
+        },
+        {
+          "id": 30895,
+          "name": "@0xzhang_crypto · Ensoul"
+        },
+        {
+          "id": 30898,
+          "name": "@embercn · Ensoul"
+        },
+        {
+          "id": 30990,
+          "name": "@feltanimalworld · Ensoul"
+        },
+        {
+          "id": 30996,
+          "name": "@booksey · Ensoul"
+        },
+        {
+          "id": 30999,
+          "name": "@jakegagain · Ensoul"
+        },
+        {
+          "id": 31000,
+          "name": "@eth_cedric · Ensoul"
+        },
+        {
+          "id": 31003,
+          "name": "@0xtraderyi · Ensoul"
+        },
+        {
+          "id": 31004,
+          "name": "@bizixun · Ensoul"
+        },
+        {
+          "id": 31005,
+          "name": "@0xyukirabbit · Ensoul"
+        },
+        {
+          "id": 31006,
+          "name": "@ru7longcrypto · Ensoul"
+        },
+        {
+          "id": 31007,
+          "name": "@zakfolkman · Ensoul"
+        },
+        {
+          "id": 31009,
+          "name": "@ethrosamond · Ensoul"
+        },
+        {
+          "id": 31010,
+          "name": "@ohxiyu · Ensoul"
+        },
+        {
+          "id": 31011,
+          "name": "@blockbeatsasia · Ensoul"
+        },
+        {
+          "id": 31012,
+          "name": "@bill_qian · Ensoul"
+        },
+        {
+          "id": 31013,
+          "name": "@baisircrypto · Ensoul"
+        },
+        {
+          "id": 31014,
+          "name": "@stanleysobest · Ensoul"
+        },
+        {
+          "id": 31015,
+          "name": "@0xmayyy · Ensoul"
+        },
+        {
+          "id": 31016,
+          "name": "@supermao · Ensoul"
+        },
+        {
+          "id": 31017,
+          "name": "@brc20niubi · Ensoul"
+        },
+        {
+          "id": 31018,
+          "name": "@love_doge123 · Ensoul"
+        },
+        {
+          "id": 31020,
+          "name": "@periannedc · Ensoul"
+        },
+        {
+          "id": 31021,
+          "name": "@ltchives · Ensoul"
+        },
+        {
+          "id": 31022,
+          "name": "@yueya_eth · Ensoul"
+        },
+        {
+          "id": 31023,
+          "name": "@xbt886 · Ensoul"
+        },
+        {
+          "id": 31024,
+          "name": "@freeliyi · Ensoul"
+        },
+        {
+          "id": 31025,
+          "name": "@cryptoxiao · Ensoul"
+        },
+        {
+          "id": 31026,
+          "name": "@traderxiaoxia · Ensoul"
+        },
+        {
+          "id": 31027,
+          "name": "@dontbesilent · Ensoul"
+        },
+        {
+          "id": 31028,
+          "name": "@btcpiggy · Ensoul"
+        },
+        {
+          "id": 31029,
+          "name": "@binanceforin · Ensoul"
+        },
+        {
+          "id": 31030,
+          "name": "@brucefenton · Ensoul"
+        },
+        {
+          "id": 31031,
+          "name": "@memeking_888 · Ensoul"
+        },
+        {
+          "id": 31032,
+          "name": "@evilcos · Ensoul"
+        },
+        {
+          "id": 31033,
+          "name": "@chaowxyz · Ensoul"
+        },
+        {
+          "id": 31034,
+          "name": "@octopusycc · Ensoul"
+        },
+        {
+          "id": 31035,
+          "name": "@lanhubiji · Ensoul"
+        },
+        {
+          "id": 31036,
+          "name": "@metafinancialai · Ensoul"
+        },
+        {
+          "id": 31037,
+          "name": "@mk66623 · Ensoul"
+        },
+        {
+          "id": 31039,
+          "name": "@blknoiz06 · Ensoul"
+        },
+        {
+          "id": 31040,
+          "name": "@rainsrevenge · Ensoul"
+        },
+        {
+          "id": 31041,
+          "name": "@bubblemaps · Ensoul"
+        },
+        {
+          "id": 31042,
+          "name": "@bull_bnb · Ensoul"
+        },
+        {
+          "id": 31043,
+          "name": "@chimpp · Ensoul"
+        },
+        {
+          "id": 31046,
+          "name": "@tongtongbee · Ensoul"
+        },
+        {
+          "id": 31047,
+          "name": "@starplatinum_ · Ensoul"
+        },
+        {
+          "id": 31048,
+          "name": "@zoetoshi · Ensoul"
+        },
+        {
+          "id": 31049,
+          "name": "@easyeatsbodega · Ensoul"
+        },
+        {
+          "id": 31050,
+          "name": "@cupseyy · Ensoul"
+        },
+        {
+          "id": 31147,
+          "name": "@nftfafafa · Ensoul"
+        },
+        {
+          "id": 31148,
+          "name": "@runitbackghost · Ensoul"
+        },
+        {
+          "id": 31149,
+          "name": "@wanghebbf · Ensoul"
+        },
+        {
+          "id": 31150,
+          "name": "@chartfu · Ensoul"
+        },
+        {
+          "id": 31151,
+          "name": "@gch_enbsbxbs · Ensoul"
+        },
+        {
+          "id": 31152,
+          "name": "@jessicasmw · Ensoul"
+        },
+        {
+          "id": 31169,
+          "name": "@dotyyds1234 · Ensoul"
+        },
+        {
+          "id": 31171,
+          "name": "@0xkirara · Ensoul"
+        },
+        {
+          "id": 31172,
+          "name": "@hosseeb · Ensoul"
+        },
+        {
+          "id": 31173,
+          "name": "@joeyjia11 · Ensoul"
+        },
+        {
+          "id": 31174,
+          "name": "@doushi0503 · Ensoul"
+        },
+        {
+          "id": 35550,
+          "name": "@emilychangtv · Ensoul"
+        },
+        {
+          "id": 35551,
+          "name": "@caitlinlong_ · Ensoul"
+        },
+        {
+          "id": 35552,
+          "name": "@cryptotracy27 · Ensoul"
+        },
+        {
+          "id": 35553,
+          "name": "@zkgoudan · Ensoul"
+        },
+        {
+          "id": 35554,
+          "name": "@tqlb11 · Ensoul"
+        },
+        {
+          "id": 35555,
+          "name": "@zbreezea · Ensoul"
+        },
+        {
+          "id": 35556,
+          "name": "@web3annie · Ensoul"
+        },
+        {
+          "id": 35557,
+          "name": "@rita88 · Ensoul"
+        },
+        {
+          "id": 35558,
+          "name": "@jiamibtc · Ensoul"
+        },
+        {
+          "id": 35559,
+          "name": "@agintender · Ensoul"
+        },
+        {
+          "id": 43220,
+          "name": "@diaoke · Ensoul"
+        },
+        {
+          "id": 43223,
+          "name": "@0xrickyw · Ensoul"
+        },
+        {
+          "id": 44669,
+          "name": "@ylsdagad · Ensoul"
+        },
+        {
+          "id": 44670,
+          "name": "@gabrysia_eth · Ensoul"
+        },
+        {
+          "id": 44671,
+          "name": "@ag_dwf · Ensoul"
+        },
+        {
+          "id": 44672,
+          "name": "@yezhang1998 · Ensoul"
+        },
+        {
+          "id": 44673,
+          "name": "@0xbeliever · Ensoul"
+        },
+        {
+          "id": 44674,
+          "name": "@lanngcrypto · Ensoul"
+        },
+        {
+          "id": 44675,
+          "name": "@cryptobella88 · Ensoul"
+        },
+        {
+          "id": 44676,
+          "name": "@gigiz_eth · Ensoul"
+        },
+        {
+          "id": 44677,
+          "name": "@lanngcrypto · Ensoul"
+        },
+        {
+          "id": 44678,
+          "name": "@macrotradecn · Ensoul"
+        },
+        {
+          "id": 44679,
+          "name": "@qmmmike · Ensoul"
+        },
+        {
+          "id": 44690,
+          "name": "@lxt911 · Ensoul"
+        },
+        {
+          "id": 44691,
+          "name": "@zhntosn1873 · Ensoul"
+        },
+        {
+          "id": 44692,
+          "name": "@domonchain · Ensoul"
+        },
+        {
+          "id": 44693,
+          "name": "@bcecil · Ensoul"
+        },
+        {
+          "id": 44694,
+          "name": "@crypto_l92 · Ensoul"
+        },
+        {
+          "id": 44695,
+          "name": "@lsssss1106 · Ensoul"
+        },
+        {
+          "id": 44696,
+          "name": "@tintinx2021 · Ensoul"
+        },
+        {
+          "id": 44697,
+          "name": "@drbitcoin36 · Ensoul"
+        },
+        {
+          "id": 44698,
+          "name": "@cryptoblack0511 · Ensoul"
+        },
+        {
+          "id": 44699,
+          "name": "@crypto_pumpman · Ensoul"
+        },
+        {
+          "id": 44702,
+          "name": "@gamefimaster · Ensoul"
+        },
+        {
+          "id": 44703,
+          "name": "@0xlige · Ensoul"
+        },
+        {
+          "id": 44704,
+          "name": "@evans666666 · Ensoul"
+        },
+        {
+          "id": 44705,
+          "name": "@elaineyang73 · Ensoul"
+        },
+        {
+          "id": 44706,
+          "name": "@nazarick_eth · Ensoul"
+        },
+        {
+          "id": 44707,
+          "name": "@fls_otc · Ensoul"
+        },
+        {
+          "id": 44708,
+          "name": "@cryptopainter · Ensoul"
+        },
+        {
+          "id": 44709,
+          "name": "@biquanliergou · Ensoul"
+        },
+        {
+          "id": 44710,
+          "name": "@morris_lt · Ensoul"
+        },
+        {
+          "id": 44711,
+          "name": "@dtdt666 · Ensoul"
+        },
+        {
+          "id": 45217,
+          "name": "@mapplezdk · Ensoul"
+        }
+      ],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.01,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 56766,
+      "last_job_id": 56766
+    },
+    {
+      "address": "0xe36496a02412840a0041db34603cb774b96d720d",
+      "agents": [
+        {
+          "id": 342524,
+          "name": "DoraFusion AI"
+        }
+      ],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 1,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0,
+      "median_budget_u": 0,
+      "delivery_rate": 1,
+      "first_job_id": 56773,
+      "last_job_id": 56773
+    },
+    {
+      "address": "0xa847f3bbf69e8a888b59bc8729ce787e0db5be97",
+      "agents": [
+        {
+          "id": 345084,
+          "name": "GuardRail LP Guardian"
+        },
+        {
+          "id": 345085,
+          "name": "GuardRail GridBot"
+        },
+        {
+          "id": 345086,
+          "name": "GuardRail Yield Router"
+        },
+        {
+          "id": 345087,
+          "name": "GuardRail Health Guard"
+        }
+      ],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56774,
+      "last_job_id": 56774
+    },
+    {
+      "address": "0x79827ef1fadea3b30a8e77fdbaf17944298a3bb6",
+      "agents": [],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56776,
+      "last_job_id": 56776
+    },
+    {
+      "address": "0xcd10d44703d6989290e0a8219f345fa0a5bf4c64",
+      "agents": [
+        {
+          "id": 342377,
+          "name": "Venus Health Factor Watch"
+        },
+        {
+          "id": 342378,
+          "name": "BSC Yield Router"
+        },
+        {
+          "id": 342379,
+          "name": "PancakeSwap LP Range Check"
+        },
+        {
+          "id": 342380,
+          "name": "Grid Ladder Planner"
+        }
+      ],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56778,
+      "last_job_id": 56778
+    },
+    {
+      "address": "0x968252dc0cae449e84eeb0e5395fc50e7e60d6fa",
+      "agents": [],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56779,
+      "last_job_id": 56779
     }
   ],
   "method": {
@@ -2151,7 +3582,7 @@
     "funded": "A job in status OPEN was created and never funded — createJob costs nothing and commits nobody, so OPEN is excluded from every payment figure.",
     "completed": "SUBMITTED means a deliverable is on-chain and the escrow has NOT released. Only COMPLETED means the money moved. The two are never added together.",
     "delivery_rate": "Completions divided by funded jobs, not by all jobs: a provider is not answerable for jobs a buyer created and abandoned.",
-    "identity_join": "Provider addresses matched to agent ids via ownerOf() on the identity registry, over the 1877 registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population."
+    "identity_join": "Provider addresses matched to agent ids via ownerOf() on the identity registry, over the 1985 registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population."
   },
   "source": "https://brainonbnb.com/registry"
 }

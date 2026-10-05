@@ -204,6 +204,9 @@ if (args.includes('--self-test')) {
     if (!/quote: \{ type: 'string'/.test(line(rd('../dashboard/_worker.js')))) fails.push('pancakeswap_range_plan on /mcp declares no quote parameter — a named pair is dropped');
     if (!/quote: \{ type: 'string'/.test(line(rd('../mcp/server.mjs'))) || !/params: \{[^}]*quote: 'quote'/.test(line(rd('../mcp/server.mjs')))) fails.push('the stdio server\'s pancakeswap_range_plan does not declare and forward quote');
     if (!/opts\.quote/.test(rd('../dashboard/range-scan.js'))) fails.push('rangePlan reads no quote — it picks the deepest quote whatever was asked');
+    // 2026-10-05: the stdio preflight had rest but no params, so the address never left and every call was a 400.
+    const pre = rd('../mcp/server.mjs').split('\n').find((l) => l.includes("name: 'bsc_token_preflight'")) || '';
+    if (!/params: \{[^}]*address: 'address'[^}]*usd: 'usd'/.test(pre)) fails.push('the stdio server\'s bsc_token_preflight does not forward address and usd');
   }
   // 2. A size in the task prefers the tool that takes a size; a size alone
   //    picks nothing, and no size adds nothing.

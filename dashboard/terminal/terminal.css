@@ -1036,9 +1036,13 @@
 #bt .hw-sw svg{width:16px;height:16px}
 @keyframes bt-hw-ring{0%{box-shadow:0 0 0 0 rgba(255,138,30,.6)}60%,100%{box-shadow:0 0 0 9px rgba(255,138,30,0)}}
 #bt .hw-sw .hw-t{font-size:.6rem;color:#ffd9a8;box-shadow:0 6px 18px rgba(0,0,0,.6)}
-/* a fright: one hop, once (when a clown shows, or under the mouse or a finger) */
-#bt .hw-o.jolt > *,#bt .hw-pk.a.jolt .hw-s{animation:bt-hw-jolt .72s cubic-bezier(.3,1.6,.5,1) 1}
-@keyframes bt-hw-jolt{0%{transform:none}22%{transform:translateY(-22%) scale(1.14) rotate(-7deg)}46%{transform:translateY(0) scale(.94) rotate(5deg)}68%{transform:translateY(-7%) rotate(-3deg)}100%{transform:none}}
+/* a fright, not a hop (operator, 2026-10-05): the frightened face (script), and one short shiver as it starts */
+#bt .hw-o.hw-sv > *,#bt .hw-pk.a.hw-sv .hw-s{animation:bt-hw-shiver .5s linear 1}
+@keyframes bt-hw-shiver{0%,100%{transform:none}12%{transform:translate(-1.5px,0) rotate(-2deg)}25%{transform:translate(1.5px,-.5px) rotate(2deg)}38%{transform:translate(-1.2px,0) rotate(-1.5deg)}51%{transform:translate(1px,0) rotate(1.2deg)}64%{transform:translate(-.6px,0) rotate(-.6deg)}77%{transform:none}}
+/* the bat's fright: wrapped in its wings (a third picture over the two of its wing beat) */
+#bt .hw-o .hw-ob img.f{position:absolute;left:0;top:0;animation:none!important;opacity:0;transition:opacity .15s ease}
+#bt .hw-o.hw-fr .hw-ob img:not(.f){opacity:0!important;animation:none!important}
+#bt .hw-o.hw-fr .hw-ob img.f{opacity:1}
 /* the switch, once more (operator, 2026-10-05: "larger, easier to see, further right — it cuts into LIVE — and it may
  * say on/off"): a pill with ON / OFF. Wide: a piece of the title row after LIVE where the row has the room (.hw-flow) */
 #bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:26px;min-width:26px;padding:0 8px 0 5px;gap:5px;font-size:.6rem;letter-spacing:.12em;background:rgba(20,10,2,.92)}
@@ -1052,3 +1056,7 @@
 #bt .bt-win:not(.portrait) .hw-sw.hw-min{height:22px;min-width:22px;padding:0 2px}
 #bt .bt-win:not(.portrait) .hw-sw.hw-min .hw-oo{display:none}
 #bt .bt-win:not(.portrait) .hw-sw.hw-min svg{width:15px;height:15px}
+
+/* the switch's name folds out UNDER it on a wide screen (2026-10-05: beside it, it lay over MOMENTS and the clock) */
+#bt .bt-win:not(.portrait) .hw-sw .hw-t{left:50%;top:calc(100% + 6px);transform:translateX(-50%) scaleY(0);transform-origin:50% 0;white-space:nowrap}
+#bt .bt-win:not(.portrait) .hw-sw.hw-say .hw-t,#bt .bt-win:not(.portrait) .hw-sw:hover .hw-t,#bt .bt-win:not(.portrait) .hw-sw:focus-visible .hw-t{transform:translateX(-50%) scaleY(1)}

@@ -4879,6 +4879,8 @@ window.__btHwSeason = hwSeason;
     for (const i of s.children) i.classList.toggle('on', i === t);
   };
   const batH = '<b><img alt="" draggable="false" data-hw="bat"><img alt="" draggable="false" class="d" data-hw="bat_down"></b>';
+  // the bat at TRADES has a third picture: wrapped in its wings, eyes wide (its fright)
+  const batT = '<b><img alt="" draggable="false" data-hw="bat"><img alt="" draggable="false" class="d" data-hw="bat_down"><img alt="" draggable="false" class="f" data-hw="bat_scared"></b>';
   const el = document.createElement('div'); el.className = 'hw' + (REDUCED ? ' hw-calm' : ''); el.setAttribute('aria-hidden', 'true');
   // LESS IS MORE (operator, 2026-10-05: "so much small stuff, it is no fun"): five things stand (stone, pumpkin, cat, web
   // with its spider, the skull in the burn), four things happen, one at a time (the clown with his balloon, the clown
@@ -4890,13 +4892,13 @@ window.__btHwSeason = hwSeason;
     + '<div class="hw-i hw-da"><img alt="" draggable="false" data-hw="dais"></div>'
     + '<div class="hw-grab"><div class="hw-grabi">' + spr('stalker', ['grab']) + '</div></div>'
     + WORKERS.map(w => '<div class="hw-bg" style="--c:' + w.c + '"><img alt="" draggable="false" data-hw="ghost"></div>').join('')
-    + '<div class="hw-i hw-o" data-k="burnA"><img alt="" draggable="false" data-hw="skull"></div>'
-    + '<div class="hw-i hw-o" data-k="burnB"><img alt="" draggable="false" data-hw="coffin"></div>'
-    + '<div class="hw-i hw-o" data-k="liq"><img alt="" draggable="false" data-hw="cauldron"></div>'
-    + '<div class="hw-i hw-o" data-k="defi">' + spr('spider', ['blink']) + '</div>'
-    + '<div class="hw-i hw-o" data-k="giggle"><img alt="" draggable="false" data-hw="candy"></div>'
+    + '<div class="hw-i hw-o" data-k="burnA">' + spr('skull', ['scared']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="burnB">' + spr('coffin', ['scared']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="liq">' + spr('cauldron', ['scared']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="defi">' + spr('spider', ['blink', 'scared']) + '</div>'
+    + '<div class="hw-i hw-o" data-k="giggle">' + spr('candy', ['scared']) + '</div>'
     + '<div class="hw-i hw-o" data-k="creator">' + spr('cat', ['blink', 'hiss']) + '</div>'
-    + '<div class="hw-i hw-o" data-k="src"><span class="hw-ob">' + batH + '</span></div>'
+    + '<div class="hw-i hw-o" data-k="src"><span class="hw-ob">' + batT + '</span></div>'
     + '<div class="hw-web r"><img alt="" draggable="false" data-hw="web"></div>' /* one web, top right (operator, 2026-10-05: less is more) */
     + '<div class="hw-gh"><div class="hw-ghb"><img class="hw-chn" alt="" draggable="false" data-hw="chain">' + spr('ghost', ['peek', 'hide']) + '</div></div>'
     + '<div class="hw-i hw-cl"><div class="hw-clip"><div class="hw-ball"><img alt="" draggable="false" data-hw="balloon"></div><div class="hw-clo">' + spr('clown', ['grin', 'blink']) + '</div></div><div class="hw-burst"><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s><s>' + batH + '</s></div></div>'
@@ -4951,7 +4953,7 @@ window.__btHwSeason = hwSeason;
   // its name folds out beside it, over whatever is there, for a moment. The class is hw-say, NOT say: `#bt .say` is
   // BOBAI's speech bubble (opacity 0, scale .6) — with it the button vanished for as long as its name showed (2026-10-05,
   // operator: "click off and the button goes too")
-  const hint = ms => { sw.classList.add('hw-say'); clearTimeout(sayT); sayT = setTimeout(() => sw.classList.remove('hw-say'), ms); };
+  const hint = ms => { const t = sw.querySelector('.hw-t'); if (t.dataset.t) t.dataset.t = t.dataset.t.replace(portrait ? 'click' : 'tap', portrait ? 'tap' : 'click'); sw.classList.add('hw-say'); clearTimeout(sayT); sayT = setTimeout(() => sw.classList.remove('hw-say'), ms); };
 
   // ---- the night behind everything: a painting fixed to the camera, drawn first, faded in by its brightness ----
   let back = null, backKey = '', backTo = 0, backLit = 0;
@@ -4985,29 +4987,53 @@ window.__btHwSeason = hwSeason;
         // the night breathes: a slow drift inside the painting's spare margin
         back.onBeforeRender = () => { const t = performance.now() / 1000; back.position.x = Math.sin(t / 23) * 0.1; back.position.y = Math.cos(t / 31) * 0.07; }; /* a breath, no more: the moon sticker sits on the painted moon */
       } else { back.material.map.dispose(); back.material.map = tex; back.material.needsUpdate = true; }
-      back._ta = tex.image.width / tex.image.height; sizeBack(); backFade(); sig = ''; /* the moon takes its place on the painted one */
+      back._ta = tex.image.width / tex.image.height; back._key = key; sizeBack(); backFade(); sig = ''; { const r = win.getBoundingClientRect(), m = moonBox(r.width, r.height); put(mo, m, m ? box(-9, -9, 1, 1) : null); } /* the moon takes its place on the painted one */
     });
+  }
+  // the moon picture sits exactly on the painted moon and comes WITH the painting (placed with the other pieces after
+  // the intro, the painted moon stood alone for a second first — operator: "the old moon is still visible")
+  function moonBox(W, H) {
+    if (!back || !back._ta || back._key !== (portrait ? 'tall' : 'wide')) return null; let M1 = null;
+    const va = W / H, ta = back._ta, wide = backKey === 'wide', mx = wide ? 0.341 : 0.816, my = wide ? 0.259 : 0.184, md = wide ? 0.056 : 0.073; let x, y, dia;
+    if (va > ta) { const ry = ta / va, oy = (1 - ry) * 0.62; x = mx * W; y = (1 - ((1 - my) - oy) / ry) * H; dia = md * W; }
+    else { const rx = va / ta, ox = (1 - rx) * (wide ? 0.2 : 0.85); x = (mx - ox) / rx * W; y = my * H; dia = md * W / rx; }
+    // the painting is drawn 7% larger than the window (sizeBack), about its middle
+    x = W / 2 + (x - W / 2) * 1.07; y = H / 2 + (y - H / 2) * 1.07; dia *= 1.07;
+    const mr = cl3(dia * 0.64, 16, 54); /* the picture's moon is a little larger than the painted one it covers */ M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
+    return M1;
   }
   function lights(v) {
     for (const d of DEST) { if (!(d.pct > 0)) continue; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; }
     coreOrb.visible = v;
   }
   // the bots' ghosts ride on the bots' own places, frame by frame (behind the brain they pale, like the bots' names)
-  let flying = false, gsz = 22;
+  // Small, about the size of the bots' own lights, and there from the first frame the bots are (operator, 2026-10-05:
+  // "the ghosts at loading must be much smaller and already be at the brain" — they used to pop in, twice as large,
+  // only once the bots' names showed)
+  let flying = false, gsz = 0;
   function fly() {
     if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!win.offsetWidth || !A.figHpx) return;
-    for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i]; e.style.transform = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)'; e.style.opacity = parseFloat(w.el.style.opacity) > 0 ? (w.pos.z > A.head.z ? '.95' : '.38') : '0'; } /* only once the bots circle the brain: their names show from then on (operator: "at the start the ghosts must already be at the brain") */
+    const g = Math.round(cl3(A.figHpx * (portrait ? 0.042 : 0.046), 9, 16)); if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
+    for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i]; e.style.transform = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)'; e.style.opacity = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); }
   }
   function load() {
     for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (!i.getAttribute('src')) { i.addEventListener('load', () => { sig = ''; }, { once: true }); i.src = BASE + 'hw/' + i.dataset.hw + '.webp' + Q; } });
-    if (BACKDROP) loadBack();
   }
 
   // ---- finding free spots (all in window pixels) ----
   const box = (x, y, w, h) => ({ l: x, t: y, r: x + w, b: y + h });
   const cut = (a, b, pad = 0) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
   // a piece's place; c = the part of it that must stay free (a thread or a rising balloon may pass behind things)
-  const put = (e, b, c) => { if (!b) { e.classList.remove('put'); e._b = e._c = null; return; } Object.assign(e.style, { left: b.l + 'px', top: b.t + 'px', width: b.r - b.l + 'px', height: b.b - b.t + 'px' }); e.classList.add('put'); e._b = b; e._c = c || b; };
+  // A piece that must go somewhere else fades out and comes up at its new place: moved while seen, it jumped across the
+  // scene (operator, 2026-10-05: the phone's moon "goes first to the old one and then to its right place")
+  const put = (e, b, c) => {
+    clearTimeout(e._mv);
+    if (!b) { e.classList.remove('put'); e._b = e._c = null; return; }
+    const o = e._b, far = o && e.classList.contains('put') && e.classList.contains('hw-i') && (Math.abs(o.l - b.l) > 8 || Math.abs(o.t - b.t) > 8 || Math.abs((o.r - o.l) - (b.r - b.l)) > 12);
+    const go = () => { Object.assign(e.style, { left: b.l + 'px', top: b.t + 'px', width: b.r - b.l + 'px', height: b.b - b.t + 'px' }); e.classList.add('put'); };
+    e._b = b; e._c = c || b;
+    if (far) { e.classList.remove('put'); e._mv = setTimeout(go, 260); } else go();
+  };
   let walls = [], term = null, sig = '', hudB = 60;
   function read() {
     const r = win.getBoundingClientRect(); walls = []; term = null;
@@ -5029,7 +5055,6 @@ window.__btHwSeason = hwSeason;
     if (!A.figScreen || !A.figHpx) return false;
     const r = read(), W = r.width, H = r.height, fs = A.figScreen, fh = A.figHpx, fw = A.figW, feet = fs.y + fh * 0.405; /* the ground line just in front of his shoes (the figure's box reaches further down) */
     el.style.setProperty('--w', W + 'px'); el.style.setProperty('--h', H + 'px');
-    gsz = cl3(fh * 0.075, 14, 27); el.style.setProperty('--bg', gsz + 'px');
     const trunk = box(fs.x - fw * 0.2, fs.y - fh * 0.5, fw * 0.4, fh), head = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); // his trunk and his head: nothing of ours hides behind them
     const taken = [];
     const him = b => cut(b, trunk) || cut(b, head);
@@ -5062,7 +5087,7 @@ window.__btHwSeason = hwSeason;
     const dW = cl3(fw * (portrait ? 1.3 : 1.9), 90, portrait ? 280 : 580), dH = dW * 260 / 640;
     put(da, box(fs.x - dW / 2, feet - dH * 0.2, dW, dH));
     // --- the brain pumpkin lives in the buyback ring: the ring charges round it
-    { const c = toScreen(A.core), z = cl3(fh * (portrait ? 0.15 : 0.215), 30, 96); put(pkA, box(c.x - z / 2, c.y - z * 0.52, z, z * 260 / 253)); }
+    { const c = toScreen(A.core), z = cl3(fh * (portrait ? 0.14 : 0.215), 30, 96); put(pkA, box(c.x - z / 2, c.y - z * (portrait ? 0.6 : 0.52), z, z * 260 / 253)); }
     // --- every station wears its costume, on its own light
     const stage = fh * (portrait ? 0.11 : 0.138), SZ = { burnA: 0.92, burnB: 1.05, liq: 1.12, defi: 1.2, giggle: 1.08, creator: 1.15, src: 1.25 };
     for (const o of ORBS) {
@@ -5070,7 +5095,10 @@ window.__btHwSeason = hwSeason;
       const c = toScreen(d ? d.pos : A.src), i = o.querySelector('img'), z = cl3(stage * SZ[k], 20, 60), ar = i.naturalWidth ? i.naturalHeight / i.naturalWidth : 1;
       const w = ar > 1.25 ? z / ar * 1.15 : z;
       // it leans away from its label: the label stands right of the light on a wide screen, under it on a phone
-      put(o, k === 'src' || portrait ? box(c.x - w / 2, c.y - w * ar * (portrait ? 0.66 : 0.54), w, w * ar) : box(c.x - w * 0.64, c.y - w * ar * 0.54, w, w * ar));
+      let b = k === 'src' || portrait ? box(c.x - w / 2, c.y - w * ar * (portrait ? 0.66 : 0.54), w, w * ar) : box(c.x - w * 0.64, c.y - w * ar * 0.54, w, w * ar);
+      // a phone stacks the buyback ring right over BURN $BOB: the coffin stood half behind the pumpkin — it steps down clear of it
+      if (pkA._b && cut(b, pkA._b)) { const d = Math.min(12, pkA._b.b + 2 - b.t); b = box(b.l, b.t + d, b.r - b.l, b.b - b.t); }
+      put(o, b);
     }
     // --- the skeleton hand (wide screens): it comes up behind the timeline's top edge
     let H1 = null, Hc = null; const tl = walls.find(w => w.e && w.e.classList.contains('tl'));
@@ -5097,28 +5125,20 @@ window.__btHwSeason = hwSeason;
     // --- a moon where the sky has room: left of his head, under the title row
     let M1 = null;
     { const top = fs.y - fh * 0.5, gap = top - hudB, mr = cl3(fh * 0.13, 20, 46);
-      if (EXTRAS && gap > mr * 1.6) for (const fx of portrait ? [0.82, 0.14] : [fs.x / W - fw * 1.05 / W, fs.x / W + fw * 1.0 / W, 0.5]) {
+      if (EXTRAS && !BACKDROP && gap > mr * 1.6) for (const fx of portrait ? [0.82, 0.14] : [fs.x / W - fw * 1.05 / W, fs.x / W + fw * 1.0 / W, 0.5]) {
         const b = box(W * fx - mr, hudB + gap * 0.46 - mr, mr * 2, mr * 2); if (ok(b, 6, true)) { M1 = b; break; }
       } }
     // with the far night behind: ONE moon — the sticker sits exactly on the painted one (where it stands in the window
     // follows from how the painting is cut to the window, see sizeBack)
-    if (BACKDROP && back && back._ta) {
-      const va = W / H, ta = back._ta, wide = backKey === 'wide', mx = wide ? 0.341 : 0.816, my = wide ? 0.259 : 0.184, md = wide ? 0.056 : 0.073; let x, y, dia;
-      if (va > ta) { const ry = ta / va, oy = (1 - ry) * 0.62; x = mx * W; y = (1 - ((1 - my) - oy) / ry) * H; dia = md * W; }
-      else { const rx = va / ta, ox = (1 - rx) * (wide ? 0.2 : 0.85); x = (mx - ox) / rx * W; y = my * H; dia = md * W / rx; }
-      // the painting is drawn 7% larger than the window (sizeBack), about its middle
-      x = W / 2 + (x - W / 2) * 1.07; y = H / 2 + (y - H / 2) * 1.07; dia *= 1.07;
-      const mr = cl3(dia * 0.74, 16, 60); M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
-    }
+    if (BACKDROP) M1 = moonBox(W, H);
     // the same moon on every screen (operator, 2026-10-05: "the phone's moon can be the same as the desktop's"): on a small
     // window it may stand partly behind a button of the title row — better than the painted one alone
     put(mo, M1, M1 ? box(-9, -9, 1, 1) : null); if (M1) taken.push(M1);
     // --- a chain of blocks hangs from the top edge, in a free column (it may pass behind the title row's buttons; its lower half must be free)
     let C1 = null;
     { const chh = cl3(H * 0.27, 90, 240), cw2 = chh * 96 / 300;
-      for (const f of portrait ? [0.9, 0.08] : [0.6, 0.52, 0.68, 0.44, 0.36, 0.76, 0.28]) { const b = box(W * f - cw2 / 2, -chh * 0.06, cw2, chh), rest = box(b.l, hudB + 4, cw2, Math.max(8, b.b - hudB - 4)); if (b.l >= 2 && b.r <= W - 2 && b.b > hudB + 30 && !walls.some(w => cut(rest, w, 5)) && !him(rest) && !taken.some(t => cut(rest, t, 4))) { C1 = b; put(hc, b, rest); taken.push(rest); break; } } }
+      for (const f of portrait ? [0.9, 0.08] : [0.6, 0.52, 0.68, 0.44, 0.36, 0.76, 0.28]) { const b = box(W * f - cw2 / 2, -chh * 0.06, cw2, chh), rest = box(b.l, 0, cw2, b.b); if (b.l >= 2 && b.r <= W - 2 && b.b > hudB + 30 && !walls.some(w => cut(rest, w, 5)) && !him(rest) && !taken.some(t => cut(rest, t, 4))) { C1 = b; put(hc, b, rest); taken.push(rest); break; } } }
     if (!C1) put(hc, null);
-    if (BACKDROP && (portrait ? 'tall' : 'wide') !== backKey && on) loadBack();
     sizeBack();
     return true;
   }
@@ -5156,12 +5176,23 @@ window.__btHwSeason = hwSeason;
   const live = () => on && !document.hidden && win.offsetWidth > 0 && sig !== '';
   const loop = (min, max, fn, first) => { const go = () => { if (live()) fn(); after(R(min, max), go); }; after(first == null ? R(min, max) : first, go); };
   let scared = false, ghOn = false;
-  // one small start (a hop, once) — the stage stays calm otherwise
-  const jolt = (e, wait = 0) => { if (!e || !e._b) return; const now = performance.now(); if (now - (e._j || 0) < 2200) return; e._j = now; setTimeout(() => { e.classList.remove('jolt'); void e.offsetWidth; e.classList.add('jolt'); setTimeout(() => e.classList.remove('jolt'), 760); }, wait); };
+  // A FRIGHT, not a hop (operator, 2026-10-05: "the symbols must not hop when one moves over them, they must do the
+  // scared phase"): every costume has a frightened face — the pumpkin screams, the cat hisses, skull, coffin, cauldron,
+  // pail and spider stare in terror, the bat wraps itself in its wings — with one short shiver as it starts
+  const FEAR = new Map([[pkA, 'scream'], [cat, 'hiss']]);
+  for (const o of ORBS) if (!FEAR.has(o) && o.querySelector('.hw-s')) FEAR.set(o, 'scared');
+  const batO = $h('.hw-o[data-k="src"]');
+  function fright(o, v) {
+    if (!o) return;
+    if (o === batO) o.classList.toggle('hw-fr', v && !o.classList.contains('fly')); else frame(o, v ? FEAR.get(o) || '' : '');
+    if (v) { o.classList.remove('hw-sv'); void o.offsetWidth; o.classList.add('hw-sv'); clearTimeout(o._sv); o._sv = setTimeout(() => o.classList.remove('hw-sv'), 520); }
+  }
+  const jolt = (e, wait = 0) => { if (!e || !e._b) return; setTimeout(() => { fright(e, true); clearTimeout(e._fo); e._fo = setTimeout(() => { if (!scared) fright(e, false); }, 1700); }, wait); };
   function scare(v) {
-    if (v && !scared) for (const o of [pkA, ...ORBS]) jolt(o, Math.random() * 380); // they all start when a clown shows (operator)
+    // they all take fright when a clown shows (operator), one after another within a moment
+    if (v !== scared) for (const o of [pkA, ...ORBS]) { clearTimeout(o._fo); if (v) setTimeout(() => { if (scared) fright(o, true); }, Math.random() * 380); else fright(o, false); }
     scared = v;
-    frame(pkA, v ? 'scream' : ''); frame(sp, v ? 'blink' : ''); frame(cat, v ? 'hiss' : ''); if (ghOn) frame(gh, v ? 'hide' : '');
+    if (ghOn) frame(gh, v ? 'hide' : '');
   }
   // the clown: balloon first, then the gloves and the eyes, the grin, a blink, and down again
   function clownScene() {
@@ -5182,7 +5213,7 @@ window.__btHwSeason = hwSeason;
   function batRun() {
     if (!bat._b || !pkA._b || bat.classList.contains('fly') || scared) return false;
     const dx = (pkA._b.l + pkA._b.r) / 2 - (bat._b.l + bat._b.r) / 2, dy = pkA._b.t - (bat._b.t + bat._b.b) / 2 - 6;
-    bat.style.setProperty('--fx', dx + 'px'); bat.style.setProperty('--fy', dy + 'px'); bat.classList.add('fly');
+    bat.style.setProperty('--fx', dx + 'px'); bat.style.setProperty('--fy', dy + 'px'); bat.classList.remove('hw-fr'); bat.classList.add('fly');
     after(2600, () => { pkA.classList.add('blip'); after(500, () => pkA.classList.remove('blip')); });
     after(6400, () => bat.classList.remove('fly'));
     return true;
@@ -5239,21 +5270,19 @@ window.__btHwSeason = hwSeason;
     }, 200);
     return true;
   }
-  // under the mouse or a finger a symbol starts too (operator: "when one moves over the symbols they may get a fright")
-  const FACE = new Map([[pkA, 'scream']]);
+  // under the mouse or a finger a symbol takes fright (operator: "when one moves over the symbols they may get a fright")
   function poke(ev) {
     if (!on || scared) return; const r = win.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
     for (const o of [pkA, ...ORBS]) { const b = o._b; if (!b || x < b.l || x > b.r || y < b.t || y > b.b) continue;
-      if (performance.now() - (o._j || 0) < 2200) return; jolt(o);
-      const f = FACE.get(o); if (f) { frame(o, f); setTimeout(() => { if (!scared) frame(o, ''); }, 1100); }
+      if (performance.now() - (o._j || 0) < 2200) return; o._j = performance.now(); jolt(o);
       return; }
   }
-  FACE.set(cat, 'hiss'); FACE.set(sp, 'blink');
   win.addEventListener('pointermove', poke, { passive: true }); win.addEventListener('pointerdown', poke, { passive: true });
   function start() {
-    loop(7000, 13000, () => { if (!scared) frame(pkA, Math.random() < 0.5 ? 'right' : ''); });
-    loop(6000, 12000, () => { if (!scared) { frame(sp, 'blink'); after(170, () => { if (!scared) frame(sp, ''); }); } });
-    loop(5000, 11000, () => { if (!scared) { frame(cat, 'blink'); after(190, () => { if (!scared) frame(cat, ''); }); } });
+    const calmNow = o => !scared && performance.now() - (o._j || 0) > 2400; // not in the middle of a fright
+    loop(7000, 13000, () => { if (calmNow(pkA)) frame(pkA, Math.random() < 0.5 ? 'right' : ''); });
+    loop(6000, 12000, () => { if (calmNow(sp)) { frame(sp, 'blink'); after(170, () => { if (calmNow(sp)) frame(sp, ''); }); } });
+    loop(5000, 11000, () => { if (calmNow(cat)) { frame(cat, 'blink'); after(190, () => { if (calmNow(cat)) frame(cat, ''); }); } });
     // THE DIRECTOR (operator: "far too nervous"): one thing at a time, in turn, with a long breath between
     if (!REDUCED) {
       const SHOW = [clownScene, batRun, roam, handScene, grabScene, batRun, roam]; let i = 0;
@@ -5264,7 +5293,7 @@ window.__btHwSeason = hwSeason;
   function stop() {
     for (const id of T) clearTimeout(id); T.clear(); clearInterval(grabT); grabT = 0; grab.classList.remove('on'); scared = false; ghOn = false;
     cl.classList.remove('act', 'ball', 'up1', 'up2'); hd.classList.remove('up'); bat.classList.remove('fly'); pkA.classList.remove('blip'); for (const p of [pkA, cd, ...ORBS]) p.classList.remove('shake'); gh.style.opacity = '0';
-    for (const root of [pkA, sp, gh, cat, hd]) frame(root, ''); frame(cl, '');
+    for (const root of [pkA, ...ORBS, gh, hd]) frame(root, ''); frame(cl, ''); batO.classList.remove('hw-fr');
   }
 
   // looked at every few seconds, moved only when the window changed or something now lies over a piece
@@ -5272,6 +5301,11 @@ window.__btHwSeason = hwSeason;
   function tick() {
     if (!on || !win.offsetWidth) { since = 0; return; }
     detailDecor(); swPlace(); lights(false); // the tax phase's own redraw may have lit a station again
+    // the night behind: only once the window's shape is known — loaded earlier, a phone got the wide painting first and
+    // its moon showed, then the tall one's, and the moon picture went to the one and then to the other (operator, 2026-10-05)
+    if (BACKDROP && A.figHpx && (portrait ? 'tall' : 'wide') !== backKey) loadBack();
+    // the pieces come once the intro is over and the labels stand: placed while the camera still settled, they jumped
+    if (!labs.querySelector('.lab.show')) return;
     if (++since < 2) return; // the labels settle first
     const s = sigNow();
     if (s !== sig) { if (place()) sig = s; return; }
@@ -5302,7 +5336,7 @@ window.__btHwSeason = hwSeason;
   }
   sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
   // said once at the start, so the small pumpkin is understood
-  setTimeout(() => hint(9000), 3600);
+  setTimeout(() => hint(5000), 3600);
   set(on, false);
   window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
     // the scene's own lights at the stations: hidden with the look, back exactly as they were without it

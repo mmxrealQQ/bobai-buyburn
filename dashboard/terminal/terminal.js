@@ -3935,7 +3935,7 @@ function openCx(on) {
   if (was !== on) dispatchEvent(new CustomEvent('bt:chart', { detail: on }));
   if (!on) { CX.hover = -1; return; }
   setFocus(null); pinnedK = null; cxPaintHead(); cxLiq().then(cxPaintHead);
-  if (!QUEUE.length && performance.now() >= sceneUntil) { setPose(poseOr('think'), 5); const w = chartWords(); if (w) speak(`My chart. ${w.s} in 24 hours. The marks under the candles are me, working.`, 5200); }
+  if (!QUEUE.length && performance.now() >= sceneUntil) { setPose(poseOr('think'), 5); const w = chartWords(); if (w) speak(`My chart. ${w.s} in 24 hours. Every mark on it is me, working.`, 5200); }
 }
 cxOpen.onclick = e => { e.stopPropagation(); openCx(true); };
 // the Brain page's card 05 (THE CHART) opens this same view

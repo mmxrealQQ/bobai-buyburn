@@ -2685,6 +2685,14 @@ function buildEvents() {
     for (const [k, v] of Object.entries(r.steps || {})) for (const s of (Array.isArray(v) ? v : [v]))
       if (s?.acted && STEP[k]) ev.push({ id: 'd' + r.at + k + (s.source || ''), t: Date.parse(r.at) + 5, kind: 'defi', step: STEP[k], key: k, s });
   }
+  // ONE RUN, ONE SCENE (2026-10-05, operator: "the DeFi agent only ONE animation when it buys and new capital at work"):
+  // the daily run often collects its fees (half buys BOBAI) AND puts new capital to work in the same pass — two boards
+  // and two clips back to back; the same with a range move or a reserve reset. The capital rides on the run's main step
+  // (x.also): one board with a NEW CAPITAL row, one clip, both log lines
+  for (const c of ev.filter(x => x.kind === 'defi' && x.key !== 'increase')) {
+    const i = ev.findIndex(y => y.kind === 'defi' && y.key === 'increase' && y.t === c.t);
+    if (i >= 0) { c.also = ev[i].s; ev.splice(i, 1); }
+  }
   // THE BUYBACK'S SHARE COMES AFTER THE BUYBACK (2026-10-03, operator: "NEW CAPITAL AT WORK twice, at the last one"): a
   // run's time is when it ENDS, its DeFi share lands mid-run and the agent can put it to work before that (3.10.: agent
   // 14:21:11, run 14:21:19) — the film showed the capital before its own burn, right after the previous capital board
@@ -2739,6 +2747,7 @@ function run(x, fast) {
     const fees = x.s.produced_bnb ? ` ${bnbF(x.s.produced_bnb)}` : '';
     if (fees) floatAt(D.defi.pos, '+' + fees.trim(), D.defi.c);
     logLine('DEFI', D.defi.c, ['agent ', [x.step], fees], (x.s.txs || []).slice(0, 2).map(t => ['tx', t.hash]), x.t);
+    if (x.also) logLine('DEFI', D.defi.c, ['agent ', ['put new capital to work'], ' ' + bnbF(capOf(x.also))], (x.also.txs || []).slice(0, 2).map(t => ['tx', t.hash]), x.t);
   } else if (x.kind === 'trade') {
     const col = x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC;
     if (x.ours) { fire(A.core, new THREE.Color(col)); logLine('BOBAI', col, [whoTraded(x), [x.buy ? 'bought' : 'sold'], ' $' + nf(x.usd, 2) + ' of BOBAI'], [['tx', x.tx]], x.t); }
@@ -3182,11 +3191,12 @@ function flipLiq(l) {
   return { head: 'INTO THE POOL', rows: [['LIQUIDITY SHARE', bnbF(l.bnb), D.liq.c], ['HALF BOUGHT', cmp(l.bobaiBought) + ' BOBAI'], ['LP BURNED', nf(l.lpBurned, 2), '#F0B90B'], ['POOL LOCKED', lpText()]] };
 }
 // the DeFi agent: what the step did, as figures; the range drawn under it
+const capOf = s => +s.bnb_spent || +s.would_add?.wbnb || +s.spendable_bnb || 0; // BNB an increase step put in
 const DEFI_BOARD = {
   collect: s => { const got = +s.produced_bnb || +s.owed?.bnb_equivalent || 0;
     return ['FEES COLLECTED', { head: 'PAYDAY', rows: [['FEES EARNED', bnbF(got), D.defi.c], ['BOBAI BOUGHT', s.bobai_units ? cmp(s.bobai_units) : null, '#F0B90B'], ['BACK TO WORK', s.kept_bnb ? bnbF(s.kept_bnb) : null]],
       split: [[+s.bobai_bnb || got / 2, '#F0B90B', 'BUYS BOBAI'], [+s.kept_bnb || got / 2, D.defi.c, 'CAPITAL']], ring: 'FEES' }]; },
-  increase: s => ['NEW CAPITAL AT WORK', { head: 'MORE IN THE POOL', rows: [['ADDED', bnbF(+s.bnb_spent || +s.would_add?.wbnb || +s.spendable_bnb || 0), D.defi.c], ['POSITION NOW', s.value_after_bnb ? bnbF(s.value_after_bnb) : null]], meter: s }],
+  increase: s => ['NEW CAPITAL AT WORK', { head: 'MORE IN THE POOL', rows: [['ADDED', bnbF(capOf(s)), D.defi.c], ['POSITION NOW', s.value_after_bnb ? bnbF(s.value_after_bnb) : null]], meter: s }],
   // a one-sided re-set sits right beside the price with no trade and earns once the price steps back in
   rebalance: s => ['RANGE MOVED', { head: s.one_sided ? 'PARKED BESIDE THE PRICE' : 'BACK AROUND THE PRICE', rows: [['WIDTH', s.width_pct ? '±' + s.width_pct + '%' : null, D.defi.c], ['TRADE', s.one_sided ? 'NONE' : 'REBALANCED'], ['GAS', s.gas_bnb ? bnbF(s.gas_bnb) : null], ['TO BOBAI', +s.fees_to_bobai_bnb ? bnbF(s.fees_to_bobai_bnb) : null, '#F0B90B']], meter: s }],
   // the meter shows the reserve range it just set (new_reserve_ticks), not the main one (it has no ticks of its own: the
@@ -3232,6 +3242,7 @@ function boardScene(t, col, pose, kicker, title, spec, hold) {
 }
 function defiScene(x, fast) {
   const [title, spec] = (DEFI_BOARD[x.key] || (() => ['AT WORK', { head: x.step, rows: [] }]))(x.s || {});
+  if (x.also) { if (x.key === 'collect') spec.head = 'PAYDAY · MORE IN THE POOL'; spec.rows.push(['NEW CAPITAL', bnbF(capOf(x.also)), D.defi.c]); } // the same run's capital (buildEvents)
   const bought = +x.s?.bobai_units > 0 || +x.s?.fees_to_bobai_bnb > 0; // its fees bought BOBAI: the robot brings the coins
   boardScene(x.t, D.defi.c, bought ? 'defi-buy' : x.key === 'increase' ? 'defi-cap' : 'defi', "BOBAI'S DEFI AGENT", title, spec, 7.0);
   D.defi.boost = 1; hitDest('defi');

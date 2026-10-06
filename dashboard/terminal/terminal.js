@@ -483,7 +483,7 @@ function atWork(k) {
     buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. The burns are coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
       : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next trades, then my bot splits it.', `Full queue: ${cmp(S.queued)} BOBAI of tax, waiting for the next trade to swap it.`, 'The tax queue reached its mark. One of the next trades carries the swap, then the burns follow.',
         'Queue full, swap pending. The token does it inside a trade, not on a timer.', `${cmp(S.queued)} BOBAI of tax is ready. The next trade or two turns it into BNB for my bots.`])
-      : vary('v4', [`The tax is ${left}% of the way to the token's 400K swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next 400K tax swap.`, `My tax queue is ${left}% full. At 400K BOBAI it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to 400K.`])],
+      : vary('v4', [`The tax is ${left}% of the way to the token's ${cmp(MIN_DISPATCH)} swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next ${cmp(MIN_DISPATCH)} tax swap.`, `My tax queue is ${left}% full. At ${cmp(MIN_DISPATCH)} BOBAI it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to ${cmp(MIN_DISPATCH)}.`])],
     agent: () => [poseOr('think'), vary('v5', agentLines())],
   }[k];
   if (!said) return;
@@ -1785,14 +1785,14 @@ const MOOD_JOKES = {
 };
 const MOOD_BUILD = {
   up: ['Green day, same machine: 3% of every trade, split by the phase table, burned and locked on-chain. The chart is the result, not the plan.',
-    'Up days fill the tax queue faster. At 400K BOBAI the token contract swaps it, and the buyback bot splits the BNB the same day.',
+    () => `Up days fill the tax queue faster. At ${cmp(MIN_DISPATCH)} BOBAI the token contract swaps it, and the buyback bot splits the BNB the same day.`, // the mark as the token reads it now (minDispatch, 2026-10-06)
     'Green or not, the rule is the same: 3% of every trade, split on-chain, every step with its own transaction.',
     'More trades on green days means more tax, and more tax means bigger burns. My bot does the math every ten minutes.',
     'Up days are a good time to check the receipts. Every burn and every liquidity add on this screen has its transaction.',
     'Price up, LP still burned. The deeper the pool, the calmer the candles.'],
   side: ['Sideways is when building happens. The bots check every ten minutes, the LP stays burned, the DeFi agent works its range.',
     'No drama, just mechanics: every trade pays 3%, and my bot splits it between the circles you see around me.', // true in every tax phase, the creator share included (2026-10-05)
-    'Flat days are honest days. The tax queue fills, the token swaps it at 400K BOBAI, and my bot splits the BNB.',
+    () => `Flat days are honest days. The tax queue fills, the token swaps it at ${cmp(MIN_DISPATCH)} BOBAI, and my bot splits the BNB.`,
     'While the chart rests, the bots do not. Every ten minutes they check, split and write it all on-chain.',
     'Quiet chart, loud receipts: every step my bots take is a transaction anyone can check on BscScan.',
     'Sideways is a good day to look under the hood. Tap a circle around me and I tell you what its bot did last.'],
@@ -2232,7 +2232,7 @@ function ownMoment(act) {
   const r = Math.random();
   // his hard hat: building on BNB Chain — half the time explained the way today's market needs it
   // a line that names the hard hat or the blocks comes with them, however lately he wore it (2026-10-05)
-  if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend], line = mb && Math.random() < 0.5 ? pick(mb) : pick(BUILD), named = moveForLine(line, null); setPose(named || poseOr('build'), 6, !!named); speak(line, 6600); return true; }
+  if (r < 0.25) { const mb = MOOD_BUILD[LIFE.combo?.trend], line = mb && Math.random() < 0.5 ? vary(pick(mb)) : pick(BUILD), named = moveForLine(line, null); setPose(named || poseOr('build'), 6, !!named); speak(line, 6600); return true; }
   // a work line keeps the move that shows what it says, also when that move was seen lately (2026-10-05: it took any
   // other move then — "This week I burned…" with a coffee again — and marked a line of that move as said)
   if (r < 0.6 && S.burns.length) { const [mv0, fn, mvOf] = pick(WORK), line = fn(), mv = (mvOf && mvOf()) || mv0; if (line) { setPose(moveForLine(line, null) || poseOr(mv), 6, true); speak(line, 5600); return true; } }
@@ -4244,9 +4244,13 @@ function agentLines() {
     `My agent server: ${n} tool call${use === 1 ? '' : 's'} by other agents today — crawlers not counted.`,
   ];
 }
+let HBN = 0;
 async function heartbeats(first) {
   // two small reads; the agent record and the NFT state come from logs(), which already fetched them
-  const [h, st, det] = await Promise.allSettled([getJSON('https://logs.brainonbnb.com/health'), getJSON(AG + '/stats'), getJSON(AG + '/stats/detail')])
+  // the bots' heartbeats every 15 s; the day's request counts once a minute (2026-10-06: /stats was 9 KB every 15 s for a
+  // figure he says now and then, and /stats/detail is refreshed at the edge only every two minutes anyway)
+  const counts = first || HBN++ % 4 === 0;
+  const [h, st, det] = await Promise.allSettled([getJSON('https://logs.brainonbnb.com/health'), counts ? getJSON(AG + '/stats') : null, counts ? getJSON(AG + '/stats/detail') : null])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   const lp = S.lp, nft = S.nft;
   const seen = (k, v, t, text, n) => {
@@ -4272,6 +4276,7 @@ async function heartbeats(first) {
   if (det?.names && det.day === new Date().toISOString().slice(0, 10)) {
     let use = 0, menu = 0;
     for (const [k, v] of Object.entries(det.names)) {
+      if (/^rest:ext:(total|circulating)-supply$/.test(k)) continue; // listing sites polling the supply on a timer are no agents using him (2026-10-06)
       if (/^(mcp|paidmcp):(tools_)?call:|^rest:ext:|^sell:answer:[a-z_]+:paid|^sell:watch:paid/.test(k)) use += +v || 0;
       else if (/^mcp:(initialize|tools_list|prompts_list|resources_list)$|^paidmcp:tools_list$/.test(k)) menu += +v || 0;
     }

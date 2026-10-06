@@ -82,13 +82,16 @@ for (const id of OURS) {
 head('Real use today (rolled-up /stats/detail)');
 const day = new Date().toISOString().slice(0, 10);
 const det = (await get(`${AG}/stats/detail?day=${day}&r=${Date.now()}`)) || { names: {} };
-let use = 0, menu = 0; const uses = [];
+let use = 0, menu = 0, feeds = 0; const uses = [];
 for (const [k, v] of Object.entries(det.names)) {
-  if (/^(mcp|paidmcp):(tools_)?call:|^rest:ext:|^sell:answer:[a-z_]+:paid|^sell:watch:paid/.test(k)) { use += v; uses.push(`${k.replace(/^rest:ext:|^mcp:call:/, '')} ${v}`); }
+  // the supply figures are polled by listing sites (CMC, CoinGecko) on a timer: answered, but no agent using a tool (2026-10-06)
+  if (/^rest:ext:(total|circulating)-supply$/.test(k)) feeds += v;
+  else if (/^(mcp|paidmcp):(tools_)?call:|^rest:ext:|^sell:answer:[a-z_]+:paid|^sell:watch:paid/.test(k)) { use += v; uses.push(`${k.replace(/^rest:ext:|^mcp:call:/, '')} ${v}`); }
   else if (/^mcp:(initialize|tools_list|prompts_list|resources_list)$|^paidmcp:tools_list$/.test(k)) menu += v;
 }
 line(!det.truncated, 'the day is counted whole', `${det.isolates} isolates, ${det.rolled_up} rolled up${det.truncated ? ', TRUNCATED' : ''}`);
 console.log(`      tool calls by others: ${use}  (${uses.join(', ') || 'none'})`);
+console.log(`      supply reads by listing sites: ${feeds}`);
 console.log(`      menu checks by registries: ${menu} · crawler hits on unknown paths: ${det.names['rest:unknown'] || 0}`);
 console.log(`      paid path: ${Object.entries(det.names).filter(([k]) => k.startsWith('sell:') || k.startsWith('paidmcp:')).map(([k, v]) => `${k} ${v}`).join(', ') || 'nothing'}`);
 

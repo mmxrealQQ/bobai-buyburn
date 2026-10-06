@@ -73,9 +73,11 @@ const cut = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n 
 const u18 = h => (h && h !== '0x') ? Number(BigInt(h)) / 1e18 : 0;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
+// ASKED, NOT RELOADED (2026-10-06): 'no-cache' asks the server every time, as fresh as before, but a file that has not
+// changed answers 304 with no body (logs/*.json carry an ETag) — 'no-store' fetched the whole of it every 45 s
 async function getJSON(u, ms = 15000) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
-  try { const r = await fetch(u, { cache: 'no-store', signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+  try { const r = await fetch(u, { cache: 'no-cache', signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
   finally { clearTimeout(tm); }
 }
 async function rpc(calls, url) {

@@ -210,6 +210,19 @@ const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test
 const thankJson = async (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request) && await firstCall(request)
   ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
   : json(obj, status, extra);
+// ASKED AGAIN, NOT SENT AGAIN (2026-10-06): the terminal asks for the DeFi agent's record every 45 s on every visitor's
+// page — 424 KB (54 KB compressed) each time, while the record changes about once an hour. With an ETag the same record
+// answers 304 and no body; the answer is as fresh as before (no-cache: the browser always asks). A weak tag, because the
+// edge compresses the body and keeps only a weak one.
+export async function etagJson(request, obj) {
+  const body = JSON.stringify(obj, null, 2);
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(body)));
+  const tag = 'W/"' + [...d].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32) + '"';
+  const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache', ETag: tag, 'Access-Control-Expose-Headers': 'ETag' };
+  const asked = (request.headers.get('if-none-match') || '').split(',').map((t) => t.trim());
+  if (asked.includes(tag) || asked.includes(tag.slice(2))) return new Response(null, { status: 304, headers });
+  return new Response(body, { status: 200, headers });
+}
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -2286,7 +2299,7 @@ ${pageTail}`;
         try { ladder = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); } catch { ladder = null; }
         // `cadence` is the route convention every record route answers with;
         // the record's own timetable (daily, hourly, watch) rides beside it.
-        return json({ ...rec, flow, ladder, cadence: 'daily', cadence_detail: rec.cadence && typeof rec.cadence === 'object' ? rec.cadence : null });
+        return etagJson(request, { ...rec, flow, ladder, cadence: 'daily', cadence_detail: rec.cadence && typeof rec.cadence === 'object' ? rec.cadence : null });
       }
       // THE RECORD, READABLE. The homepage, /agents and the Telegram alert all
       // say "the daily record is here" and pointed a person at raw JSON. The

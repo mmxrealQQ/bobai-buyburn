@@ -149,5 +149,21 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('and so is every other address', details().includes('mcp:call:bobai_links') && kinds() === 'mcp', `${details().join()} | ${kinds()}`);
 }
 
+// 3. The DeFi agent's record is asked for every 45 s by every terminal (2026-10-06): the same record answers 304 with no
+//    body, a changed one the whole of it, and the browser is told to ask every time (no-cache, never no-store).
+{
+  const { etagJson } = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'index.js')).href);
+  const rec = { last: { acted: true }, flow: { out: { bobai_units: 5 } } };
+  const first = await etagJson(new Request('https://agent.brainonbnb.com/lp/agent'), rec);
+  const tag = first.headers.get('etag');
+  ok('the record carries a weak ETag and no-cache', first.status === 200 && /^W\/"[0-9a-f]{32}"$/.test(tag || '') && first.headers.get('cache-control') === 'no-cache' && (await first.text()).includes('bobai_units'), `${first.status} ${tag} ${first.headers.get('cache-control')}`);
+  const again = await etagJson(new Request('https://agent.brainonbnb.com/lp/agent', { headers: { 'if-none-match': tag } }), rec);
+  ok('the same record asked with its tag answers 304, no body', again.status === 304 && (await again.text()) === '', String(again.status));
+  const strong = await etagJson(new Request('https://agent.brainonbnb.com/lp/agent', { headers: { 'if-none-match': tag.slice(2) } }), rec);
+  ok('the tag as the edge may pass it on (without W/) still matches', strong.status === 304, String(strong.status));
+  const changed = await etagJson(new Request('https://agent.brainonbnb.com/lp/agent', { headers: { 'if-none-match': tag } }), { ...rec, last: { acted: false } });
+  ok('a changed record is sent whole, with a new tag', changed.status === 200 && changed.headers.get('etag') !== tag, String(changed.status));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nstats-detail: all pins hold');
 process.exit(fails ? 1 : 0);

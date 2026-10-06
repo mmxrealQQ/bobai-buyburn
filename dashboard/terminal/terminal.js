@@ -1297,13 +1297,27 @@ const SOFT = c => !/^(hub-|idle|rest)/.test(c);
 // THE NEXT CLIP IS ALREADY HERE (2026-09-29, flow.mjs: a queued move started 1.3-1.5 s after the clip before it ended — the
 // new file loaded first, and he stood still meanwhile). A move that waits its turn is fetched while the clip before it still
 // plays (up to 8 s), and starts from memory; the takes that come most often are warmed at the start. At most 10 are kept.
-// Fetched into the browser's own cache, not into blob: URLs — the site's CSP (default-src 'self') refuses blob: media, and
-// every take failed with NotSupportedError the first time this was tried. The video then starts from the cache.
-const WARM = new Set();
+// ONE DOWNLOAD PER CLIP (2026-10-06): fetched into the browser's cache, the two players still asked the network for every
+// take each time they played it (range requests) — 4.2 of 4.8 MB in three minutes. Now each take is downloaded once and
+// kept in memory as a blob: URL (the CSP allows media-src blob: since then; before, blob: media failed with
+// NotSupportedError). At most CLIP_KEEP takes are kept; one a player holds is never dropped. Without blob support, or
+// before its download is done, a take plays from its address as before.
+const WARM = new Set(), CLIPS = new Map(), CLIP_KEEP = 14;
+const BLOB_OK = (() => { const m = document.querySelector('meta[http-equiv="Content-Security-Policy"]'); return !m || /media-src[^;]*blob:/.test(m.content); })();
+// a page served without that policy (the lab, an old cache) refuses blob: media: then back to addresses, for good
+let BLOB_BAD = false;
+addEventListener('securitypolicyviolation', e => { if (BLOB_BAD || !/^blob/.test(e.blockedURI || '')) return; BLOB_BAD = true;
+  for (const v of [VID.v, VID.spare]) if (v && /^blob:/.test(v.src)) { const c = v === VID.v ? VID.cur : v._c; if (c) { v.src = `${BASE}anim/${c}.pack.mp4`; if (v === VID.v) v.play().catch(() => {}); } }
+  for (const u of CLIPS.values()) URL.revokeObjectURL(u); CLIPS.clear(); WARM.clear(); });
+function clipSrc(c) { if (BLOB_BAD) return `${BASE}anim/${c}.pack.mp4`; const u = CLIPS.get(c); if (u) { CLIPS.delete(c); CLIPS.set(c, u); return u; } prefetchClip(c); return `${BASE}anim/${c}.pack.mp4`; }
 function prefetchClip(c) {
   if (!c || WARM.has(c) || !VID.have?.has(c)) return;
   WARM.add(c);
-  fetch(`${BASE}anim/${c}.pack.mp4`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).catch(() => WARM.delete(c));
+  fetch(`${BASE}anim/${c}.pack.mp4`).then(r => r.ok ? r.blob() : Promise.reject()).then(b => {
+    if (!BLOB_OK || BLOB_BAD || !b.size) return;
+    CLIPS.set(c, URL.createObjectURL(b));
+    for (const [k, u] of CLIPS) { if (CLIPS.size <= CLIP_KEEP) break; if (k === VID.cur || k === VID.spare?._c || VID.v?.src === u || VID.spare?.src === u) continue; URL.revokeObjectURL(u); CLIPS.delete(k); WARM.delete(k); }
+  }).catch(() => WARM.delete(c));
 }
 function vidStart(c, loop = false) {
   // THE FRAMING CHANGES WITH THE NEW CLIP'S FIRST FRAME, NOT BEFORE (2026-09-28, operator: "sometimes BOBAI gets
@@ -1322,7 +1336,7 @@ function vidStart(c, loop = false) {
     if (!going && sp.currentTime > 0.05) sp.currentTime = 0; // started early (LEAD): it runs on from where it is
   } else {
     (window.__btLoads = window.__btLoads || []).push([c, sp && sp._c, sp && sp.readyState]); if (window.__btLoads.length > 40) window.__btLoads.shift(); // a switch the spare missed, for checks
-    VID.v.src = `${BASE}anim/${c}.pack.mp4`; if (sp && sp._c === c) { sp._c = null; sp._go = false; sp.pause(); }
+    VID.v.src = clipSrc(c); if (sp && sp._c === c) { sp._c = null; sp._go = false; sp.pause(); }
   }
   VID.cur = c; VID.v.loop = loop; VID.v._last = false; trace('start', c, VID.v === sp ? 'swap' : 'load', !!HELD);
   // the canvas shows only once the clip's first frame is on it (vidDraw), so there is never an empty frame between
@@ -1525,7 +1539,7 @@ function vidPreload() {
   const sp = VID.spare; if (!sp || VID.v.loop) return;
   const c = VID.want ? VID.want.c : (VID.nextRest = VID.nextRest || restTake());
   if (!c || !VID.have.has(c)) return;
-  if (sp._c !== c) { sp._c = c; sp._warm = false; sp._go = false; sp.src = `${BASE}anim/${c}.pack.mp4`; return; }
+  if (sp._c !== c) { sp._c = c; sp._warm = false; sp._go = false; sp.src = clipSrc(c); return; }
   // A SLEEPING DECODER (2026-10-02, trans.mjs): Chrome parks a paused element's decoder, and waking it at the switch cost
   // 130-400 ms with the first frames skipped. Shortly before the switch the spare plays a moment and goes back to its
   // first frame, awake (playing it at speed 0 instead was measured slower: median 150 ms against 117)

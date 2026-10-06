@@ -2247,6 +2247,39 @@ function burnContext(x) {
   const day = wk.filter(e => Date.parse(e.time) >= t - 86400e3).length + 1;
   return day >= 2 ? `Burn number ${day} in 24 hours. ` : '';
 }
+// WHAT HE SAYS WHEN HIS OTHER BOTS ACT (2026-10-06): the DeFi agent's scenes (fees collected, new capital, a range
+// re-set, the reserve, the services' payments), the creator payout and a freshly minted NFT played their board and his
+// clip in silence. Five lines each, every number the event's own; none names a move of his other than the one the scene
+// plays (the DeFi lines name no move at all, the NFT lines name the NFT the card shows).
+const wpct = s => s && s.width_pct ? ` to ±${s.width_pct}%` : '';
+const REACT_MORE = {
+  'defi-collect': x => { const s = x.s || {}, g = bnbF(+s.produced_bnb || +s.owed?.bnb_equivalent || 0), b = +s.bobai_units > 0 ? ` ${cmp(s.bobai_units)} BOBAI bought with part of it, and kept.` : '';
+    return [`Payday! My DeFi agent collected ${g} in pool fees.${b}`, `${g} of trading fees, collected by my DeFi agent.${b}`, `Fees in: ${g}. My DeFi agent earns while CAKE and BNB trade.${b}`,
+      `My DeFi agent just harvested ${g} from its CAKE/BNB range.${b}`, `Collected: ${g} in fees, earned by sitting where the trades are.${b}`]; },
+  'defi-increase': x => { const s = x.s || {}, c = bnbF(capOf(s)), v = s.value_after_bnb ? ` The position is ${bnbF(s.value_after_bnb)} now.` : '';
+    return [`New capital at work: ${c} more in my DeFi agent's pool.${v}`, `My DeFi agent put ${c} more to work.${v}`, `${c} of fresh capital into the CAKE/BNB range. More capital, more fees.`,
+      `The DeFi agent topped up its position by ${c}.${v}`, `More in the pool: ${c}, put to work by my DeFi agent.`]; },
+  'defi-rebalance': x => { const s = x.s || {}, w = wpct(s), side = s.one_sided ? ' Parked right beside the price, no trade needed.' : ' Back around the price.';
+    return [`The price moved, so my DeFi agent moved its range${w}.${side}`, `Range re-set${w}.${side}`, `My DeFi agent followed the price: a new range${w}.`,
+      `New range for my DeFi agent${w}. Out of range earns nothing, so it moves.`, `Re-set done${w}. The agent sits where the trades happen again.`]; },
+  'defi-ladder': x => { const w = wpct(x.s);
+    return [`My DeFi agent re-set its reserve range${w}. Ready for the next move of the price.`, `Reserve range moved${w}. The second position waits where the price may go.`, `The DeFi agent's reserve is set again${w}.`,
+      `A fresh reserve range${w}: when the price steps out of the main one, this one is already there.`, `Reserve re-set${w}. Two ranges, one pool, no idle capital.`]; },
+  'defi-sweep': x => { const s = x.s || {}, a = `${s.sweeping ?? s.balance ?? ''} ${s.token || ''}`.trim(), v = s.bnb_equivalent ? ` (${bnbF(s.bnb_equivalent)})` : '';
+    return [`What agents paid my services, ${a}${v}, just went to my DeFi agent.`, `Payments swept: ${a}${v} from my agent services into the DeFi agent.`, `My agent services earned ${a}${v}. Now it works in the pool.`,
+      `${a}${v} from paid answers, handed to my DeFi agent.`, `The services' till is empty again: ${a}${v} went to my DeFi agent.`]; },
+  dev: x => { const t = bnbF(+x.d.availableBnb);
+    return [`The creator share was paid out: ${t}.`, `The dev bot paid out ${t} of the creator share, right on schedule.`, `${t} out of the creator share. Builders get paid on BNB Chain too.`,
+      `Creator share out: ${t}, on-chain like everything here.`, `The d38 wallet just sent out ${t} of the creator share.`]; },
+  nft: x => { const n = x.n || {}, t = TIERS[n.tier] || 'Buy Drops', u = $buy(nUsd(n), n);
+    return [`NFT #${n.tokenId} is minted: ${t}, for that ${u} buy. Straight to the buyer's wallet.`, `Fresh NFT, #${n.tokenId}, ${t}. The ${u} buy earned it.`, `Minted! #${n.tokenId}, a ${t} NFT, on its way to the buyer.`,
+      `The ${u} buy got its NFT: #${n.tokenId}, ${t}.`, `NFT #${n.tokenId} (${t}) just left the minter. Capped supply, every one on-chain.`]; },
+};
+function sayMore(k, x) {
+  if (mode !== 'live' || REOPEN) return; // a moment reopened from the list is shown, not re-announced
+  const L = REACT_MORE[k] && REACT_MORE[k](x); if (!L) return;
+  LIFE.quietSince = Date.now(); speak(vary('react-' + k, L), 5000);
+}
 function react(kind, x) {
   LIFE.quietSince = Date.now();
   // calm, not nervous (operator, 2026-09-25): in a busy minute every small buy and sell used to swap his pose and
@@ -2852,7 +2885,7 @@ function run(x, fast) {
     if (x.l.dev) logLine('LIQ', D.liq.c, ['dev wallet d38 added ', [bnbF(x.l.bnb)], ' + ', [cmp(x.l.bobai) + ' BOBAI'], ' to the pool · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t);
     else logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [cmp(x.l.bobaiBought) + ' BOBAI'], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx]], x.t);
   } else if (x.kind === 'defi') {
-    defiScene(x, fast);
+    defiScene(x, fast); sayMore('defi-' + x.key, x);
     const fees = x.s.produced_bnb ? ` ${bnbF(x.s.produced_bnb)}` : '';
     if (fees) floatAt(D.defi.pos, '+' + fees.trim(), D.defi.c);
     logLine('DEFI', D.defi.c, ['agent ', [x.step], fees], (x.s.txs || []).slice(0, 2).map(t => ['tx', t.hash]), x.t);
@@ -2880,8 +2913,9 @@ function run(x, fast) {
     comet(D.creator.pos, out, D.creator.c, 1.2);
     floatAt(D.creator.pos, '-' + bnbF(tot), D.creator.c);
     logLine('d38', D.creator.c, ['dev bot paid out ', [bnbF(tot)], ' of the creator share'], [], x.t); // no split to builders: those are personal payouts
+    sayMore('dev', x);
   } else if (x.kind === 'nftcard') {
-    nftReveal(x.n);
+    nftReveal(x.n); sayMore('nft', x);
     logLine('NFT', '#a78bfa', [`${$buy(nUsd(x.n), x.n)} buy → NFT `, ['#' + x.n.tokenId], ` ${TIERS[x.n.tier] || ''}`], [['mint', x.n.mintTx || x.n.tx]]);
   } else if (x.kind === 'nft') {
     const n = x.n;
@@ -3480,7 +3514,10 @@ window.__btPools = () => {
   const n = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, (Array.isArray(v) ? v : v.lines || v[1] || []).length]));
   const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
     .map(([p, l]) => [p, l, moveForLine(l, null)]).filter(([p, , m]) => m && m !== p);
-  return { combo: n(COMBO), moodJokes: n(MOOD_JOKES), moodBuild: n(MOOD_BUILD), heads: n(MOOD_HEADS), who: n(MOOD_WHO), moveLines: n(MOVE_LINES), win: Object.fromEntries(Object.entries(WIN_LINES).map(([k, v]) => [k, v[1].length])),
+  const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 } };
+  const more = Object.fromEntries(Object.entries(REACT_MORE).map(([k, f]) => [k, f(SX)]));
+  wrong.push(...Object.entries(more).flatMap(([k, L]) => L.map(l => [k, l, moveForLine(l, null)])).filter(([k, , m]) => m && !(k === 'nft' && m === 'nft')));
+  return { reactMore: Object.fromEntries(Object.entries(more).map(([k, L]) => [k, L.length])), combo: n(COMBO), moodJokes: n(MOOD_JOKES), moodBuild: n(MOOD_BUILD), heads: n(MOOD_HEADS), who: n(MOOD_WHO), moveLines: n(MOVE_LINES), win: Object.fromEntries(Object.entries(WIN_LINES).map(([k, v]) => [k, v[1].length])),
     lists: { HELLO: HELLO.length, STRETCH: STRETCH.length, BUILD: BUILD.length, TAPS: TAPS.length, INVITES: INVITES.length, JOKES: JOKES.length, HOVER_LINES: HOVER_LINES.length }, wrong, said: SAID.size };
 };
 function afterWindow() {

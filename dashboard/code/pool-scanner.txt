@@ -3511,7 +3511,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=69" type="module"></script>
+<script src="scanner.js?v=70" type="module"></script>
 </body>
 </html>
 
@@ -3538,7 +3538,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=32';
 
 const $=id=>document.getElementById(id);
-const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
 // toPrecision() switches to exponential notation below 1e-7, which printed a real
 // price as "$1.79e-8". Nobody quotes a token price that way. Write it out with
 // every zero instead, at three significant digits. Longer, but unambiguous — and

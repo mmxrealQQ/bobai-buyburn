@@ -63,7 +63,7 @@ const TIERS = ['NICE BUY', 'BIG BUY', 'HUGE BUY', 'WHALE BUY', 'THUNDER BUY', 'K
 
 // ================= helpers =================
 const $ = id => document.getElementById(id === 'bt' ? 'bt' : 'bt-' + id);
-const nf = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const NF = {}; const nf = (n, d = 0) => (NF[d] || (NF[d] = new Intl.NumberFormat('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
 const cmp = n => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 // the homepage cards print their BNB totals with four decimals
 const bnb4 = n => (+n || 0).toFixed(4) + ' BNB';

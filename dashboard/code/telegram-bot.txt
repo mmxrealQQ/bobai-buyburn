@@ -2369,8 +2369,8 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         const pct = ((bal / supplyBase) * 100).toFixed(2);
         // Size marker (💀 below 10M) and activity marker (🟢 active 24h / 💤 dormant) are independent.
         // Small + active → 💀🟢 so cascade-hop traffic on sub-10M wallets stays visible.
-        // 🐬 a holder of 5-10M (watched, not yet a whale)
-        const dolphin = bal < WHALE_THRESHOLD_TOKENS ? '🐬' : '';
+        // 🐋 a whale (10M+), 🐬 a holder of 5-10M (watched, not yet a whale); under 5M (a contract's line) no mark
+        const dolphin = bal >= WHALE_THRESHOLD_TOKENS ? '🐋' : bal >= WATCH_THRESHOLD_TOKENS ? '🐬' : '';
         const isActive = active.has(addr);
         // A dormant wallet says for how long (from the daily snapshots).
         const still = isActive ? null : dormantDays(snaps, addr, bal, events, Date.now(), 2);
@@ -2439,7 +2439,7 @@ ${summary24h}
 
 ${sections.join('\n\n')}
 
-<i>#n = place among all holders (LP and burn not counted) · % = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 🐬 5-10M · 💀 below 5M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
+<i>#n = place among all holders (LP and burn not counted) · % = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 🐋 10M+ · 🐬 5-10M · 💀 below 5M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
 ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code></i>`;
     }
   }

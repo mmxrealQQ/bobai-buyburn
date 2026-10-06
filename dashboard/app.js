@@ -280,7 +280,7 @@ async function rpcBatch(calls){
 // amounts (75,927.92 — comma for thousands, dot for decimals). Leaving the locale
 // to the browser meant a German visitor read "1.069 LP" where 1,069 was meant,
 // which on an English page is not a cosmetic difference but a different number.
-const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
 function setBig(id,v,sym){put(id,nf(v)+' '+sym)}
 // Sets a value and takes the field out of its "loading" state at the same time.
 function put(id,txt){const e=document.getElementById(id);if(!e)return;

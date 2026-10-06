@@ -1036,9 +1036,12 @@
 #bt .hw-bg::before{content:"";position:absolute;inset:-45%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--c,#fff) 55%,transparent),transparent);z-index:-1}
 #bt .hw-bg img{position:relative}
 /* the switch, easier to see: larger, with a slow glow; its name says what a click does */
-#bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:24px;min-width:24px;padding:0 3px;margin-top:0;border-width:1.5px;border-color:#ff9d3c;box-shadow:0 0 0 0 rgba(255,138,30,.55);animation:bt-hw-ring 3.6s ease-out infinite}
+#bt .hw-sw,#bt .bt-win:not(.portrait) .hw-sw{height:24px;min-width:24px;padding:0 3px;margin-top:0;border-width:1.5px;border-color:#ff9d3c}
 #bt .hw-sw svg{width:16px;height:16px}
-@keyframes bt-hw-ring{0%{box-shadow:0 0 0 0 rgba(255,138,30,.6)}60%,100%{box-shadow:0 0 0 9px rgba(255,138,30,0)}}
+/* its slow glow is a ring that grows and fades (transform and opacity only: an animated box-shadow was painted anew on
+   every frame — 2026-10-06, halloween.mjs rule 14 on a phone) */
+#bt .hw-sw::before{content:"";position:absolute;inset:-1.5px;border-radius:999px;border:2px solid rgba(255,138,30,.6);pointer-events:none;opacity:0;animation:bt-hw-ring 3.6s ease-out infinite}
+@keyframes bt-hw-ring{0%{transform:scale(1);opacity:1}60%,100%{transform:scale(1.55);opacity:0}}
 #bt .hw-sw .hw-t{font-size:.6rem;color:#ffd9a8;box-shadow:0 6px 18px rgba(0,0,0,.6)}
 /* a fright, not a hop (operator, 2026-10-05): the frightened face (script), and one short shiver as it starts */
 #bt .hw-o.hw-sv > *,#bt .hw-pk.a.hw-sv .hw-s{animation:bt-hw-shiver .5s linear 1}
@@ -1068,3 +1071,7 @@
 #bt .hw-mh{position:absolute;left:0;top:0;opacity:0;will-change:transform;transition:opacity .5s ease}
 #bt .hw-mh.on{opacity:1;transition:opacity .4s ease}
 #bt .hw-mhi{transform:rotate(180deg);filter:drop-shadow(0 0 6px rgba(0,0,0,.7)) drop-shadow(0 0 8px rgba(200,210,255,.25))}
+/* a phone: the symbols' shadow is a soft disc on the moving piece, not a filter (two drop-shadows on six bobbing pieces
+   were drawn again on every frame: 23 frames a second with the look on against 39 without — 2026-10-06, rule 14) */
+#bt .bt-win.portrait .hw-ghb,#bt .bt-win.portrait .hw-cat .hw-s{filter:none}
+#bt .bt-win.portrait .hw-o > *{filter:none;background:radial-gradient(closest-side,rgba(0,0,0,.5),rgba(240,185,11,.08) 72%,transparent);border-radius:50%}

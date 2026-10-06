@@ -1310,16 +1310,26 @@ addEventListener('securitypolicyviolation', e => { if (BLOB_BAD || !/^blob/.test
   for (const v of [VID.v, VID.spare]) if (v && /^blob:/.test(v.src)) { const c = v === VID.v ? VID.cur : v._c; if (c) { v.src = `${BASE}anim/${c}.pack.mp4`; if (v === VID.v) v.play().catch(() => {}); } }
   for (const u of CLIPS.values()) URL.revokeObjectURL(u); CLIPS.clear(); WARM.clear(); });
 function clipSrc(c) { if (BLOB_BAD) return `${BASE}anim/${c}.pack.mp4`; const u = CLIPS.get(c); if (u) { CLIPS.delete(c); CLIPS.set(c, u); return u; } prefetchClip(c); return `${BASE}anim/${c}.pack.mp4`; }
+// a download on its way: PEND holds its promise (the blob: URL, or null when it failed)
+const PEND = new Map();
 function prefetchClip(c) {
   if (!c || WARM.has(c) || !VID.have?.has(c)) return;
   WARM.add(c);
-  fetch(`${BASE}anim/${c}.pack.mp4`).then(r => r.ok ? r.blob() : Promise.reject()).then(b => {
-    if (!BLOB_OK || BLOB_BAD || !b.size) return;
-    CLIPS.set(c, URL.createObjectURL(b));
+  const p = fetch(`${BASE}anim/${c}.pack.mp4`).then(r => r.ok ? r.blob() : Promise.reject()).then(b => {
+    if (!BLOB_OK || BLOB_BAD || !b.size) return null;
+    const url = URL.createObjectURL(b); CLIPS.set(c, url);
     for (const [k, u] of CLIPS) { if (CLIPS.size <= CLIP_KEEP) break; if (k === VID.cur || k === VID.spare?._c || VID.v?.src === u || VID.spare?.src === u) continue; URL.revokeObjectURL(u); CLIPS.delete(k); WARM.delete(k); }
-  }).catch(() => WARM.delete(c));
+    return url;
+  }).catch(() => { WARM.delete(c); return null; }).finally(() => PEND.delete(c));
+  PEND.set(c, p);
 }
 function vidStart(c, loop = false) {
+  // ITS COPY IS ON THE WAY (2026-10-06, clipnet.mjs: a moment that came before its take was in memory fetched it a
+  // second time from the address): wait for the copy — the address would need the same download — at most 2.5 s
+  const sp0 = VID.spare, pf = !(sp0 && sp0._c === c && sp0.readyState >= 2) && !CLIPS.has(c) && PEND.get(c);
+  if (pf && VID.waitC !== c && VID.waited !== c) { const k = VID.waitC = c; let done = false; const go = () => { if (done) return; done = true; if (VID.waitC === k) { VID.waitC = null; VID.waited = c; vidStart(c, loop); } };
+    pf.then(go); setTimeout(go, 2500); return; }
+  VID.waitC = null; VID.waited = null;
   // THE FRAMING CHANGES WITH THE NEW CLIP'S FIRST FRAME, NOT BEFORE (2026-09-28, operator: "sometimes BOBAI gets
   // extremely big"): set at once, the old clip's last frame stayed on the canvas for the few hundred ms the new one
   // took to load, drawn in the new clip's framing — a normal take's frame in the wide framing is 1.4x too big.
@@ -1539,7 +1549,13 @@ function vidPreload() {
   const sp = VID.spare; if (!sp || VID.v.loop) return;
   const c = VID.want ? VID.want.c : (VID.nextRest = VID.nextRest || restTake());
   if (!c || !VID.have.has(c)) return;
-  if (sp._c !== c) { sp._c = c; sp._warm = false; sp._go = false; sp.src = clipSrc(c); return; }
+  if (sp._c !== c) { sp._c = c; sp._warm = false; sp._go = false;
+    // A TAKE ON ITS WAY IS WAITED FOR (2026-10-06, clipnet.mjs: every take's first play came over the network twice, the
+    // spare asking for the address while the memory copy was still loading — 0.9 MB a take): the spare stays empty until
+    // the copy is here (a few seconds while the clip before plays); if the switch comes first, vidStart loads it as before
+    if (!CLIPS.has(c) && !BLOB_BAD && BLOB_OK) { prefetchClip(c); const p = PEND.get(c);
+      if (p) { sp.removeAttribute('src'); sp.load(); p.then(u => { if (sp._c === c && sp !== VID.v && !sp.getAttribute('src')) sp.src = u ? clipSrc(c) : `${BASE}anim/${c}.pack.mp4`; }); return; } }
+    sp.src = clipSrc(c); return; }
   // A SLEEPING DECODER (2026-10-02, trans.mjs): Chrome parks a paused element's decoder, and waking it at the switch cost
   // 130-400 ms with the first frames skipped. Shortly before the switch the spare plays a moment and goes back to its
   // first frame, awake (playing it at speed 0 instead was measured slower: median 150 ms against 117)
@@ -1599,8 +1615,10 @@ function holdSay() {
   HELD = LASTSAY; LASTSAY = null; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + HELD.ms;
 }
 function flushSay() { if (HELD) { const h = HELD; HELD = null; trace('flush', VID.cur); speak(h.text, h.ms); } }
+let tapHi = ''; // the hello in front of the first tap's answer (set by bobaiTap for one call)
 function speak(text, ms = 5200) {
   if (!text) return;
+  if (tapHi) text = tapHi + ' ' + text; // the first tap's hello (bobaiTap)
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
   if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
@@ -2290,10 +2308,11 @@ const HOVER_LINES = ['Oh! You are watching me work.', 'Looking for me? Right her
 let waveT = 0, waveN = 0, waveAt = -1e9;
 function hoverBobai(on) {
   if (!on) { clearTimeout(waveT); waveT = 0; return; }
-  if (waveT || waveN >= 5 || mode !== 'live') return;
+  // once tapped he has been found: no 'you are watching me' after it (operator, 2026-10-06); a finger never hovers
+  if (waveT || waveN >= 5 || mode !== 'live' || tapN > 0 || lastPointer !== 'mouse') return;
   waveT = setTimeout(() => {
     waveT = 0; const now = performance.now();
-    if (now < waveAt + 60e3 || QUEUE.length || now < sceneUntil || pinnedK || (VID.on && !/^rest/.test(VID.cur || ''))) return;
+    if (tapN > 0 || now < waveAt + 60e3 || QUEUE.length || now < sceneUntil || pinnedK || (VID.on && !/^rest/.test(VID.cur || ''))) return;
     if (!vidWave()) return;
     waveAt = now; waveN++; (window.__btHover = window.__btHover || []).push(Math.round(now / 1000)); // for checks from outside
     speak(waveN <= HOVER_LINES.length ? HOVER_LINES[(waveN - 1) % HOVER_LINES.length] : pick(HELLO), 3600); // never a silent wave (1.10.)
@@ -2302,7 +2321,7 @@ function hoverBobai(on) {
 }
 win.addEventListener('click', e => {
   if (onUi(e)) return;
-  if (onBobai(e) && !pinnedK && mode === 'live') { bobaiTap(); return; }
+  if (onBobai(e) && !pinnedK && mode === 'live') { clearTimeout(waveT); waveT = 0; bobaiTap(); return; }
   const k = nearObj(e);
   if (!k) { if (lastPointer !== 'mouse' && pinnedK) { pinnedK = null; setFocus(null); } return; } // a tap on empty space closes
   pinnedK = pinnedK === k ? null : k; setFocus(lastPointer === 'mouse' ? (pinnedK || k) : pinnedK); if (pinnedK) clickMove(k);
@@ -3346,9 +3365,7 @@ const BUILD = [
   'Every ten minutes my buyback bot checks its wallet. It never forgets. I sometimes do.',
   'Hard hat on. Somebody has to stack the blocks, and on BNB Chain they come fast.',
 ];
-const TAPS = ['Hey! That tickles.', 'Yes, builder?', 'You found me. I was working.', 'Careful, my brain is 45% of me.', 'Yes? I am listening. Between two blocks.',
-  'Poke me again and I start a burn. Kidding. Mostly.', 'Personal space, please. I am mid-burn.', 'You again? I like you.',
-  'Yes, I am real. As real as a brain in a hoodie gets.', 'Tap tap. Is this thing on-chain?'];
+const TAPS = ['Hey! That tickles.', 'Yes, builder?', 'You found me.', 'Hi! Between two blocks:', 'Oh, hello!', 'Yes? Here is what I am doing.', 'Yes, I am real.'];
 let tapKind = -1, tapN = 0;
 // the joke button: a joke with its laugh clip. A clip still playing is waited out (up to 12 s) so the joke is never told
 // without him laughing; the chain's own moments and the replay go first, and he says so.
@@ -3407,13 +3424,16 @@ function bobaiTap() {
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${cmp(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
     () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : 'The price is in its range, so it earns fees.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
-    () => { if (HARD_DAY()) { const l = heartLine(); setPose(moveForLine(l, null) || poseOr('hodl'), 6); speak(l, 7000); } else if (!tellJoke(6000)) { setPose(poseOr('cheer'), 7); speak('Thanks for watching me work.', 6000); } }, // a tap on a hard day: a word of heart, not a joke
+    () => { if (HARD_DAY()) { const l = heartLine(); setPose(moveForLine(l, null) || poseOr('hodl'), 6); speak(l, 7000); } else if (!tellJoke(6000)) { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // no joke ready: what he builds (not 'thanks for watching me', operator 2026-10-06) // a tap on a hard day: a word of heart, not a joke
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
     () => { const line = saidMood(moodLine()); setPose(moveForLine(line, moodMove()), 6); speak(line, 6400); },
     () => { const r = recallLine(); if (r) { setPose(poseOr(r[0]), 6); speak(r[1], 6400); } else { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // what happened this hour (2026-10-01)
   ];
-  // the first tap of a visit gets a hello, then he talks shop
-  if (tapN === 1) { setPose(joyMove(), 5); speak(`${pick(TAPS)} Tap me again and I tell you what I am doing.`, 5200); }
+  // THE FIRST TAP IS ANSWERED (operator, 2026-10-06: "he says tap me, you tap, he says tap me again, then 'oh, you watch
+  // me' — make BOBAI more intelligent"): his greeting promised to tell what he is doing, so the first tap does exactly
+  // that, with a short hello in front; no tap ever asks for another one
+  if (tapN === 1) { const w = [0, 1, 2, ...(recallLine() ? [7] : [])]; tapKind = w[Math.random() * w.length | 0]; tapHi = pick(TAPS); kinds[tapKind](); tapHi = '';
+    (window.__btTaps = window.__btTaps || []).push('work'); }
   // A TAP: MOSTLY WHAT HE IS DOING, THEN HIS MOOD, THEN A JOKE (operator, 2026-09-29; jokes were every second tap): about
   // 55% his work (the tax charging, today's burns, the DeFi agent, a move, his hard hat), 30% his mood, 15% a joke — never
   // the same kind twice in a row. The joke button stays the place for jokes.
@@ -5013,7 +5033,7 @@ window.__btHwSeason = hwSeason;
   }
   // the moon picture sits exactly on the painted moon and comes WITH the painting (placed with the other pieces after
   // the intro, the painted moon stood alone for a second first — operator: "the old moon is still visible")
-  function moonBox(W, H) {
+  function moonBox(W, H, raw) {
     if (!back || !back._ta || back._key !== (portrait ? 'tall' : 'wide')) return null; let M1 = null;
     const va = W / H, ta = back._ta, wide = backKey === 'wide', mx = wide ? 0.341 : 0.816, my = wide ? 0.259 : 0.184, md = wide ? 0.056 : 0.073; let x, y, dia;
     if (va > ta) { const ry = ta / va, oy = (1 - ry) * 0.62; x = mx * W; y = (1 - ((1 - my) - oy) / ry) * H; dia = md * W; }
@@ -5023,7 +5043,7 @@ window.__btHwSeason = hwSeason;
     const mr = cl3(dia * 0.64, 16, 54); /* the picture's moon is a little larger than the painted one it covers */ M1 = x > mr && x < W - mr ? box(x - mr, y - mr, mr * 2, mr * 2) : null;
     // where the painted moon lies against his head (1280, 1366: the moon picture covered the bots' names beside his
     // brain) only the dim painted one stays — far behind, it covers nothing
-    if (M1 && !portrait && A.figScreen && A.figHpx) { /* never on a phone: there the painted moon alone was the complaint */ const fs = A.figScreen, fh = A.figHpx, fw = A.figW, hd = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); if (cut(M1, hd, 14) && (M1.t + M1.b) / 2 > hd.t) M1 = null; } /* beside the head, not above it */
+    if (M1 && !raw && !portrait && A.figScreen && A.figHpx) { /* never on a phone: there the painted moon alone was the complaint */ const fs = A.figScreen, fh = A.figHpx, fw = A.figW, hd = box(fs.x - fw * 0.43, fs.y - fh * 0.5, fw * 0.86, fh * 0.47); if (cut(M1, hd, 14) && (M1.t + M1.b) / 2 > hd.t) M1 = null; } /* beside the head, not above it */
     return M1;
   }
   function lights(v) {
@@ -5157,21 +5177,33 @@ window.__btHwSeason = hwSeason;
     }
     if (!D1) put(cd, null);
     // --- a moon where the sky has room: left of his head, under the title row
-    let M1 = null;
+    // with the far night behind it stands where the painting's moon stood (moonBox); where that place lies beside his
+    // head (1280, 1366) it takes a free spot of the sky like this — neither painting has a moon of its own any more
+    // (operator, 2026-10-06: "on the desktop the moon is still the old one — it must be the one with the face")
+    let M1 = BACKDROP ? moonBox(W, H) : null;
     { const top = fs.y - fh * 0.5, gap = top - hudB, mr = cl3(fh * 0.13, 20, 46);
-      if (EXTRAS && !BACKDROP && gap > mr * 1.6) for (const fx of portrait ? [0.82, 0.14] : [fs.x / W - fw * 1.05 / W, fs.x / W + fw * 1.0 / W, 0.5]) {
+      if (EXTRAS && !M1 && gap > mr * 1.6) for (const fx of portrait ? [0.82, 0.14] : [fs.x / W - fw * 1.05 / W, fs.x / W + fw * 1.0 / W, 0.5]) {
         const b = box(W * fx - mr, hudB + gap * 0.46 - mr, mr * 2, mr * 2); if (ok(b, 6, true)) { M1 = b; break; }
       } }
-    // with the far night behind: ONE moon — the sticker sits exactly on the painted one (where it stands in the window
-    // follows from how the painting is cut to the window, see sizeBack)
-    if (BACKDROP) M1 = moonBox(W, H);
+    // still none (1280, 1366: the sky beside his head is full of names): the free spot of the upper sky nearest to the
+    // painting's old moon place, never on the bots' orbit round his brain (their names ride on it)
+    if (EXTRAS && BACKDROP && !M1) { const P = moonBox(W, H, true), mr = P ? (P.r - P.l) / 2 : cl3(fh * 0.13, 20, 46), px = P ? (P.l + P.r) / 2 : W * 0.34, py = P ? (P.t + P.b) / 2 : hudB + mr * 2; let best = Infinity;
+      const ob = { l: W, t: H, r: 0, b: 0 }, v = new THREE.Vector3(); for (let i = 0; i < 32; i++) { const q = toScreen(orbitPt(i / 32 * Math.PI * 2, v)); ob.l = Math.min(ob.l, q.x); ob.r = Math.max(ob.r, q.x); ob.t = Math.min(ob.t, q.y); ob.b = Math.max(ob.b, q.y); }
+      const orb = box(ob.l - 30, ob.t - fh * 0.2, ob.r - ob.l + 60, ob.b - ob.t + fh * 0.4);
+      for (let y = hudB + 4; y + mr * 2 <= H * 0.6; y += 8) for (let x = 4; x + mr * 2 <= W - 4; x += 8) { const b = box(x, y, mr * 2, mr * 2), d = Math.hypot(x + mr - px, y + mr - py); if (d < best && !cut(b, orb, 0) && ok(b, 6, true)) { best = d; M1 = b; } } }
     // the same moon on every screen (operator, 2026-10-05: "the phone's moon can be the same as the desktop's"): on a small
     // window it may stand partly behind a button of the title row — better than the painted one alone
     put(mo, M1, M1 ? box(-9, -9, 1, 1) : null); if (M1) taken.push(M1);
     // --- a chain of blocks hangs from the top edge, in a free column (it may pass behind the title row's buttons; its lower half must be free)
     let C1 = null;
-    { const chh = cl3(H * 0.27, 90, 240), cw2 = chh * 96 / 300;
-      for (const f of portrait ? [0.9, 0.08] : [0.6, 0.52, 0.68, 0.44, 0.36, 0.76, 0.28]) { const b = box(W * f - cw2 / 2, -chh * 0.06, cw2, chh), rest = box(b.l, 0, cw2, b.b); if (b.l >= 2 && b.r <= W - 2 && b.b > hudB + 30 && !walls.some(w => cut(rest, w, 5)) && !him(rest) && !taken.some(t => cut(rest, t, 4))) { C1 = b; put(hc, b, rest); taken.push(rest); break; } } }
+    { const chh = Math.max(cl3(H * 0.27, 90, 240), hudB + 80), cw2 = chh * 96 / 300; /* long enough to come out under the title row */
+      // EVERY COLUMN IS TRIED (operator, 2026-10-06: "where is the beautiful chain that came down from the top?"): the seven
+      // fixed spots it had were all taken once the title row and the pieces grew, so it hung nowhere — now the free
+      // column nearest to the first choice
+      const want = portrait ? [0.9, 0.08] : [0.6, 0.52, 0.68, 0.44, 0.36, 0.76, 0.28], fits = x => { const b = box(x, -chh * 0.06, cw2, chh), rest = box(b.l, hudB + 2, cw2, b.b - hudB - 2); /* always from the top edge (operator, 2026-10-06), behind the title row (the layer lies under it): only what hangs below the row must be free */ return b.l >= 2 && b.r <= W - 2 && b.b > hudB + 30 && !walls.some(w => cut(rest, w, 5)) && !him(rest) && !taken.some(t => cut(rest, t, 4)) ? [b, rest] : null; };
+      let got = null, bd = Infinity; for (const f of want) { const g = fits(W * f - cw2 / 2); if (g) { got = g; break; } }
+      if (!got) for (let x = 2; x + cw2 <= W - 2; x += 6) { const g = fits(x), d = Math.abs(x + cw2 / 2 - W * want[0]); if (g && d < bd) { bd = d; got = g; } }
+      if (got) { C1 = got[0]; put(hc, got[0], got[1]); taken.push(got[1]); } }
     if (!C1) put(hc, null);
     sizeBack();
     return true;
@@ -5402,8 +5434,8 @@ window.__btHwSeason = hwSeason;
     if (byHand) { try { localStorage.setItem('bt-hw', on ? '1' : '0'); } catch {} hint(4500); }
   }
   sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
-  // said once at the start, so the small pumpkin is understood
-  setTimeout(() => hint(5000), 3600);
+  // the hint comes only when the switch is used, never on its own at the start (operator, 2026-10-06: "on page load it
+  // must not show 'Halloween on · click = off', only when you switch it off or on"); hovering it still shows it
   set(on, false);
   window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), moonOut: () => mhOn, grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
     // the scene's own lights at the stations: hidden with the look, back exactly as they were without it

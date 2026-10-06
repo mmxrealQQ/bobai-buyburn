@@ -5441,7 +5441,12 @@ window.__btHwSeason = hwSeason;
     mo.style.transition = 'none'; mo.style.opacity = '0'; mo.style.transform = '';
     const dx = h.x - mx, dy = h.y - my, spin = dx > 0 ? 1 : -1;
     setPose('ouch', 6); // queued to the end of his rest take, which is the moment of the hit (homeSoon)
-    const go = c.animate([{ transform: `translate(${sx}px,${sy}px) rotate(${spin0}deg)` }, { transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }], { duration: 620, easing: 'cubic-bezier(.5,0,.9,.55)', fill: 'forwards' });
+    // AN ARC, NOT A LINE (2026-10-06, operator: "the moon is thrown oddly" — on a phone the moon sits just above him and
+    // the straight flight was a short drop): up over the top of the throw, then down onto his head
+    const apex = Math.max(Math.min(sy, dy) - Math.max(50, Math.abs(dx - sx) * 0.35), 4 - m.t); // never over the top edge (the skeleton throws from up there)
+    const go = c.animate([{ transform: `translate(${sx}px,${sy}px) rotate(${spin0}deg)`, easing: 'cubic-bezier(.2,.6,.4,1)' },
+      { transform: `translate(${sx + (dx - sx) * 0.45}px,${apex}px) rotate(${spin * 250}deg)`, offset: 0.42, easing: 'cubic-bezier(.6,0,.9,.6)' },
+      { transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }], { duration: 760, fill: 'forwards' });
     go.onfinish = () => {
       if (!on) return;
       pow(h.x, h.y); ouch(spin); speak(pick(OUCH_LINES), 3400); LIFE.quietSince = Date.now();
@@ -5461,10 +5466,15 @@ window.__btHwSeason = hwSeason;
     Object.assign(mh.style, { transition: 'transform 2s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px)' });
     after(2100, () => { frame(mh, 'grab'); frame(mo, 'panic'); mo.classList.add('hw-pan'); scare(true); });
     after(2700, () => { const go = 'transform 1s cubic-bezier(.45,0,.3,1)'; Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
-    after(4000, () => homeSoon(() => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
+    const away = (A.figScreen ? A.figScreen.x : 0) > (m.l + m.r) / 2 ? -26 : 26, wind = { x: away, y: lift - 22 };
+    after(4000, () => homeSoon(() => {
+      // the wind-up: hand and moon pull back, away from him, then the throw (the flight leaves from there)
+      const w = 'transform .28s cubic-bezier(.3,0,.5,1)';
+      Object.assign(mh.style, { transition: w, transform: `translate(${away}px,${reach + lift - 22}px)` }); Object.assign(mo.style, { transition: w, transform: `translate(${away}px,${lift - 22}px)` });
+      after(290, () => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
       frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
       after(1400, () => mh.classList.remove('on'));
-    }), 0.6));
+    }, wind)); }, 0.75));
     return true;
   }
   // THE DESKTOP: A WHOLE SKELETON (2026-10-06, operator: "a skeleton comes down and grabs the moon with both arms and hands,
@@ -5524,7 +5534,7 @@ window.__btHwSeason = hwSeason;
   let grabT = 0;
   function grabEnd(fast) {
     clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on', 'sneak'); if (scared && !cl.classList.contains('act')) scare(false);
-    if (CLOWN.cur) { CLOWN.cur.onended = null; if (fast) CLOWN.cur.pause(); }
+    if (CLOWN.cur) { CLOWN.cur.onended = null; clearInterval(CLOWN.stopT); if (fast) CLOWN.cur.pause(); }
     after(1000, () => { if (!grabT) grab.classList.remove('vid'); });
     after(1000, () => { if (!grabT) { Object.assign(grab.style, { transition: '', transform: '' }); Object.assign(grab.querySelector('.hw-grabm').style, { transition: '', transform: '' }); } });
   }
@@ -5608,9 +5618,9 @@ window.__btHwSeason = hwSeason;
   }
   function clownLoad() {
     if (CLOWN.loading) return; CLOWN.loading = true; let n = 0;
-    for (const k of ['climb', 'reach', 'down']) {
+    for (const k of ['climb', 'sneak', 'reach', 'down']) {
       const e = document.createElement('video'); e.muted = true; e.playsInline = true; e.setAttribute('playsinline', ''); e.preload = 'auto';
-      e.addEventListener('canplaythrough', () => { if (!e._ok) { e._ok = true; if (++n === 3) CLOWN.ready = true; } });
+      e.addEventListener('canplaythrough', () => { if (!e._ok) { e._ok = true; if (++n === 4) CLOWN.ready = true; } });
       e.addEventListener('error', () => { CLOWN.gl = false; }); // a clip that cannot play: the picture scene from now on
       e.src = BASE + 'hw/clown-' + k + '.pack.mp4' + Q; e.load(); CLOWN.v[k] = e;
     }
@@ -5623,9 +5633,11 @@ window.__btHwSeason = hwSeason;
     if (!v.paused && !v.ended) CLOWN.raf = requestAnimationFrame(clownDraw);
   }
   // play one clip from its start; `done` when it ended (never after the scene was called off)
-  function clownPlay(k, done) {
+  function clownPlay(k, done, until = 0, from = 0) {
     const v = CLOWN.v[k]; if (!v) return; if (CLOWN.cur && CLOWN.cur !== v) CLOWN.cur.pause();
-    CLOWN.cur = v; v.currentTime = 0; v.onended = () => { v.onended = null; clownDraw(); if (grabT) done && done(); };
+    CLOWN.cur = v; v.currentTime = from; clearInterval(CLOWN.stopT);
+    const fin = () => { v.onended = null; clearInterval(CLOWN.stopT); clownDraw(); if (grabT) done && done(); };
+    v.onended = fin; if (until) CLOWN.stopT = setInterval(() => { if (v.currentTime >= until) { v.pause(); fin(); } }, 40);
     v.play().then(() => { if (!CLOWN.raf) CLOWN.raf = requestAnimationFrame(clownDraw); }).catch(() => grabEnd(true));
   }
   function grabScene() {
@@ -5635,7 +5647,10 @@ window.__btHwSeason = hwSeason;
     const r = win.getBoundingClientRect(), fs = A.figScreen, fh = A.figHpx, fw = A.figW, gi = grab.querySelector('img'), ar = gi.naturalWidth ? gi.naturalWidth / gi.naturalHeight : 0.7;
     const ghh = Math.min(fh * 1.24, fs.y + fh * 0.39 - Math.max(4, portrait ? hudB - 6 : 4)), gw = ghh * ar, side = fs.x > r.width / 2 ? -1 : 1;
     const feet = fs.y + fh * 0.39, rim = feet - fh * 0.05;
-    const ch = ghh / CLOWN_FIG, cw = ch * CLOWN_AR;  // the clip's box: he is as tall as the picture clown was
+    // the clip's box: as tall as the picture clown was, but never taller than the room above the stone's rim — the clip's
+    // own top is free green, yet a lean in the climb reaches it (2026-10-06, operator: "he gets almost too big and is cut
+    // at the top edge")
+    const ch = Math.min(ghh / CLOWN_FIG, rim - 4), cw = ch * CLOWN_AR;
     const at = cx => cl3(cx - cw / 2, 2 - cw * 0.2, r.width - cw * 0.8 - 2);
     const x1 = at(fs.x + side * fw * 0.3);
     // he climbs up where nothing of the terminal stands: the side with the least of its labels and lights over his upper
@@ -5649,15 +5664,31 @@ window.__btHwSeason = hwSeason;
     Object.assign(grab.style, { width: cw + 'px', height: ch + 'px', left: x0 + 'px', top: rim - ch + 'px', transition: 'none', transform: 'translateX(0px)' });
     Object.assign(gm.style, { transition: 'none', transform: 'none', height: ch + 'px' });
     grab.classList.add('vid'); grab.classList.remove('fast', 'sneak'); void grab.offsetWidth; grab.classList.add('on');
-    LIFE.next = Math.max(LIFE.next, performance.now() + 36e3); // his own next move waits for the scene
-    const slide = (x, ms) => { grab.classList.add('sneak'); Object.assign(grab.style, { transition: `transform ${ms}ms cubic-bezier(.45,0,.55,1)`, transform: `translateX(${x}px)` }); };
-    grabT = setInterval(() => { if (!on || ownBusy() || win.classList.contains('in-moment')) grabEnd(true); }, 200); // he leaves when BOBAI starts a move
+    LIFE.next = Math.max(LIFE.next, performance.now() + 42e3); // his own next move waits for the scene
+    // HE WALKS, HE DOES NOT GLIDE (2026-10-06, operator: the slide was a still picture that bobbed — "it repeats oddly, like
+    // spikes"): the sneak clip's tiptoe steps play while the page carries him over, mirrored when he goes to the right
+    // (the clip walks to the left); 5.5 s, where its steps end in his standing pose
+    const SNEAK = 5.5, cv = CLOWN.cv;
+    const walk = (x, toRight, then) => { cv.style.transform = toRight ? 'scaleX(-1)' : ''; Object.assign(grab.style, { transition: `transform ${SNEAK * 1000}ms linear`, transform: `translateX(${x}px)` });
+      clownPlay('sneak', () => { cv.style.transform = ''; then(); }, SNEAK); };
+    let leaving = false;
+    // BOBAI starts a move or the chain takes the stage: he does not vanish, he climbs down where he is (operator: "at the
+    // end he is simply gone — he should climb down")
+    const leave = () => { if (leaving) return; leaving = true; if (scared && !cl.classList.contains('act')) scare(false);
+      grab.style.transition = 'none'; grab.style.transform = getComputedStyle(grab).transform; cv.style.transform = '';
+      // still on his way up: the down clip is the climb reversed, so it takes over at the same moment of the movement
+      const up = CLOWN.cur === CLOWN.v.climb && !CLOWN.v.climb.ended ? Math.max(0, (CLOWN.v.climb.duration || 8) - CLOWN.v.climb.currentTime) : 0;
+      clownPlay('down', () => grabEnd(false), 0, up); };
+    // he goes on while BOBAI answers a trade with a move (he stands behind him; on a busy market the scene never got past the
+    // climb — 2026-10-06, operator: 'he climbs up and is gone'); only a scene of the chain on the stage sends him down
+    grabT = setInterval(() => { if (!on) return grabEnd(true); if (win.classList.contains('in-moment')) leave(); }, 200);
     clownPlay('climb', () => {
-      const go = () => { grab.classList.remove('sneak'); after(1000, () => { if (grabT) scare(true); }); // everybody sees him, except BOBAI
-        clownPlay('reach', () => { if (scared && !cl.classList.contains('act')) scare(false);
-          const down = () => { grab.classList.remove('sneak'); clownPlay('down', () => grabEnd(false)); };
-          if (dx) { slide(0, 2300); after(2350, () => grabT && down()); } else down(); }); };
-      if (dx) { slide(dx, 2500); after(2550, () => grabT && go()); } else go();
+      const reach = () => { after(1000, () => { if (grabT && !leaving) scare(true); }); // everybody sees him, except BOBAI
+        clownPlay('reach', () => { if (leaving) return; if (scared && !cl.classList.contains('act')) scare(false);
+          if (dx) walk(0, dx < 0, () => { if (!leaving) { leaving = true; clownPlay('down', () => grabEnd(false)); } });
+          else { leaving = true; clownPlay('down', () => grabEnd(false)); } }); };
+      if (leaving) return;
+      if (dx) walk(dx, dx > 0, () => { if (!leaving) reach(); }); else reach();
     });
     return true;
   }
@@ -5682,7 +5713,7 @@ window.__btHwSeason = hwSeason;
       const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0, lastShow = 0;
       const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
       // how long each scene holds the stage (s), so the replay's quiet stretch can be matched to it
-      const secsOf = f => f === grabScene ? (CLOWN.ready ? 32 : 15) : f === skelGrab ? 19 : f === handScene ? (portrait ? 17 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
+      const secsOf = f => f === grabScene ? (CLOWN.ready ? 38 : 15) : f === skelGrab ? 19 : f === handScene ? (portrait ? 17 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
       const direct = room => { if (busy() || win.classList.contains('in-moment')) return false;
         for (let n = 0; n < SHOW.length; n++) { const f = SHOW[i++ % SHOW.length]; if (secsOf(f) > room) continue; if (f()) { lastShow = performance.now(); return true; } } return false; };
       loop(22000, 34000, () => direct(replayRoom()), 9000);

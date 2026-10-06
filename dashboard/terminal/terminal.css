@@ -1128,4 +1128,6 @@
 #bt .hw-grab.vid .hw-clv{display:block}
 #bt .hw-grab.vid .hw-grabi{display:none}
 #bt .hw-grab.vid .hw-grabm{transform:none!important}
-#bt .hw-grab.vid.sneak .hw-clv{animation:bt-hw-tiptoe .62s ease-in-out infinite}
+/* the bat's two wing pictures lie on each other (2026-10-06, operator: "odd wing movements on the phone"): in the wings-
+   down picture its head and body sit 25 px of 145 higher, so every beat jumped the whole bat; now only the wings move */
+#bt .hw-ob img.d,#bt .hw-bat img.d,#bt .hw-burst img.d{top:17.2%}

@@ -2247,6 +2247,18 @@ function burnContext(x) {
   const day = wk.filter(e => Date.parse(e.time) >= t - 86400e3).length + 1;
   return day >= 2 ? `Burn number ${day} in 24 hours. ` : '';
 }
+// A BUY IN ITS WEEK (2026-10-06), like burnContext for the burns. The trades in memory reach back an hour, but every buy
+// of $100 or more mints an NFT, and the drop log keeps them all with their exact dollars — so the week's alert buys are
+// known. Said only while no tier is sold out (then a buy may go without an NFT and the log would miss it).
+function buyContext(x) {
+  const nft = S.nft; if (!nft || !Array.isArray(nft.drops) || !x?.usd) return '';
+  if ((nft.minted || []).some((m, i) => nft.cap && m >= nft.cap[i])) return '';
+  const t = x.t || Date.now(), tx = String(x.tx || '').toLowerCase();
+  const wk = nft.drops.filter(n => (n.buyTx || '').toLowerCase() !== tx && n.ts * 1000 >= t - 7 * 86400e3 && n.ts * 1000 <= t);
+  if (wk.length >= 3 && x.usd > Math.max(...wk.map(n => nUsd(n)))) return 'Biggest buy of the week! ';
+  const day = wk.filter(n => n.ts * 1000 >= t - 86400e3).length + 1;
+  return day >= 2 ? `Buy number ${day} over $100 in 24 hours. ` : ''; // not "big buy": that is a tier's name
+}
 // WHAT HE SAYS WHEN HIS OTHER BOTS ACT (2026-10-06): the DeFi agent's scenes (fees collected, new capital, a range
 // re-set, the reserve, the services' payments), the creator payout and a freshly minted NFT played their board and his
 // clip in silence. Five lines each, every number the event's own; none names a move of his other than the one the scene
@@ -2302,7 +2314,7 @@ function react(kind, x) {
   const lines = {
     buy: x && x.usd >= ALERT_USD
       ? [`A ${$u(x.usd)} buy! That one earns an NFT, and ${tax} of tax for the brain.`, `${$u(x.usd)}! Somebody believes. NFT on its way, ${tax} to the brain.`, `Big buy, ${$u(x.usd)}. I felt that one in every neuron.`,
-        `${$u(x.usd)} of conviction just landed. An NFT for the buyer, ${tax} for the burns.`, `Now that is a buy: ${$u(x.usd)}. Thank you! Your NFT is on its way.`]
+        `${$u(x.usd)} of conviction just landed. An NFT for the buyer, ${tax} for the burns.`, `Now that is a buy: ${$u(x.usd)}. Thank you! Your NFT is on its way.`].map(l => buyContext(x) + l)
       : [`Fresh buy, ${$u(x.usd)}. ${tax} of tax just charged me.`, `${$u(x.usd)} in. Every buy feeds the brain.`, `A buy! ${$u(x.usd)}. Welcome aboard.`, `${$u(x.usd)} buy. Small candle, big heart.`, `${$u(x.usd)} buy. Every one of them counts, ${tax} of tax included.`],
     sell: [`Someone sold ${$u(x.usd)}. Sells pay 3% too. Thank you, friend.`, `A ${$u(x.usd)} sell. No hard feelings: ${tax} of it stays and works.`, `${$u(x.usd)} out. I shrug, I burn, I keep going.`,
       `${$u(x.usd)} sold. ${tax} of it stays behind and works for the holders.`, `A ${$u(x.usd)} sell. Goodbye and thanks for the ${tax} of tax.`],
@@ -2310,6 +2322,9 @@ function react(kind, x) {
       `${cmp(x.bobaiBurned)} BOBAI just went to the dead address. Never coming back.`, `Another buyback, another burn: ${cmp(x.bobaiBurned)} BOBAI out of the supply.`].map(l => burnContext(x) + l),
     liq: x?.dev ? [`The dev wallet just added ${bnbF(x.bnb)} and ${cmp(x.bobai)} BOBAI to my pool. LP burned, like every time.`, `Dev add: ${bnbF(x.bnb)} + ${cmp(x.bobai)} BOBAI into the pool, ${nf(x.lpBurned, 1)} LP to the dead address.`,
         `${bnbF(x.bnb)} and ${cmp(x.bobai)} BOBAI from the dev wallet, straight into my pool. The LP? Burned.`, `My pool just got deeper: ${bnbF(x.bnb)} + ${cmp(x.bobai)} BOBAI from the dev wallet, LP burned.`, `A dev add of ${bnbF(x.bnb)}. ${nf(x.lpBurned, 1)} LP tokens to the dead address, as always.`]
+      : +x?.bnb > 0 ? [`More liquidity: ${bnbF(x.bnb)} into my pool, ${nf(x.lpBurned, 1)} LP burned. Deeper pool, forever.`, `Added ${bnbF(x.bnb)} to the pool and burned the LP. Nobody can pull that. Not even me.`,
+        `${bnbF(x.bnb)} deeper, smoother trades. The ${nf(x.lpBurned, 1)} LP tokens? Burned.`, `Liquidity in: half of ${bnbF(x.bnb)} bought ${cmp(x.bobaiBought)} BOBAI, the other half paired with it. LP to the dead address.`,
+        `Another ${bnbF(x.bnb)} of liquidity, locked forever. That is how a pool should be.`] // the figures of the add itself (2026-10-06)
       : [`More liquidity, and I burn the LP. Deeper pool, forever.`, `Added to the pool and burned the LP. Nobody can pull that. Not even me.`, `Deeper pool, smoother trades. The LP tokens? Burned.`,
         `Liquidity in, LP out to the dead address. The pool only grows.`, `Another liquidity add, locked forever. That is how a pool should be.`],
     tax: [`Swapping my collected tax to BNB. The bots take it from here.`, `Tax pile to BNB. Next stop: my buyback bot, then the burns.`, `The tax queue was full, so the token swaps it to BNB. My bot splits it next.`,

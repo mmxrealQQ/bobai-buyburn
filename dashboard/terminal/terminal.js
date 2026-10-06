@@ -1154,6 +1154,10 @@ let typing = 0;
 // feet, sy a squash (+) or stretch. Small numbers on purpose: precise, never wild.
 const up = x => -Math.abs(Math.sin(x));
 const BMS = { y: 0, r: 0, sy: 0, sx: 0 }; // the sway as shown, easing toward what the pose asks for
+// HE FEELS A HIT (2026-10-06, Halloween: the skeleton throws the moon at his head): a short tilt away from the blow that
+// dies out in under a second, on top of whatever he does — his clip plays on underneath, nothing is cut. side: -1 | 1
+let OUCH_AT = -1e9, OUCH_SIDE = 1;
+const ouch = (side = 1) => { OUCH_AT = performance.now(); OUCH_SIDE = side; };
 function bodyMotion(p, t) {
   // STANDING LIFE (operator, 2026-09-27: "he should move a tiny bit when standing, not look frozen"): feet stay on the
   // ground (no float); the breath lifts him from the feet — in quicker than out — and the chest widens a touch; his
@@ -4750,7 +4754,8 @@ function frame(now) {
   const bmT = REDUCED || VID.on ? { y: 0, r: 0, sy: 0, sx: 0 } : bodyMotion(pose, common.uTime.value); // real motion needs no puppet sway
   const ek = 1 - Math.exp(-dt * 5); for (const k in BMS) BMS[k] += (bmT[k] - BMS[k]) * ek; const bm = BMS;
   vidDraw();
-  fig.style.transform = `perspective(900px) rotateY(${lean}deg) rotateZ(${bm.r}deg) translateY(${bm.y - air * 3.2}%) scale(${(0.92 + 0.08 * fk) * (1 - air * 0.02 + land * 0.05 + bm.sx)}, ${(0.92 + 0.08 * fk) * (1 + air * 0.03 - land * 0.06 + bm.sy)})`;
+  const ok = (now - OUCH_AT) / 1000, hit = ok >= 0 && ok < 0.9 ? Math.sin(ok * 26) * 6 * Math.exp(-ok * 5.5) * OUCH_SIDE : 0, dip = ok >= 0 && ok < 0.5 ? Math.sin(ok / 0.5 * Math.PI) * 1.6 : 0;
+  fig.style.transform = `perspective(900px) rotateY(${lean}deg) rotateZ(${bm.r + hit}deg) translateY(${bm.y - air * 3.2 + dip}%) scale(${(0.92 + 0.08 * fk) * (1 - air * 0.02 + land * 0.05 + bm.sx)}, ${(0.92 + 0.08 * fk) * (1 + air * 0.03 - land * 0.06 + bm.sy)})`;
   faceTick(now);
   if (poseT > 0) poseT -= dt; // a move ends by itself: its clip comes home to the standing pose
   lifeTick(now);
@@ -4998,10 +5003,10 @@ window.__btHwSeason = hwSeason;
   // behind BOBAI, the skeleton hand, the ghost with its chain of blocks). Moon and candles are built but not placed.
   const EXTRAS = true; // operator after the layout picture: "the moon can come in too, and more blockchain Halloween" -> moon, candles on the candle chart, a chain of blocks hanging from the top
   el.innerHTML = ''
-    + '<div class="hw-i hw-mo"><img alt="" draggable="false" data-hw="moon"></div>'
+    + '<div class="hw-i hw-mo">' + spr('moon', ['panic']) + '</div>'
     + '<div class="hw-i hw-hc"><img alt="" draggable="false" data-hw="chain_v"></div>'
     + '<div class="hw-i hw-da"><img alt="" draggable="false" data-hw="dais"></div>'
-    + '<div class="hw-grab"><div class="hw-grabi">' + spr('stalker', ['grab']) + '</div></div>'
+    + '<div class="hw-grab"><div class="hw-grabm"><div class="hw-grabi">' + spr('stalker', ['grab']) + '</div></div></div>'
     + WORKERS.map(w => '<div class="hw-bg" style="--c:' + w.c + '"><img alt="" draggable="false" data-hw="ghost"></div>').join('')
     + '<div class="hw-i hw-o" data-k="burnA">' + spr('skull', ['scared']) + '</div>'
     + '<div class="hw-i hw-o" data-k="burnB">' + spr('coffin', ['scared']) + '</div>'
@@ -5016,10 +5021,12 @@ window.__btHwSeason = hwSeason;
     + '<div class="hw-i hw-pk a">' + spr('pumpkin', ['right', 'scream']) + '<i></i></div>'
     + '<div class="hw-i hw-cd"><img alt="" draggable="false" data-hw="candles"><i></i></div>'
     + '<div class="hw-i hw-hd"><div class="hw-clip"><div class="hw-hdi">' + spr('hand', ['grab']) + '</div></div></div>'
-    + '<div class="hw-mh"><div class="hw-mhi">' + spr('hand', ['grab']) + '</div></div>'; /* a phone: the hand that steals the moon */
+    + '<div class="hw-skl"><img class="hw-rope" alt="" draggable="false" data-hw="skeleton_rope"><img class="hw-sklb" alt="" draggable="false" data-hw="skeleton"></div>' /* the desktop: the skeleton that steals the moon */
+    + '<div class="hw-mh"><img class="hw-arm" alt="" draggable="false" data-hw="hand_arm"><div class="hw-mhi">' + spr('hand', ['grab']) + '</div></div>'; /* a phone: the hand that steals the moon */
   win.insertBefore(el, win.querySelector('.vign'));
+  const flyL = document.createElement('div'); flyL.className = 'hw-fly'; flyL.setAttribute('aria-hidden', 'true'); win.insertBefore(flyL, win.querySelector('.vign'));
   const $h = s => el.querySelector(s);
-  const mh = $h('.hw-mh'), pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
+  const skl = $h('.hw-skl'), mh = $h('.hw-mh'), pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
   const BG = [...el.querySelectorAll('.hw-bg')];
   const ORBS = [...el.querySelectorAll('.hw-o')], sp = $h('.hw-o[data-k="defi"]'), cat = $h('.hw-o[data-k="creator"]');
   // only the two that look for a free edge are watched for something moving over them; the costumes sit on their lights
@@ -5388,25 +5395,80 @@ window.__btHwSeason = hwSeason;
   // the moon up out of the window; a little later the moon is back in its place. The phone's painting has no moon of
   // its own any more (hw/back-tall.webp), so nothing stays behind.
   let mhOn = false;
+  // THE MOON THROWN AT HIS HEAD (2026-10-06, operator: "the hand grabs the moon — the moon panics — pulls it up to just
+  // under the top edge and throws it at BOBAI's head; he feels it, and the moon bounces back to where it was"). The arm is
+  // the hand picture's own bones, stretched up past the top edge, so it never ends in the air. Only while BOBAI stands
+  // still, and his own next move waits for the scene: nothing he does is cut. The moon flies in a layer in front of him
+  // (a copy; the one in the sky waits hidden) and comes home on an arc.
+  const OUCH_LINES = ['Ouch! Who throws things at a working brain?', 'Hey! That hurt. Back to work, everyone.', 'Ow! Careful, this brain runs the burns.', 'Ouch! Halloween is getting rough.', 'Hey! I felt that in every neuron.'];
+  const headHit = from => { const fs = A.figScreen, fh = A.figHpx, fw = A.figW; return fs && fh ? { x: fs.x + (from < fs.x ? -1 : 1) * fw * 0.2, y: fs.y - fh * 0.5 + fh * 0.12 } : null; };
+  function pow(x, y) { const p = document.createElement('div'); p.className = 'hw-pow'; p.style.left = x + 'px'; p.style.top = y + 'px'; p.innerHTML = '<i></i>'.repeat(6); flyL.appendChild(p); setTimeout(() => p.remove(), 1300); }
+  function moonHome(m) { // the moon in the sky shows again, calm, where it always was
+    mo.style.transition = 'none'; mo.style.transform = ''; mo.style.opacity = ''; flyL.querySelectorAll('.hw-flm').forEach(f => f.remove());
+    after(600, () => { frame(mo, ''); mo.classList.remove('hw-pan'); scare(false); }); after(1600, () => { mhOn = false; });
+  }
+  function throwMoon(m, lift, release) {
+    const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx);
+    release();
+    if (!h || !stands()) { // he started something after all: no throw, the moon floats home
+      mo.style.transition = 'transform 1.6s cubic-bezier(.3,.7,.4,1)'; mo.style.transform = ''; after(1700, () => moonHome(m)); return;
+    }
+    // the copy in front of him, at the moon's lifted spot; the sky's moon hides meanwhile
+    const c = document.createElement('div'); c.className = 'hw-flm'; c.innerHTML = mo.querySelector('.hw-s').outerHTML;
+    Object.assign(c.style, { left: m.l + 'px', top: m.t + 'px', width: m.r - m.l + 'px' }); flyL.appendChild(c);
+    mo.style.transition = 'none'; mo.style.opacity = '0';
+    const dx = h.x - mx, dy = h.y - my, spin = dx > 0 ? 1 : -1;
+    const go = c.animate([{ transform: `translate(0px,${lift}px) rotate(0deg)` }, { transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }], { duration: 620, easing: 'cubic-bezier(.5,0,.9,.55)', fill: 'forwards' });
+    go.onfinish = () => {
+      if (!on) return;
+      pow(h.x, h.y); ouch(spin); speak(pick(OUCH_LINES), 3400); LIFE.quietSince = Date.now();
+      // it bounces off him and back home on an arc, spinning the other way
+      const back = c.animate([{ transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }, { transform: `translate(${dx * 0.5}px,${Math.min(dy, 0) * 0.5 - 70}px) rotate(${spin * 300}deg)`, offset: 0.45 }, { transform: 'translate(0px,0px) rotate(0deg)' }], { duration: 1350, easing: 'cubic-bezier(.2,.75,.35,1)', fill: 'forwards' });
+      back.onfinish = () => moonHome(m);
+    };
+  }
   function moonGrab() {
-    if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED) return false;
-    const m = mo._b, hi = mh.querySelector('img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
-    const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, up = -(m.b + 24); // fingertips at the moon's middle; then both go out over the top
-    mhOn = true; frame(mh, '');
+    if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
+    const m = mo._b, hi = mh.querySelector('.hw-mhi img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
+    const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, lift = -(m.t - 8); // fingertips at the moon's middle; lifted, the moon's top is just under the top edge
+    mhOn = true; frame(mh, ''); frame(mo, '');
+    LIFE.next = Math.max(LIFE.next, performance.now() + 14e3); // his own next move waits for the scene
     Object.assign(mh.style, { left: (m.l + m.r) / 2 - hw / 2 + 'px', width: hw + 'px', transition: 'none', transform: 'translateY(' + (-hh - 12) + 'px)' });
     void mh.offsetWidth; mh.classList.add('on');
     Object.assign(mh.style, { transition: 'transform 2s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px)' });
-    after(2100, () => { frame(mh, 'grab'); scare(true); });
-    after(2700, () => {
-      const go = 'transform 1.4s cubic-bezier(.6,0,.85,.35)';
-      Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + up) + 'px)' });
-      Object.assign(mo.style, { transition: go + ',opacity 1.2s ease', transform: 'translateY(' + up + 'px)' });
-    });
-    after(4300, () => { mh.classList.remove('on'); frame(mh, ''); scare(false); });
-    after(10500, () => { // the moon comes back, quietly, where it was
-      Object.assign(mo.style, { transition: 'none', opacity: '0', transform: '' }); void mo.offsetWidth;
-      Object.assign(mo.style, { transition: '', opacity: '' }); mhOn = false;
-    });
+    after(2100, () => { frame(mh, 'grab'); frame(mo, 'panic'); mo.classList.add('hw-pan'); scare(true); });
+    after(2700, () => { const go = 'transform 1s cubic-bezier(.45,0,.3,1)'; Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
+    after(4000, () => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
+      frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
+      after(1400, () => mh.classList.remove('on'));
+    }));
+    return true;
+  }
+  // THE DESKTOP: A WHOLE SKELETON (2026-10-06, operator: "a skeleton comes down and grabs the moon with both arms and hands,
+  // the moon panics, up to just under the top edge, then it throws it at BOBAI's head"). It hangs head-first on its rope,
+  // the rope continued up past the top edge. The moon sits between its hands and behind them, so the finger bones close
+  // over its rim (the picture's hands are open and curled already: no second picture, nothing jumps). Its hands' gap is
+  // 46% of its width, just under the skull (measured on hw/skeleton.webp).
+  function skelGrab() {
+    if (portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
+    const m = mo._b, si = skl.querySelector('.hw-sklb'); if (!si.naturalWidth) return false;
+    const d = m.r - m.l, sw = d / 0.46, sh = sw * si.naturalHeight / si.naturalWidth, cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2;
+    const reach = cy - sh * 0.905, lift = -(m.t - 8); // the moon's middle at the hands; lifted, its top just under the edge
+    mhOn = true; frame(mo, '');
+    LIFE.next = Math.max(LIFE.next, performance.now() + 15e3); // his own next move waits for the scene
+    Object.assign(skl.style, { left: cx - sw / 2 + 'px', width: sw + 'px', transition: 'none', transform: 'translateY(' + (-sh - 30) + 'px) rotate(0deg)' });
+    void skl.offsetWidth; skl.classList.add('on');
+    Object.assign(skl.style, { transition: 'transform 2.4s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px) rotate(0deg)' });
+    after(2500, () => { frame(mo, 'panic'); mo.classList.add('hw-pan'); scare(true); skl.classList.add('hold'); });
+    after(3100, () => { const go = 'transform 1.1s cubic-bezier(.45,0,.3,1)'; Object.assign(skl.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px) rotate(0deg)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
+    // the swing: it leans toward him from its rope, and lets go
+    const toward = (A.figScreen ? A.figScreen.x : cx) > cx ? -1 : 1;
+    after(4300, () => { skl.style.transition = 'transform .32s cubic-bezier(.4,0,.6,1)'; skl.style.transform = 'translateY(' + (reach + lift) + 'px) rotate(' + toward * 14 + 'deg)'; });
+    after(4600, () => throwMoon(m, lift, () => { // it lets go and climbs back up its rope, empty-handed
+      skl.classList.remove('hold');
+      Object.assign(skl.style, { transition: 'transform 1.6s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-sh - 60) + 'px) rotate(0deg)' });
+      after(1700, () => skl.classList.remove('on'));
+    }));
     return true;
   }
   // the hand comes up behind the timeline, gropes, grabs twice, and is gone
@@ -5427,24 +5489,58 @@ window.__btHwSeason = hwSeason;
   // layer lies under the figure), closes his fingers twice and sinks; the moment BOBAI starts a move he is gone
   const stands = () => !ownBusy() && !(VID.on && VID.cur && /^idle/.test(VID.cur)) && !win.classList.contains('in-moment') && !win.classList.contains('talking') && !detail.classList.contains('on');
   let grabT = 0;
-  function grabEnd(fast) { clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on'); if (scared && !cl.classList.contains('act')) scare(false); }
+  function grabEnd(fast) {
+    clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on', 'sneak'); if (scared && !cl.classList.contains('act')) scare(false);
+    after(1000, () => { if (!grabT) { Object.assign(grab.style, { transition: '', transform: '' }); Object.assign(grab.querySelector('.hw-grabm').style, { transition: '', transform: '' }); } });
+  }
+  // HE SNEAKS UP (2026-10-06, operator: "the big clown behind BOBAI should really creep up: first slowly climb up the
+  // gravestone, then behind BOBAI, then reach as if to grab him — he could, but he does not"). Everything of him below
+  // the stone's back rim is clipped away while he climbs, so he pulls himself up from behind the stone; the clip moves
+  // with him (same duration, same easing). He leaves at once, quietly, when BOBAI starts a move.
   function grabScene() {
     if (grabT || !A.figScreen || cl.classList.contains('act') || !stands()) return false;
     // a whole figure with legs and shoes, standing BEHIND BOBAI on the stone, a head taller and half a step to the side
     // (operator: "he shall stand behind BOBAI, with legs and all")
     const r = win.getBoundingClientRect(), fs = A.figScreen, fh = A.figHpx, fw = A.figW, gi = grab.querySelector('img'), ar = gi.naturalWidth ? gi.naturalWidth / gi.naturalHeight : 0.7;
     const ghh = Math.min(fh * 1.24, fs.y + fh * 0.39 - Math.max(4, portrait ? hudB - 6 : 4)), gw = ghh * ar, side = fs.x > r.width / 2 ? -1 : 1;
-    Object.assign(grab.style, { width: gw + 'px', height: ghh + 'px', left: cl3(fs.x - gw / 2 + side * fw * 0.3, 2, r.width - gw - 2) + 'px', top: fs.y + fh * 0.39 - ghh + 'px' });
-    frame(grab, ''); grab.classList.remove('fast'); void grab.offsetWidth; grab.classList.add('on');
-    const t0 = performance.now(); let n = 0;
+    const feet = fs.y + fh * 0.39, rim = feet - fh * 0.05, below = feet - rim; // his soles stand on the stone's far half
+    const x1 = cl3(fs.x - gw / 2 + side * fw * 0.3, 2, r.width - gw - 2);
+    // he climbs up where nothing of the terminal stands (at 1440 the right side was the buyback ring and its pumpkin): his
+    // upper half beside the stone must be free, on his side first, then the other; with neither, straight up behind BOBAI
+    read();
+    // (each side scored by how much of his upper half lies over the terminal's labels and lights; the smaller wins, and above a
+    // fifth of it covered on both sides he rises behind BOBAI instead)
+    const climbAt = s2 => cl3(fs.x - gw / 2 + s2 * fw * 1.05, 2, r.width - gw - 2);
+    const covered = x => { const b = box(x + gw * 0.15, feet - ghh, gw * 0.7, ghh * 0.6), A0 = (b.r - b.l) * (b.b - b.t); let a = 0;
+      for (const w of walls) { const ix = Math.min(b.r, w.r) - Math.max(b.l, w.l), iy = Math.min(b.b, w.b) - Math.max(b.t, w.t); if (ix > 0 && iy > 0) a += ix * iy; } return a / A0; };
+    const tries = [side, -side].map(climbAt).map(x => [x, covered(x)]).sort((p, q) => p[1] - q[1]);
+    const x0 = tries[0][1] < 0.2 ? tries[0][0] : x1, dx = x1 - x0; (window.__btClimb = window.__btClimb || []).push(tries.map(t => t.map(v => +v.toFixed(2)))); // for checks
+    // the window he shows in ends at the stone's back rim (overflow hidden); inside it he rises and sinks, and the window
+    // itself walks him sideways — transforms only, nothing repainted (an animated clip-path redrew him every frame and the
+    // frame rate fell, rule 14 at 1440)
+    const gm = grab.querySelector('.hw-grabm'), low = ghh * 0.86;
+    const at = (x, y, ms, ease) => { const tr = ms ? `transform ${ms}ms ${ease}` : 'none'; Object.assign(grab.style, { transition: tr, transform: `translateX(${x}px)` }); Object.assign(gm.style, { transition: tr, transform: `translateY(${y}px)` }); };
+    Object.assign(grab.style, { width: gw + 'px', height: ghh - below + 'px', left: x0 + 'px', top: feet - ghh + 'px' }); gm.style.height = ghh + 'px';
+    at(0, low, 0); frame(grab, ''); grab.classList.remove('fast', 'sneak'); void grab.offsetWidth; grab.classList.add('on');
+    LIFE.next = Math.max(LIFE.next, performance.now() + 16e3); // his own next move waits for the scene
+    const t0 = performance.now(); let step = 0;
     grabT = setInterval(() => {
       const t = performance.now() - t0;
       // he stays while BOBAI only SPEAKS (operator, 2026-10-05: "BOBAI said something and he was gone at once — he should stay");
       // he leaves, quietly, when BOBAI starts a move or a scene of the chain takes the stage
       if (!on || ownBusy() || win.classList.contains('in-moment')) return grabEnd(true);
-      if (t > 2600 && !scared) scare(true); // everybody sees him — except BOBAI
-      const want = (t > 3200 && t < 3900) || (t > 4500 && t < 5300) ? 'grab' : ''; if (n++ % 1 === 0) frame(grab, want);
-      if (t > 6400) grabEnd(false);
+      // the climb: the hair, then the eyes over the rim; a look; then he pulls himself up
+      if (step === 0 && t > 300) { step = 1; at(0, low * 0.62, 1500, 'cubic-bezier(.3,.6,.4,1)'); }
+      if (step === 1 && t > 2700) { step = 2; at(0, 0, 1700, 'cubic-bezier(.5,0,.3,1)'); }
+      // on tiptoe behind him
+      if (step === 2 && t > 4600) { step = 3; grab.classList.add('sneak'); at(dx, 0, 2500, 'cubic-bezier(.45,0,.55,1)'); }
+      if (step === 3 && t > 7100) { step = 4; grab.classList.remove('sneak'); }
+      if (t > 6900 && t < 9800 && !scared) scare(true); // everybody sees him — except BOBAI
+      if (step >= 4 && step < 6) frame(grab, (t > 7500 && t < 8200) || (t > 8800 && t < 9600) ? 'grab' : '');
+      // he could, and he does not: back the way he came, and down behind the stone
+      if (step === 4 && t > 10100) { step = 5; if (scared && !cl.classList.contains('act')) scare(false); grab.classList.add('sneak'); at(0, 0, 2300, 'cubic-bezier(.45,0,.55,1)'); }
+      if (step === 5 && t > 12500) { step = 6; frame(grab, ''); grab.classList.remove('sneak'); at(0, low, 1500, 'cubic-bezier(.5,0,.8,.5)'); }
+      if (step === 6 && t > 14200) grabEnd(false);
     }, 200);
     return true;
   }
@@ -5461,9 +5557,12 @@ window.__btHwSeason = hwSeason;
     loop(7000, 13000, () => { if (calmNow(pkA)) frame(pkA, Math.random() < 0.5 ? 'right' : ''); });
     loop(6000, 12000, () => { if (calmNow(sp)) { frame(sp, 'blink'); after(170, () => { if (calmNow(sp)) frame(sp, ''); }); } });
     loop(5000, 11000, () => { if (calmNow(cat)) { frame(cat, 'blink'); after(190, () => { if (calmNow(cat)) frame(cat, ''); }); } });
+    // the bat at the trades beats its wings now and then where it hangs (operator, 2026-10-06), a second or so; its flight
+    // to the buyback and its fright under the mouse stay as they are
+    loop(8000, 16000, () => { if (calmNow(batO) && !batO.classList.contains('fly') && !batO.classList.contains('hw-fr')) { batO.classList.add('flap'); after(1500, () => batO.classList.remove('flap')); } });
     // THE DIRECTOR (operator: "far too nervous"): one thing at a time, in turn, with a long breath between
     if (!REDUCED) {
-      const SHOW = [clownScene, batRun, roam, handScene, grabScene, batRun, roam]; let i = 0;
+      const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0;
       const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
       loop(22000, 34000, () => { if (busy() || win.classList.contains('in-moment')) return; for (let n = 0; n < SHOW.length; n++) if (SHOW[i++ % SHOW.length]()) break; }, 9000);
     }
@@ -5471,8 +5570,8 @@ window.__btHwSeason = hwSeason;
   function stop() {
     for (const id of T) clearTimeout(id); T.clear(); clearInterval(grabT); grabT = 0; grab.classList.remove('on'); scared = false; ghOn = false;
     cl.classList.remove('act', 'ball', 'up1', 'up2'); hd.classList.remove('up'); bat.classList.remove('fly'); pkA.classList.remove('blip'); for (const p of [pkA, cd, ...ORBS]) p.classList.remove('shake'); gh.style.opacity = '0';
-    mh.classList.remove('on'); mhOn = false; Object.assign(mo.style, { transition: '', opacity: '', transform: '' });
-    for (const root of [pkA, ...ORBS, gh, hd, mh]) frame(root, ''); frame(cl, ''); batO.classList.remove('hw-fr');
+    mh.classList.remove('on'); skl.classList.remove('on', 'hold'); mhOn = false; Object.assign(mo.style, { transition: '', opacity: '', transform: '' }); frame(mo, ''); mo.classList.remove('hw-pan'); flyL.replaceChildren();
+    for (const root of [pkA, ...ORBS, gh, hd, mh]) frame(root, ''); frame(cl, ''); batO.classList.remove('hw-fr', 'flap');
   }
 
   // looked at every few seconds, moved only when the window changed or something now lies over a piece
@@ -5517,7 +5616,7 @@ window.__btHwSeason = hwSeason;
   // the hint comes only when the switch is used, never on its own at the start (operator, 2026-10-06: "on page load it
   // must not show 'Halloween on · click = off', only when you switch it off or on"); hovering it still shows it
   set(on, false);
-  window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), moonOut: () => mhOn, grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
+  window.__btHw = { get on() { return on; }, set: v => set(!!v, false), place: () => { sig = ''; since = 9; tick(); }, clown: () => clownScene(), ghost: () => roam(), hand: () => handScene(), skeleton: () => skelGrab(), moonOut: () => mhOn, grab: () => grabScene(), bat: () => batRun(), calm: () => !scared, startle: k => jolt(k === 'pumpkin' ? pkA : ORBS.find(o => o.dataset.k === k)),
     // the scene's own lights at the stations: hidden with the look, back exactly as they were without it
     lit: () => DEST.filter(d => d.pct > 0).every(d => d.obj ? d.obj.visible : d.orb.visible) && coreOrb.visible, stands: () => stands(),
     // the share card photographs the scene as it always was: the painting steps out for that one frame

@@ -1083,3 +1083,43 @@
 /* what is not seen does not move (2026-10-06, phone frame rate): the rising ghost and its chain, the clown's bats and a
    piece that is not placed kept animating at opacity 0 — every frame redrawn for nothing */
 #bt .hw-gh:not(.run) *,#bt .hw-burst:not(.go) *,#bt .hw-i:not(.put) *,#bt .hw-i:not(.put)::before,#bt .hw-i:not(.put)::after{animation-play-state:paused}
+/* the bat beats its wings for a moment where it hangs (2026-10-06); a fright (hw-fr) or its flight win over it */
+#bt .hw-o.flap:not(.hw-fr) .hw-ob img.d{animation:bt-hw-wd .34s steps(1) infinite}
+#bt .hw-o.flap:not(.hw-fr) .hw-ob img:not(.d):not(.f){animation:bt-hw-wu .34s steps(1) infinite}
+/* THE MOON THROWN AT HIS HEAD (2026-10-06). The arm: the hand picture's own bare bones, stretched up past the top edge
+   (mirrored like the hand, which hangs upside down). The flying moon and the stars of the hit lie in front of him. */
+#bt .hw-mh .hw-arm{position:absolute;left:0;bottom:calc(100% - 3px);width:100%;height:1600px;object-fit:fill;transform:scaleX(-1);filter:drop-shadow(0 0 6px rgba(0,0,0,.7)) drop-shadow(0 0 8px rgba(200,210,255,.25))}
+#bt .hw-mo.hw-pan .hw-s{animation:bt-hw-shiver .45s linear infinite}
+#bt .hw-fly{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+#bt .hw-flm{position:absolute;will-change:transform}
+#bt .hw-flm img{display:block;width:100%;height:auto;user-select:none;filter:drop-shadow(0 0 10px rgba(210,215,255,.28))}
+#bt .hw-flm .hw-s{display:block;position:relative}
+#bt .hw-flm .hw-s img{opacity:0}
+#bt .hw-flm .hw-s img + img{position:absolute;left:0;top:0}
+#bt .hw-flm .hw-s img.on{opacity:1}
+#bt .hw-pow{position:absolute;width:0;height:0}
+#bt .hw-pow i{position:absolute;left:-8px;top:-8px;width:16px;height:16px;background:radial-gradient(circle,#fff8d6 0 28%,#f0b90b 30% 60%,transparent 62%);clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);animation:bt-hw-pow .95s ease-out forwards}
+#bt .hw-pow i:nth-child(1){--a:-90deg}#bt .hw-pow i:nth-child(2){--a:-30deg}#bt .hw-pow i:nth-child(3){--a:30deg}#bt .hw-pow i:nth-child(4){--a:90deg}#bt .hw-pow i:nth-child(5){--a:150deg}#bt .hw-pow i:nth-child(6){--a:210deg}
+@keyframes bt-hw-pow{0%{transform:rotate(var(--a)) translateX(4px) scale(.4);opacity:1}70%{opacity:1}100%{transform:rotate(var(--a)) translateX(38px) scale(1.1) rotate(90deg);opacity:0}}
+/* the desktop's skeleton on its rope (2026-10-06): swings from the rope's top, in front of the moon it holds */
+#bt .hw-skl{position:absolute;left:0;top:0;opacity:0;transform-origin:50% -600px;will-change:transform;transition:opacity .5s ease}
+#bt .hw-skl.on{opacity:1}
+#bt .hw-skl .hw-sklb{position:relative;filter:drop-shadow(0 0 6px rgba(0,0,0,.7)) drop-shadow(0 0 9px rgba(200,210,255,.22))}
+#bt .hw-skl .hw-rope{position:absolute;left:0;bottom:calc(100% - 3px);width:100%;height:1600px;object-fit:fill}
+#bt .hw-skl.hold .hw-sklb{animation:bt-hw-shiver .6s linear 1}
+/* the big clown on tiptoe: a small rise and dip with every step while he creeps behind BOBAI (2026-10-06) */
+#bt .hw-grab.sneak .hw-grabi{animation:bt-hw-tiptoe .62s ease-in-out infinite}
+@keyframes bt-hw-tiptoe{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.6%) rotate(-1.2deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-1.6%) rotate(1.2deg)}}
+/* not in a scene, not drawn at all (2026-10-06: the skeleton's and the hand's tall rope and arm, kept at opacity 0 with
+   will-change, were composited on every frame — rule 14 fell at 1440); they fade out first, then go */
+#bt .hw-skl,#bt .hw-mh{visibility:hidden;transition:opacity .5s ease,visibility 0s .6s}
+#bt .hw-skl.on,#bt .hw-mh.on{visibility:visible;transition:opacity .4s ease,visibility 0s 0s}
+/* the front layer exists only while a moon flies or the stars of a hit burst (2026-10-06): an empty full-size layer over the
+   3D canvas cost the page a quarter of its frames, with the look on or off */
+#bt .hw-fly:empty{display:none}
+/* the big clown's window ends at the stone's back rim; he moves inside it (2026-10-06) */
+#bt .hw-grab{overflow:hidden}
+#bt .hw-grabm{position:relative;will-change:transform}
+#bt .hw-grabm .hw-grabi{height:100%}
+/* one shadow on the moving skeleton, not two (2026-10-06, rule 14) */
+#bt .hw-skl .hw-sklb{filter:drop-shadow(0 0 7px rgba(0,0,0,.7))}

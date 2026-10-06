@@ -74,7 +74,7 @@ ok(/Whale Watcher · Last 24h\n🐋 2 wallets tracked/.test(noHold), '/whales24h
 // The small-wallet line: address, balance in M/K, a dot for the active ones.
 const bal = new Map([[A, 4_200_000], [B, 0], [C, 12_500]]);
 const line = renderSmallWalletsLine([A, B, C], bal, new Set([A])).replace(/<[^>]+>/g, '');
-ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `small wallets on one line, largest first, got: ${line}`);
+ok(line === '💀 below 10M (3): 0xaaaa...aaaa 4.2M🟢 · 0xcccc...cccc 13K · 0xbbbb...bbbb 0', `small wallets on one line, largest first, got: ${line}`);
 
 // The cron itself, run dry at 06:05 UTC: an empty KV, a network that answers
 // 503. Every gate in scheduled() catches its own errors, so a name that is out
@@ -201,6 +201,38 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   ok(toldAlready(ev, '0x1', 'SELL', A, B) === true && toldAlready(ev, '0x1', 'EX_WHALE', A, B) === false && toldAlready(ev, '0x2', 'SELL', A, B) === false && toldAlready(null, '0x1', 'SELL', A, B) === false, 'a retried transaction skips what it has told and nothing else');
   const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
   ok(/if \(!retryTx\) postedWhaleSet\.add\(txHash\);/.test(src) && !/MAX_ALERTS_PER_RUN\) \{ postedSet\.add\(txHash\); continue; \}/.test(src), 'a failed whale send leaves its transaction open, and the buy cap no longer marks a buy as posted');
+}
+
+// 2026-10-06: a loss prints as a number, an alert tells what the move did to
+// the bag, and a wallet that wakes after a long sleep says so.
+{
+  const { positionNote, dormantDays } = worker;
+  const down = renderDailyRecap([], [A], null, true, { ...holdings, change_7d: { window_days: 7, bobai_change: -33541652, percent_change: -6.79 } }).replace(/<[^>]+>/g, '');
+  ok(/7d -33\.54M \(-6\.79%\)/.test(down), `a falling 7d trend reads -33.54M, got: ${down.split('\n')[1]}`);
+  ok(positionNote('SELL', 37e6, 0) === 'the whole bag — wallet now empty', 'selling everything says so');
+  ok(positionNote('SELL', 3e6, 27e6) === '10% of the bag' && positionNote('TRANSFER_OUT', 1e5, 9.9e6) === '1% of the bag', 'a part sale says its share of the bag');
+  ok(positionNote('BUY', 5e5, 5e5) === 'a new position — the wallet held none before' && positionNote('BUY', 1e6, 11e6) === 'bag +10%', 'a buy says new position or how much the bag grew');
+  ok(positionNote('BUY', 1e6, null) === null && positionNote('SELL', 0, 5) === null, 'no balance, no note');
+  const W = '0x' + 'e'.repeat(40);
+  const days = Array.from({ length: 40 }, (_, i) => ({ date: `d${i}`, ts: i * DAY, wallets: { [W]: i < 10 ? 5e6 : 20e6 } }));
+  ok(dormantDays(days, W, 20e6, [], 40 * DAY) === 30, `a wallet still since day 10 wakes after 30 days, got ${dormantDays(days, W, 20e6, [], 40 * DAY)}`);
+  ok(dormantDays(days, W, 19e6, [], 40 * DAY) === null, 'a balance that moved since the last snapshot is not asleep');
+  ok(dormantDays(days, W, 20e6, [{ from: W, to: '0x1', ts: 35 * DAY }], 40 * DAY) === null, 'a logged move inside the still stretch means it was not asleep');
+  ok(dormantDays(days.slice(0, 14), W, 20e6, [], 14 * DAY) === null && dormantDays(days.slice(0, 14), W, 20e6, [], 14 * DAY, 2) === 4, 'under seven days is not news for an alert; the list shows from two');
+  ok(dormantDays([], W, 1, []) === null && dormantDays(days, '0x' + '9'.repeat(40), 1, []) === null, 'no snapshot of the wallet, no claim');
+}
+
+// 2026-10-06: a contract that holds like a whale is watched (0xa399…9d9c held
+// 26.3M and none of its 42 moves ever alerted); a pool never is.
+{
+  const { answersAsPool } = worker;
+  ok(answersAsPool('0x000000000000000000000000245c386dcfed896f5c346107596141e5edcbffff') === true, 'a pool answers token0() with an address');
+  ok(answersAsPool('0x') === false && answersAsPool(null) === false && answersAsPool('0x' + '0'.repeat(64)) === false && answersAsPool('0x08c379a0' + '0'.repeat(120)) === false, 'no answer, a zero address or a revert text is not a pool');
+  const rc = renderDailyRecap([], [A, B], null, true, holdings, [], 1).replace(/<[^>]+>/g, '');
+  ok(/🐋 2 wallets \+ 1 contract · 19 hold 10M\+/.test(rc), `the recap counts the contract apart: ${rc.split('\n')[2]}`);
+  const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  ok(/const isTracked = watched\(addr\);/.test(src) && /'0xa3996b9977cdbf77c6f7717894d58a66a6789d9c'/.test(src), 'the scan watches the contract list too, seeded with 0xa399…9d9c');
+  ok(/if \(asContract\) \{ if \(!poolCache\.has\(addr\)\)/.test(src) && !/NEW_WHALE detection[^\n]*\n\s*if \(await isContractCached\(addr\)\) continue;/.test(src), 'a contract crossing 10M is taken unless it is a pool (it was skipped as any contract)');
 }
 
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }

@@ -4791,7 +4791,9 @@ function close() {
 bt.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && bt.classList.contains('on')) close(); });
 new ResizeObserver(() => { if (opened) { FIT.scale = 1; FIT.tries = 0; layout(); placeFlip(); } }).observe(win); // a new size is fitted afresh
-setInterval(() => { $('clk').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false }); }, 500);
+// the clock has its time from the first frame: empty for its first half second, the title row widened and then shrank
+// when the time came, and LIVE with the Halloween switch slid 57 px to the left (2026-10-06)
+{ const clk = () => { $('clk').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false }); }; clk(); setInterval(clk, 500); }
 
 // ---------- MOMENTS (2026-09-26, operator: "the windows can be opened again, with their figures, charts and bars") ----------
 // A scene's board is gone after a few seconds. Two ways back to it: a tap on the board holds it (the replay pauses with
@@ -4970,6 +4972,11 @@ window.__btHwSeason = hwSeason;
   let flowW = -1, flowOk = false, flowAt = 0;
   function swPlace() {
     const hud = sw.parentElement, h = hud.getBoundingClientRect(); if (!h.width) return;
+    // not before the window knows its shape: placed by the wide rule on a phone, it showed cut at the left edge and
+    // jumped right once layout() set .portrait (2026-10-06, operator). The class change calls this again.
+    // It is placed by the layout the window wears now (its class), and shows only once that class fits the window's shape.
+    const wr0 = win.getBoundingClientRect(); if (!wr0.width) return;
+    const portrait = win.classList.contains('portrait'), settled = portrait === portraitNow(wr0);
     // does the title row still fit with the switch in it? Asked again while the row settles (its title wraps late)
     if (!portrait && (flowW !== (h.width | 0) || performance.now() - flowAt < 9000)) {
       if (flowW !== (h.width | 0)) { flowW = h.width | 0; flowAt = performance.now(); }
@@ -4986,10 +4993,11 @@ window.__btHwSeason = hwSeason;
     // first digit (operator, 2026-10-05: option 1, "under LIVE")
     if (!portrait && !flowOk) { sw.style.setProperty('--sx', lv.right - h.left - 22 + 'px'); sw.style.setProperty('--sy', lv.bottom - h.top + 4 + 'px'); }
     else { sw.style.setProperty('--sx', lv.right - h.left + (portrait ? 8 : -7) + 'px'); sw.style.setProperty('--sy', lv.top - h.top + (lv.height - 26) / 2 + 'px'); }
-    if (!sw._in) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); } // there from the start, placed before it shows
+    if (!sw._in && settled) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); } // there from the start, placed before it shows
   }
   const swT0 = performance.now();
   new MutationObserver(swPlace).observe(win, { attributes: true, attributeFilter: ['class'] });
+  { const ro = new ResizeObserver(() => swPlace()); ro.observe(win); ro.observe(sw.parentElement); ro.observe(livePill); addEventListener('resize', swPlace); } // the window and its title row settle during the intro (and a page scrollbar that goes moves them)
   let sayT = 0;
   // its name folds out beside it, over whatever is there, for a moment. The class is hw-say, NOT say: `#bt .say` is
   // BOBAI's speech bubble (opacity 0, scale .6) — with it the button vanished for as long as its name showed (2026-10-05,

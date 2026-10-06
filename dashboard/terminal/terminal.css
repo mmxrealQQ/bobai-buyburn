@@ -1075,3 +1075,8 @@
    were drawn again on every frame: 23 frames a second with the look on against 39 without — 2026-10-06, rule 14) */
 #bt .bt-win.portrait .hw-ghb,#bt .bt-win.portrait .hw-cat .hw-s{filter:none}
 #bt .bt-win.portrait .hw-o > *{filter:none;background:radial-gradient(closest-side,rgba(0,0,0,.5),rgba(240,185,11,.08) 72%,transparent);border-radius:50%}
+
+/* the clock keeps its width while it has no time yet (before the script runs), so the title row never shifts (2026-10-06) */
+#bt .clk:empty::before{content:"00:00:00";visibility:hidden}
+/* the MOMENTS count has room for two digits from the start: "0" turning "22" widened the button and the title row slid (2026-10-06) */
+#bt .scn b{min-width:24px}

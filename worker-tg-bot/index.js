@@ -298,12 +298,15 @@ async function isContract(addr) {
 }
 
 function formatNumber(n) {
+  // A loss is a number too: the recap's 7d trend printed "-33541652.00".
+  if (n < 0) return '-' + formatNumber(-n);
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return n.toFixed(2);
 }
 
 function formatUsd(n) {
+  if (n < 0) return '-' + formatUsd(-n);
   if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(2) + 'M';
   if (n >= 1_000) return '$' + (n / 1_000).toFixed(1) + 'K';
   return '$' + n.toFixed(2);
@@ -1014,6 +1017,40 @@ async function saveTrackedWallets(env, list) {
   return cleaned;
 }
 
+// CONTRACTS THAT HOLD LIKE A WHALE (2026-10-06). The watch-set took people only,
+// so a contract that buys and holds was invisible: a full scan of every BOBAI
+// transfer found 0xa399…9d9c, an unnamed contract owned by 0xffc4…f56c, with
+// 26.3M BOBAI (2.6% of supply) bought straight from the pair in 41 buys and
+// one sale — none of them ever alerted. A contract that HOLDS 10M+ is a holder;
+// a router passes tokens through in one transaction and holds dust, and a pool
+// (it answers token0()) is a market, never a holder. Kept apart from the
+// wallets so /whalecleanup and the 10M rule for people stay as they are.
+const DEFAULT_CONTRACTS = [
+  '0xa3996b9977cdbf77c6f7717894d58a66a6789d9c', // unnamed trading/vault contract, owner 0xffc4…f56c — 26.3M on 2026-10-06
+];
+async function loadTrackedContracts(env) {
+  try {
+    const raw = await env.KV.get('tracked_contracts');
+    if (raw) return JSON.parse(raw).filter(a => !WHALE_NEVER_TRACK.has(a));
+  } catch {}
+  return [...DEFAULT_CONTRACTS];
+}
+async function saveTrackedContracts(env, list) {
+  const cleaned = [...new Set(list.map(a => a.toLowerCase()))]
+    .filter(a => /^0x[a-f0-9]{40}$/.test(a) && !WHALE_NEVER_TRACK.has(a));
+  await env.KV.put('tracked_contracts', JSON.stringify(cleaned));
+  return cleaned;
+}
+// A pool answers token0() with an address; anything else (no such function,
+// a revert, an empty answer) is not a pool. Pure on the eth_call result.
+export function answersAsPool(ret) {
+  return typeof ret === 'string' && /^0x0{24}[0-9a-f]{40}$/i.test(ret) && !/^0x0{64}$/.test(ret);
+}
+async function isPool(addr) {
+  try { return answersAsPool(await rpcCall('eth_call', [{ to: addr, data: '0x0dfe1681' }, 'latest'])); }
+  catch { return true; } // unknown: never take a market for a holder
+}
+
 async function loadWalletEdges(env) {
   try {
     const raw = await env.KV.get('wallet_edges');
@@ -1067,11 +1104,50 @@ export function walletsEmptyFor(snaps, days = WHALE_RETIRE_EMPTY_DAYS) {
   return Object.keys(last.wallets || {}).filter((a) => tail.every((s) => s.wallets && s.wallets[a] !== undefined && Number(s.wallets[a]) <= 0));
 }
 
-async function retireEmptyWallets(env, snaps, tracked) {
+// What a move does to the wallet's own bag (2026-10-06): "sold 37M" says
+// little until it says "sold all of it" or "a tenth of the bag". `balAfter` is
+// the balance read after the move; an outflow came from balAfter + amount,
+// an inflow went onto balAfter - amount. Null when it cannot be told. Pure.
+export function positionNote(kind, amount, balAfter) {
+  if (balAfter == null || !(amount > 0)) return null;
+  const out = kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT' || kind === 'INTERNAL_T';
+  const pct = (x) => (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10) + '%';
+  if (out) {
+    const before = balAfter + amount;
+    if (balAfter < 1) return 'the whole bag — wallet now empty';
+    return `${pct(amount / before * 100)} of the bag`;
+  }
+  const before = balAfter - amount;
+  if (before < 1) return 'a new position — the wallet held none before';
+  return `bag +${pct(amount / before * 100)}`;
+}
+
+// Days a wallet's balance stood still before this move, read from the daily
+// snapshots (2026-10-06): a whale that wakes after two months is news, a
+// trader's tenth move today is not. The balance before the move must match
+// the latest snapshot (a move since the snapshot means it was not asleep),
+// no logged event may touch it since the still stretch began, and only a
+// stretch of `minDays` or more counts. The days are a floor ("66+"): the
+// snapshot says when the change was seen, not the hour it happened. Pure.
+export function dormantDays(snaps, addr, balBefore, events = [], now = Date.now(), minDays = 7) {
+  if (!Array.isArray(snaps) || !snaps.length || balBefore == null) return null;
+  const a = String(addr).toLowerCase();
+  const val = (s) => (s && s.wallets && s.wallets[a] !== undefined ? Number(s.wallets[a]) : undefined);
+  const last = val(snaps[snaps.length - 1]);
+  if (last === undefined || Math.abs(last - balBefore) > Math.max(1, balBefore * 0.001)) return null;
+  let i = snaps.length - 1;
+  while (i > 0 && val(snaps[i - 1]) !== undefined && Math.abs(val(snaps[i - 1]) - last) <= Math.max(1, last * 0.001)) i--;
+  const since = snaps[i].ts;
+  if ((events || []).some((e) => (e.ts || 0) >= since && (e.from === a || e.to === a))) return null;
+  const days = Math.floor((now - since) / 86400e3);
+  return days >= minDays ? days : null;
+}
+
+async function retireEmptyWallets(env, snaps, tracked, save = saveTrackedWallets) {
   const empty = new Set(walletsEmptyFor(snaps));
   const dropped = tracked.filter((a) => empty.has(a));
   if (!dropped.length) return [];
-  await saveTrackedWallets(env, tracked.filter((a) => !empty.has(a)));
+  await save(env, tracked.filter((a) => !empty.has(a)));
   console.log('[WHALE] retired', dropped.length, 'wallets empty for', WHALE_RETIRE_EMPTY_DAYS, 'days:', dropped.map((a) => a.slice(0, 10)).join(' '));
   return dropped;
 }
@@ -1295,13 +1371,13 @@ function describeAddr(addr, clusterTag, balTokens, priceUsd) {
   return `${tag} · ${formatNumber(balTokens)} BOBAI${usdPart}`;
 }
 
-// The wallets of a group that hold under 10M, on one line: address and
-// balance in millions, a 🟢 when the wallet moved in the last 24 h. Empty
+// The wallets of a group that hold under 10M, on one line: address (first
+// and last characters, like every other line) and balance in millions, a 🟢 when the wallet moved in the last 24 h. Empty
 // wallets read "0" until the retire rule drops them.
 export function renderSmallWalletsLine(addrs, balByAddr, active = new Set()) {
   const m = (t) => (t >= 1e6 ? (t / 1e6).toFixed(t >= 1e7 ? 0 : 1) + 'M' : t > 0 ? (t / 1e3).toFixed(0) + 'K' : '0');
   const sorted = addrs.slice().sort((x, y) => (balByAddr.get(y) || 0) - (balByAddr.get(x) || 0));
-  const parts = sorted.map((a) => `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${a.slice(0, 6)}</a> ${m(balByAddr.get(a) || 0)}${active.has(a) ? '🟢' : ''}`);
+  const parts = sorted.map((a) => `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${shortenAddress(a)}</a> ${m(balByAddr.get(a) || 0)}${active.has(a) ? '🟢' : ''}`);
   return `💀 <i>below 10M (${addrs.length}):</i> ${parts.join(' · ')}`;
 }
 
@@ -1319,7 +1395,7 @@ function describeMover(e) {
 // One screen (the operator, 2026-09-10): holdings first, then the day's flow
 // as one line per kind, the top moves, and what the watch-set did to itself.
 // `holdings` is snapshotHoldings(); `retired` the wallets dropped today.
-export function renderDailyRecap(events, tracked, price, withDateStamp, holdings = null, retired = []) {
+export function renderDailyRecap(events, tracked, price, withDateStamp, holdings = null, retired = [], contracts = 0) {
   const sum = summarize24h(events);
   const c = sum.counts;
   const head = withDateStamp
@@ -1336,9 +1412,10 @@ export function renderDailyRecap(events, tracked, price, withDateStamp, holdings
     const parts = [`${holdings.wallets_at_or_above_threshold} hold 10M+`];
     if (holdings.wallets_below_threshold) parts.push(`${holdings.wallets_below_threshold} below`);
     if (holdings.wallets_empty) parts.push(`${holdings.wallets_empty} empty`);
-    lines.push(`🐋 ${tracked.length} wallet${tracked.length === 1 ? '' : 's'} · ${parts.join(' · ')}`);
+    const cn = contracts ? ` + ${contracts} contract${contracts === 1 ? '' : 's'}` : '';
+    lines.push(`🐋 ${tracked.length} wallet${tracked.length === 1 ? '' : 's'}${cn} · ${parts.join(' · ')}`);
   } else {
-    lines.push(`🐋 ${tracked.length} wallet${tracked.length === 1 ? '' : 's'} tracked`);
+    lines.push(`🐋 ${tracked.length} wallet${tracked.length === 1 ? '' : 's'}${contracts ? ` + ${contracts} contract${contracts === 1 ? '' : 's'}` : ''} tracked`);
   }
   lines.push('');
 
@@ -1468,30 +1545,36 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
 • 💀 <b>EX-WHALE</b> — tracked wallet drops below 10M (stays in set while it holds anything).
 • 🧹 <b>Retired</b> — a wallet empty for 7 daily snapshots leaves the set at the recap; it is re-added the moment it moves.
 • 🟠 <b>Cascade (Hop 1)</b> — fresh EOAs a tracked wallet sends to are auto-added.
-• 🤖 <b>Contracts blocked</b> — router/aggregator contracts (eth_getCode) are never tracked.
+• 🏦 <b>Contract holders</b> — a contract that holds 10M+ (never a pool, never a router) is watched on its own list; <code>/whaleadd</code> takes one from 1M.
+• 🤖 <b>Routers blocked</b> — contracts that only pass tokens through are never tracked.
+• ⏰ Alerts name the share of the bag a move takes, and a wallet's first move after 7+ still days.
 
 <b>Never tracked</b> (always excluded):
 • PancakeSwap LP · DEAD burn · BOBAI contract (tax collector)
-• Buyback bot &amp; Dev-Buyback bot · Any contract address
+• Buyback bot &amp; Dev-Buyback bot · Pools and routers
 
 <i>Internal-only. Alerts post to this chat, never public.</i>`;
   }
 
   else if (cmd === '/whales') {
     const list = await loadTrackedWallets(env);
-    if (!list.length) {
+    const cList = await loadTrackedContracts(env);
+    if (!list.length && !cList.length) {
       reply = '🐋 No wallets currently tracked.\nUse <code>/whaleadd 0x...</code> to start.';
     } else {
-      const [balances, price, edges, events, totalSupply] = await Promise.all([
+      const [balances, price, edges, events, totalSupply, snaps, cBalances] = await Promise.all([
         Promise.all(list.map(a => getBobaiBalance(a).catch(() => 0n))),
         fetchBobaiPriceUsd().catch(() => null),
         loadWalletEdges(env),
         loadWhaleEvents(env),
         getTotalSupply().catch(() => 0),
+        loadWhaleSnapshots(env).catch(() => []),
+        Promise.all(cList.map(a => getBobaiBalance(a).catch(() => 0n))),
       ]);
       const tokens = balances.map(b => Number(b / 10n ** 18n));
-      const balByAddr = new Map(list.map((a, i) => [a, tokens[i]]));
-      const totalTokens = tokens.reduce((s, t) => s + t, 0);
+      const cTokens = cBalances.map(b => Number(b / 10n ** 18n));
+      const balByAddr = new Map([...list.map((a, i) => [a, tokens[i]]), ...cList.map((a, i) => [a, cTokens[i]])]);
+      const totalTokens = tokens.reduce((s, t) => s + t, 0) + cTokens.reduce((s, t) => s + t, 0);
       const totalUsd = price ? totalTokens * price : null;
       // %-share is computed against TOTAL SUPPLY (more meaningful than vs. tracked).
       const supplyBase = totalSupply > 0 ? totalSupply : totalTokens || 1;
@@ -1509,7 +1592,7 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
       const totalUsdStr = totalUsd != null ? formatUsd(totalUsd) : 'n/a';
       const totalPctOfSupply = ((totalTokens / supplyBase) * 100).toFixed(1);
       const header = `🐋 <b>Whale Watcher</b>
-<b>${list.length}</b> wallets · <b>${formatNumber(totalTokens)}</b> BOBAI · <b>${totalUsdStr}</b>
+<b>${list.length}</b> wallets${cList.length ? ` + <b>${cList.length}</b> contract${cList.length === 1 ? '' : 's'}` : ''} · <b>${formatNumber(totalTokens)}</b> BOBAI · <b>${totalUsdStr}</b>
 <b>${totalPctOfSupply}%</b> of total supply`;
 
       // --- 24h inline summary ---
@@ -1534,9 +1617,11 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         // Small + active → 💀🟢 so cascade-hop traffic on sub-10M wallets stays visible.
         const small = bal < WHALE_THRESHOLD_TOKENS;
         const isActive = active.has(addr);
+        // A dormant wallet says for how long (from the daily snapshots).
+        const still = isActive ? null : dormantDays(snaps, addr, bal, events, Date.now(), 2);
         const dot = small
           ? (isActive ? '💀🟢' : '💀')
-          : (isActive ? '🟢' : '💤');
+          : (isActive ? '🟢' : `💤${still ? still + 'd' : ''}`);
         const rank = String(rankInGroup).padStart(2, ' ');
         return `<code>${rank}.</code> <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a> · ${formatNumber(bal)} (${usdStr}) · ${pct}% ${dot}`;
       };
@@ -1587,25 +1672,33 @@ ${renderActivity(act)}`;
 ${renderActivity(act)}`;
         sections.push(head + '\n' + renderGroup(sorted));
       }
+      // Contracts that hold like a whale: one line each, apart from the people.
+      if (cList.length) {
+        const sorted = cList.slice().sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
+        const sumTokens = sorted.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
+        const act = summarizeClusterActivity(events, new Set(sorted), 24);
+        sections.push(`🏦 <b>Contracts</b> · ${sorted.length} · ${((sumTokens / supplyBase) * 100).toFixed(2)}% of supply\n${renderActivity(act)}\n` + sorted.map((a, i) => renderWallet(a, i + 1)).join('\n'));
+      }
 
       reply = `${header}
 ${summary24h}
 
 ${sections.join('\n\n')}
 
-<i>% = share of total supply · 🟢 active (24h) · 💤 dormant · 💀 below 10M, one line per group · 🔗 linked cluster
+<i>% = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 💀 below 10M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
 ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code></i>`;
     }
   }
 
   else if (cmd === '/whales24h') {
-    const [events, tracked, price, snaps] = await Promise.all([
+    const [events, tracked, price, snaps, contracts] = await Promise.all([
       loadWhaleEvents(env),
       loadTrackedWallets(env),
       fetchBobaiPriceUsd().catch(() => null),
       loadWhaleSnapshots(env).catch(() => []),
+      loadTrackedContracts(env),
     ]);
-    reply = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ false, snapshotHoldings(snaps, tracked));
+    reply = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ false, snapshotHoldings(snaps, [...tracked, ...contracts]), [], contracts.length);
   }
 
   else if (cmd === '/whaleadd') {
@@ -1614,21 +1707,28 @@ ${sections.join('\n\n')}
       reply = '❌ Need at least one valid address.\nUsage: <code>/whaleadd 0x...</code>\nBatch: paste multiple 0x... in one message.';
     } else {
       const list = await loadTrackedWallets(env);
-      const before = new Set(list);
+      const cList = await loadTrackedContracts(env);
+      const before = new Set([...list, ...cList]);
       const candidates = [...new Set(matches.map(a => a.toLowerCase()))];
       // Block aggregator routers / contracts upfront — they're never wallets.
       const contractFlags = await Promise.all(candidates.map(a =>
         WHALE_NEVER_TRACK.has(a) ? Promise.resolve(false) : isContract(a)
       ));
       const isContractMap = new Map(candidates.map((a, i) => [a, contractFlags[i]]));
-      const added = [], dup = [], skipped = [], contracts = [];
+      const added = [], dup = [], skipped = [], contracts = [], holders = [];
       for (const addr of candidates) {
         if (WHALE_NEVER_TRACK.has(addr))   skipped.push(addr);
-        else if (isContractMap.get(addr))  contracts.push(addr);
         else if (before.has(addr))         dup.push(addr);
+        else if (isContractMap.get(addr)) {
+          // A contract that HOLDS 1M+ and is not a pool is a holder; a router holds dust.
+          const bal = await getBobaiBalance(addr).catch(() => 0n);
+          if (bal >= 1_000_000n * 10n ** 18n && !(await isPool(addr))) { holders.push(addr); cList.push(addr); }
+          else contracts.push(addr);
+        }
         else                               { added.push(addr); list.push(addr); }
       }
       const cleaned = await saveTrackedWallets(env, list);
+      if (holders.length) await saveTrackedContracts(env, cList);
       const blocks = [];
       if (added.length) {
         blocks.push(`✅ <b>Added ${added.length}</b>:\n` + added.map(a =>
@@ -1637,13 +1737,17 @@ ${sections.join('\n\n')}
       if (dup.length) {
         blocks.push(`ℹ️ <b>Already tracked (${dup.length})</b>:\n` + dup.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
       }
+      if (holders.length) {
+        blocks.push(`🏦 <b>Added as contract holder${holders.length === 1 ? '' : 's'} (${holders.length})</b>:\n` + holders.map(a =>
+          `• <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${shortenAddress(a)}</a>`).join('\n'));
+      }
       if (contracts.length) {
-        blocks.push(`🤖 <b>Skipped (contract — router/aggregator) — ${contracts.length}</b>:\n` + contracts.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+        blocks.push(`🤖 <b>Skipped (contract — router/pool, or under 1M) — ${contracts.length}</b>:\n` + contracts.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
       }
       if (skipped.length) {
         blocks.push(`🚫 <b>Skipped (never-track: LP/DEAD/Bot) — ${skipped.length}</b>:\n` + skipped.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
       }
-      blocks.push(`\n📊 Now tracking <b>${cleaned.length}</b> wallets total.`);
+      blocks.push(`\n📊 Now tracking <b>${cleaned.length}</b> wallets${cList.length ? ` + ${cList.length} contract${cList.length === 1 ? '' : 's'}` : ''}.`);
       reply = blocks.join('\n\n');
     }
   }
@@ -1687,7 +1791,8 @@ ${sections.join('\n\n')}
       reply = '❌ Need at least one valid address.\nUsage: <code>/whalerm 0x...</code>';
     } else {
       const list = await loadTrackedWallets(env);
-      const before = new Set(list);
+      const cList = await loadTrackedContracts(env);
+      const before = new Set([...list, ...cList]);
       const rmSet = new Set(matches.map(a => a.toLowerCase()));
       const removed = [], notFound = [];
       for (const addr of rmSet) {
@@ -1695,6 +1800,7 @@ ${sections.join('\n\n')}
         else notFound.push(addr);
       }
       const cleaned = await saveTrackedWallets(env, list.filter(a => !rmSet.has(a)));
+      if (cList.some(a => rmSet.has(a))) await saveTrackedContracts(env, cList.filter(a => !rmSet.has(a)));
       const blocks = [];
       if (removed.length) {
         blocks.push(`🗑️ <b>Removed ${removed.length}</b>:\n` + removed.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
@@ -1726,26 +1832,30 @@ let WHALE_ENV = null;
 async function postDailyWhaleRecap(env) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   try {
-    const [events, tracked0, price] = await Promise.all([
+    const [events, tracked0, price, contracts0] = await Promise.all([
       loadWhaleEvents(env),
       loadTrackedWallets(env),
       fetchBobaiPriceUsd().catch(() => null),
+      loadTrackedContracts(env),
     ]);
     // Holdings from the daily snapshot (silent until history exists), then
     // the retire rule on that snapshot: the recap names what it dropped.
-    let tracked = tracked0, holdings = null, retired = [];
+    let tracked = tracked0, contracts = contracts0, holdings = null, retired = [];
     try {
-      const snaps = await takeWhaleSnapshotIfDue(env, tracked0);
+      const snaps = await takeWhaleSnapshotIfDue(env, [...tracked0, ...contracts0]);
       retired = await retireEmptyWallets(env, snaps, tracked0);
+      const retiredC = await retireEmptyWallets(env, snaps, contracts0, saveTrackedContracts);
+      retired = retired.concat(retiredC);
       if (retired.length) {
         const gone = new Set(retired);
         tracked = tracked0.filter((a) => !gone.has(a));
+        contracts = contracts0.filter((a) => !gone.has(a));
       }
-      holdings = snapshotHoldings(snaps, tracked);
+      holdings = snapshotHoldings(snaps, [...tracked, ...contracts]);
     } catch (e) {
       console.error('[WHALE-SNAP RECAP ERROR]', e.message || e);
     }
-    const text = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ true, holdings, retired);
+    const text = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ true, holdings, retired, contracts.length);
     const r = await tg('sendMessage', {
       chat_id: TG_INTERNAL_CHAT_ID,
       text, parse_mode: 'HTML', disable_web_page_preview: true,
@@ -1801,7 +1911,7 @@ async function postWhaleAlert(data) {
 
   const moverLink = `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${moverAddr}">${shortenAddress(moverAddr)}</a>`;
   const otherLink = `<a href="https://bscscan.com/address/${otherAddr}">${shortenAddress(otherAddr)}</a>`;
-  const moverCluster = moverTag ? `🔗 Cluster ${moverTag}` : '🔸 Solo';
+  const moverCluster = data.moverIsContract ? '🏦 Contract' : moverTag ? `🔗 Cluster ${moverTag}` : '🔸 Solo';
   const moverHolds = moverBal != null
     ? `<b>${formatNumber(moverBal)} BOBAI</b>${priceUsd ? ` · ${formatUsd(moverBal * priceUsd)}` : ''}`
     : null;
@@ -1809,9 +1919,10 @@ async function postWhaleAlert(data) {
 
   // NEW_WHALE & EX_WHALE keep their own focused layouts.
   if (kind === 'NEW_WHALE') {
-    const msg = `💡 <b>NEW WHALE · auto-tracked</b>
+    const what = data.moverIsContract ? '🏦 A contract (not a pool)' : '🐋';
+    const msg = `💡 <b>NEW WHALE${data.moverIsContract ? ' CONTRACT' : ''} · auto-tracked</b>
 
-🐋 ${moverLink} just crossed <b>10M BOBAI</b>.
+${what} ${moverLink} just crossed <b>10M BOBAI</b>.
 📊 Holds: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}
 
 <i>Added to watch-set. All future activity will alert.</i>
@@ -1876,11 +1987,13 @@ async function postWhaleAlert(data) {
     `${moverCluster} · ${moverLink}`,
   ];
   if (moverHolds) lines.push(`📊 Now holds: ${moverHolds}`);
+  if (data.dormant) lines.push(`⏰ <b>First move in ${data.dormant}+ days</b>`);
   const sign =
     (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT') ? '−' :
     (kind === 'BUY'  || kind === 'TRANSFER_IN')                      ? '+' :
     '';  // INTERNAL_T → neutral (intra-cluster redistribution)
-  lines.push('', `🪙 ${sign}${formatNumber(amount)} BOBAI · ${usdStr}`);
+  const note = positionNote(kind, amount, moverBal);
+  lines.push('', `🪙 ${sign}${formatNumber(amount)} BOBAI · ${usdStr}${note ? ` · <i>${note}</i>` : ''}`);
   lines.push(contextLine);
   lines.push('', `🔗 ${txLink}`);
 
@@ -3284,7 +3397,8 @@ export default {
     // (BOBAI Transfer logs, scanned every minute by the cron).
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {
-        const [events, tracked] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env)]);
+        const [events, trackedW, contracts] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env), loadTrackedContracts(env)]);
+        const tracked = [...trackedW, ...contracts];
         // Holdings snapshot: self-heals if today's cron snapshot is missing
         // (first request of the day takes it — date-guarded, so at most once).
         let snaps = [];
@@ -3321,7 +3435,8 @@ export default {
         const last = events[events.length - 1];
         return new Response(JSON.stringify({
           as_of: new Date().toISOString(),
-          tracked_wallets: tracked.length,
+          tracked_wallets: trackedW.length,
+          tracked_contracts: contracts.length,
           tracking_threshold: '10,000,000 BOBAI (1% of supply) — wallets enter the watchlist automatically when they cross it',
           holdings: snapshotHoldings(snaps, tracked),
           last_24h: win(24),
@@ -3761,7 +3876,7 @@ export default {
       // independent of recap success. /whale-summary self-heals if this misses.
       try {
         if (tick.getUTCHours() >= 6 && tick.getUTCHours() < 9) {
-          await takeWhaleSnapshotIfDue(env, await loadTrackedWallets(env));
+          await takeWhaleSnapshotIfDue(env, [...await loadTrackedWallets(env), ...await loadTrackedContracts(env)]);
         }
       } catch (e) {
         console.error('[WHALE-SNAP GATE ERROR]', e.message || e);
@@ -3778,6 +3893,10 @@ export default {
       try {
         const tracked = await loadTrackedWallets(env);
         const trackedSet = new Set(tracked);
+        // Contracts that hold like a whale: watched like a wallet, kept on their own list.
+        const contractSet = new Set(await loadTrackedContracts(env));
+        let contractsChanged = false;
+        const watched = (a) => trackedSet.has(a) || contractSet.has(a);
         const postedWhaleRaw = await env.KV.get('posted_whale_txs');
         const postedWhaleSet = new Set(postedWhaleRaw ? JSON.parse(postedWhaleRaw) : []);
         const prevWhaleSize = postedWhaleSet.size;
@@ -3788,7 +3907,7 @@ export default {
         const whaleEvents = await loadWhaleEvents(env);
         const prevEventCount = whaleEvents.length;
 
-        let clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
+        let clusterLabels = labelClusters(computeClusters([...trackedSet, ...contractSet], edges));
 
         const latestHex = await rpcCall('eth_blockNumber', []);
         if (latestHex) {
@@ -3820,6 +3939,7 @@ export default {
           }
 
           let bobaiPriceUsd = null;
+          let whaleSnaps = null;
           let alerts = 0;
           const MAX_WHALE_ALERTS = 10;
           let setChanged = false;
@@ -3827,6 +3947,7 @@ export default {
           // Per-cron caches — eth_getCode and balanceOf are pure for the run.
           const contractCache = new Map();
           const balanceCache = new Map();
+          const poolCache = new Map();
           const isContractCached = async (addr) => {
             if (contractCache.has(addr)) return contractCache.get(addr);
             const r = await isContract(addr);
@@ -3886,7 +4007,7 @@ export default {
               if (alerts >= MAX_WHALE_ALERTS) { retryTx = true; break; }
               if (alertedThisTx.has(addr)) continue;
 
-              const isTracked = trackedSet.has(addr);
+              const isTracked = watched(addr);
               const isInflow  = netWei > 0n;
               const absWei = isInflow ? netWei : -netWei;
               const absAmt = Number(absWei) / 1e18;
@@ -3914,7 +4035,7 @@ export default {
               } else if (isTracked && !isInflow) {
                 // Tracked outflow not into LP/DEAD — internal move or cascade.
                 const inflows = movers.filter(([a, n]) => a !== addr && n > 0n);
-                const trackedSink = inflows.find(([a]) => trackedSet.has(a));
+                const trackedSink = inflows.find(([a]) => watched(a));
                 if (trackedSink) {
                   kind = 'INTERNAL_T'; counterparty = trackedSink[0];
                 } else {
@@ -3927,31 +4048,34 @@ export default {
               } else if (isTracked && isInflow) {
                 // Tracked inflow not from LP — find the source EOA.
                 const outflows = movers.filter(([a, n]) => a !== addr && n < 0n);
-                const trackedSource = outflows.find(([a]) => trackedSet.has(a));
+                const trackedSource = outflows.find(([a]) => watched(a));
                 if (trackedSource) continue; // INTERNAL_T fires from the sender side
                 for (const [a] of outflows) await isContractCached(a);
                 const other = pickOtherSide(outflows, (a) => contractCache.get(a));
                 if (!other) continue;
                 kind = 'TRANSFER_IN'; counterparty = other.addr; viaContract = other.viaContract;
               } else if (!isTracked && isInflow) {
-                // NEW_WHALE detection: non-tracked EOA receiving — crossed 10M?
-                if (await isContractCached(addr)) continue;
+                // NEW_WHALE detection: non-tracked receiver — crossed 10M?
+                // A contract that now HOLDS 10M+ is a holder too (not a pool:
+                // a market is never a whale) and goes on the contract list.
+                const asContract = await isContractCached(addr);
                 const bal = await getBalCached(addr);
                 if (bal === null || bal < WHALE_THRESHOLD_WEI) continue;
+                if (asContract) { if (!poolCache.has(addr)) poolCache.set(addr, await isPool(addr)); if (poolCache.get(addr)) continue; }
 
-                trackedSet.add(addr);
-                setChanged = true;
+                if (asContract) { contractSet.add(addr); contractsChanged = true; }
+                else { trackedSet.add(addr); setChanged = true; }
                 if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
                 const balTokens = Number(bal / 10n ** 18n);
                 const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
                 console.log('[WHALE] NEW_WHALE detected', addr.slice(0, 10), formatNumber(balTokens));
                 const sent = await postWhaleAlert({
                   kind: 'NEW_WHALE', from: pair, to: addr,
-                  amount: balTokens, usdValue: usd, txHash,
+                  amount: balTokens, usdValue: usd, txHash, moverIsContract: asContract,
                 });
                 if (sent) {
                   alerts++;
-                  whaleEvents.push({ kind: 'NEW_WHALE', from: pair, to: addr, amount: balTokens, usdValue: usd, txHash, ts: Date.now() });
+                  whaleEvents.push({ kind: 'NEW_WHALE', from: pair, to: addr, amount: balTokens, usdValue: usd, txHash, ts: Date.now(), ...(asContract ? { contract: true } : {}) });
                   alertedThisTx.add(addr);
                 } else retryTx = true;
                 continue;
@@ -3963,7 +4087,7 @@ export default {
 
               // Cascade-add (TRANSFER_OUT counterparty already EOA-verified).
               let labelsDirty = false;
-              if (kind === 'TRANSFER_OUT' && !viaContract && !trackedSet.has(counterparty)) {
+              if (kind === 'TRANSFER_OUT' && !viaContract && !watched(counterparty)) {
                 trackedSet.add(counterparty);
                 setChanged = true;
                 if (addEdgeInMemory(edges, addr, counterparty)) { edgesChanged = true; labelsDirty = true; }
@@ -3972,7 +4096,7 @@ export default {
                 if (addEdgeInMemory(edges, addr, counterparty)) { edgesChanged = true; labelsDirty = true; }
               }
               if (labelsDirty) {
-                clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
+                clusterLabels = labelClusters(computeClusters([...trackedSet, ...contractSet], edges));
               }
 
               if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
@@ -3994,10 +4118,18 @@ export default {
               const quiet = isQuietMove(kind, usdValue) || (viaContract && usdValue > 0 && usdValue < 5);
               const told = toldAlready(whaleEvents, txHash, kind, senderAddr, receiverAddr);
               console.log('[WHALE]', told ? 'told before' : quiet ? 'quiet' : kind, senderAddr.slice(0,8), '→', receiverAddr.slice(0,8), formatNumber(absAmt), 'BOBAI');
+              // Asleep before this move? The snapshots are read once per run, only when an alert goes out.
+              let dormant = null;
+              if (!told && !quiet) {
+                if (whaleSnaps === null) whaleSnaps = await loadWhaleSnapshots(env).catch(() => []);
+                const moverBalNow = isInflow ? toBal : fromBal;
+                if (moverBalNow != null) dormant = dormantDays(whaleSnaps, addr, isInflow ? moverBalNow - absAmt : moverBalNow + absAmt, whaleEvents);
+              }
               const sent = told || quiet ? true : await postWhaleAlert({
                 kind, from: senderAddr, to: receiverAddr,
                 amount: absAmt, usdValue, txHash,
-                fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd, otherIsContract: viaContract,
+                fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd, otherIsContract: viaContract, dormant,
+                moverIsContract: contractSet.has(addr),
               });
               if (sent) {
                 if (!quiet && !told) alerts++;
@@ -4043,6 +4175,7 @@ export default {
           }
 
           if (setChanged) await saveTrackedWallets(env, [...trackedSet]);
+          if (contractsChanged) await saveTrackedContracts(env, [...contractSet]);
           if (edgesChanged) await saveWalletEdges(env, edges);
           if (postedWhaleSet.size > prevWhaleSize) {
             await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-600)));

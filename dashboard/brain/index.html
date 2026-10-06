@@ -235,10 +235,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1791303862751">
+<link rel="stylesheet" href="brain/brain.css?v=1791309282075">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1791303274">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791308843">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -1330,9 +1330,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1791303274')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1791308843')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1791303862752" defer></script>
-<script src="brain/cards.js?v=1791303862752" defer></script>
-<script src="brain/hero.js?v=1791303862752" defer></script>
+<script src="brain/brain.js?v=1791309282075" defer></script>
+<script src="brain/cards.js?v=1791309282075" defer></script>
+<script src="brain/hero.js?v=1791309282075" defer></script>
 </body></html>

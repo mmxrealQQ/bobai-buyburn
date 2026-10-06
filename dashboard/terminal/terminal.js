@@ -1132,7 +1132,7 @@ const JOKE_RECENT = [];
 // names one of his moves plays that move — a mood line used to take any of the mood's moves (cheer under "is this the
 // moon?") and every joke laughed, also about push-ups or coffee. Only a move he can play now; otherwise the usual one.
 const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own|\bbull\b(?! market)/i, 'bull'], [/hard hat|stack(ing)? blocks|block on the stack|builder mode/i, 'build'],
-  [/push-?ups?/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug']];
+  [/push-?ups?/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug'], [/\bouch\b/i, 'ouch']];
 function moveForLine(t, fallback) { for (const [rx, p] of LINE_MOVES) if (rx.test(t || '') && flowPose(p) === p) return p; return fallback; }
 function freshJoke() {
   const mine = (MOOD_JOKES[LIFE.combo?.key] || []).filter(j => !JOKE_RECENT.includes(j));
@@ -1270,7 +1270,7 @@ function vidInit() {
   // ONE LIST, NOT SEVENTY QUESTIONS (2026-09-27): the deploy writes anim/clips.json with every clip it ships. Asking
   // for each possible clip cost ~70 requests per visit, and each missing one came back as the index page, whose
   // stylesheet hints the browser then chased relative to anim/. The per-clip question stays only as the fallback.
-  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', ...EXTRA_POSES, ...TIER_POSES]; // nft: he paints the card (hub-nft, 2026-09-29)
+  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', ...EXTRA_POSES, ...TIER_POSES]; // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
   // every take up to -v9 (2026-09-30: new waiting takes rest-v3..v6 and third takes of moves would have been ignored)
   const V = n => Array.from({ length: 8 }, (_, i) => n + '-v' + (i + 2));
   const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
@@ -3254,7 +3254,8 @@ function placeFlip() {
   if (portrait) { if (flipEl.parentNode !== momentEl.querySelector('.mc')) momentEl.querySelector('.mc').appendChild(flipEl); flipEl.style.cssText = ''; return; }
   if (flipEl.parentNode !== momentEl) momentEl.appendChild(flipEl);
   if (momentEl.classList.contains('story')) { flipEl.style.cssText = ''; return; }
-  const wr = win.getBoundingClientRect(), fr = fig.getBoundingClientRect(), w = clamp(wr.width * 0.27, 280, 360);
+  // bigger in the full-screen terminal, where he is drawn bigger too (2026-10-06)
+  const wr = win.getBoundingClientRect(), fr = fig.getBoundingClientRect(), w = clamp(wr.width * 0.27, 280, document.body.classList.contains('bp-big') ? 400 : 360);
   // THE BOARD IS DRAWN AT zoom 1.12 (terminal.css), and zoom multiplies its top and left too: placed in window pixels it
   // landed 12% lower and further right — 12-41 px over the log at 1366-1920 (layout.mjs 2026-09-29). Every figure here is
   // in window pixels; the ones written to the board are divided by its zoom.
@@ -3270,7 +3271,10 @@ function placeFlip() {
   // property, apart from its slide-in transform)
   const bh = flipEl.offsetHeight * z, room = floor - ceil, f = bh > room && room > 120 ? Math.max(0.72, room / bh) : 1;
   flipEl.style.transformOrigin = '0 0'; flipEl.style.scale = f === 1 ? '' : String(f);
-  flipEl.style.top = Math.max(ceil, Math.min(fr.top - wr.top + fr.height * 0.28, floor - bh * f)) / z + 'px';
+  // IT STANDS ON THE LOG'S ROOF (2026-10-06, operator: 'in the full screen the DeFi board hangs too high in the air'):
+  // at 28% of his height it met the roof in the normal size, but full screen draws him far taller and the board floated
+  // at his shoulders — now it stands on the roof everywhere, and rises only where the room above the log is short
+  flipEl.style.top = Math.max(ceil, floor - bh * f) / z + 'px';
 }
 function showFlip(spec) {
   const body = flipEl.querySelector('.fl-b'); body.textContent = ''; meterEl.hidden = true;
@@ -4671,6 +4675,15 @@ function replayDots(t) { let n = 0; while (dotI < dots.length && dots[dotI].t <=
 // event plays out, so the timeline, the scene and the log are always on the same moment.
 let rLast = 0;
 const momentMs = x => sceneMs(x, true); // the replay waits exactly as long as the scene plays
+// THE REPLAY'S QUIET STRETCHES (2026-10-06, operator: "Halloween's features may pop up in the replay too, where there is
+// time — a 24H replay has free stretches"): how many real seconds are left before the replay's next moment (Infinity
+// live, 0 while a moment plays or the replay stands paused). A Halloween scene starts only where it fits.
+function replayRoom() {
+  if (mode !== 'replay') return Infinity;
+  const now = performance.now(); if (paused || now < nextAt || now < sceneUntil) return 0;
+  const speed = WIN / (REPLAY / 1000) * rMul, next = events[cursor];
+  return Math.max(0, ((next ? next.t : Date.now()) - playhead) / speed);
+}
 function stepReplay(now) {
   if (mode !== 'replay') return;
   const rc = $('rclk');
@@ -5407,8 +5420,17 @@ window.__btHwSeason = hwSeason;
     mo.style.transition = 'none'; mo.style.transform = ''; mo.style.opacity = ''; flyL.querySelectorAll('.hw-flm').forEach(f => f.remove());
     after(600, () => { frame(mo, ''); mo.classList.remove('hw-pan'); scare(false); }); after(1600, () => { mhOn = false; });
   }
-  function throwMoon(m, lift, release) {
-    const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx);
+  // THE HIT LANDS ON HIS STANDING POSE (2026-10-06, the head-rub clips hub-ouch / hub-ouch-v3): a move only starts
+  // when the take before it comes home, so the throw waits — the moon held up at the edge, panicking — until his rest
+  // take is `lead` seconds from its end (the flight's length), at most 9 s; then his head-rub follows the hit at once
+  const homeSoon = (fn, lead, t0 = performance.now()) => {
+    if (!on) return;
+    const rest = VID.on && VID.cur && /^(rest|idle)/.test(VID.cur), left = rest && VID.v ? (VID.v.duration || 8) - VID.v.currentTime : 0;
+    if (!rest || left < lead || performance.now() - t0 > 9000) return fn();
+    after(100, () => homeSoon(fn, lead, t0));
+  };
+  function throwMoon(m, lift, release, start = null, spin0 = 0) {
+    const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx), sx = start ? start.x : 0, sy = start ? start.y : lift;
     release();
     if (!h || !stands()) { // he started something after all: no throw, the moon floats home
       mo.style.transition = 'transform 1.6s cubic-bezier(.3,.7,.4,1)'; mo.style.transform = ''; after(1700, () => moonHome(m)); return;
@@ -5416,9 +5438,10 @@ window.__btHwSeason = hwSeason;
     // the copy in front of him, at the moon's lifted spot; the sky's moon hides meanwhile
     const c = document.createElement('div'); c.className = 'hw-flm'; c.innerHTML = mo.querySelector('.hw-s').outerHTML;
     Object.assign(c.style, { left: m.l + 'px', top: m.t + 'px', width: m.r - m.l + 'px' }); flyL.appendChild(c);
-    mo.style.transition = 'none'; mo.style.opacity = '0';
+    mo.style.transition = 'none'; mo.style.opacity = '0'; mo.style.transform = '';
     const dx = h.x - mx, dy = h.y - my, spin = dx > 0 ? 1 : -1;
-    const go = c.animate([{ transform: `translate(0px,${lift}px) rotate(0deg)` }, { transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }], { duration: 620, easing: 'cubic-bezier(.5,0,.9,.55)', fill: 'forwards' });
+    setPose('ouch', 6); // queued to the end of his rest take, which is the moment of the hit (homeSoon)
+    const go = c.animate([{ transform: `translate(${sx}px,${sy}px) rotate(${spin0}deg)` }, { transform: `translate(${dx}px,${dy}px) rotate(${spin * 540}deg)` }], { duration: 620, easing: 'cubic-bezier(.5,0,.9,.55)', fill: 'forwards' });
     go.onfinish = () => {
       if (!on) return;
       pow(h.x, h.y); ouch(spin); speak(pick(OUCH_LINES), 3400); LIFE.quietSince = Date.now();
@@ -5430,18 +5453,18 @@ window.__btHwSeason = hwSeason;
   function moonGrab() {
     if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
     const m = mo._b, hi = mh.querySelector('.hw-mhi img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
-    const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, lift = -(m.t - 8); // fingertips at the moon's middle; lifted, the moon's top is just under the top edge
-    mhOn = true; frame(mh, ''); frame(mo, '');
-    LIFE.next = Math.max(LIFE.next, performance.now() + 14e3); // his own next move waits for the scene
+    read(); const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, lift = Math.min(-10, hudB + 6 - m.t); // fingertips at the moon's middle; lifted to just under the title row (behind it the moon was hidden)
+    mhOn = true; frame(mh, ''); frame(mo, ''); for (const c of moveTakes('ouch')) prefetchClip(c); // his head-rub, ready for the hit
+    LIFE.next = Math.max(LIFE.next, performance.now() + 23e3); // his own next move waits for the scene (the throw may wait up to 9 s)
     Object.assign(mh.style, { left: (m.l + m.r) / 2 - hw / 2 + 'px', width: hw + 'px', transition: 'none', transform: 'translateY(' + (-hh - 12) + 'px)' });
     void mh.offsetWidth; mh.classList.add('on');
     Object.assign(mh.style, { transition: 'transform 2s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px)' });
     after(2100, () => { frame(mh, 'grab'); frame(mo, 'panic'); mo.classList.add('hw-pan'); scare(true); });
     after(2700, () => { const go = 'transform 1s cubic-bezier(.45,0,.3,1)'; Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
-    after(4000, () => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
+    after(4000, () => homeSoon(() => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
       frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
       after(1400, () => mh.classList.remove('on'));
-    }));
+    }), 0.6));
     return true;
   }
   // THE DESKTOP: A WHOLE SKELETON (2026-10-06, operator: "a skeleton comes down and grabs the moon with both arms and hands,
@@ -5453,9 +5476,10 @@ window.__btHwSeason = hwSeason;
     if (portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
     const m = mo._b, si = skl.querySelector('.hw-sklb'); if (!si.naturalWidth) return false;
     const d = m.r - m.l, sw = d / 0.46, sh = sw * si.naturalHeight / si.naturalWidth, cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2;
-    const reach = cy - sh * 0.905, lift = -(m.t - 8); // the moon's middle at the hands; lifted, its top just under the edge
-    mhOn = true; frame(mo, '');
-    LIFE.next = Math.max(LIFE.next, performance.now() + 15e3); // his own next move waits for the scene
+    // lifted to just under the title row, not behind it (2026-10-06: held at the very top edge, the title row hid it)
+    read(); const reach = cy - sh * 0.905, lift = Math.min(-10, hudB + 6 - m.t); // the moon's middle at the hands
+    mhOn = true; frame(mo, ''); for (const c of moveTakes('ouch')) prefetchClip(c); // his head-rub, ready for the hit
+    LIFE.next = Math.max(LIFE.next, performance.now() + 24e3); // his own next move waits for the scene (the throw may wait up to 9 s)
     Object.assign(skl.style, { left: cx - sw / 2 + 'px', width: sw + 'px', transition: 'none', transform: 'translateY(' + (-sh - 30) + 'px) rotate(0deg)' });
     void skl.offsetWidth; skl.classList.add('on');
     Object.assign(skl.style, { transition: 'transform 2.4s cubic-bezier(.25,.7,.3,1)', transform: 'translateY(' + reach + 'px) rotate(0deg)' });
@@ -5463,12 +5487,21 @@ window.__btHwSeason = hwSeason;
     after(3100, () => { const go = 'transform 1.1s cubic-bezier(.45,0,.3,1)'; Object.assign(skl.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px) rotate(0deg)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
     // the swing: it leans toward him from its rope, and lets go
     const toward = (A.figScreen ? A.figScreen.x : cx) > cx ? -1 : 1;
-    after(4300, () => { skl.style.transition = 'transform .32s cubic-bezier(.4,0,.6,1)'; skl.style.transform = 'translateY(' + (reach + lift) + 'px) rotate(' + toward * 14 + 'deg)'; });
-    after(4600, () => throwMoon(m, lift, () => { // it lets go and climbs back up its rope, empty-handed
+    // THE SWING CARRIES THE MOON (2026-10-06, operator: "the throw is not quite right — the moon and the hands"): the moon
+    // turns with the skeleton about the same point of its rope (600 px above its top, .hw-skl transform-origin), and
+    // the flight starts where the hands hold it at the moment they let go
+    const pivotY = reach - 600, ang = toward * 6, /* 6 deg on the long rope is about 100 px at the hands (14 flung them 240 px) */ rad = ang * Math.PI / 180;
+    const held = { x: cx + (0 * Math.cos(rad) - (cy + lift - (pivotY + lift)) * Math.sin(rad)) - cx, y: (pivotY + lift) + (0 * Math.sin(rad) + (cy + lift - (pivotY + lift)) * Math.cos(rad)) - cy };
+    after(4300, () => homeSoon(() => {
+      const sw = 'transform .32s cubic-bezier(.4,0,.6,1)';
+      skl.style.transition = sw; skl.style.transform = 'translateY(' + (reach + lift) + 'px) rotate(' + ang + 'deg)';
+      Object.assign(mo.style, { transition: sw, transformOrigin: `${cx - m.l}px ${pivotY - m.t}px`, transform: 'translateY(' + lift + 'px) rotate(' + ang + 'deg)' });
+      after(300, () => { mo.style.transformOrigin = ''; throwMoon(m, lift, () => { // it lets go and climbs back up its rope, empty-handed
       skl.classList.remove('hold');
       Object.assign(skl.style, { transition: 'transform 1.6s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-sh - 60) + 'px) rotate(0deg)' });
       after(1700, () => skl.classList.remove('on'));
-    }));
+    }, held, ang); });
+    }, 0.9));
     return true;
   }
   // the hand comes up behind the timeline, gropes, grabs twice, and is gone
@@ -5491,13 +5524,15 @@ window.__btHwSeason = hwSeason;
   let grabT = 0;
   function grabEnd(fast) {
     clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on', 'sneak'); if (scared && !cl.classList.contains('act')) scare(false);
+    if (CLOWN.cur) { CLOWN.cur.onended = null; if (fast) CLOWN.cur.pause(); }
+    after(1000, () => { if (!grabT) grab.classList.remove('vid'); });
     after(1000, () => { if (!grabT) { Object.assign(grab.style, { transition: '', transform: '' }); Object.assign(grab.querySelector('.hw-grabm').style, { transition: '', transform: '' }); } });
   }
   // HE SNEAKS UP (2026-10-06, operator: "the big clown behind BOBAI should really creep up: first slowly climb up the
   // gravestone, then behind BOBAI, then reach as if to grab him — he could, but he does not"). Everything of him below
   // the stone's back rim is clipped away while he climbs, so he pulls himself up from behind the stone; the clip moves
   // with him (same duration, same easing). He leaves at once, quietly, when BOBAI starts a move.
-  function grabScene() {
+  function grabStill() {
     if (grabT || !A.figScreen || cl.classList.contains('act') || !stands()) return false;
     // a whole figure with legs and shoes, standing BEHIND BOBAI on the stone, a head taller and half a step to the side
     // (operator: "he shall stand behind BOBAI, with legs and all")
@@ -5544,6 +5579,88 @@ window.__btHwSeason = hwSeason;
     }, 200);
     return true;
   }
+  // THE BIG CLOWN, ANIMATED (2026-10-06, operator: "his body really correct in motion and form — climbing up and all —
+  // and it must match the surroundings, the stone"). Three Veo clips from his own picture (temp/terminal/gen_clown.py):
+  // climb (he grips a stone slab's edge, pulls himself up, swings a shoe over, stands), reach (claws up behind someone,
+  // hesitates, giggles behind his glove) and down (climb, reversed). Each clip ends at the slab's edge, and that edge is
+  // laid on the gravestone's back rim: his gloves land on our stone. Packed like BOBAI's takes (colour above, alpha
+  // below), drawn by a small WebGL player of its own. The clips load only when this scene is first chosen (2.9 MB); until
+  // they are ready another scene plays, and without WebGL or video the picture scene above (grabStill) plays instead.
+  const CLOWN = { gl: null, cv: null, tex: null, v: {}, ready: false, loading: false, cur: null, raf: 0 };
+  const CLOWN_AR = 432 / 614, CLOWN_FIG = 0.775; // the clip's width/height; his standing height in it (gen_clown.py FIG_H / LEDGE)
+  function clownInit() {
+    if (CLOWN.gl !== null) return !!CLOWN.gl;
+    const cv = document.createElement('canvas'); cv.className = 'hw-clv';
+    const gl = cv.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) { CLOWN.gl = false; return false; }
+    const sh = (t, src) => { const x = gl.createShader(t); gl.shaderSource(x, src); gl.compileShader(x); return x; };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}'));
+    gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 u;uniform sampler2D t;void main(){float y=1.-u.y;vec3 c=texture2D(t,vec2(u.x,y*.5)).rgb;float a=smoothstep(.04,.96,texture2D(t,vec2(u.x,.5+y*.5)).r);gl_FragColor=vec4(c*a,a);}'));
+    gl.linkProgram(pr); gl.useProgram(pr);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.BLEND);
+    Object.assign(CLOWN, { gl, cv, tex }); grab.querySelector('.hw-grabm').appendChild(cv);
+    return true;
+  }
+  function clownLoad() {
+    if (CLOWN.loading) return; CLOWN.loading = true; let n = 0;
+    for (const k of ['climb', 'reach', 'down']) {
+      const e = document.createElement('video'); e.muted = true; e.playsInline = true; e.setAttribute('playsinline', ''); e.preload = 'auto';
+      e.addEventListener('canplaythrough', () => { if (!e._ok) { e._ok = true; if (++n === 3) CLOWN.ready = true; } });
+      e.addEventListener('error', () => { CLOWN.gl = false; }); // a clip that cannot play: the picture scene from now on
+      e.src = BASE + 'hw/clown-' + k + '.pack.mp4' + Q; e.load(); CLOWN.v[k] = e;
+    }
+  }
+  function clownDraw() {
+    CLOWN.raf = 0; const v = CLOWN.cur, gl = CLOWN.gl, cv = CLOWN.cv; if (!v || !gl) return;
+    const dpr = Math.min(devicePixelRatio, 2), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (w && h && (cv.width !== w || cv.height !== h)) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
+    if (v.readyState >= 2) { gl.bindTexture(gl.TEXTURE_2D, CLOWN.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, v); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+    if (!v.paused && !v.ended) CLOWN.raf = requestAnimationFrame(clownDraw);
+  }
+  // play one clip from its start; `done` when it ended (never after the scene was called off)
+  function clownPlay(k, done) {
+    const v = CLOWN.v[k]; if (!v) return; if (CLOWN.cur && CLOWN.cur !== v) CLOWN.cur.pause();
+    CLOWN.cur = v; v.currentTime = 0; v.onended = () => { v.onended = null; clownDraw(); if (grabT) done && done(); };
+    v.play().then(() => { if (!CLOWN.raf) CLOWN.raf = requestAnimationFrame(clownDraw); }).catch(() => grabEnd(true));
+  }
+  function grabScene() {
+    if (grabT || !A.figScreen || cl.classList.contains('act') || !stands()) return false;
+    if (!clownInit()) return grabStill();            // no WebGL: the picture scene
+    if (!CLOWN.ready) { clownLoad(); return CLOWN.gl === false ? grabStill() : false; } // loading: another scene plays first
+    const r = win.getBoundingClientRect(), fs = A.figScreen, fh = A.figHpx, fw = A.figW, gi = grab.querySelector('img'), ar = gi.naturalWidth ? gi.naturalWidth / gi.naturalHeight : 0.7;
+    const ghh = Math.min(fh * 1.24, fs.y + fh * 0.39 - Math.max(4, portrait ? hudB - 6 : 4)), gw = ghh * ar, side = fs.x > r.width / 2 ? -1 : 1;
+    const feet = fs.y + fh * 0.39, rim = feet - fh * 0.05;
+    const ch = ghh / CLOWN_FIG, cw = ch * CLOWN_AR;  // the clip's box: he is as tall as the picture clown was
+    const at = cx => cl3(cx - cw / 2, 2 - cw * 0.2, r.width - cw * 0.8 - 2);
+    const x1 = at(fs.x + side * fw * 0.3);
+    // he climbs up where nothing of the terminal stands: the side with the least of its labels and lights over his upper
+    // half wins; above a fifth of it covered on both sides he climbs up straight behind BOBAI
+    read();
+    const covered = x => { const b = box(x + cw * 0.25, rim - ghh, cw * 0.5, ghh * 0.6), A0 = (b.r - b.l) * (b.b - b.t); let a = 0;
+      for (const w of walls) { const ix = Math.min(b.r, w.r) - Math.max(b.l, w.l), iy = Math.min(b.b, w.b) - Math.max(b.t, w.t); if (ix > 0 && iy > 0) a += ix * iy; } return a / A0; };
+    const tries = [side, -side].map(s2 => at(fs.x + s2 * fw * 1.05)).map(x => [x, covered(x)]).sort((p, q) => p[1] - q[1]);
+    const x0 = tries[0][1] < 0.2 ? tries[0][0] : x1, dx = x1 - x0; (window.__btClimb = window.__btClimb || []).push(tries.map(t => t.map(v => +v.toFixed(2))));
+    const gm = grab.querySelector('.hw-grabm');
+    Object.assign(grab.style, { width: cw + 'px', height: ch + 'px', left: x0 + 'px', top: rim - ch + 'px', transition: 'none', transform: 'translateX(0px)' });
+    Object.assign(gm.style, { transition: 'none', transform: 'none', height: ch + 'px' });
+    grab.classList.add('vid'); grab.classList.remove('fast', 'sneak'); void grab.offsetWidth; grab.classList.add('on');
+    LIFE.next = Math.max(LIFE.next, performance.now() + 36e3); // his own next move waits for the scene
+    const slide = (x, ms) => { grab.classList.add('sneak'); Object.assign(grab.style, { transition: `transform ${ms}ms cubic-bezier(.45,0,.55,1)`, transform: `translateX(${x}px)` }); };
+    grabT = setInterval(() => { if (!on || ownBusy() || win.classList.contains('in-moment')) grabEnd(true); }, 200); // he leaves when BOBAI starts a move
+    clownPlay('climb', () => {
+      const go = () => { grab.classList.remove('sneak'); after(1000, () => { if (grabT) scare(true); }); // everybody sees him, except BOBAI
+        clownPlay('reach', () => { if (scared && !cl.classList.contains('act')) scare(false);
+          const down = () => { grab.classList.remove('sneak'); clownPlay('down', () => grabEnd(false)); };
+          if (dx) { slide(0, 2300); after(2350, () => grabT && down()); } else down(); }); };
+      if (dx) { slide(dx, 2500); after(2550, () => grabT && go()); } else go();
+    });
+    return true;
+  }
   // under the mouse or a finger a symbol takes fright (operator: "when one moves over the symbols they may get a fright")
   function poke(ev) {
     if (!on || scared) return; const r = win.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
@@ -5559,12 +5676,18 @@ window.__btHwSeason = hwSeason;
     loop(5000, 11000, () => { if (calmNow(cat)) { frame(cat, 'blink'); after(190, () => { if (calmNow(cat)) frame(cat, ''); }); } });
     // the bat at the trades beats its wings now and then where it hangs (operator, 2026-10-06), a second or so; its flight
     // to the buyback and its fright under the mouse stay as they are
-    loop(8000, 16000, () => { if (calmNow(batO) && !batO.classList.contains('fly') && !batO.classList.contains('hw-fr')) { batO.classList.add('flap'); after(1500, () => batO.classList.remove('flap')); } });
+    loop(16000, 30000, () => { if (calmNow(batO) && !batO.classList.contains('fly') && !batO.classList.contains('hw-fr')) { batO.classList.add('flap'); after(900, () => batO.classList.remove('flap')); } }); // less often, shorter (operator, 2026-10-06: 'a little less')
     // THE DIRECTOR (operator: "far too nervous"): one thing at a time, in turn, with a long breath between
     if (!REDUCED) {
-      const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0;
+      const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0, lastShow = 0;
       const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
-      loop(22000, 34000, () => { if (busy() || win.classList.contains('in-moment')) return; for (let n = 0; n < SHOW.length; n++) if (SHOW[i++ % SHOW.length]()) break; }, 9000);
+      // how long each scene holds the stage (s), so the replay's quiet stretch can be matched to it
+      const secsOf = f => f === grabScene ? (CLOWN.ready ? 32 : 15) : f === skelGrab ? 19 : f === handScene ? (portrait ? 17 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
+      const direct = room => { if (busy() || win.classList.contains('in-moment')) return false;
+        for (let n = 0; n < SHOW.length; n++) { const f = SHOW[i++ % SHOW.length]; if (secsOf(f) > room) continue; if (f()) { lastShow = performance.now(); return true; } } return false; };
+      loop(22000, 34000, () => direct(replayRoom()), 9000);
+      // in a replay, a quiet stretch is used as soon as one is long enough (and the last scene is a while ago)
+      loop(2500, 2500, () => { if (mode !== 'replay' || performance.now() - lastShow < 14e3) return; const room = replayRoom(); if (room >= 7) direct(room); });
     }
   }
   function stop() {

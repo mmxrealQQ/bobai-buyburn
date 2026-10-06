@@ -1084,8 +1084,8 @@
    piece that is not placed kept animating at opacity 0 — every frame redrawn for nothing */
 #bt .hw-gh:not(.run) *,#bt .hw-burst:not(.go) *,#bt .hw-i:not(.put) *,#bt .hw-i:not(.put)::before,#bt .hw-i:not(.put)::after{animation-play-state:paused}
 /* the bat beats its wings for a moment where it hangs (2026-10-06); a fright (hw-fr) or its flight win over it */
-#bt .hw-o.flap:not(.hw-fr) .hw-ob img.d{animation:bt-hw-wd .34s steps(1) infinite}
-#bt .hw-o.flap:not(.hw-fr) .hw-ob img:not(.d):not(.f){animation:bt-hw-wu .34s steps(1) infinite}
+#bt .hw-o.flap:not(.hw-fr) .hw-ob img.d{animation:bt-hw-wd .5s steps(1) infinite}
+#bt .hw-o.flap:not(.hw-fr) .hw-ob img:not(.d):not(.f){animation:bt-hw-wu .5s steps(1) infinite}
 /* THE MOON THROWN AT HIS HEAD (2026-10-06). The arm: the hand picture's own bare bones, stretched up past the top edge
    (mirrored like the hand, which hangs upside down). The flying moon and the stars of the hit lie in front of him. */
 #bt .hw-mh .hw-arm{position:absolute;left:0;bottom:calc(100% - 3px);width:100%;height:1600px;object-fit:fill;transform:scaleX(-1);filter:drop-shadow(0 0 6px rgba(0,0,0,.7)) drop-shadow(0 0 8px rgba(200,210,255,.25))}
@@ -1123,3 +1123,9 @@
 #bt .hw-grabm .hw-grabi{height:100%}
 /* one shadow on the moving skeleton, not two (2026-10-06, rule 14) */
 #bt .hw-skl .hw-sklb{filter:drop-shadow(0 0 7px rgba(0,0,0,.7))}
+/* the animated big clown (2026-10-06): the clip fills his window; the picture clown hides while it plays; tiptoe on the clip */
+#bt .hw-clv{position:absolute;left:0;top:0;width:100%;height:100%;display:none}
+#bt .hw-grab.vid .hw-clv{display:block}
+#bt .hw-grab.vid .hw-grabi{display:none}
+#bt .hw-grab.vid .hw-grabm{transform:none!important}
+#bt .hw-grab.vid.sneak .hw-clv{animation:bt-hw-tiptoe .62s ease-in-out infinite}

@@ -424,6 +424,10 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
   const counterHex = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6', data: '0x50355d76' }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result).catch(() => null);
   const counter = counterHex ? Number(BigInt(counterHex)) : null;
   ok('Agents', 'the funded-job watcher is level with the escrow kernel', counter != null && watch?.cursor_job_id != null && counter - watch.cursor_job_id <= 30 && !Object.keys(watch.retrying || {}).length, `kernel ${counter} · cursor ${watch?.cursor_job_id} · retrying ${Object.keys(watch?.retrying || {}).length}`);
+  // 3b. Marque keeps listing our six agents only while they answered a probe in the last 24 h (2026-10-06: five had
+  //     dropped off); the agent worker asks Marque to probe every 8 h. Each round must be fresh and every agent answer.
+  const mp = watch?.marque_probe, mpAge = mp?.at ? (Date.now() - Date.parse(mp.at)) / 3600e3 : null, mpBad = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok).map(([k]) => '#' + k) : [];
+  ok('Agents', 'Marque probes all six agents (listing kept alive)', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpBad.length, mp ? `${mpAge.toFixed(1)} h ago, failing: ${mpBad.join(' ') || 'none'}` : 'no probe round yet');
   // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
   const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
   ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));

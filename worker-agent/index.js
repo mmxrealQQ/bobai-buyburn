@@ -66,6 +66,26 @@ const OWN_CARDS = {
   'lp-placement': { id: 310460, name: 'Brain on BNB — PancakeSwap Fee Tier Placement' },
 };
 import { watchFundedJobs } from './job-watch.js';
+// KEPT LISTED ON MARQUE (2026-10-06). Marque lists an agent only while its endpoint answered a probe in the last 24 h,
+// and it does not probe by itself: on 6.10. five of our six had dropped off its marketplace, and #363709's test had been
+// sent to its web page (405). Every eight hours Marque is asked to call each agent's A2A card — Marque itself reads
+// the card and sends message/send; nothing is signed, nothing is claimed that the agent does not answer. The last
+// round is kept in KV marque:probe (and shown at /jobs/watch).
+const MARQUE_PROBE = 'https://marque.trade/api/v1/builders/probe';
+export const marqueProbeDue = (d) => d.getUTCHours() % 8 === 0 && d.getUTCMinutes() < 15;
+async function keepMarqueListed(env) {
+  const all = { ...OWN_CARDS, 'defi-agent': { id: DEFI_AGENT_ID } };
+  const out = {};
+  for (const [slug, a] of Object.entries(all)) {
+    try {
+      const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json` }) });
+      const j = await r.json().catch(() => ({}));
+      out[a.id] = { ok: j.ok === true, liveness: j.liveness || null, ms: j.latencyMs ?? null, detail: j.ok ? null : String(j.detail || r.status).slice(0, 160) };
+    } catch (e) { out[a.id] = { ok: false, detail: String(e && e.message || e).slice(0, 160) }; }
+  }
+  await env.AGENT.put('marque:probe', JSON.stringify({ at: new Date().toISOString(), agents: out }));
+  return out;
+}
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
@@ -1791,7 +1811,8 @@ export default {
     if (path === '/jobs/watch') {
       const [cursor, open, retry, last, refused] = await Promise.all(['jobs:watch:id', 'jobs:watch:open', 'jobs:watch:retry', 'jobs:watch:last', 'jobs:watch:refused'].map((k) => env.AGENT.get(k)));
       // refused: funded jobs that will not be delivered, each with its reason (2026-10-05)
-      return json({ cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), refused: JSON.parse(refused || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
+      const marque = JSON.parse((await env.AGENT.get('marque:probe')) || 'null'); // the last round of the Marque listing probe
+      return json({ marque_probe: marque, cursor_job_id: cursor ? Number(cursor) : null, open_unfunded: JSON.parse(open || '{}'), retrying: JSON.parse(retry || '{}'), refused: JSON.parse(refused || '{}'), last_tick_with_our_jobs: last ? JSON.parse(last) : null, how: 'every 15 minutes the job ids created since the cursor are read from the ERC-8183 kernel; ours that are FUNDED are delivered, ours that are OPEN are looked at again until funded' });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain
@@ -3020,6 +3041,7 @@ ${pageTail}`;
     // the invocation's operation budget (job 56905 was delivered 2 min into
     // the top-of-hour tick, 2026-10-04).
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+    if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));

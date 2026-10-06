@@ -165,5 +165,13 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('a changed record is sent whole, with a new tag', changed.status === 200 && changed.headers.get('etag') !== tag, String(changed.status));
 }
 
+// 4. Marque keeps an agent listed only with a probe answered in the last 24 h (2026-10-06): the agent worker asks for one
+//    every 8 hours, in the first quarter hour of 00, 08 and 16 UTC — three a day, never a gap of 24 h.
+{
+  const { marqueProbeDue } = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'index.js')).href);
+  const due = [...Array(24 * 4)].map((_, i) => new Date(Date.UTC(2026, 9, 6, Math.floor(i / 4), (i % 4) * 15))).filter(marqueProbeDue).map((d) => d.toISOString().slice(11, 16));
+  ok('Marque is asked three times a day, at 00:00, 08:00 and 16:00 UTC', due.join() === '00:00,08:00,16:00', due.join());
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nstats-detail: all pins hold');
 process.exit(fails ? 1 : 0);

@@ -73,10 +73,13 @@ import { watchFundedJobs } from './job-watch.js';
 // round is kept in KV marque:probe (and shown at /jobs/watch).
 const MARQUE_PROBE = 'https://marque.trade/api/v1/builders/probe';
 export const marqueProbeDue = (d) => d.getUTCHours() % 8 === 0 && d.getUTCMinutes() < 15;
-async function keepMarqueListed(env) {
+export async function keepMarqueListed(env) {
   const all = { ...OWN_CARDS, 'defi-agent': { id: DEFI_AGENT_ID } };
   const out = {};
+  let first = true;
   for (const [slug, a] of Object.entries(all)) {
+    // Marque takes 6 probes a minute (it said so when two rounds met, 2026-10-06): one every 11 s stays under it
+    if (!first) await new Promise((r) => setTimeout(r, 11000)); first = false;
     try {
       const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json` }) });
       const j = await r.json().catch(() => ({}));

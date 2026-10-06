@@ -56,6 +56,25 @@ import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
 import { lpPositionPlan } from './lp-service.js';
 import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
+
+// WHAT THE JOB MUST LOOK LIKE, SAID IN THE QUOTE (2026-10-06). The delivery refuses a job evaluated by anyone but the
+// escrow's router, and the kernel refuses any delivery to a job that expires inside the policy's dispute window (7 days):
+// two jobs funded through mandatemarkets.com with a 6-day expiry sat FUNDED until they expired, and the buyer learned
+// why only afterwards. The quote names both before anything is created or paid. A day on top of the window leaves room
+// for the delivery itself. Kept beside the signed part, never in it: the signed hashes stay what the SDK checks. Pure.
+export function jobRequirements(windowSec) {
+  const days = Math.round(windowSec / 86400), min = windowSec + 86400;
+  return {
+    evaluator: ERC8183.router,
+    hook: ERC8183.router,
+    min_expiry_seconds_after_funding: min,
+    why: `The job must be evaluated by the escrow's router ${ERC8183.router} (hook the router or none), and must expire at least ${Math.round(min / 86400)} days after it is funded: the kernel refuses any delivery to a job that expires inside its ${days}-day dispute window, and a job evaluated by anyone else never reaches the policy. Such a job is refused before any work, and its budget returns to you at expiry.`,
+  };
+}
+const quoteWindow = async () => readDisputeWindow(async (to, data) => {
+  const r = await fetch(RPCS[0], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }), signal: AbortSignal.timeout(6000) });
+  return (await r.json()).result;
+});
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
@@ -482,7 +501,7 @@ export async function handleA2A(request, env, opts = {}) {
     }
     const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
-    return rpcOk(id, agentMessage(q.envelope));
+    return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
   if (skill === 'erc8183-job-status') {
     const jobId = String(data.job_id ?? '').match(/^\d+$/)?.[0];
@@ -525,6 +544,7 @@ export async function handleA2A(request, env, opts = {}) {
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
       });
     }
+    const req = jobRequirements(await quoteWindow());
     return rpcOk(id, {
       // Flat dialect: a provider address and a price, which is everything a
       // buyer needs and is the half the other dialect leaves out.
@@ -538,10 +558,11 @@ export async function handleA2A(request, env, opts = {}) {
       deliverables: service.deliverables,
       needs: service.needs,
       estimated_completion_seconds: 120,
-      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs". Evaluator: ${ERC8183.router}; expiry at least ${Math.round(req.min_expiry_seconds_after_funding / 86400)} days after funding (see job_requirements).`,
       chain_id: 56,
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
+      job_requirements: req,
     });
   }
 

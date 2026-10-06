@@ -90,5 +90,15 @@ const TX = '0x' + 'ab'.repeat(32);
   ok('eip3009: a malformed nonce is refused', /nonce/.test(eip3009Mismatch(w({ nonce: '0x1234' }), { payTo, price, now }) || ''));
   ok('eip3009: a short signature is refused', /signature/.test(eip3009Mismatch(w({}, '0x1234'), { payTo, price, now }) || ''));
 }
+// The quote says what the job must look like before anyone creates or pays one (2026-10-06): two jobs funded with a
+// 6-day expiry could never be delivered (the kernel's 7-day dispute window), and the buyer learned it only at expiry.
+{
+  const { jobRequirements } = await import('../worker-agent/sell.js');
+  const { ERC8183 } = await import('../worker-agent/hire.js');
+  const r = jobRequirements(604800);
+  ok('the quote names the router as evaluator and hook', r.evaluator === ERC8183.router && r.hook === ERC8183.router);
+  ok('the quote asks for an expiry of the dispute window plus a day (8 days for 7)', r.min_expiry_seconds_after_funding === 8 * 86400 && /at least 8 days/.test(r.why) && /7-day dispute window/.test(r.why));
+  ok('a 6-day expiry, the one that failed, is below what the quote asks for', 6 * 86400 < r.min_expiry_seconds_after_funding);
+}
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

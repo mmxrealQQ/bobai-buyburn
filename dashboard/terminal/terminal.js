@@ -110,6 +110,11 @@ composer.addPass(new OutputPass());
 // world anchors (set in layout)
 const A = { fig: new THREE.Vector3(), head: new THREE.Vector3(), core: new THREE.Vector3(), src: new THREE.Vector3(), figH: 6.2 };
 let viewW = 13, viewH = 8.7, portrait = false;
+// THE WINDOW'S AND THE FIGURE'S BOX, READ ONCE PER FRAME (2026-10-06): toScreen ran for every ghost, label and piece,
+// and each read after a style write forced the page to lay itself out again — on a phone the Halloween ghosts alone
+// did it six times a frame. A frame reads each box once; a resize or a new layout reads it afresh.
+let FRAME_N = 0; const RC = { n: -1, r: null }, RF = { n: -1, r: null };
+addEventListener('resize', () => { RC.n = RF.n = -1; });
 
 // ---------- the brain: a neural cloud that fires ----------
 const MAXP = 8;
@@ -526,6 +531,7 @@ function fitPortrait(now) {
 // terminal is 630x660 and the wide layout's label column ran past its right edge (five labels cut, 1280x800 one).
 const portraitNow = r => r.height > r.width * 0.95 || r.width < 680;
 function layout() {
+  RC.n = RF.n = -1;
   const r = win.getBoundingClientRect(); if (!r.width) return;
   renderer.setSize(r.width, r.height, false); composer.setSize(r.width, r.height);
   camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
@@ -597,7 +603,8 @@ function logBox() {
   return LOGBOX;
 }
 const pv = new THREE.Vector3();
-function toScreen(v) { const r = win.getBoundingClientRect(); pv.copy(v).project(camera); return { x: (pv.x + 1) / 2 * r.width, y: (1 - pv.y) / 2 * r.height }; }
+const winBox = () => { if (RC.n !== FRAME_N || !RC.r) { RC.r = win.getBoundingClientRect(); RC.n = FRAME_N; } return RC.r; };
+function toScreen(v) { const r = winBox(); pv.copy(v).project(camera); return { x: (pv.x + 1) / 2 * r.width, y: (1 - pv.y) / 2 * r.height }; }
 
 // ================= labels =================
 const labs = $('labs');
@@ -1575,7 +1582,8 @@ function vidDraw() {
   vidPreload();
   if (VID.v.readyState < 2) return;
   if (VID.frameFor) { vidFrame(VID.frameFor); VID.frameFor = null; VID.fresh = true; } // the new clip's first frame is here: its framing now
-  const { cv, gl, v } = VID, r = fig.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+  if (RF.n !== FRAME_N || !RF.r) { RF.r = fig.getBoundingClientRect(); RF.n = FRAME_N; }
+  const { cv, gl, v } = VID, r = RF.r, dpr = Math.min(devicePixelRatio, 2);
   const w = Math.round(r.width * (VID.wf || 1) * dpr), h = Math.round(r.height * (VID.hf || 1 + VID_HEAD) * dpr);
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); VID.fresh = true; }
   if (!VID.fresh && !VID.noRvfc && cv.width === w && cv.height === h) return; VID.fresh = false;
@@ -4257,10 +4265,13 @@ function mark(kind, x, y, r) {
   tx.closePath();
 }
 const shapeOf = x => x.kind === 'trade' ? (x.ours ? 'diamond' : x.buy ? 'up' : 'down') : x.kind === 'run' ? 'diamond' : x.kind === 'dev' ? 'square' : x.kind === 'nft' ? 'star' : 'circle';
+// a label is formatted once and kept: toLocale*String on every drawn frame was a fifth of a phone's script time (2026-10-06)
+const TL_LAB = new Map();
 function tlLabel(d) {
+  const k = winKey + d; let v = TL_LAB.get(k); if (v) return v;
   const dt = new Date(d);
-  if (winKey === '7D') return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }).toUpperCase();
-  return dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  v = winKey === '7D' ? dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }).toUpperCase() : dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (TL_LAB.size > 400) TL_LAB.clear(); TL_LAB.set(k, v); return v;
 }
 // THE TIMELINE IS THE CHART (2026-09-26, operator: "the timeline like the chart you get when you tap it — the
 // buys, sells, burns, liquidity, DeFi and NFT drops right on the candles; saves room and looks better"). Candles
@@ -4646,7 +4657,7 @@ function adapt(dt) {
 // ================= loop =================
 let last = performance.now(), introK = 0, introStart = 0, opened = false, tlDrawnAt = 0, winWasOn = false;
 function frame(now) {
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame); FRAME_N++;
   if (!opened) return;
   // A WINDOW OVER IT (2026-09-28): with a card or page window open (the new page sets body.bp-winon) the terminal is
   // only a blurred backdrop, yet it drew every frame and the blur was recomputed with it — the page inside the window
@@ -4709,7 +4720,9 @@ function frame(now) {
   // The two canvases of candles are drawn at most 30 times a second, not every frame: at 60 fps the timeline redrew
   // every candle and mark with its glow each frame, the heaviest 2D work on the page (2026-09-26, the operator's
   // "Wackler"). The WebGL scene keeps its full rate.
-  if (now - tlDrawnAt > 33) { tlDrawnAt = now; drawCx(now); drawTl(now); }
+  // live, the timeline walks a pixel every few seconds: ten draws a second are plenty (a phone spent a quarter of its
+  // script time drawing it thirty times); a replay's playhead runs and the open chart follows the finger, so they keep thirty (2026-10-06)
+  if (now - tlDrawnAt > (mode === 'replay' || CX.on ? 33 : 100)) { tlDrawnAt = now; drawCx(now); drawTl(now); }
   adapt(dt);
   useBloom ? composer.render() : renderer.render(scene, camera);
 }
@@ -5064,7 +5077,7 @@ window.__btHwSeason = hwSeason;
   // only once the bots' names showed)
   let flying = false, gsz = 0;
   function fly() {
-    if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!win.offsetWidth || !A.figHpx) return;
+    if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!winBox().width || !A.figHpx) return;
     const g = Math.round(cl3(A.figHpx * (portrait ? 0.0525 : 0.0575), 11, 20)); /* 25% up again (operator: "a tiny bit larger") */ if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
     for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i], tf = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)', op = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); if (e._tf !== tf) e.style.transform = e._tf = tf; if (e._op !== op) e.style.opacity = e._op = op; } /* written only when changed */
   }
@@ -5301,14 +5314,14 @@ window.__btHwSeason = hwSeason;
     // from the skull (or, where the burn has no light, from the edge) to the far side, a little upward
     const x0 = sk ? (sk.l + sk.r) / 2 - gs / 2 : W + 12, y0 = sk ? sk.t - gs * 0.4 : cl3(R(hudB + 8, A.figScreen.y - A.figHpx * 0.1), 44, H * 0.55), ltr = x0 < W / 2;
     const dx = ltr ? W - x0 + gs + 24 : -(x0 + 2 * gs + 24), dy = cl3(hudB + 30 - y0, -H * 0.2, H * 0.12);
-    ghOn = true; frame(gh, scared ? 'hide' : ''); gh.classList.toggle('rtl', !ltr);
+    ghOn = true; frame(gh, scared ? 'hide' : ''); gh.classList.toggle('rtl', !ltr); gh.classList.add('run');
     Object.assign(gh.style, { width: gs + 'px', top: y0 + 'px', left: x0 + 'px', transition: 'none', transform: 'translate(0,0) scale(.3)', opacity: '0' });
     void gh.offsetWidth;
     Object.assign(gh.style, { transition: 'transform ' + secs + 's cubic-bezier(.3,0,.7,1), opacity 1.6s ease', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(1)', opacity: '.94' });
     after(secs * 420, () => { if (!scared) { frame(cat, 'hiss'); after(1300, () => { if (!scared) frame(cat, ''); }); } });
     // it wails twice on its way (the frame with the wide mouth)
     after(secs * 280, () => { if (!scared) frame(gh, 'peek'); }); after(secs * 400, () => { if (!scared) frame(gh, ''); }); after(secs * 600, () => { if (!scared) frame(gh, 'peek'); }); after(secs * 720, () => { if (!scared) frame(gh, ''); });
-    after(secs * 1000 - 1700, () => { gh.style.opacity = '0'; }); after(secs * 1000 + 100, () => { ghOn = false; });
+    after(secs * 1000 - 1700, () => { gh.style.opacity = '0'; }); after(secs * 1000 + 100, () => { ghOn = false; gh.classList.remove('run'); });
     return true;
   }
   // A PHONE: THE HAND STEALS THE MOON (operator, 2026-10-05: "the hand must come on the phone too — maybe it grabs the

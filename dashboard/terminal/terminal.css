@@ -1080,3 +1080,6 @@
 #bt .clk:empty::before{content:"00:00:00";visibility:hidden}
 /* the MOMENTS count has room for two digits from the start: "0" turning "22" widened the button and the title row slid (2026-10-06) */
 #bt .scn b{min-width:24px}
+/* what is not seen does not move (2026-10-06, phone frame rate): the rising ghost and its chain, the clown's bats and a
+   piece that is not placed kept animating at opacity 0 — every frame redrawn for nothing */
+#bt .hw-gh:not(.run) *,#bt .hw-burst:not(.go) *,#bt .hw-i:not(.put) *,#bt .hw-i:not(.put)::before,#bt .hw-i:not(.put)::after{animation-play-state:paused}

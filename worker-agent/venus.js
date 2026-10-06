@@ -90,37 +90,63 @@ const addrAt = (hex, i) => '0x' + word(hex, i).slice(24);
 // call at a time is 200+ requests and takes long enough that the price moves
 // underneath the answer, which is exactly the kind of quiet inconsistency a
 // health factor must not have.
-async function batchCall(calls, { rpcs = BATCH_RPCS, block = 'latest' } = {}) {
-  const payload = calls.map((c, i) => ({
+// HEDGED, NOT QUEUED (2026-10-06). The endpoints were tried one after another with 15 s each, so one slow but working
+// endpoint held the whole answer: 1rpc.io took 7 s for one chunk, and the yield plan — ten chunks in a row — took 66 s on
+// the Worker, longer than most agents wait for a paid answer. Now an endpoint that has not answered within `hedgeMs` gets
+// company: the next one starts beside it, the first COMPLETE answer wins and the others are cancelled. A partial answer
+// still counts as no answer (below), so the result is the same — only sooner.
+async function batchCall(calls, { rpcs = BATCH_RPCS, block = 'latest', hedgeMs = 2500 } = {}) {
+  const body = JSON.stringify(calls.map((c, i) => ({
     jsonrpc: '2.0', id: i, method: 'eth_call',
     params: [{ to: c.to, data: c.data }, block],
-  }));
-  for (let attempt = 0; attempt < rpcs.length * 2; attempt++) {
-    const url = rpcs[attempt % rpcs.length];
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!r.ok) continue;
-      const j = await r.json();
-      if (!Array.isArray(j)) continue;
-      const out = new Array(calls.length).fill(null);
-      let got = 0;
-      for (const item of j) {
-        if (typeof item.id !== 'number' || item.error) continue;
-        out[item.id] = item.result;
-        got++;
-      }
-      // A partial answer would silently drop a market — and a dropped market is
-      // either collateral we did not count or debt we did not count, both of
-      // which move the health factor in a direction nobody asked for.
-      if (got === calls.length) return out;
-    } catch { /* next endpoint */ }
+  })));
+  const one = async (url, signal) => {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json();
+    if (!Array.isArray(j)) throw new Error('not a batch answer');
+    const out = new Array(calls.length).fill(null);
+    let got = 0;
+    for (const item of j) {
+      if (typeof item.id !== 'number' || item.error) continue;
+      out[item.id] = item.result;
+      got++;
+    }
+    // A partial answer would silently drop a market — and a dropped market is
+    // either collateral we did not count or debt we did not count, both of
+    // which move the health factor in a direction nobody asked for.
+    if (got !== calls.length) throw new Error('partial answer');
+    return out;
+  };
+  // two rounds over the list, as before; within a round the endpoints race, staggered
+  for (let round = 0; round < 2; round++) {
+    try { return await hedged(rpcs.map((url) => (signal) => one(url, signal)), hedgeMs); } catch { /* next round */ }
   }
   throw new Error('no BSC endpoint answered the batch');
+}
+
+// Starts the first task, then one more every `gapMs` while none has succeeded (and at once when one fails); resolves
+// with the first success and aborts the rest, rejects when all failed. Each task gets 15 s. Pure but for its tasks.
+export function hedged(tasks, gapMs) {
+  return new Promise((resolve, reject) => {
+    const ctls = [];
+    let started = 0, failed = 0, done = false, timer = null;
+    const finish = () => { done = true; clearTimeout(timer); for (const c of ctls) try { c.abort(); } catch {} };
+    const next = () => {
+      if (done || started >= tasks.length) return;
+      const ctl = new AbortController(); ctls.push(ctl);
+      const kill = setTimeout(() => ctl.abort(), 15000);
+      const i = started++;
+      Promise.resolve().then(() => tasks[i](ctl.signal)).then(
+        (v) => { clearTimeout(kill); if (!done) { finish(); resolve(v); } },
+        () => { clearTimeout(kill); if (done) return; if (++failed === tasks.length) { finish(); reject(new Error('all failed')); } else { clearTimeout(timer); next(); } },
+      );
+      clearTimeout(timer);
+      if (started < tasks.length) timer = setTimeout(next, gapMs);
+    };
+    if (!tasks.length) return reject(new Error('nothing to ask'));
+    next();
+  });
 }
 
 // One block for every read of a position (2026-09-24). The protocol's own

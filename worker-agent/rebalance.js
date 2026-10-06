@@ -128,20 +128,24 @@ export async function rebalancePlan(input = {}) {
     if (targets[t] > 0 && !parsed.some((h) => h.token === t)) parsed.push({ token: t, usd: 0, not_held_yet: true });
   }
 
-  // Measure every pool involved, one at a time. The scanner is our own service
+  // Measure every pool involved. The scanner is our own service
   // and giving it a dozen simultaneous calls is how this project once measured
   // its own rate limit and nearly published it as a finding.
   const scans = new Map();
   const unpriceable = [];
-  for (const h of parsed) {
-    try {
-      const scan = await scanPool(h.token);
-      if (!scan.quotable) { unpriceable.push({ token: h.token, symbol: scan.symbol, reason: 'no pool that can be priced' }); continue; }
-      scans.set(h.token, scan);
-    } catch (e) {
-      unpriceable.push({ token: h.token, reason: String(e.message || e) });
-    }
-  }
+  // At most three at a time (2026-10-06): one after another, a two-token rebalance waited for two full scans in a row
+  // (36 s on the Worker); three keeps the scanner far from the dozen-at-once that once tripped its limit. The order
+  // of the results stays the order of the holdings.
+  const results = new Array(parsed.length);
+  let nextIdx = 0;
+  const lane = async () => { while (nextIdx < parsed.length) { const i = nextIdx++; try { results[i] = { scan: await scanPool(parsed[i].token) }; } catch (e) { results[i] = { err: e }; } } };
+  await Promise.all(Array.from({ length: Math.min(3, parsed.length) }, lane));
+  parsed.forEach((h, i) => {
+    const r = results[i];
+    if (r.err) { unpriceable.push({ token: h.token, reason: String(r.err.message || r.err) }); return; }
+    if (!r.scan.quotable) { unpriceable.push({ token: h.token, symbol: r.scan.symbol, reason: 'no pool that can be priced' }); return; }
+    scans.set(h.token, r.scan);
+  });
 
   const legs = [];
   let totalCostUsd = 0;

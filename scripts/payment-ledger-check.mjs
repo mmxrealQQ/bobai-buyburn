@@ -100,5 +100,19 @@ const TX = '0x' + 'ab'.repeat(32);
   ok('the quote asks for an expiry of the dispute window plus a day (8 days for 7)', r.min_expiry_seconds_after_funding === 8 * 86400 && /at least 8 days/.test(r.why) && /7-day dispute window/.test(r.why));
   ok('a 6-day expiry, the one that failed, is below what the quote asks for', 6 * 86400 < r.min_expiry_seconds_after_funding);
 }
+// The paid answers read Venus through batchCall: a slow endpoint gets company after hedgeMs instead of holding the
+// answer for 15 s (2026-10-06: the yield plan took 66 s on the Worker). The race itself, with pretend endpoints.
+{
+  const { hedged } = await import('../worker-agent/venus.js');
+  const wait = (ms, v, fail) => (signal) => new Promise((res, rej) => { const t = setTimeout(() => (fail ? rej(new Error('x')) : res(v)), ms); signal.addEventListener('abort', () => { clearTimeout(t); rej(new Error('aborted')); }); });
+  let t0 = Date.now(); const a = await hedged([wait(3000, 'slow'), wait(50, 'fast')], 100);
+  ok('a slow endpoint gets company: the second one starts after the gap and its answer wins', a === 'fast' && Date.now() - t0 < 1000, `${a} ${Date.now() - t0} ms`);
+  t0 = Date.now(); const b = await hedged([wait(20, 'x', true), wait(30, 'second')], 5000);
+  ok('a failed endpoint hands over at once, not after the gap', b === 'second' && Date.now() - t0 < 1000, `${b} ${Date.now() - t0} ms`);
+  const c = await hedged([wait(10, 'x', true), wait(10, 'y', true)], 10).then(() => 'resolved', () => 'rejected');
+  ok('when every endpoint fails, the batch fails (no partial or invented answer)', c === 'rejected');
+  t0 = Date.now(); const d = await hedged([wait(40, 'first'), wait(10, 'second')], 1000);
+  ok('an endpoint answering inside the gap is used alone', d === 'first' && Date.now() - t0 < 500, `${d}`);
+}
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

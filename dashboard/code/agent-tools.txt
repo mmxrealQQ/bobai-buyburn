@@ -372,7 +372,7 @@ async function getSmartMoney() {
       all_time_by_tier: nft ? NFT_TIERS.map((t, i) => ({ tier: t.label, min_buy_usd: t.min_buy_usd, count: nft.minted[i] })) : null,
     },
     whale_flows: whales ? {
-      methodology: 'A watcher scans every BOBAI Transfer log on-chain once per minute. Wallets holding >= 10,000,000 BOBAI (1% of supply) enter the watchlist automatically when they cross the threshold. Numbers below aggregate only those tracked wallets — every underlying event is a real on-chain tx.',
+      methodology: 'A watcher scans every BOBAI Transfer log on-chain once per minute. Holders of >= 5,000,000 BOBAI (0.5% of supply) enter the watchlist automatically when they cross it (10,000,000 = 1% is the whale line), contracts that hold like one included, pools and routers never. Numbers below aggregate only those tracked holders — every underlying event is a real on-chain tx.',
       as_of: whales.as_of,
       tracked_wallets: whales.tracked_wallets,
       holdings: whales.holdings || null,

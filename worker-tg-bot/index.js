@@ -254,6 +254,13 @@ const DEFAULT_TRACKED = [
 // Whale-Threshold in raw wei (10M BOBAI). Adresses that cross this via any
 // incoming transfer are auto-added to the watch-set.
 const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
+// FROM 5M A HOLDER IS WATCHED (2026-10-06). A full scan of every transfer found
+// 15 people holding 5-10M, 120.8M BOBAI together (12% of supply), watched by
+// nobody. 10M stays the whale line (NEW/EX-WHALE, the 🐋 count); 5M is where a
+// holder enters the watch-set — and since every holder above it is watched, a
+// holder's rank among them is exact (the LP and the burn address not counted).
+const WATCH_THRESHOLD_WEI = 5_000_000n * 10n ** 18n;
+const WATCH_THRESHOLD_TOKENS = 5_000_000;
 
 // eth_getLogs for EVERY BOBAI transfer in the fromBlock window, unfiltered by
 // address. Keyed endpoint first, free endpoints as fallback — same arrangement
@@ -1122,6 +1129,46 @@ export function positionNote(kind, amount, balAfter) {
   return `bag +${pct(amount / before * 100)}`;
 }
 
+// A holder's place among everybody the watcher follows (all holders of 5M+,
+// so the place is exact from there up; the LP and the burn address are no
+// holders). `bal` is the balance to rank — before or after a move. Pure.
+export function holderRank(balByAddr, addr, bal) {
+  let above = 0;
+  for (const [a, b] of balByAddr) if (a !== addr && Number(b) > bal) above++;
+  return above + 1;
+}
+
+// PATTERNS (2026-10-06): three moves of one kind by one wallet inside 24 h are
+// one story — a whale buying in, selling in pieces, or handing its bag out to
+// fresh wallets. The first two post as ever; the third posts ONE alert that
+// tells the whole run; later ones that day fold into it (logged, in the recap)
+// unless a single one is big on its own ($1,000+ or a tenth of the bag).
+const PATTERNS = { BUY: { name: 'ACCUMULATING', icon: '📈', word: 'buy' }, SELL: { name: 'SELLING IN PIECES', icon: '📉', word: 'sell' }, TRANSFER_OUT: { name: 'DISTRIBUTING', icon: '📦', word: 'transfer out' } };
+const PATTERN_AT = 3;
+export function moverOf(e) {
+  return e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT' || e.kind === 'INTERNAL_T' || e.kind === 'EX_WHALE' ? e.from : e.to;
+}
+// The earlier moves of this kind by this wallet in the last 24 h (quiet ones
+// do not count: under $5 is no story). `n` counts the move at hand too.
+export function patternStep(events, addr, kind, now = Date.now()) {
+  const prior = (events || []).filter((e) => e.kind === kind && !e.quiet && moverOf(e) === addr && (e.ts || 0) >= now - 24 * 3600e3);
+  return { n: prior.length + 1, prior };
+}
+export function foldMove(n, usd, bagShare) {
+  if (n < PATTERN_AT) return 'post';
+  if (n === PATTERN_AT) return 'pattern';
+  return usd >= 1000 || bagShare >= 0.1 ? 'post' : 'fold';
+}
+
+// Who entered and who left the ten largest holders between the last two daily
+// snapshots (the people and contracts the watcher follows). Pure.
+export function top10Shift(snaps) {
+  if (!Array.isArray(snaps) || snaps.length < 2) return null;
+  const top = (s) => Object.entries(s.wallets || {}).sort((x, y) => Number(y[1]) - Number(x[1])).slice(0, 10).map(([a]) => a);
+  const before = top(snaps[snaps.length - 2]), now = top(snaps[snaps.length - 1]);
+  return { entered: now.filter((a) => !before.includes(a)), left: before.filter((a) => !now.includes(a)), leader: now[0] || null, leaderBal: now[0] ? Number(snaps[snaps.length - 1].wallets[now[0]]) : 0 };
+}
+
 // Days a wallet's balance stood still before this move, read from the daily
 // snapshots (2026-10-06): a whale that wakes after two months is news, a
 // trader's tenth move today is not. The balance before the move must match
@@ -1236,6 +1283,7 @@ export function snapshotHoldings(snaps, tracked = null) {
     change_1d: snapshotDelta(snaps, 1),
     change_7d: snapshotDelta(snaps, 7),
     change_30d: snapshotDelta(snaps, 30),
+    top10: top10Shift(snaps),
     method: 'Daily balanceOf() snapshot of every tracked wallet. Deltas compare only wallets present in both snapshots, so watchlist growth never fakes an inflow; a window is only reported once history of that actual age exists.',
   };
 }
@@ -1307,9 +1355,12 @@ function summarize24h(events) {
   };
   let usdIn = 0, usdOut = 0;
   let amtIn = 0, amtOut = 0;
-  let quiet = 0;
+  let quiet = 0, folded = 0;
+  const patterns = [];
   for (const e of r) {
     counts[e.kind] = (counts[e.kind] || 0) + 1;
+    if (e.folded) folded++;
+    if (e.pattern) patterns.push(e);
     // Events logged before the floor existed carry no flag; judge them by
     // the same rule so the recap reads the same across the change.
     if (e.quiet || isQuietMove(e.kind, e.usdValue || 0)) quiet++;
@@ -1325,7 +1376,7 @@ function summarize24h(events) {
     .sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0))
     .slice(0, 3);
   return {
-    total: r.length, counts, quiet,
+    total: r.length, counts, quiet, folded, patterns,
     usdIn, usdOut, netUsd: usdIn - usdOut,
     amtIn, amtOut, netAmt: amtIn - amtOut,
     movers,
@@ -1371,14 +1422,14 @@ function describeAddr(addr, clusterTag, balTokens, priceUsd) {
   return `${tag} · ${formatNumber(balTokens)} BOBAI${usdPart}`;
 }
 
-// The wallets of a group that hold under 10M, on one line: address (first
+// The wallets of a group that hold under 5M, on one line: address (first
 // and last characters, like every other line) and balance in millions, a 🟢 when the wallet moved in the last 24 h. Empty
 // wallets read "0" until the retire rule drops them.
 export function renderSmallWalletsLine(addrs, balByAddr, active = new Set()) {
   const m = (t) => (t >= 1e6 ? (t / 1e6).toFixed(t >= 1e7 ? 0 : 1) + 'M' : t > 0 ? (t / 1e3).toFixed(0) + 'K' : '0');
   const sorted = addrs.slice().sort((x, y) => (balByAddr.get(y) || 0) - (balByAddr.get(x) || 0));
   const parts = sorted.map((a) => `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${shortenAddress(a)}</a> ${m(balByAddr.get(a) || 0)}${active.has(a) ? '🟢' : ''}`);
-  return `💀 <i>below 10M (${addrs.length}):</i> ${parts.join(' · ')}`;
+  return `💀 <i>below 5M (${addrs.length}):</i> ${parts.join(' · ')}`;
 }
 
 function describeMover(e) {
@@ -1439,11 +1490,26 @@ export function renderDailyRecap(events, tracked, price, withDateStamp, holdings
     if (c.NEW_WHALE) lines.push(`💡 ${c.NEW_WHALE} new whale${c.NEW_WHALE === 1 ? '' : 's'} crossed 10M`);
     if (c.EX_WHALE)  lines.push(`💀 ${c.EX_WHALE} ex-whale${c.EX_WHALE === 1 ? '' : 's'} dropped below 10M`);
     if (sum.quiet)   lines.push(`🔕 ${sum.quiet} under $${WHALE_QUIET_USD} — logged, not alerted`);
+    if (sum.folded)  lines.push(`🧩 ${sum.folded} more folded into a pattern alert`);
+    for (const e of sum.patterns) {
+      const P = PATTERNS[e.kind]; if (!P) continue;
+      lines.push(`${P.icon} ${shortenAddress(moverOf(e))} ${P.name.toLowerCase()} — ${PATTERN_AT}+ ${P.word}s in 24h`);
+    }
     if (sum.movers.length) {
       lines.push('');
       lines.push('🏆 <b>Top moves</b>');
       sum.movers.forEach((e, i) => lines.push(`<code>${i + 1}.</code> ${describeMover(e)}`));
     }
+  }
+
+  // The ten largest holders since yesterday's snapshot.
+  const shift = holdings && holdings.top10;
+  if (shift && (shift.entered.length || shift.left.length)) {
+    lines.push('');
+    const parts = [];
+    if (shift.entered.length) parts.push(`in: ${shift.entered.map(shortenAddress).join(', ')}`);
+    if (shift.left.length) parts.push(`out: ${shift.left.map(shortenAddress).join(', ')}`);
+    lines.push(`🏅 Top 10 changed · ${parts.join(' · ')}`);
   }
 
   // What the watch-set did to itself today.
@@ -1541,11 +1607,13 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
 • <b>Daily Recap</b> posted here every morning at 06:00 UTC (08:00 CEST).
 
 <b>Auto-tracking:</b>
-• 💡 <b>NEW WHALE</b> — EOA crosses <b>10M BOBAI</b>, auto-added.
+• 💡 <b>NEW HOLDER 5M+ / NEW WHALE</b> — a holder crosses <b>5M</b> (🐬) or <b>10M</b> (🐋), auto-added. Every holder of 5M+ is watched, so 🏅 #n is an exact place.
+• 📈📉📦 <b>Patterns</b> — 3 buys, 3 sells or 3 transfers out by one wallet in 24h: ONE alert tells the run; more small ones that day fold into it.
+• 🏊 Buys and sells name their share of the pool's BOBAI.
 • 💀 <b>EX-WHALE</b> — tracked wallet drops below 10M (stays in set while it holds anything).
 • 🧹 <b>Retired</b> — a wallet empty for 7 daily snapshots leaves the set at the recap; it is re-added the moment it moves.
 • 🟠 <b>Cascade (Hop 1)</b> — fresh EOAs a tracked wallet sends to are auto-added.
-• 🏦 <b>Contract holders</b> — a contract that holds 10M+ (never a pool, never a router) is watched on its own list; <code>/whaleadd</code> takes one from 1M.
+• 🏦 <b>Contract holders</b> — a contract that holds 5M+ (never a pool, never a router) is watched on its own list; <code>/whaleadd</code> takes one from 1M.
 • 🤖 <b>Routers blocked</b> — contracts that only pass tokens through are never tracked.
 • ⏰ Alerts name the share of the bag a move takes, and a wallet's first move after 7+ still days.
 
@@ -1608,21 +1676,21 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
 
       // --- Cluster + Solo sections ---
       const WHALE_THRESHOLD_TOKENS = 10_000_000;
-      const renderWallet = (addr, rankInGroup) => {
+      const renderWallet = (addr) => {
         const bal = balByAddr.get(addr) || 0;
         const usd = price ? bal * price : null;
         const usdStr = usd != null ? formatUsd(usd) : 'n/a';
         const pct = ((bal / supplyBase) * 100).toFixed(2);
         // Size marker (💀 below 10M) and activity marker (🟢 active 24h / 💤 dormant) are independent.
         // Small + active → 💀🟢 so cascade-hop traffic on sub-10M wallets stays visible.
-        const small = bal < WHALE_THRESHOLD_TOKENS;
+        // 🐬 a holder of 5-10M (watched, not yet a whale)
+        const dolphin = bal < WHALE_THRESHOLD_TOKENS ? '🐬' : '';
         const isActive = active.has(addr);
         // A dormant wallet says for how long (from the daily snapshots).
         const still = isActive ? null : dormantDays(snaps, addr, bal, events, Date.now(), 2);
-        const dot = small
-          ? (isActive ? '💀🟢' : '💀')
-          : (isActive ? '🟢' : `💤${still ? still + 'd' : ''}`);
-        const rank = String(rankInGroup).padStart(2, ' ');
+        const dot = dolphin + (isActive ? '🟢' : `💤${still ? still + 'd' : ''}`);
+        // the holder's place among everybody watched (exact from 5M up), not its place in the group
+        const rank = String(holderRank(balByAddr, addr, bal)).padStart(2, ' ');
         return `<code>${rank}.</code> <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a> · ${formatNumber(bal)} (${usdStr}) · ${pct}% ${dot}`;
       };
 
@@ -1640,13 +1708,13 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         return `<i>24h: ${parts.join(' · ')}</i>`;
       };
 
-      // A group lists its 10M+ wallets one per line; the wallets under 10M
-      // (spent cluster wallets, ex-whales) share one line, so the list is a
+      // A group lists its 5M+ holders one per line; the wallets under 5M
+      // (spent cluster wallets, ex-holders) share one line, so the list is a
       // screen, not a scroll (the operator, 2026-09-10).
       const renderGroup = (addrs) => {
-        const big = addrs.filter((a) => (balByAddr.get(a) || 0) >= WHALE_THRESHOLD_TOKENS);
-        const small = addrs.filter((a) => (balByAddr.get(a) || 0) < WHALE_THRESHOLD_TOKENS);
-        const out = big.map((a, i) => renderWallet(a, i + 1));
+        const big = addrs.filter((a) => (balByAddr.get(a) || 0) >= WATCH_THRESHOLD_TOKENS);
+        const small = addrs.filter((a) => (balByAddr.get(a) || 0) < WATCH_THRESHOLD_TOKENS);
+        const out = big.map((a) => renderWallet(a));
         if (small.length) out.push(renderSmallWalletsLine(small, balByAddr, active));
         return out.join('\n');
       };
@@ -1677,7 +1745,7 @@ ${renderActivity(act)}`;
         const sorted = cList.slice().sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
         const sumTokens = sorted.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
         const act = summarizeClusterActivity(events, new Set(sorted), 24);
-        sections.push(`🏦 <b>Contracts</b> · ${sorted.length} · ${((sumTokens / supplyBase) * 100).toFixed(2)}% of supply\n${renderActivity(act)}\n` + sorted.map((a, i) => renderWallet(a, i + 1)).join('\n'));
+        sections.push(`🏦 <b>Contracts</b> · ${sorted.length} · ${((sumTokens / supplyBase) * 100).toFixed(2)}% of supply\n${renderActivity(act)}\n` + sorted.map((a) => renderWallet(a)).join('\n'));
       }
 
       reply = `${header}
@@ -1685,7 +1753,7 @@ ${summary24h}
 
 ${sections.join('\n\n')}
 
-<i>% = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 💀 below 10M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
+<i>#n = place among all holders (LP and burn not counted) · % = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 🐬 5-10M · 💀 below 5M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
 ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code></i>`;
     }
   }
@@ -1888,8 +1956,8 @@ export function toldAlready(events, txHash, kind, from, to) {
   return (events || []).some((e) => e.txHash === txHash && e.kind === kind && e.from === from && e.to === to);
 }
 
-async function postWhaleAlert(data) {
-  if (!TG_INTERNAL_CHAT_ID) return false;
+// The alert's text, or false for a kind that is not told (pure: pinned by scripts/smoke-whale.mjs).
+export function renderWhaleAlert(data) {
   const { kind, from, to, amount, usdValue, txHash } = data;
   const DUST_USD = 50;
   const isDust = usdValue > 0 && usdValue < DUST_USD;
@@ -1919,16 +1987,18 @@ async function postWhaleAlert(data) {
 
   // NEW_WHALE & EX_WHALE keep their own focused layouts.
   if (kind === 'NEW_WHALE') {
-    const what = data.moverIsContract ? '🏦 A contract (not a pool)' : '🐋';
-    const msg = `💡 <b>NEW WHALE${data.moverIsContract ? ' CONTRACT' : ''} · auto-tracked</b>
+    const whale = amount >= 10_000_000;
+    const what = data.moverIsContract ? '🏦 A contract (not a pool)' : whale ? '🐋' : '🐬';
+    const rankLine = data.rank ? ` · 🏅 #${data.rank} holder` : '';
+    const msg = `💡 <b>NEW ${whale ? 'WHALE' : 'HOLDER 5M+'}${data.moverIsContract ? ' · CONTRACT' : ''} · auto-tracked</b>
 
-${what} ${moverLink} just crossed <b>10M BOBAI</b>.
-📊 Holds: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}
+${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
+📊 Holds: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}${rankLine}
 
 <i>Added to watch-set. All future activity will alert.</i>
 
 🔗 ${txLink}`;
-    return await tgSend(msg);
+    return msg;
   }
   if (kind === 'EX_WHALE') {
     const moverDownLink = `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${from}">${shortenAddress(from)}</a>`;
@@ -1940,7 +2010,32 @@ ${what} ${moverLink} just crossed <b>10M BOBAI</b>.
 <i>Still in watch-set — use /whalerm to drop.</i>
 
 🔗 ${txLink}`;
-    return await tgSend(msg);
+    return msg;
+  }
+
+  // Where the holder stands now, and where it stood before the move (exact from 5M up).
+  const rankStr = data.rank ? `🏅 #${data.rank} holder${data.rankBefore && data.rankBefore !== data.rank ? ` (was #${data.rankBefore})` : ''}` : null;
+  // A buy or sale against the pool it trades in: its share of the pool's BOBAI before the trade.
+  const poolPct = data.poolShare ? data.poolShare * 100 : 0;
+  const poolStr = poolPct ? ` · <i>${poolPct >= 1 ? poolPct.toFixed(1) : poolPct.toFixed(2)}% of the pool's BOBAI</i>` : '';
+
+  // A PATTERN: three moves of a kind in 24 h told as one story.
+  if (data.pattern) {
+    const P = PATTERNS[kind]; const pt = data.pattern;
+    const sign = kind === 'BUY' ? '+' : '−';
+    const lines = [
+      `${P.icon} <b>${P.name}</b> · ${pt.n} ${P.word}s in 24h · ${formatUsd(pt.usd)}`,
+      `${moverCluster} · ${moverLink}`,
+    ];
+    if (moverHolds) lines.push(`📊 Now holds: ${moverHolds}`);
+    if (rankStr) lines.push(rankStr);
+    lines.push('', `🪙 ${sign}${formatNumber(pt.amount)} BOBAI in 24h${pt.bag ? ` · <i>${pt.bag}</i>` : ''}`);
+    lines.push(`↳ latest: ${sign}${formatNumber(amount)} BOBAI · ${usdStr}`);
+    if (kind === 'TRANSFER_OUT' && pt.recipients && pt.recipients.length) {
+      lines.push(`→ to ${pt.recipients.length} wallet${pt.recipients.length === 1 ? '' : 's'}: ${pt.recipients.slice(0, 5).map((a) => `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${shortenAddress(a)}</a>`).join(', ')}${pt.recipients.length > 5 ? ' …' : ''}`);
+    }
+    lines.push('', `<i>More of the same today is folded into this (big single moves still alert).</i>`, `🔗 ${txLink}`);
+    return lines.join('\n');
   }
 
   // Action verb + headline icon, by kind.
@@ -1948,11 +2043,11 @@ ${what} ${moverLink} just crossed <b>10M BOBAI</b>.
   switch (kind) {
     case 'BUY':
       headline = `🟢 <b>BUY</b> · ${usdStr}`;
-      contextLine = `↩ from PancakeSwap LP`;
+      contextLine = `↩ from PancakeSwap LP${poolStr}`;
       break;
     case 'SELL':
       headline = `🔴 <b>SELL</b> · ${usdStr}`;
-      contextLine = `↪ into PancakeSwap LP`;
+      contextLine = `↪ into PancakeSwap LP${poolStr}`;
       break;
     case 'BURN':
       headline = `🔥 <b>BURN</b> · ${usdStr}`;
@@ -1987,6 +2082,7 @@ ${what} ${moverLink} just crossed <b>10M BOBAI</b>.
     `${moverCluster} · ${moverLink}`,
   ];
   if (moverHolds) lines.push(`📊 Now holds: ${moverHolds}`);
+  if (rankStr) lines.push(rankStr);
   if (data.dormant) lines.push(`⏰ <b>First move in ${data.dormant}+ days</b>`);
   const sign =
     (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT') ? '−' :
@@ -1997,7 +2093,13 @@ ${what} ${moverLink} just crossed <b>10M BOBAI</b>.
   lines.push(contextLine);
   lines.push('', `🔗 ${txLink}`);
 
-  return await tgSend(lines.join('\n'));
+  return lines.join('\n');
+}
+
+async function postWhaleAlert(data) {
+  if (!TG_INTERNAL_CHAT_ID) return false;
+  const text = renderWhaleAlert(data);
+  return text ? await tgSend(text) : false;
 }
 
 async function tgSend(text) {
@@ -3437,7 +3539,7 @@ export default {
           as_of: new Date().toISOString(),
           tracked_wallets: trackedW.length,
           tracked_contracts: contracts.length,
-          tracking_threshold: '10,000,000 BOBAI (1% of supply) — wallets enter the watchlist automatically when they cross it',
+          tracking_threshold: '5,000,000 BOBAI (0.5% of supply) — holders enter the watchlist automatically when they cross it; 10,000,000 (1%) is the whale line',
           holdings: snapshotHoldings(snaps, tracked),
           last_24h: win(24),
           last_7d: win(168),
@@ -3948,6 +4050,19 @@ export default {
           const contractCache = new Map();
           const balanceCache = new Map();
           const poolCache = new Map();
+          // Every watched holder's balance, read once per run and only when an alert needs a rank.
+          let rankMap = null;
+          const rankBals = async () => {
+            if (rankMap) return rankMap;
+            const all = [...trackedSet, ...contractSet];
+            rankMap = new Map();
+            for (let i = 0; i < all.length; i += 8) {
+              const chunk = all.slice(i, i + 8);
+              const bals = await Promise.all(chunk.map((a) => getBalCached(a)));
+              chunk.forEach((a, j) => { if (bals[j] != null) rankMap.set(a, Number(bals[j] / 10n ** 18n)); });
+            }
+            return rankMap;
+          };
           const isContractCached = async (addr) => {
             if (contractCache.has(addr)) return contractCache.get(addr);
             const r = await isContract(addr);
@@ -4060,7 +4175,7 @@ export default {
                 // a market is never a whale) and goes on the contract list.
                 const asContract = await isContractCached(addr);
                 const bal = await getBalCached(addr);
-                if (bal === null || bal < WHALE_THRESHOLD_WEI) continue;
+                if (bal === null || bal < WATCH_THRESHOLD_WEI) continue;
                 if (asContract) { if (!poolCache.has(addr)) poolCache.set(addr, await isPool(addr)); if (poolCache.get(addr)) continue; }
 
                 if (asContract) { contractSet.add(addr); contractsChanged = true; }
@@ -4069,9 +4184,12 @@ export default {
                 const balTokens = Number(bal / 10n ** 18n);
                 const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
                 console.log('[WHALE] NEW_WHALE detected', addr.slice(0, 10), formatNumber(balTokens));
+                const rb = await rankBals();
+                rb.set(addr, balTokens);
                 const sent = await postWhaleAlert({
                   kind: 'NEW_WHALE', from: pair, to: addr,
                   amount: balTokens, usdValue: usd, txHash, moverIsContract: asContract,
+                  rank: holderRank(rb, addr, balTokens),
                 });
                 if (sent) {
                   alerts++;
@@ -4119,21 +4237,52 @@ export default {
               const told = toldAlready(whaleEvents, txHash, kind, senderAddr, receiverAddr);
               console.log('[WHALE]', told ? 'told before' : quiet ? 'quiet' : kind, senderAddr.slice(0,8), '→', receiverAddr.slice(0,8), formatNumber(absAmt), 'BOBAI');
               // Asleep before this move? The snapshots are read once per run, only when an alert goes out.
-              let dormant = null;
+              let dormant = null, rank = null, rankBefore = null, poolShare = null, pattern = null, folded = false;
+              const moverBalNow = isInflow ? toBal : fromBal;
+              const moverBalBefore = moverBalNow != null ? (isInflow ? moverBalNow - absAmt : moverBalNow + absAmt) : null;
               if (!told && !quiet) {
                 if (whaleSnaps === null) whaleSnaps = await loadWhaleSnapshots(env).catch(() => []);
-                const moverBalNow = isInflow ? toBal : fromBal;
-                if (moverBalNow != null) dormant = dormantDays(whaleSnaps, addr, isInflow ? moverBalNow - absAmt : moverBalNow + absAmt, whaleEvents);
+                if (moverBalNow != null) dormant = dormantDays(whaleSnaps, addr, moverBalBefore, whaleEvents);
+                // A run of the same kind: the third move tells the story, later small ones fold into it.
+                if (PATTERNS[kind] && moverBalNow != null) {
+                  const step = patternStep(whaleEvents, addr, kind);
+                  const decision = foldMove(step.n, usdValue, moverBalBefore > 0 ? absAmt / moverBalBefore : 1);
+                  if (decision === 'fold') folded = true;
+                  if (decision === 'pattern') {
+                    const amount = step.prior.reduce((t, e) => t + (e.amount || 0), 0) + absAmt;
+                    const usd = step.prior.reduce((t, e) => t + (e.usdValue || 0), 0) + usdValue;
+                    const start = isInflow ? moverBalNow - amount : moverBalNow + amount;
+                    pattern = {
+                      n: step.n, amount, usd,
+                      bag: positionNote(kind, amount, moverBalNow) && start >= 1 ? (isInflow ? `bag +${Math.round(amount / start * 100)}% in 24h` : moverBalNow < 1 ? 'the whole bag in 24h' : `${Math.round(amount / start * 100)}% of the bag in 24h`) : null,
+                      recipients: kind === 'TRANSFER_OUT' ? [...new Set([...step.prior.map((e) => e.to), receiverAddr])] : null,
+                    };
+                  }
+                }
+                if (!folded) {
+                  // Place among all holders, exact from 5M up (every holder above that is watched).
+                  const rb = await rankBals();
+                  if (moverBalNow != null) {
+                    rb.set(addr, moverBalNow);
+                    if (moverBalNow >= WATCH_THRESHOLD_TOKENS) rank = holderRank(rb, addr, moverBalNow);
+                    if (moverBalBefore >= WATCH_THRESHOLD_TOKENS) rankBefore = holderRank(rb, addr, moverBalBefore);
+                  }
+                  // A trade against the pair: its size against the pool's BOBAI before the trade.
+                  if (kind === 'BUY' || kind === 'SELL') {
+                    const poolWei = await getBalCached(pair);
+                    if (poolWei != null) { const poolNow = Number(poolWei / 10n ** 18n); const poolBefore = kind === 'SELL' ? poolNow - absAmt : poolNow + absAmt; if (poolBefore > 0) poolShare = absAmt / poolBefore * 100; }
+                  }
+                }
               }
-              const sent = told || quiet ? true : await postWhaleAlert({
+              const sent = told || quiet || folded ? true : await postWhaleAlert({
                 kind, from: senderAddr, to: receiverAddr,
                 amount: absAmt, usdValue, txHash,
                 fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd, otherIsContract: viaContract, dormant,
-                moverIsContract: contractSet.has(addr),
+                moverIsContract: contractSet.has(addr), rank, rankBefore, poolShare: poolShare != null ? poolShare / 100 : null, pattern,
               });
               if (sent) {
-                if (!quiet && !told) alerts++;
-                if (!told) whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now(), ...(quiet ? { quiet: true } : {}), ...(viaContract ? { contract: true } : {}) });
+                if (!quiet && !told && !folded) alerts++;
+                if (!told) whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now(), ...(quiet ? { quiet: true } : {}), ...(viaContract ? { contract: true } : {}), ...(folded ? { folded: true } : {}), ...(pattern ? { pattern: true } : {}) });
                 alertedThisTx.add(addr);
                 if (kind === 'INTERNAL_T') alertedThisTx.add(counterparty);
               } else {

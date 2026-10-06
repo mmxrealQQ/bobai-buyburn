@@ -74,7 +74,7 @@ ok(/Whale Watcher · Last 24h\n🐋 2 wallets tracked/.test(noHold), '/whales24h
 // The small-wallet line: address, balance in M/K, a dot for the active ones.
 const bal = new Map([[A, 4_200_000], [B, 0], [C, 12_500]]);
 const line = renderSmallWalletsLine([A, B, C], bal, new Set([A])).replace(/<[^>]+>/g, '');
-ok(line === '💀 below 10M (3): 0xaaaa...aaaa 4.2M🟢 · 0xcccc...cccc 13K · 0xbbbb...bbbb 0', `small wallets on one line, largest first, got: ${line}`);
+ok(line === '💀 below 5M (3): 0xaaaa...aaaa 4.2M🟢 · 0xcccc...cccc 13K · 0xbbbb...bbbb 0', `small wallets on one line, largest first, got: ${line}`);
 
 // The cron itself, run dry at 06:05 UTC: an empty KV, a network that answers
 // 503. Every gate in scheduled() catches its own errors, so a name that is out
@@ -233,6 +233,40 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
   ok(/const isTracked = watched\(addr\);/.test(src) && /'0xa3996b9977cdbf77c6f7717894d58a66a6789d9c'/.test(src), 'the scan watches the contract list too, seeded with 0xa399…9d9c');
   ok(/if \(asContract\) \{ if \(!poolCache\.has\(addr\)\)/.test(src) && !/NEW_WHALE detection[^\n]*\n\s*if \(await isContractCached\(addr\)\) continue;/.test(src), 'a contract crossing 10M is taken unless it is a pool (it was skipped as any contract)');
+}
+
+// 2026-10-06, smarter: holders from 5M, an exact place among them, a run of
+// three moves told as one story, a trade against the pool, the top 10 moving.
+{
+  const { holderRank, patternStep, foldMove, top10Shift, renderWhaleAlert } = worker;
+  const H = (n) => '0x' + String(n).repeat(40).slice(0, 40);
+  const bals = new Map([[H(1), 72e6], [H(2), 61e6], [H(3), 38e6], [H(4), 5.2e6]]);
+  ok(holderRank(bals, H(3), 38e6) === 3 && holderRank(bals, H(3), 80e6) === 1 && holderRank(bals, H(4), 5.2e6) === 4, 'the place counts the holders above, with the balance asked for');
+  const W = H(5), now = Date.now();
+  const buys = (n) => Array.from({ length: n }, (_, i) => ({ kind: 'BUY', from: '0xpair', to: W, amount: 1e6, usdValue: 200, ts: now - (i + 1) * 3600e3 }));
+  ok(patternStep(buys(2), W, 'BUY', now).n === 3 && patternStep([...buys(2), { kind: 'BUY', to: W, ts: now - 3600e3, quiet: true }], W, 'BUY', now).n === 3, 'the third buy in 24 h is the third; a quiet one does not count');
+  ok(patternStep([{ kind: 'BUY', to: W, ts: now - 25 * 3600e3 }], W, 'BUY', now).n === 1 && patternStep(buys(2), H(6), 'BUY', now).n === 1, 'older than 24 h, or another wallet, is no run');
+  ok(foldMove(1, 50, 0.01) === 'post' && foldMove(2, 50, 0.01) === 'post' && foldMove(3, 50, 0.01) === 'pattern', 'two moves post, the third tells the run');
+  ok(foldMove(4, 50, 0.01) === 'fold' && foldMove(4, 1000, 0.01) === 'post' && foldMove(5, 50, 0.1) === 'post', 'later small ones fold, a big one ($1,000+ or a tenth of the bag) still alerts');
+  const snapA = { wallets: Object.fromEntries(Array.from({ length: 11 }, (_, i) => [H(i % 10) + i, 100 - i])) };
+  const snapB = { wallets: { ...snapA.wallets, [H(9) + 9]: 0, [H(7) + 10]: 200 } };
+  const sh = top10Shift([snapA, snapB]);
+  ok(sh.entered.join() === H(7) + 10 && sh.left.join() === H(9) + 9, `the top 10 names who came in and who left, got ${JSON.stringify(sh)}`);
+  ok(top10Shift([snapA]) === null, 'one snapshot, no shift');
+  const base = { from: W, to: '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', amount: 2e6, usdValue: 460, txHash: '0xabc', fromBal: 36e6, priceUsd: 0.00023 };
+  const sell = renderWhaleAlert({ ...base, kind: 'SELL', rank: 4, rankBefore: 3, poolShare: 0.0122 }).replace(/<[^>]+>/g, '');
+  ok(/🏅 #4 holder \(was #3\)/.test(sell) && /into PancakeSwap LP · 1\.2% of the pool's BOBAI/.test(sell) && /5\.3% of the bag/.test(sell), `a sale names its place, the pool and the bag:\n${sell}`);
+  const run = renderWhaleAlert({ ...base, kind: 'SELL', rank: 4, pattern: { n: 3, amount: 6e6, usd: 1380, bag: '14% of the bag in 24h' } }).replace(/<[^>]+>/g, '');
+  ok(/📉 SELLING IN PIECES · 3 sells in 24h · \$1\.4K/.test(run) && /−6\.00M BOBAI in 24h · 14% of the bag in 24h/.test(run) && /latest: −2\.00M BOBAI/.test(run), `the third sale tells the run:\n${run}`);
+  const dist = renderWhaleAlert({ ...base, kind: 'TRANSFER_OUT', to: H(8), pattern: { n: 3, amount: 3e6, usd: 690, recipients: [H(7), H(8), H(9)] } }).replace(/<[^>]+>/g, '');
+  ok(/📦 DISTRIBUTING · 3 transfer outs in 24h/.test(dist) && /→ to 3 wallets: 0x7777\.\.\.7777, 0x8888\.\.\.8888, 0x9999\.\.\.9999/.test(dist), `a hand-out names its wallets:\n${dist}`);
+  const dolphin = renderWhaleAlert({ kind: 'NEW_WHALE', from: '0x6ead', to: W, amount: 6.1e6, usdValue: 1400, txHash: '0x1', rank: 21 }).replace(/<[^>]+>/g, '');
+  ok(/NEW HOLDER 5M\+ · auto-tracked/.test(dolphin) && /🐬 .* just crossed 5M BOBAI/.test(dolphin) && /🏅 #21 holder/.test(dolphin), `a 5M holder is announced as one:\n${dolphin}`);
+  ok(/NEW WHALE · auto-tracked/.test(renderWhaleAlert({ kind: 'NEW_WHALE', from: '0x6ead', to: W, amount: 12e6, usdValue: 2800, txHash: '0x1' })), 'a 10M holder is still a whale');
+  const recap = renderDailyRecap([{ kind: 'SELL', from: W, to: '0x6ead', amount: 2e6, usdValue: 460, ts: now - 3600e3, pattern: true }, { kind: 'SELL', from: W, to: '0x6ead', amount: 1e6, usdValue: 230, ts: now - 1800e3, folded: true }], [W], null, true, { ...holdings, top10: { entered: [H(7)], left: [H(9)] } }).replace(/<[^>]+>/g, '');
+  ok(/🧩 1 more folded into a pattern alert/.test(recap) && /📉 0x5555\.\.\.5555 selling in pieces/.test(recap) && /🏅 Top 10 changed · in: 0x7777\.\.\.7777 · out: 0x9999\.\.\.9999/.test(recap), `the recap tells the runs and the top 10:\n${recap}`);
+  const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  ok(/if \(bal === null \|\| bal < WATCH_THRESHOLD_WEI\) continue;/.test(src) && /const WATCH_THRESHOLD_WEI = 5_000_000n/.test(src), 'a holder enters the watch-set from 5M');
 }
 
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }

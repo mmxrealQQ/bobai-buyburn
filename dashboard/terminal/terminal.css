@@ -953,7 +953,7 @@
 @keyframes bt-hw-flick{0%,100%{opacity:.55}18%{opacity:.95}31%{opacity:.6}47%{opacity:1}58%{opacity:.7}74%{opacity:.9}86%{opacity:.5}}
 @keyframes bt-hw-shake{0%{transform:translate(-1.5px,0) rotate(-1.2deg)}50%{transform:translate(1.5px,-1px) rotate(1.2deg)}100%{transform:translate(-1.5px,0) rotate(-1.2deg)}}
 /* the clown behind the log box: the balloon rises first, then he takes hold of the edge and looks over it */
-#bt .hw-clip{position:absolute;inset:0;overflow:hidden}
+#bt .hw-clip{position:absolute;inset:0;overflow:hidden;overflow-x:visible;overflow-y:clip} /* hides only what is still below the ground: the balloon swaying and the hand's groping fingers were cut at the box's right edge (operator, 2026-10-07). A browser without overflow:clip keeps hidden on both axes, as before */
 #bt .hw-clo{position:absolute;left:0;bottom:0;width:var(--cw,70px);transform:translateY(106%);transition:transform 1.5s cubic-bezier(.5,0,.3,1)}
 #bt .hw-cl.up1 .hw-clo{transform:translateY(56%);transition-duration:2s}
 #bt .hw-cl.up2 .hw-clo{transform:translateY(3%);transition-duration:1s}

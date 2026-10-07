@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5238 lines.
+# one fetch. 12 files, 5241 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3317,22 +3317,25 @@ export async function readDefiRange(pool) {
     return { tick: int24At(s0, 1), main, reserve: res };
   } catch { return null; }
 }
-// The range on ONE line, drawn like the tax card's charge bar (operator, 2026-10-07: "black and white, like the tax",
-// then "it shows over 3 lines — make it one line"): lower edge, 8 cells filled up to where the price stands, upper
-// edge; a ⚫ on the side the price has left to. 8 cells so the line with both prices fits a narrow phone. Plain text,
-// no <pre> and no box-drawing glyphs — Telegram drew those differently per device and the right edge came out as
-// "<\>". Pure: rendered in tests.
+// The range as one bar line, the edge prices under it (operator, 2026-10-07, third pass: "the prices under the bar,
+// | the rectangles | and the dot inside or outside — use the one line"): |▱▱▱●▱▱| with the dot where the price
+// stands, ● before or after the bar when the price has left it; then "lower ↔ upper BNB"; then the price itself.
+// 16 cells: wide enough to read, narrow enough for one line on a phone. Plain text — no <pre> and no box-drawing
+// glyphs, which Telegram drew differently per device (the right edge came out as "<\>"). Pure: rendered in tests.
 export function formatRangeBar(r) {
   if (!r || !r.main || !(r.main.upper > r.main.lower)) return [];
-  const N = 8, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
+  const N = 16, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
   const { lower, upper } = r.main, t = r.tick, at = (t - lower) / (upper - lower);
-  let bar;
-  const cells = at < 0 ? '▱'.repeat(N) : at > 1 ? '▰'.repeat(N) : (() => { const f = Math.max(1, Math.min(N - 1, Math.round(at * N))); return '▰'.repeat(f) + '▱'.repeat(N - f); })();
-  bar = (at < 0 ? '⚫ ' : '') + `${p(lower)} ${cells} ${p(upper)}` + (at > 1 ? ' ⚫' : '');
+  const i = Math.max(0, Math.min(N - 1, Math.floor(at * N)));
+  const bar = at < 0 ? `● |${'▱'.repeat(N)}|` : at > 1 ? `|${'▱'.repeat(N)}| ●` : `|${'▱'.repeat(i)}●${'▱'.repeat(N - 1 - i)}|`;
   const where = at < 0 ? `${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
     : at > 1 ? `${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
     : `${Math.round(at * 100)}% up the range`;
-  const lines = [bar, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
+  // the edge prices under the bar's two | (operator: "under the |, but not on a new line"): Telegram's text is not
+  // monospaced, so the gap is measured in a browser (Arial, Segoe UI; checked as a picture), not counted: ▱ is a full
+  // em, a price ~64 px, a space ~4.4 px — 28 spaces under a bar of 16 ▱, 27 when the ● inside (narrower than a ▱)
+  // shortens it; "● " before the bar (price below) moves the line in by 3
+  const lines = [bar, `${at < 0 ? ' '.repeat(3) : ''}${p(lower)}${' '.repeat(at >= 0 && at <= 1 ? 27 : 28)}${p(upper)}`, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
   if (r.reserve && r.reserve.upper > r.reserve.lower) lines.push(`Reserve range: ${p(r.reserve.lower)} – ${p(r.reserve.upper)} BNB`);
   return lines;
 }

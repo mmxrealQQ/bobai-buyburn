@@ -297,7 +297,7 @@
           "id": 56657,
           "status": "COMPLETED",
           "result": "https://agent.brainonbnb.com/job/56657/result",
-          "page": "https://brainonbnb.com/job?id=56657",
+          "page": "https://agent.brainonbnb.com/job?id=56657",
           "note": "hired through the marketplace, delivered on-chain, escrow released"
         }
       },

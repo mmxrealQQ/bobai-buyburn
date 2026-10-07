@@ -90,7 +90,9 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
   if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
   // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
   // hair above 0.99 and a wait exactly a tenth ahead is refused.
-  const bar = Math.round(base.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4;
+  // a tenth of its size above the set wait's score, also when that score is below zero (since 2026-10-07 the wait is
+  // scored against holding and is often negative: x 1.1 would have set the bar lower, not higher)
+  const bar = Math.round((base.net_usd_per_day + Math.abs(base.net_usd_per_day) * WAIT_PICK_MARGIN) * 1e4) / 1e4;
   if (!(best.net_usd_per_day >= bar)) return keep(`the set wait of ${set} h — ${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day}, under the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar for a change`);
   return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day} at the set ${set} h, over ${hoursOfPrices} h of prices — more than the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar` };
 }
@@ -242,15 +244,23 @@ export const ONE_SIDED_GAP_TICKS = 20;
 export const WIDTH_WINDOW_HOURS = 168;
 export const WIDTH_PICK_MARGIN = 0.10;
 export const WIDTH_PICK_MIN_LEAD_USD = 0.02;
+// THE FLOOR (operator's go, 2026-10-07: "more profit, fewer losses, simply mathematically the best"). On 7.10. the
+// week's ranking moved the agent from ±10% to ±0.25%. Measured on the 10-minute tape, CAKE/BNB 0.05% pays fees at
+// about 0.74 of what a range loses to the price's swings (σ²/8 a day): below 1 every step narrower multiplies the
+// loss against holding, and a weekly pick between ±0.25% and ±10% flipped on noise (out of sample −4.8% against
+// ~0% for a fixed wide width). So no width under the floor is picked; the narrow rows stay in the record.
+export const WIDTH_FLOOR_PCT = 10;
 // Kept for the record of the morning rule and its pins; not applied.
 export const IN_RANGE_TARGET = 0.95;
-export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD } = {}) {
+export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD, floor = WIDTH_FLOOR_PCT } = {}) {
   const r4 = (x) => Math.round(x * 1e4) / 1e4;
-  const cand = (rows || [])
+  const all = (rows || [])
     .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0 && typeof r[key].vs_holding_usd === 'number' && typeof r[key].fees_usd === 'number')
     .map((r) => ({ row: r, width: Number(r.width), hours: Number(r[key].hours), fees: Number(r[key].fees_usd), vs: Number(r[key].vs_holding_usd), share: Number(r[key].hours_in_range) / Number(r[key].hours) }))
     .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
     .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
+  // the floor: widths under it are not candidates (a record without any width at or above it picks as before)
+  const wide = all.filter((c) => c.width >= floor), cand = wide.length ? wide : all;
   if (!cand.length) return null;
   // The most money against holding; a tie goes to the wider width, which
   // is crossed less often.

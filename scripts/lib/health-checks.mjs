@@ -30,8 +30,10 @@ const LOGS = 'https://logs.brainonbnb.com';
 const TG_BOT = 'https://bobai-tg-bot.bobbuildonbnb.workers.dev';
 
 const UA = { 'user-agent': 'bobai-smoke-test' }; // not counted in public stats
+// every call gets a deadline unless it brings its own (2026-10-07): one origin that hangs held the whole
+// morning run past the cron's wall time, and then no message went out at all
 const fetch = (url, init = {}) =>
-  globalThis.fetch(url, { ...init, headers: { ...UA, ...(init.headers || {}) } });
+  globalThis.fetch(url, { signal: AbortSignal.timeout(30000), ...init, headers: { ...UA, ...(init.headers || {}) } });
 
 // Like getJson, but it never turns a failure into a blank. Whatever came back —
 // a status, a body that was not JSON, a timeout — is carried into the message,

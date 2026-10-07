@@ -235,10 +235,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1791356437366">
+<link rel="stylesheet" href="brain/brain.css?v=1791373030213">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1791355104">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791361892">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -291,7 +291,7 @@
     <div class="rclk" id="bt-rclk"><b>—</b><span>—</span></div>
     <div class="term"><div class="hd"><i></i><i></i><i></i><span>brain.log · live</span></div><div class="bd" id="bt-log"></div><form class="cmd" id="bt-cmd" autocomplete="off"><label for="bt-cmdIn">bobai@bsc:~$</label><input id="bt-cmdIn" type="text" spellcheck="false" placeholder="ask: help · burns · next — or paste any token 0x…" aria-label="Ask BOBAI or check a token"></form></div>
     <div class="mpanel" id="bt-mpanel" aria-live="polite"></div>
-    <div class="mtabs" id="bt-mtabs" role="tablist" aria-label="Terminal views"><button type="button" data-v="brain" class="on">BRAIN</button><button type="button" data-v="money">MONEY</button><button type="button" data-v="bots">BOTS</button><button type="button" data-v="log">LOG</button></div>
+    <div class="mtabs" id="bt-mtabs" role="tablist" aria-label="Terminal views"><button type="button" role="tab" aria-selected="true" data-v="brain" class="on">BRAIN</button><button type="button" role="tab" aria-selected="false" data-v="money">MONEY</button><button type="button" role="tab" aria-selected="false" data-v="bots">BOTS</button><button type="button" role="tab" aria-selected="false" data-v="log">LOG</button></div>
     <div class="tl"><canvas id="bt-tlc"></canvas><div class="tlw"><button type="button" data-w="1H">1H</button><button type="button" data-w="6H">6H</button><button type="button" data-w="24H" class="on">24H</button><button type="button" data-w="7D">7D</button></div><span class="rpc" id="bt-rpc"><button id="bt-rpp" type="button" aria-label="Pause the replay">❚❚</button><button id="bt-rps" type="button" aria-label="Replay speed">×1</button></span><button id="bt-rp" type="button">↺ REPLAY 24H</button></div>
     <div class="tip" id="bt-tip"></div>
     <div class="cine" id="bt-cine"><div class="a"></div><div class="b"></div><div class="t"></div></div>
@@ -769,7 +769,7 @@
           <h3>Pool Scanner</h3>
         </div>
         <p>Paste any BNB Chain token. See what buying it really costs, the hidden tax, and whether the liquidity can be pulled out. Free, no wallet.</p>
-        <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
+        <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <!-- THE AGENT SECTOR'S BUSINESS CARDS. These three and the scanner
            above were Block 05, a section of their own with the same tools
@@ -1330,9 +1330,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1791355104')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1791361892')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1791356437367" defer></script>
-<script src="brain/cards.js?v=1791356437367" defer></script>
-<script src="brain/hero.js?v=1791356437367" defer></script>
+<script src="brain/brain.js?v=1791373030214" defer></script>
+<script src="brain/cards.js?v=1791373030214" defer></script>
+<script src="brain/hero.js?v=1791373030214" defer></script>
 </body></html>

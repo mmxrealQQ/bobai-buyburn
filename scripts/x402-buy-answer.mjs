@@ -57,7 +57,7 @@ const FOT_ROUTER_ABI = [
 const DEFAULT_TASKS = {
   health_factor: 'health factor and liquidation distance for the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF',
   grid_plan: 'grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital',
-  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  yield_plan: 'where is the best stablecoin yield on BNB Chain right now',
   rebalance_plan: 'rebalance holdings [{"token":"0x245c386dcfed896f5c346107596141e5edcbffff","usd":700},{"token":"0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82","usd":300}] to equal weight',
   lp_tier_plan: 'which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $1000 of liquidity',
   lp_position_plan: 'what would the DeFi agent do with PancakeSwap V3 position 7309536',

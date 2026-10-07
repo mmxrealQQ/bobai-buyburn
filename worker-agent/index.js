@@ -766,7 +766,9 @@ async function recordLpSeries(env) {
     point = {
       at: last.at,
       position: reset ? String(rb.new_position) : (c.position || rb.position || inc.position || null),
-      in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? inc.in_range ?? null)),
+      // a one-sided re-set is placed beside the price on purpose: it starts out of range (until 2026-10-07 every
+      // re-set row read "in" and days_in_range counted them all); read off the point's own tick and new ticks
+      in_range: reset ? ((rb.tick ?? inc.tick) != null && Array.isArray(rb.new_ticks || rb.ticks) ? (rb.tick ?? inc.tick) >= (rb.new_ticks || rb.ticks)[0] && (rb.tick ?? inc.tick) < (rb.new_ticks || rb.ticks)[1] : true) : (c.in_range != null ? c.in_range : (rb.in_range ?? inc.in_range ?? null)),
       tick: rb.tick ?? inc.tick ?? null,
       ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
       reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
@@ -838,7 +840,9 @@ async function recordLpSeries(env) {
 // kept in the store, so the record of that day exists, but it is not a row:
 // it has no value, no range, nothing to compare — the operator: "kann raus".
 function lpSeriesShown(series) {
-  return series.filter((p) => p.position);
+  // a re-set row stored before 2026-10-07 says "in" whatever its own tick and new ticks say: read again from them
+  return series.filter((p) => p.position).map((p) => p.reset && p.tick != null && Array.isArray(p.ticks) && p.ticks.length === 2
+    ? { ...p, in_range: p.tick >= p.ticks[0] && p.tick < p.ticks[1] } : p);
 }
 // `gas_bnb` is the record's own gas total (moneyFlow), so the profit line can
 // net it: the series points carry no gas.
@@ -2879,6 +2883,22 @@ ${pageTail}`;
     // THE PORTFOLIO: the agent as one picture, one model for the /defi page
     // and the Telegram card alike (worker-agent/lp-portfolio.js).
     if (path === '/lp/portfolio') {
+      // A minute at the edge (2026-10-07): built fresh on every call the card sat at "Reading the portfolio…"
+      // for 3.5 to 27 s (record, series, a live quote and the 666 KB width record read each time).
+      // Served from the last copy at once; a copy older than a minute is rebuilt in the background (a miss still took
+      // 7 to 18 s live). Kept 15 minutes, so only the first call after a quiet quarter of an hour waits.
+      const ck = new Request('https://agent.brainonbnb.com/lp/portfolio');
+      const put = (res) => { if (globalThis.caches) { const c = res.clone(); c.headers.set('cache-control', 'public, max-age=900'); c.headers.set('x-built-at', String(Date.now())); return caches.default.put(ck, c).catch(() => {}); } };
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) {
+        if (Date.now() - Number(hit.headers.get('x-built-at') || 0) > 60e3) ctx.waitUntil(buildPortfolio().then((r) => r.status === 200 && put(r)).catch(() => {}));
+        const out = new Response(hit.body, hit); out.headers.set('cache-control', 'public, max-age=60'); return out;
+      }
+      const res = await buildPortfolio();
+      if (res.status === 200) ctx.waitUntil(put(res));
+      return res;
+    }
+    async function buildPortfolio() {
       const rec = await readAgentRecord(env);
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
@@ -2899,13 +2919,19 @@ ${pageTail}`;
       try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
       const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
-      return json({
+      const res = json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
         ...model,
-      }, 200, { 'Cache-Control': 'public, max-age=120' });
+      }, 200, { 'Cache-Control': 'public, max-age=60' });
+      return res;
     }
     if (path === '/lp/series') {
-      return json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=300' });
+      const ck = new Request('https://agent.brainonbnb.com/lp/series');
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) return hit;
+      const res = json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=120' });
+      if (globalThis.caches) ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      return res;
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);

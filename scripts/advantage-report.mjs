@@ -519,7 +519,7 @@ const MARKETPLACE = {
     agent_id: 302257, name: 'Brain on BNB — Venus Health Factor Monitor', category: 'health-factor',
     hire: `${SITE}/registry#cat-health-factor`, what_it_delivers: 'the health factor of a Venus position, delivered on-chain through the ERC-8183 escrow',
     quote: await quoteThroughMarketplace(302257, 'health factor and liquidation distance for the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF'),
-    completed_job: { id: 56657, status: 'COMPLETED', result: `${AGENT}/job/56657/result`, page: `${SITE}/job?id=56657`, note: 'hired through the marketplace, delivered on-chain, escrow released' },
+    completed_job: { id: 56657, status: 'COMPLETED', result: `${AGENT}/job/56657/result`, page: `${AGENT}/job?id=56657`, note: 'hired through the marketplace, delivered on-chain, escrow released' },
   }),
 };
 

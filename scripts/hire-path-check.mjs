@@ -20,7 +20,7 @@ const CASES = [
   { id: 363709, task: 'Plan for the PancakeSwap V3 position 7450561', signed: false },
   { id: 302257, task: 'health factor of the Venus account 0xd319e1F8e987cf78333cEA853F455366640929cF' },
   { id: 302258, task: 'grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels, 15% band, $1000' },
-  { id: 304493, task: 'where is the best yield on BNB Chain for USDT right now' },
+  { id: 304493, task: 'where is the best stablecoin yield on BNB Chain right now' },
   { id: 304494, task: 'rebalance holdings [{"token":"0x245c386dcfed896f5c346107596141e5edcbffff","usd":700},{"token":"0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82","usd":300}] to equal weight' },
   { id: 310460, task: 'which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $1000 of liquidity' },
   { id: 341556, task: 'Health factor and liquidation distance for the Venus account 0xd319e1F8e987cf78333cEA853F455366640929cF', signed: true },

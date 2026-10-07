@@ -19,3 +19,9 @@ fallthrough = false
 
 [observability]
 enabled = true
+
+# The Telegram bot by binding, not by address (the 24h candle strip): a worker that fetches a sibling's
+# workers.dev host gets a 404 from Cloudflare's own router — the card drew no candles until 2026-10-07.
+[[services]]
+binding = "TG"
+service = "bobai-tg-bot"

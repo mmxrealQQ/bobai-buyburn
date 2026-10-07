@@ -210,7 +210,7 @@ const SEED_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const SEED_TASKS = {
   health_factor: 'health factor and liquidation distance for the Venus position at <ADDR>',
   grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
-  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  yield_plan: 'where is the best stablecoin yield on BNB Chain right now',
   rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":1000}] — what should the range be`,
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_TOKEN}, placing $1000 of liquidity`,
   // The DeFi Agent (2026-10-04): without its own seed the panel fell back to
@@ -872,7 +872,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
     ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`
     : '<span class="rgc-nohire">Not hireable</span>'}
           </div>
-          <p class="rgc-what${d.weak ? ' rg-weak' : ''}"${d.full ? ` title="${esc(d.full)}"` : ''}>${d.text ? esc(d.text) : esc(d.why)}</p>
+          <p class="rgc-what${d.weak && !caps.length ? ' rg-weak' : ''}"${d.full ? ` title="${esc(d.full)}"` : ''}>${d.text ? esc(d.text) : caps.length ? esc('From its skills: ' + caps.slice(0, 3).map((c) => c.name).join(', ') + '.') : esc(d.why)}</p>
           ${chips.length ? `<ul class="rgc-strip">${chips.join('')}</ul>` : ''}
           ${r.tele ? '<div class="rg-live" hidden></div>' : ''}
           ${r.example ? exampleBlock(r.example) : ''}
@@ -1481,10 +1481,10 @@ const page = `<!doctype html>
          argument and it needs the reader to already know what an agent
          registry is; this says what the page is before it says why it matters. -->
     <section class="primer">
-      <p class="primer-what"><b>What this is.</b> An AI agent is a program somebody else runs that does one job for you &mdash; checks a lending position, prices a trade, finds the best yield &mdash; and gets paid a few cents for it. Anyone can list one on BNB Chain, and most listings do not work. This is the list, checked: every entry contacted, only the ones that answered kept.</p>
+      <p class="primer-what"><b>What this is.</b> An AI agent is a program somebody else runs that does one job for you &mdash; checks a lending position, prices a trade, finds the best yield &mdash; and gets paid for it. Anyone can list one on BNB Chain, and most listings do not work. This is the list, checked: every entry contacted, only the ones that answered kept.</p>
       <ul class="primer-do">
         <li><b>Ask</b>Type what you need. We find an agent that can answer, call it, and show you which one did.</li>
-        <li><b>Hire</b>Pick a category, press Hire, pay about ten cents from your wallet. The answer arrives on-chain.</li>
+        <li><b>Hire</b>Pick a category, press Hire, pay the price the agent quotes from your wallet. The answer arrives on-chain.</li>
         <li><b>Check</b>Every row shows whether the agent answered with a price and what it has really been paid for.</li>
       </ul>
       <p class="primer-how"><b>Start here:</b> type a task below and press Dispatch. It costs nothing and signs nothing; you need a wallet only when you hire. Prices are in $U, a dollar stablecoin: ten cents is ten cents.</p>
@@ -2160,7 +2160,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     var SEED={
       'health-factor':'health factor and liquidation distance for the Venus position at <ADDR>',
       'grid-trading':'grid plan for '+SEED_TOKEN+', 10 levels across a 15% band, $1000 capital',
-      'yield-optimization':'where is the best yield on BNB Chain for USDT right now',
+      'yield-optimization':'where is the best stablecoin yield on BNB Chain right now',
       'rebalancing':'rebalance holdings [{"token":"'+SEED_TOKEN+'","usd":1000}] — what should the range be'
     };
     // "my position" means the wallet in front of us when there is one. Before

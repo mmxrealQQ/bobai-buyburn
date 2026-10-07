@@ -190,7 +190,8 @@ export function shape(s, r, usd, routeError = null) {
   // silence here read as "spread out".
   const hd = s.holders;
   if (!hd || hd.unknown)
-    caution.push({ code: 'holders_unknown', why: `Who holds this token could not be read${hd?.reason ? `: ${hd.reason}` : ''}. Unknown, not spread out — on a new token the deployer and a few wallets often hold most of it.` });
+    // "a new token" only where it is one (2026-10-07: USDT, six years old, read as a fresh launch)
+    caution.push({ code: 'holders_unknown', why: `Who holds this token could not be read${hd?.reason ? `: ${hd.reason}` : ''}. Unknown, not spread out${s.age?.token?.ageHours != null && s.age.token.ageHours < 168 ? ' — on a new token the deployer and a few wallets often hold most of it' : ''}.` });
   else if (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50) {
     const big = hd.top?.[0];
     const named = (hd.excluded || []).slice(0, 3).map((x) => `${x.name} ${x.pct}%`).join(', ');
@@ -206,6 +207,9 @@ export function shape(s, r, usd, routeError = null) {
     entry = {
       route: r.best_route, pool: r.best_route_pool, venue: 'PancakeSwap',
       pay: r.you_pay ? `${r.you_pay.amount} ${r.you_pay.symbol}` : null,
+      // the exact amount to swap with, as the route gave it (2026-10-07: only the string above reached the caller)
+      you_pay: r.you_pay ?? null,
+      ...(r.slippage_note ? { slippage_note: r.slippage_note } : {}),
       receive_tokens: r.you_would_receive ?? null,
       best_route_is_the_deepest_pool: r.best_route_is_the_deepest_pool ?? null,
       slippage_bps_needed: r.slippage_bps_needed ?? null,
@@ -240,7 +244,7 @@ export function shape(s, r, usd, routeError = null) {
     lp_burned_pct: s.lp?.burnedPct ?? null,
     // Who holds the rest (2026-09-27), in the scan's own words — null on a V3
     // pool (position NFTs, not read) or when the reads failed.
-    lp_custody: cu ? { read: cu.read, burned_pct: cu.burnedPct, locked_pct: cu.lockedPct, wallet_pct: cu.walletPct, unread_pct: cu.unreadPct,
+    lp_custody: cu ? { read: cu.read, burned_pct: cu.burnedPct, locked_pct: cu.lockedPct, wallet_pct: cu.walletPct, unread_pct: cu.unreadPct, farm_pct: cu.farmPct ?? null, exchange_fee_pct: cu.exchangeFeePct ?? null, contract_pct: cu.contractPct ?? null,
       largest_wallet: lw ? { address: lw.address, pct: lw.pct, deployer: !!lw.deployer } : null } : null,
     // How old, and who trades it over the window read (the scan's age and activity).
     age_hours: { pool: s.age?.pool?.ageHours ?? null, token: s.age?.token?.ageHours ?? null },
@@ -259,7 +263,7 @@ export function shape(s, r, usd, routeError = null) {
     // from the watch's own 402 answer, not from this text.
     keep_watching: s.pool?.kind === 'v2' && s.pool?.address ? {
       why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
-      what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set.',
+      what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
       how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
       terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
     } : null,

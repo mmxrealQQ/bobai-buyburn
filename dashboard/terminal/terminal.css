@@ -236,8 +236,8 @@
 /* share menu: where this moment can go */
 #bt .shm{position:absolute;z-index:8;top:64px;right:18px;width:min(360px,calc(100% - 36px));padding:12px;border-radius:16px;border:1px solid rgba(240,185,11,.35);
   background:linear-gradient(180deg,rgba(20,16,17,.96),rgba(10,8,9,.98));box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 40px rgba(240,185,11,.1);
-  opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .3s,transform .3s}
-#bt .shm.on{opacity:1;transform:none;pointer-events:auto}
+  opacity:0;transform:translateY(-6px);pointer-events:none;visibility:hidden;transition:opacity .3s,transform .3s,visibility 0s .3s}
+#bt .shm.on{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition-delay:0s}
 #bt .shh{display:flex;align-items:center;margin-bottom:10px}
 #bt .shh b{font:700 .9rem 'Space Grotesk',sans-serif;color:var(--gold)}
 #bt .shx{margin-left:auto;width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}

@@ -84,8 +84,18 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 - Contract source (BscScan, verified): https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code
 - Burn audit log (live, every bot run): https://logs.brainonbnb.com/logs/burns.json
 - Source code (open, the whole stack): https://github.com/mmxrealQQ/bobai-buyburn
-- The same code as downloadable bundles: https://brainonbnb.com/#library
+- The same code as downloadable bundles: https://brainonbnb.com/library
 - And as a git repository served from this domain, cloneable without an account: git clone https://brainonbnb.com/source.git (what is in it: https://brainonbnb.com/source)
+
+## Pages for people
+- The Brain Terminal, the project live: https://brainonbnb.com/
+- The DeFi agent, its position and record: https://brainonbnb.com/defi
+- The token, its tax phases and contract: https://brainonbnb.com/token
+- Questions and answers: https://brainonbnb.com/faq
+- Whitepaper: https://brainonbnb.com/whitepaper
+- Roadmap: https://brainonbnb.com/roadmap
+- Archive of finished campaigns: https://brainonbnb.com/archive
+- Buy Drops NFTs: https://brainonbnb.com/nft/
 
 ## Where to buy
 

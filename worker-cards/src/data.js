@@ -81,9 +81,12 @@ export async function readLogs(init = {}) {
   return { burns: ok(burns), liq: ok(liq) };
 }
 
-export async function readCandles(init = {}) {
+// In the Worker the bot is reached by its service binding (`tg`): a fetch from one worker to a sibling's
+// workers.dev host is answered 404 by Cloudflare's own router, and the card lost its candle strip that way.
+// Without a binding (the Node test) the public address is read.
+export async function readCandles(init = {}, tg = null) {
   try {
-    const j = await getJSON(CANDLES_URL, init);
+    const j = tg ? await tg.fetch('https://tg/candles', { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } }).then(r => { if (!r.ok) throw new Error('candles ' + r.status); return r.json(); }) : await getJSON(CANDLES_URL, init);
     if (!Array.isArray(j?.rows) || !j.rows.length) return null;
     return { minutes: j.minutes || 10, rows: j.rows.filter(r => r.c > 0).sort((a, b) => a.t - b.t) };
   } catch { return null; }
@@ -99,7 +102,7 @@ export function dataVersion(logs, now = Date.now()) {
 }
 
 // The whole state a card needs. Chain and candles only on a cache miss (the caller decides).
-export async function readState(init = {}, logs = null) {
-  const [l, chain, candles] = await Promise.all([logs ? Promise.resolve(logs) : readLogs(init), readChain().catch(() => ({})), readCandles(init)]);
+export async function readState(init = {}, logs = null, tg = null) {
+  const [l, chain, candles] = await Promise.all([logs ? Promise.resolve(logs) : readLogs(init), readChain().catch(() => ({})), readCandles(init, tg)]);
   return { burns: l.burns || [], liq: l.liq || [], logsOk: !!l.burns, liqOk: !!l.liq, ...chain, candles };
 }

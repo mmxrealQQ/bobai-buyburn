@@ -1,3 +1,7 @@
 /agents /defi 301
 /liquidity /defi 301
 /giggle /#giggle 301
+/liquidity.html /defi 301
+/agents.html /defi 301
+/favicon.ico /favicon.png 301
+/apple-touch-icon.png /logo.png 301

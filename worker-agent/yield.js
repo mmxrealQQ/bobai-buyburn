@@ -142,6 +142,61 @@ async function venusPublished() {
   } catch (e) { venusPublished.why = e?.name === 'TimeoutError' ? 'no answer within 6 s' : String(e?.message || e).slice(0, 80); return null; }
 }
 
+// The chunked plain batch (the reasons are written where venusMarkets calls it): the way when Multicall3 fails.
+async function chunkedReads(calls) {
+  const CHUNK = 40;
+  const res = [];
+  for (let i = 0; i < calls.length; i += CHUNK) {
+    const slice = calls.slice(i, i + CHUNK);
+    const n = i / CHUNK;
+    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
+    let part;
+    try {
+      part = await batchCall(slice, { rpcs: rotated });
+    } catch {
+      await new Promise((r) => setTimeout(r, 400));
+      part = await batchCall(slice, { rpcs: rotated });
+    }
+    res.push(...part);
+    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
+  }
+  return res;
+}
+
+// Multicall3 aggregate3 with allowFailure on, encoded and decoded as in dashboard/scanner-chain.js (byte offsets,
+// tuple-relative): a failed read is null. Split in two so no single eth_call runs near a node's gas cap.
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+const w256 = (v) => BigInt(v).toString(16).padStart(64, '0');
+function encodeAggregate3(calls) {
+  const structs = calls.map((c) => {
+    const d = c.data.slice(2), pad = d + '0'.repeat((64 - (d.length % 64)) % 64);
+    return '0'.repeat(24) + c.to.slice(2).toLowerCase() + w256(1) + w256(0x60) + w256(d.length / 2) + pad;
+  });
+  let off = 32 * calls.length, offs = '';
+  for (const s of structs) { offs += w256(off); off += s.length / 2; }
+  return '0x82ad56cb' + w256(0x20) + w256(calls.length) + offs + structs.join('');
+}
+function decodeAggregate3(hex, n) {
+  const b = hex.slice(2), at = (o) => b.slice(o * 2, o * 2 + 64);
+  const arr = Number(BigInt('0x' + at(0)));
+  const len = Number(BigInt('0x' + at(arr)));
+  if (len !== n) throw new Error(`multicall returned ${len} of ${n}`);
+  const head = arr + 32, out = [];
+  for (let i = 0; i < len; i++) {
+    const o = head + Number(BigInt('0x' + at(head + i * 32)));
+    const ok = BigInt('0x' + at(o)) === 1n;
+    const dOff = o + Number(BigInt('0x' + at(o + 32)));
+    const bytes = Number(BigInt('0x' + at(dOff)));
+    out.push(ok && bytes ? '0x' + b.slice((dOff + 32) * 2, (dOff + 32) * 2 + bytes * 2) : null);
+  }
+  return out;
+}
+async function multicallReads(calls) {
+  const half = Math.ceil(calls.length / 2), parts = [calls.slice(0, half), calls.slice(half)];
+  const got = await batchCall(parts.map((p) => ({ to: MULTICALL3, data: encodeAggregate3(p) })));
+  return parts.flatMap((p, i) => decodeAggregate3(got[i], p.length));
+}
+
 /**
  * Read every Venus core-pool market and rank it by what it pays a supplier.
  * Read-only.
@@ -197,22 +252,12 @@ export async function venusMarkets() {
   // reported 54 MCP agents instead of 235 for exactly this reason, and nearly
   // published it as a finding about the chain. Rotating the list by chunk gives
   // each endpoint a fifth of the work.
-  const CHUNK = 40;
-  const res = [];
-  for (let i = 0; i < calls.length; i += CHUNK) {
-    const slice = calls.slice(i, i + CHUNK);
-    const n = i / CHUNK;
-    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
-    let part;
-    try {
-      part = await batchCall(slice, { rpcs: rotated });
-    } catch {
-      await new Promise((r) => setTimeout(r, 400));
-      part = await batchCall(slice, { rpcs: rotated });
-    }
-    res.push(...part);
-    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
-  }
+  //
+  // FIRST, Multicall3 (2026-10-07): the same reads as two eth_calls in one request. From the Worker the ten chunks
+  // below took 26 s (the shared egress throttled chunk after chunk); one request is not throttled into a queue.
+  // A read that fails inside comes back null, as it does in a batch; when the multicall itself fails, the chunks run.
+  let res = await multicallReads(calls).catch(() => null);
+  if (!res) res = await chunkedReads(calls);
 
   const published = await venusPublished();
   const markets = [];

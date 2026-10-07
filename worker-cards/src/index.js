@@ -68,7 +68,7 @@ const ROUTE = /^\/m\/(now|burn|liq|day|week)(-tall)?(\.png)?\/?$/;
 const MEM = new Map(), INFLIGHT = new Map(), MEM_MAX = 12;
 const remember = (k, v) => { MEM.set(k, v); while (MEM.size > MEM_MAX) MEM.delete(MEM.keys().next().value); };
 
-async function png(k, fmt, ctx) {
+async function png(k, fmt, ctx, tg) {
   const logs = await readLogs(FETCH);
   const ver = dataVersion(logs), key = `${k}-${fmt}-${ver}`;
   if (MEM.has(key)) return { body: MEM.get(key), ver, stored: true };
@@ -78,7 +78,7 @@ async function png(k, fmt, ctx) {
   if (INFLIGHT.has(key)) return INFLIGHT.get(key);
   const job = (async () => {
     await ensureWasm(wasm);
-    const S = await readState(FETCH, logs);
+    const S = await readState(FETCH, logs, tg);
     const r = renderCard(S, k, fmt, ASSETS);
     if (r.complete) {
       remember(key, r.png);
@@ -92,10 +92,10 @@ async function png(k, fmt, ctx) {
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-async function page(k, fmt) {
+async function page(k, fmt, tg) {
   const logs = await readLogs(FETCH), ver = dataVersion(logs), now = Date.now();
   // the tags describe the moment the image will show: same fallback to 'now' when that moment has no record
-  const S = await readState(FETCH, logs), pick = pickMotif(k, S, now), m = pick.m;
+  const S = await readState(FETCH, logs, tg), pick = pickMotif(k, S, now), m = pick.m;
   const { title, description } = metaOf(m);
   const [w, h] = SIZES[fmt], img = `${SITE}/m/${pick.k}${fmt === 'tall' ? '-tall' : ''}.png?v=${ver}`;
   const url = `${SITE}/m/${pick.k}${fmt === 'tall' ? '-tall' : ''}`;
@@ -127,8 +127,8 @@ export default {
     if (!r) return Response.redirect(PAGE, 302);
     const [, k, tall, isPng] = r, fmt = tall ? 'tall' : 'wide';
     try {
-      if (!isPng) return await page(k, fmt);
-      const { body, stored } = await png(k, fmt, ctx);
+      if (!isPng) return await page(k, fmt, env.TG);
+      const { body, stored } = await png(k, fmt, ctx, env.TG);
       return new Response(req.method === 'HEAD' ? null : body, { headers: {
         'content-type': 'image/png', 'content-length': String(body.length),
         // a degraded card (a read failed) is only held a minute so the full one replaces it soon

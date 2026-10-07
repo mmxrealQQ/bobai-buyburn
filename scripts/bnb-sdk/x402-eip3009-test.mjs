@@ -27,8 +27,8 @@ async function pay(signer, from) {
   const header = Buffer.from(JSON.stringify({ x402Version: 1, scheme: 'exact', network: 'eip155:56', payload: { signature, authorization } })).toString('base64');
   // --get: pay by GET with the task in the query, the way some x402 clients (Mandate's house agents) are called.
   const r = process.argv.includes('--get')
-    ? await fetch(`${BASE}/answer?service=yield_plan&task=${encodeURIComponent('where is the best yield on BNB Chain for USDT right now')}`, { headers: { 'X-PAYMENT': header }, signal: AbortSignal.timeout(120000) })
-    : await fetch(`${BASE}/answer?service=yield_plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': header }, body: JSON.stringify({ task: 'where is the best yield on BNB Chain for USDT right now' }), signal: AbortSignal.timeout(120000) });
+    ? await fetch(`${BASE}/answer?service=yield_plan&task=${encodeURIComponent('where is the best stablecoin yield on BNB Chain right now')}`, { headers: { 'X-PAYMENT': header }, signal: AbortSignal.timeout(120000) })
+    : await fetch(`${BASE}/answer?service=yield_plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': header }, body: JSON.stringify({ task: 'where is the best stablecoin yield on BNB Chain right now' }), signal: AbortSignal.timeout(120000) });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 

@@ -82,13 +82,15 @@ async function getJSON(u, ms = 15000) {
 }
 async function rpc(calls, url) {
   const body = JSON.stringify(calls.map((c, i) => ({ jsonrpc: '2.0', id: i, method: c[0], params: c[1] })));
-  for (const u of Array.isArray(url) ? url : url ? [url] : RPCS) {
+  const urls = Array.isArray(url) ? url : url ? [url] : RPCS;
+  for (const [k, u] of urls.entries()) {
     try {
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 7000);
       const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ctl.signal });
       clearTimeout(t);
       const j = await r.json();
-      if (Array.isArray(j) && j.length === calls.length) { const o = []; for (const x of j) o[x.id] = x.result ?? null; return o; }
+      /* a node that answers with a rate limit inside the batch hands over to the next one (2026-10-07); a plain revert does not (handing those over too sent the second node enough to answer 403); the last one's answer stands */
+      if (Array.isArray(j) && j.length === calls.length) { const o = []; for (const x of j) o[x.id] = x.result ?? null; if (k < urls.length - 1 && j.some(x => x && x.error && (x.error.code === -32005 || /limit|rate|exceed|capacity|busy|timeout/i.test(x.error.message || '')))) continue; return o; }
     } catch {}
   }
   throw new Error('rpc');
@@ -886,7 +888,7 @@ function paintMobile() {
 }
 function setView(v) {
   mview = v;
-  $('mtabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('mtabs').querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.v === v); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(b.dataset.v === v)); });
   win.classList.toggle('m-list', v === 'money' || v === 'bots');
   win.classList.toggle('m-log', v === 'log');
   if (v === 'log') setTimeout(() => { logEl.scrollTop = logEl.scrollHeight; }, 50);
@@ -894,7 +896,7 @@ function setView(v) {
   if ((v === 'chart') !== CX.on) openCx(v === 'chart'); // the chart has its own tab on a phone
   paintMobile();
 }
-{ const b = document.createElement('button'); b.type = 'button'; b.dataset.v = 'chart'; b.textContent = 'CHART'; $('mtabs').insertBefore(b, $('mtabs').querySelector('[data-v="log"]')); }
+{ const b = document.createElement('button'); b.type = 'button'; b.dataset.v = 'chart'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false'); b.textContent = 'CHART'; $('mtabs').insertBefore(b, $('mtabs').querySelector('[data-v="log"]')); }
 $('mtabs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); });
 setInterval(() => { if (mview === 'money' || mview === 'bots') paintMobile(); }, 2000);
 const ago = t => { if (!t) return '…'; const s = Math.max(0, (Date.now() - t) / 1000); return s < 60 ? Math.round(s) + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
@@ -1132,11 +1134,13 @@ const JOKE_RECENT = [];
 // names one of his moves plays that move — a mood line used to take any of the mood's moves (cheer under "is this the
 // moon?") and every joke laughed, also about push-ups or coffee. Only a move he can play now; otherwise the usual one.
 const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own|\bbull\b(?! market)/i, 'bull'], [/hard hat|stack(ing)? blocks|block on the stack|builder mode/i, 'build'],
-  [/push-?ups?/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug'], [/\bouch\b/i, 'ouch']];
+  [/push-?ups?|\bgym\b/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug'], [/\bouch\b/i, 'ouch']];
 function moveForLine(t, fallback) { for (const [rx, p] of LINE_MOVES) if (rx.test(t || '') && flowPose(p) === p) return p; return fallback; }
 function freshJoke() {
   const mine = (MOOD_JOKES[LIFE.combo?.key] || []).filter(j => !JOKE_RECENT.includes(j));
-  const pool = mine.length && Math.random() < 0.45 ? mine : JOKES.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : JOKES);
+  /* on a day that goes up, no joke says the candles are red (2026-10-07) */
+  const up = /^up-/.test(LIFE.combo?.key || ''), all = up ? JOKES.filter(j => !/\bred\b/i.test(j)) : JOKES;
+  const pool = mine.length && Math.random() < 0.45 ? mine : all.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : all);
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
 function tellJoke(ms) {
@@ -2365,7 +2369,7 @@ win.addEventListener('pointerleave', () => hoverBobai(false));
 // HE NOTICES THE MOUSE ON HIM (2026-09-28, operator: "more alive"): resting the pointer on BOBAI for a second makes
 // him wave (the idle take) and say hi — the first two times with a line, then a wave alone, at most five times a
 // visit and once a minute. Passing over him does nothing; he never cuts into a move or a moment of the chain.
-const HOVER_LINES = ['Oh! You are watching me work.', 'Looking for me? Right here, working.', 'Hover a bit longer and I might wave. Might.',
+const HOVER_LINES = ['Oh! You are watching me work.', 'Looking for me? Right here, working.', 'Caught you hovering. Hello there.',
   'Tap me and I tell you what I am doing.', 'You found my good side. Both sides are good.'];
 let waveT = 0, waveN = 0, waveAt = -1e9;
 function hoverBobai(on) {
@@ -2422,7 +2426,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
 const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
-  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
+  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     say([[nf(S.deadA || 0) + ' BOBAI'], ` burned in total (${supplyPct(S.deadA || 0)}% of supply, ≈$${nf((S.deadA || 0) * S.price)}). This week the bot burned `, [nf(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'], ` and ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} BOB.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
   next: () => { setFocus('core'); const left = W.buyback.last ? W.buyback.last + 600e3 - Date.now() : 0;
@@ -2431,7 +2435,8 @@ const CMDS = {
   liq: () => { setFocus('liq'); const b = boost3();
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range;
-    say(['The DeFi agent works ', [bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)], ` in CAKE/BNB 0.05%, ${inr === false ? 'currently OUT of range (it earns nothing until it moves back or resets)' : 'in range, earning fees'}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${cmp(S.lp?.flow?.out?.bobai_units || 0)} BOBAI bought with half of them.`], [], D.defi.c); },
+    if (!S.lp) return say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
+    say(['The DeFi agent works ', [bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${cmp(S.lp?.flow?.out?.bobai_units || 0)} BOBAI bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
@@ -3772,7 +3777,7 @@ let TR_OK = 0; // when trades() last read the chain in full
 async function trades() {
   if (!S.block) return;
   try {
-    const [head] = await rpc([['eth_blockNumber', []]], LOGS_RPC);
+    const [head] = await rpc([['eth_blockNumber', []]], LOGS_RPCS);
     const to = parseInt(head, 16); if (to <= S.block) return;
     // A TAB THAT COMES BACK (2026-09-29): a hidden page stops asking, and only the last 3,000 blocks were read on its
     // return — the buys of a longer absence were lost, even to the replay. The gap is read in 2,500-block steps as far
@@ -3783,7 +3788,7 @@ async function trades() {
       const range = { fromBlock: '0x' + a.toString(16), toBlock: '0x' + Math.min(to, a + BACK_CHUNK - 1).toString(16) };
       calls.push(['eth_getLogs', [{ address: BOBAI, topics: [TAXSWAP], ...range }]], ['eth_getLogs', [{ address: P, topics: [SWAP], ...range }]], ['eth_getLogs', [{ address: P, topics: [SYNC], ...range }]]);
     }
-    const got = await rpc(calls, LOGS_RPC);
+    const got = await rpc(calls, LOGS_RPCS);
     if (got.some(r => r == null)) return; // a part not answered: ask again next time, from the same block
     // AWAY = the tab was hidden or not asking (2026-10-01): a node that skipped a few answers in a bull run used to turn
     // buys older than two minutes into record-only — while the visitor sat watching. Polled steadily, they still play.

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 15943 lines.
+# one fetch. 48 files, 16017 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7487,7 +7487,9 @@ async function recordLpSeries(env) {
     point = {
       at: last.at,
       position: reset ? String(rb.new_position) : (c.position || rb.position || inc.position || null),
-      in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? inc.in_range ?? null)),
+      // a one-sided re-set is placed beside the price on purpose: it starts out of range (until 2026-10-07 every
+      // re-set row read "in" and days_in_range counted them all); read off the point's own tick and new ticks
+      in_range: reset ? ((rb.tick ?? inc.tick) != null && Array.isArray(rb.new_ticks || rb.ticks) ? (rb.tick ?? inc.tick) >= (rb.new_ticks || rb.ticks)[0] && (rb.tick ?? inc.tick) < (rb.new_ticks || rb.ticks)[1] : true) : (c.in_range != null ? c.in_range : (rb.in_range ?? inc.in_range ?? null)),
       tick: rb.tick ?? inc.tick ?? null,
       ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
       reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
@@ -7559,7 +7561,9 @@ async function recordLpSeries(env) {
 // kept in the store, so the record of that day exists, but it is not a row:
 // it has no value, no range, nothing to compare — the operator: "kann raus".
 function lpSeriesShown(series) {
-  return series.filter((p) => p.position);
+  // a re-set row stored before 2026-10-07 says "in" whatever its own tick and new ticks say: read again from them
+  return series.filter((p) => p.position).map((p) => p.reset && p.tick != null && Array.isArray(p.ticks) && p.ticks.length === 2
+    ? { ...p, in_range: p.tick >= p.ticks[0] && p.tick < p.ticks[1] } : p);
 }
 // `gas_bnb` is the record's own gas total (moneyFlow), so the profit line can
 // net it: the series points carry no gas.
@@ -9600,6 +9604,22 @@ ${pageTail}`;
     // THE PORTFOLIO: the agent as one picture, one model for the /defi page
     // and the Telegram card alike (worker-agent/lp-portfolio.js).
     if (path === '/lp/portfolio') {
+      // A minute at the edge (2026-10-07): built fresh on every call the card sat at "Reading the portfolio…"
+      // for 3.5 to 27 s (record, series, a live quote and the 666 KB width record read each time).
+      // Served from the last copy at once; a copy older than a minute is rebuilt in the background (a miss still took
+      // 7 to 18 s live). Kept 15 minutes, so only the first call after a quiet quarter of an hour waits.
+      const ck = new Request('https://agent.brainonbnb.com/lp/portfolio');
+      const put = (res) => { if (globalThis.caches) { const c = res.clone(); c.headers.set('cache-control', 'public, max-age=900'); c.headers.set('x-built-at', String(Date.now())); return caches.default.put(ck, c).catch(() => {}); } };
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) {
+        if (Date.now() - Number(hit.headers.get('x-built-at') || 0) > 60e3) ctx.waitUntil(buildPortfolio().then((r) => r.status === 200 && put(r)).catch(() => {}));
+        const out = new Response(hit.body, hit); out.headers.set('cache-control', 'public, max-age=60'); return out;
+      }
+      const res = await buildPortfolio();
+      if (res.status === 200) ctx.waitUntil(put(res));
+      return res;
+    }
+    async function buildPortfolio() {
       const rec = await readAgentRecord(env);
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
@@ -9620,13 +9640,19 @@ ${pageTail}`;
       try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
       const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
-      return json({
+      const res = json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
         ...model,
-      }, 200, { 'Cache-Control': 'public, max-age=120' });
+      }, 200, { 'Cache-Control': 'public, max-age=60' });
+      return res;
     }
     if (path === '/lp/series') {
-      return json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=300' });
+      const ck = new Request('https://agent.brainonbnb.com/lp/series');
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) return hit;
+      const res = json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=120' });
+      if (globalThis.caches) ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));
+      return res;
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
@@ -10513,13 +10539,16 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const tickSeen = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const edgeRead = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? rangeLeft(tickSeen, posTicks[0], posTicks[1]) : null;
   const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
+  // Where the range lies against the price (2026-10-07): a one-sided range sits wholly above or below it, and
+  // "±0.25%" read as a range centred on the price; the page writes "0.5% wide, above the price" instead.
+  const side = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? (tickSeen < posTicks[0] ? 'above' : tickSeen >= posTicks[1] ? 'below' : null) : null;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -10545,7 +10574,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   };
   return {
     at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
-    pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
+    pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10, at_edge: !inRange && atEdge, side },
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
@@ -12930,7 +12959,7 @@ const SEED_CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
 export const SEED_TASKS = {
   health_factor: `health factor and liquidation distance for the Venus position at ${SEED_ACCOUNT}`,
   grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
-  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  yield_plan: 'where is the best stablecoin yield on BNB Chain right now',
   // Two holdings, so the example has a trade to price; and a pair that lives
   // in several fee tiers, so the tier comparison has something to compare.
   rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":700},{"token":"${SEED_CAKE}","usd":300}] to equal weight`,
@@ -15891,6 +15920,61 @@ async function venusPublished() {
   } catch (e) { venusPublished.why = e?.name === 'TimeoutError' ? 'no answer within 6 s' : String(e?.message || e).slice(0, 80); return null; }
 }
 
+// The chunked plain batch (the reasons are written where venusMarkets calls it): the way when Multicall3 fails.
+async function chunkedReads(calls) {
+  const CHUNK = 40;
+  const res = [];
+  for (let i = 0; i < calls.length; i += CHUNK) {
+    const slice = calls.slice(i, i + CHUNK);
+    const n = i / CHUNK;
+    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
+    let part;
+    try {
+      part = await batchCall(slice, { rpcs: rotated });
+    } catch {
+      await new Promise((r) => setTimeout(r, 400));
+      part = await batchCall(slice, { rpcs: rotated });
+    }
+    res.push(...part);
+    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
+  }
+  return res;
+}
+
+// Multicall3 aggregate3 with allowFailure on, encoded and decoded as in dashboard/scanner-chain.js (byte offsets,
+// tuple-relative): a failed read is null. Split in two so no single eth_call runs near a node's gas cap.
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+const w256 = (v) => BigInt(v).toString(16).padStart(64, '0');
+function encodeAggregate3(calls) {
+  const structs = calls.map((c) => {
+    const d = c.data.slice(2), pad = d + '0'.repeat((64 - (d.length % 64)) % 64);
+    return '0'.repeat(24) + c.to.slice(2).toLowerCase() + w256(1) + w256(0x60) + w256(d.length / 2) + pad;
+  });
+  let off = 32 * calls.length, offs = '';
+  for (const s of structs) { offs += w256(off); off += s.length / 2; }
+  return '0x82ad56cb' + w256(0x20) + w256(calls.length) + offs + structs.join('');
+}
+function decodeAggregate3(hex, n) {
+  const b = hex.slice(2), at = (o) => b.slice(o * 2, o * 2 + 64);
+  const arr = Number(BigInt('0x' + at(0)));
+  const len = Number(BigInt('0x' + at(arr)));
+  if (len !== n) throw new Error(`multicall returned ${len} of ${n}`);
+  const head = arr + 32, out = [];
+  for (let i = 0; i < len; i++) {
+    const o = head + Number(BigInt('0x' + at(head + i * 32)));
+    const ok = BigInt('0x' + at(o)) === 1n;
+    const dOff = o + Number(BigInt('0x' + at(o + 32)));
+    const bytes = Number(BigInt('0x' + at(dOff)));
+    out.push(ok && bytes ? '0x' + b.slice((dOff + 32) * 2, (dOff + 32) * 2 + bytes * 2) : null);
+  }
+  return out;
+}
+async function multicallReads(calls) {
+  const half = Math.ceil(calls.length / 2), parts = [calls.slice(0, half), calls.slice(half)];
+  const got = await batchCall(parts.map((p) => ({ to: MULTICALL3, data: encodeAggregate3(p) })));
+  return parts.flatMap((p, i) => decodeAggregate3(got[i], p.length));
+}
+
 /**
  * Read every Venus core-pool market and rank it by what it pays a supplier.
  * Read-only.
@@ -15946,22 +16030,12 @@ export async function venusMarkets() {
   // reported 54 MCP agents instead of 235 for exactly this reason, and nearly
   // published it as a finding about the chain. Rotating the list by chunk gives
   // each endpoint a fifth of the work.
-  const CHUNK = 40;
-  const res = [];
-  for (let i = 0; i < calls.length; i += CHUNK) {
-    const slice = calls.slice(i, i + CHUNK);
-    const n = i / CHUNK;
-    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
-    let part;
-    try {
-      part = await batchCall(slice, { rpcs: rotated });
-    } catch {
-      await new Promise((r) => setTimeout(r, 400));
-      part = await batchCall(slice, { rpcs: rotated });
-    }
-    res.push(...part);
-    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
-  }
+  //
+  // FIRST, Multicall3 (2026-10-07): the same reads as two eth_calls in one request. From the Worker the ten chunks
+  // below took 26 s (the shared egress throttled chunk after chunk); one request is not throttled into a queue.
+  // A read that fails inside comes back null, as it does in a batch; when the multicall itself fails, the chunks run.
+  let res = await multicallReads(calls).catch(() => null);
+  if (!res) res = await chunkedReads(calls);
 
   const published = await venusPublished();
   const markets = [];

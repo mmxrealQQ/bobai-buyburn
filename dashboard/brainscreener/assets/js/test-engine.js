@@ -163,6 +163,7 @@
     D.sections.forEach((sec) => {
       const container = form.querySelector(`[data-items-for="${sec.id}"]`);
       container.innerHTML = sec.items.map((it, i) => itemHTML(it, i + 1, sec.scale)).join("");
+      sec.items.forEach((it) => { if (it.crisisNote && typeof answers[it.id] === "number") crisisNote(it.id, answers[it.id], container.querySelector(`.item[data-id="${it.id}"]`)); });
     });
     form.addEventListener("change", onAnyChange);
   }
@@ -176,9 +177,25 @@
       saveAnswers();
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
+      crisisNote(id, val, itemEl);
       updateProgress();
       if (missingNote) missingNote.hidden = true;
     }
+  }
+
+  // Help where the answer is given (2026-10-07): an item marked crisisNote (PHQ-9 item 9) answered above 0 shows the
+  // crisis lines right under it, not only on the result page someone who leaves mid-test never reaches.
+  function crisisNote(id, val, itemEl) {
+    const def = D.sections.flatMap((s) => s.items).find((it) => it.id === id);
+    if (!def || !def.crisisNote || !itemEl) return;
+    let note = itemEl.querySelector(".item-crisis");
+    if (val >= 1 && !note) {
+      note = document.createElement("p");
+      note.className = "item-crisis small";
+      note.setAttribute("role", "note");
+      note.innerHTML = 'If you are in danger now, please reach out: your local emergency number (<a href="tel:112">112</a> / <a href="tel:911">911</a> / <a href="tel:999">999</a>), <a href="tel:988">988</a> in the US &amp; Canada, <a href="tel:116123">116 123</a> in the UK &amp; Ireland, or <a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a> for your country. Free and confidential, 24/7.';
+      itemEl.appendChild(note);
+    } else if (val < 1 && note) note.remove();
   }
 
   function updateProgress() {

@@ -167,13 +167,16 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const tickSeen = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const edgeRead = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? rangeLeft(tickSeen, posTicks[0], posTicks[1]) : null;
   const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
+  // Where the range lies against the price (2026-10-07): a one-sided range sits wholly above or below it, and
+  // "±0.25%" read as a range centred on the price; the page writes "0.5% wide, above the price" instead.
+  const side = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? (tickSeen < posTicks[0] ? 'above' : tickSeen >= posTicks[1] ? 'below' : null) : null;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -199,7 +202,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   };
   return {
     at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
-    pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
+    pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10, at_edge: !inRange && atEdge, side },
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },

@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WIDTH_FLOOR_PCT, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
@@ -72,9 +72,13 @@ export async function recordLpTick(env, sample) {
 // last), so the fee rate a point earns at is that window's row.
 export function priceSeries(priced, tape = null) {
   const pts = priced.map((w) => ({ at: w.at, t: Date.parse(w.at), price: w.price, window: w }));
+  // A tape sample before the first window has no fee rate of its own (2026-10-07): it used to earn at the first
+  // window's, an hour that paid 2.7 times the median, and 210 h of it made the narrowest widths look best.
+  const firstAt = priced.length ? Date.parse(priced[0].at) : -Infinity;
   for (const x of Array.isArray(tape) ? tape : []) {
     if (!x || !x.at || !(Number(x.price) > 0)) continue;
     const t = Date.parse(x.at);
+    if (t < firstAt - 60e3) continue;
     if (pts.some((p) => Math.abs(p.t - t) < 60e3)) continue;
     pts.push({ at: x.at, t, price: Number(x.price), window: null });
   }
@@ -280,12 +284,16 @@ export function verdict(log, opts = {}) {
   // nobody watches would get.
   const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12, 18, 24];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
-    const best = rows.filter((r) => r.width !== 'full')
+    // Scored as the width is (2026-10-07): fees, less re-sets, PLUS the range against holding, and only the widths a
+    // re-set may mint (the floor). A one-sided re-set books no loss in net_usd, so on net alone more re-sets always
+    // won and the wait test answered 0 h on the narrowest width every time.
+    const best = rows.filter((r) => r.width !== 'full' && Number(r.width) >= WIDTH_FLOOR_PCT)
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
-      .filter((x) => x.e && x.e.net_usd_per_day > 0)
-      .sort((a, b) => b.e.net_usd_per_day - a.e.net_usd_per_day)[0];
+      .filter((x) => x.e && x.e.hours > 0)
+      .map((x) => ({ ...x, score: Math.round(((x.e.net_usd + x.e.vs_holding_usd) / (x.e.hours / 24)) * 1e4) / 1e4 }))
+      .sort((a, b) => b.score - a.score)[0];
     return best
-      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
+      ? { hours: h, width: best.width, net_usd_per_day: best.score, fees_only_net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
       : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null };
   });
   const wait = waitInUse(delayRows, hoursOfPrices);

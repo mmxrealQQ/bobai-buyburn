@@ -1152,12 +1152,12 @@ function fillLpPortfolio(){
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
     const h = m.holdings, p = m.pnl, d = m.day || {};
     const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
-    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
-    const width = m.pool.width_pct != null ? '±' + esc(m.pool.width_pct) + '%' : '';
+    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : m.pool.at_edge ? '⏸ <b>waiting at the edge</b> <span class="m">(just re-set, earns from the first tick inside)</span>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
+    const width = m.pool.width_pct == null ? '' : m.pool.side ? esc(+(2 * m.pool.width_pct).toFixed(2)) + '% wide, ' + m.pool.side + ' the price' : '±' + esc(m.pool.width_pct) + '%';
     const tiles =
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
-      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it ($BOBAI held, fees)' : null].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost ($BOBAI held, fees)' : null].filter(Boolean).join(' · ')) +
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
     const sources = '<div class="pf-eq">Result = price + fees − gas</div><div class="pf-src">'
       + src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb))
@@ -1176,7 +1176,7 @@ function fillLpPortfolio(){
     const list = [
       li('🥞', [esc(m.pool.label || 'the pool'), width, range].filter(Boolean).join(' · ')),
       (h.reserve && h.reserve.bnb > 0 ? li('🪜', (h.reserve.side === 'other' ? 'Reserve range, the price fell through it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· waits for the price to come back, then merges</span>' : h.reserve.side === 'both' ? 'Reserve range, the price inside it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· earning beside the main range</span>' : 'Reserve below the price: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· buys on the way down, no trade</span>')) : ''),
-      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : '') + ' <span class="m">· bought from fees, never sold</span>' : 'No $BOBAI held yet. Half of every fee buys some.'),
+      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) + ' at today’s price' : '') + ' <span class="m">· bought from fees, never sold</span>' : 'No $BOBAI held yet. Half of every fee buys some.'),
       li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC' + (d.last.error ? ' ⚠️' : '') + '</span>' : '')),
       li('🧭', 'Next: ' + esc(m.next || '—')),
       (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run. The operator has been told.') : ''),

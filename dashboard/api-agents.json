@@ -341,7 +341,7 @@
           "description": "Venus yield ranking, and whether moving pays for itself"
         }
       ],
-      "seed": "where is the best yield on BNB Chain for USDT right now",
+      "seed": "where is the best stablecoin yield on BNB Chain right now",
       "example": "https://agent.brainonbnb.com/example?service=yield_plan",
       "attributes": [
         {

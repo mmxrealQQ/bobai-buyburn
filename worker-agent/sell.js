@@ -351,7 +351,7 @@ const SEED_CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
 export const SEED_TASKS = {
   health_factor: `health factor and liquidation distance for the Venus position at ${SEED_ACCOUNT}`,
   grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
-  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  yield_plan: 'where is the best stablecoin yield on BNB Chain right now',
   // Two holdings, so the example has a trade to price; and a pair that lives
   // in several fee tiers, so the tier comparison has something to compare.
   rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":700},{"token":"${SEED_CAKE}","usd":300}] to equal weight`,

@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 6806,
-   "zipBytes": 173241,
-   "txtBytes": 535091,
-   "sha256": "1d4c090a27dabeca",
+   "lines": 6848,
+   "zipBytes": 174852,
+   "txtBytes": 539791,
+   "sha256": "32aa47d304d1a0c9",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -410,10 +410,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11234,
-   "zipBytes": 185749,
-   "txtBytes": 596013,
-   "sha256": "cdb2213b5d5ed79f",
+   "lines": 11277,
+   "zipBytes": 187442,
+   "txtBytes": 601914,
+   "sha256": "8e556b7c35f2dd7a",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 48,
-   "lines": 16035,
-   "zipBytes": 360360,
-   "txtBytes": 1012666,
-   "sha256": "e8e89fe813e12aa4",
+   "lines": 16047,
+   "zipBytes": 360889,
+   "txtBytes": 1013832,
+   "sha256": "97e85bbc1fdd434c",
    "reqs": [
     {
      "what": "A wallet to be paid into",

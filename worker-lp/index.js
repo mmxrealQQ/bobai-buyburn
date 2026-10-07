@@ -270,7 +270,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
     // the capital is already out of the pool and earning nothing.
     widthRecord = record;
-    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct, ladder });
+    // The width and the re-set's mode by the operator's word (2026-10-07: ±20%, centred): LP_WIDTH_PCT names the
+    // width (empty = the record's pick, floor ±10%), LP_RESET_MODE "centred" re-sets around the price with one trade
+    // ("one-sided" or empty = beside the price, no trade). Both read again on every run, reversible in wrangler.toml.
+    const fixedWidth = Number(env.LP_WIDTH_PCT) > 0 && Number(env.LP_WIDTH_PCT) <= 50 ? Number(env.LP_WIDTH_PCT) : null;
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct, ladder, widthOverride: fixedWidth, centred: env.LP_RESET_MODE === 'centred' });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     let upgrade = null;

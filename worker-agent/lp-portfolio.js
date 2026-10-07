@@ -107,7 +107,7 @@ export function changeText(changePct, since) {
   return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null, centred = false } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -170,13 +170,15 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the range lies against the price (2026-10-07): a one-sided range sits wholly above or below it, and
   // "±0.25%" read as a range centred on the price; the page writes "0.5% wide, above the price" instead.
   const side = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? (tickSeen < posTicks[0] ? 'above' : tickSeen >= posTicks[1] ? 'below' : null) : null;
+  // what the next re-set mints, as worker-lp will mint it (LP_RESET_MODE): centred = around the price, one trade
+  const newRange = (w) => centred ? `the new range centred on the price, ±${w}%, one trade back to the range's mix` : `the new range one-sided beside the price, ${+(2 * w).toFixed(2)}% wide, no trade`;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: ${newRange(pick.width_pct)}.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: ${newRange(pick.width_pct)}.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.

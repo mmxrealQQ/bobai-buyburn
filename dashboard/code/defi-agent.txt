@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 6806 lines.
+# one fetch. 17 files, 6848 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1173,9 +1173,9 @@ const BOBAI = ADDR.BOBAI;
 
 // What the worker's rebalance step does, in its order: the merge first when the
 // ladder plan says so, then the re-set — with the ladder record kept in hand.
-async function workerRebalance(ladder, { expectMerge = null } = {}) {
+async function workerRebalance(ladder, { expectMerge = null, planOpts = {} } = {}) {
   const rpc0 = rpcCount;
-  const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder });
+  const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder, ...planOpts });
   if (plan.no) return { plan, refused: plan.no };
   const txs = [];
   let merged = null;
@@ -1219,6 +1219,30 @@ await scenario('RE-SET UPWARD — the price leaves above the main range: the res
   ok('the profit share bought $BOBAI, held in the wallet', !(r.done.bobai_bnb > 0) || (await bal(BOBAI, LP)) > bobai0, `fees folded ${r.done.fees_folded_bnb}, into $BOBAI ${r.done.bobai_bnb}${r.done.fees_forward_why ? ' — ' + r.done.fees_forward_why : ''}`);
   console.log(`       ${r.txs.length} transactions: ${r.txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · ')}`);
 });
+
+// CENTRED, ±20% (operator's go, 2026-10-07: worker-lp LP_WIDTH_PCT "20", LP_RESET_MODE "centred"): the new range
+// stands around the price and the capital is traded back to the range's mix, both ways the price can leave
+for (const [key, dir] of [['cdown', 'down'], ['cup', 'up']]) {
+  await scenario(`RE-SET CENTRED ±20% — the price leaves ${dir === 'down' ? 'below' : 'above'} the range: a range around the price, one trade back to the mix`, key, async () => {
+    const ladder = { ...LADDER0, reserve: null };
+    const lo = Number(pos0.pos[5]), hi = Number(pos0.pos[6]);
+    const tick = await pushPriceTo(dir === 'down' ? lo - 150 : hi + 150);
+    const before = await valueOf(ladder);
+    ok(`the whale moved the price ${dir === 'down' ? 'below' : 'above'} the range`, dir === 'down' ? tick <= lo - 100 : tick >= hi + 100, `tick ${tick}, range ${lo}…${hi}`);
+    const r = await workerRebalance(ladder, { expectMerge: null, planOpts: { widthOverride: 20, centred: true } });
+    if (r.refused) return ok('the plan re-sets', false, r.refused);
+    withinBudget(`plan and centred re-set ${dir}`, r.rpc);
+    ok('the plan is centred: no one-sided side, width ±20%', r.plan.oneSided == null && !r.done.one_sided && r.plan.width === 20, `oneSided ${r.plan.oneSided}, width ${r.plan.width}`);
+    const after = await valueOf(ladder);
+    const [nl, nu] = r.done.new_ticks || [];
+    const span = nu - nl, mid = (nl + nu) / 2;
+    ok('the new range stands around the price at the mint (the price within a tenth of the span of its middle)', after.tick > nl && after.tick < nu && Math.abs(after.tick - mid) < span / 10, `tick ${after.tick}, range ${nl}…${nu}`);
+    ok('…and is ±20% wide (about 3,650 ticks)', span > 3400 && span < 3900, `span ${span} ticks`);
+    ok('the capital went back in whole: nothing of it is loose', after.loose < 0.003 * total(after), `${after.loose.toFixed(6)} BNB loose of ${total(after).toFixed(4)}`);
+    ok('the value is kept, less gas, the fee share and the one trade (under 0.4%)', Math.abs(total(after) + (r.done.bobai_bnb || 0) - total(before)) < 0.004 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB, trade ${JSON.stringify(r.done.swap || null).slice(0, 120)}`);
+    console.log(`       ${r.txs.length} transactions: ${r.txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · ')}`);
+  });
+}
 
 await scenario('RE-SET DOWNWARD — the price falls out of the main range into the reserve: one range above the price, all CAKE, and the profit share sold out of the CAKE fees', 'down', async () => {
   const ladder = { ...LADDER0 };
@@ -1379,6 +1403,7 @@ if (process.argv.includes('--self-test')) {
   is('out of range with no width named yet: the re-set waits for the record', /^Out of range\. Re-set after the wait; the width record has no day of prices yet\.$/.test(m.next) && m.pool.width_pct === 1);
   is('at the edge of the range: not left, says so', (() => { const r3 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, at_edge: true } } } }; return /^At the edge of its range, not left\./.test(lpPortfolio(r3, series, { now: NOW }).next); })());
   is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range: the new range one-sided beside the price, 4% wide, no trade\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
+  is('centred (LP_RESET_MODE, 2026-10-07): the sentence names a range around the price, ±width, and the one trade', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; const t = lpPortfolio(r2, series, { now: NOW, width: { width_pct: 20, wait_hours: 3 }, centred: true }).next; return /centred on the price, ±20%, one trade back to the range's mix\.$/.test(t) && !/one-sided/.test(t); })());
   is('the sentence carries no dollar figure (2026-09-12: the card stays simple; what a width nets lives in /lp/windows)', !/\$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
   // One wording of the return for every surface (2026-09-19): base AND period, made in the model.
   is('the return is said once, with its base and its period', changeText(-1.21, '2026-09-03') === '−1.2% on the capital since 3 Sep' && changeText(1.31, '2026-09-03T05:23:19.275Z') === '+1.3% on the capital since 3 Sep' && changeText(0, '2026-12-24') === '0.0% on the capital since 24 Dec');
@@ -2657,7 +2682,7 @@ export function ticksAdjacent(tick, widthPct, spacing, side, gapTicks = ONE_SIDE
 // position but does hold that pool's two tokens, the plan is a mint from the
 // wallet — a re-set that stopped between its unwind and its mint (2026-09-05
 // 12:50) is finished on the next run instead of leaving the capital idle.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null } = {}) {
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null, centred = false } = {}) {
   let p = position || (await readPosition(pub, address, ladder));
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
@@ -2702,7 +2727,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // A range the price has left is re-set one-sided, beside the price
       // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
       // with the price inside is centred as before.
-      oneSided = left && left.left ? left.side : null;
+      // CENTRED ON REQUEST (operator's go, 2026-10-07): on the 26-day tape a one-sided re-set held the token that had
+      // just lost, all of it, and waited for it to come back — ±10% one-sided −7.1% against the BNB put in, centred
+      // −4.8%, ahead in both halves of the tape. `centred` puts the new range around the price, one trade back to
+      // the range's mix (the path every re-set took until 2026-09-16).
+      oneSided = !centred && left && left.left ? left.side : null;
       // A resume finishes the re-set it belongs to: a wallet holding one
       // token alone is minted beside the price on that token's side, no
       // trade (resumeSide); a mixed wallet is centred as before.
@@ -4990,7 +5019,7 @@ export function changeText(changePct, since) {
   return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null, centred = false } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -5053,13 +5082,15 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the range lies against the price (2026-10-07): a one-sided range sits wholly above or below it, and
   // "±0.25%" read as a range centred on the price; the page writes "0.5% wide, above the price" instead.
   const side = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? (tickSeen < posTicks[0] ? 'above' : tickSeen >= posTicks[1] ? 'below' : null) : null;
+  // what the next re-set mints, as worker-lp will mint it (LP_RESET_MODE): centred = around the price, one trade
+  const newRange = (w) => centred ? `the new range centred on the price, ±${w}%, one trade back to the range's mix` : `the new range one-sided beside the price, ${+(2 * w).toFixed(2)}% wide, no trade`;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: ${newRange(pick.width_pct)}.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: ${newRange(pick.width_pct)}.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -6412,7 +6443,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
     // the capital is already out of the pool and earning nothing.
     widthRecord = record;
-    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct, ladder });
+    // The width and the re-set's mode by the operator's word (2026-10-07: ±20%, centred): LP_WIDTH_PCT names the
+    // width (empty = the record's pick, floor ±10%), LP_RESET_MODE "centred" re-sets around the price with one trade
+    // ("one-sided" or empty = beside the price, no trade). Both read again on every run, reversible in wrangler.toml.
+    const fixedWidth = Number(env.LP_WIDTH_PCT) > 0 && Number(env.LP_WIDTH_PCT) <= 50 ? Number(env.LP_WIDTH_PCT) : null;
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct, ladder, widthOverride: fixedWidth, centred: env.LP_RESET_MODE === 'centred' });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     let upgrade = null;
@@ -6780,6 +6815,13 @@ LP_FEE_KEEP_PCT = "50"
 # arrives while the main range is all of the other side above it. The first
 # reserve is watched before the gate opens, as the first re-set was.
 LP_LADDER = "1"
+# THE WIDTH AND THE RE-SET (operator's go, 2026-10-07, "perfekt optimieren"): on the 26-day 10-minute tape, against
+# the BNB put in: ±10% one-sided −7.1%, ±10% centred −4.8%, ±20% +0.1% (almost no re-set), holding 50/50 −1.3%.
+# Fees pay ~0.74 of what a range loses to the swings, so wide wins and every re-set locks a loss in.
+# LP_WIDTH_PCT: the width every re-set mints (empty = the record's pick, floor ±10%). LP_RESET_MODE: "centred" =
+# around the price with one trade back to the mix; "one-sided" or empty = beside the price, no trade.
+LP_WIDTH_PCT = "20"
+LP_RESET_MODE = "centred"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

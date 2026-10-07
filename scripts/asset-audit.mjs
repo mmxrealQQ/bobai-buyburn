@@ -32,7 +32,7 @@ const pages = walk(DASH)
   .map((p) => p.replace(/index\.html$/, '').replace(/\.html$/, ''))
   .filter((p) => !p.includes('debug-ua') && !p.includes('for-designer'));
 
-const findings = [];
+const findings = [], protectedPages = [];
 const seen = new Map(); // one HEAD per unique asset, however many pages use it
 
 const check = async (url) => {
@@ -57,17 +57,24 @@ console.log(`\nAsset audit — ${pages.length} live pages\n`);
 
 for (const page of pages) {
   const url = SITE + page;
-  let html;
+  let html, servedAt = page;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
     html = await r.text();
+    // A redirected page resolves its relative references where it ENDED UP (2026-10-07): /brain/ answers 301 to /,
+    // and read against /brain/ its 26 relative pictures were reported as missing although every visitor gets them.
+    try { servedAt = new URL(r.url).pathname || page; } catch { /* the asked path stands */ }
+    // 401 = behind its password on purpose (/builder/, Basic auth since 2026-10-07): not ours to read, not broken
+    if (r.status === 401) { protectedPages.push(page); continue; }
     if (!r.ok) { findings.push([page, 'page itself', `HTTP ${r.status}`]); continue; }
   } catch (e) { findings.push([page, 'page itself', String(e.message).slice(0, 40)]); continue; }
 
   const refs = new Set();
   // src= and href= on things that must resolve. Anchors to other pages are the
   // static audit's job; this is about assets the browser fetches automatically.
-  for (const m of html.matchAll(/<(?:img|script|source)[^>]+src="([^"]+)"/g)) refs.add(m[1]);
+  // \ssrc, not src: a data-src (the terminal's stills, which its script loads from terminal/fig/) is no reference
+  // the browser fetches; read as one, five pictures on / and /brain/ were reported missing (2026-10-07)
+  for (const m of html.matchAll(/<(?:img|script|source)[^>]+\ssrc="([^"]+)"/g)) refs.add(m[1]);
   for (const m of html.matchAll(/<link[^>]+href="([^"]+)"[^>]*>/g)) {
     const tag = m[0];
     if (/rel="(stylesheet|icon|shortcut icon|apple-touch-icon|preload)"/.test(tag)) refs.add(m[1]);
@@ -81,7 +88,7 @@ for (const page of pages) {
     // A page served at "/nft/" IS the directory; dirname would hand back "/"
     // and every relative reference on it would be looked for at the site root.
     // That produced sixteen confident reports about files that were all there.
-    const base = page.endsWith('/') ? page : path.posix.dirname(page) + '/';
+    const base = servedAt.endsWith('/') ? servedAt : path.posix.dirname(servedAt) + '/';
     const abs = ref.startsWith('http') ? ref
       : ref.startsWith('/') ? SITE + ref
       : SITE + path.posix.join(base, ref);
@@ -94,6 +101,7 @@ for (const page of pages) {
 }
 
 console.log('\n');
+if (protectedPages.length) console.log(`Behind a password, not read: ${protectedPages.join(', ')}\n`);
 if (!findings.length) {
   console.log(`No missing assets across ${pages.length} pages (${seen.size} unique references checked).\n`);
 } else {

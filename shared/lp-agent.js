@@ -739,7 +739,7 @@ export function ticksAdjacent(tick, widthPct, spacing, side, gapTicks = ONE_SIDE
 // position but does hold that pool's two tokens, the plan is a mint from the
 // wallet — a re-set that stopped between its unwind and its mint (2026-09-05
 // 12:50) is finished on the next run instead of leaving the capital idle.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null } = {}) {
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null, centred = false } = {}) {
   let p = position || (await readPosition(pub, address, ladder));
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
@@ -784,7 +784,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // A range the price has left is re-set one-sided, beside the price
       // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
       // with the price inside is centred as before.
-      oneSided = left && left.left ? left.side : null;
+      // CENTRED ON REQUEST (operator's go, 2026-10-07): on the 26-day tape a one-sided re-set held the token that had
+      // just lost, all of it, and waited for it to come back — ±10% one-sided −7.1% against the BNB put in, centred
+      // −4.8%, ahead in both halves of the tape. `centred` puts the new range around the price, one trade back to
+      // the range's mix (the path every re-set took until 2026-09-16).
+      oneSided = !centred && left && left.left ? left.side : null;
       // A resume finishes the re-set it belongs to: a wallet holding one
       // token alone is minted beside the price on that token's side, no
       // trade (resumeSide); a mixed wallet is centred as before.

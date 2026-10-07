@@ -55,6 +55,13 @@ LP_FEE_KEEP_PCT = "50"
 # arrives while the main range is all of the other side above it. The first
 # reserve is watched before the gate opens, as the first re-set was.
 LP_LADDER = "1"
+# THE WIDTH AND THE RE-SET (operator's go, 2026-10-07, "perfekt optimieren"): on the 26-day 10-minute tape, against
+# the BNB put in: ±10% one-sided −7.1%, ±10% centred −4.8%, ±20% +0.1% (almost no re-set), holding 50/50 −1.3%.
+# Fees pay ~0.74 of what a range loses to the swings, so wide wins and every re-set locks a loss in.
+# LP_WIDTH_PCT: the width every re-set mints (empty = the record's pick, floor ±10%). LP_RESET_MODE: "centred" =
+# around the price with one trade back to the mix; "one-sided" or empty = beside the price, no trade.
+LP_WIDTH_PCT = "20"
+LP_RESET_MODE = "centred"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 16035 lines.
+# one fetch. 48 files, 16047 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1221,7 +1221,7 @@ export function ticksAdjacent(tick, widthPct, spacing, side, gapTicks = ONE_SIDE
 // position but does hold that pool's two tokens, the plan is a mint from the
 // wallet — a re-set that stopped between its unwind and its mint (2026-09-05
 // 12:50) is finished on the next run instead of leaving the capital idle.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null } = {}) {
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT, ladder = null, centred = false } = {}) {
   let p = position || (await readPosition(pub, address, ladder));
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
@@ -1266,7 +1266,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // A range the price has left is re-set one-sided, beside the price
       // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
       // with the price inside is centred as before.
-      oneSided = left && left.left ? left.side : null;
+      // CENTRED ON REQUEST (operator's go, 2026-10-07): on the 26-day tape a one-sided re-set held the token that had
+      // just lost, all of it, and waited for it to come back — ±10% one-sided −7.1% against the BNB put in, centred
+      // −4.8%, ahead in both halves of the tape. `centred` puts the new range around the price, one trade back to
+      // the range's mix (the path every re-set took until 2026-09-16).
+      oneSided = !centred && left && left.left ? left.side : null;
       // A resume finishes the re-set it belongs to: a wallet holding one
       // token alone is minted beside the price on that token's side, no
       // trade (resumeSide); a mixed wallet is centred as before.
@@ -9648,7 +9652,10 @@ ${pageTail}`;
         else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
       } catch { /* the sentence does without */ }
       try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
-      const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince });
+      // the width and mode worker-lp mints with (its LP_WIDTH_PCT / LP_RESET_MODE, mirrored in this worker's vars)
+      const fixedWidth = Number(env.LP_WIDTH_PCT) > 0 ? Number(env.LP_WIDTH_PCT) : null;
+      if (fixedWidth) width = { ...(width || {}), width_pct: fixedWidth, net_usd_per_day: null };
+      const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince, centred: env.LP_RESET_MODE === 'centred' });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       const res = json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
@@ -10489,7 +10496,7 @@ export function changeText(changePct, since) {
   return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null, centred = false } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -10552,13 +10559,15 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the range lies against the price (2026-10-07): a one-sided range sits wholly above or below it, and
   // "±0.25%" read as a range centred on the price; the page writes "0.5% wide, above the price" instead.
   const side = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? (tickSeen < posTicks[0] ? 'above' : tickSeen >= posTicks[1] ? 'below' : null) : null;
+  // what the next re-set mints, as worker-lp will mint it (LP_RESET_MODE): centred = around the price, one trade
+  const newRange = (w) => centred ? `the new range centred on the price, ±${w}%, one trade back to the range's mix` : `the new range one-sided beside the price, ${+(2 * w).toFixed(2)}% wide, no trade`;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: ${newRange(pick.width_pct)}.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ${+(2 * pick.width_pct).toFixed(2)}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: ${newRange(pick.width_pct)}.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -15362,6 +15371,9 @@ id = "<your-kv-namespace-id>"
 # since 2026-09-07) so the session can be revoked from the product; the route
 # that uses it fires only with SESSION_REVOKE_TOKEN, the other secret.
 [vars]
+# mirrored from worker-lp (2026-10-07): the width and re-set mode the agent mints with, so the /defi card says it
+LP_WIDTH_PCT = "20"
+LP_RESET_MODE = "centred"
 ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
 # The pool whose width record the hourly cron builds (lp-windows.js). This is
 # NOT the choice of where the money goes — that is made by lp-decision.mjs from

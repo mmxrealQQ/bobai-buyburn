@@ -133,9 +133,9 @@ const BOBAI = ADDR.BOBAI;
 
 // What the worker's rebalance step does, in its order: the merge first when the
 // ladder plan says so, then the re-set — with the ladder record kept in hand.
-async function workerRebalance(ladder, { expectMerge = null } = {}) {
+async function workerRebalance(ladder, { expectMerge = null, planOpts = {} } = {}) {
   const rpc0 = rpcCount;
-  const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder });
+  const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder, ...planOpts });
   if (plan.no) return { plan, refused: plan.no };
   const txs = [];
   let merged = null;
@@ -179,6 +179,30 @@ await scenario('RE-SET UPWARD — the price leaves above the main range: the res
   ok('the profit share bought $BOBAI, held in the wallet', !(r.done.bobai_bnb > 0) || (await bal(BOBAI, LP)) > bobai0, `fees folded ${r.done.fees_folded_bnb}, into $BOBAI ${r.done.bobai_bnb}${r.done.fees_forward_why ? ' — ' + r.done.fees_forward_why : ''}`);
   console.log(`       ${r.txs.length} transactions: ${r.txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · ')}`);
 });
+
+// CENTRED, ±20% (operator's go, 2026-10-07: worker-lp LP_WIDTH_PCT "20", LP_RESET_MODE "centred"): the new range
+// stands around the price and the capital is traded back to the range's mix, both ways the price can leave
+for (const [key, dir] of [['cdown', 'down'], ['cup', 'up']]) {
+  await scenario(`RE-SET CENTRED ±20% — the price leaves ${dir === 'down' ? 'below' : 'above'} the range: a range around the price, one trade back to the mix`, key, async () => {
+    const ladder = { ...LADDER0, reserve: null };
+    const lo = Number(pos0.pos[5]), hi = Number(pos0.pos[6]);
+    const tick = await pushPriceTo(dir === 'down' ? lo - 150 : hi + 150);
+    const before = await valueOf(ladder);
+    ok(`the whale moved the price ${dir === 'down' ? 'below' : 'above'} the range`, dir === 'down' ? tick <= lo - 100 : tick >= hi + 100, `tick ${tick}, range ${lo}…${hi}`);
+    const r = await workerRebalance(ladder, { expectMerge: null, planOpts: { widthOverride: 20, centred: true } });
+    if (r.refused) return ok('the plan re-sets', false, r.refused);
+    withinBudget(`plan and centred re-set ${dir}`, r.rpc);
+    ok('the plan is centred: no one-sided side, width ±20%', r.plan.oneSided == null && !r.done.one_sided && r.plan.width === 20, `oneSided ${r.plan.oneSided}, width ${r.plan.width}`);
+    const after = await valueOf(ladder);
+    const [nl, nu] = r.done.new_ticks || [];
+    const span = nu - nl, mid = (nl + nu) / 2;
+    ok('the new range stands around the price at the mint (the price within a tenth of the span of its middle)', after.tick > nl && after.tick < nu && Math.abs(after.tick - mid) < span / 10, `tick ${after.tick}, range ${nl}…${nu}`);
+    ok('…and is ±20% wide (about 3,650 ticks)', span > 3400 && span < 3900, `span ${span} ticks`);
+    ok('the capital went back in whole: nothing of it is loose', after.loose < 0.003 * total(after), `${after.loose.toFixed(6)} BNB loose of ${total(after).toFixed(4)}`);
+    ok('the value is kept, less gas, the fee share and the one trade (under 0.4%)', Math.abs(total(after) + (r.done.bobai_bnb || 0) - total(before)) < 0.004 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB, trade ${JSON.stringify(r.done.swap || null).slice(0, 120)}`);
+    console.log(`       ${r.txs.length} transactions: ${r.txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · ')}`);
+  });
+}
 
 await scenario('RE-SET DOWNWARD — the price falls out of the main range into the reserve: one range above the price, all CAKE, and the profit share sold out of the CAKE fees', 'down', async () => {
   const ladder = { ...LADDER0 };

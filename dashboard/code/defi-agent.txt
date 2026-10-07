@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 6848 lines.
+# one fetch. 17 files, 6851 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5041,7 +5041,10 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const inc = (chk.steps && chk.steps.increase) || (last.steps && last.steps.increase) || {};
   const rb = (chk.steps && chk.steps.rebalance) || {};
   const position = (inc.position != null ? String(inc.position) : null) || (pt && pt.position != null ? String(pt.position) : null) || (rb.new_position != null ? String(rb.new_position) : null);
-  const inRange = inc.in_range != null ? !!inc.in_range : rb.in_range != null ? !!rb.in_range : pt ? !!pt.in_range : null;
+  // after a re-set the rebalance step's in_range is the range it LEFT (2026-10-07): without a newer increase step the
+  // flag is read off the range it moved to (new_ticks) and the newest tick
+  const rbNow = (rb.acted && !rb.error && rb.new_ticks) || null, rbTick = inc.tick ?? rb.tick ?? null;
+  const inRange = inc.in_range != null ? !!inc.in_range : rbNow && rbTick != null ? rbTick >= rbNow[0] && rbTick < rbNow[1] : rb.in_range != null ? !!rb.in_range : pt ? !!pt.in_range : null;
   const poolAddr = String(rec.pool || HOME_POOL.pool).toLowerCase();
   const poolLabel = labelOf(poolAddr) || (poolAddr === HOME_POOL.pool ? HOME_POOL.label : null);
   const walletBnb = inc.wallet_bnb != null ? n(inc.wallet_bnb) : pt ? n(pt.wallet_bnb) : 0;

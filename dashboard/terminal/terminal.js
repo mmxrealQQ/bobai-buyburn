@@ -475,7 +475,7 @@ function beat(k, text, n = 1) {
 function atWork(k) {
   const now = performance.now();
   if (mode !== 'live' || !opened || now < (LIFE.workAt || 0) || poseT > 0 || pinnedK || QUEUE.length || now < sceneUntil + 2500 || now < LIFE.sayUntil) return;
-  const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range;
+  const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
   const left = Math.max(0, Math.round(charge * 100));
   const said = {
     // five ways each (2026-10-02)
@@ -656,7 +656,7 @@ function info(k) {
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [
-      ['Working capital', rb ? bnbF(rb.value_with_reserve_bnb ?? rb.value_bnb) : '…'], ['Range', (chk?.in_range ?? rb?.in_range) === false ? 'OUT of range' : 'in range'],
+      ['Working capital', rb ? bnbF(lpNow().value ?? 0) : '…'], ['Range', lpNow().inR === false ? 'OUT of range' : 'in range'],
       ['Pool', 'CAKE/BNB 0.05%'], ['Fees earned', lp?.flow?.in?.fees ? bnbF(lp.flow.in.fees.bnb) : '…'],
       ['BOBAI it holds', cmp(lp?.flow?.out?.bobai_units || 0)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
       note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and half of what it earns buys BOBAI it keeps.',
@@ -718,10 +718,22 @@ function ringHtml(parts, mid, cap) {
   return `<div class="db"><div class="db-c">${cap}</div><div class="fl-d"><svg viewBox="0 0 68 68" aria-hidden="true"><circle class="fl-bg" r="${R}" cx="34" cy="34"/>${arcs}<text x="34" y="37.5" text-anchor="middle">${mid}</text></svg>`
     + `<div class="fl-k">${parts.map(([v, col, lab, txt]) => `<span style="--sc:${col}"><em></em>${lab}<b>${txt ?? Math.round(v / tot * 100) + '%'}</b></span>`).join('')}</div></div></div>`;
 }
+// WHERE THE AGENT STANDS NOW (2026-10-07, operator: "the DeFi range does not show correctly in the terminal"): after a
+// re-set the rebalance step's `ticks` and `in_range` describe the range it LEFT — the new one is `new_ticks` — so the
+// window drew the old narrow range with "beside it, waiting" over a position sitting in the middle of ±20%. The range
+// is new_ticks after a re-set, the price and the value are the newest check's (its increase step), in range is read
+// from the two
+function lpNow() {
+  const lp = S.lp, rb = lp?.last_check?.steps?.rebalance || lp?.last?.steps?.rebalance, inc = lp?.last_check?.steps?.increase;
+  const ticks = (rb?.acted && !rb?.error && rb?.new_ticks) || rb?.ticks || null, tick = inc?.tick ?? rb?.tick ?? null;
+  const inR = ticks && tick != null ? tick >= ticks[0] && tick < ticks[1] : (inc?.in_range ?? rb?.in_range ?? null);
+  const value = inc?.value_after_bnb ?? inc?.value_bnb ?? rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? null;
+  return { rb, inc, ticks, tick, inR, value };
+}
 function rangeHtml() {
-  const lp = S.lp, rb = lp?.last?.steps?.rebalance, tick = lp?.last_check?.steps?.increase?.tick ?? rb?.tick;
-  if (!rb?.ticks || tick == null) return '';
-  const [lo, hi] = rb.ticks, pad = (hi - lo) * 0.45, a = lo - pad, b = hi + pad, pos = v => clamp((v - a) / (b - a), 0, 1) * 100, inR = tick >= lo && tick < hi;
+  const { ticks, tick } = lpNow();
+  if (!ticks || tick == null) return '';
+  const [lo, hi] = ticks, pad = (hi - lo) * 0.45, a = lo - pad, b = hi + pad, pos = v => clamp((v - a) / (b - a), 0, 1) * 100, inR = tick >= lo && tick < hi;
   return `<div class="db"><div class="db-c">CAKE / BNB · 0.05% · WHERE THE PRICE STANDS</div><div class="dm${inR ? '' : ' out'}"><div class="rng" style="left:${pos(lo)}%;width:${pos(hi) - pos(lo)}%"></div><i style="left:${pos(tick)}%"></i></div>`
     + `<div class="db-x"><span>${inR ? 'IN RANGE · EARNING FEES' : 'BESIDE IT · WAITING FOR THE PRICE'}</span></div></div>`;
 }
@@ -802,7 +814,7 @@ function joyMove() {
 const hAgo = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); const d = Math.floor(m / 1440); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : d === 1 ? 'a day ago' : `${d} days ago`; }; // whole hours and days, never "1 days ago" (2026-10-05)
 function circleLine(k) {
   const lb = S.burns.filter(e => +e.bobaiBurned > 0).at(-1), wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3);
-  const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range, ll = S.liq.at(-1), dv = S.dev.at?.(-1), nd = S.nft?.drops?.[0];
+  const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR, ll = S.liq.at(-1), dv = S.dev.at?.(-1), nd = S.nft?.drops?.[0];
   const f = LIFE.flow || {};
   // five ways each (operator, 2026-10-02: "at least five variants of every text"); every figure stays the live one
   const L = {
@@ -2434,9 +2446,9 @@ const CMDS = {
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${nf(S.queued)} BOBAI tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [cmp(MIN_DISPATCH) + ' BOBAI'], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.`]); },
   liq: () => { setFocus('liq'); const b = boost3();
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
-  defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range;
+  defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) return say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
-    say(['The DeFi agent works ', [bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${cmp(S.lp?.flow?.out?.bobai_units || 0)} BOBAI bought with half of them.`], [], D.defi.c); },
+    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${cmp(S.lp?.flow?.out?.bobai_units || 0)} BOBAI bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
@@ -2814,7 +2826,7 @@ function paintLogs() {
   const lp = S.lp;
   if (lp) {
     const rb = lp.last?.steps?.rebalance, inc = lp.last_check?.steps?.increase;
-    const v = rb?.value_with_reserve_bnb ?? rb?.value_bnb, inr = inc?.in_range ?? rb?.in_range;
+    const v = lpNow().value, inr = lpNow().inR;
     if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${cmp(lp.flow?.out?.bobai_units || 0)} BOBAI`);
   }
 }
@@ -3381,7 +3393,7 @@ function defiMeter(s) {
   // the range and the price as the chain has them: from this step, else from the agent's last look
   // a re-set is shown with the range it moved TO (new_ticks)
   if (s && s.new_ticks && s.tick != null) s = { ...s, ticks: s.new_ticks };
-  const src = (s && s.ticks && s.tick != null) ? s : (S.lp?.last_check?.steps?.increase?.tick != null ? { ...S.lp.last?.steps?.rebalance, tick: S.lp.last_check.steps.increase.tick } : S.lp?.last?.steps?.rebalance);
+  const src = (s && s.ticks && s.tick != null) ? s : (() => { const n = lpNow(); return { ticks: n.ticks, tick: n.tick }; })();
   if (!src?.ticks || src.tick == null) { meterEl.hidden = true; return; }
   const [lo, hi] = src.ticks, pad = (hi - lo) * 0.45, a = lo - pad, b = hi + pad, pos = v => clamp((v - a) / (b - a), 0, 1) * 100;
   const inR = src.tick >= lo && src.tick < hi;
@@ -3490,7 +3502,7 @@ function bobaiTap() {
   const moves = ['saber', 'moon', 'coffee', 'hodl', 'cheer', 'think', 'pushups', 'shrug', 'bull', 'dance', 'walk'].filter(p => flowPose(p) === p && !RECENT.includes(p)); // only moves he can play, not the last four
   const today = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3);
   const left = W.buyback.last ? Math.max(0, Math.ceil((W.buyback.last + 600e3 - Date.now()) / 60e3)) : null;
-  const rb = S.lp?.last?.steps?.rebalance, inr = S.lp?.last_check?.steps?.increase?.in_range ?? rb?.in_range;
+  const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
   const kinds = [
     () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${cmp(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },

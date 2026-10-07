@@ -843,8 +843,13 @@
 #bt .hw-web.l{left:0}
 #bt .hw-web.r{right:0;transform:scaleX(-1)}
 /* a chain of blocks hangs from the top and sways */
-#bt .hw-hc{transform-origin:50% 0;animation:bt-hw-swing 5.7s ease-in-out infinite alternate}
+/* THE CHAIN SWINGS NOW AND THEN (operator, 2026-10-07: "swing more gently — but mine never swings"): ±3.5° over 12 s
+   moved its end a pixel a second, so it looked still and still cost every frame (rule 14's largest piece). It hangs
+   still now and, every 18-30 s, swings out once like a pendulum and comes to rest (the script adds .swing) */
+#bt .hw-hc{transform-origin:50% 0}
+#bt .hw-hc.swing{animation:bt-hw-pend 8s ease-in-out 1;will-change:transform}
 @keyframes bt-hw-swing{from{transform:rotate(-3.5deg)}to{transform:rotate(3.5deg)}}
+@keyframes bt-hw-pend{0%{transform:rotate(0)}12%{transform:rotate(4.5deg)}30%{transform:rotate(-3.4deg)}48%{transform:rotate(2.3deg)}64%{transform:rotate(-1.3deg)}80%{transform:rotate(.6deg)}100%{transform:rotate(0)}}
 /* the moon, a sticker like the rest */
 #bt .hw-mo img{animation:bt-hw-bob 9s ease-in-out infinite alternate;filter:drop-shadow(0 0 10px rgba(210,215,255,.28))}
 /* the ghost drags a chain of blocks behind it */
@@ -1016,7 +1021,6 @@
 #bt .hw-o[data-k=defi]::before{display:none}
 #bt .hw-pk::before{animation-duration:8s}
 #bt .hw-cd i{animation-duration:7s}
-#bt .hw-hc{animation-duration:12s}
 #bt .hw-ghb{animation-duration:5s}
 #bt .hw-grab.on .hw-s{animation:none}
 #bt .hw-ob img.d{animation:none;opacity:0}

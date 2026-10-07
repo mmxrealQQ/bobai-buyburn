@@ -220,7 +220,7 @@ txt: https://brainonbnb.com/code/nft-drop.txt
 Worldcup Tipping Game
 ---------------------
 A full tournament game that paid out on-chain.
-45 files, 11277 lines
+45 files, 11278 lines
 needs:
   - A Postgres with row-level security and auth
       ours: Supabase, free tier, all the way through

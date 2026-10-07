@@ -2,7 +2,7 @@
 # A full tournament game that paid out on-chain.
 #
 # This is the complete worldcup-tipgame bundle as a single file, so it can be read in
-# one fetch. 45 files, 11277 lines.
+# one fetch. 45 files, 11278 lines.
 # Download as a zip: https://brainonbnb.com/code/worldcup-tipgame.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -9665,7 +9665,7 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
     main{flex:1;padding:48px 24px}
     .stage{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(380px,1fr) minmax(0,680px) minmax(380px,1fr);gap:40px;align-items:start}
     @media (max-width: 1024px){
-      .stage{grid-template-columns:1fr;gap:24px;max-width:680px}
+      .stage{grid-template-columns:minmax(0,1fr);gap:24px;max-width:680px} /* minmax(0,…): a bare 1fr kept the column at its content's min width, 343 px on a 360 px phone (2026-10-07) */
     }
     .illu{position:sticky;top:84px;display:flex;justify-content:center}
     .illu-img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center;border-radius:var(--radius);filter:drop-shadow(0 12px 40px rgba(240,185,11,.18))}
@@ -9692,14 +9692,15 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
     .arch-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
     .arch-row .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .arch-row .amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-    .arch-row .amt small{display:block;opacity:.65;font-size:12px}
+    .arch-row .amt small{display:block;opacity:.65;font-size:12px;white-space:normal}
+    .arch-row > *{min-width:0}
     .arch-row .pl{color:var(--muted,#9aa)}
     .arch-row a{color:var(--gold)}
     .arch-sum{margin-top:10px;font-size:13px;opacity:.8}
     .arch-login{margin:0 0 8px;text-align:left}
     .arch-login > summary{cursor:pointer;color:var(--muted,#9aa);font-size:14px;padding:8px 0;text-align:center}
     .arch-login[open] > summary{margin-bottom:12px}
-    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) auto} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} }
+    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) minmax(0,auto)} .arch-row .amt{max-width:62vw} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} }
     .cd-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
 
     /* Live Prize Pool — dezent über Countdown */

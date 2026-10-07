@@ -410,10 +410,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11277,
-   "zipBytes": 187442,
-   "txtBytes": 601914,
-   "sha256": "8e556b7c35f2dd7a",
+   "lines": 11278,
+   "zipBytes": 187528,
+   "txtBytes": 602129,
+   "sha256": "da7dc501473ef45b",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",

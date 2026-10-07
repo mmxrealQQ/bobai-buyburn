@@ -5044,6 +5044,9 @@ window.__btHwSeason = hwSeason;
   win.insertBefore(el, win.querySelector('.vign'));
   const flyL = document.createElement('div'); flyL.className = 'hw-fly'; flyL.setAttribute('aria-hidden', 'true'); win.insertBefore(flyL, win.querySelector('.vign'));
   const $h = s => el.querySelector(s);
+  // the chain hangs still and swings out once every 18-30 s (terminal.css .hw-hc.swing, 2026-10-07)
+  const swingChain = () => setTimeout(() => { const c = $h('.hw-hc'); if (c && on && !REDUCED && !document.hidden) { c.classList.remove('swing'); void c.offsetWidth; c.classList.add('swing'); } swingChain(); }, 18000 + Math.random() * 12000);
+  swingChain();
   const skl = $h('.hw-skl'), mh = $h('.hw-mh'), pkA = $h('.hw-pk.a'), cd = $h('.hw-cd'), mo = $h('.hw-mo'), hc = $h('.hw-hc'), cl = $h('.hw-cl'), gh = $h('.hw-gh'), hd = $h('.hw-hd'), da = $h('.hw-da'), grab = $h('.hw-grab');
   const BG = [...el.querySelectorAll('.hw-bg')];
   const ORBS = [...el.querySelectorAll('.hw-o')], sp = $h('.hw-o[data-k="defi"]'), cat = $h('.hw-o[data-k="creator"]');

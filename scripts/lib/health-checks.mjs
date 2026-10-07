@@ -218,8 +218,13 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
     const age = typeof j.age_seconds === 'number' ? j.age_seconds : null;
     ok('Bots', 'telegram bot cron alive', j.cron_alive === true,
       age === null ? 'no heartbeat recorded yet' : `last tick ${fmtAge(age / 3600)} ago`);
-    ok('Bots', 'telegram bot can post', j.channel_configured === true,
-      j.channel_configured ? 'token + chat id set' : 'BOT_TOKEN or chat id missing — alerts would fail silently');
+    // Configured is not the same as able (2026-10-07): a refused send in the last day for a lasting cause (kicked,
+    // no rights, chat gone) is red; a passing one (a rate limit, a timeout) is named, not red.
+    const se = j.last_send_error, seAge = se && se.at ? (Date.now() - Date.parse(se.at)) / 36e5 : null, seRed = !!(se && se.lasting && seAge != null && seAge < 24);
+    ok('Bots', 'telegram bot can post', j.channel_configured === true && !seRed,
+      !j.channel_configured ? 'BOT_TOKEN or chat id missing — alerts would fail silently'
+        : seRed ? `Telegram refused ${se.method} ${fmtAge(seAge)} ago: ${se.description}`
+        : se && seAge != null && seAge < 24 ? `token + chat id set; a passing refusal ${fmtAge(seAge)} ago (${se.description})` : 'token + chat id set, no refused send in the last day');
     // The heartbeat proves the cron runs, not that the daily posts go out: the
     // whale recap was silent 2026-09-12 to 09-17 behind a green heartbeat.
     const d = j.daily || {};

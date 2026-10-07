@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5209 lines.
+# one fetch. 12 files, 5239 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -822,13 +822,37 @@ export function shownName(s) {
 
 // ==================== TELEGRAM API ====================
 
+// A deadline on every call (2026-10-07): one hung request held the every-minute tick past the next one, which then
+// read posted_txs / last_burned before the first had written them. Telegram's own 5xx pages are HTML: read as
+// {ok:false} instead of throwing out of the caller.
 async function tg(method, body) {
-  const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
+  let j;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
+    });
+    j = await res.json().catch(() => ({ ok: false, error_code: res.status, description: `HTTP ${res.status}, not JSON` }));
+  } catch (e) {
+    j = { ok: false, description: e?.name === 'TimeoutError' ? 'no answer within 10 s' : String(e?.message || e).slice(0, 120) };
+  }
+  if (j && j.ok === false && /^send/.test(method)) await noteSendError(method, body, j);
+  return j;
+}
+
+// NOBODY SAW A BOT THAT COULD NOT POST (2026-10-07): a kicked or muted bot, a dead photo id, showed only in the
+// console; /health said "can post" from the token alone. A failed send is written down (a KV write only when
+// something failed) and /health serves it; the morning check turns red on a lasting cause.
+const SEND_LASTING = /forbidden|kicked|not enough rights|chat not found|bot was blocked|unauthorized|have no rights|need administrator/i;
+async function noteSendError(method, body, j) {
+  try {
+    if (!WHALE_ENV || !WHALE_ENV.KV) return;
+    const rec = { at: new Date().toISOString(), method, chat: String(body?.chat_id ?? '').slice(-6), code: j.error_code ?? null, description: String(j.description || '').slice(0, 160), lasting: SEND_LASTING.test(String(j.description || '')) };
+    console.error('[TG SEND FAILED]', method, rec.code, rec.description);
+    await WHALE_ENV.KV.put('last_send_error', JSON.stringify(rec));
+  } catch { /* the trace itself must never break a send */ }
 }
 
 // ==================== RPC HELPERS ====================
@@ -840,6 +864,7 @@ async function rpcCall(method, params) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        signal: AbortSignal.timeout(6000),
       });
       const data = await res.json();
       if (data.result !== undefined && data.result !== null) return data.result;
@@ -855,6 +880,7 @@ async function tryGetLogs(rpc, fromBlock, address, topic, tag) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -4004,6 +4030,8 @@ export default {
         // missed its ten-minute write, which is a stopped worker, not a lull.
         cron_alive: ageSeconds !== null && ageSeconds < 900,
         channel_configured: Boolean(env.BOT_TOKEN && TG_CHAT_ID),
+        // the last send Telegram refused (noteSendError), null when none ever was; `lasting` = kicked / no rights / chat gone
+        last_send_error: await env.KV.get('last_send_error', 'json').catch(() => null),
         alerts: ['buys', 'burns'],
         // The date each daily post last went out. A running cron says nothing
         // about them: the whale recap was silent for six days in September
@@ -4800,10 +4828,12 @@ export default {
             contractCache.set(addr, r);
             return r;
           };
+          // A failed read is unknown, never 0 (2026-10-07): getBobaiBalance answers 0n when the node fails, and an alert
+          // then said "the whole bag, wallet now empty", a wrong rank, or "100% of the pool's BOBAI" for a buy.
           const getBalCached = async (addr) => {
             if (balanceCache.has(addr)) return balanceCache.get(addr);
             try {
-              const b = await getBobaiBalance(addr);
+              const b = await getBobaiBalanceStrict(addr);
               balanceCache.set(addr, b);
               return b;
             } catch { return null; }
@@ -5028,7 +5058,7 @@ export default {
               // EX_WHALE: tracked wallet crossed from ≥10M to <10M this tx.
               if (isTracked && (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT')) {
                 try {
-                  const balAfter = await getBobaiBalance(addr); // fresh, post-tx
+                  const balAfter = await getBobaiBalanceStrict(addr); // fresh, post-tx; a failed read throws and is skipped, never read as 0
                   if (balAfter < WHALE_THRESHOLD_WEI && (balAfter + absWei) >= WHALE_THRESHOLD_WEI) {
                     const balTokens = Number(balAfter / 10n ** 18n);
                     console.log('[WHALE] EX_WHALE crossed', addr.slice(0, 10), formatNumber(balTokens));

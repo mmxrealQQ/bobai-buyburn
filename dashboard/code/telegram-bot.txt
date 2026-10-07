@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5239 lines.
+# one fetch. 12 files, 5238 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3317,23 +3317,22 @@ export async function readDefiRange(pool) {
     return { tick: int24At(s0, 1), main, reserve: res };
   } catch { return null; }
 }
-// One bar, 16 cells between the edges; the dot is where the price stands
-// (outside the edges when the price left the range). Pure: rendered in
-// tests without the chain.
+// One bar across the card, drawn like the tax card's charge bar (operator, 2026-10-07: "the whole length, black and
+// white, like the tax"): 20 cells, filled up to where the price stands in the range; a ⚫ before or after the bar
+// when the price has left it. Plain text, no <pre> and no box-drawing glyphs — Telegram drew those differently per
+// device and the right edge came out as "<\>". The edge prices go on their own line. Pure: rendered in tests.
 export function formatRangeBar(r) {
   if (!r || !r.main || !(r.main.upper > r.main.lower)) return [];
-  const N = 16, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
+  const N = 20, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
   const { lower, upper } = r.main, t = r.tick, at = (t - lower) / (upper - lower);
   let bar;
-  if (at < 0) bar = '● ┃' + '─'.repeat(N) + '┃';
-  else if (at > 1) bar = '┃' + '─'.repeat(N) + '┃ ●';
-  else { const i = Math.min(N - 1, Math.floor(at * N)); bar = '┃' + '─'.repeat(i) + '●' + '─'.repeat(N - 1 - i) + '┃'; }
-  // the edge prices under the edges (out of range below, the bar starts two places in)
-  const pad = at < 0 ? '  ' : '', lo = p(lower), hi = p(upper), gap = Math.max(1, N + 2 - lo.length - hi.length);
-  const where = at < 0 ? `price ${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
-    : at > 1 ? `price ${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
-    : `price ${Math.round(at * 100)}% up the range`;
-  const lines = [`<pre>${bar}\n${pad}${lo}${' '.repeat(gap)}${hi}</pre>`, `1 CAKE = ${p(t)} BNB · ${where}`];
+  if (at < 0) bar = '⚫ ' + '▱'.repeat(N);
+  else if (at > 1) bar = '▰'.repeat(N) + ' ⚫';
+  else { const f = Math.max(1, Math.min(N - 1, Math.round(at * N))); bar = '▰'.repeat(f) + '▱'.repeat(N - f); }
+  const where = at < 0 ? `${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
+    : at > 1 ? `${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
+    : `${Math.round(at * 100)}% up the range`;
+  const lines = [bar, `◂ ${p(lower)}  ·  ${p(upper)} ▸ BNB`, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
   if (r.reserve && r.reserve.upper > r.reserve.lower) lines.push(`Reserve range: ${p(r.reserve.lower)} – ${p(r.reserve.upper)} BNB`);
   return lines;
 }

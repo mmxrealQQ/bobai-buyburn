@@ -70,10 +70,14 @@ const rbSrc = cut('export function formatRangeBar', '\n}\n').replace('export ', 
 const formatRangeBar = new Function(`${rbSrc}\nreturn formatRangeBar;`)();
 const rb = (t) => formatRangeBar({ tick: t, main: { lower: -58100, upper: -56190 } }).join('\n');
 const below = rb(-58130), mid = rb(-57145), above = rb(-56000);
+// 2026-10-07 evening (operator: "the range shows bugged on the right with <\\>; make it the whole length, like the tax"):
+// 20 cells of ▰/▱ filled up to the price, ⚫ outside the bar when the price left it, no <pre> and no box-drawing glyphs
 ok('/defi: the range bar puts the price where it stands — below, inside (halfway), above',
-  /<pre>● ┃─{16}┃\n  0\.002998  0\.003629<\/pre>/.test(below) && /0\.3% below the range/.test(below)
-  && /<pre>┃─{8}●─{7}┃\n0\.002998  0\.003629<\/pre>/.test(mid) && /50% up the range/.test(mid)
-  && /┃─{16}┃ ●/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
+  /^⚫ ▱{20}\n◂ 0\.002998  ·  0\.003629 ▸ BNB/.test(below) && /0\.3% below the range/.test(below)
+  && /^▰{10}▱{10}\n/.test(mid) && /50% up the range/.test(mid)
+  && /^▰{20} ⚫\n/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
+ok('/defi: the bar is plain text — no <pre>, no box-drawing glyphs (┃ ─ ●) that Telegram drew differently per device',
+  ![below, mid, above].some((x) => /<pre>|[┃─●]/.test(x)) && rb(-58099).split('\n')[0] === '▰' + '▱'.repeat(19) && rb(-56191).split('\n')[0] === '▰'.repeat(19) + '▱');
 ok('/defi: no range read = no bar (the card stays as it was)', formatRangeBar(null).length === 0 && /formatDefiCard\(pm, \{ range: pm \? await readDefiRange\(pm\.pool\) : null \}\)/.test(tg));
 
 console.log(`\n${n - failed}/${n} checks pass`);

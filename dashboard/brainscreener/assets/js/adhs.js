@@ -106,13 +106,25 @@
     if (input && input.type === "radio") {
       const id = input.name;
       const val = parseInt(input.value, 10);
+      const first = typeof answers[id] !== "number";
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
+      if (first) nextIntoView(itemEl);
       updateProgress();
       hideMissing();
     }
+  }
+
+  // A first answer brings the next open question up when it sits low on the screen (2026-10-07, as test-engine.js)
+  function nextIntoView(itemEl) {
+    if (!itemEl) return;
+    let n = itemEl.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    if (!n) return;
+    const r = n.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function hideMissing() {

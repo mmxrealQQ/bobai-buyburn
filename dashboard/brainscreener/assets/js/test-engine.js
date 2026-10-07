@@ -173,11 +173,13 @@
     if (input && input.type === "radio") {
       const id = input.name;
       const val = parseInt(input.value, 10);
+      const first = typeof answers[id] !== "number";
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       crisisNote(id, val, itemEl);
+      if (first) nextIntoView(itemEl);
       updateProgress();
       if (missingNote) missingNote.hidden = true;
     }
@@ -196,6 +198,18 @@
       note.innerHTML = 'If you are in danger now, please reach out: your local emergency number (<a href="tel:112">112</a> / <a href="tel:911">911</a> / <a href="tel:999">999</a>), <a href="tel:988">988</a> in the US &amp; Canada, <a href="tel:116123">116 123</a> in the UK &amp; Ireland, or <a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a> for your country. Free and confidential, 24/7.';
       itemEl.appendChild(note);
     } else if (val < 1 && note) note.remove();
+  }
+
+  // A first answer brings the next open question up when it sits low on the screen (2026-10-07: on a phone the
+  // options stack and a 60-item test is a long scroll by thumb). A changed answer moves nothing; a crisis note shown
+  // under the item keeps the page where it is, so it is read.
+  function nextIntoView(itemEl) {
+    if (!itemEl || itemEl.querySelector(".item-crisis")) return;
+    let n = itemEl.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    if (!n) return;
+    const r = n.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function updateProgress() {

@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 6781 lines.
+# one fetch. 17 files, 6806 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -53,7 +53,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_FLOOR_PCT, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset, capSeries, SERIES_CAP, increaseIntoPosition } from '../shared/lp-flow.js';
 import { resetLosses } from '../worker-agent/lp-windows.js';
@@ -435,29 +435,36 @@ if (SELF) {
   is('no ticks: nothing', rangeLeft(-57807, null, null).outside === false);
   // pickWidth: the width that ended the most ahead against holding over
   // the week, fees in; the width in use is kept under the bar.
+  // the comparison itself, pinned without the floor (2026-10-07); the floor has its own pins below
+  const pw = (rows, o = {}) => pickWidth(rows, { floor: 0, ...o });
   const wk = (w, fees, vs, share = 0.9, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share, fees_usd: fees, vs_holding_usd: vs } });
   // The live week of 2026-09-16: narrow earned the most fees and lost the most to the trend.
   const week = [wk(0.25, 2.88, -5.42), wk(1, 2.53, -4.21), wk(3, 1.41, -1.91), wk(4, 1.14, -1.37), wk(5, 0.93, -0.99), wk(7, 0.72, -0.45), wk(10, 0.54, -0.05), { width: 'full', earnings_7d: null }];
-  const pk = pickWidth(week);
+  const pk = pw(week);
   is('the pick is the width with the most money against holding, fees in (±10%: $0.49, not ±4%: −$0.23)', pk && pk.width === 10 && pk.score_usd === 0.49 && pk.kept_current === false);
   is('… and the basis names the week', /ended the most ahead/.test(pk.basis) && /±10% \+\$0\.49/.test(pk.basis) && /±4% −\$0\.23/.test(pk.basis));
-  is('the width in use is replaced when the lead is over the bar (±4% in use, ±10% $0.72 ahead)', (() => { const r = pickWidth(week, { current: 4 }); return r.width === 10 && r.kept_current === false && /over the bar/.test(r.basis); })());
-  is('… and kept when the lead is under it (±7% in use at $0.27, ±10% at $0.29: the bar is $0.30)', (() => { const r = pickWidth([wk(7, 0.72, -0.45), wk(10, 0.54, -0.25)], { current: 7 }); return r.width === 7 && r.kept_current === true && /stays/.test(r.basis) && r.best_width === 10; })());
-  is('… the bar is a tenth of the score in use, at least two cents (a score of $0.05 in use needs $0.07)', (() => { const rows = [wk(2, 0.05, 0), wk(5, 0.069, 0), wk(7, 0.071, 0)]; return pickWidth(rows, { current: 2 }).width === 7 && pickWidth(rows.slice(0, 2), { current: 2 }).width === 2; })());
-  is('a width in use that is the best stays and says so', (() => { const r = pickWidth(week, { current: 10 }); return r.width === 10 && r.kept_current === true && /the width in use/.test(r.basis); })());
-  is('a ranging week (no loss to the trend) picks the narrowest, which earns the most', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 1);
-  is('a tie goes to the wider width', pickWidth([wk(3, 1, -0.3), wk(5, 0.7, 0)]).width === 5);
+  is('the width in use is replaced when the lead is over the bar (±4% in use, ±10% $0.72 ahead)', (() => { const r = pw(week, { current: 4 }); return r.width === 10 && r.kept_current === false && /over the bar/.test(r.basis); })());
+  is('… and kept when the lead is under it (±7% in use at $0.27, ±10% at $0.29: the bar is $0.30)', (() => { const r = pw([wk(7, 0.72, -0.45), wk(10, 0.54, -0.25)], { current: 7 }); return r.width === 7 && r.kept_current === true && /stays/.test(r.basis) && r.best_width === 10; })());
+  is('… the bar is a tenth of the score in use, at least two cents (a score of $0.05 in use needs $0.07)', (() => { const rows = [wk(2, 0.05, 0), wk(5, 0.069, 0), wk(7, 0.071, 0)]; return pw(rows, { current: 2 }).width === 7 && pw(rows.slice(0, 2), { current: 2 }).width === 2; })());
+  is('a width in use that is the best stays and says so', (() => { const r = pw(week, { current: 10 }); return r.width === 10 && r.kept_current === true && /the width in use/.test(r.basis); })());
+  is('a ranging week (no loss to the trend) picks the narrowest, which earns the most', pw([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 1);
+  is('a tie goes to the wider width', pw([wk(3, 1, -0.3), wk(5, 0.7, 0)]).width === 5);
   // BOTH WINDOWS (2026-09-27): a change must lead on the week AND on the whole record. The live rows of 27.9.:
   // ±3% led the week by three cents, and ended $0.49 behind ±10% over the full 403 h.
   const both = (w, f7, v7, f, v, resets = 0) => ({ width: w, earnings: { hours: 403.83, fees_usd: f, vs_holding_usd: v, resets, reset_cost_usd: 0.0023 }, earnings_7d: { hours: 168.82, hours_in_range: 160, fees_usd: f7, vs_holding_usd: v7 } });
   const live27 = [both(3, 2.1076, -3.7349, 4.0661, -6.2, 40), both(10, 0.7195, -2.5799, 1.4351, -3.3444, 15)];
-  is('±10% in use stays when ±3% leads the week but trails the whole record (27.9.)', (() => { const r = pickWidth(live27, { current: 10 }); return r.width === 10 && r.kept_current === true && /lead on both/.test(r.basis) && r.best_width === 3; })());
-  is('… and the change goes through when the challenger leads the whole record too', (() => { const r = pickWidth([both(3, 2.1076, -3.7349, 4.0661, -2.0, 40), live27[1]], { current: 10 }); return r.width === 3 && r.kept_current === false; })());
-  is('… rows without a full record: the week decides alone, as before', pickWidth(week, { current: 4 }).width === 10);
-  is('… no width in use: the week picks, the full record is not asked', pickWidth(live27).width === 3);
-  is('full range, rows without a week and rows without the holding line are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168, fees_usd: 1, vs_holding_usd: 0 } }, { width: 2, earnings_7d: null }, { width: 3, earnings_7d: { hours: 168, hours_in_range: 100, fees_usd: 1 } }]) === null);
-  is('a row with no hours does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0, fees_usd: 0, vs_holding_usd: 0 } }]) === null);
+  is('±10% in use stays when ±3% leads the week but trails the whole record (27.9.)', (() => { const r = pw(live27, { current: 10 }); return r.width === 10 && r.kept_current === true && /lead on both/.test(r.basis) && r.best_width === 3; })());
+  is('… and the change goes through when the challenger leads the whole record too', (() => { const r = pw([both(3, 2.1076, -3.7349, 4.0661, -2.0, 40), live27[1]], { current: 10 }); return r.width === 3 && r.kept_current === false; })());
+  is('… rows without a full record: the week decides alone, as before', pw(week, { current: 4 }).width === 10);
+  is('… no width in use: the week picks, the full record is not asked', pw(live27).width === 3);
+  is('full range, rows without a week and rows without the holding line are never picked', pw([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168, fees_usd: 1, vs_holding_usd: 0 } }, { width: 2, earnings_7d: null }, { width: 3, earnings_7d: { hours: 168, hours_in_range: 100, fees_usd: 1 } }]) === null);
+  is('a row with no hours does not count', pw([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0, fees_usd: 0, vs_holding_usd: 0 } }]) === null);
   is('the pick carries fees, the holding line, the share of hours in range and the week', pk.fees_usd === 0.54 && pk.vs_holding_usd === -0.05 && pk.in_range_share === 0.9 && pk.hours === 168 && pk.best_width === 10);
+  // THE FLOOR (2026-10-07, operator's go): the live morning of 7.10. moved ±10% to ±0.25%; under the floor no width is a candidate
+  is('the floor: the live week of 16.9. with ±0.25% in use moves to ±10%, never to a narrower width', (() => { const r = pickWidth(week, { current: 0.25 }); return r.width === 10 && r.kept_current === false; })());
+  is('… a ranging week where ±1% earns the most still picks ±10% (narrower is not a candidate)', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 10);
+  is('… a record with no width at or above the floor picks among what it has, as before', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0)]).width === 1);
+  is('… the floor is ±10%', WIDTH_FLOOR_PCT === 10);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
   check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);
@@ -1664,7 +1671,7 @@ if (SELF_TEST) {
   const short = { windows: Array.from({ length: 10 }, (_, i) => pwin(i, 100)) };
   t(`under ${MIN_HOURS_FOR_EARNINGS} h of prices there is no earnings pick`, verdict(short).earnings_pick === null && verdict(short).rows[0].earnings !== null);
   const dayFlat = { windows: flat };
-  t('a day of flat prices picks the narrowest width', [1, 1.5].includes(verdict(dayFlat).earnings_pick?.width) /* flat: nothing is lost to the trend; the narrowest earns the most — on this fixture's fee rows the derived ±1.5% row reads the same fees as ±1%, and a tie goes to the wider */);
+  t('a day of flat prices picks the floor (2026-10-07): narrower earns more on the fixture, but under the floor no width is a candidate', verdict(dayFlat).earnings_pick?.width === 10); /* before the floor the narrowest won here (±1% / ±1.5%, a tie to the wider) */
   const dayDrift = { windows: drift };
   t('a day of drifting prices picks a wider width than the narrowest', verdict(dayDrift).earnings_pick && verdict(dayDrift).earnings_pick.width > 1);
   t('a price that climbs 2% every hour: the widest width loses the least against holding and is the pick; the basis says so', (() => {
@@ -1682,7 +1689,7 @@ if (SELF_TEST) {
     return d.every((x) => x.resets === 0) && new Set(d.map((x) => x.net_usd_per_day)).size === 1;
   })());
   t('a blip that returns within the hour: waiting beats re-setting at once', (() => {
-    const blipDay = Array.from({ length: 30 }, (_, i) => pwin(i, i === 10 ? 103 : 100, [row(1, true, 0.01)]));
+    const blipDay = Array.from({ length: 30 }, (_, i) => pwin(i, i === 10 ? 113 : 100, [row(10, true, 0.01)])); /* ±10% and a 13% blip since the floor (2026-10-07): the wait test asks only widths a re-set may mint */
     const d = verdict({ windows: blipDay }).delay_test.delays;
     const at0 = d.find((x) => x.hours === 0), at2 = d.find((x) => x.hours === 2);
     // At once: two re-sets (out, then back) that can eat the whole net, in
@@ -1814,7 +1821,7 @@ if (SELF_TEST) {
   t('a sample earns at the rate of the window whose hour it falls in', (() => { const ps = priceSeries(flat.slice(0, 3), [tapeAt(1, 30, 100)]); const smp = ps.find((p) => p.at === tapeAt(1, 30, 100).at); return smp && smp.window === flat[2]; })());
   t('a sample within a minute of a window head is counted once', priceSeries(flat.slice(0, 3), [{ ...tapeAt(1, 0, 100), at: new Date(Date.parse(flat[1].at) + 20e3).toISOString() }]).length === 3);
   t('the verdict walks the tape of its own pool only and says how many samples', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape.concat([{ ...tapeAt(3, 15, 200), pool: '0xother' }]) }); return v.price_samples === flatTape.length && v.rows[0].earnings.resets === 0 && v.price_samples_since === flatTape[0].at; })());
-  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && [1, 1.5].includes(verdict(dayFlat).earnings_pick?.width) /* flat: every width is in range all week; the narrowest wins */);
+  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && verdict(dayFlat).earnings_pick?.width === 10 /* flat: every width is in range all week; the narrowest wins */);
   t('every width is also replayed over the last week alone, and the pick comes from it (2026-09-16)', (() => { const v = verdict(dayFlat); const r = v.rows.find((x) => x.width === 1); return r.earnings_7d && r.earnings_7d.hours > 0 && v.earnings_pick && v.earnings_pick.earnings_7d && v.earnings_pick.basis && v.width_window_hours === 168; })());
   t('the most-net width is still named beside the pick', (() => { const v = verdict(dayFlat); return v.net_pick && v.net_pick.width != null && v.net_pick.earnings; })());
   t('the rule says one-sided, gas alone, the most ahead against holding over the last week', /one-sided/.test(verdict(dayFlat).earnings_rule) && /against holding/.test(verdict(dayFlat).earnings_rule) && /168 h/.test(verdict(dayFlat).earnings_rule));
@@ -3976,7 +3983,9 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
   if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
   // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
   // hair above 0.99 and a wait exactly a tenth ahead is refused.
-  const bar = Math.round(base.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4;
+  // a tenth of its size above the set wait's score, also when that score is below zero (since 2026-10-07 the wait is
+  // scored against holding and is often negative: x 1.1 would have set the bar lower, not higher)
+  const bar = Math.round((base.net_usd_per_day + Math.abs(base.net_usd_per_day) * WAIT_PICK_MARGIN) * 1e4) / 1e4;
   if (!(best.net_usd_per_day >= bar)) return keep(`the set wait of ${set} h — ${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day}, under the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar for a change`);
   return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day} at the set ${set} h, over ${hoursOfPrices} h of prices — more than the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar` };
 }
@@ -4128,15 +4137,23 @@ export const ONE_SIDED_GAP_TICKS = 20;
 export const WIDTH_WINDOW_HOURS = 168;
 export const WIDTH_PICK_MARGIN = 0.10;
 export const WIDTH_PICK_MIN_LEAD_USD = 0.02;
+// THE FLOOR (operator's go, 2026-10-07: "more profit, fewer losses, simply mathematically the best"). On 7.10. the
+// week's ranking moved the agent from ±10% to ±0.25%. Measured on the 10-minute tape, CAKE/BNB 0.05% pays fees at
+// about 0.74 of what a range loses to the price's swings (σ²/8 a day): below 1 every step narrower multiplies the
+// loss against holding, and a weekly pick between ±0.25% and ±10% flipped on noise (out of sample −4.8% against
+// ~0% for a fixed wide width). So no width under the floor is picked; the narrow rows stay in the record.
+export const WIDTH_FLOOR_PCT = 10;
 // Kept for the record of the morning rule and its pins; not applied.
 export const IN_RANGE_TARGET = 0.95;
-export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD } = {}) {
+export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD, floor = WIDTH_FLOOR_PCT } = {}) {
   const r4 = (x) => Math.round(x * 1e4) / 1e4;
-  const cand = (rows || [])
+  const all = (rows || [])
     .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0 && typeof r[key].vs_holding_usd === 'number' && typeof r[key].fees_usd === 'number')
     .map((r) => ({ row: r, width: Number(r.width), hours: Number(r[key].hours), fees: Number(r[key].fees_usd), vs: Number(r[key].vs_holding_usd), share: Number(r[key].hours_in_range) / Number(r[key].hours) }))
     .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
     .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
+  // the floor: widths under it are not candidates (a record without any width at or above it picks as before)
+  const wide = all.filter((c) => c.width >= floor), cand = wide.length ? wide : all;
   if (!cand.length) return null;
   // The most money against holding; a tie goes to the wider width, which
   // is crossed less often.
@@ -5350,7 +5367,7 @@ export async function lpPositionPlan(params = {}, env = null) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WIDTH_FLOOR_PCT, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
@@ -5399,9 +5416,13 @@ export async function recordLpTick(env, sample) {
 // last), so the fee rate a point earns at is that window's row.
 export function priceSeries(priced, tape = null) {
   const pts = priced.map((w) => ({ at: w.at, t: Date.parse(w.at), price: w.price, window: w }));
+  // A tape sample before the first window has no fee rate of its own (2026-10-07): it used to earn at the first
+  // window's, an hour that paid 2.7 times the median, and 210 h of it made the narrowest widths look best.
+  const firstAt = priced.length ? Date.parse(priced[0].at) : -Infinity;
   for (const x of Array.isArray(tape) ? tape : []) {
     if (!x || !x.at || !(Number(x.price) > 0)) continue;
     const t = Date.parse(x.at);
+    if (t < firstAt - 60e3) continue;
     if (pts.some((p) => Math.abs(p.t - t) < 60e3)) continue;
     pts.push({ at: x.at, t, price: Number(x.price), window: null });
   }
@@ -5607,12 +5628,16 @@ export function verdict(log, opts = {}) {
   // nobody watches would get.
   const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12, 18, 24];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
-    const best = rows.filter((r) => r.width !== 'full')
+    // Scored as the width is (2026-10-07): fees, less re-sets, PLUS the range against holding, and only the widths a
+    // re-set may mint (the floor). A one-sided re-set books no loss in net_usd, so on net alone more re-sets always
+    // won and the wait test answered 0 h on the narrowest width every time.
+    const best = rows.filter((r) => r.width !== 'full' && Number(r.width) >= WIDTH_FLOOR_PCT)
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
-      .filter((x) => x.e && x.e.net_usd_per_day > 0)
-      .sort((a, b) => b.e.net_usd_per_day - a.e.net_usd_per_day)[0];
+      .filter((x) => x.e && x.e.hours > 0)
+      .map((x) => ({ ...x, score: Math.round(((x.e.net_usd + x.e.vs_holding_usd) / (x.e.hours / 24)) * 1e4) / 1e4 }))
+      .sort((a, b) => b.score - a.score)[0];
     return best
-      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
+      ? { hours: h, width: best.width, net_usd_per_day: best.score, fees_only_net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
       : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null };
   });
   const wait = waitInUse(delayRows, hoursOfPrices);

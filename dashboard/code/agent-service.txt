@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 48 files, 16017 lines.
+# one fetch. 48 files, 16035 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2547,7 +2547,9 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
   if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
   // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
   // hair above 0.99 and a wait exactly a tenth ahead is refused.
-  const bar = Math.round(base.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4;
+  // a tenth of its size above the set wait's score, also when that score is below zero (since 2026-10-07 the wait is
+  // scored against holding and is often negative: x 1.1 would have set the bar lower, not higher)
+  const bar = Math.round((base.net_usd_per_day + Math.abs(base.net_usd_per_day) * WAIT_PICK_MARGIN) * 1e4) / 1e4;
   if (!(best.net_usd_per_day >= bar)) return keep(`the set wait of ${set} h — ${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day}, under the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar for a change`);
   return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day} at the set ${set} h, over ${hoursOfPrices} h of prices — more than the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar` };
 }
@@ -2699,15 +2701,23 @@ export const ONE_SIDED_GAP_TICKS = 20;
 export const WIDTH_WINDOW_HOURS = 168;
 export const WIDTH_PICK_MARGIN = 0.10;
 export const WIDTH_PICK_MIN_LEAD_USD = 0.02;
+// THE FLOOR (operator's go, 2026-10-07: "more profit, fewer losses, simply mathematically the best"). On 7.10. the
+// week's ranking moved the agent from ±10% to ±0.25%. Measured on the 10-minute tape, CAKE/BNB 0.05% pays fees at
+// about 0.74 of what a range loses to the price's swings (σ²/8 a day): below 1 every step narrower multiplies the
+// loss against holding, and a weekly pick between ±0.25% and ±10% flipped on noise (out of sample −4.8% against
+// ~0% for a fixed wide width). So no width under the floor is picked; the narrow rows stay in the record.
+export const WIDTH_FLOOR_PCT = 10;
 // Kept for the record of the morning rule and its pins; not applied.
 export const IN_RANGE_TARGET = 0.95;
-export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD } = {}) {
+export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD, floor = WIDTH_FLOOR_PCT } = {}) {
   const r4 = (x) => Math.round(x * 1e4) / 1e4;
-  const cand = (rows || [])
+  const all = (rows || [])
     .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0 && typeof r[key].vs_holding_usd === 'number' && typeof r[key].fees_usd === 'number')
     .map((r) => ({ row: r, width: Number(r.width), hours: Number(r[key].hours), fees: Number(r[key].fees_usd), vs: Number(r[key].vs_holding_usd), share: Number(r[key].hours_in_range) / Number(r[key].hours) }))
     .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
     .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
+  // the floor: widths under it are not candidates (a record without any width at or above it picks as before)
+  const wide = all.filter((c) => c.width >= floor), cand = wide.length ? wide : all;
   if (!cand.length) return null;
   // The most money against holding; a tie goes to the wider width, which
   // is crossed less often.
@@ -11115,7 +11125,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WIDTH_FLOOR_PCT, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
@@ -11164,9 +11174,13 @@ export async function recordLpTick(env, sample) {
 // last), so the fee rate a point earns at is that window's row.
 export function priceSeries(priced, tape = null) {
   const pts = priced.map((w) => ({ at: w.at, t: Date.parse(w.at), price: w.price, window: w }));
+  // A tape sample before the first window has no fee rate of its own (2026-10-07): it used to earn at the first
+  // window's, an hour that paid 2.7 times the median, and 210 h of it made the narrowest widths look best.
+  const firstAt = priced.length ? Date.parse(priced[0].at) : -Infinity;
   for (const x of Array.isArray(tape) ? tape : []) {
     if (!x || !x.at || !(Number(x.price) > 0)) continue;
     const t = Date.parse(x.at);
+    if (t < firstAt - 60e3) continue;
     if (pts.some((p) => Math.abs(p.t - t) < 60e3)) continue;
     pts.push({ at: x.at, t, price: Number(x.price), window: null });
   }
@@ -11372,12 +11386,16 @@ export function verdict(log, opts = {}) {
   // nobody watches would get.
   const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12, 18, 24];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
-    const best = rows.filter((r) => r.width !== 'full')
+    // Scored as the width is (2026-10-07): fees, less re-sets, PLUS the range against holding, and only the widths a
+    // re-set may mint (the floor). A one-sided re-set books no loss in net_usd, so on net alone more re-sets always
+    // won and the wait test answered 0 h on the narrowest width every time.
+    const best = rows.filter((r) => r.width !== 'full' && Number(r.width) >= WIDTH_FLOOR_PCT)
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
-      .filter((x) => x.e && x.e.net_usd_per_day > 0)
-      .sort((a, b) => b.e.net_usd_per_day - a.e.net_usd_per_day)[0];
+      .filter((x) => x.e && x.e.hours > 0)
+      .map((x) => ({ ...x, score: Math.round(((x.e.net_usd + x.e.vs_holding_usd) / (x.e.hours / 24)) * 1e4) / 1e4 }))
+      .sort((a, b) => b.score - a.score)[0];
     return best
-      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
+      ? { hours: h, width: best.width, net_usd_per_day: best.score, fees_only_net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
       : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null };
   });
   const wait = waitInUse(delayRows, hoursOfPrices);

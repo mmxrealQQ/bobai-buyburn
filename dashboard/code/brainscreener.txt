@@ -2,7 +2,7 @@
 # Thirteen self-tests. No accounts, no tracking, no backend.
 #
 # This is the complete brainscreener bundle as a single file, so it can be read in
-# one fetch. 52 files, 10024 lines.
+# one fetch. 52 files, 10108 lines.
 # Download as a zip: https://brainonbnb.com/code/brainscreener.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -35,7 +35,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9">
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -90,7 +90,7 @@
   <meta property="og:title" content="Your results — ADHD screening · brainScreener" />
   <meta property="og:description" content="Anonymous results of the ADHD screening (ASRS v1.1 + childhood scale), generated client-side." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/adhd-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-adhd.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -98,7 +98,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -238,7 +238,7 @@
   <meta property="og:title" content="ADHD test for adults — ASRS v1.1 + childhood scale · brainScreener" />
   <meta property="og:description" content="ADHD test for adults online: ASRS v1.1 (WHO) plus a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard. Anonymous, free, instant results." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/adhd" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-adhd.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -246,7 +246,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + childhood scale","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
@@ -290,6 +290,11 @@
         retrospective assessment of childhood symptoms — in line with the current
         standard of adult ADHD diagnostics under DSM-5-TR and ICD-11.
       </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span>approx. 10–12 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items in total</span><span>43 (6 + 12 + 25)</span></li>
@@ -300,7 +305,9 @@
         or wrong answers. Your data never leaves your browser.
       </p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF result)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
@@ -309,12 +316,9 @@
           It is written only onto the printed document and is not stored.
         </p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <!-- ============= SECTIONS (gerendert per JS) ============= -->
@@ -365,7 +369,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=5"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=99"></script>
 </body>
 </html>
 
@@ -387,7 +391,7 @@
   <meta property="og:title" content="Your results — AQ-50 · brainScreener" />
   <meta property="og:description" content="AQ-50 autism test for adults online: the original Autism Spectrum Quotient with 5 subscales (Baron-Cohen et al. 2001). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/aq50-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-aq50.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -395,7 +399,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -527,7 +531,7 @@
   <meta property="og:title" content="AQ-50 — Autism Screening · brainScreener" />
   <meta property="og:description" content="AQ-50 autism spectrum test online: 50 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/aq50" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-aq50.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -535,7 +539,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AQ-50 — Autism Screening · brainScreener","description":"AQ-50 autism spectrum test online: 50 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/aq50","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Autism spectrum disorder"}}</script>
@@ -573,6 +577,11 @@
       <span class="eyebrow" id="testEyebrow">Autism spectrum</span>
       <h1 id="testTitle">AQ-50 · Autism Spectrum (Adults)</h1>
       <p id="testIntro">The <strong>Autism Spectrum Quotient (AQ-50)</strong> is the original version by Baron-Cohen et al. (2001) — the most widely used international self-report measure for autistic traits in adults of normal intelligence. 50 items across five subscales. It provides a differentiated functional profile; the definitive diagnosis is made by specialised professionals using ADOS-2 / ADI-R.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 8–12 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">50 items · 5 subscales</span></li>
@@ -580,18 +589,17 @@
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -619,7 +627,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -1642,6 +1650,12 @@ img { max-width: 100%; height: auto; display: block; }
 .item-crisis { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(240, 185, 11, .08); border-radius: 6px; }
 .item-crisis a { color: var(--gold); font-weight: 600; }
 
+/* intro (2026-10-07): Start right under the intro text, the clinician code folded below */
+.test-intro .btn-row { margin-top: 22px; }
+.code-details { margin-top: 18px; }
+.code-details > summary { cursor: pointer; color: var(--ink-mute); font-size: .95rem; padding: 6px 0; }
+.code-details[open] > summary { margin-bottom: 10px; }
+
 ==============================================================================
 === FILE: dashboard/brainscreener/assets/js/adhs.js
 ==============================================================================
@@ -1754,13 +1768,25 @@ img { max-width: 100%; height: auto; display: block; }
     if (input && input.type === "radio") {
       const id = input.name;
       const val = parseInt(input.value, 10);
+      const first = typeof answers[id] !== "number";
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
+      if (first) nextIntoView(itemEl);
       updateProgress();
       hideMissing();
     }
+  }
+
+  // A first answer brings the next open question up when it sits low on the screen (2026-10-07, as test-engine.js)
+  function nextIntoView(itemEl) {
+    if (!itemEl) return;
+    let n = itemEl.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    if (!n) return;
+    const r = n.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function hideMissing() {
@@ -6637,11 +6663,13 @@ window.TEST_DATA = (function () {
     if (input && input.type === "radio") {
       const id = input.name;
       const val = parseInt(input.value, 10);
+      const first = typeof answers[id] !== "number";
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       crisisNote(id, val, itemEl);
+      if (first) nextIntoView(itemEl);
       updateProgress();
       if (missingNote) missingNote.hidden = true;
     }
@@ -6660,6 +6688,18 @@ window.TEST_DATA = (function () {
       note.innerHTML = 'If you are in danger now, please reach out: your local emergency number (<a href="tel:112">112</a> / <a href="tel:911">911</a> / <a href="tel:999">999</a>), <a href="tel:988">988</a> in the US &amp; Canada, <a href="tel:116123">116 123</a> in the UK &amp; Ireland, or <a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a> for your country. Free and confidential, 24/7.';
       itemEl.appendChild(note);
     } else if (val < 1 && note) note.remove();
+  }
+
+  // A first answer brings the next open question up when it sits low on the screen (2026-10-07: on a phone the
+  // options stack and a 60-item test is a long scroll by thumb). A changed answer moves nothing; a crisis note shown
+  // under the item keeps the page where it is, so it is read.
+  function nextIntoView(itemEl) {
+    if (!itemEl || itemEl.querySelector(".item-crisis")) return;
+    let n = itemEl.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    if (!n) return;
+    const r = n.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function updateProgress() {
@@ -6909,7 +6949,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — AUDIT · brainScreener" />
   <meta property="og:description" content="WHO AUDIT alcohol test online: 10 questions on hazardous, harmful and dependent drinking (Saunders et al. 1993). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/audit-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-audit.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -6917,7 +6957,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7049,7 +7089,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="AUDIT — Alcohol Screening · brainScreener" />
   <meta property="og:description" content="AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/audit" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-audit.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7057,7 +7097,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AUDIT — Alcohol Screening · brainScreener","description":"AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/audit","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Alcohol use disorder"}}</script>
@@ -7095,6 +7135,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Alcohol consumption</span>
       <h1 id="testTitle">AUDIT · Alcohol Screening (WHO)</h1>
       <p id="testIntro">The WHO's <strong>Alcohol Use Disorders Identification Test (AUDIT)</strong> captures not only dependence but all levels of problematic alcohol consumption — from hazardous drinking to dependence. 10 items, reference period: <strong>the last year</strong>.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 3–4 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">10 items · 3 subscales</span></li>
@@ -7102,18 +7147,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -7141,7 +7185,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -7163,7 +7207,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — BFI-2 · brainScreener" />
   <meta property="og:description" content="BFI-2 personality test online (Big Five, full version): 60 items, 5 domains, 15 facets, T-scores against a normative sample (Soto & John 2017). Anonymous, free, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/bfi2-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-bfi2.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7171,7 +7215,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7303,7 +7347,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="BFI-2 — Personality · brainScreener" />
   <meta property="og:description" content="Big Five personality test online (BFI-2): 60 questions, about 10–14 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/bfi2" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-bfi2.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7311,7 +7355,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"BFI-2 — Personality · brainScreener","description":"Big Five personality test online (BFI-2): 60 questions, about 10–14 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/bfi2","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
@@ -7349,6 +7393,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Personality · Big Five</span>
       <h1 id="testTitle">BFI-2 · Personality Profile (Big Five, 60 items)</h1>
       <p id="testIntro">The <strong>Big Five Inventory-2 (BFI-2)</strong> is the scientifically current full-length instrument (Soto & John 2017) for the hierarchical assessment of personality — 5 domains plus 15 facets (3 per domain). 60 items, German validation by Danner et al. 2019. <em>Not a test of pathology</em>: the result describes your individual personality profile with a high level of differentiation.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 10–14 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">60 items · 5 domains · 15 facets</span></li>
@@ -7356,18 +7405,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -7395,7 +7443,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -7417,7 +7465,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your character profile — Dark Tetrad · brainScreener" />
   <meta property="og:description" content="Anonymous results of your character profile (Dark Tetrad) — generated locally in your browser, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/character-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-character.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7425,7 +7473,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <style>
@@ -7598,7 +7646,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Character profile — Dark Tetrad · brainScreener" />
   <meta property="og:description" content="Character profile test online (Dark Tetrad): 28 questions, about 6–8 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/character" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-character.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7606,7 +7654,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Character profile — Dark Tetrad · brainScreener","description":"Character profile test online (Dark Tetrad): 28 questions, about 6–8 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/character","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
@@ -7644,6 +7692,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Personality · Dark character traits</span>
       <h1 id="testTitle">Character profile · Dark Tetrad</h1>
       <p id="testIntro">This instrument draws your personal <strong>character profile</strong> along the four scientifically described "dark" character traits — the <strong>Dark Tetrad</strong>. Everyone carries a bit of all four; the test shows which trait stands out most in you. <strong>There is no "good" or "bad"</strong> — for each trait you receive strengths, typical behaviours and concrete tips. And we do not talk around it: the four types are called what they are called — <strong>plain language instead of sugar-coating</strong>. It is expressly not a judgement of you as a person.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 6–8 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">28 statements · 4 dimensions</span></li>
@@ -7651,18 +7704,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -7690,7 +7742,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/charakter-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -7793,7 +7845,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — EAT-26 · brainScreener" />
   <meta property="og:description" content="EAT-26 eating disorder test online: 26 questions on dieting, bulimia and oral control (Garner et al. 1982). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/eat26-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-eat26.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7801,7 +7853,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7933,7 +7985,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="EAT-26 — Eating Disorder Screening · brainScreener" />
   <meta property="og:description" content="EAT-26 eating disorders test online: 26 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/eat26" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-eat26.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -7941,7 +7993,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"EAT-26 — Eating Disorder Screening · brainScreener","description":"EAT-26 eating disorders test online: 26 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/eat26","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Eating disorders"}}</script>
@@ -7979,6 +8031,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Eating disorders</span>
       <h1 id="testTitle">EAT-26 · Eating Disorder Screening</h1>
       <p id="testIntro">The <strong>Eating Attitudes Test (EAT-26)</strong> is the most widely used self-report screener for eating disorder symptoms worldwide. 26 items, three subscales (Dieting, Bulimia, Oral Control). It is no substitute for a diagnosis, but it is well established as an early warning tool.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 5–7 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">26 items · 3 subscales</span></li>
@@ -7986,18 +8043,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -8025,7 +8081,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -8047,7 +8103,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — GAD-7 · brainScreener" />
   <meta property="og:description" content="GAD-7 anxiety test online: 7 questions measuring generalised anxiety symptoms (Spitzer et al. 2006). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/gad7-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-gad7.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -8055,7 +8111,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -8187,7 +8243,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="GAD-7 — Anxiety Screening · brainScreener" />
   <meta property="og:description" content="GAD-7 anxiety test online: 7 questions, about 2–3 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/gad7" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-gad7.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -8195,7 +8251,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"GAD-7 — Anxiety Screening · brainScreener","description":"GAD-7 anxiety test online: 7 questions, about 2–3 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/gad7","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Generalised anxiety disorder"}}</script>
@@ -8233,6 +8289,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Generalised Anxiety Disorder</span>
       <h1 id="testTitle">GAD-7 · Anxiety Screening</h1>
       <p id="testIntro">This instrument is the <strong>Generalized Anxiety Disorder Scale (GAD-7)</strong> — the most widely used self-report test worldwide for assessing generalised anxiety symptoms. Seven items, reference period: <strong>last 2 weeks</strong>.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 2–3 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">7 items</span></li>
@@ -8240,18 +8301,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -8279,7 +8339,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -8313,7 +8373,7 @@ window.TEST_DATA = (function () {
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/","inLanguage":"en"}</script>
@@ -8759,7 +8819,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — IQ test · brainScreener" />
   <meta property="og:description" content="Anonymous results of the IQ test (CHC model), generated client-side." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/iq-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-iq.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -8767,7 +8827,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -8902,7 +8962,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="IQ test online — 40 tasks based on the CHC model · brainScreener" />
   <meta property="og:description" content="IQ test online: 40 tasks from four cognitive domains (CHC model). Anonymous, free, IQ score with confidence interval." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/iq" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-iq.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -8910,7 +8970,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"IQ test online — 40 tasks based on the CHC model","description":"Anonymous IQ test based on the CHC model: matrix reasoning, number series, verbal analogies, logical reasoning.","url":"https://brainonbnb.com/brainscreener/iq","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
@@ -8953,6 +9013,11 @@ window.TEST_DATA = (function () {
         At the end you receive an IQ estimate on the standard score scale
         (M&nbsp;=&nbsp;100, SD&nbsp;=&nbsp;15) with a 95% confidence interval.
       </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration (guideline)</span><span>approx. 25–30 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span>40</span></li>
@@ -8965,21 +9030,7 @@ window.TEST_DATA = (function () {
         It is normal not to solve every task.
       </div>
 
-      <div class="code-field">
-        <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF result)</span></label>
-        <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
-               placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
-        <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">
-          Allows the result to be anonymously matched to your file.
-          It is written only onto the printed document and is not stored.
-        </p>
-      </div>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
     </section>
 
     <!-- ============= TEST AREA ============= -->
@@ -9005,6 +9056,19 @@ window.TEST_DATA = (function () {
         You can finish the test once you have worked through all tasks — or earlier.
         Unanswered tasks are counted as "not solved".
       </p>
+
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
+        <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF result)</span></label>
+        <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
+               placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
+        <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">
+          Allows the result to be anonymously matched to your file.
+          It is written only onto the printed document and is not stored.
+        </p>
+      </div>
+      </details>
 
     </section>
 
@@ -9042,7 +9106,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — MDQ · brainScreener" />
   <meta property="og:description" content="MDQ bipolar screening online: lifetime manic and hypomanic symptoms (Hirschfeld et al. 2000). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/mdq-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-mdq.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9050,7 +9114,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9182,7 +9246,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="MDQ — Bipolar Screening · brainScreener" />
   <meta property="og:description" content="MDQ bipolar spectrum screening online: 15 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/mdq" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-mdq.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9190,7 +9254,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"MDQ — Bipolar Screening · brainScreener","description":"MDQ bipolar spectrum screening online: 15 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/mdq","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Bipolar disorder"}}</script>
@@ -9228,6 +9292,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Bipolar spectrum</span>
       <h1 id="testTitle">MDQ · Bipolar Screening</h1>
       <p id="testIntro">The <strong>Mood Disorder Questionnaire (MDQ)</strong> is the most widely used self-report screen for possible manic / hypomanic episodes worldwide. Reference period: <strong>your entire life so far</strong>.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 3–4 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">13 + 2 items</span></li>
@@ -9235,18 +9304,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -9274,7 +9342,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -9296,7 +9364,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — OCI-R · brainScreener" />
   <meta property="og:description" content="OCI-R OCD test online: 18 questions across six obsessive-compulsive symptom domains (Foa et al. 2002). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/ocir-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-ocir.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9304,7 +9372,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9436,7 +9504,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="OCI-R — OCD Screening · brainScreener" />
   <meta property="og:description" content="OCI-R test for obsessive-compulsive symptoms online: 18 questions, about 4–5 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/ocir" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-ocir.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9444,7 +9512,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"OCI-R — OCD Screening · brainScreener","description":"OCI-R test for obsessive-compulsive symptoms online: 18 questions, about 4–5 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/ocir","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Obsessive-compulsive disorder"}}</script>
@@ -9482,6 +9550,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Obsessive-Compulsive Disorder</span>
       <h1 id="testTitle">OCI-R · OCD Screening</h1>
       <p id="testIntro">The <strong>Obsessive-Compulsive Inventory-Revised (OCI-R)</strong> is an internationally recognised brief self-report test for the dimensional assessment of obsessive-compulsive symptoms — reference period: <strong>past month</strong>. 18 items across six symptom domains (washing, checking, ordering, obsessing, hoarding, neutralising).</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 4–5 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">18 items · 6 subscales</span></li>
@@ -9489,18 +9562,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -9528,7 +9600,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -9550,7 +9622,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — PCL-5 · brainScreener" />
   <meta property="og:description" content="PCL-5 trauma/PTSD test online: 20 questions on post-traumatic stress disorder per DSM-5 (Weathers et al. 2013). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/pcl5-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-pcl5.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9558,7 +9630,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9690,7 +9762,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="PCL-5 — Trauma/PTSD screening · brainScreener" />
   <meta property="og:description" content="PCL-5 trauma and PTSD test online: 20 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/pcl5" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-pcl5.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9698,7 +9770,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"PCL-5 — Trauma/PTSD screening · brainScreener","description":"PCL-5 trauma and PTSD test online: 20 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/pcl5","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Post-traumatic stress disorder"}}</script>
@@ -9736,6 +9808,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Post-traumatic stress disorder</span>
       <h1 id="testTitle">PCL-5 · Trauma/PTSD screening</h1>
       <p id="testIntro">The <strong>PTSD Checklist for DSM-5 (PCL-5)</strong> is the global gold standard in PTSD self-report assessment. 20 items covering all DSM-5-TR symptoms, reference period: <strong>past month</strong>. <em>Note: answer the questions with reference to a specific stressful experience from your past. If you have not had such an experience, this test is not indicated for you.</em></p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 5–7 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">20 items</span></li>
@@ -9743,18 +9820,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -9782,7 +9858,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -9804,7 +9880,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — PHQ-9 · brainScreener" />
   <meta property="og:description" content="PHQ-9 depression test online: 9 questions assessing the severity of depressive symptoms (Kroenke/Spitzer 2001). Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/phq9-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-phq9.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9812,7 +9888,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9944,7 +10020,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="PHQ-9 — Depression Screening · brainScreener" />
   <meta property="og:description" content="PHQ-9 depression test online: 9 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/phq9" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-phq9.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -9952,7 +10028,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"PHQ-9 — Depression Screening · brainScreener","description":"PHQ-9 depression test online: 9 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/phq9","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Depression"}}</script>
@@ -9990,6 +10066,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Depression in adults</span>
       <h1 id="testTitle">PHQ-9 · Depression Screening</h1>
       <p id="testIntro">This instrument is the <strong>Patient Health Questionnaire-9 (PHQ-9)</strong> — the most widely used self-report questionnaire internationally for assessing depressive symptoms. It directly maps the nine DSM-5-TR symptom criteria of major depression. Reference period: <strong>last 2 weeks</strong>.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 3–4 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">9 items</span></li>
@@ -9997,18 +10078,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -10036,7 +10116,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=99"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>
 
@@ -10058,7 +10138,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="Your results — WHODAS 2.0 · brainScreener" />
   <meta property="og:description" content="WHODAS 2.0 (36 items) online: the WHO standard measure of functioning and participation across 6 domains, recommended by DSM-5-TR. Anonymous, free, instant results, printable as PDF." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/whodas36-result" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-whodas36.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -10066,7 +10146,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -10198,7 +10278,7 @@ window.TEST_DATA = (function () {
   <meta property="og:title" content="WHODAS 2.0 (36) — Functioning & Participation · brainScreener" />
   <meta property="og:description" content="WHODAS 2.0 daily functioning test online: 36 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/whodas36" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-whodas36.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -10206,7 +10286,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"WHODAS 2.0 (36) — Functioning & Participation · brainScreener","description":"WHODAS 2.0 daily functioning test online: 36 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/whodas36","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"}}</script>
@@ -10244,6 +10324,11 @@ window.TEST_DATA = (function () {
       <span class="eyebrow" id="testEyebrow">Level of functioning · ICF · DSM-5-TR</span>
       <h1 id="testTitle">WHODAS 2.0 · Functioning &amp; Participation (36 items)</h1>
       <p id="testIntro">The <strong>WHODAS 2.0</strong> (36 items) is the transdiagnostic standard instrument developed by the WHO for assessing health-related functioning and participation — recommended by the DSM-5-TR. Full version with six domain profiles, reference period: <strong>last 30 days</strong>.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 8–12 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">36 items · 6 domains</span></li>
@@ -10251,18 +10336,17 @@ window.TEST_DATA = (function () {
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
         <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and restart</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <form id="adhsForm" hidden autocomplete="off">
@@ -10290,6 +10374,6 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
 </body>
 </html>

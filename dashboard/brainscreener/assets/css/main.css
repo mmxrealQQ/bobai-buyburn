@@ -1012,3 +1012,9 @@ img { max-width: 100%; height: auto; display: block; }
 /* PHQ-9 item 9 answered above 0: the crisis lines under the item (2026-10-07) */
 .item-crisis { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(240, 185, 11, .08); border-radius: 6px; }
 .item-crisis a { color: var(--gold); font-weight: 600; }
+
+/* intro (2026-10-07): Start right under the intro text, the clinician code folded below */
+.test-intro .btn-row { margin-top: 22px; }
+.code-details { margin-top: 18px; }
+.code-details > summary { cursor: pointer; color: var(--ink-mute); font-size: .95rem; padding: 6px 0; }
+.code-details[open] > summary { margin-bottom: 10px; }

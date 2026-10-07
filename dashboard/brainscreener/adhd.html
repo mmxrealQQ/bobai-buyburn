@@ -13,7 +13,7 @@
   <meta property="og:title" content="ADHD test for adults — ASRS v1.1 + childhood scale · brainScreener" />
   <meta property="og:description" content="ADHD test for adults online: ASRS v1.1 (WHO) plus a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard. Anonymous, free, instant results." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/adhd" />
-  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-adhd.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
@@ -21,7 +21,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=9" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + childhood scale","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
@@ -65,6 +65,11 @@
         retrospective assessment of childhood symptoms — in line with the current
         standard of adult ADHD diagnostics under DSM-5-TR and ICD-11.
       </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
+        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
+      </div>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span>approx. 10–12 minutes</span></li>
         <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items in total</span><span>43 (6 + 12 + 25)</span></li>
@@ -75,7 +80,9 @@
         or wrong answers. Your data never leaves your browser.
       </p>
 
-      <div class="code-field">
+      <details class="code-details">
+        <summary>Add a code for the PDF report <span class="muted small">(optional, for clinicians)</span></summary>
+        <div class="code-field">
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF result)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
@@ -84,12 +91,9 @@
           It is written only onto the printed document and is not stored.
         </p>
       </div>
+      </details>
 
-      <div class="btn-row">
-        <button type="button" class="btn btn-primary btn-lg" id="btnStart">Start test</button>
-        <button type="button" class="btn btn-ghost" id="btnReset" hidden>Delete previous answers and start again</button>
-        <a href="/brainscreener/" class="btn btn-ghost">Back to home page</a>
-      </div>
+
     </section>
 
     <!-- ============= SECTIONS (gerendert per JS) ============= -->
@@ -140,6 +144,6 @@
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=5"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=99"></script>
 </body>
 </html>

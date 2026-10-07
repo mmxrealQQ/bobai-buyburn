@@ -72,12 +72,13 @@ const rb = (t) => formatRangeBar({ tick: t, main: { lower: -58100, upper: -56190
 const below = rb(-58130), mid = rb(-57145), above = rb(-56000);
 // 2026-10-07 evening (operator: "the range shows bugged on the right with <\\>; make it the whole length, like the tax"):
 // 20 cells of ▰/▱ filled up to the price, ⚫ outside the bar when the price left it, no <pre> and no box-drawing glyphs
-ok('/defi: the range bar puts the price where it stands — below, inside (halfway), above',
-  /^⚫ ▱{20}\n◂ 0\.002998  ·  0\.003629 ▸ BNB/.test(below) && /0\.3% below the range/.test(below)
-  && /^▰{10}▱{10}\n/.test(mid) && /50% up the range/.test(mid)
-  && /^▰{20} ⚫\n/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
-ok('/defi: the bar is plain text — no <pre>, no box-drawing glyphs (┃ ─ ●) that Telegram drew differently per device',
-  ![below, mid, above].some((x) => /<pre>|[┃─●]/.test(x)) && rb(-58099).split('\n')[0] === '▰' + '▱'.repeat(19) && rb(-56191).split('\n')[0] === '▰'.repeat(19) + '▱');
+// then "it shows over 3 lines — make it one line": lower edge, 8 cells, upper edge on one line, ⚫ on the side the price left to
+ok('/defi: the range is ONE line — edge, bar filled up to the price, edge — below, halfway, above',
+  /^⚫ 0\.002998 ▱{8} 0\.003629\n1 CAKE = /.test(below) && /0\.3% below the range/.test(below)
+  && /^0\.002998 ▰{4}▱{4} 0\.003629\n1 CAKE = /.test(mid) && /50% up the range/.test(mid)
+  && /^0\.002998 ▰{8} 0\.003629 ⚫\n/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
+ok('/defi: the bar is plain text — no <pre>, no box-drawing glyphs (┃ ─ ●) that Telegram drew differently per device, two lines in all',
+  ![below, mid, above].some((x) => /<pre>|[┃─●]/.test(x)) && [below, mid, above].every((x) => x.split('\n').length === 2) && rb(-58099).split('\n')[0] === '0.002998 ▰▱▱▱▱▱▱▱ 0.003629');
 ok('/defi: no range read = no bar (the card stays as it was)', formatRangeBar(null).length === 0 && /formatDefiCard\(pm, \{ range: pm \? await readDefiRange\(pm\.pool\) : null \}\)/.test(tg));
 
 console.log(`\n${n - failed}/${n} checks pass`);

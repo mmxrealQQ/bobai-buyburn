@@ -2631,22 +2631,22 @@ export async function readDefiRange(pool) {
     return { tick: int24At(s0, 1), main, reserve: res };
   } catch { return null; }
 }
-// One bar across the card, drawn like the tax card's charge bar (operator, 2026-10-07: "the whole length, black and
-// white, like the tax"): 20 cells, filled up to where the price stands in the range; a ⚫ before or after the bar
-// when the price has left it. Plain text, no <pre> and no box-drawing glyphs — Telegram drew those differently per
-// device and the right edge came out as "<\>". The edge prices go on their own line. Pure: rendered in tests.
+// The range on ONE line, drawn like the tax card's charge bar (operator, 2026-10-07: "black and white, like the tax",
+// then "it shows over 3 lines — make it one line"): lower edge, 8 cells filled up to where the price stands, upper
+// edge; a ⚫ on the side the price has left to. 8 cells so the line with both prices fits a narrow phone. Plain text,
+// no <pre> and no box-drawing glyphs — Telegram drew those differently per device and the right edge came out as
+// "<\>". Pure: rendered in tests.
 export function formatRangeBar(r) {
   if (!r || !r.main || !(r.main.upper > r.main.lower)) return [];
-  const N = 20, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
+  const N = 8, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
   const { lower, upper } = r.main, t = r.tick, at = (t - lower) / (upper - lower);
   let bar;
-  if (at < 0) bar = '⚫ ' + '▱'.repeat(N);
-  else if (at > 1) bar = '▰'.repeat(N) + ' ⚫';
-  else { const f = Math.max(1, Math.min(N - 1, Math.round(at * N))); bar = '▰'.repeat(f) + '▱'.repeat(N - f); }
+  const cells = at < 0 ? '▱'.repeat(N) : at > 1 ? '▰'.repeat(N) : (() => { const f = Math.max(1, Math.min(N - 1, Math.round(at * N))); return '▰'.repeat(f) + '▱'.repeat(N - f); })();
+  bar = (at < 0 ? '⚫ ' : '') + `${p(lower)} ${cells} ${p(upper)}` + (at > 1 ? ' ⚫' : '');
   const where = at < 0 ? `${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
     : at > 1 ? `${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
     : `${Math.round(at * 100)}% up the range`;
-  const lines = [bar, `◂ ${p(lower)}  ·  ${p(upper)} ▸ BNB`, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
+  const lines = [bar, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
   if (r.reserve && r.reserve.upper > r.reserve.lower) lines.push(`Reserve range: ${p(r.reserve.lower)} – ${p(r.reserve.upper)} BNB`);
   return lines;
 }

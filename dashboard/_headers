@@ -32,9 +32,6 @@
 /whitepaper
   Cache-Control: public, max-age=0, must-revalidate
 
-/listing
-  Cache-Control: public, max-age=0, must-revalidate
-
 /scanner
   Cache-Control: public, max-age=0, must-revalidate
 

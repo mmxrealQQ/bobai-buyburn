@@ -5540,10 +5540,13 @@ window.__btHwSeason = hwSeason;
   const stands = () => !ownBusy() && !(VID.on && VID.cur && /^idle/.test(VID.cur)) && !win.classList.contains('in-moment') && !win.classList.contains('talking') && !detail.classList.contains('on');
   let grabT = 0;
   function grabEnd(fast) {
-    clearInterval(grabT); grabT = 0; grab.classList.toggle('fast', !!fast); grab.classList.remove('on', 'sneak'); if (scared && !cl.classList.contains('act')) scare(false);
+    // the fade is set here, inline: the walk's own transition (transform only) sat on the element and took the CSS fade
+    // with it — he was gone in one frame (2026-10-07, operator: "at the end he is gone within a millisecond")
+    clearInterval(grabT); grabT = 0; grab.style.transition = `opacity ${fast ? 0.7 : 1.4}s ease`;
+    grab.classList.toggle('fast', !!fast); grab.classList.remove('on', 'sneak'); if (scared && !cl.classList.contains('act')) scare(false);
     if (CLOWN.cur) { CLOWN.cur.onended = null; clearInterval(CLOWN.stopT); if (fast) CLOWN.cur.pause(); }
-    after(1000, () => { if (!grabT) grab.classList.remove('vid'); });
-    after(1000, () => { if (!grabT) { Object.assign(grab.style, { transition: '', transform: '' }); Object.assign(grab.querySelector('.hw-grabm').style, { transition: '', transform: '' }); } });
+    after(1600, () => { if (!grabT) grab.classList.remove('vid'); });
+    after(1600, () => { if (!grabT) { Object.assign(grab.style, { transition: '', transform: '' }); Object.assign(grab.querySelector('.hw-grabm').style, { transition: '', transform: '' }); } });
   }
   // HE SNEAKS UP (2026-10-06, operator: "the big clown behind BOBAI should really creep up: first slowly climb up the
   // gravestone, then behind BOBAI, then reach as if to grab him — he could, but he does not"). Everything of him below
@@ -5641,9 +5644,15 @@ window.__btHwSeason = hwSeason;
     if (!v.paused && !v.ended) CLOWN.raf = requestAnimationFrame(clownDraw);
   }
   // play one clip from its start; `done` when it ended (never after the scene was called off)
+  // HE MELTS AWAY (2026-10-07, operator: "make him dissolve slowly"): on his way down he starts to fade 1.4 s before the
+  // clip ends, so he is gone the moment the climb down is over, never cut off in one frame
+  const MELT = 1.4;
   function clownPlay(k, done, until = 0, from = 0) {
     const v = CLOWN.v[k]; if (!v) return; if (CLOWN.cur && CLOWN.cur !== v) CLOWN.cur.pause();
-    CLOWN.cur = v; v.currentTime = from; clearInterval(CLOWN.stopT);
+    CLOWN.cur = v; v.currentTime = from; clearInterval(CLOWN.stopT); clearInterval(CLOWN.meltT);
+    // by the clip's own time, not the clock: on a slow device the clip runs behind
+    if (k === 'down') CLOWN.meltT = setInterval(() => { if (!grabT || CLOWN.cur !== v) return clearInterval(CLOWN.meltT);
+      if (v.currentTime >= (v.duration || 8) - MELT) { clearInterval(CLOWN.meltT); grab.style.transition = `opacity ${MELT}s ease`; grab.classList.remove('on'); } }, 50);
     const fin = () => { v.onended = null; clearInterval(CLOWN.stopT); clownDraw(); if (grabT) done && done(); };
     v.onended = fin; if (until) CLOWN.stopT = setInterval(() => { if (v.currentTime >= until) { v.pause(); fin(); } }, 40);
     v.play().then(() => { if (!CLOWN.raf) CLOWN.raf = requestAnimationFrame(clownDraw); }).catch(() => grabEnd(true));

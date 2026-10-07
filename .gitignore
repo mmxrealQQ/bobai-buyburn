@@ -68,3 +68,6 @@ lpscan-tmp.js
 archive/
 # the dashboard as it is deployed: a copy without HTML comments (scripts/deploy-dashboard.mjs)
 .dashboard-build/
+
+# the builder sheet (temp/terminal/builderpage.py --site): served behind a password, never in the public repo
+dashboard/builder/

@@ -57,7 +57,9 @@
     "/game",
     "/game/*",
     "/worldcup",
-    "/worldcup/*"
+    "/worldcup/*",
+    "/builder",
+    "/builder/*"
   ],
   "exclude": []
 }

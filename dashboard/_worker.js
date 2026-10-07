@@ -1297,6 +1297,20 @@ export default {
     useKeyedRpcs([env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL]);
     const url = new URL(request.url);
 
+    // THE BUILDER SHEET (2026-10-07, operator: "on brainonbnb, just not public"): /builder/* only with the
+    // username and password in the Pages secret BUILDER_AUTH ("user:password"); without the secret nobody gets in.
+    // The files are gitignored (never in the public repo or the source mirror), never cached, never indexed.
+    if (url.pathname === '/builder' || url.pathname.startsWith('/builder/')) {
+      const want = env.BUILDER_AUTH ? 'Basic ' + btoa(env.BUILDER_AUTH) : null, got = request.headers.get('authorization') || '';
+      let same = !!want && got.length === want.length;
+      if (same) { let d = 0; for (let i = 0; i < want.length; i++) d |= want.charCodeAt(i) ^ got.charCodeAt(i); same = d === 0; }
+      if (!same) return new Response('Builder sheet: sign in with the username and password you were given.', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="BOBAI builders", charset="UTF-8"', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
+      if (url.pathname === '/builder') return Response.redirect(url.origin + '/builder/', 301);
+      const res = await env.ASSETS.fetch(request), out = new Response(res.body, res);
+      out.headers.set('Cache-Control', 'private, no-store'); out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return out;
+    }
+
     // Count what agents ask us for, so the public transparency block has real
     // numbers instead of a claim. Fire-and-forget via waitUntil: a request must
     // never be slower, or fail, because a counter was unreachable. Nothing

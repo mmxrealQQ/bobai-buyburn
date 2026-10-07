@@ -2584,7 +2584,49 @@ export function formatTaxCard(t, burns = [], nowMs = Date.now()) {
 // add up to it (result = price + fees − gas). Details a reader does not
 // need for the picture — position id, the re-sets' realised loss, what a
 // width nets a day — stay in the record the card links to.
-export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
+// THE RANGE, DRAWN (2026-10-07, operator: "make the DeFi range visual in the
+// TG bot — so one sees how it stands"). Read from the chain at the moment of
+// the answer, not from the agent's last run: the pool's current tick
+// (slot0) and the position's own edges (positions(tokenId) on the V3
+// position manager). token0 is CAKE, token1 WBNB, so a tick is the price of
+// one CAKE in BNB (1.0001^tick). Null when the chain does not answer — the
+// card then shows what it showed before.
+const V3_PM = '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364';
+const int24At = (hex, word) => Number(BigInt.asIntN(256, BigInt('0x' + hex.slice(2 + word * 64, 2 + (word + 1) * 64))));
+async function readTicks(id) {
+  const r = await rpcCall('eth_call', [{ to: V3_PM, data: '0x99fbab88' + BigInt(id).toString(16).padStart(64, '0') }, 'latest']);
+  return r && r.length >= 2 + 64 * 7 ? { lower: int24At(r, 5), upper: int24At(r, 6) } : null;
+}
+export async function readDefiRange(pool) {
+  try {
+    if (!pool || !pool.address || !pool.position) return null;
+    const [s0, main, res] = await Promise.all([rpcCall('eth_call', [{ to: pool.address, data: '0x3850c7bd' }, 'latest']), readTicks(pool.position), pool.reserve_position ? readTicks(pool.reserve_position) : null]);
+    if (!s0 || s0.length < 2 + 128 || !main) return null;
+    return { tick: int24At(s0, 1), main, reserve: res };
+  } catch { return null; }
+}
+// One bar, 16 cells between the edges; the dot is where the price stands
+// (outside the edges when the price left the range). Pure: rendered in
+// tests without the chain.
+export function formatRangeBar(r) {
+  if (!r || !r.main || !(r.main.upper > r.main.lower)) return [];
+  const N = 16, px = (t) => Math.pow(1.0001, t), p = (t) => { const v = px(t); return v.toPrecision(4); };
+  const { lower, upper } = r.main, t = r.tick, at = (t - lower) / (upper - lower);
+  let bar;
+  if (at < 0) bar = '● ┃' + '─'.repeat(N) + '┃';
+  else if (at > 1) bar = '┃' + '─'.repeat(N) + '┃ ●';
+  else { const i = Math.min(N - 1, Math.floor(at * N)); bar = '┃' + '─'.repeat(i) + '●' + '─'.repeat(N - 1 - i) + '┃'; }
+  // the edge prices under the edges (out of range below, the bar starts two places in)
+  const pad = at < 0 ? '  ' : '', lo = p(lower), hi = p(upper), gap = Math.max(1, N + 2 - lo.length - hi.length);
+  const where = at < 0 ? `price ${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
+    : at > 1 ? `price ${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
+    : `price ${Math.round(at * 100)}% up the range`;
+  const lines = [`<pre>${bar}\n${pad}${lo}${' '.repeat(gap)}${hi}</pre>`, `1 CAKE = ${p(t)} BNB · ${where}`];
+  if (r.reserve && r.reserve.upper > r.reserve.lower) lines.push(`Reserve range: ${p(r.reserve.lower)} – ${p(r.reserve.upper)} BNB`);
+  return lines;
+}
+
+export function formatDefiCard(m, { title = 'DeFi Agent', range = null } = {}) {
   if (!m || !m.put_in || !m.pnl) return null;
   const n = (x) => Number(x || 0);
   const bnb = (x) => n(x).toFixed(4) + ' BNB';
@@ -2595,8 +2637,10 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   const h = m.holdings, p = m.pnl, d = m.day || {};
   const arrow = n(p.profit_bnb) > 0 ? '▲' : n(p.profit_bnb) < 0 ? '▼' : '•';
   const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
-  const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ in range' : `⏳ out of range${m.pool.outside_hours != null ? ` for ${m.pool.outside_hours} h` : ''}`;
-  const pool = [m.pool.label || 'the pool', m.pool.width_pct != null ? `±${m.pool.width_pct}%` : '', range].filter(Boolean).join(' · ');
+  // the chain's own answer wins over the agent's last check (that one may be an hour old)
+  const inNow = range && range.main ? range.tick >= range.main.lower && range.tick < range.main.upper : m.pool.in_range;
+  const rangeTxt = inNow == null ? '' : inNow ? '✅ in range' : `⏳ out of range${!range && m.pool.outside_hours != null ? ` for ${m.pool.outside_hours} h` : ''}`;
+  const pool = [m.pool.label || 'the pool', m.pool.width_pct != null ? `±${m.pool.width_pct}%` : '', rangeTxt].filter(Boolean).join(' · ');
   const counts = [];
   if (d.resets) counts.push(`${d.resets} re-set${d.resets === 1 ? '' : 's'}`);
   if (d.top_ups) counts.push(`${d.top_ups} top-up${d.top_ups === 1 ? '' : 's'}`);
@@ -2626,6 +2670,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     ],
     [
       `🥞 ${pool}`,
+      ...formatRangeBar(range),
       ...(h.reserve && h.reserve.bnb > 0 ? [h.reserve.side === 'other' ? `🪜 Reserve range, the price fell through it: ${bnb(h.reserve.bnb)} · waits for the price to come back, then merges` : h.reserve.side === 'both' ? `🪜 Reserve range, the price inside it: ${bnb(h.reserve.bnb)} · earning beside the main range` : `🪜 Reserve below the price: ${bnb(h.reserve.bnb)} · buys on the way down, no trade`] : []),
       h.bobai_units > 0
         ? `🧠 <b>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI</b> held${h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : ''} · bought from fees, never sold`
@@ -2666,7 +2711,7 @@ async function postLpDailyReport(env) {
   // The card is the portfolio model, the same the /defi command and the
   // /defi page show; the checks above only decide that today's run is in it.
   const pm = await fetch('https://agent.brainonbnb.com/lp/portfolio', { cf: { cacheTtl: 30 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-  const text = formatDefiCard(pm);
+  const text = formatDefiCard(pm, { range: pm ? await readDefiRange(pm.pool) : null });
   if (!text) return skip('nothing to say: the portfolio could not be read');
   console.log('[LP REPORT] posting for ' + today);
   // The day is marked done only once Telegram has taken the message; a
@@ -2740,7 +2785,7 @@ async function handleCommand(msg, env) {
       // The DeFi agent as a portfolio — the same card the bot posts at
       // 05:00 UTC, from the same model the /defi page renders.
       const pm = await fetch('https://agent.brainonbnb.com/lp/portfolio', { cf: { cacheTtl: 30 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-      reply = formatDefiCard(pm) || '⚠️ Could not read the DeFi agent\'s record right now. Try again in a moment!';
+      reply = formatDefiCard(pm, { range: pm ? await readDefiRange(pm.pool) : null }) || '⚠️ Could not read the DeFi agent\'s record right now. Try again in a moment!';
       break;
     }
 

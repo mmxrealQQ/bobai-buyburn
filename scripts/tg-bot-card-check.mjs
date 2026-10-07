@@ -64,5 +64,17 @@ ok('/tax: 97% shows nine bars, queued tax in $, the wallet BNB above the gas res
 const tf = formatTaxCard({ queued: null, minDispatch: null, walletBnb: null, price: null, bnbUsd: null }, [], now);
 ok('/tax: a failed read says so (no 0%, no $0)', /could not read the token/.test(tf) && /log did not answer/.test(tf) && !/\b0%|\$0/.test(tf));
 
+// /defi: THE RANGE, DRAWN (2026-10-07, operator: "make the range visual — so one sees how it stands"): the dot inside the
+// bar where the price stands, outside it when the price left the range, the edge prices under the edges
+const rbSrc = cut('export function formatRangeBar', '\n}\n').replace('export ', '') + '\n}';
+const formatRangeBar = new Function(`${rbSrc}\nreturn formatRangeBar;`)();
+const rb = (t) => formatRangeBar({ tick: t, main: { lower: -58100, upper: -56190 } }).join('\n');
+const below = rb(-58130), mid = rb(-57145), above = rb(-56000);
+ok('/defi: the range bar puts the price where it stands — below, inside (halfway), above',
+  /<pre>● ┃─{16}┃\n  0\.002998  0\.003629<\/pre>/.test(below) && /0\.3% below the range/.test(below)
+  && /<pre>┃─{8}●─{7}┃\n0\.002998  0\.003629<\/pre>/.test(mid) && /50% up the range/.test(mid)
+  && /┃─{16}┃ ●/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
+ok('/defi: no range read = no bar (the card stays as it was)', formatRangeBar(null).length === 0 && /formatDefiCard\(pm, \{ range: pm \? await readDefiRange\(pm\.pool\) : null \}\)/.test(tg));
+
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

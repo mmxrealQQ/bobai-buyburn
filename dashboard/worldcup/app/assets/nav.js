@@ -63,8 +63,8 @@
               // "Register" was breaking across two lines in the middle of the
               // word. Written here rather than in ten archived pages, because
               // this one line is what puts the links on all of them.
-              userEl.innerHTML = '<a href="/worldcup/" style="white-space:nowrap">Sign in</a> · '
-                + '<a href="/worldcup/" style="white-space:nowrap">Register</a>';
+              // the game ended 19 Jul 2026: no new accounts; players still sign in to read their own tips (2026-10-07)
+              userEl.innerHTML = '<a href="/worldcup/" style="white-space:nowrap">Sign in</a>';
             }
             // Anonymous visitor: gold-frame the tabs that are actually open to the
             // public (archive pages) so it's obvious they're clickable.

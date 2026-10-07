@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FIFA World Cup 2026 Crypto Tipgame — BOBAI Worldcup '26</title>
-  <meta name="description" content="Free FIFA World Cup 2026 prediction game on BNB Chain. Tip every match score, answer 5 bonus questions, predict BTC/BNB/BOBAI prices. Transparent on-chain BOBAI prize pool, no signup fee, fully verifiable payouts.">
+  <title>BOBAI Worldcup '26 — Archive: results and payouts</title>
+  <meta name="description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
   <meta name="keywords" content="FIFA World Cup 2026 prediction game, World Cup 2026 tipgame, crypto World Cup game, BNB Chain prediction game, free crypto prize pool, BOBAI Worldcup, Brain On BNB AI, on-chain football tipping, World Cup 2026 score prediction, crypto fantasy football">
   <link rel="canonical" href="https://brainonbnb.com/worldcup/">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
   <link rel="apple-touch-icon" href="/logo.png?v=4">
-  <meta property="og:title" content="FIFA World Cup 2026 Crypto Tipgame — BOBAI Worldcup '26">
-  <meta property="og:description" content="Free FIFA World Cup 2026 prediction game on BNB Chain. Predict every match + bonus questions + BTC/BNB/BOBAI prices. Transparent on-chain BOBAI prize pool, no signup fee.">
+  <meta property="og:title" content="BOBAI Worldcup '26 — Archive: results and payouts">
+  <meta property="og:description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
   <meta property="og:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
   <meta property="og:url" content="https://brainonbnb.com/worldcup/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="FIFA World Cup 2026 Crypto Tipgame — BOBAI Worldcup '26">
-  <meta name="twitter:description" content="Free FIFA World Cup 2026 prediction game on BNB Chain. Transparent on-chain BOBAI prize pool, no signup fee.">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Archive: results and payouts">
+  <meta name="twitter:description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
   <meta name="twitter:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
   <meta name="robots" content="index, follow">
   <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=19">
@@ -42,6 +42,25 @@
     .hero-sub{font-size:clamp(15px,2vw,18px);color:var(--muted);line-height:1.6;max-width:560px;margin:0 auto 36px}
 
     .cd-block{margin-bottom:32px}
+    .arch-links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+    .arch-links .btn{width:auto;padding:10px 16px;font-size:14px;text-decoration:none}
+    .arch-pay .sub{text-align:left}
+    .pool-at{font-size:12px;opacity:.7}
+    .arch-pay{text-align:left;margin-bottom:28px}
+    .arch-pay h2{font-family:'Space Grotesk';font-weight:700;font-size:18px;margin-bottom:6px;color:var(--text)}
+    .arch-pay h3{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin:18px 0 8px}
+    .arch-pay .sub a{color:var(--gold)}
+    .arch-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+    .arch-row .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .arch-row .amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .arch-row .amt small{display:block;opacity:.65;font-size:12px}
+    .arch-row .pl{color:var(--muted,#9aa)}
+    .arch-row a{color:var(--gold)}
+    .arch-sum{margin-top:10px;font-size:13px;opacity:.8}
+    .arch-login{margin:0 0 8px;text-align:left}
+    .arch-login > summary{cursor:pointer;color:var(--muted,#9aa);font-size:14px;padding:8px 0;text-align:center}
+    .arch-login[open] > summary{margin-bottom:12px}
+    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) auto} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} }
     .cd-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
 
     /* Live Prize Pool — dezent über Countdown */
@@ -132,35 +151,48 @@
         </aside>
 
         <section class="hero">
-          <a class="pool-block loading" id="pool-block" href="./app/prize-pool.html" title="See full prize-pool breakdown">
-            <div class="pool-title"><span class="dot"></span><span>🏆 Live Prize Pool</span></div>
+          <a class="pool-block loading" id="pool-block" href="./app/prize-pool.html" title="The prize pool, pot by pot, with the receipts">
+            <div class="pool-title"><span>🏆 Prize pool · paid out</span></div>
             <div class="pool-values">
               <div class="pool-bobai"><span id="pool-bobai">—</span><span class="unit">BOBAI</span></div>
-              <div class="pool-usd">·  ≈ <span id="pool-usd">$—</span></div>
+              <div class="pool-usd">·  ≈ <span id="pool-usd">$—</span> <span class="pool-at">at payout</span></div>
             </div>
-            <div class="pool-fund" id="pool-fund">Donations + <b>0.52% BOBAI tax auto-flow</b> from Jun 11 → Jul 19</div>
+            <div class="pool-fund" id="pool-fund">Donations + <b>0.52% of every BOBAI trade</b>, Jun 11 → Jul 19, 2026 · paid out Jun 28 (groups) and Jul 20 (final)</div>
           </a>
 
           <h1 class="hero-h1"><span class="accent">BOBAI</span><br><span class="accent">Worldcup '26</span></h1>
-          <p class="hero-sub">The on-chain tipping game for World Cup 2026. Predict every match, climb the leaderboard and win from a transparent BOBAI prize pool. No middleman. No paperwork. Just call your shots.</p>
+          <p class="hero-sub">The on-chain tipping game of the World Cup 2026 ran from 11 June to 19 July 2026: every match tipped, a leaderboard, and a BOBAI prize pool paid out on BNB Chain. This is its archive — how it ended and every payout.</p>
 
-          <div class="cd-block">
-            <div class="cd-title">🏆 Final Kickoff in</div>
-            <div class="countdown" id="cd-kickoff" aria-live="polite">
-              <div class="cd-cell"><div class="cd-num" id="k-d">--</div><div class="cd-lbl">Days</div></div>
-              <div class="cd-cell"><div class="cd-num" id="k-h">--</div><div class="cd-lbl">Hours</div></div>
-              <div class="cd-cell"><div class="cd-num" id="k-m">--</div><div class="cd-lbl">Minutes</div></div>
-              <div class="cd-cell"><div class="cd-num" id="k-s">--</div><div class="cd-lbl">Seconds</div></div>
+          <div class="cd-block arch">
+            <div class="cd-title">🏁 Ended 19 July 2026 · final standings</div>
+            <div class="countdown arch-stats" id="arch-stats">
+              <div class="cd-cell"><div class="cd-num" id="a-players">—</div><div class="cd-lbl">Players</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-tips">—</div><div class="cd-lbl">Match tips</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-payouts">—</div><div class="cd-lbl">Payouts</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-winners">—</div><div class="cd-lbl">Winners</div></div>
+            </div>
+            <div class="arch-links">
+              <a class="btn" href="./app/leaderboard.html">📊 Final leaderboard</a>
+              <a class="btn ghost" href="./app/prize-pool.html">💰 Prize pool &amp; receipts</a>
+              <a class="btn ghost" href="./app/rules.html">📖 Rules it ran by</a>
             </div>
           </div>
 
+          <section class="card arch-pay" id="arch-pay" aria-labelledby="arch-pay-h">
+            <h2 id="arch-pay-h">Every payout</h2>
+            <p class="sub">Sent from the public prize wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105#tokentxns" rel="noopener" target="_blank">0x5E41…D105</a>. End pool and crypto winners hold single public places, so their transactions are linked. The group pot was sent in shuffled order and is shown without per-row links, so a wallet cannot be matched to a group place (rules §9).</p>
+            <div id="arch-list" class="arch-list"><p class="sub">Reading the payouts…</p></div>
+          </section>
+
+          <details class="arch-login">
+            <summary>Players: sign in to see your own tips and points</summary>
           <div class="card auth-card" id="auth">
-            <h2>Sign in or create your account</h2>
-            <p class="sub">Pick a username, lock in your tips, climb the leaderboard.</p>
+            <h2>Sign in</h2>
+            <p class="sub">The game is over; your tips, points and payout stay readable in your account.</p>
 
             <div class="tabs">
               <button class="tab active" data-tab="login">Sign in</button>
-              <button class="tab" data-tab="register">Register</button>
+              <button class="tab" data-tab="register" hidden>Register</button>
             </div>
 
             <div id="alert"></div>
@@ -225,22 +257,23 @@
               </p>
             </form>
           </div>
+          </details>
 
           <div class="features">
             <div class="feat">
               <span class="feat-icon">🏆</span>
               <div class="feat-title">104 Matches</div>
-              <div class="feat-text">48 teams, 12 groups, full knockout bracket. Score every game.</div>
+              <div class="feat-text">48 teams, 12 groups, the full knockout bracket — every game was tipped.</div>
             </div>
             <div class="feat">
               <span class="feat-icon">💰</span>
               <div class="feat-title">On-Chain Pool</div>
-              <div class="feat-text">26% of BOBAI creator tax flows into a public prize wallet.</div>
+              <div class="feat-text">0.52% of every BOBAI trade flowed into a public prize wallet from Jun 11 to Jul 19.</div>
             </div>
             <div class="feat">
               <span class="feat-icon">🔍</span>
               <div class="feat-title">Fully Transparent</div>
-              <div class="feat-text">Pool balance, leaderboard and payouts — all auditable on BSC.</div>
+              <div class="feat-text">Leaderboard and payouts stay public — every transfer is on BSC.</div>
             </div>
           </div>
         </section>
@@ -252,7 +285,7 @@
     </main>
 
     <footer>
-      A <a href="/">Brain On BNB AI</a> (BOBAI) feature · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> · Kickoff 11 June 2026
+      A <a href="/">Brain On BNB AI</a> (BOBAI) feature · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> · 11 June – 19 July 2026 · archive
     </footer>
   </div>
 
@@ -294,7 +327,7 @@
   <script src="/worldcup/app/assets/config.js?v=11"></script>
   <script src="/worldcup/app/assets/countries.js?v=11"></script>
   <script src="/worldcup/app/assets/auth.js?v=13"></script>
-  <script src="/worldcup/app/assets/nav.js?v=6"></script>
+  <script src="/worldcup/app/assets/nav.js?v=7"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="/worldcup/app/assets/twemojify.js?v=1"></script>
   <script>
@@ -307,7 +340,7 @@
         if (!userEl) return false;
         const links = userEl.querySelectorAll('a[href="/worldcup/"]');
         if (!links.length) return false;
-        links.forEach(a => { a.setAttribute('href', '#auth'); });
+        links.forEach(a => { a.setAttribute('href', '#auth'); a.addEventListener('click', () => { const d = document.querySelector('details.arch-login'); if (d) d.open = true; }); });
         return true;
       };
       if (tryFix()) return;
@@ -319,28 +352,11 @@
     })();
   </script>
   <script>
-    /* Countdown */
-    const KICKOFF = new Date('2026-07-19T19:00:00Z').getTime();
+    /* THE ARCHIVE (2026-10-07): the game ended on 19 Jul 2026. The figures are what was sent (wc_payouts, the
+       receipts the payout tool wrote) and the dollars they were worth when they were sent (usd_at_payout) — no
+       live price feed. Group-pot rows carry no transaction link (shuffled order, rules §9: a link would tie a
+       wallet to a group place); end-pool and crypto winners hold single public places and are linked. */
     function $(id){ return document.getElementById(id); }
-    function renderCountdown(){
-      const diff = KICKOFF - Date.now();
-      if(diff <= 0){
-        $('k-d').textContent = $('k-h').textContent = $('k-m').textContent = $('k-s').textContent = '00';
-        return;
-      }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      $('k-d').textContent = String(d).padStart(2,'0');
-      $('k-h').textContent = String(h).padStart(2,'0');
-      $('k-m').textContent = String(m).padStart(2,'0');
-      $('k-s').textContent = String(s).padStart(2,'0');
-    }
-    renderCountdown();
-    setInterval(renderCountdown, 1000);
-
-    /* Live prize-pool ticker — public anon read on wc_pool */
     function fmtBobai(n){
       if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
       if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
@@ -351,38 +367,65 @@
       if (n >= 1000) return '$'+Math.round(n).toLocaleString('en-US');
       return '$'+n.toFixed(2);
     }
-    // wc_pool is a frozen WC26 archive snapshot — the BOBAI amount never changes,
-    // but the USD equivalent keeps tracking the live GeckoTerminal price (the
-    // stored snapshot price is only the fallback when the feed is down).
-    let livePx = 0;
-    async function fetchLivePx(){
-      try {
-        const r = await fetch('https://api.geckoterminal.com/api/v2/networks/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6');
-        const j = await r.json();
-        const v = parseFloat(j?.data?.attributes?.base_token_price_usd) || 0;
-        if (v > 0) livePx = v;
-      } catch (_) {/* keep last good value */}
-      return livePx;
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    const flag = (cc) => { cc = String(cc || '').toUpperCase(); return /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((c) => 0x1F1A5 + c.charCodeAt(0))) + ' ' : ''; };
+    const PLACE = { end_1: '1st overall', end_2: '2nd overall', end_3: '3rd overall', end_4: '4th overall' };
+    function placeOf(r){
+      if (r.pot === 'end') return PLACE[r.position] || r.position;
+      if (r.pot === 'crypto') return 'Closest ' + String(r.position || '').replace(/^crypto_/, '').toUpperCase() + ' price';
+      const g = r.group_letter ? 'Group ' + r.group_letter + ' · ' : '';
+      const p = String(r.position || '');
+      return g + (/1/.test(p) ? 'winner' : /2/.test(p) ? 'runner-up' : /3/.test(p) ? 'best 3rd' : p);
     }
-    async function loadPool(){
+    function row(r, link){
+      const amt = Number(r.bobai_amount) || 0, usd = Number(r.usd_at_payout) || 0;
+      const paid = amt > 0 && r.tx_hash;
+      const right = amt > 0
+        ? fmtBobai(amt) + ' BOBAI' + (usd > 0 ? '<small>≈ ' + fmtUsd(usd) + ' at payout</small>' : '') + (link && paid ? '<small><a href="https://bscscan.com/tx/' + esc(r.tx_hash) + '" target="_blank" rel="noopener">transaction ↗</a></small>' : paid ? '<small>✓ paid</small>' : '')
+        : '<small>26× cap not reached — its share went to the others</small>';
+      return '<div class="arch-row"><div class="who">' + flag(r.country_code) + esc(r.username || '—') + '</div><div class="pl">' + esc(placeOf(r)) + '</div><div class="amt">' + right + '</div></div>';
+    }
+    async function rest(path, extra){
+      const cfg = window.WC_CONFIG;
+      return fetch(cfg.SUPABASE_URL + '/rest/v1/' + path, { headers: Object.assign({ apikey: cfg.SUPABASE_ANON_KEY, Accept: 'application/json' }, extra || {}) });
+    }
+    async function loadArchive(){
       try {
-        const cfg = window.WC_CONFIG;
-        const url = `${cfg.SUPABASE_URL}/rest/v1/wc_pool?id=eq.1&select=total_bobai,bobai_price_usd`;
-        const res = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Accept: 'application/json' } });
-        if (!res.ok) return;
+        const res = await rest('wc_payouts?select=pot,group_letter,position,username,country_code,bobai_amount,usd_at_payout,tx_hash,paid_at&order=pot.asc,group_letter.asc,position.asc');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const rows = await res.json();
-        const p = Array.isArray(rows) ? rows[0] : null;
-        if (!p) return;
-        const total = parseFloat(p.total_bobai) || 0;
-        const live = await fetchLivePx();
-        const price = live > 0 ? live : (parseFloat(p.bobai_price_usd) || 0);
+        const sent = rows.filter((r) => Number(r.bobai_amount) > 0 && r.tx_hash);
+        const total = sent.reduce((a, r) => a + Number(r.bobai_amount), 0), usd = sent.reduce((a, r) => a + (Number(r.usd_at_payout) || 0), 0);
         $('pool-bobai').textContent = fmtBobai(total);
-        $('pool-usd').textContent = price > 0 ? fmtUsd(total * price) : 'n/a';
-        document.getElementById('pool-block').classList.remove('loading');
-      } catch (_) {/* silent — block stays hidden in loading state */}
+        $('pool-usd').textContent = usd > 0 ? fmtUsd(usd) : 'n/a';
+        $('pool-block').classList.remove('loading');
+        $('a-payouts').textContent = sent.length;
+        $('a-winners').textContent = new Set(sent.map((r) => r.username)).size;
+        const by = (p) => rows.filter((r) => r.pot === p);
+        const end = by('end').sort((a, b) => String(a.position).localeCompare(String(b.position)));
+        const crypto = by('crypto'), group = rows.filter((r) => r.pot !== 'end' && r.pot !== 'crypto');
+        const sum = (list) => { const s = list.filter((r) => Number(r.bobai_amount) > 0 && r.tx_hash); return s.length ? '<div class="arch-sum">' + s.length + ' payouts · ' + fmtBobai(s.reduce((a, r) => a + Number(r.bobai_amount), 0)) + ' BOBAI</div>' : ''; };
+        let html = '';
+        if (end.length) html += '<h3>End pool · top 4 overall · paid 20 Jul 2026</h3>' + end.map((r) => row(r, true)).join('') + sum(end);
+        if (crypto.length) html += '<h3>Crypto pots · closest price at the Final kickoff</h3>' + crypto.map((r) => row(r, true)).join('') + sum(crypto);
+        if (group.length) html += '<h3>Group pot · paid 28 Jun 2026, in shuffled order</h3>' + group.map((r) => row(r, false)).join('') + sum(group);
+        $('arch-list').innerHTML = html || '<p class="sub">No payout on record.</p>';
+        if (window.twemoji) twemoji.parse($('arch-list'));
+      } catch (e) {
+        $('arch-list').innerHTML = '<p class="sub">The payouts could not be read right now — the full record is on the <a href="./app/prize-pool.html">prize-pool page</a>.</p>';
+      }
+      try {
+        const r = await rest('wc_users?select=id', { Prefer: 'count=exact', Range: '0-0' });
+        const m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
+        if (m) $('a-players').textContent = m[1];
+        const t = await rest('wc_tips?select=id', { Prefer: 'count=exact', Range: '0-0' });
+        const n = /\/(\d+)$/.exec(t.headers.get('content-range') || '');
+        if (n) $('a-tips').textContent = Number(n[1]).toLocaleString('en-US');
+      } catch (_) { /* the cells keep their dash */ }
     }
-    loadPool();
-    setInterval(loadPool, 30000);
+    loadArchive();
+    /* the sign-in card sits folded in the archive: a link to #auth opens it */
+    if (location.hash === '#auth') { const d = document.querySelector('details.arch-login'); if (d) d.open = true; }
 
     /* Auth form (mirrors /worldcup/app/index.html) */
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1801,
-   "zipBytes": 25855,
-   "txtBytes": 79552,
-   "sha256": "c41abef01b35de0d",
+   "lines": 1809,
+   "zipBytes": 25998,
+   "txtBytes": 79989,
+   "sha256": "522cdcd75d11ad66",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5241,
-   "zipBytes": 87044,
-   "txtBytes": 258281,
-   "sha256": "dd0734c06a8b039b",
+   "lines": 5239,
+   "zipBytes": 86857,
+   "txtBytes": 257967,
+   "sha256": "897cc34f4a9e179c",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2543,
-   "zipBytes": 70843,
-   "txtBytes": 203680,
-   "sha256": "8bfd037d60518102",
+   "lines": 2546,
+   "zipBytes": 70940,
+   "txtBytes": 203909,
+   "sha256": "0d3cd29b1fb36573",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

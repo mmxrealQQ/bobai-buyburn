@@ -2645,11 +2645,9 @@ export function formatRangeBar(r) {
   const where = at < 0 ? `${((1 - px(t - lower)) * 100).toFixed(1)}% below the range`
     : at > 1 ? `${((px(t - upper) - 1) * 100).toFixed(1)}% above the range`
     : `${Math.round(at * 100)}% up the range`;
-  // the edge prices under the bar's two | (operator: "under the |, but not on a new line"): Telegram's text is not
-  // monospaced, so the gap is measured in a browser (Arial, Segoe UI; checked as a picture), not counted: ▱ is a full
-  // em, a price ~64 px, a space ~4.4 px — 28 spaces under a bar of 16 ▱, 27 when the ● inside (narrower than a ▱)
-  // shortens it; "● " before the bar (price below) moves the line in by 3
-  const lines = [bar, `${at < 0 ? ' '.repeat(3) : ''}${p(lower)}${' '.repeat(at >= 0 && at <= 1 ? 27 : 28)}${p(upper)}`, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
+  // the edge prices under the bar as "lower   -   upper" (operator, 2026-10-08: the 27-space gap wrapped onto two
+  // lines on a small iPhone — "number, 3 spaces, -, 3 spaces, number")
+  const lines = [bar, `${p(lower)}   -   ${p(upper)}`, `1 CAKE = <b>${p(t)}</b> BNB · ${where}`];
   if (r.reserve && r.reserve.upper > r.reserve.lower) lines.push(`Reserve range: ${p(r.reserve.lower)} – ${p(r.reserve.upper)} BNB`);
   return lines;
 }

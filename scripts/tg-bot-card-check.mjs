@@ -74,9 +74,10 @@ const below = rb(-58130), mid = rb(-57145), above = rb(-56000);
 // 20 cells of ▰/▱ filled up to the price, ⚫ outside the bar when the price left it, no <pre> and no box-drawing glyphs
 // third pass ("the prices under the bar, | the rectangles | and the dot inside or outside"): |▱●▱| over the line, the
 // dot inside where the price stands or outside the bar's edge, "lower ↔ upper BNB" under it
-ok('/defi: the bar — the dot inside where the price stands, outside when it left — and the edge prices under its two | (27 spaces under a bar with the dot inside, 28 otherwise, 3 in front when the dot stands before the bar)',
-  /^● \|▱{16}\|\n {3}0\.002998 {28}0\.003629\n1 CAKE = /.test(below) && /0\.3% below the range/.test(below)
-  && /^\|▱{8}●▱{7}\|\n0\.002998 {27}0\.003629\n/.test(mid) && /50% up the range/.test(mid)
+// fourth pass (2026-10-08, "the two prices wrap on a small iPhone"): "lower   -   upper", 3 spaces either side
+ok('/defi: the bar — the dot inside where the price stands, outside when it left — and the edge prices under it as "lower   -   upper" (3 spaces each side, short enough for a small phone)',
+  /^● \|▱{16}\|\n0\.002998 {3}- {3}0\.003629\n1 CAKE = /.test(below) && /0\.3% below the range/.test(below)
+  && /^\|▱{8}●▱{7}\|\n0\.002998 {3}- {3}0\.003629\n/.test(mid) && /50% up the range/.test(mid)
   && /^\|▱{16}\| ●\n/.test(above) && /above the range/.test(above), below.split('\n')[0] + ' | ' + mid.split('\n')[0] + ' | ' + above.split('\n')[0]);
 ok('/defi: plain text — no <pre>, no box-drawing glyphs (┃ ─) that Telegram drew differently per device; the edges stay inside the bar',
   ![below, mid, above].some((x) => /<pre>|[┃─]/.test(x)) && rb(-58100).split('\n')[0] === '|●' + '▱'.repeat(15) + '|' && rb(-56191).split('\n')[0] === '|' + '▱'.repeat(15) + '●|');

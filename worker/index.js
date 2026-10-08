@@ -264,6 +264,14 @@ function minOutFor(quotedOut, tokenAddress) {
   return (((quotedOut * (10000n - tax)) / 10000n) * 95n) / 100n;
 }
 
+// The wallet always holds 808.41 $BOBAI (operator, 2026-10-08): the burn and
+// the liquidity add spend only what is above it. $BOB keeps nothing.
+const KEEP_TOKENS = { [BOBAI_TOKEN.toLowerCase()]: parseEther('808.41') };
+function spendable(balance, tokenAddress) {
+  const keep = KEEP_TOKENS[String(tokenAddress).toLowerCase()] || 0n;
+  return balance > keep ? balance - keep : 0n;
+}
+
 async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
   const path = [WBNB, tokenAddress];
 
@@ -303,12 +311,12 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
   }
 
   // Check token balance
-  const tokenBalance = await publicClient.readContract({
+  const tokenBalance = spendable(await publicClient.readContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [account.address],
-  });
+  }), tokenAddress);
 
   if (tokenBalance === 0n) {
     console.log(`  No ${tokenName} to burn.`);
@@ -414,12 +422,12 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
   }
 
   // Step 2: Check token balance
-  const tokenBalance = await publicClient.readContract({
+  const tokenBalance = spendable(await publicClient.readContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [account.address],
-  });
+  }), tokenAddress);
 
   if (tokenBalance === 0n) {
     console.log(`  No ${tokenName} received.`);

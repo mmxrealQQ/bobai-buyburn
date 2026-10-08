@@ -304,6 +304,7 @@ async function getNftDrop() {
 // charging the next buyback, the NFT-mint ledger (= immutable log of every
 // $100+ buy with wallet + tx), and burn momentum. Descriptive, not a rec.
 const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+const BUYBACK_KEEPS_BOBAI = 808.41;
 async function getSmartMoney() {
   const [price, nft, activity, reserve, taxQueuedRaw, whales] = await Promise.all([
     getPrice().catch(() => null),
@@ -329,7 +330,9 @@ async function getSmartMoney() {
     tx: d.tx ? 'https://bscscan.com/tx/' + d.tx : null,
   });
   const reserveBnb = reserve ? parseFloat(reserve.bnb) : null;
-  const reserveBobai = reserve ? parseInt(reserve.bobai, 10) : null;
+  // The buyback wallet always keeps 808.41 $BOBAI (worker/index.js KEEP_TOKENS,
+  // 2026-10-08); only what is above it is waiting to be burned.
+  const reserveBobai = reserve ? Math.max(0, Math.floor(parseInt(reserve.bobai, 10) - BUYBACK_KEEPS_BOBAI)) : null;
   const taxQueuedBobai = taxQueuedRaw !== null ? Number(taxQueuedRaw / BigInt(1e18)) : null;
   const reserveUsd = (reserve && price)
     ? Math.round((reserveBnb * price.bnb_usd + (reserveBobai + (taxQueuedBobai || 0)) * price.price_usd) * 100) / 100

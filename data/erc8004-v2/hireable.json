@@ -106,18 +106,6 @@
       "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
     },
     {
-      "id": 269224,
-      "label": "Grid Trader",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 341554,
       "label": "Lattice",
       "category": "grid-trading",
@@ -130,8 +118,20 @@
       "ours": false
     },
     {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 340527,
       "label": "Hevo Grid",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 269224,
+      "label": "Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
@@ -185,14 +185,14 @@
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
     },
     {
-      "id": 340456,
-      "label": "LingoAI Yield Optimiser",
+      "id": 341555,
+      "label": "Sluicegate",
       "category": "yield-optimization",
       "ours": false
     },
     {
-      "id": 341555,
-      "label": "Sluicegate",
+      "id": 340456,
+      "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
       "ours": false
     },
@@ -295,8 +295,8 @@
       "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
     },
     {
-      "id": 269228,
-      "label": "Health Factor Monitor",
+      "id": 341556,
+      "label": "Keel",
       "category": "health-factor",
       "ours": false
     },
@@ -307,26 +307,26 @@
       "ours": false
     },
     {
-      "id": 341556,
-      "label": "Keel",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
       "id": 266933,
       "label": "BNB Lending Guardian",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 270183,
-      "label": "AgentCensus Health Factor Monitor",
+      "id": 269228,
+      "label": "Health Factor Monitor",
       "category": "health-factor",
       "ours": false
     },
     {
       "id": 341565,
       "label": "marketplace-operated-loan-health-check",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
       "category": "health-factor",
       "ours": false
     },

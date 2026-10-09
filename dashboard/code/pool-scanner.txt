@@ -3410,7 +3410,7 @@ export async function scan(input, env) {
        was copied here at first, which put anchor links like #tokenomics on a
        page that has no such sections — they simply jumped nowhere. -->
   <nav><div class="nav">
-    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/scanner">BOBAI Pool Scanner</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>

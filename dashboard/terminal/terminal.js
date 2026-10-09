@@ -507,7 +507,7 @@ function applyPhase() {
     d.el.querySelector('.pc').textContent = d.pct + '%';
   }
   const end = isFinite(p.end) ? new Date(p.end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
-  $('phase').textContent = 'The 3% split in force' + (end ? ' until ' + end : '') + ' — the same table as the homepage.';
+  $('phase').textContent = 'The 3% split in force' + (end ? ' until ' + end : '') + ' — the same split as in window 02, Tokenomics.';
   buildStreams();
 }
 
@@ -2006,7 +2006,7 @@ function dayActs() {
 // market's line). Each names only its own move, or none, so the clip that plays is the one the words describe.
 const MOVE_LINES = {
   saber: ['May the pump be with you.', 'Saber out. For the burns!', 'En garde, bears. The saber stays with me.', 'A Jedi never sells. He burns.', 'Lightsaber check: fully charged, like my next buyback.'],
-  moon: ['wen moon? Soon. Probably.', 'Moon check: still there. Still waiting for us.', 'Looking at the moon. Measuring the distance.', 'One day, moon. One burn at a time.', 'The moon called. I said: after the next buyback.'],
+  moon: ['wen moon? I count burns, not days.', 'Moon check: still there. Still waiting for us.', 'Looking at the moon. Measuring the distance.', 'One day, moon. One burn at a time.', 'The moon called. I said: after the next buyback.'],
   coffee: ['Coffee break. The bots keep working.', 'Coffee first. Charts second.', 'This coffee is stronger than paper hands.', 'A sip of coffee, a look at the pool. Perfect.', 'Coffee number three today. Building is thirsty work.'],
   hodl: ['Diamond hands. Always.', 'Holding. It is what I do best.', 'Diamond hands, zero regrets.', 'Hold tight. Hodl tighter.', 'These hands do not sell. They only burn.'],
   cheer: ['Thanks for watching me work.', 'You are here! Best part of my day.', 'Cheers to every holder out there.', 'Hooray for the builders!', 'A cheer for the community. You keep this brain going.'],
@@ -2038,7 +2038,7 @@ const ACTS_MORE = {
 const ACTS = {
   flat: [['dance', 'Quiet chain. I dance anyway.'], ['dance', 'Low volume, high spirits.'], ['coffee', 'No trades for a bit. I am not bored, I am patient.'], ['laugh', 'Sideways again. The chart is doing a plank.'], ['walk', 'A little walk around my pool. All locked, all good.'], ['coffee', 'Sideways. Coffee first, then the chart.'], ['pushups', 'Sideways market? Push-ups. Strong hands.'], ['think', () => { const w = chartWords(); return w ? `Checking my chart. Again. ${w.s} in 24 hours.` : 'Checking the chart. Again. Still sideways.'; }], ['moon', 'wen moon?'], ['defi', 'Tuning the DeFi agent while nobody is looking.'], ['saber', 'Guarding the pool. The LP stays burned.'], ['giggle', () => GIGGLE_OPEN() ? 'A coin for Giggle Academy. Every trade adds one until November 20.' : 'A coin for Giggle Academy. The pot went to the kids on November 20.']],
   up: [['dance', 'Green candles make me dance.'], ['bull', 'Up only today. Saddle up.'], ['saber', 'May the pump be with you.'], ['cheer', 'Green candles. I like green candles.'], ['moon', 'Is this the moon? Asking for a friend.'], ['coffee', 'Green morning. The coffee tastes better.'], ['pushups', 'Pumping. My arms too.'], ['walk', 'Victory lap around my pool.'], ['laugh', 'Green day. Even my jokes land.'], ['giggle', 'Up? I knew it. I did not know it.']],
-  pump: [['bull', 'Hold on tight. This bull is running.'], ['saber', 'May the pump be with you. Always.'], ['cheer', 'This is what 3% on every trade feels like.'], ['dance', 'Pump dance. Nobody can stop me.'], ['moon', 'Wen moon? Maybe today.'], ['giggle', () => GIGGLE_OPEN() ? 'Up we go. A coin for Giggle Academy too.' : 'Up we go. Giggle Academy got its pot on November 20.']],
+  pump: [['bull', 'Hold on tight. This bull is running.'], ['saber', 'May the pump be with you. Always.'], ['cheer', 'This is what 3% on every trade feels like.'], ['dance', 'Pump dance. Nobody can stop me.'], ['moon', 'Wen moon? No dates. Just burns.'], ['giggle', () => GIGGLE_OPEN() ? 'Up we go. A coin for Giggle Academy too.' : 'Up we go. Giggle Academy got its pot on November 20.']],
   down: [['hodl', 'Red candles. Diamond hands.'], ['burn', 'Price down, burns on. Every sell still feeds me.'], ['think', 'Zoom out. Then zoom out again.'], ['shrug', 'Down day. The bots do not take days off.'], ['pushups', 'Red candles, more push-ups.'], ['coffee', 'Red day. Coffee, then back to work.'], ['walk', 'Walking it off. The bots keep burning.'], ['dance', 'Red day. I dance to keep warm.'], ['saber', 'Bears at the gate. The LP is burned, so good luck.']],
   dump: [['hodl', 'Nobody panics in here. We burn.'], ['coffee', 'Big red. Big coffee. Same plan.'], ['shrug', 'Sells pay 3% too. I keep working.'], ['pushups', 'Big red. Bigger push-ups.'], ['burn', 'Dumps pay 3% too. More for me to burn.'], ['walk', 'A calm walk. The plan does not change.'], ['saber', 'Big dump? Big deal. The pool is locked and I am armed.'], ['laugh', 'Someone sold. Their 3% says thank you.']],
 };
@@ -2440,15 +2440,15 @@ const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
   help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
-    say([[nf(S.deadA || 0) + ' BOBAI'], ` burned in total (${supplyPct(S.deadA || 0)}% of supply, ≈$${nf((S.deadA || 0) * S.price)}). This week the bot burned `, [nf(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'], ` and ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} BOB.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
+    say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], ` and ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} BOB.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
   next: () => { setFocus('core'); const left = W.buyback.last ? W.buyback.last + 600e3 - Date.now() : 0;
     const sb = splitBnb(); void left;
-    say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${nf(S.queued)} BOBAI tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [cmp(MIN_DISPATCH) + ' BOBAI'], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.`]); },
+    say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.`]); },
   liq: () => { setFocus('liq'); const b = boost3();
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) return say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
-    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${cmp(S.lp?.flow?.out?.bobai_units || 0)} BOBAI bought with half of them.`], [], D.defi.c); },
+    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
@@ -2458,6 +2458,113 @@ const CMDS = {
 CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
 CMDS.trace = CMDS.follow;
 CMDS.burn = CMDS.burns; CMDS.buyback = CMDS.next; CMDS.pot = CMDS.giggle; CMDS.liquidity = CMDS.liq; CMDS.agent = CMDS.defi;
+CMDS.safe = () => { setFocus('src');
+  say([vary('ask-safe', ['Fair question. Here is what the chain says: ', 'Never trust, verify. On-chain: ', 'I would ask too. The facts: ', 'Do not take my word for it. The chain: ', 'Good instinct. What anyone can check: ']),
+    ['ownership renounced'], ', no mint, ', [lpText()], ' of the pool LP burned at the dead address, so nobody can pull it. Now I buy and sell $250 of myself on paper:']);
+  check(BOBAI); };
+CMDS.today = () => { const b = awayBits(Date.now() - 86400e3);
+  say([vary('ask-today', ['The last 24 hours on my chain: ', 'Today so far, the last 24 h: ', 'What you missed in 24 hours: ', 'Here is the day: ', 'The last day, from the record: ']),
+    [b || 'quiet, no burn run and hardly a trade'], '.']); };
+CMDS.why = () => { const c = chartWords(), f = LIFE.flow || {}, now = Date.now();
+  const big = S.hist.filter(x => !x.ours && !x.taxSwap && x.t >= now - 3600e3).sort((a, b) => b.usd - a.usd)[0];
+  const runs = S.burns.filter(e => Date.parse(e.time) >= now - 86400e3).length, bits = [];
+  if (c) bits.push(`${c.s} in 24 hours over ${nf(c.n)} trades`);
+  if (f.b || f.s) bits.push(`this hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} for $${nf(f.bu || 0)} against ${nf(f.s)} sell${f.s === 1 ? '' : 's'} for $${nf(f.su || 0)}`);
+  if (big && big.usd >= 50) bits.push(`the largest trade this hour was a ${big.buy ? 'buy' : 'sell'} of $${nf(big.usd)}`);
+  bits.push(runs ? `the burns kept going: ${runs} run${runs > 1 ? 's' : ''} in 24 hours` : 'no burn run in 24 hours yet');
+  say([vary('ask-why', ['No forecasts from me, only the record: ', 'Here is what moved it: ', 'The chain, not an opinion: ', 'What the trades say: ', 'Facts only: ']), [bits.join('; ')], '. In a thin pool one trade can move the price.']); };
+CMDS.holders = async () => { setFocus('src');
+  try {
+    const j = await getJSON(`${SITE}/api/smart-money`, 12000), h = j?.whale_flows?.holdings; if (!h) throw new Error('no holdings');
+    const w = h.change_7d || {}, d = h.change_1d || {}, sg = v => (v >= 0 ? '+' : '') + v;
+    say([vary('ask-holders', ['My watcher reads every transfer of wallets with 5M+ BOBAI: ', 'The big wallets, read from the chain: ', 'The big holders, on-chain: ', 'Who holds the most: ', 'The 5M+ club: ']),
+      [`${nf(h.wallets_tracked)} wallets hold ${h.percent_of_total_supply}% of supply`],
+      `. 24 h ${d.percent_change != null ? sg(d.percent_change) + '%' : '?'}, 7 days ${w.percent_change != null ? sg(w.percent_change) + '%' : '?'}${w.bobai_change != null ? ` (${w.bobai_change >= 0 ? '+' : '−'}${bobaiAmt(Math.abs(w.bobai_change))})` : ''}. A total holder count would come from a third party, so I do not show one.`]);
+  } catch { say(['The whale watcher did not answer just now — ask again in a minute.']); } };
+CMDS.whales = CMDS.holders;
+CMDS.moon = () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
+  say([vary('ask-moon', ['No dates from me. What I can show: ', 'Moon? I count burns, not days. ', 'I do not do price promises. I do this: ', 'Wen? Nobody knows. What is certain: ', 'No moon talk, just the record: ']),
+    [bobaiAmt(wk)], ' burned this week, ', [lpText()], ' of the LP burned. 3% of every trade keeps working.']); };
+CMDS.who = () => say([vary('ask-who', ['I am BOBAI, the brain on BNB Chain. ', 'BOBAI. A brain that lives on BNB Chain. ', 'Hi, I am BOBAI. ', 'The name is BOBAI, and this is my chain. ', 'I am BOBAI — the token, awake. ']),
+  `Every trade pays 3% tax: it buys back and burns, adds liquidity and burns the LP, and funds a DeFi agent${GIGGLE_OPEN() ? ' and, until Nov 20, Giggle Academy' : ''}. Ownership renounced. Everything I tell you is read from the chain.`]);
+CMDS.hi = () => say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
+CMDS.thanks = () => say([vary('ask-thanks', ['Anytime.', 'You are welcome. I am always here.', 'My pleasure. Back to work.', 'Thank YOU for being here.', 'Glad to help. The chain never sleeps, and neither do I.'])]);
+CMDS.joke = () => { say([vary('ask-joke', ['One joke, coming up.', 'Okay, okay. Listen.', 'You asked for it.', 'A joke? I have one.', 'Hold on, this one is good.'])]); jokeTap(); };
+CMDS.tax = () => say([vary('ask-tax', ['The tax, as the contract has it: ', 'Every buy and every sell: ', 'Simple: ', 'Here is where the tax goes: ', 'The split: ']),
+  ['3% on every trade'], ': buyback and burn, liquidity with the LP burned, and the DeFi agent and pots. The token swaps it to BNB once ', [bobaiAmt(MIN_DISPATCH)], ' are collected; the bot splits it within 10 minutes. Type ', ['next'], ' for the charge.']);
+CMDS.mood = () => say([moodLine()]);
+CMDS.ca = () => say([vary('ask-ca', ['The one and only contract: ', 'Here it is: ', 'BOBAI on BNB Chain: ', 'Copy it from here, never from a DM: ', 'The contract address: ']), [BOBAI],
+  '. Ownership renounced. Paste any other token address here and I check it for you.']);
+CMDS.nft = () => { const n = S.nft; if (!n) return say(['Still reading the NFT drops — ask again in a few seconds.']);
+  const m = (n.minted || []).reduce((a, b) => a + b, 0), cap = (n.cap || []).reduce((a, b) => a + b, 0) || 1925, d = n.drops?.[0];
+  say([vary('ask-nft', ['The Buy NFTs: ', 'My NFT collection: ', 'NFTs, earned not minted: ', 'The drops so far: ', 'The collection: ']),
+    [`${nf(m)} of ${nf(cap)} dropped`], ` to ${nf(n.holders || 0)} holders. A buy big enough earns one, automatically.${d ? ` Latest: #${d.tokenId} for a $${nf(d.usd || 0)} buy.` : ''}`]); };
+CMDS.team = () => { const add = S.man.at?.(-1);
+  say([vary('ask-team', ['One dev and his AI agent, building in the open. ', 'A solo builder and an AI agent. ', 'No big team: one dev, one AI agent, all on-chain. ', 'Built by one dev with an AI agent. ', 'The team is small: a dev and his agent. ']),
+    `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
+CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
+  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 4% slippage. Not advice — type ', ['safe'], ' for the facts first.']);
+CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' — in English or German.']); })(CMDS.help);
+// ================= what a typed question means (2026-10-09) =================
+// The prompt matched only the first word that WAS a command name: 10 of 64 real questions got an answer ("preis",
+// "is it safe", "wen moon", "what did I miss", every German one and every typo fell to one fixed sentence). Now:
+// phrases in English and German first, then single words with a typo allowance, then a fallback that says what he
+// can do with one live fact — five ways each. Every answer is the chain's or our own log's, never a third party's.
+const bobaiAmt = n => { const u = (+n || 0) * S.price; return `${cmp(+n || 0)} BOBAI (≈$${nf(u, u < 10 ? 2 : 0)})`; }; // $BOBAI always with USD
+const ASK = { hit: 0, miss: [] };
+const INTENTS = [
+  [/\b(safe|sicher|rug\w*|scam\w*|honeypot|legit|trust|vertrau\w*|renounc\w*|audit\w*|betrug)\b/, 'safe'],
+  [/\b(miss\w*|verpasst|today|heute|24 ?h|news|status|update|what'?s up|was (ist|war) los|happened|passiert)\b/, 'today'],
+  [/\b(why|warum|wieso|weshalb)\b|\b(dump\w*|falling|fällt|faellt|down|pump\w*)\b/, 'why'],
+  [/\b(holders?|halter|whales?|wal|wale|big wallets?|grosse wallets?|smart money)\b/, 'holders'],
+  [/\b(when|wann|eta|how long|wie lange)\b.*\b(burn\w*|buyback|verbrenn\w*)|\bnext\b|\bnaechst\w*|\bnächst\w*/, 'next'],
+  [/\b(moon|mond|wen|lambo|100x|1000x)\b/, 'moon'],
+  [/\b(who|wer)\b|\b(what are you|was bist du|about you|über dich|ueber dich)\b/, 'who'],
+  [/\b(joke|witz|funny|lustig|lol|haha)\b/, 'joke'],
+  [/\b(thanks?|thx|ty|danke|merci)\b/, 'thanks'],
+  [/^(hi|hey|hello|hallo|gm|gn|moin|servus|yo|sup)\b/, 'hi'],
+  [/\b(what can you do|was kannst du|commands?|befehle|hilfe|help)\b/, 'help'],
+  [/\b(tax|taxes|steuer\w*)\b/, 'tax'],
+  [/\b(price|preis|kurs|cost\w*|kostet|mcap|market ?cap|marketcap|worth|wert|chart)\b/, 'price'],
+  [/\b(burn\w*|verbrann\w*|verbrenn\w*|brenn\w*|dead ?address|supply)\b/, 'burns'],
+  [/\b(lp|liq\w*|pool|depth|tiefe|locked)\b/, 'liq'],
+  [/\b(defi|range|cake|fees?|gebühr\w*|gebuehr\w*|yield|apr|apy)\b/, 'defi'],
+  [/\b(giggle|academy|spende\w*|donat\w*|charity|kinder)\b/, 'giggle'],
+  [/\b(bots?|alive|läuft|laeuft|running)\b/, 'bots'],
+  [/\b(follow|trace|latest trade|letzter trade)\b/, 'follow'],
+  [/\b(how are you|wie geht|mood|stimmung|feeling)\b/, 'mood'],
+  [/\b(contract|ca|token address|adresse)\b/, 'ca'],
+  [/\b(nfts?|drops?|collection|sammlung)\b/, 'nft'],
+  [/\b(volume|volumen|trades|activity)\b/, 'today'],
+  [/\b(team|dev|devs|developer|entwickler|roadmap|who builds)\b/, 'team'],
+  [/\b(buy|kaufen|kauf|sell|verkaufen|swap|pancake\w*|slippage)\b/, 'buy'],
+];
+const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let p = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length];
+};
+const TYPO_KEYS = ['price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
+const TYPO_TO = { whales: 'holders', burn: 'burns', liquidity: 'liq', buyback: 'next' };
+function intentOf(q) {
+  const t = q.toLowerCase().replace(/[^a-z0-9äöüß%' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return null;
+  for (const [re, k] of INTENTS) if (re.test(t) && CMDS[k]) return k;
+  for (const x of t.split(' ').filter(w => w.length >= 4)) {
+    const k = TYPO_KEYS.find(c => c.length >= 4 && lev(x, c) <= (c.length >= 7 ? 2 : 1));
+    if (k) return TYPO_TO[k] || k;
+  }
+  return null;
+}
+function missed(q) {
+  ASK.miss.push(q.slice(0, 80)); if (ASK.miss.length > 20) ASK.miss.shift();
+  const chg = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100);
+  const fact = S.burns.length ? `Right now the next buyback is ${chg}% charged.` : 'I am still reading the chain.';
+  say([vary('ask-miss', [`Not sure what you mean. ${fact} Try `, `That one I do not know yet. ${fact} Ask me `, `Hm, I only speak BOBAI. ${fact} Try `,
+    `No idea, honestly. ${fact} You can ask `, `Lost me there. ${fact} Ask `]), ['help'], ', or paste any token address and I check it.']);
+}
+window.__btAsk = q => intentOf(q); window.__btAskLog = () => ({ hit: ASK.hit, miss: [...ASK.miss] }); // for checks from outside
 async function check(addr) {
   setPose('defi', 6); fire(A.head, new THREE.Color('#22d3ee'));
   const wait = say(['checking ', [short(addr)], ' — buying $250 of it on paper, selling it back, reading the pool…'], [], '#22d3ee');
@@ -2734,9 +2841,9 @@ cmdForm.addEventListener('submit', e => {
     return tradeFromTx(h[0]).then(t => t ? followTrade(t) : say(['that transaction has no BOBAI trade in it. Try ', ['follow'], ' for the latest.'])).catch(() => say(['could not read that transaction right now — try again in a moment.'])); }
   const a = q.match(ADDR);
   if (a) return check(a[0]);
-  const w = q.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).find(x => CMDS[x]);
-  if (w && w !== 'help' && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
-  if (w) CMDS[w](); else say(['I only know what BOBAI does. Try ', ['help'], ', or paste a token address.']);
+  const w = intentOf(q);
+  if (w && !['help', 'hi', 'thanks', 'who', 'joke'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
+  if (w) { ASK.hit++; CMDS[w](q); } else missed(q);
 });
 cmdIn.addEventListener('focus', () => win.classList.add('typing'));
 cmdIn.addEventListener('blur', () => setTimeout(() => win.classList.remove('typing'), 200));
@@ -3505,8 +3612,8 @@ function bobaiTap() {
   const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
   const kinds = [
     () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
-    () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${cmp(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
-    () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : 'The price is in its range, so it earns fees.'}`, 6400); },
+    () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${bobaiAmt(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
+    () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(lpNow().value ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : inr === true ? 'The price is in its range, so it earns fees.' : 'I am still reading where the price sits in its range.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
     () => { if (HARD_DAY()) { const l = heartLine(); setPose(moveForLine(l, null) || poseOr('hodl'), 6); speak(l, 7000); } else if (!tellJoke(6000)) { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // no joke ready: what he builds (not 'thanks for watching me', operator 2026-10-06) // a tap on a hard day: a word of heart, not a joke
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },

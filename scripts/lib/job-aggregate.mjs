@@ -68,13 +68,18 @@ export function aggregate(jobs) {
       r = {
         addr: p, jobs: 0, funded: 0, sum: 0n, budgets: [], clients: new Set(),
         status: {}, firstId: j.id, lastId: j.id, lastSubmit: 0, samples: [],
+        paidOut: 0, fundedClients: new Set(),
       };
       providers.set(p, r);
     }
     r.jobs++;
     r.status[j.status] = (r.status[j.status] || 0) + 1;
     r.clients.add(j.client);
-    if (isFunded) { r.funded++; r.sum += BigInt(j.budget); r.budgets.push(Number(BigInt(j.budget)) / 1e18); }
+    if (isFunded) { r.funded++; r.sum += BigInt(j.budget); r.budgets.push(Number(BigInt(j.budget)) / 1e18); r.fundedClients.add(j.client); }
+    // A COMPLETED job with a zero budget paid nothing out, yet it was counted
+    // as "paid out" beside a funded count that excludes it — a card read
+    // "Hired 2× · 10 paid out" (2026-10-09). Only funded completions count.
+    if (isFunded && j.status === 'COMPLETED') r.paidOut++;
     if (j.id < r.firstId) r.firstId = j.id;
     if (j.id > r.lastId) r.lastId = j.id;
     if (j.submitted_at > r.lastSubmit) r.lastSubmit = j.submitted_at;
@@ -86,16 +91,20 @@ export function aggregate(jobs) {
       address: r.addr,
       jobs: r.jobs,
       funded: r.funded,
-      completed: r.status.COMPLETED || 0,
+      completed: r.paidOut,
+      completed_unfunded: (r.status.COMPLETED || 0) - r.paidOut,
       submitted_not_released: r.status.SUBMITTED || 0,
       awaiting_delivery: r.status.FUNDED || 0,
       expired: r.status.EXPIRED || 0,
       rejected: r.status.REJECTED || 0,
       never_funded: r.status.OPEN || 0,
       distinct_buyers: r.clients.size,
+      // Buyers who actually put money in escrow: the farm signal. Nine buyers
+      // paying one agent is a market; one buyer paying it twelve times is not.
+      funded_buyers: r.fundedClients.size,
       escrowed_u: Number(r.sum) / 1e18,
       median_budget_u: median(r.budgets),
-      delivery_rate: r.funded ? (r.status.COMPLETED || 0) / r.funded : 0,
+      delivery_rate: r.funded ? r.paidOut / r.funded : 0,
       first_job_id: r.firstId,
       last_job_id: r.lastId,
       last_submission: r.lastSubmit || null,

@@ -148,7 +148,7 @@
           {
             "@type": "Question",
             "name": "What does the DeFi agent do?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets the range beside the price, one-sided and without a trade. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
           },
           {
             "@type": "Question",
@@ -235,13 +235,14 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1791390395273">
+<link rel="stylesheet" href="brain/brain.css?v=1791523357588">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1791389183">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791523016">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
+  <h1 class="bp-sr">$BOBAI Brain Terminal: what Brain On BNB AI does with every trade, live from BNB Chain</h1>
   <a class="bp-logo" href="/"><img src="logo-sm.webp" width="34" height="34" alt=""><span class="bp-name"><span><b>$BOBAI</b> Brain On BNB AI</span><small>Where Memes Meet Intelligence</small></span></a>
   <div class="bp-tick"></div>
   <div class="bp-soc" role="navigation" aria-label="Socials"><a href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.5 2.8 10.7c-1.3.5-1.3 1.2-.2 1.6l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.4-2.3 4.9 3.6c.9.5 1.5.2 1.8-.8L23 4.9c.3-1.4-.5-2-1.5-1.4Zm-3.3 3.6-8.9 8-.3 3.8-1.6-5.1 10.8-6.8c.5-.3.9 0 0 .1Z"/></svg></a><a href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="X Official" title="X Official"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><i class="bp-ok" aria-hidden="true">✓</i></a><a href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener" aria-label="X Community" title="X Community"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><small>CT</small></a></div>
@@ -858,7 +859,7 @@
             <span class="lib-t">Buyback &amp; Burn Bot</span>
             <span class="lib-s">The bot that has run every ten minutes since launch.</span>
           </span>
-          <span class="lib-m">3 files &middot; 1,801 lines &middot; 25 KB</span>
+          <span class="lib-m">3 files &middot; 1,809 lines &middot; 25 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -881,7 +882,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">17 files &middot; 6,848 lines &middot; 0.2 MB</span>
+          <span class="lib-m">17 files &middot; 6,851 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -950,7 +951,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,241 lines &middot; 85 KB</span>
+          <span class="lib-m">12 files &middot; 5,252 lines &middot; 85 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1137,7 +1138,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 2,543 lines &middot; 69 KB</span>
+          <span class="lib-m">5 files &middot; 2,548 lines &middot; 70 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1160,7 +1161,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">48 files &middot; 16,047 lines &middot; 0.3 MB</span>
+          <span class="lib-m">48 files &middot; 16,050 lines &middot; 0.3 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1183,7 +1184,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,314 lines &middot; 90 KB</span>
+          <span class="lib-m">7 files &middot; 4,365 lines &middot; 92 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1282,7 +1283,7 @@
         <div class="faq-body">Yes, when the buy is worth $100 or more. One NFT is minted automatically, straight to the buyer's wallet: no claim step, no gas for the holder. The size of the buy sets the motif: NICE BUY from $100, BIG BUY from $150, HUGE BUY from $250, WHALE BUY from $500, THUNDER BUY from $1,000, KRAKEN BUY from $2,500. The rarity, one of seven, is a weighted draw. The collection is capped at 1,925 and every tier has its own fixed cap; how many are out is counted live on the <a href="/nft/">NFT page</a>.</div>
       </details>
       <details class="faq-item"><summary>What does the DeFi agent do?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets the range beside the price, one-sided and without a trade. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
+        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
       </details>
       <details class="faq-item"><summary>What is the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the <a href="/classic#giggle">Giggle Academy block on the Classic page</a>.</div>
@@ -1330,9 +1331,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1791389183')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1791523016')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1791390395274" defer></script>
-<script src="brain/cards.js?v=1791390395274" defer></script>
-<script src="brain/hero.js?v=1791390395274" defer></script>
+<script src="brain/brain.js?v=1791523357589" defer></script>
+<script src="brain/cards.js?v=1791523357589" defer></script>
+<script src="brain/hero.js?v=1791523357589" defer></script>
 </body></html>

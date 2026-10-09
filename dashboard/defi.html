@@ -102,7 +102,7 @@
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
   <nav><div class="nav">
-    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/defi">The DeFi Agent</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
@@ -111,7 +111,7 @@
 
     <div class="lp-hero">
       <h1>The DeFi <em>agent</em></h1>
-      <p class="lp-lead">Whatever other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent puts it to work in a PancakeSwap V3 pool on BNB Chain; of what that position earns, half keeps working and half buys $BOBAI the agent holds. Every step is a transaction on BNB Chain, and the record below is read from the agent itself. Running since Sep 3, 2026.</p>
+      <p class="lp-lead">A slice of every trade&rsquo;s tax, and whatever other people&rsquo;s AIs pay this project, does not sit in a wallet. An agent puts it to work in a PancakeSwap V3 pool on BNB Chain; of what that position earns, half keeps working and half buys $BOBAI the agent holds. Every step is a transaction on BNB Chain, and the record below is read from the agent itself. Running since Sep 3, 2026.</p>
     </div>
 
   <div class="lp-part" id="portfolio">
@@ -152,7 +152,7 @@
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>Sweep</b><span>Income into BNB, into the DeFi wallet &mdash; once it is worth more than the gas.</span></div></li>
         <li><span class="agt-i">2</span><div><b>Collect</b><span>The fees the position earned: half kept, half into $BOBAI. Small amounts are left to grow.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set beside the price, on the side the price came from, with the one token it ended in and no trade &mdash; one-sided, so a re-set costs its gas and never sells the low. The width is the one that ended the most ahead against holding over the last week, fees included, in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>; the width in use is kept unless another leads it by a tenth. The card says where the position stands against simply holding.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set as a wide range centred on the price again, with one swap that balances the two tokens &mdash; wide, because in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> the fees of narrow ranges did not pay for what the price took from them and their re-sets, and a wide range is left far less often. The card says where the position stands against simply holding.</span></div></li>
         <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live. BNB that waits beside a range sitting above the price opens a reserve range below it instead, WBNB only, no trade: a buy ladder under the sell ladder, merged back into one when the price has gone through either.</span></div></li>
       </ol>
       <p class="agt-note">The record, run by run and in the agent&rsquo;s own words: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>. The code: one core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="https://github.com/mmxrealQQ/bobai-buyburn/blob/main/shared/lp-agent.js" target="_blank" rel="noopener">the published source</a>. It never touches the buyback bot&rsquo;s own code.</p>

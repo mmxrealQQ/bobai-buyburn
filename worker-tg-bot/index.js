@@ -117,6 +117,8 @@ const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsb
 const IGNORED_WALLETS = new Set([
   '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent (buys $BOBAI with half its fees)
+  '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (tops wallets up to 808.41)
 ]);
 
 // A NAME SOMEBODY ELSE CHOSE IS TEXT, NOT MARKUP (2026-09-18). Posts go out
@@ -674,12 +676,15 @@ async function fetchWorldcupDonations(n = 3, taxOnly = null) {
 async function getBurnedTokens() {
   const balanceData = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
   const burnedHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balanceData }, 'latest']);
+  // A FAILED READ IS NOT ZERO (2026-10-09): hexToBigInt(null) is 0n, so a refused call read as "nothing burned".
+  if (!burnedHex || burnedHex === '0x') throw new Error('dead balance unreadable');
   return Number(hexToBigInt(burnedHex)) / 1e18;
 }
 
 async function getTotalSupply() {
   const totalData = '0x18160ddd';
   const totalHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: totalData }, 'latest']);
+  if (!totalHex || totalHex === '0x') throw new Error('total supply unreadable');
   return Number(hexToBigInt(totalHex)) / 1e18;
 }
 
@@ -689,7 +694,7 @@ async function getBurnStats() {
     const percent = totalSupply > 0 ? (burnedTokens / totalSupply * 100).toFixed(1) : '?';
     return { burnedTokens, percent };
   } catch {
-    return { burnedTokens: 0, percent: '?' };
+    return { burnedTokens: null, percent: '?' };
   }
 }
 
@@ -932,7 +937,7 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID,
 
 🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
-🔥 Burned: ${burnedPct}% of supply`;
+${burnedPct && burnedPct !== '?' ? `🔥 Burned: ${burnedPct}% of supply` : ''}`.trimEnd();
 
   // One alert, one message: every brain that fits the caption, the count
   // spelled out only past that.
@@ -981,6 +986,9 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice, cha
   try {
     const burnedDelta = newBurned - prevBurned;
     const hasPrice = tokenPrice && tokenPrice > 0;
+    // NO PRICE, NO ALERT (2026-10-09): without it the bar showed one flame for any burn and "(n/a)". Nothing is
+    // stored as told, so the next minute tells it with its price.
+    if (!hasPrice) return false;
     const burnedUsd = hasPrice ? burnedDelta * tokenPrice : 0;
     const burnedUsdStr = hasPrice ? formatUsd(burnedUsd) : 'n/a';
     const percent = totalSupply > 0 ? (newBurned / totalSupply * 100).toFixed(1) : '?';
@@ -990,7 +998,7 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice, cha
     const rest = `<b>${icon}</b>
 
 🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${burnedUsdStr})</b>
-📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b>
+📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b> (≈${formatUsd(newBurned * tokenPrice)})
 🔥 <b>${percent}%</b> of total supply
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
@@ -2855,7 +2863,7 @@ async function handleCommand(msg, env) {
 📦 ${hoursTxt} Volume: ${st ? usdOrNa(volumeUsd) : 'n/a'}
 🔄 ${hoursTxt} Trades: ${st ? `${st.buys} buys / ${st.sells} sells` : 'n/a'}
 
-🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
+🔥 Burned: ${burn.burnedTokens === null ? '? (the chain read failed, try again)' : `${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI${price ? ` ≈${formatUsd(burn.burnedTokens * price)}` : ''})`}
 
 ⛓ <i>Read from the chain: pool reserves, Chainlink BNB feed, swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' of the last 24 h' : ` of the last ${hoursTxt} (record still filling)`) : ' (record starts with the next tick)'}. No price site.</i>
 
@@ -2865,12 +2873,13 @@ async function handleCommand(msg, env) {
 
     case '/giggle':
     case 'giggle': {
-      let burns = [];
+      let burns = null;
       try {
         const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
         if (r.ok) burns = await r.json();
-      } catch { /* the card still says what the pot is; the count reads 0 until the log answers */ }
-      reply = formatGiggleCard(burns, Date.now(), await getBnbUsd());
+      } catch { /* said on the card below */ }
+      reply = formatGiggleCard(burns || [], Date.now(), await getBnbUsd());
+      if (!Array.isArray(burns)) reply += '\n\n<i>The bot log did not answer just now, so the sends are not counted. Try again in a minute.</i>';
       break;
     }
     case '/burn':
@@ -2878,11 +2887,12 @@ async function handleCommand(msg, env) {
       // Two tokens, two figures each: what the bot burned (its log) and what
       // the dead address holds (chain), both in dollars of today. The split
       // itself moved to /bot (2026-09-19).
-      let burns = [];
+      let burns = null;
       try {
         const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
         if (r.ok) burns = await r.json();
-      } catch { /* the chain figures still show; the bot's own read 0 until the log answers */ }
+      } catch { /* said on the card below */ }
+      const logOk = Array.isArray(burns); if (!logOk) burns = [];
       const [burn, bob, pair] = await Promise.all([getBurnStats(), readBobOnchain(), readPairOnchain()]);
       const ours = botBurnsFromLog(burns);
       const bobaiPx = pair ? pair.price : null;
@@ -2891,14 +2901,14 @@ async function handleCommand(msg, env) {
       reply = `🔥 <b>BOBAI Burn Dashboard</b>
 
 🧠 <b>$BOBAI</b>
-🤖 Burned by the bot: <b>${fmtAmt(ours.bobai)} BOBAI</b>${approxUsd(ours.bobai, bobaiPx)}
-💀 At the dead address: <b>${fmtAmt(burn.burnedTokens)} BOBAI</b>${approxUsd(burn.burnedTokens, bobaiPx)} · <b>${burn.percent}%</b> of supply
+🤖 Burned by the bot: ${logOk ? `<b>${fmtAmt(ours.bobai)} BOBAI</b>${approxUsd(ours.bobai, bobaiPx)}` : '<i>the bot log did not answer, try again</i>'}
+💀 At the dead address: ${burn.burnedTokens === null ? '<i>the chain read failed, try again</i>' : `<b>${fmtAmt(burn.burnedTokens)} BOBAI</b>${approxUsd(burn.burnedTokens, bobaiPx)} · <b>${burn.percent}%</b> of supply`}
 
 👷 <b>$BOB</b> (Build On BNB)
-🤖 Burned by the bot: <b>${fmtAmt(ours.bob)} BOB</b>${approxUsd(ours.bob, bob.price)}${share(ours.bob, bob.burned)}
+🤖 Burned by the bot: ${logOk ? `<b>${fmtAmt(ours.bob)} BOB</b>${approxUsd(ours.bob, bob.price)}${share(ours.bob, bob.burned)}` : '<i>the bot log did not answer</i>'}
 💀 At the dead address: <b>${bob.burned === null ? '?' : fmtAmt(bob.burned)} BOB</b>${bob.burned === null ? '' : approxUsd(bob.burned, bob.price)}
 
-⚙️ ${ours.runs.toLocaleString('en-US')} bot runs in the log · every 10 minutes from <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a> · /bot shows the split
+⚙️ ${logOk ? `${ours.runs.toLocaleString('en-US')} bot runs in the log · ` : ''}checks every 10 minutes from <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a> · /bot shows the split
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">BOBAI burns</a> · <a href="https://bscscan.com/token/${BOB_TOKEN}?a=${DEAD}">BOB burns</a> · <a href="https://brainonbnb.com/#burns">Live burns</a>`;
       break;
@@ -4522,7 +4532,10 @@ export default {
 
             // Real buyer = tx sender (the `to` topic is often the router contract).
             const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
-            const buyer = (tx?.from || '').toLowerCase();
+            // NEVER THE DEAD ADDRESS AS BUYER (2026-10-09): a failed read named 0x…dEaD and skipped the own-wallet
+            // check. Left unposted, the next run meets it again.
+            if (!tx?.from) continue;
+            const buyer = tx.from.toLowerCase();
             if (buyer && IGNORED_WALLETS.has(buyer)) { postedSet.add(txHash); continue; }
 
             // THE CAP DEFERS, IT DOES NOT DROP (2026-09-18): a buy met with the cap
@@ -4534,7 +4547,7 @@ export default {
               bnbAmount,
               bobaiAmount,
               usdValue,
-              buyer: tx?.from || DEAD,
+              buyer: tx.from,
               txHash,
             };
 

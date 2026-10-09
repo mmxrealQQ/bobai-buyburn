@@ -297,7 +297,7 @@
       ],
       "jobs": 12,
       "funded": 2,
-      "completed": 10,
+      "completed": 1,
       "submitted_not_released": 1,
       "awaiting_delivery": 1,
       "expired": 0,
@@ -306,7 +306,7 @@
       "distinct_buyers": 3,
       "escrowed_u": 1.1,
       "median_budget_u": 0.55,
-      "delivery_rate": 5,
+      "delivery_rate": 0.5,
       "first_job_id": 56621,
       "last_job_id": 56777
     },

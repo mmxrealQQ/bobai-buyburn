@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5239,
-   "zipBytes": 86857,
-   "txtBytes": 257967,
-   "sha256": "897cc34f4a9e179c",
+   "lines": 5252,
+   "zipBytes": 87374,
+   "txtBytes": 259417,
+   "sha256": "ecb09373a807458d",
    "reqs": [
     {
      "what": "A bot token",
@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7061,
-   "zipBytes": 154684,
-   "txtBytes": 464765,
-   "sha256": "9affb5444518389a",
+   "zipBytes": 154692,
+   "txtBytes": 464769,
+   "sha256": "3e8ab8399ab35c59",
    "reqs": [
     {
      "what": "A static host",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2546,
-   "zipBytes": 70940,
-   "txtBytes": 203909,
-   "sha256": "0d3cd29b1fb36573",
+   "lines": 2548,
+   "zipBytes": 71310,
+   "txtBytes": 204627,
+   "sha256": "ff4bb226bef290b3",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -727,10 +727,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4314,
-   "zipBytes": 92392,
-   "txtBytes": 262320,
-   "sha256": "cd273ae4a70938f1",
+   "lines": 4365,
+   "zipBytes": 93739,
+   "txtBytes": 265963,
+   "sha256": "0b1a5269e280da24",
    "reqs": [
     {
      "what": "Node 18+ and time",

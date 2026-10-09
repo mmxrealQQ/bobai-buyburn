@@ -164,6 +164,10 @@ export async function swapRoute(input, opts = {}) {
   // could: a test balance sold and bought from a fresh address, reading what
   // arrived. A measured side always wins over a simulated one.
   let taxSource = 'measured from executed trades on-chain';
+  // EACH SIDE ITS OWN SOURCE (2026-10-09): one combined sentence ("one side measured…, the other simulated") went to
+  // both sides, so an agent could not tell which side was which.
+  let buySrc = tax.ok && tax.buy != null ? 'measured from executed trades on-chain' : null;
+  let sellSrc = tax.ok && tax.sell != null ? 'measured from executed trades on-chain' : null;
   if (!tax.ok || tax.buy == null || tax.sell == null) {
     const sim = await simulateRoundTrip(token, best.pool, addrAt(zero[0]) === token, best.kind).catch(() => null);
     // Only a simulation that went through THIS pool speaks for it (see
@@ -174,6 +178,8 @@ export async function swapRoute(input, opts = {}) {
     if (sb != null || ss != null) {
       const hadTrades = tax.ok;
       tax = { ...tax, ok: true, buy: hadTrades && tax.buy != null ? tax.buy : sb, sell: hadTrades && tax.sell != null ? tax.sell : ss };
+      if (!buySrc && sb != null) buySrc = 'simulated on-chain at this block from a fresh address';
+      if (!sellSrc && ss != null) sellSrc = 'simulated on-chain at this block from a fresh address';
       taxSource = hadTrades
         ? 'one side measured from executed trades, the other simulated on-chain at this block from a fresh address'
         : 'simulated on-chain at this block: a test balance sold and bought from a fresh address, reading what arrived (no trade in the window to measure)';
@@ -285,7 +291,7 @@ export async function swapRoute(input, opts = {}) {
     transfer_tax: tax.ok
       ? { buy_pct: tax.buy == null ? null : +(tax.buy * 100).toFixed(2),
           sell_pct: tax.sell == null ? null : +(tax.sell * 100).toFixed(2),
-          source: taxSource }
+          source: taxSource, buy_source: tax.buy == null ? null : buySrc, sell_source: tax.sell == null ? null : sellSrc }
       : { buy_pct: null, sell_pct: null, source: `not measurable (${tax.reason || 'no readable trades'})` },
     slippage_bps_needed: slippageBps,
     slippage_note: fot

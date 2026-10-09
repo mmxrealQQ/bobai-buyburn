@@ -658,6 +658,23 @@ const ratingLine = (id) => {
 // unit only. Window, rater and the "(measured here)" mark stay on the full
 // line under the fold — a chip that tried to carry them would be the sentence
 // it replaced.
+// The comparable uptime: several raters write "uptime" under different
+// windows ("rebalancing", "7d", "30d"). Prefer an entry whose window is a
+// duration, the longest one, and a stranger's over ours.
+const DUR = /^(\d+)\s*(h|d|w)$/i;
+const durH = (w) => { const m = DUR.exec(String(w || '').trim()); return m ? Number(m[1]) * { h: 1, d: 24, w: 168 }[m[2].toLowerCase()] : -1; };
+const uptimeEntry = (r) => {
+  const e = Object.entries(r.latest).find(([t]) => t.toLowerCase() === 'uptime');
+  const vs = (e && e[1]) || [];
+  if (!vs.length) return null;
+  return [...vs].sort((a, b) => (durH(b.window) - durH(a.window)) || ((isOurs(a.client) ? 1 : 0) - (isOurs(b.client) ? 1 : 0)))[0];
+};
+const uptimeOf = (id) => {
+  const r = ratingOf(id);
+  const up = r && uptimeEntry(r);
+  const v = up && String(up.unit || '').includes('%') ? Number(up.value) : NaN;
+  return Number.isFinite(v) ? v : null;
+};
 const repChip = (id) => {
   const r = ratingOf(id);
   if (!r) return '';
@@ -665,15 +682,26 @@ const repChip = (id) => {
     const e = Object.entries(r.latest).find(([t]) => t.toLowerCase() === tag);
     return e && e[1] && e[1][0] ? e[1][0] : null;
   };
-  const up = first('uptime');
+  const up = uptimeEntry(r);
   const rt = first('responsetime') || first('latency');
   const bits = [];
   if (up) bits.push(`${esc(String(up.value))}${esc(up.unit || '')} up`);
   if (rt) bits.push(`${esc(String(rt.value))}${esc(rt.unit || '')} response`);
-  return bits.length ? `<li class="rgc-rep" title="Read from the ERC-8004 ReputationRegistry; the window and who measured it are under the fold">${bits.join(' &middot; ')}</li>` : '';
+  // The dot was green on 3% uptime. Green from 90%, amber from 50%, red below.
+  const u = up ? Number(up.value) : NaN;
+  const tone = !Number.isFinite(u) ? '' : u >= 90 ? '' : u >= 50 ? ' rgc-warn' : ' rgc-down';
+  return bits.length ? `<li class="rgc-rep${tone}" title="Read from the ERC-8004 ReputationRegistry; the window and who measured it are under the fold">${bits.join(' &middot; ')}</li>` : '';
 };
 
 const REPUTATION_ADDR = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63';
+// How old each kind of evidence on the cards is, said once per category:
+// the dates lived only in tooltips, which a phone never shows (2026-10-09).
+const dayOf = (t) => { const d = t ? new Date(t) : null; return d && !Number.isNaN(+d) ? `${d.getUTCDate()} ${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getUTCMonth()]}` : ''; };
+const EVIDENCE_DATES = [
+  hireConfirm?.measured_at && `quotes ${dayOf(hireConfirm.measured_at)}`,
+  jobCensus?.measuredAt && `jobs ${dayOf(jobCensus.measuredAt)}`,
+  reputation?.measured_at && `uptime ${dayOf(reputation.measured_at)}`,
+].filter(Boolean).join(' &middot; ');
 
 // A HOST IS NOT ALWAYS A FLEET (2026-10-04). Agents whose category is only
 // derived from their words are shown collapsed per operator, which is right
@@ -766,9 +794,20 @@ const categorised = CATEGORIES.map((cat) => {
   // leads to one that does not — the cold-start check says so when it does.
   const answers = (r) => (r.agentId && quoteOf(r.agentId)?.quotes ? 0 : 1);
   const rank = { declared: 0, registered: 1, derived: 2 };
+  // Evidence the ranking used to skip (2026-10-09): two category leaders
+  // were up 3% of the time, four sibling agents ranked on one provider's
+  // shared hire count, and an agent paid by nine buyers sat behind one paid
+  // by a single buyer. Now: a measured uptime under 50% sinks below the
+  // living, paid-out work from two or more paying buyers comes before paid-out
+  // work from one, and a count shared by N agents weighs 1/N for each.
+  const down = (r) => { const u = r.agentId ? uptimeOf(r.agentId) : null; return u != null && u < 50 ? 1 : 0; };
+  const share = (r) => Math.max(1, providerAgentCount.get(r.employment?.address) || 1);
+  const market = (r) => ((r.employment?.completed || 0) > 0 && (r.employment?.funded_buyers || 0) >= 2 ? 0 : 1);
   rows.sort((a, b) => (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
     || (answers(a) - answers(b))
-    || ((b.employment?.completed || 0) - (a.employment?.completed || 0))
+    || (down(a) - down(b))
+    || (market(a) - market(b))
+    || ((b.employment?.completed || 0) / share(b) - (a.employment?.completed || 0) / share(a))
     || ((b.employment?.funded || 0) - (a.employment?.funded || 0))
     || (rank[a.hit.source] - rank[b.hit.source])
     || (b.instances - a.instances));
@@ -848,7 +887,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
       const shared = providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
       if (e.funded) {
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}${e.funded_buyers ? ` &middot; ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -889,7 +928,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
   return `    <div class="rg-box" id="cat-${cat.id}">
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, measured up less than half the time last, then paid out by several buyers, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
       </div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
@@ -1266,6 +1305,9 @@ const page = `<!doctype html>
   .rgc-strip li.rgc-no{border-color:rgba(255,107,107,.4)}
   .rgc-strip li.rgc-no::before{content:'×';color:#ff6b6b}
   .rgc-strip li.rgc-rep::before{content:'●';color:#2ecc71;font-size:.6em;vertical-align:1px}
+  .rgc-strip li.rgc-rep.rgc-warn::before{color:#f5b83d}
+  .rgc-strip li.rgc-rep.rgc-down{border-color:rgba(255,107,107,.4)}
+  .rgc-strip li.rgc-rep.rgc-down::before{color:#ff6b6b}
   /* The full sentences, under the fold, with the same tick and cross. */
   .rgc-facts{list-style:none;margin:0 0 7px;padding:0;display:grid;gap:4px}
   .rgc-facts li{position:relative;padding-left:16px;font-size:.75rem;line-height:1.55;color:var(--muted);
@@ -1463,7 +1505,7 @@ const page = `<!doctype html>
        rather than reinvented so the page cannot drift from the rest of the
        site the next time either is touched. -->
   <nav><div class="nav">
-    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/registry">Brain Plaza</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>

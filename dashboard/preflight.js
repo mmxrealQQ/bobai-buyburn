@@ -105,7 +105,7 @@ export function shape(s, r, usd, routeError = null) {
   const taxBuy = fromRoute('buy_pct') ? r.transfer_tax.buy_pct : t.buyPct ?? null;
   const taxSell = fromRoute('sell_pct') ? r.transfer_tax.sell_pct : t.sellPct ?? null;
   const WORDS = { measured: 'measured from executed trades on-chain', simulated: 'simulated on-chain at this block, from a fresh address', label: 'labelled by GoPlus, unverified', unknown: 'unknown — nothing could establish it' };
-  const sideSource = (k, scanSide) => (fromRoute(k) ? r.transfer_tax.source : WORDS[scanSide] || t.source || null);
+  const sideSource = (k, scanSide) => (fromRoute(k) ? r.transfer_tax[k.replace('_pct', '_source')] || r.transfer_tax.source : WORDS[scanSide] || t.source || null);
   const buySource = sideSource('buy_pct', t.buySource), sellSource = sideSource('sell_pct', t.sellSource);
   for (const [side, v, src] of [['buy', taxBuy, t.buySource], ['sell', taxSell, t.sellSource]]) {
     if (fromRoute(`${side}_pct`)) continue;

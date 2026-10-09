@@ -27,6 +27,8 @@
     "/services",
     "/services.html",
     "/defi",
+    "/defi/",
+    "/defi/.well-known/agent-card.json",
     "/defi.html",
     "/liquidity",
     "/liquidity.html",

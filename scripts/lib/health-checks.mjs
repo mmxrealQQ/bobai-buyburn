@@ -545,6 +545,11 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   //     dropped off); the agent worker asks Marque to probe every 8 h. Each round must be fresh and every agent answer.
   const mp = watch?.marque_probe, mpAge = mp?.at ? (Date.now() - Date.parse(mp.at)) / 3600e3 : null, mpBad = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok).map(([k]) => '#' + k) : [];
   ok('Agents', 'Marque probes all six agents (listing kept alive)', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpBad.length, mp ? `${mpAge.toFixed(1)} h ago, failing: ${mpBad.join(' ') || 'none'}` : 'no probe round yet');
+  // Marque keeps brainonbnb.com/defi as #363709's endpoint (2026-10-09: its live test got the page's 405 and the
+  // listing dropped): a JSON-RPC POST there must reach the agent.
+  const dp = await fetch(SITE + '/defi', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'health', parts: [{ kind: 'text', text: 'what can you do' }] } } }), signal: AbortSignal.timeout(30000) }).catch(() => null);
+  const dpj = dp ? await dp.json().catch(() => null) : null;
+  ok('Agents', 'brainonbnb.com/defi answers an A2A call (Marque tests #363709 there)', dp?.status === 200 && !!dpj?.result, dp ? `${dp.status}${dpj?.result ? ' json-rpc result' : ''}` : 'no answer');
   // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
   const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
   ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));

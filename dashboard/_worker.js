@@ -1397,6 +1397,25 @@ export default {
       return out;
     }
 
+    // THE DeFi AGENT'S PAGE ALSO TAKES ITS CALLS (2026-10-09, Set and Earn): Marque keeps https://brainonbnb.com/defi
+    // (the "web" entry of #363709's registration) as the agent's endpoint, and its live test POSTed there got the
+    // page's 405 and dropped the listing. A POST to /defi goes to the agent's own A2A endpoint, and the card is
+    // answered next to it; a browser's GET still gets the page.
+    if ((url.pathname === '/defi' || url.pathname === '/defi/') && request.method === 'POST') {
+      const r = await fetch('https://agent.brainonbnb.com/defi-agent/a2a', {
+        method: 'POST', headers: { 'Content-Type': request.headers.get('content-type') || 'application/json' },
+        body: await request.text(), signal: AbortSignal.timeout(25000),
+      }).catch(() => null);
+      const h = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' };
+      if (!r) return new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'agent unreachable, retry', endpoint: 'https://agent.brainonbnb.com/defi-agent/a2a' } }), { status: 503, headers: h });
+      return new Response(await r.text(), { status: r.status, headers: h });
+    }
+    if (url.pathname === '/defi/.well-known/agent-card.json') {
+      const r = await fetch('https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json', { signal: AbortSignal.timeout(10000) }).catch(() => null);
+      if (r && r.ok) return new Response(await r.text(), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' } });
+      return Response.redirect('https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json', 302);
+    }
+
     // Count what agents ask us for, so the public transparency block has real
     // numbers instead of a claim. Fire-and-forget via waitUntil: a request must
     // never be slower, or fail, because a counter was unreachable. Nothing

@@ -14,7 +14,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=32';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=33';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -649,7 +649,9 @@ function verdictCard(d,pool,gp,gpOk,tax){
     line(tone,'A $'+nf(ref.usd)+' trade costs you '+pc(ref.buyCost)+' to buy and '+pc(ref.sellCost)+' to sell.',
       'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
       +(toll>0?'About '+toll.toFixed(toll<1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
-             :'Round trip, that is about '+pc(ref.buyCost+ref.sellCost)+' before the price moves at all.'));
+             :'Round trip, that is about '+pc(ref.buyCost+ref.sellCost)+' before the price moves at all.')
+      // the round trip in one figure (2026-10-09 review): what is left of the money if you sold straight back
+      +' Buy and sell straight back, and you keep about '+pc((1-ref.buyCost/100)*(1-ref.sellCost/100)*100)+' of your $'+nf(ref.usd)+'.');
   }else{
     line('unknown','A trade of this size could not be priced.',
       'The quoter did not return a price for every size, so no cost figure is shown at all rather than a partial one.');
@@ -960,8 +962,9 @@ function render(d){
   o.appendChild(statRow([
     {v:usd(px),l:'Price'},
     {v:mcap!=null?usd(mcap):'—',l:'Market Cap',s:circ!=null?nf(circ)+' circulating':'supply unreadable'},
-    {v:usd(tvl),l:'Liquidity',s:'both sides of the pool'},
-    {v:mcap?pc(tvl/mcap*100,1):'—',l:'Liquidity / Mcap',s:'how much of the valuation is actually in the pool'},
+    // the half that holds leads (2026-10-09 review): the "Liquidity" headline counted the token's own side, which the
+    // next card warns about in its first sentence; the pool's whole value stays as the subtitle
+    {v:usd(hard),l:'Hard '+quoteSym+' backing',s:'pool value '+usd(tvl)+', counting both sides'},
   ]));
 
   // depth
@@ -1123,7 +1126,7 @@ function render(d){
         hidden=(d.others||[]).length-shown.length;
   if(shown.length){
     const ov=card('Where else it trades',
-      'Everything above measures the deepest pool this page can read exactly. These are the rest, as indexed by DexScreener.');
+      'Everything above measures one pool, read exactly from the chain. These are the others, as DexScreener indexes them — its dollar figures are its own and can differ a little from the chain’s.');
     const l=el('div','vn');
     shown.slice(0,6).forEach(x=>{
       const r=el('div','vn-r');
@@ -1777,7 +1780,7 @@ function drawFeed(){
       const hd=el('tr');['Token','Raised','Price','$100 buy','$100 sell','Last trade'].forEach(h=>hd.appendChild(el('th',null,h)));
       t.appendChild(hd);
       for(const x of f.list){
-        const r=el('tr');r.tabIndex=0;r.title='Scan '+x.token;
+        const r=el('tr');r.tabIndex=0;r.title='Scan '+x.token;r.setAttribute('role','button');r.setAttribute('aria-label','Scan '+(x.symbol||x.token)); // a row that acts is named as one (2026-10-09)
         const name=el('td');const b=el('b',null,x.symbol||short(x.token));name.appendChild(b);
         name.appendChild(el('span','sc-feed-a',short(x.token)));r.appendChild(name);
         const q=x.quoteSym||'?';
@@ -1791,6 +1794,7 @@ function drawFeed(){
         t.appendChild(r);
       }
       body.appendChild(t);
+      if(matchMedia('(max-width:640px)').matches)body.appendChild(el('p','sc-feed-note','Swipe the table sideways for the sell cost and the last trade.')); // the box is narrower than the table on a phone (2026-10-09)
       body.appendChild(el('p','sc-feed-note','Read from four.meme’s contract at block '+nf(f.head)+': the last '+f.blocks+' blocks, newest first, tokens that have not graduated. Cost is four.meme’s own quote for that size, its fee included. Tap a row to scan it. Not a recommendation of anything.'));
     }catch(e){
       body.appendChild(el('p','sc-feed-note','The log nodes did not answer just now. Try again in a few seconds.'));

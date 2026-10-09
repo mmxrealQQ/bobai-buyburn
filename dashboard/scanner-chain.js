@@ -557,6 +557,19 @@ export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBe
 // against. DexScreener indexes the small venues, returns one consistent USD
 // figure per pool, and sends CORS: * — so the comparison is like for like and
 // the guard no longer depends on somebody else's coverage.
+// DexScreener's internal ids, as people say them (2026-10-09 review: "0xC6B7ee49D386…6285 v2" stood next to our
+// "PancakeSwap V2"). An id that is an address stays an address, shortened and named as unknown; the version only
+// when DexScreener gives one — "v2" was a guess.
+const DEX_NAMES={pancakeswap:'PancakeSwap',uniswap:'Uniswap',biswap:'Biswap',thena:'Thena',apeswap:'ApeSwap',babyswap:'BabySwap',
+  mdex:'MDEX',sushiswap:'SushiSwap',squadswap:'SquadSwap',fourmeme:'four.meme',bakeryswap:'BakerySwap',dodo:'DODO',
+  traderjoe:'Trader Joe',kyberswap:'KyberSwap',nomiswap:'Nomiswap',fstswap:'FstSwap',babydogeswap:'BabyDogeSwap',woofi:'WOOFi',
+  pancakeswap_infinity:'PancakeSwap Infinity',uniswapv4:'Uniswap',lynex:'Lynex',swapx:'SwapX'};
+export function dexName(id,labels){
+  const v=(labels||[]).join(' ').toUpperCase().replace(/^V/,'V');
+  const raw=String(id||'');
+  const n=DEX_NAMES[raw.toLowerCase()]||(/^0x[0-9a-f]{40}$/i.test(raw)?'Unknown DEX ('+raw.slice(0,6)+'…'+raw.slice(-4)+')':raw?raw.charAt(0).toUpperCase()+raw.slice(1):'Unknown DEX');
+  return v?n+' '+v:n;
+}
 export async function venues(token){
   try{
     const r=await fetch('https://api.dexscreener.com/latest/dex/tokens/'+token,
@@ -565,7 +578,7 @@ export async function venues(token){
     const j=await r.json();
     const list=(j.pairs||[]).filter(p=>p.chainId==='bsc'&&p.liquidity)
       .map(p=>({pair:(p.pairAddress||'').toLowerCase(),
-        name:(p.dexId||'?')+' '+((p.labels||[]).join('')||'v2'),
+        name:dexName(p.dexId,p.labels),
         quote:p.quoteToken&&p.quoteToken.symbol||'',
         liq:Math.round(p.liquidity.usd||0)}))
       .sort((a,b)=>b.liq-a.liq);

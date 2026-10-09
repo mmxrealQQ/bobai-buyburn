@@ -147,6 +147,9 @@ const needsList = (needs) => {
   return `        <dl class="sv-needs">${items.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
 };
 
+// The request body a buyer sends, from the fields under "needs" (2026-10-09 review: no card showed one). A field
+// described as an alternative ("or …") is left out; an address-like field shows 0x…
+const bodyOf = (needs) => JSON.stringify({ params: Object.fromEntries(Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v))).map(([k, v]) => [k, /0x|address|wallet/i.test(String(v)) ? '0x…' : '…'])) });
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
@@ -156,7 +159,7 @@ const delivery = (d) => `      <article class="sv-buy">
         <p class="sv-what">${esc(d.what)}</p>
         <p class="sv-needs-h">What it needs from you</p>
 ${needsList(d.needs)}
-        <p class="sv-cost">Pay per answer: <code>${esc(d.x402)}</code></p>
+        <p class="sv-cost">Pay per answer: <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener" aria-label="See a real ${esc(d.name)} answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>`;
@@ -231,6 +234,7 @@ function page() {
   .sv-ask{color:var(--gold);font-size:.84rem;line-height:1.5;margin:0 0 8px}
   .sv-what{color:var(--muted);font-size:.8rem;line-height:1.6;margin:0}
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
+  .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
   /* A price is one short figure and stays on one line. The x402 line carries a

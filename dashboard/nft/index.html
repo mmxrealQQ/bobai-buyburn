@@ -99,6 +99,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .mkt a{display:flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:.74rem;padding:6px 15px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s,color .25s,box-shadow .25s}
 .mkt a:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 22px rgba(240,185,11,.1)}
 .mkt img{width:18px;height:18px;border-radius:3px;object-fit:contain}
+.trust-pill{margin-left:8px;color:var(--text);text-decoration:none;border-color:var(--border);background:transparent}
+.earn{max-width:620px;margin:18px auto 0;padding:0 0 0 22px;text-align:left;font-size:.9rem;line-height:1.55;color:var(--muted)}.earn li{margin:0 0 6px}.earn b{color:var(--text)}
+.earn-btn{display:inline-block;margin-top:12px;padding:10px 18px;border-radius:10px;background:#F0B90B;color:#111;font-weight:700;text-decoration:none}
+.find{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-top:16px;font-size:.85rem}.find label{color:var(--muted)}
+.find input{min-width:0;width:min(330px,100%);padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font:inherit}
+.find button{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font:inherit;cursor:pointer}.find-msg{flex-basis:100%;text-align:center;color:#ff6b6b;min-height:1em}
 .live-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.18);padding:5px 14px;border-radius:20px;font-size:.7rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase;margin-top:18px}
 /* A static ring on an ::after, with only transform and opacity animated. A
    growing box-shadow cannot be composited and costs a style recalc plus a
@@ -296,8 +302,8 @@ footer a:hover{color:var(--gold)}
       <div class="motif-card"><img src="motifs/big-buy-sm.webp" data-full="motifs/big-buy.webp" width="384" height="384" alt="BIG BUY motif" decoding="async"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
       <div class="motif-card"><img src="motifs/huge-buy-sm.webp" data-full="motifs/huge-buy.webp" width="384" height="384" alt="HUGE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
       <div class="motif-card"><img src="motifs/whale-buy-sm.webp" data-full="motifs/whale-buy.webp" width="384" height="384" alt="WHALE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>
-      <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1000+ · 50 max</div></div></div>
-      <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2500+ · 25 max</div></div></div>
+      <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1,000+ · 50 max</div></div></div>
+      <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2,500+ · 25 max</div></div></div>
     </div>
     <h1>BOBAI Buy Drops</h1>
     <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
@@ -307,6 +313,14 @@ footer a:hover{color:var(--gold)}
       <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.webp" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain" loading="lazy" decoding="async">BscScan</a>
     </div>
     <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>
+    <a class="live-pill trust-pill" href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d#code" target="_blank" rel="noopener">Ownership renounced &middot; supply hard-capped</a>
+    <ol class="earn" aria-label="How to earn one">
+      <li><b>Buy $BOBAI on PancakeSwap</b> with a little more than $100 of BNB &mdash; wallet or aggregator fees come off first, and only what reaches the pool counts.</li>
+      <li><b>Set slippage to 15% or more.</b> $BOBAI has a 3% tax; a lower setting can make the swap fail.</li>
+      <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier.</li>
+    </ol>
+    <a class="earn-btn" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $100+ on PancakeSwap &rarr;</a>
+    <form class="find" id="find-form" autocomplete="off"><label for="find-addr">Find your NFTs</label><input id="find-addr" placeholder="0x… your wallet" spellcheck="false" inputmode="text"><button type="submit">Show on BscScan</button><span class="find-msg" id="find-msg" role="status"></span></form>
     <div class="mkt">
       <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.webp?v=3" alt="" loading="lazy" decoding="async">Element</a>
       <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="" loading="lazy" decoding="async">NFTScan</a>
@@ -319,14 +333,14 @@ footer a:hover{color:var(--gold)}
     <div class="sc"><div class="l">Total Minted</div><div class="v" id="stat-minted">–</div></div>
     <div class="sc"><div class="l">Supply Cap</div><div class="v">1,925</div></div>
     <div class="sc"><div class="l">Unique Holders</div><div class="v plain" id="stat-buyers">–</div></div>
-    <div class="sc"><div class="l">Status</div><div class="v green">● Live</div></div>
+    <div class="sc"><div class="l">Last drop</div><div class="v plain" id="stat-last">–</div></div>
   </div>
 </section>
 
 <section class="sec">
   <div class="sh">
     <h2>Tier <em>availability</em></h2>
-    <p>Each buy-tier and its per-rarity breakdown — minted / cap and your chance per buy. Every cell has a fixed cap; once it's full, that rarity stops for that tier. The bar shows how full the whole tier is.</p>
+    <p>Each buy-tier and its per-rarity breakdown — minted / cap and the chance for the next buy in this tier. Every cell has a fixed cap; once it's full, that rarity stops for that tier. The bar shows how full the whole tier is.</p>
   </div>
   <div class="tier-grid" id="tier-grid">
     <div class="empty">Loading on-chain data…</div>
@@ -351,10 +365,10 @@ footer a:hover{color:var(--gold)}
   <div class="ledger-wrap">
     <table class="ledger-table">
       <thead>
-        <tr><th>#</th><th>Tier</th><th>Rarity</th><th>Recipient</th><th>Time</th><th>Tx</th></tr>
+        <tr><th>#</th><th>Tier</th><th>Rarity</th><th>Recipient</th><th>Time</th><th>Buy</th><th>Mint</th></tr>
       </thead>
       <tbody id="ledger-body">
-        <tr><td colspan="6" class="empty">Loading recent mints…</td></tr>
+        <tr><td colspan="7" class="empty">Loading recent mints…</td></tr>
       </tbody>
     </table>
   </div>
@@ -375,7 +389,7 @@ footer a:hover{color:var(--gold)}
 
 <!-- Lightbox for motif + card click-to-zoom -->
 <div id="lbx" class="lbx" role="dialog" aria-modal="true" aria-hidden="true">
-  <div class="lbx-close" id="lbx-close" aria-label="Close">✕</div>
+  <button type="button" class="lbx-close" id="lbx-close" aria-label="Close">✕</button>
   <div class="lbx-inner">
     <!-- No src attribute on purpose. src="" is not "no image": the browser
          resolves an empty value against the document URL and fetches the page
@@ -393,8 +407,8 @@ const TIERS = [
   { slug:'big-buy',     label:'BIG BUY',     threshold:'$150+',  emoji:'💎' },
   { slug:'huge-buy',    label:'HUGE BUY',    threshold:'$250+',  emoji:'🚀' },
   { slug:'whale-buy',   label:'WHALE BUY',   threshold:'$500+',  emoji:'🐋' },
-  { slug:'thunder-buy', label:'THUNDER BUY', threshold:'$1000+', emoji:'⚡' },
-  { slug:'kraken-buy',  label:'KRAKEN BUY',  threshold:'$2500+', emoji:'🦑' },
+  { slug:'thunder-buy', label:'THUNDER BUY', threshold:'$1,000+', emoji:'⚡' },
+  { slug:'kraken-buy',  label:'KRAKEN BUY',  threshold:'$2,500+', emoji:'🦑' },
 ];
 const RARITIES = [
   { slug:'common',    name:'Common',    hex:'#b0c3d9' },
@@ -499,7 +513,7 @@ function renderLedger(drops, latestBlock, holders) {
   const body = document.getElementById('ledger-body');
   body.innerHTML = '';
   if (!drops || drops.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" class="empty">No drops yet — the first $BOBAI buy ≥ $100 will mint NFT #1 here.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty">No drops yet — the first $BOBAI buy ≥ $100 will mint NFT #1 here.</td></tr>`;
     document.getElementById('stat-buyers').textContent = (typeof holders === 'number' ? holders : 0).toLocaleString('en-US');
     return;
   }
@@ -513,9 +527,10 @@ function renderLedger(drops, latestBlock, holders) {
       <td class="serial">#${d.tokenId}</td>
       <td><div class="tier-cell"><span class="e">${t.emoji}</span> ${t.label.replace(' BUY','')}</div></td>
       <td><span class="rarity-tag" style="color:${r.hex};border-color:${r.hex}55;background:${r.hex}10"><span class="rarity-dot" style="background:${r.hex}"></span>${r.name}</span>${d.note ? `<span class="drop-note">🎁 ${d.note}</span>` : ''}</td>
-      <td class="wallet"><a href="${BSCSCAN}/address/${d.to}" target="_blank" rel="noopener">${fmtAddr(d.to)}</a></td>
+      <td class="wallet"><a href="${BSCSCAN}/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d?a=${d.to}" target="_blank" rel="noopener">${fmtAddr(d.to)}</a></td>
       <td class="age">${fmtUtc(d.ts)}</td>
-      <td class="tx"><a href="${BSCSCAN}/tx/${d.tx}" target="_blank" rel="noopener">view ↗</a></td>
+      <td class="tx">${d.buyTx ? `<a href="${BSCSCAN}/tx/${d.buyTx}" target="_blank" rel="noopener">${d.usd ? '$' + Math.round(d.usd).toLocaleString('en-US') : 'buy'} ↗</a>` : '–'}</td>
+      <td class="tx"><a href="${BSCSCAN}/tx/${d.tx}" target="_blank" rel="noopener">mint ↗</a></td>
     `;
     body.appendChild(row);
   });
@@ -531,7 +546,7 @@ function renderCollection() {
     tier.className = 'collection-tier';
     let cards = '';
     RARITIES.forEach(r => {
-      cards += `<div class="coll-card" style="border-top-color:${r.hex}"><img src="cards/${t.slug}-${r.slug}.jpg" loading="lazy" alt="${t.label} ${r.name}"><div class="label" style="color:${r.hex}">${r.name}</div></div>`;
+      cards += `<div class="coll-card" role="button" tabindex="0" style="border-top-color:${r.hex}"><img src="cards/${t.slug}-${r.slug}-sm.webp" data-full="cards/${t.slug}-${r.slug}.jpg" width="256" height="320" loading="lazy" alt="${t.label} ${r.name}"><div class="label" style="color:${r.hex}">${r.name}</div></div>`;
     });
     tier.innerHTML = `
       <h3><span class="e">${t.emoji}</span> ${t.label}<span class="t">· ${t.threshold}</span></h3>
@@ -549,10 +564,13 @@ async function refresh() {
     renderTiers(s.minted, s.cap, s.cells);
     renderRarities(s.cells, s.drops || []);
     renderLedger(s.drops || [], s.latestBlock, s.holders);
+    const last = (s.drops || [])[0], ago = last ? (Date.now() / 1000 - last.ts) : null;
+    document.getElementById('stat-last').textContent = ago == null ? '–' : ago < 3600 ? Math.max(1, Math.round(ago / 60)) + ' min ago' : ago < 172800 ? Math.round(ago / 3600) + ' h ago' : Math.round(ago / 86400) + ' days ago';
   } catch (e) {
     console.error('state fail', e);
     document.getElementById('tier-grid').innerHTML = `<div class="empty">Couldn't load tier data — retrying in a moment.</div>`;
-    document.getElementById('ledger-body').innerHTML = `<tr><td colspan="6" class="empty">Couldn't load drops — retrying.</td></tr>`;
+    document.getElementById('ledger-body').innerHTML = `<tr><td colspan="7" class="empty">Couldn't load drops — retrying.</td></tr>`;
+    document.getElementById('stat-last').textContent = 'offline';
   }
 }
 
@@ -570,8 +588,11 @@ function openLbx(src, title, subtitle) {
   lbx.classList.add('open');
   lbx.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  lbxBack = document.activeElement; document.getElementById('lbx-close').focus(); // keyboard users land in the dialog
 }
+let lbxBack = null;
 function closeLbx() {
+  if (lbxBack && lbxBack.focus) { lbxBack.focus(); lbxBack = null; } // and back where they were
   lbx.classList.remove('open');
   lbx.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
@@ -600,7 +621,23 @@ document.getElementById('collection-showcase').addEventListener('click', e => {
   const img = card.querySelector('img');
   const lbl = card.querySelector('.label')?.textContent || '';
   const tier = card.closest('.collection-tier')?.querySelector('h3')?.textContent || '';
-  openLbx(img.src, tier.trim(), lbl);
+  openLbx(img.dataset.full || img.src, tier.trim(), lbl);
+});
+// keyboard (2026-10-09): every card opens with Enter or Space, like a button
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const c = e.target.closest && e.target.closest('.coll-card, .hero-motifs .motif-card');
+  if (c) { e.preventDefault(); c.click(); }
+});
+document.querySelectorAll('.hero-motifs .motif-card').forEach(c => { c.setAttribute('role', 'button'); c.tabIndex = 0; });
+document.querySelectorAll('.motif-meta .e, .tier-cell .e').forEach(e => e.setAttribute('aria-hidden', 'true'));
+// find your NFTs: BscScan's own view of this collection for a wallet (the drop list here keeps the last 100)
+document.getElementById('find-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const a = document.getElementById('find-addr').value.trim(), m = document.getElementById('find-msg');
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { m.textContent = 'That is not a wallet address (0x and 40 characters).'; return; }
+  m.textContent = '';
+  window.open('https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d?a=' + a, '_blank', 'noopener');
 });
 </script>
 </div>

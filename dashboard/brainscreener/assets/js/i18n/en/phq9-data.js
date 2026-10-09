@@ -76,7 +76,7 @@ window.TEST_DATA = (function () {
       },
       high: {
         title: result.total >= 20 ? "Severe depressive symptoms" : "Moderately severe depressive symptoms",
-        sub: "The picture is consistent with major depression requiring treatment.",
+        sub: "Screens positive for a severe depression level. A professional assessment is recommended soon.",
       },
     };
     // A low total must never read "unremarkable" beside an endorsed item 9
@@ -96,10 +96,10 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>PHQ-9 total score</strong> is <strong>${result.total} of 27 points</strong> — this corresponds to <strong>${result.severity}</strong> severity.
       ${result.cutoffReached
-        ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression (Manea et al., meta-analysis 2012; confirmed in USPSTF 2023).`
+        ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression at a score of 10 or more (Kroenke, Spitzer &amp; Williams 2001).`
         : `The clinical cutoff of ≥&nbsp;10 has not been reached. If the distress persists for weeks or worsens, a specialist assessment is nevertheless advisable.`}
       ${result.mddAlgorithm
-        ? ` In addition, your response pattern meets the <strong>DSM-5-TR algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days").`
+        ? ` In addition, your answers match the symptom count of the <strong>PHQ-9 diagnostic algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days"). The algorithm also needs the duration and the effect on daily life, which only a professional can assess.`
         : ""}
     `;
 
@@ -125,8 +125,8 @@ window.TEST_DATA = (function () {
 
     const context = `
       The <strong>Patient Health Questionnaire-9 (PHQ-9)</strong> directly maps the nine DSM-5 symptom
-      criteria of major depression and, with more than 5,000 validation studies, is the
-      most thoroughly researched depression self-rating instrument worldwide. The reference period is the
+      criteria of major depression and is one of the most thoroughly researched depression
+      self-rating instruments worldwide. The reference period is the
       <strong>last 2 weeks</strong>. The instrument is suitable for screening, severity assessment
       and monitoring the course of treatment. It does not replace a medical diagnosis, but it is
       recommended as a first-line instrument internationally

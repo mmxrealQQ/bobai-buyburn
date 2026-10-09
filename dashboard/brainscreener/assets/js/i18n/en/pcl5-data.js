@@ -90,7 +90,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable PTSD screening",
       moderate: "Indications of PTSD symptoms",
-      high: "Consistent with PTSD per DSM-5",
+      high: "Screens positive for probable PTSD",
     };
     const subMap = {
       low: "The scores reach neither the total-score cutoff nor the DSM-5 algorithm.",
@@ -143,7 +143,7 @@ window.TEST_DATA = (function () {
       measure for post-traumatic stress disorder and maps all 20 DSM-5-TR symptoms 1:1.
       It was developed in 2013 by the US National Center for PTSD, is in the public domain
       and, since the Krüger-Gottschalk validation (2017), is also well established in
-      German-speaking countries. Reference period: <strong>past month</strong>. A confirmed diagnosis requires
+      other languages. Reference period: <strong>past month</strong>. A confirmed diagnosis requires
       the presence of a Criterion A trauma and a structured clinical interview
       (e.g.&nbsp;CAPS-5).
     `;

@@ -58,7 +58,7 @@ window.TEST_DATA = (function () {
     const subMap = {
       low: result.total <= 4 ? "No indications of a clinically relevant anxiety disorder." : "Symptoms are present but remain below the clinical cutoff — monitoring is advisable.",
       moderate: "The total score falls within the range that suggests a specialist assessment.",
-      high: "The picture is consistent with an anxiety disorder requiring treatment.",
+      high: "Screens positive for a high anxiety level. A professional assessment is recommended.",
     };
 
     const interp = `
@@ -91,7 +91,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with your general practitioner or directly with a psychiatric / psychotherapeutic practice.");
       next.push("A confirmed diagnosis requires a clinical interview and the exclusion of organic causes (e.&nbsp;g. hyperthyroidism, caffeine/substances, cardiac arrhythmia).");
-      next.push("Evidence-based treatments for GAD: cognitive behavioural therapy (CBT), and in more severe cases SSRIs/SNRIs (grade A recommendation, NICE / German S3 guideline 2021).");
+      next.push("Evidence-based treatments for GAD: cognitive behavioural therapy (CBT), and in more severe cases medication a doctor prescribes (grade A recommendation, NICE / German S3 guideline 2021).");
     } else if (result.flag === "moderate") {
       next.push("A specialist or psychotherapeutic assessment is recommended, particularly if the symptoms have persisted for more than 6 months (DSM-5-TR duration criterion for GAD).");
       next.push("Consider accompanying progress monitoring — the GAD-7 is a standardised instrument well suited for this purpose.");

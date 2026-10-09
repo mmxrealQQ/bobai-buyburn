@@ -81,6 +81,12 @@ try {
       sellBad: read(m.flagsCard({ ...full, is_honeypot: '0' }, true, { ok: true, sellable: false, sell_error: 'TRANSFER_FROM_FAILED' })),
       sellNone: read(m.flagsCard({ ...full, is_honeypot: '0' }, true, null)),
       live: read(document.getElementById('sc-out')),
+      // "The short answer" leads with a refused sell (2026-10-09): its first line, for a refused and a passed sell
+      vd: (() => {
+        if (typeof m.verdictCard !== 'function') return null;
+        const first = (sim) => { try { const c = m.verdictCard({ rows: [], taxB: 0, taxS: 0, sim }, { fee: 0.0025 }, {}, false, {}); const r = c.querySelector('.vd-r'); return r ? [...r.classList].find((x) => /^vd-(good|bad|mid)$/.test(x)) + '|' + r.querySelector('b').textContent : '(no line)'; } catch (e) { return 'THROW ' + e.message; } };
+        return { bad: first({ ok: true, sellable: false, sell_error: 'TRANSFER_FROM_FAILED' }), ok: first({ ok: true, sellable: true }), none: first(null) };
+      })(),
     };
   })()`);
 
@@ -112,6 +118,13 @@ try {
     if (!has(drawn.sellBad, 'bad', 'Sell test: REVERTED')) problems.push('a reverted sell is not drawn as the red sell-test chip');
     if (has(drawn.sellBad, 'ok', 'Sell test: goes through')) problems.push('a reverted sell is drawn as a pass');
     if (!has(drawn.sellNone, 'unk', 'Sell test: not run')) problems.push('a missing simulation next to a GoPlus answer is not reported as "not run"');
+    if (!drawn.vd) problems.push('scanner.js does not export verdictCard — the short answer cannot be pinned');
+    else {
+      if (drawn.vd.bad !== 'vd-bad|The sell did not go through.') problems.push(`a refused sell does not lead the short answer in red: ${drawn.vd.bad}`);
+      if (drawn.vd.ok !== 'vd-good|A sell goes through right now.') problems.push(`a passed sell does not lead the short answer in green: ${drawn.vd.ok}`);
+      if (/sell/i.test(drawn.vd.none)) problems.push(`with no sell test the short answer still claims one: ${drawn.vd.none}`);
+      notes.push(`short answer → refused: ${drawn.vd.bad} · passed: ${drawn.vd.ok} · none: ${drawn.vd.none}`);
+    }
     if (gotResult && has(drawn.live, 'bad', 'Honeypot')) problems.push('the live $BOBAI result carries a Honeypot chip');
     if (gotResult && notChecked(drawn.live)) notes.push('live: GoPlus ran no sell simulation for $BOBAI today (not a defect — a fact about GoPlus)');
     notes.push(`flagged → ${drawn.flagged.map((c) => c.label).join(' · ')}`);

@@ -194,7 +194,7 @@
     if (val >= 1 && !note) {
       note = document.createElement("p");
       note.className = "item-crisis small";
-      note.setAttribute("role", "note");
+      note.setAttribute("role", "alert"); // announced as it appears (2026-10-09): it was a silent "note"
       note.innerHTML = 'If you are in danger now, please reach out: your local emergency number (<a href="tel:112">112</a> / <a href="tel:911">911</a> / <a href="tel:999">999</a>), <a href="tel:988">988</a> in the US &amp; Canada, <a href="tel:116123">116 123</a> in the UK &amp; Ireland, or <a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a> for your country. Free and confidential, 24/7.';
       itemEl.appendChild(note);
     } else if (val < 1 && note) note.remove();

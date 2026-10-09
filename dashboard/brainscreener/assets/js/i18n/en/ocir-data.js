@@ -123,7 +123,7 @@ window.TEST_DATA = (function () {
     const next = [];
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a psychotherapy practice specialising in obsessive-compulsive disorder.");
-      next.push("Evidence-based and effective: cognitive behavioural therapy with exposure and response prevention (ERP), supplemented by an SSRI where appropriate (grade A recommendation, German S3 guideline 2022, NICE CG31 update 2024).");
+      next.push("Evidence-based and effective: cognitive behavioural therapy with exposure and response prevention (ERP), supplemented by medication where a doctor finds it indicated (grade A recommendation, German S3 guideline 2022, NICE CG31 update 2024).");
     } else if (result.flag === "moderate") {
       next.push("A specialist medical or psychotherapeutic assessment is recommended, particularly if the obsessions or compulsions take up more than one hour per day or noticeably restrict everyday life (DSM-5-TR time criterion).");
       next.push("Take note of which subscale is most pronounced for you — this helps in the initial therapeutic consultation.");

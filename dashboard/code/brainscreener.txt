@@ -627,7 +627,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -2835,7 +2835,7 @@ window.TEST_DATA = (function () {
   ] };
 
   const ITEMS = [
-    { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: 3 dl beer, 1 dl wine, 2 cl spirits)</span>" },
+    { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: about 330 ml beer, 100 ml wine, 25–30 ml spirits; a US standard drink is 14 g)</span>" },
     { id: "A2",  scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
     { id: "A3",  scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
     { id: "A4",  scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
@@ -2896,7 +2896,7 @@ window.TEST_DATA = (function () {
     if (result.total >= 20) {
       next.push("Contact a GP practice experienced in addiction medicine, a psychiatric service or a specialised addiction counselling service promptly.");
       next.push("If you are physically dependent, do not stop abruptly on your own — withdrawal complications (seizures, delirium) can be life-threatening. Inpatient or medically supervised outpatient detoxification is recommended.");
-      next.push("Evidence-based treatment: motivational interviewing + CBT + medication where indicated (naltrexone, acamprosate, nalmefene); German S3 guideline 2021, NICE CG115 update 2024.");
+      next.push("Evidence-based treatment: motivational interviewing + CBT + medication where a doctor finds it indicated; German S3 guideline 2021, NICE CG115 update 2024.");
     } else if (result.total >= 16) {
       next.push("A medical brief intervention (10–30 minutes of structured conversation) is evidence-based and effective at this level — make an appointment with your GP.");
       next.push("Keep a drinking diary for 2 weeks — this is very useful for the initial consultation.");
@@ -2909,8 +2909,8 @@ window.TEST_DATA = (function () {
     next.push("Print this report as a PDF and bring it to your next appointment.");
 
     return {
-      title: result.total <= 7 ? "Unremarkable AUDIT screening" : (result.total <= 15 ? "Hazardous alcohol consumption" : (result.total <= 19 ? "Harmful alcohol consumption" : "Probable alcohol dependence")),
-      sub: result.total <= 7 ? "Consumption in the low-risk range according to the WHO categorisation." : "A further assessment or specific counselling is recommended.",
+      title: result.total <= 4 ? "Unremarkable AUDIT screening" : result.total <= 7 ? "Low risk by the WHO cut-off, above the lower cut-off often used for women" : (result.total <= 15 ? "Hazardous alcohol consumption" : (result.total <= 19 ? "Harmful alcohol consumption" : "Probable alcohol dependence")),
+      sub: result.total <= 4 ? "Consumption in the low-risk range according to the WHO categorisation." : result.total <= 7 ? "Below the WHO cut-off of 8. For women a cut-off of 5 is often used (Bradley et al. 2007); at that one, this score would count as hazardous." : "A further assessment or specific counselling is recommended.",
       value: result.total,
       unit: `/ 40 points · ${result.level}`,
       gauge: Math.min(1, result.total / 25),
@@ -3708,7 +3708,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a service specialising in eating disorders.");
       next.push("In the case of acute medical risk (e.&nbsp;g. low BMI &lt; 17.5, electrolyte imbalance, cardiac arrhythmia), a somatic assessment is urgently needed.");
-      next.push("Evidence-based, effective depending on the diagnosis: CBT-E (Fairburn), MANTRA, family-based treatment (FBT for adolescents), and for BED also SSRIs/lisdexamfetamine (German S3 guideline 2018 / NICE NG69 2024).");
+      next.push("Evidence-based, effective depending on the diagnosis: CBT-E (Fairburn), MANTRA, family-based treatment (FBT for adolescents), and for BED also medication where a doctor finds it indicated (German S3 guideline 2018 / NICE NG69 2024).");
     } else if (result.flag === "moderate") {
       next.push("An assessment by a physician or a service specialising in eating disorders is recommended, especially if your weight or eating behaviour is distressing you or your weight has changed significantly.");
       next.push("Watch for warning signs: binge eating with loss of control, vomiting, excessive exercise, restrictive eating patterns, pronounced preoccupation with body and weight.");
@@ -3836,7 +3836,7 @@ window.TEST_DATA = (function () {
     const subMap = {
       low: result.total <= 4 ? "No indications of a clinically relevant anxiety disorder." : "Symptoms are present but remain below the clinical cutoff — monitoring is advisable.",
       moderate: "The total score falls within the range that suggests a specialist assessment.",
-      high: "The picture is consistent with an anxiety disorder requiring treatment.",
+      high: "Screens positive for a high anxiety level. A professional assessment is recommended.",
     };
 
     const interp = `
@@ -3869,7 +3869,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with your general practitioner or directly with a psychiatric / psychotherapeutic practice.");
       next.push("A confirmed diagnosis requires a clinical interview and the exclusion of organic causes (e.&nbsp;g. hyperthyroidism, caffeine/substances, cardiac arrhythmia).");
-      next.push("Evidence-based treatments for GAD: cognitive behavioural therapy (CBT), and in more severe cases SSRIs/SNRIs (grade A recommendation, NICE / German S3 guideline 2021).");
+      next.push("Evidence-based treatments for GAD: cognitive behavioural therapy (CBT), and in more severe cases medication a doctor prescribes (grade A recommendation, NICE / German S3 guideline 2021).");
     } else if (result.flag === "moderate") {
       next.push("A specialist or psychotherapeutic assessment is recommended, particularly if the symptoms have persisted for more than 6 months (DSM-5-TR duration criterion for GAD).");
       next.push("Consider accompanying progress monitoring — the GAD-7 is a standardised instrument well suited for this purpose.");
@@ -4736,7 +4736,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment with a psychiatric practice or a specialist bipolar outpatient clinic. A bipolar diagnosis is highly relevant for treatment — antidepressants without a mood stabiliser can induce switches in bipolar depression.");
       next.push("A detailed history of the episodes (duration, sleep patterns, level of functioning) is central to the diagnosis. Keep a record of episodes with their duration and triggers.");
-      next.push("Evidence-based options depending on the diagnosis: lithium, valproate, quetiapine, lurasidone, lamotrigine (German S3 guideline on bipolar disorders 2024, NICE CG185).");
+      next.push("Evidence-based options depend on the diagnosis and include psychotherapy and medication a doctor prescribes (German S3 guideline on bipolar disorders 2024, NICE CG185).");
     } else if (result.flag === "moderate") {
       next.push("Even though the full algorithm is not met, a specialist assessment is worthwhile if bipolar disorder is suspected — Bipolar II is frequently missed.");
       next.push("The Hypomania Checklist HCL-32 (Angst 2005) can be a useful addition, as it captures hypomania more sensitively than the MDQ.");
@@ -4936,7 +4936,7 @@ window.TEST_DATA = (function () {
     const next = [];
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a psychotherapy practice specialising in obsessive-compulsive disorder.");
-      next.push("Evidence-based and effective: cognitive behavioural therapy with exposure and response prevention (ERP), supplemented by an SSRI where appropriate (grade A recommendation, German S3 guideline 2022, NICE CG31 update 2024).");
+      next.push("Evidence-based and effective: cognitive behavioural therapy with exposure and response prevention (ERP), supplemented by medication where a doctor finds it indicated (grade A recommendation, German S3 guideline 2022, NICE CG31 update 2024).");
     } else if (result.flag === "moderate") {
       next.push("A specialist medical or psychotherapeutic assessment is recommended, particularly if the obsessions or compulsions take up more than one hour per day or noticeably restrict everyday life (DSM-5-TR time criterion).");
       next.push("Take note of which subscale is most pronounced for you — this helps in the initial therapeutic consultation.");
@@ -5096,7 +5096,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable PTSD screening",
       moderate: "Indications of PTSD symptoms",
-      high: "Consistent with PTSD per DSM-5",
+      high: "Screens positive for probable PTSD",
     };
     const subMap = {
       low: "The scores reach neither the total-score cutoff nor the DSM-5 algorithm.",
@@ -5149,7 +5149,7 @@ window.TEST_DATA = (function () {
       measure for post-traumatic stress disorder and maps all 20 DSM-5-TR symptoms 1:1.
       It was developed in 2013 by the US National Center for PTSD, is in the public domain
       and, since the Krüger-Gottschalk validation (2017), is also well established in
-      German-speaking countries. Reference period: <strong>past month</strong>. A confirmed diagnosis requires
+      other languages. Reference period: <strong>past month</strong>. A confirmed diagnosis requires
       the presence of a Criterion A trauma and a structured clinical interview
       (e.g.&nbsp;CAPS-5).
     `;
@@ -5305,7 +5305,7 @@ window.TEST_DATA = (function () {
       },
       high: {
         title: result.total >= 20 ? "Severe depressive symptoms" : "Moderately severe depressive symptoms",
-        sub: "The picture is consistent with major depression requiring treatment.",
+        sub: "Screens positive for a severe depression level. A professional assessment is recommended soon.",
       },
     };
     // A low total must never read "unremarkable" beside an endorsed item 9
@@ -5325,10 +5325,10 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>PHQ-9 total score</strong> is <strong>${result.total} of 27 points</strong> — this corresponds to <strong>${result.severity}</strong> severity.
       ${result.cutoffReached
-        ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression (Manea et al., meta-analysis 2012; confirmed in USPSTF 2023).`
+        ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression at a score of 10 or more (Kroenke, Spitzer &amp; Williams 2001).`
         : `The clinical cutoff of ≥&nbsp;10 has not been reached. If the distress persists for weeks or worsens, a specialist assessment is nevertheless advisable.`}
       ${result.mddAlgorithm
-        ? ` In addition, your response pattern meets the <strong>DSM-5-TR algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days").`
+        ? ` In addition, your answers match the symptom count of the <strong>PHQ-9 diagnostic algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days"). The algorithm also needs the duration and the effect on daily life, which only a professional can assess.`
         : ""}
     `;
 
@@ -5354,8 +5354,8 @@ window.TEST_DATA = (function () {
 
     const context = `
       The <strong>Patient Health Questionnaire-9 (PHQ-9)</strong> directly maps the nine DSM-5 symptom
-      criteria of major depression and, with more than 5,000 validation studies, is the
-      most thoroughly researched depression self-rating instrument worldwide. The reference period is the
+      criteria of major depression and is one of the most thoroughly researched depression
+      self-rating instruments worldwide. The reference period is the
       <strong>last 2 weeks</strong>. The instrument is suitable for screening, severity assessment
       and monitoring the course of treatment. It does not replace a medical diagnosis, but it is
       recommended as a first-line instrument internationally
@@ -6684,7 +6684,7 @@ window.TEST_DATA = (function () {
     if (val >= 1 && !note) {
       note = document.createElement("p");
       note.className = "item-crisis small";
-      note.setAttribute("role", "note");
+      note.setAttribute("role", "alert"); // announced as it appears (2026-10-09): it was a silent "note"
       note.innerHTML = 'If you are in danger now, please reach out: your local emergency number (<a href="tel:112">112</a> / <a href="tel:911">911</a> / <a href="tel:999">999</a>), <a href="tel:988">988</a> in the US &amp; Canada, <a href="tel:116123">116 123</a> in the UK &amp; Ireland, or <a href="https://findahelpline.com" target="_blank" rel="noopener">findahelpline.com</a> for your country. Free and confidential, 24/7.';
       itemEl.appendChild(note);
     } else if (val < 1 && note) note.remove();
@@ -7064,7 +7064,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -7183,9 +7183,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -7443,7 +7443,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -7742,7 +7742,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/charakter-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -7960,7 +7960,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -8079,9 +8079,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -8218,7 +8218,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -8337,9 +8337,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -9221,7 +9221,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -9340,9 +9340,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -9479,7 +9479,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -9598,9 +9598,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -9737,7 +9737,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -9856,9 +9856,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -9995,7 +9995,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=99"></script>
+<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=100"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
@@ -10114,9 +10114,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=99"></script>
+<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=100"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>
 
@@ -10374,6 +10374,6 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=6"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
 </body>
 </html>

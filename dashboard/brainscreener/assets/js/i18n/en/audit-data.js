@@ -51,7 +51,7 @@ window.TEST_DATA = (function () {
   ] };
 
   const ITEMS = [
-    { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: 3 dl beer, 1 dl wine, 2 cl spirits)</span>" },
+    { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: about 330 ml beer, 100 ml wine, 25–30 ml spirits; a US standard drink is 14 g)</span>" },
     { id: "A2",  scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
     { id: "A3",  scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
     { id: "A4",  scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
@@ -112,7 +112,7 @@ window.TEST_DATA = (function () {
     if (result.total >= 20) {
       next.push("Contact a GP practice experienced in addiction medicine, a psychiatric service or a specialised addiction counselling service promptly.");
       next.push("If you are physically dependent, do not stop abruptly on your own — withdrawal complications (seizures, delirium) can be life-threatening. Inpatient or medically supervised outpatient detoxification is recommended.");
-      next.push("Evidence-based treatment: motivational interviewing + CBT + medication where indicated (naltrexone, acamprosate, nalmefene); German S3 guideline 2021, NICE CG115 update 2024.");
+      next.push("Evidence-based treatment: motivational interviewing + CBT + medication where a doctor finds it indicated; German S3 guideline 2021, NICE CG115 update 2024.");
     } else if (result.total >= 16) {
       next.push("A medical brief intervention (10–30 minutes of structured conversation) is evidence-based and effective at this level — make an appointment with your GP.");
       next.push("Keep a drinking diary for 2 weeks — this is very useful for the initial consultation.");
@@ -125,8 +125,8 @@ window.TEST_DATA = (function () {
     next.push("Print this report as a PDF and bring it to your next appointment.");
 
     return {
-      title: result.total <= 7 ? "Unremarkable AUDIT screening" : (result.total <= 15 ? "Hazardous alcohol consumption" : (result.total <= 19 ? "Harmful alcohol consumption" : "Probable alcohol dependence")),
-      sub: result.total <= 7 ? "Consumption in the low-risk range according to the WHO categorisation." : "A further assessment or specific counselling is recommended.",
+      title: result.total <= 4 ? "Unremarkable AUDIT screening" : result.total <= 7 ? "Low risk by the WHO cut-off, above the lower cut-off often used for women" : (result.total <= 15 ? "Hazardous alcohol consumption" : (result.total <= 19 ? "Harmful alcohol consumption" : "Probable alcohol dependence")),
+      sub: result.total <= 4 ? "Consumption in the low-risk range according to the WHO categorisation." : result.total <= 7 ? "Below the WHO cut-off of 8. For women a cut-off of 5 is often used (Bradley et al. 2007); at that one, this score would count as hazardous." : "A further assessment or specific counselling is recommended.",
       value: result.total,
       unit: `/ 40 points · ${result.level}`,
       gauge: Math.min(1, result.total / 25),

@@ -614,7 +614,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
   const c=el('section','cd vd-card');
   const h=el('div','cd-h');
   h.appendChild(el('h3',null,'The short answer'));
-  h.appendChild(el('p',null,'The three things worth knowing before you trade this, in plain words. Every one of them is measured below.'));
+  h.appendChild(el('p',null,'What is worth knowing before you trade this, in plain words. Every one of them is measured below.'));
   c.appendChild(h);
   const list=el('div','vd');
 
@@ -624,6 +624,12 @@ function verdictCard(d,pool,gp,gpOk,tax){
     r.appendChild(el('span',null,body));
     list.appendChild(r);
   };
+
+  // 0. Can you get out at all (2026-10-09 review): the sell test stood only in the last card, while this card could
+  //    quote a sell cost and a burned LP in green for a token whose sell the router refuses. It leads when it failed.
+  const sim=d.sim;
+  if(sim&&sim.ok&&!sim.sellable)line('bad','The sell did not go through.','A sell simulated on the chain just now, from a fresh address, was refused'+(sim.sell_error?' ('+sim.sell_error+')':'')+'. Whatever the costs below say, you may not be able to sell this token.');
+  else if(sim&&sim.ok&&sim.sellable&&sim.through_scanned_pool!==false)line('good','A sell goes through right now.','Simulated on the chain just now, from a fresh address, through the pool measured here.');
 
   // 1. What a normal trade costs. The reference size is the row closest to $500
   //    rather than the smallest or the largest: the smallest flatters the pool
@@ -1228,7 +1234,7 @@ function flowCard(d){
         s:depSold?(dep.sold.byDeployer?dep.sold.byDeployer.sells+' sell'+(dep.sold.byDeployer.sells===1?'':'s')+' itself':'not itself')+((dep.sold.viaWalletsItFunded||[]).length?' · '+dep.sold.viaWalletsItFunded.length+' wallet(s) it funded':'')+(back?' · '+usd(back.usd)+' added back as liquidity, LP '+back.lp+' · net '+usd(dep.sold.netUsd):''):'in the last '+min+' minutes'+(dep.oneHopNotRead?' (its own wallet only)':''),
         link:{t:short(dep.address),href:'https://bscscan.com/address/'+dep.address}},
       {v:holds,l:'Deployer holds',tone:above.has(dep.address)?' bad':'',dim:dep.balancePctOfCirculating==null&&!above.has(dep.address),s:above.has(dep.address)?'its balance reads larger than the whole supply':'of the circulating supply · '+dep.source},
-      {v:dep.lpPct!=null?pc(dep.lpPct):'—',l:'Deployer’s LP share',dim:dep.lpPct==null,s:dep.lpPct!=null?'of the pool’s LP tokens':'not read (V3, or not on the LP list)'},
+      {v:dep.lpPct!=null?pc(dep.lpPct):'—',l:'Deployer’s LP share',dim:dep.lpPct==null,s:dep.lpPct!=null?'of the pool’s LP tokens':(d.lpTot>0?'none — not on the LP holder list':'not read (a V3 position has no LP token)')},
     ]));
   }
   if(ths.length){
@@ -1547,9 +1553,13 @@ async function scanOnce(input){
     // elsewhere" path and be told its "$0.00 of liquidity sits in venues this
     // page cannot quote exactly" — a sentence about a market that does not
     // exist. A wallet address pasted by mistake deserves to be told that.
-    if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0]))
+    if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0])){
+      // A wallet is told so (2026-10-09 review): no contract code at all is a fact the chain gives, not a guess
+      const code=await fetch(RPC,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getCode',params:[token,'latest']}),signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(j=>j&&j.result).catch(()=>null);
+      if(code==='0x')return fail('That is a wallet, not a token.','There is no contract code at this address. Paste the token’s contract address instead — it is on the token’s BscScan page, or in the swap that bought it.');
       return fail('That address is not a BSC token.',
         'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
+    }
     // No pool at all: ask four.meme before concluding "trades elsewhere". A
     // token still raising there has no pool by design, and its market lives in
     // the platform's contract. A graduated token falls through to the pool path.
@@ -1801,4 +1811,4 @@ drawFeed();
 // card GoPlus answers we could not find in the wild (no analysed honeypot in
 // 370 tokens tried on 2 September) and pins what it draws for each. Nothing
 // else imports it; the page runs exactly as before.
-export { flagsCard };
+export { flagsCard, verdictCard };

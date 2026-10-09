@@ -154,7 +154,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a service specialising in eating disorders.");
       next.push("In the case of acute medical risk (e.&nbsp;g. low BMI &lt; 17.5, electrolyte imbalance, cardiac arrhythmia), a somatic assessment is urgently needed.");
-      next.push("Evidence-based, effective depending on the diagnosis: CBT-E (Fairburn), MANTRA, family-based treatment (FBT for adolescents), and for BED also SSRIs/lisdexamfetamine (German S3 guideline 2018 / NICE NG69 2024).");
+      next.push("Evidence-based, effective depending on the diagnosis: CBT-E (Fairburn), MANTRA, family-based treatment (FBT for adolescents), and for BED also medication where a doctor finds it indicated (German S3 guideline 2018 / NICE NG69 2024).");
     } else if (result.flag === "moderate") {
       next.push("An assessment by a physician or a service specialising in eating disorders is recommended, especially if your weight or eating behaviour is distressing you or your weight has changed significantly.");
       next.push("Watch for warning signs: binge eating with loss of control, vomiting, excessive exercise, restrictive eating patterns, pronounced preoccupation with body and weight.");

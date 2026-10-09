@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7146,
-   "zipBytes": 156860,
-   "txtBytes": 470563,
-   "sha256": "9eb178b41bd81938",
+   "lines": 7156,
+   "zipBytes": 157344,
+   "txtBytes": 471972,
+   "sha256": "1d6e5825145ad752",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1284,
-   "zipBytes": 26532,
-   "txtBytes": 68954,
-   "sha256": "7e22b40f60b2b53f",
+   "lines": 1321,
+   "zipBytes": 27841,
+   "txtBytes": 73274,
+   "sha256": "32841bbedfb1a30d",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -523,9 +523,9 @@
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
    "lines": 10108,
-   "zipBytes": 196825,
-   "txtBytes": 555648,
-   "sha256": "c7d9a17afc8fffad",
+   "zipBytes": 196986,
+   "txtBytes": 556192,
+   "sha256": "5effab914df4cc3c",
    "reqs": [
     {
      "what": "A static host",
@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
    "lines": 17386,
-   "zipBytes": 393025,
-   "txtBytes": 1111481,
-   "sha256": "514c197e15e84ed7",
+   "zipBytes": 393108,
+   "txtBytes": 1111668,
+   "sha256": "baf817ef78212963",
    "reqs": [
     {
      "what": "A wallet to be paid into",

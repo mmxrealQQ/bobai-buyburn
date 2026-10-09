@@ -3559,8 +3559,8 @@ export const CAPABILITIES = {
     {
       name: 'pool watch',
       where: 'POST https://agent.brainonbnb.com/watch',
-      what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold`,
-      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1`,
+      what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold (paid, depth only; the free rug watch covers rug signals)`,
+      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC`,
       why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
     },
     {
@@ -3604,7 +3604,7 @@ export const DELIVERIES = Object.values(SERVICES).map((s) => ({
   price: s.price_display,
   agent: SOLD_BY[s.id]?.agent ?? null,
   where: SOLD_BY[s.id] ? `https://brainonbnb.com/registry#cat-${s.category === 'health-factor-monitoring' ? 'health-factor' : s.category}` : null,
-  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain transfer whose hash you send — and the same document comes straight back.',
+  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day); a shorter one cannot be delivered. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain transfer whose hash you send — and the same document comes straight back.',
   x402: `POST https://agent.brainonbnb.com/answer?service=${s.id}`,
 }));
 

@@ -150,15 +150,15 @@ const needsList = (needs) => {
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
-          <span class="sv-price">${esc(d.price)}</span>
+          <span class="sv-price" title="${esc(d.price)} through the escrow">$0.10</span>
         </div>
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
         <p class="sv-what">${esc(d.what)}</p>
         <p class="sv-needs-h">What it needs from you</p>
 ${needsList(d.needs)}
-        ${d.agent ? `<p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}">hire it on Brain Plaza &rarr;</a></p>`
-          : `<p class="sv-cost">Sold per answer only, no escrow: <code>${esc(d.x402)}</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/defi">what the agent does on our own position &rarr;</a></p>`}
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>${esc(d.x402)}</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener" aria-label="See a real ${esc(d.name)} answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>`;
 
 const capRow = (c) => {
@@ -172,7 +172,7 @@ const capRow = (c) => {
     ? `<a href="${esc(url)}" rel="noopener">${esc(c.name)}</a>`
     : (c.example ? `<a href="${esc(c.example)}" rel="noopener">${esc(c.name)}</a>` : esc(c.name));
   return `        <li><b>${head}</b>${c.price ? ` <span class="sv-price sv-price-s">${esc(c.price)}</span>` : ''}
-          <span>${esc(c.what)}</span>${isCmd || (isShape && !/^(POST|GET)\s/i.test(c.where || '')) ? `<code>${esc(c.where)}</code>` : ''}${
+          <span>${esc(c.what).replace(/([\d,]+) \$BOBAI/g, (m, n) => `${m} <span class="sv-busd" data-bobai="${n.replace(/,/g, '')}"></span>`)}</span>${isCmd || (isShape && !/^(POST|GET)\s/i.test(c.where || '')) ? `<code>${esc(c.where)}</code>` : ''}${
   /^(POST|GET)\s/i.test(c.where || '') ? `<code>${esc(c.where)}</code>` : ''}${
   c.example && isShape ? `<span class="sv-limit">Try it: <a href="${esc(c.example)}" rel="noopener">${esc(c.example.replace(/^https?:\/\//, ''))}</a></span>` : ''}${
   c.limit ? `<span class="sv-limit">${esc(c.limit)}</span>` : ''}${
@@ -201,7 +201,7 @@ function page() {
 <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts.css?v=1">
 <title>What we can do for you — Brain on BNB</title>
-<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, ${N_DELIVERIES} things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
+<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, ${N_DELIVERIES} things you can hire us to deliver on-chain for $0.10 each, and the tools your own agent can call.">
 <link rel="canonical" href="https://brainonbnb.com/services">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <meta property="og:title" content="What we can do for you — Brain on BNB">
@@ -245,6 +245,7 @@ function page() {
   .sv-how{border:1px solid var(--border);border-radius:var(--radius);background:rgba(240,185,11,.05);padding:14px 18px;margin-top:14px;
     color:var(--muted);font-size:.8rem;line-height:1.6}
   .sv-how b{color:var(--text)}
+  .sv-steps{margin:10px 0 10px 20px;padding:0}.sv-steps li{margin:0 0 8px}.sv-how p{margin:0}
   .sv-caps{list-style:none;display:grid;gap:12px;margin:0;padding:0}
   .sv-caps li{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:12px 14px;min-width:0}
   .sv-caps b{font-size:.85rem;display:inline}
@@ -282,7 +283,7 @@ function page() {
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in $U, a dollar stablecoin: ten cents is ten cents.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow, or 0.10 USD1 / USDC when you pay per answer &mdash; ten cents either way.</p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
@@ -314,7 +315,13 @@ ${PAGES.map(card).join('\n')}
     <div class="sv-grid">
 ${DELIVERIES.map(delivery).join('\n')}
     </div>
-    <p class="sv-how"><b>How paying works, and what protects you.</b> ${esc(DELIVERIES[0].how)} We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p>
+    <div class="sv-how"><b>How paying works, and what protects you.</b>
+      <ol class="sv-steps">
+        <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send.</li>
+        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
+        <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
+      </ol>
+    <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></div>
   </section>
 
   <section class="sv-sec">
@@ -363,6 +370,11 @@ ${CAPABILITIES[k].map(capRow).join('\n')}
 // baked into this file at build time would start drifting the moment it was
 // written; a dash says "we could not read this just now", which is true, and a
 // zero would say something that is not.
+// A $BOBAI amount always with its dollars (2026-10-09): the pool's own price, read now; nothing shown if it fails.
+fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
+  var u = +p.price_usd; if (!(u > 0)) return;
+  document.querySelectorAll('.sv-busd').forEach(function(s){ s.textContent = '(≈ $' + Math.round(+s.dataset.bobai * u).toLocaleString('en-US') + ' today)'; });
+}).catch(function(){});
 (function(){
   var el = function(id){ return document.getElementById(id); };
   var nf = function(n){ return Number(n).toLocaleString('en-US'); };

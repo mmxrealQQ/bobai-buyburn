@@ -11,7 +11,7 @@
 <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts.css?v=1">
 <title>What we can do for you — Brain on BNB</title>
-<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, six things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
+<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, six things you can hire us to deliver on-chain for $0.10 each, and the tools your own agent can call.">
 <link rel="canonical" href="https://brainonbnb.com/services">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <meta property="og:title" content="What we can do for you — Brain on BNB">
@@ -55,6 +55,7 @@
   .sv-how{border:1px solid var(--border);border-radius:var(--radius);background:rgba(240,185,11,.05);padding:14px 18px;margin-top:14px;
     color:var(--muted);font-size:.8rem;line-height:1.6}
   .sv-how b{color:var(--text)}
+  .sv-steps{margin:10px 0 10px 20px;padding:0}.sv-steps li{margin:0 0 8px}.sv-how p{margin:0}
   .sv-caps{list-style:none;display:grid;gap:12px;margin:0;padding:0}
   .sv-caps li{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:12px 14px;min-width:0}
   .sv-caps b{font-size:.85rem;display:inline}
@@ -92,7 +93,7 @@
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in $U, a dollar stablecoin: ten cents is ten cents.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow, or 0.10 USD1 / USDC when you pay per answer &mdash; ten cents either way.</p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
@@ -105,7 +106,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids read on-chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">526,198</b><span>requests answered for other agents</span></div>
+      <div class="sv-num"><b id="sv-asked">527,029</b><span>requests answered for other agents</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -154,77 +155,89 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Venus health factor &amp; liquidation distance</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price" title="0.10 $U through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">How close is my Venus position to being liquidated?</p>
         <p class="sv-what">Health factor for a Venus position on BNB Chain, computed market by market from the Comptroller, with the collateral drawdown that would liquidate it and a stress table. Cross-checked against the protocol's own getAccountLiquidity — if the two disagree the answer says so instead of guessing.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>address</dt><dd>the account whose position to read (0x…)</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302257" rel="noopener">#302257</a> &middot; <a href="https://brainonbnb.com/registry#cat-health-factor">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=health_factor" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=health_factor</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302257" rel="noopener">#302257</a> &middot; <a href="https://brainonbnb.com/registry#cat-health-factor" aria-label="Hire Venus health factor &amp; liquidation distance on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=health_factor" rel="noopener" aria-label="See a real Venus health factor &amp; liquidation distance answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Grid trading plan, costed against the real pool</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price" title="0.10 $U through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">Can a grid actually make money in this pool, after costs?</p>
         <p class="sv-what">Grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself — swap fee, price impact at your fill size, and the transfer tax read from executed trades rather than a label. States the break-even spacing, which is the number that decides whether the grid can work at all.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>token</dt><dd>the token or pool to grid (0x…)</dd><dt>capitalUsd</dt><dd>total capital, optional</dd><dt>levels</dt><dd>number of levels, optional</dd><dt>bandPct</dt><dd>range as ± percent, optional</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302258" rel="noopener">#302258</a> &middot; <a href="https://brainonbnb.com/registry#cat-grid-trading">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=grid_plan" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=grid_plan</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302258" rel="noopener">#302258</a> &middot; <a href="https://brainonbnb.com/registry#cat-grid-trading" aria-label="Hire Grid trading plan, costed against the real pool on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=grid_plan" rel="noopener" aria-label="See a real Grid trading plan, costed against the real pool answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Venus yield ranking, and whether moving pays for itself</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price" title="0.10 $U through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">Where should this sit to earn most — and is moving it worth the gas?</p>
         <p class="sv-what">Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus's own published APY whenever their API answers — every row and the summary say whether it did, and a divergence is named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>amountUsd</dt><dd>position size in USD, optional</dd><dt>from</dt><dd>the Venus market held today, optional</dd><dt>currentApyPct</dt><dd>what you earn today, optional</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304493" rel="noopener">#304493</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=yield_plan" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=yield_plan</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304493" rel="noopener">#304493</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization" aria-label="Hire Venus yield ranking, and whether moving pays for itself on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=yield_plan" rel="noopener" aria-label="See a real Venus yield ranking, and whether moving pays for itself answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Portfolio rebalance, priced against the pools that would execute it</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price" title="0.10 $U through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">What would it cost me to get back to my target weights?</p>
         <p class="sv-what">The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>holdings</dt><dd>array of { token: &quot;0x…&quot;, usd: 1000 }</dd><dt>targets</dt><dd>optional map of token → target weight in percent; equal weight if omitted</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304494" rel="noopener">#304494</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=rebalance_plan" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=rebalance_plan</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304494" rel="noopener">#304494</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing" aria-label="Hire Portfolio rebalance, priced against the pools that would execute it on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=rebalance_plan" rel="noopener" aria-label="See a real Portfolio rebalance, priced against the pools that would execute it answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Which PancakeSwap fee tier is actually paying its liquidity providers</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price" title="0.10 $U through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">Which fee tier should I put liquidity in?</p>
         <p class="sv-what">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price — the tick book of the pool itself is walked to find what is parked within a couple of percent of it — with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>token</dt><dd>the token or PancakeSwap pool to compare tiers for (0x…)</dd><dt>capitalUsd</dt><dd>how much liquidity you are placing, optional — defaults to 1000</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/310460" rel="noopener">#310460</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=lp_tier_plan" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=lp_tier_plan</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/310460" rel="noopener">#310460</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization" aria-label="Hire Which PancakeSwap fee tier is actually paying its liquidity providers on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=lp_tier_plan" rel="noopener" aria-label="See a real Which PancakeSwap fee tier is actually paying its liquidity providers answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>The DeFi agent, on your position</h3>
-          <span class="sv-price">0.10 USD1</span>
+          <span class="sv-price" title="0.10 USD1 through the escrow">$0.10</span>
         </div>
         <p class="sv-ask">What would the DeFi agent decide about my position?</p>
         <p class="sv-what">What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that ended the most ahead against simply holding over the last week when every width was replayed over the recorded prices (its fees, less the gas of its re-sets, plus where it stood against a wallet that held), the width in use kept unless another leads it by a tenth — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>position</dt><dd>the PancakeSwap V3 position id (tokenId)</dd><dt>address</dt><dd>or the wallet that holds exactly one position (0x…)</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/363709" rel="noopener">#363709</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=lp_position_plan" rel="noopener">see a real answer &rarr;</a></p>
+        <p class="sv-cost">Pay per answer: <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/363709" rel="noopener">#363709</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing" aria-label="Hire The DeFi agent, on your position on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=lp_position_plan" rel="noopener" aria-label="See a real The DeFi agent, on your position answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>
     </div>
-    <p class="sv-how"><b>How paying works, and what protects you.</b> ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=&lt;id&gt; once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain transfer whose hash you send — and the same document comes straight back. We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p>
+    <div class="sv-how"><b>How paying works, and what protects you.</b>
+      <ol class="sv-steps">
+        <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send.</li>
+        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
+        <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
+      </ol>
+    <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></div>
   </section>
 
   <section class="sv-sec">
@@ -236,7 +249,7 @@
         <li><b><a href="https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" rel="noopener">before a trade: can I get in, can I get out</a></b>
           <span>for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. A short answer. No &quot;safe&quot; and no score.</span><code>https://brainonbnb.com/api/preflight?address=0x...&amp;usd=250 · MCP tool bsc_token_preflight</code><span class="sv-limit">Try it: <a href="https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" rel="noopener">brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250</a></span></li>
         <li><b><a href="https://agent.brainonbnb.com/rug-watch" rel="noopener">rug watch: an alarm for a token you hold</a></b>
-          <span>the preflight read again every 15 minutes; your own https callback is POSTed, signed, as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes. Webhook only. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI (proved by a signature, no transaction). 30 days, renewable.</span><code>POST https://agent.brainonbnb.com/rug-watch {&quot;token&quot;:&quot;0x...&quot;,&quot;callback&quot;:&quot;https://...&quot;} · MCP tool bsc_rug_watch</code></li>
+          <span>the preflight read again every 15 minutes; your own https callback is POSTed, signed, as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today's rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Webhook only. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI <span class="sv-busd" data-bobai="1000000"></span> (proved by a signature, no transaction). 30 days, renewable.</span><code>POST https://agent.brainonbnb.com/rug-watch {&quot;token&quot;:&quot;0x...&quot;,&quot;callback&quot;:&quot;https://...&quot;} · MCP tool bsc_rug_watch</code></li>
         <li><b><a href="https://brainonbnb.com/scanner" rel="noopener">pool scan (browser)</a></b>
           <span>measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme's own contract</span></li>
         <li><b>agent skill</b>
@@ -275,8 +288,8 @@
     <h3 class="sv-needs-h" style="margin:18px 0 4px;font-size:.85rem">What costs money</h3>
     <p class="sv-sub" style="margin-bottom:10px">The lists above are free. Apart from the deliveries under “Hire us to deliver it”, two things cost money: a watch that keeps running after you close the tab, and any of those deliveries handed over at once, with no escrow in between.</p>
     <ul class="sv-caps">
-        <li><b><a href="https://agent.brainonbnb.com/watch" rel="noopener">pool watch</a></b> <span class="sv-price sv-price-s">0.50 USD1</span>
-          <span>continuous monitoring of one pool for 30 days; fires a callback when depth falls below your threshold</span><code>POST https://agent.brainonbnb.com/watch</code><span class="sv-limit">Paid because it runs on our cron and storage around the clock, which the free scanner never does.</span></li>
+        <li><b><a href="https://agent.brainonbnb.com/watch" rel="noopener">pool watch</a></b> <span class="sv-price sv-price-s">0.50 USD1 or USDC</span>
+          <span>continuous monitoring of one pool for 30 days; fires a callback when depth falls below your threshold (paid, depth only; the free rug watch covers rug signals)</span><code>POST https://agent.brainonbnb.com/watch</code><span class="sv-limit">Paid because it runs on our cron and storage around the clock, which the free scanner never does.</span></li>
         <li><b><a href="https://agent.brainonbnb.com/example?service=health_factor" rel="noopener">paid answer</a></b> <span class="sv-price sv-price-s">0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote</span>
           <span>any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms</span><code>POST https://agent.brainonbnb.com/answer?service=&lt;id&gt;</code><span class="sv-limit">Try it: <a href="https://agent.brainonbnb.com/example?service=health_factor" rel="noopener">agent.brainonbnb.com/example?service=health_factor</a></span><span class="sv-limit">Paid because it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now.</span></li>
     </ul>
@@ -318,6 +331,11 @@
 // baked into this file at build time would start drifting the moment it was
 // written; a dash says "we could not read this just now", which is true, and a
 // zero would say something that is not.
+// A $BOBAI amount always with its dollars (2026-10-09): the pool's own price, read now; nothing shown if it fails.
+fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
+  var u = +p.price_usd; if (!(u > 0)) return;
+  document.querySelectorAll('.sv-busd').forEach(function(s){ s.textContent = '(≈ $' + Math.round(+s.dataset.bobai * u).toLocaleString('en-US') + ' today)'; });
+}).catch(function(){});
 (function(){
   var el = function(id){ return document.getElementById(id); };
   var nf = function(n){ return Number(n).toLocaleString('en-US'); };

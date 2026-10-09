@@ -106,7 +106,7 @@ window.TEST_DATA = (function () {
     if (result.flag === "high") {
       next.push("Arrange an appointment with a psychiatric practice or a specialist bipolar outpatient clinic. A bipolar diagnosis is highly relevant for treatment — antidepressants without a mood stabiliser can induce switches in bipolar depression.");
       next.push("A detailed history of the episodes (duration, sleep patterns, level of functioning) is central to the diagnosis. Keep a record of episodes with their duration and triggers.");
-      next.push("Evidence-based options depending on the diagnosis: lithium, valproate, quetiapine, lurasidone, lamotrigine (German S3 guideline on bipolar disorders 2024, NICE CG185).");
+      next.push("Evidence-based options depend on the diagnosis and include psychotherapy and medication a doctor prescribes (German S3 guideline on bipolar disorders 2024, NICE CG185).");
     } else if (result.flag === "moderate") {
       next.push("Even though the full algorithm is not met, a specialist assessment is worthwhile if bipolar disorder is suspected — Bipolar II is frequently missed.");
       next.push("The Hypomania Checklist HCL-32 (Angst 2005) can be a useful addition, as it captures hypomania more sensitively than the MDQ.");

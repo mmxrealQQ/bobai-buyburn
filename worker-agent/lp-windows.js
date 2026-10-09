@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WIDTH_FLOOR_PCT, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WIDTH_FLOOR_PCT, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, EXTRAPOLATED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
@@ -205,7 +205,7 @@ export function inRangeFeeRate(window, widthPct) {
   const own = rows.find((r) => r.width === widthPct);
   return own && typeof own.fees === 'number' ? own.fees / hours : 0;
 }
-export function deriveWidths(window, derived = DERIVED_WIDTHS) {
+export function deriveWidths(window, derived = DERIVED_WIDTHS, extrapolated = EXTRAPOLATED_WIDTHS) {
   const rows = Array.isArray(window?.rows) ? window.rows : [];
   const numeric = rows.filter((r) => isFinite(Number(r.width))).map((r) => ({ ...r, width: Number(r.width) }));
   const out = rows.slice();
@@ -222,13 +222,29 @@ export function deriveWidths(window, derived = DERIVED_WIDTHS) {
       net: Number((fees - (Number(narrower.fees) - Number(narrower.net))).toFixed(6)),
     });
   }
+  // Above the widest replayed row: read off it (see EXTRAPOLATED_WIDTHS). In range at least whenever it was, crossed
+  // at most as often; its fees at widest/width of the rate.
+  const widest = numeric.filter((r) => !r.derived && typeof r.fees === 'number').sort((a, b) => b.width - a.width)[0];
+  for (const w of extrapolated) {
+    if (!widest || w <= widest.width || numeric.some((r) => r.width === w)) continue;
+    const fees = widest.fees * widthShare(widest.width, w);
+    out.push({
+      width: w, derived: true, extrapolated: true, derived_from: [widest.width],
+      held: !!widest.held, in_range_pct: widest.in_range_pct, crossings: widest.crossings,
+      fees: Number(fees.toFixed(6)),
+      net: Number((fees - (Number(widest.fees) - Number(widest.net))).toFixed(6)),
+    });
+  }
   return { ...window, rows: out };
 }
 
 export function verdict(log, opts = {}) {
   const poolOf = String(log?.pool || '').toLowerCase();
   const tape = (Array.isArray(opts.tape) ? opts.tape : []).filter((x) => x && (!x.pool || !poolOf || String(x.pool).toLowerCase() === poolOf));
-  opts = { ...opts, tape };
+  // THE REPLAY RE-SETS THE WAY THE AGENT DOES (2026-10-09). It replayed one-sided re-sets after the agent had gone
+  // centred (7.10., LP_RESET_MODE): the wait in use (8 h), the pick and the expected figure all came from a strategy
+  // no longer run. opts.centred is the agent's mode; every replay below takes it.
+  opts = { ...opts, tape, oneSided: !opts.centred };
   const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block).map((w) => deriveWidths(w));
   const used = [];
   for (const w of sorted) {
@@ -290,7 +306,9 @@ export function verdict(log, opts = {}) {
     const best = rows.filter((r) => r.width !== 'full' && Number(r.width) >= WIDTH_FLOOR_PCT)
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
       .filter((x) => x.e && x.e.hours > 0)
-      .map((x) => ({ ...x, score: Math.round(((x.e.net_usd + x.e.vs_holding_usd) / (x.e.hours / 24)) * 1e4) / 1e4 }))
+      // fees − re-sets + against holding, as pickWidth scores (2026-10-09): net_usd already takes a centred re-set's
+      // loss off, and vs_holding holds the same loss again — counted twice it pushed the wait long.
+      .map((x) => ({ ...x, score: Math.round(((x.e.fees_usd - x.e.resets * x.e.reset_cost_usd + x.e.vs_holding_usd) / (x.e.hours / 24)) * 1e4) / 1e4 }))
       .sort((a, b) => b.score - a.score)[0];
     return best
       ? { hours: h, width: best.width, net_usd_per_day: best.score, fees_only_net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
@@ -362,7 +380,7 @@ export function verdict(log, opts = {}) {
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the one that ended the most ahead against holding over the last ${WIDTH_WINDOW_HOURS} h in that replay, fees included (fees_usd + vs_holding_usd: what the liquidity earned plus where it ended against a wallet that held the minted amounts — the line the card judges the agent by); a width in use is kept unless another leads it by a tenth of its own score and at least two cents on $50 a week; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). ${opts.centred ? 'Since 2026-10-07 the re-set is centred, the way the agent does it: a new range around the price with one swap, charged its cost and what the old range had lost against holding.' : 'The re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone.'} Net per day is fees less re-sets. The width a re-set uses is the one that ended the most ahead against holding over the last ${WIDTH_WINDOW_HOURS} h in that replay, fees included (fees_usd + vs_holding_usd: what the liquidity earned plus where it ended against a wallet that held the minted amounts — the line the card judges the agent by); a width in use is kept unless another leads it by a tenth of its own score and at least two cents on $50 a week; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
 }
 
@@ -745,7 +763,7 @@ export async function widthVerdict(env, bnbUsd = null) {
     // the full figure is what a real re-set pays (the width-upgrade rule).
     if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
   } catch { /* the replay's assumption stands */ }
-  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env) }) };
+  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env), centred: env.LP_RESET_MODE === 'centred' }) };
 }
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);

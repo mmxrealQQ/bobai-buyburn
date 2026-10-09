@@ -2696,8 +2696,9 @@ export function formatDefiCard(m, { title = 'DeFi Agent', range = null } = {}) {
       `💰 Result: <b>${arrow} ${signed(p.profit_bnb)}</b> · ${join(p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text || `${pct} on the capital since ${day(p.since)}`)}`,   // one wording, from the model (the page prints the same string)
     ],
     [
-      '<i>Result = price + fees − gas</i>',
-      `📈 Price: ${signed(p.from_price_bnb)}`,
+      ...(p.from_market_bnb != null && p.from_range_bnb != null
+        ? ['<i>Result = market + range + fees − gas</i>', `📈 Market (held 50/50): ${signed(p.from_market_bnb)}`, `📈 Range vs holding: ${signed(p.from_range_bnb)}`]
+        : ['<i>Result = price + fees − gas</i>', `📈 Price: ${signed(p.from_price_bnb)}`]),
       `🧾 Fees: ${signed(p.from_fees_bnb)}`,
       `⛽ Gas: ${n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB'}`,
       ...(p.vs_holding && p.vs_holding.vs_holding_bnb != null ? [`⚖️ Vs. holding 50/50: ${signed(p.vs_holding.vs_holding_bnb)}`] : []),

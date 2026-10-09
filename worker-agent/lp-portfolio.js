@@ -89,6 +89,9 @@ export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, b
   const vs = lp - holding;
   return {
     holding_bnb: r5(holding), lp_bnb: r5(lp), vs_holding_bnb: r5(vs),
+    // What the market alone did to the capital: the holding wallet now against what arrived (2026-10-09). The price
+    // line put the whole price part on "the market"; most of it was the ranges and their re-sets.
+    capital_in_bnb: r5(prevCap), market_bnb: r5(holding - prevCap),
     vs_holding_pct: prevCap > 0 ? Math.round((vs / prevCap) * 10000) / 100 : null,
     arrivals: arrivals.length,
     basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI, the fees still owed and the kept fees that wait in the wallet, less gas",
@@ -236,6 +239,10 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
       change_text: changeText(value.change_pct, sum.since),
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
+      // The price part in its two causes (2026-10-09): the market (a wallet that held each arrival 50/50) and the
+      // ranges against that wallet (their re-sets included). market + range = price.
+      from_market_bnb: vsHold && vsHold.market_bnb != null ? vsHold.market_bnb : null,
+      from_range_bnb: vsHold && vsHold.market_bnb != null ? r5(n(p.from_price_bnb) - vsHold.market_bnb) : null,
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.
       at_resets: { count: losses.resets, valued: losses.valued, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },

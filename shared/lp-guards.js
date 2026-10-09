@@ -417,7 +417,12 @@ export const WIDTH_UPGRADE_PAYBACK_DAYS = 3;
 // test replays and what a re-set may mint; widthClassOf snaps to it.
 export const REPLAYED_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
 export const DERIVED_WIDTHS = [1.5, 3, 4, 7];
-export const RECORD_WIDTHS = REPLAYED_WIDTHS.concat(DERIVED_WIDTHS).sort((a, b) => a - b);
+// WIDER THAN THE REPLAY (2026-10-09). The agent has minted ±20% since 7.10. and the grid ended at ±10, so its own
+// range was read as the ±10 class (the next re-set's loss booked with ±10 maths, the calibration set against ±10) and
+// the replay could not even ask what ±20 earns. Above ±10 a row is read off ±10 by the same law: in range whenever
+// ±10 was, at 10/width of its fee rate.
+export const EXTRAPOLATED_WIDTHS = [15, 20, 30];
+export const RECORD_WIDTHS = REPLAYED_WIDTHS.concat(DERIVED_WIDTHS, EXTRAPOLATED_WIDTHS).sort((a, b) => a - b);
 
 // WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0
 // with a value of 1, in the symmetric range p0/up ... p0*up, holds an amount

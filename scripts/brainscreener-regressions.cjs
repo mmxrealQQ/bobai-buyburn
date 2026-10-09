@@ -6,10 +6,15 @@
 //  6) WHODAS: "Keine" bei Arbeit ist nicht "trifft nicht zu" (Nenner 144 vs. 128).
 //  7) ADHS-Kindheits-Skala (in Anlehnung an WURS-K): Schwelle 36/100 statt 30.
 //  8) Seiten, Ergebnistext und llms.txt nennen die WURS-K nur als Vorlage ("based on"), nie als eingesetztes Instrument.
+//  9) PHQ-9: ungewertete Schwierigkeitsfrage nach Item 9; Algorithmus-Satz nur mit Schwierigkeit >= "somewhat" (09.10.2026).
+// 10) AUDIT: WHO-Sprungregel, "Never" bei Item 1 -> Items 2-8 zaehlen 0 und werden nicht gefragt.
+// 11) Dialoge: Escape, Fokus hinein und zurueck, Tab bleibt drin, aria-labelledby; Ergebnis-Ueberschriften ohne Sprung.
 const fs = require("fs");
 const path = require("path");
 
-const root = path.join(__dirname, "..", "dashboard", "brainscreener", "assets", "js", "i18n", "en");
+// BRAINSCREENER_ROOT points the pins at another copy (e.g. the last commit) to see them fail on old code.
+const BS = process.env.BRAINSCREENER_ROOT || path.join(__dirname, "..", "dashboard", "brainscreener");
+const root = path.join(BS, "assets", "js", "i18n", "en");
 const dirs = { en: root };
 
 let ok = true;
@@ -99,7 +104,7 @@ for (const [lang, dir] of Object.entries(dirs)) {
 // ---- 8) The childhood scale is BASED ON the WURS-K and is named so wherever a visitor or a crawler reads it ----
 // (until 20.09.2026 titles, descriptions, JSON-LD, llms.txt and the result text still listed "ASRS v1.1 + WURS-K" as the instruments used)
 {
-  const bs = path.join(__dirname, "..", "dashboard", "brainscreener");
+  const bs = BS;
   const read = [
     ...fs.readdirSync(bs).filter((f) => f.endsWith(".html")).map((f) => path.join(bs, f)),
     path.join(root, "adhs-result.js"),
@@ -127,6 +132,54 @@ for (const [lang, dir] of Object.entries(dirs)) {
   // The childhood threshold (36/100) is converted proportionally and not validated: the ADHD result may not call it "established".
   const resultText = fs.readFileSync(path.join(root, "adhs-result.js"), "utf8");
   check("ADHS-Ergebnistext nennt die umgerechnete Schwelle nicht \"established\"", !/established cutoffs?/i.test(resultText));
+}
+
+// ---- 9) PHQ-9 difficulty question (2026-10-09): the published closing question, after item 9, asked only when a
+// problem was reported, never scored; the algorithm sentence needs difficulty >= "somewhat difficult" ----
+{
+  const phq = load(path.join(root, "phq9-data.js"));
+  const items = phq.sections[0].items;
+  const pd = items.find((it) => it.id === "PD");
+  check("PHQ-9: difficulty question follows item 9 with four answers", !!pd && items[items.length - 1] === pd && items[items.length - 2].id === "P9" && pd.scale.options.map((o) => o.v).join() === "0,1,2,3");
+  const base = { P1: 2, P2: 2, P3: 2, P4: 2, P9: 1 }; // the symptom count matches, total 9
+  const without = phq.evaluate(base);
+  const withPd = (v) => phq.evaluate(Object.assign({ PD: v }, base));
+  const same = [0, 1, 2, 3].every((v) => { const e = withPd(v); return e.total === without.total && e.flag === without.flag && e.severity === without.severity && e.cutoffReached === without.cutoffReached && e.mddAlgorithm === without.mddAlgorithm && e.itemsAtLeast2 === without.itemsAtLeast2; });
+  check("PHQ-9: the difficulty answer changes no score, flag or cut-off", !!pd && same);
+  const html = (v) => phq.renderResult(v == null ? without : withPd(v)).interpretationHTML;
+  const algo = /diagnostic algorithm/;
+  check("PHQ-9: algorithm sentence only when the count matches AND difficulty >= somewhat", !algo.test(html(0)) && algo.test(html(1)) && algo.test(html(3)) && !algo.test(html(null)));
+  check("PHQ-9: the result shows the difficulty answer", /not difficult at all/.test(html(0)) && /extremely difficult/.test(html(3)) && !/Additional question/.test(html(null)));
+  check("PHQ-9: difficulty asked only when a problem was reported", !!pd && pd.showIf({ P3: 1 }) === true && pd.showIf({ P1: 0, P2: 0 }) === false && phq.evaluate({ PD: 3 }).difficulty === null);
+}
+
+// ---- 10) AUDIT WHO skip rule (Babor et al. 2001): "Never" on item 1 -> items 2-8 are not asked and count 0 ----
+{
+  const au = load(path.join(root, "audit-data.js"));
+  const items = au.sections[0].items;
+  const shownFor = (a) => items.filter((it) => typeof it.showIf !== "function" || it.showIf(a)).map((it) => it.id).join();
+  check('AUDIT: after "Never" only items 1, 9 and 10 are asked', shownFor({ A1: 0 }) === "A1,A9,A10" && shownFor({ A1: 1 }).split(",").length === 10 && shownFor({}).split(",").length === 10);
+  const stale = { A1: 0, A9: 2, A10: 4 }; for (let n = 2; n <= 8; n++) stale["A" + n] = 4;
+  const e = au.evaluate(stale);
+  check('AUDIT: items 2-8 count 0 after "Never", whatever is stored', e.total === 6 && e.consumption === 0 && e.dependence === 0 && e.harm === 6, JSON.stringify(e));
+  const full = { A1: 1, A9: 0, A10: 0 }; for (let n = 2; n <= 8; n++) full["A" + n] = 1;
+  check("AUDIT: any other first answer scores as before", au.evaluate(full).total === 8);
+}
+
+// ---- 11) Engines and result pages (2026-10-09): the generic engine honours showIf; in-page dialogs close on Escape,
+// keep Tab inside, give focus back and are labelled; no native dialog; result headings never skip a level ----
+{
+  const js = (f) => fs.readFileSync(path.join(BS, "assets", "js", f), "utf8");
+  check("test-engine.js hides showIf items and sends only shown answers", /it\.showIf/.test(js("test-engine.js")) && /answers: given/.test(js("test-engine.js")));
+  for (const f of ["test-engine.js", "adhs.js", "iq.js"]) {
+    const src = js(f).split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n"); // comments may name window.confirm()
+    check(`${f}: dialog closes on Escape, traps Tab, returns focus, is labelled`, /e\.key === "Escape"/.test(src) && /e\.key === "Tab"/.test(src) && /opener\.focus\(\)/.test(src) && /aria-labelledby/.test(src) && !/window\.(confirm|alert|prompt)\(/.test(src));
+  }
+  const skips = fs.readdirSync(BS).filter((f) => f.endsWith("-result.html")).filter((f) => {
+    const levels = [...fs.readFileSync(path.join(BS, f), "utf8").matchAll(/<h([1-6])\b/g)].map((m) => +m[1]);
+    return levels.some((l, i) => i > 0 && l > levels[i - 1] + 1);
+  });
+  check("Result pages: headings never skip a level", skips.length === 0, skips.join(", "));
 }
 
 console.log(ok ? "\nAlles sauber." : "\nFEHLER");

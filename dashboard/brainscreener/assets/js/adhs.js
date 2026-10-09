@@ -242,6 +242,7 @@
       m.id = "bsConfirmModal";
       m.setAttribute("role", "dialog");
       m.setAttribute("aria-modal", "true");
+      m.setAttribute("aria-labelledby", "bsConfirmMsg");
       m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
       m.innerHTML = `
         <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
@@ -258,12 +259,28 @@
     const cancel = m.querySelector("#bsConfirmCancel");
     ok.textContent = okLabel;
     cancel.textContent = UI.confirmCancel || "Cancel";
+    // Keyboard and screen readers (2026-10-09): the message names the dialog, focus moves into it (onto the harmless
+    // choice) and back to the button that opened it, Tab stays inside, Escape closes it like the cancel button.
+    const opener = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if (e.key === "Tab") {
+        const f = [cancel, ok];
+        e.preventDefault();
+        f[(f.indexOf(document.activeElement) + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+      }
+    };
+    const close = () => {
+      m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null;
+      document.removeEventListener("keydown", onKey, true);
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
     m.style.display = "flex";
-    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    document.addEventListener("keydown", onKey, true);
     cancel.onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
     ok.onclick = () => { close(); onOk(); };
-    ok.focus();
+    cancel.focus();
   }
 
   const btnReset = document.getElementById("btnReset");

@@ -116,12 +116,12 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable AQ-50 screening",
       moderate: "Elevated autistic trait expression",
-      high: "Consistent with an autistic phenotype",
+      high: "Screens positive for autistic traits",
     };
     const subMap = {
       low: "Scores within the range of the neurotypical general population.",
       moderate: "Scores are above the population average — a specialist assessment may be worthwhile.",
-      high: "Profile consistent with an autism spectrum condition; specialist diagnostic assessment is recommended.",
+      high: "Screens positive for autistic traits; specialist diagnostic assessment is recommended.",
     };
 
     const interp = `

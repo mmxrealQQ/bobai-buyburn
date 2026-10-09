@@ -39,7 +39,7 @@
   const flagMap = {
     high: {
       title: "Markedly positive screening",
-      sub: "The symptom pattern is consistent with attention-deficit/hyperactivity disorder in adulthood.",
+      sub: "Screens positive for adult ADHD symptoms. A specialist assessment is recommended.",
       val: "High",
       gauge: 0.85,
       text: `On <strong>ASRS Part A</strong> you marked ${result.asrs.partAMarks} of 6 items within the diagnostically

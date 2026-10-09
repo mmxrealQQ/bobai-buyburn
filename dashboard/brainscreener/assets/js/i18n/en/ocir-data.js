@@ -81,12 +81,12 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable OCD screening",
       moderate: "Indications of obsessive-compulsive symptoms",
-      high: "Consistent with clinically relevant obsessive-compulsive symptoms",
+      high: "Screens positive for clinically relevant obsessive-compulsive symptoms",
     };
     const subMap = {
       low: "The scores are below the clinically established cutoff.",
       moderate: "The score suggests a specialist assessment is advisable.",
-      high: "The profile is consistent with obsessive-compulsive disorder; prompt specialist assessment is recommended.",
+      high: "Screens positive for obsessive-compulsive symptoms; prompt specialist assessment is recommended.",
     };
 
     const interp = `

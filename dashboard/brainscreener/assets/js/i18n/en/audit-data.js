@@ -50,21 +50,26 @@ window.TEST_DATA = (function () {
     { v: 4, label: "Yes, during the last year" },
   ] };
 
+  // WHO skip rule (Babor et al. 2001, AUDIT manual): "Never" on item 1 goes straight to items 9 and 10; items 2–8
+  // are not asked and score 0 (2026-10-09). Any other answer, or none yet, asks them.
+  const AFTER_DRINKING = (a) => a.A1 !== 0;
+
   const ITEMS = [
     { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: about 330 ml beer, 100 ml wine, 25–30 ml spirits; a US standard drink is 14 g)</span>" },
-    { id: "A2",  scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
-    { id: "A3",  scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
-    { id: "A4",  scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
-    { id: "A5",  scale: SCALE_PROBLEM, text: "How often during the last year have you failed to do what was normally expected from you because of drinking?" },
-    { id: "A6",  scale: SCALE_PROBLEM, text: "How often during the last year have you needed a first drink in the morning to get yourself going after a heavy drinking session?" },
-    { id: "A7",  scale: SCALE_PROBLEM, text: "How often during the last year have you had a feeling of guilt or remorse after drinking?" },
-    { id: "A8",  scale: SCALE_PROBLEM, text: "How often during the last year have you been unable to remember what happened the night before because you had been drinking?" },
+    { id: "A2",  showIf: AFTER_DRINKING, scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
+    { id: "A3",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
+    { id: "A4",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
+    { id: "A5",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you failed to do what was normally expected from you because of drinking?" },
+    { id: "A6",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you needed a first drink in the morning to get yourself going after a heavy drinking session?" },
+    { id: "A7",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you had a feeling of guilt or remorse after drinking?" },
+    { id: "A8",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you been unable to remember what happened the night before because you had been drinking?" },
     { id: "A9",  scale: SCALE_YESNO,   text: "Have you or someone else been injured as a result of your drinking?" },
     { id: "A10", scale: SCALE_YESNO,   text: "Has a relative or friend or a doctor or another health worker been concerned about your drinking or suggested you cut down?" },
   ];
 
   function evaluate(answers) {
-    const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    const skip = answers.A1 === 0; // items 2–8 count 0 after "Never" on item 1, whatever is still stored for them
+    const get = (id) => (skip && /^A[2-8]$/.test(id) ? 0 : typeof answers[id] === "number" ? answers[id] : 0);
     const total = ITEMS.reduce((s, it) => s + get(it.id), 0);
     const consumption = get("A1") + get("A2") + get("A3");
     const dependence  = get("A4") + get("A5") + get("A6");

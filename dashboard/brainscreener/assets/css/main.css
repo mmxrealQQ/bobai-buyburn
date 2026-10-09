@@ -83,8 +83,9 @@ h1, h2, h3, h4 {
 }
 h1 { font-size: clamp(2.2rem, 4.5vw, 3.6rem); }
 h2 { font-size: clamp(1.7rem, 3vw, 2.4rem); }
-h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
-h4 { font-size: 1.1rem; font-weight: 600; font-family: var(--sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-soft); }
+/* .h3 / .h4: result-page headings that are h2 / h3 for the outline (2026-10-09) but keep the old look */
+h3, .h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+h4, .h4 { font-size: 1.1rem; font-weight: 600; font-family: var(--sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-soft); }
 
 p { margin: 0 0 1em 0; color: var(--ink-soft); }
 a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 4px; text-decoration-thickness: 1.5px; transition: color .2s; }
@@ -543,7 +544,7 @@ img { max-width: 100%; height: auto; display: block; }
   background: var(--bg-alt); border-radius: var(--radius);
   padding: 24px 28px; margin: 24px 0; border-left: 3px solid var(--gold);
 }
-.interpretation h3 { margin-top: 0; }
+.interpretation h3, .interpretation .h3 { margin-top: 0; }
 .interpretation p { font-size: 1rem; color: var(--ink-soft); margin-bottom: 8px; }
 .interpretation p:last-child { margin-bottom: 0; }
 
@@ -634,7 +635,7 @@ img { max-width: 100%; height: auto; display: block; }
   border-left: 4px solid var(--gold);
   border-radius: var(--radius);
 }
-.crisis-box h4 {
+.crisis-box h4, .crisis-box .h4 {
   color: var(--ink); margin: 0 0 10px;
   font-family: var(--sans); font-size: 0.92rem;
   text-transform: uppercase; letter-spacing: 0.12em;
@@ -792,7 +793,8 @@ img { max-width: 100%; height: auto; display: block; }
   /* ---- Headlines passend skalieren ---- */
   h1 { font-size: 1.85rem; line-height: 1.2; }
   h2 { font-size: 1.4rem; line-height: 1.2; }
-  h3 { font-size: 1.15rem; }
+  h3, .h3 { font-size: 1.15rem; }
+  .h3 { line-height: 1.15; }
 
   /* ---- Hero ---- */
   .hero { padding: 34px 0 22px; }
@@ -890,7 +892,7 @@ img { max-width: 100%; height: auto; display: block; }
     margin-right: 0;
   }
   .interpretation { margin: 18px 0; }
-  .interpretation h3 { font-size: 1.1rem; }
+  .interpretation h3, .interpretation .h3 { font-size: 1.1rem; }
   .crisis-list { font-size: 0.9rem; }
 
   /* Subskalen — Label und Wert untereinander statt nebeneinander */
@@ -997,7 +999,7 @@ img { max-width: 100%; height: auto; display: block; }
   #distributionWrap svg, .gauge svg { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
   h1, h2, h3, h4 { page-break-after: avoid; color: #14142b; }
-  h3 { font-size: 13pt; margin-top: 18pt; }
+  h3, .h3 { font-size: 13pt; margin-top: 18pt; }
 
   ul, ol { page-break-inside: avoid; }
 

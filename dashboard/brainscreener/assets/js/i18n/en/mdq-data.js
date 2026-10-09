@@ -64,7 +64,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable MDQ screening",
       moderate: "Partially elevated screening",
-      high: "MDQ-positive · consistent with the bipolar spectrum",
+      high: "MDQ-positive · screens positive for bipolar-spectrum symptoms",
     };
     const subMap = {
       low: "The three MDQ criteria are not met.",

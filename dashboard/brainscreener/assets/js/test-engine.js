@@ -94,8 +94,23 @@
   // Page-Title im Browser-Tab
   if (D.meta.pageTitle) document.title = D.meta.pageTitle;
 
-  // Gesamt-Itemzahl
-  const TOTAL_ITEMS = D.sections.reduce((s, sec) => s + sec.items.length, 0);
+  // Items a data file shows only under a condition (2026-10-09): the AUDIT skips items 2–8 after "Never" on item 1
+  // (WHO rule), the PHQ-9 asks its difficulty question only when a problem was reported. A hidden item is not asked,
+  // not counted as open, and its answer does not travel to the result page.
+  const ALL_ITEMS = D.sections.flatMap((s) => s.items);
+  const isShown = (it) => typeof it.showIf !== "function" || !!it.showIf(answers);
+  const shownAnswers = () => {
+    const out = {};
+    ALL_ITEMS.forEach((it) => { if (isShown(it) && typeof answers[it.id] === "number") out[it.id] = answers[it.id]; });
+    return out;
+  };
+  function applyVisibility() {
+    ALL_ITEMS.forEach((it) => {
+      if (typeof it.showIf !== "function") return;
+      const el = form.querySelector(`.item[data-id="${it.id}"]`);
+      if (el) el.hidden = !isShown(it);
+    });
+  }
 
   // ---------- Storage ----------
   let answers = loadAnswers();
@@ -165,6 +180,7 @@
       container.innerHTML = sec.items.map((it, i) => itemHTML(it, i + 1, sec.scale)).join("");
       sec.items.forEach((it) => { if (it.crisisNote && typeof answers[it.id] === "number") crisisNote(it.id, answers[it.id], container.querySelector(`.item[data-id="${it.id}"]`)); });
     });
+    applyVisibility();
     form.addEventListener("change", onAnyChange);
   }
 
@@ -179,6 +195,7 @@
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       crisisNote(id, val, itemEl);
+      applyVisibility();
       if (first) nextIntoView(itemEl);
       updateProgress();
       if (missingNote) missingNote.hidden = true;
@@ -206,19 +223,21 @@
   function nextIntoView(itemEl) {
     if (!itemEl || itemEl.querySelector(".item-crisis")) return;
     let n = itemEl.nextElementSibling;
-    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered") && !n.hidden)) n = n.nextElementSibling;
     if (!n) return;
     const r = n.getBoundingClientRect();
     if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function updateProgress() {
-    const answered = Object.keys(answers).length;
-    const pct = Math.round((answered / TOTAL_ITEMS) * 100);
+    const shown = ALL_ITEMS.filter(isShown);
+    const total = shown.length;
+    const answered = shown.filter((it) => typeof answers[it.id] === "number").length;
+    const pct = total ? Math.round((answered / total) * 100) : 0;
     if (progressFill) progressFill.style.width = pct + "%";
     const bar = progressFill && progressFill.parentElement;
-    if (bar) { bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", String(TOTAL_ITEMS)); bar.setAttribute("aria-valuenow", String(answered)); bar.setAttribute("aria-label", "Questions answered"); }
-    if (progressCount) progressCount.textContent = fmt(UI.answersCount, { answered, total: TOTAL_ITEMS });
+    if (bar) { bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", String(total)); bar.setAttribute("aria-valuenow", String(answered)); bar.setAttribute("aria-label", "Questions answered"); }
+    if (progressCount) progressCount.textContent = fmt(UI.answersCount, { answered, total });
     if (progressText) {
       const sec = D.sections[currentIdx];
       const label = D.sections.length > 1
@@ -251,7 +270,7 @@
   }
 
   function sectionItemIds(idx) {
-    return D.sections[idx].items.map((i) => i.id);
+    return D.sections[idx].items.filter(isShown).map((i) => i.id);
   }
 
   function isSectionComplete(idx) {
@@ -294,9 +313,10 @@
       focusFirstUnanswered(currentIdx);
       return;
     }
-    const result = D.evaluate(answers);
+    const given = shownAnswers();
+    const result = D.evaluate(given);
     const probandCode = (sessionStorage.getItem(CODE_KEY) || "").trim();
-    const payload = { result, answers, probandCode, ts: new Date().toISOString(), testId: D.id };
+    const payload = { result, answers: given, probandCode, ts: new Date().toISOString(), testId: D.id };
     const stored = sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload));
     testInProgress = false;
     toResult(D.meta.resultPath, payload, stored);
@@ -329,6 +349,7 @@
       m.id = "bsConfirmModal";
       m.setAttribute("role", "dialog");
       m.setAttribute("aria-modal", "true");
+      m.setAttribute("aria-labelledby", "bsConfirmMsg");
       m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
       m.innerHTML = `
         <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
@@ -345,12 +366,28 @@
     const cancel = m.querySelector("#bsConfirmCancel");
     ok.textContent = okLabel;
     cancel.textContent = UI.confirmCancel || "Cancel";
+    // Keyboard and screen readers (2026-10-09): the message names the dialog, focus moves into it (onto the harmless
+    // choice) and back to the button that opened it, Tab stays inside, Escape closes it like the cancel button.
+    const opener = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if (e.key === "Tab") {
+        const f = [cancel, ok];
+        e.preventDefault();
+        f[(f.indexOf(document.activeElement) + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+      }
+    };
+    const close = () => {
+      m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null;
+      document.removeEventListener("keydown", onKey, true);
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
     m.style.display = "flex";
-    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    document.addEventListener("keydown", onKey, true);
     cancel.onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
     ok.onclick = () => { close(); onOk(); };
-    ok.focus();
+    cancel.focus();
   }
 
   if (btnReset) {

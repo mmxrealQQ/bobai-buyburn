@@ -34,10 +34,26 @@ window.TEST_DATA = (function () {
     { id: "P9", text: "Thoughts that you would be better off dead, or of hurting yourself in some way", crisisNote: true },
   ];
 
+  // The published closing question of the PHQ-9 (Kroenke, Spitzer & Williams 2001), asked only when a problem was
+  // reported and never scored: it feeds neither the total nor the cut-offs (2026-10-09).
+  const DIFFICULTY = {
+    id: "PD",
+    text: "If you checked off any problems, how difficult have these problems made it for you to do your work, take care of things at home, or get along with other people?",
+    scale: { cols: 4, options: [
+      { v: 0, label: "Not difficult at all" },
+      { v: 1, label: "Somewhat difficult" },
+      { v: 2, label: "Very difficult" },
+      { v: 3, label: "Extremely difficult" },
+    ] },
+    showIf: (a) => ITEMS.some((it) => typeof a[it.id] === "number" && a[it.id] >= 1),
+  };
+
   function evaluate(answers) {
     const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
     const total = ITEMS.reduce((s, it) => s + get(it.id), 0);
     const q9 = get("P9");
+    // The unscored closing question travels to the result page only; it is not part of the total or the cut-offs.
+    const difficulty = ITEMS.some((it) => get(it.id) >= 1) && [0, 1, 2, 3].includes(answers.PD) ? answers.PD : null;
 
     let severity, flag;
     if (total <= 4)        { severity = "minimal";    flag = "low"; }
@@ -56,7 +72,7 @@ window.TEST_DATA = (function () {
     const mddAlgorithm  = coreSymptom && itemsAtLeast2.length >= 5;
 
     return {
-      total, max: 27, severity, flag, q9,
+      total, max: 27, severity, flag, q9, difficulty,
       mddAlgorithm, itemsAtLeast2: itemsAtLeast2.length,
       cutoffReached: total >= 10,
     };
@@ -98,8 +114,11 @@ window.TEST_DATA = (function () {
       ${result.cutoffReached
         ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression at a score of 10 or more (Kroenke, Spitzer &amp; Williams 2001).`
         : `The clinical cutoff of ≥&nbsp;10 has not been reached. If the distress persists for weeks or worsens, a specialist assessment is nevertheless advisable.`}
-      ${result.mddAlgorithm
+      ${result.mddAlgorithm && result.difficulty >= 1
         ? ` In addition, your answers match the symptom count of the <strong>PHQ-9 diagnostic algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days"). The algorithm also needs the duration and the effect on daily life, which only a professional can assess.`
+        : ""}
+      ${result.difficulty != null
+        ? ` Additional question (not scored): these problems have made it <strong>${["not difficult at all","somewhat difficult","very difficult","extremely difficult"][result.difficulty]}</strong> for you to do your work, take care of things at home or get along with other people.`
         : ""}
     `;
 
@@ -200,7 +219,7 @@ window.TEST_DATA = (function () {
         id: "main",
         title: "PHQ-9 · Last 2 weeks",
         intro: "<strong>Over the last 2 weeks, how often have you been bothered by any of the following problems?</strong>",
-        items: ITEMS,
+        items: [...ITEMS, DIFFICULTY],
         scale: SCALE,
       },
     ],

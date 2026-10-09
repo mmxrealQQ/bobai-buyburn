@@ -107,7 +107,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable eating behaviour screening",
       moderate: "Indications of disordered eating",
-      high: "Consistent with clinically relevant eating disorder symptoms",
+      high: "Screens positive for clinically relevant eating disorder symptoms",
     };
     const subMap = {
       low: "The scores are below the clinical cutoff (≥&nbsp;20).",

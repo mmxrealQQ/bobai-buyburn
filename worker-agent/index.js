@@ -97,7 +97,7 @@ import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
-import { handleRugWatch, runRugWatches } from './rug-watch.js';
+import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -3087,6 +3087,13 @@ ${pageTail}`;
   },
 
   async scheduled(event, env, ctx) {
+    // The rug watch runs on its own cron (RUG_CRON, 2026-10-09) and nothing else does: every active watch is
+    // one preflight, and on the shared tick they competed with the census and the LP replay for the
+    // invocation's budget. runRugWatches holds a KV lock and stops starting watches after ~9 min of wall time.
+    if (event.cron === RUG_CRON) {
+      ctx.waitUntil(runRugWatches(env, { rpc, bump: (kind, n) => bump(env, kind, n) }).catch(() => {}));
+      return;
+    }
     // FIRST, every tick: jobs funded the BNB-SDK way never send notify_funded,
     // so the seller looks for them (job-watch.js) — ahead of the heavy tasks,
     // so a buyer's paid job never waits behind the census or the rollup for
@@ -3097,10 +3104,7 @@ ${pageTail}`;
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
-    // The free rug watches (rug-watch.js, 2026-10-09): every active one re-read with the preflight, six at a
-    // time, one read per token; a watch is written only when it changed. At the 200 cap that is 200 fetches
-    // of this invocation's 1,000 (Workers Paid) and ~200 KV reads.
-    ctx.waitUntil(runRugWatches(env, { rpc, bump: (kind, n) => bump(env, kind, n) }).catch(() => {}));
+    // The free rug watches (rug-watch.js, 2026-10-09) moved to their own cron, RUG_CRON, above.
     // One point per liquidity-agent run; a tick that finds the same record
     // again records nothing.
     ctx.waitUntil(recordLpSeries(env).catch(() => {}));

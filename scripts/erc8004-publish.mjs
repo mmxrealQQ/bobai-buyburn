@@ -1055,9 +1055,16 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
   // A PHONE SCROLLS PAST EVERY CARD (2026-10-09): the open list is what has
   // proven itself — quoted, or paid out — and ours; the rest of the category
   // is one tap away, in the same order, cards and buttons unchanged.
-  const open = rows.filter((r) => isProven(r, cat.id));
-  const rest = rows.filter((r) => !isProven(r, cat.id));
+  // OURS LAST, AFTER THE FOLD TOO (2026-10-09, the operator's rule): ours sat at the end of the open list with the
+  // other operators' unproven cards folded below them — ours now close the category, below the fold.
+  const open = rows.filter((r) => !r.ours && isProven(r, cat.id));
+  const rest = rows.filter((r) => !r.ours && !isProven(r, cat.id));
+  const ourRows = rows.filter((r) => r.ours);
   const body = open.map(card).join(NL);
+  const oursBlock = ourRows.length ? `
+      <div class="rgc-list rgc-ours" style="margin-top:12px">
+${ourRows.map(card).join(NL)}
+      </div>` : '';
   const restBlock = rest.length ? `
       <details class="rgc-more">
         <summary>${fmt(rest.length)} more, unproven <span class="rg-note">&mdash; never quoted and never paid out</span></summary>
@@ -1080,7 +1087,7 @@ ${maybe.map(card).join(NL)}
       <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then answers without a price, then no answer; measured up less than half the time last; then paid out by several buyers, then paid out, then the latest delivery, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
-      </div>${restBlock}` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}${maybeBlock}
+      </div>${restBlock}${oursBlock}` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}${maybeBlock}
       <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
     </div>`;
 }).join(NL);

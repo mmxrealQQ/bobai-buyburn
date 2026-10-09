@@ -7,8 +7,12 @@ routes = [{ pattern = "agent.brainonbnb.com", custom_domain = true }]
 # watcher that reports a depth collapse an hour late is worth nothing, and one
 # that re-reads every pool every minute burns the public RPC endpoints we depend
 # on for the free scanner too.
+#
+# The rug watch (rug-watch.js, 2026-10-09) has its own cron, seven minutes after
+# each quarter hour (RUG_CRON in rug-watch.js must match), so its preflights
+# never share an invocation's budget with the jobs on the quarter-hour tick.
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/15 * * * *", "7,22,37,52 * * * *"]
 
 [[kv_namespaces]]
 binding = "AGENT"

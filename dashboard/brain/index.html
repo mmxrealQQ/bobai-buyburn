@@ -148,7 +148,7 @@
           {
             "@type": "Question",
             "name": "What does the DeFi agent do?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
           },
           {
             "@type": "Question",
@@ -235,10 +235,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1791532334916">
+<link rel="stylesheet" href="brain/brain.css?v=1791536357015">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1791531361">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791535241">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -1023,7 +1023,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,144 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 7,146 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1138,7 +1138,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 2,675 lines &middot; 74 KB</span>
+          <span class="lib-m">5 files &middot; 2,736 lines &middot; 77 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1161,7 +1161,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">48 files &middot; 16,141 lines &middot; 0.3 MB</span>
+          <span class="lib-m">49 files &middot; 17,126 lines &middot; 0.4 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1224,7 +1224,7 @@
       </ul></div>
       <div class="rm rma fi"><div class="rp">02 &middot; Breathing</div><h3>Believe</h3><ul>
         <li><span class="ck">&#x2713;</span><span>Every trade is a breath: 3% turns into work, each step with its transaction</span></li>
-        <li><span class="ck">&#x2713;</span><span>Burns every 10 minutes, even while you sleep</span></li>
+        <li><span class="ck">&#x2713;</span><span>The bot checks every 10 minutes and burns as soon as the tax is charged, even while you sleep</span></li>
         <li><span class="ck">&#x2713;</span><span>The pool grows, and its LP goes straight into the fire</span></li>
         <li><span class="ck">&#x2713;</span><span>A little of every breath saved for the kids of Giggle Academy</span></li>
       </ul></div>
@@ -1239,7 +1239,7 @@
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Volume. No neuron can fake it, so we earn it</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>More agents thinking with our tools</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Nov 20: the Giggle pot goes to the kids</span></li>
-        <li><span class="ck">&#x2713;</span><span>No dates, no moon. Just a brain that keeps growing</span></li>
+        <li><span class="ck">&#x2713;</span><span>No price dates, no moon. Just a brain that keeps growing</span></li>
       </ul></div>
     </div>
     <p class="fi" style="text-align:center;margin-top:22px;font-weight:700;letter-spacing:.04em">Be smart. Be brain. Big brain on BNB Chain.</p>
@@ -1279,7 +1279,7 @@
         <div class="faq-body">Yes, when the buy is worth $100 or more. One NFT is minted automatically, straight to the buyer's wallet: no claim step, no gas for the holder. The size of the buy sets the motif: NICE BUY from $100, BIG BUY from $150, HUGE BUY from $250, WHALE BUY from $500, THUNDER BUY from $1,000, KRAKEN BUY from $2,500. The rarity, one of seven, is a weighted draw. The collection is capped at 1,925 and every tier has its own fixed cap; how many are out is counted live on the <a href="/nft/">NFT page</a>.</div>
       </details>
       <details class="faq-item"><summary>What does the DeFi agent do?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has left it, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
+        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, half stays as capital and half buys $BOBAI that stays in the agent's wallet. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
       </details>
       <details class="faq-item"><summary>What is the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the <a href="/classic#giggle">Giggle Academy block on the Classic page</a>.</div>
@@ -1327,9 +1327,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1791531361')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1791535241')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1791532334917" defer></script>
-<script src="brain/cards.js?v=1791532334917" defer></script>
-<script src="brain/hero.js?v=1791532334917" defer></script>
+<script src="brain/brain.js?v=1791536357016" defer></script>
+<script src="brain/cards.js?v=1791536357016" defer></script>
+<script src="brain/hero.js?v=1791536357016" defer></script>
 </body></html>

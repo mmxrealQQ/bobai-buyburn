@@ -155,6 +155,14 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
   check('6 recency: hire chips say "last delivery N days ago" (unix seconds)', agos.length > 0 && !badT, agos.length ? `${badT} timestamps out of range` : 'no "last delivery" on the page');
 }
 
+// OURS LAST (operator's rule; found 2026-10-09: ours sat above the other operators' folded cards)
+{
+  const bad = [...html.matchAll(/<div class="rg-box" id="cat-([a-z-]+)">([\s\S]*?)GET \/find\?category=/g)]
+    .filter(([, , body]) => { const fold = body.lastIndexOf('rgc-more'), ours = body.indexOf('rg-ours'); return fold >= 0 && ours >= 0 && ours < fold; })
+    .map(([, id]) => id);
+  check('7 ours last: no own card above another operator’s folded card', !bad.length, `ours above the fold in ${bad.join(', ')}`);
+}
+
 for (const n of ok) console.log(`  ok    ${n}`);
 for (const f of fails) console.log(`  FAIL  ${f}`);
 if (fails.length) {

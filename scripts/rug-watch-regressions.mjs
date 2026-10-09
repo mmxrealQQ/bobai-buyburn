@@ -35,10 +35,14 @@ const { snapshotOf, goneSnapshot, diffSnap, stepWatch, dueEvents, verifyHolderPr
 // ---------------------------------------------------------------- fixtures
 const TOKEN = '0x' + 'a'.repeat(40);
 const OWNER = '0x' + 'e'.repeat(40);
-const pf = (over = {}) => ({
+// (2026-10-09) The fixture carries a price at the test size ($250 for 250,000 tokens) and an override of `depth`
+// keeps the pool unless it names another: the hard side is compared against the price, and only within one pool.
+const POOL = '0x' + 'b'.repeat(40);
+const pf = ({ depth, ...over } = {}) => ({
   tool: 'bsc_token_preflight', kind: 'pool', gate: 'no_known_stop', token: { address: TOKEN, symbol: 'TKN', name: 'Token' },
+  size_usd: 250, entry: { receive_tokens: 250000 },
   stop: [], caution: [], tax: { buy_pct: 3, sell_pct: 3 },
-  depth: { pool: '0x' + 'b'.repeat(40), one_percent_buy_usd: 500, one_percent_sell_usd: 450, pool_hard_side_usd: 100000 },
+  depth: { pool: POOL, one_percent_buy_usd: 500, one_percent_sell_usd: 450, pool_hard_side_usd: 100000, ...(depth || {}) },
   lp_burned_pct: 99,
   control: { read: true, owner: { address: OWNER, kind: 'eoa', source: 'owner()' }, proxy: null, mint_selector: false },
   block: 1, measured_at: '2026-10-09T00:00:00.000Z', ...over,
@@ -46,6 +50,15 @@ const pf = (over = {}) => ({
 const S = (over = {}) => snapshotOf(pf(over));
 const codesOf = (ev) => ev.map((e) => `${e.code}:${e.level}`).join();
 const diff = (a, b) => diffSnap(a, a, b);
+// One check the way the cron makes it (2026-10-09): a critical event asks for a second read within the same run
+// (needsConfirm), and the step is made again with it. `again` is that second read: the same as the first unless
+// given (null: no second read could be made).
+const stepC = (w, read, now, again) => {
+  const st = stepWatch(w, read, now);
+  if (!st.needsConfirm) return st;
+  const r2 = again === undefined ? read : again;
+  return stepWatch(w, { ...read, confirm: r2 }, now);
+};
 
 console.log('snapshot');
 {
@@ -98,31 +111,31 @@ console.log('\nstepWatch: six-hour repeats, failed reads, writes');
   const base = S();
   const w = { id: 'x', token: TOKEN, baseline: base, snapshot: base, fired: {}, events: [], checks: 0, fails: 0, saved_at: now };
   const bad = S({ stop: [{ code: 'not_sellable' }] });
-  let r = stepWatch(w, { ok: true, snap: bad }, now);
+  let r = stepC(w, { ok: true, snap: bad }, now);
   ok('a new stop is sent and recorded', r.send.length === 1 && r.watch.events.length === 1 && r.dirty);
   // the reference went back to clean and the stop came again within six hours
-  r = stepWatch({ ...r.watch, snapshot: base }, { ok: true, snap: bad }, now + 3 * 3600e3);
+  r = stepC({ ...r.watch, snapshot: base }, { ok: true, snap: bad }, now + 3 * 3600e3);
   ok('the same code again within 6 h is not sent', r.send.length === 0);
-  r = stepWatch({ ...r.watch, snapshot: base }, { ok: true, snap: bad }, now + 7 * 3600e3);
+  r = stepC({ ...r.watch, snapshot: base }, { ok: true, snap: bad }, now + 7 * 3600e3);
   ok('… and after 6 h it is', r.send.length === 1 && r.send[0].code === 'sell_blocked');
   ok('dueEvents keeps the time each code was sent', dueEvents([{ code: 'a' }], {}, 5).fired.a === 5);
 
   let f = { ...w };
   const sent = [];
-  for (let i = 1; i <= 5; i++) { const s = stepWatch(f, { ok: false, why: 'http 503' }, now + i * 900e3); f = s.watch; sent.push(s.send.length); }
+  for (let i = 1; i <= 5; i++) { const s = stepC(f, { ok: false, why: 'http 503' }, now + i * 900e3); f = s.watch; sent.push(s.send.length); }
   ok('failed reads 1-3 are no alert', sent.slice(0, 3).every((n) => n === 0), sent.join());
   ok('… the 4th in a row is "unreadable", a warning', f.events.some((e) => e.code === 'unreadable' && e.level === 'warning') && sent[3] === 1, sent.join());
   ok('… and the 5th does not repeat it', sent[4] === 0);
   ok('… the failures are counted', f.fails === 5);
-  const healed = stepWatch(f, { ok: true, snap: base }, now + 6 * 900e3);
+  const healed = stepC(f, { ok: true, snap: base }, now + 6 * 900e3);
   ok('a good read sets the count back to 0, and a failed read never changes the reference', healed.watch.fails === 0 && healed.watch.snapshot === base);
 
-  const calm = stepWatch(w, { ok: true, snap: S({ depth: { one_percent_buy_usd: 490, one_percent_sell_usd: 440, pool_hard_side_usd: 95000 }, block: 2 }) }, now + 900e3);
+  const calm = stepC(w, { ok: true, snap: S({ depth: { one_percent_buy_usd: 490, one_percent_sell_usd: 440, pool_hard_side_usd: 95000 }, block: 2 }) }, now + 900e3);
   ok('a read that moved under every line writes nothing', !calm.dirty && calm.send.length === 0);
-  const beat = stepWatch(w, { ok: true, snap: base }, now + 6 * 3600e3 + 1);
+  const beat = stepC(w, { ok: true, snap: base }, now + 6 * 3600e3 + 1);
   ok('… but a watch is written at least every 6 hours', beat.dirty);
-  const creep1 = stepWatch(w, { ok: true, snap: S({ tax: { buy_pct: 4, sell_pct: 3 } }) }, now + 900e3);
-  const creep2 = stepWatch(creep1.watch, { ok: true, snap: S({ tax: { buy_pct: 5, sell_pct: 3 } }) }, now + 1800e3);
+  const creep1 = stepC(w, { ok: true, snap: S({ tax: { buy_pct: 4, sell_pct: 3 } }) }, now + 900e3);
+  const creep2 = stepC(creep1.watch, { ok: true, snap: S({ tax: { buy_pct: 5, sell_pct: 3 } }) }, now + 1800e3);
   ok('a tax creeping up a point at a time still fires once it adds up to 2 points', creep1.send.length === 0 && creep2.send.some((e) => e.code === 'buy_tax_up'));
 }
 
@@ -148,7 +161,7 @@ console.log('\ntoday\'s rugs: fake volume, pump, dump, slow rug, draining, insid
     const sent = [], writes = [];
     for (const r of reads) {
       const now = t0 + r.h * H;
-      const st = stepWatch(w, { ok: true, snap: R(r) }, now);
+      const st = stepC(w, { ok: true, snap: R(r) }, now);
       sent.push(...st.send.map((e) => ({ ...e, h: r.h })));
       if (st.dirty) { w = { ...st.watch, saved_at: now }; writes.push(r.h); }
     }
@@ -185,9 +198,13 @@ console.log('\ntoday\'s rugs: fake volume, pump, dump, slow rug, draining, insid
   ok('… +45% over 14 h, never 40% within 6 h, is no pump either', !has(d, 'pump') && d.w.series?.length === 3, d.codes.join() + ' ' + d.w.series?.length);
 
   // 3. dump after a pump
-  d = drive([{ h: 0, price: 0.001 }, { h: 1, price: 0.001 }, { h: 2, price: 0.0016 }, { h: 3, price: 0.0016 }, { h: 4, price: 0.00105 }]);
+  // (2026-10-09) The dump is critical only when insiders sold: this pin used to expect critical with no insider sells.
+  d = drive([{ h: 0, price: 0.001 }, { h: 1, price: 0.001 }, { h: 2, price: 0.0016 }, { h: 3, price: 0.0016 }, { h: 4, price: 0.00105, dep: 300 }]);
   const du = d.sent.find((e) => e.code === 'dump');
-  ok('pumped to +60%, then -34% from that high: dump, critical, after the pump warning', du?.level === 'critical' && /fell 34%/.test(du.what) && /\+60%/.test(du.what) && d.sent.findIndex((e) => e.code === 'pump') < d.sent.findIndex((e) => e.code === 'dump'), du?.what || d.codes.join());
+  ok('pumped to +60%, then -34% from that high while the deployer sold: dump, critical, after the pump warning', du?.level === 'critical' && /fell 34%/.test(du.what) && /\+60%/.test(du.what) && /insiders sold/.test(du.what) && d.sent.findIndex((e) => e.code === 'pump') < d.sent.findIndex((e) => e.code === 'dump'), du?.what || d.codes.join());
+  d = drive([{ h: 0, price: 0.001 }, { h: 1, price: 0.001 }, { h: 2, price: 0.0016 }, { h: 3, price: 0.0016 }, { h: 4, price: 0.00105 }]);
+  const du2 = d.sent.find((e) => e.code === 'dump');
+  ok('[item 9] … the same fall with no insider selling read: dump, a WARNING (a pump that fades is a market)', du2?.level === 'warning' && /no insider selling/.test(du2.what), du2 ? `${du2.level}: ${du2.what}` : d.codes.join());
   d = drive([{ h: 0, price: 0.001 }, { h: 1, price: 0.001 }, { h: 2, price: 0.0016 }, { h: 3, price: 0.0016 }, { h: 4, price: 0.0012 }]);
   ok('… -25% from the high is no dump', has(d, 'pump') && !has(d, 'dump'), d.codes.join());
   d = drive(hourly(16, (i) => ({ price: 0.001 * (1 + 0.05 * Math.min(i, 10)) })).concat([{ h: 16, price: 0.001 }]));
@@ -311,7 +328,8 @@ console.log('\nworker-agent routes and cron (offline)');
 const store = new Map();
 const kv = {
   get: async (k) => (store.has(k) ? store.get(k).v : null),
-  put: async (k, v, o = {}) => { kv.puts++; store.set(k, { v, m: o.metadata ?? null }); },
+  put: async (k, v, o = {}) => { kv.puts++; if (k.startsWith(RUG_PREFIX)) kv.watchPuts++; store.set(k, { v, m: o.metadata ?? null }); },
+  watchPuts: 0,
   delete: async (k) => { store.delete(k); },
   list: async ({ prefix }) => ({ keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: store.get(name).m })), list_complete: true }),
   puts: 0,
@@ -432,9 +450,10 @@ const tok = (c) => '0x' + c.repeat(40);
   ok('… the body carries watch, token, symbol, events, snapshot, baseline_at, at, docs', ['watch', 'token', 'symbol', 'events', 'snapshot', 'baseline_at', 'at', 'docs'].every((k) => k in payload));
   const after = await (await call('/rug-watch/' + j1.watch)).json();
   ok('… the delivery is recorded (time, status) and the event is in the status', after.last_delivery?.status === 200 && after.events.some((e) => e.code === 'sell_blocked'));
-  const putsBefore = kv.puts;
+  // (2026-10-09) The run's lock key is one put per run; the pin counts the watches' writes.
+  const putsBefore = kv.watchPuts;
   const run2 = await runRugWatches(env, { now: t0 + 900e3 });
-  ok('the next sweep with nothing new sends nothing and writes nothing', hooks.filter((h) => h.url === 'https://hook.example/a').length === 1 && kv.puts === putsBefore && run2.alerts === 0, `${kv.puts - putsBefore} writes, ${run2.alerts} alerts`);
+  ok('the next sweep with nothing new sends nothing and writes no watch', hooks.filter((h) => h.url === 'https://hook.example/a').length === 1 && kv.watchPuts === putsBefore && run2.alerts === 0, `${kv.watchPuts - putsBefore} writes, ${run2.alerts} alerts`);
 
   // a callback that is down never stalls the others
   answers.set(tok('5'), { status: 200, body: pf({ token: { address: tok('5') }, gate: 'stop', stop: [{ code: 'not_buyable' }] }) });
@@ -443,7 +462,8 @@ const tok = (c) => '0x' + c.repeat(40);
   const before = hooks.length;
   const reads5 = pfCalls.get(tok('5')) || 0;
   await runRugWatches(env, { now: t0 + 1800e3 });
-  ok('one preflight per token and sweep, however many watches read it', (pfCalls.get(tok('5')) || 0) - reads5 === 1, String((pfCalls.get(tok('5')) || 0) - reads5));
+  // (2026-10-09) was "one preflight": a critical (not_buyable here) is now confirmed by a second read in the same run.
+  ok('one preflight per token and sweep, however many watches read it — plus one confirming read for a critical event', (pfCalls.get(tok('5')) || 0) - reads5 === 2, String((pfCalls.get(tok('5')) || 0) - reads5));
   const deadAfter = JSON.parse(store.get(RUG_PREFIX + dead.id).v);
   ok('a callback that is down is recorded as failed, and the watches beside it still deliver', deadAfter.last_delivery?.ok === false && hooks.slice(before).some((h) => h.url === 'https://hook.example/e'), JSON.stringify(deadAfter.last_delivery));
 
@@ -463,6 +483,204 @@ const tok = (c) => '0x' + c.repeat(40);
   const views = await Promise.all(hs.map(async (x) => (await call('/rug-watch/' + x.watch)).json()));
   ok('a holder under the line: the oldest watch keeps running, the others pause', views[0].status === 'active' && views.slice(1).every((v) => v.status === 'paused'), views.map((v) => v.status).join());
   ok('… and each callback gets a holder_line warning', hs.every((x, i) => hooks.slice(n1).some((h) => h.url === `https://hook.example/h${i}` && JSON.parse(h.body).events.some((e) => e.code === 'holder_line'))));
+}
+
+// ---------------------------------------------------------------- the review of 2026-10-09
+// Each pin below failed on the code before the review and holds after it. "False alarms are the worst failure
+// of an alarm; when in doubt, require confirmation rather than fire."
+console.log('\nreview 2026-10-09: false alarms, races, capacity, callbacks');
+{
+  const H = 3600e3, now = Date.parse('2026-10-09T12:00:00Z');
+  const base = S();
+  const W = (over = {}) => ({ id: 'x', token: TOKEN, baseline: base, snapshot: base, fired: {}, events: [], checks: 0, fails: 0, saved_at: now - 900e3, created_at: now - 2 * H, ...over });
+  const sentCodes = (st) => st.send.map((e) => `${e.code}:${e.level}`).join();
+  const OTHER = '0x' + 'c'.repeat(40);
+
+  // 1. pool identity, one-read glitches, confirmation
+  ok('[1] the snapshot names the measured pool (depth.pool)', base.pool === POOL && goneSnapshot('t').pool === null, String(base.pool));
+  const sw = S({ depth: { pool: OTHER, pool_hard_side_usd: 20000 }, lp_burned_pct: 0 });
+  ok('[1] the scan measured another pool (hard side $20k, LP burned 0%): no liquidity or LP event', !diff(base, sw).some((e) => /liquidity|lp_/.test(e.code)), codesOf(diff(base, sw)));
+  let st = stepC(W(), { ok: true, snap: sw }, now);
+  ok('[1] … and the reference takes the new pool silently', st.send.length === 0 && st.watch.snapshot.pool === OTHER && st.dirty, sentCodes(st));
+  const glitch = S({ lp_burned_pct: 0 });
+  st = stepC(W(), { ok: true, snap: glitch }, now, { ok: true, snap: base });
+  ok('[1] LP burned 99% -> 0% in one read, the re-read says 99%: no event, the reference stays', st.send.length === 0 && st.watch.snapshot === base, sentCodes(st));
+  st = stepC(W(), { ok: true, snap: glitch }, now);
+  ok('[1] … even when the re-read in the same run says 0% too, one tick is not enough: no event, kept as pending', st.send.length === 0 && st.watch.snapshot === base && st.watch.pending?.lp_withdrawn === now, sentCodes(st) + ' ' + JSON.stringify(st.watch.pending));
+  const st2 = stepC(st.watch, { ok: true, snap: base }, now + 900e3);
+  ok('[1] … and the next tick reads 99% again: still no event, the pending entry is gone', st2.send.length === 0 && !st2.watch.pending, sentCodes(st2) + ' ' + JSON.stringify(st2.watch.pending));
+  const st3 = stepC(st.watch, { ok: true, snap: glitch }, now + 900e3);
+  ok('[1] … while 0% at the next tick too is real: lp_withdrawn, critical', sentCodes(st3) === 'lp_withdrawn:critical', sentCodes(st3));
+  const bad = S({ stop: [{ code: 'not_sellable' }], gate: 'stop' });
+  st = stepC(W(), { ok: true, snap: bad }, now, { ok: true, snap: base });
+  ok('[1] a critical (sell_blocked) the re-read in the same run does not find is not sent, and the reference stays', st.send.length === 0 && st.watch.snapshot === base, sentCodes(st));
+  st = stepC(W(), { ok: true, snap: bad }, now);
+  ok('[1] … one the re-read finds again is sent', sentCodes(st) === 'sell_blocked:critical', sentCodes(st));
+  st = stepC(W(), { ok: true, snap: bad }, now, null);
+  const st4 = stepC(st.watch, { ok: true, snap: bad }, now + 900e3, null);
+  ok('[1] with no re-read possible, two reads in a row must agree: held at the first tick, sent at the second', st.send.length === 0 && st.watch.pending?.sell_blocked === now && sentCodes(st4) === 'sell_blocked:critical', `${sentCodes(st)} | ${sentCodes(st4)}`);
+  ok('[1] stepWatch asks for the re-read itself (needsConfirm) instead of sending on one read', stepWatch(W(), { ok: true, snap: bad }, now).needsConfirm === true && stepWatch(W(), { ok: true, snap: bad }, now).send.length === 0);
+
+  // 2. renouncing is good news
+  const ren = (a) => S({ control: { read: true, owner: { address: a, kind: 'renounced' }, proxy: null, mint_selector: false } });
+  const r0 = diff(base, ren('0x' + '0'.repeat(40))), rd = diff(base, ren('0x' + '0'.repeat(36) + 'dead'));
+  ok('[2] owner -> renounced (0x0 or dead): no critical, owner_renounced as info with a clear sentence', codesOf(r0) === 'owner_renounced:info' && codesOf(rd) === 'owner_renounced:info' && /renounced/.test(r0[0].what) && /good news/.test(r0[0].what), codesOf(r0) + ' ' + codesOf(rd));
+  ok('[2] … renounced -> an owner stays critical (the worst case)', codesOf(diff(ren('0x' + '0'.repeat(40)), base)) === 'owner_changed:critical');
+  ok('[2] … 0x0 -> dead (both renounced) is no event', diff(ren('0x' + '0'.repeat(40)), ren('0x' + '0'.repeat(36) + 'dead')).length === 0);
+
+  // 3. a sell-off is not a liquidity pull
+  const px = (p, hard, pool = POOL) => S({ entry: { receive_tokens: 250 / p }, depth: { pool, pool_hard_side_usd: hard } });
+  const sell = diff(px(0.001, 100000), px(0.00025, 50000));
+  ok('[3] a -75% sell-off, the hard side halved as sqrt(price) says, no LP moved: no liquidity event', !sell.some((e) => /liquidity/.test(e.code)), codesOf(sell));
+  ok('[3] … the hard side halved at a flat price is still liquidity_pulled, critical', codesOf(diff(px(0.001, 100000), px(0.001, 49000))) === 'liquidity_pulled:critical');
+  const both = diff(px(0.001, 100000), px(0.00025, 20000));
+  ok('[3] … a -75% sell-off with the hard side at 20% (liquidity left on top of it): liquidity_pulled, with the price in the sentence', codesOf(both) === 'liquidity_pulled:critical' && /price/.test(both[0].what), codesOf(both));
+  const blind = diffSnap(S({ entry: null }), S({ entry: null }), S({ entry: null, depth: { pool_hard_side_usd: 40000 } }));
+  ok('[3] … with no price in the reads a sell-off cannot be ruled out: liquidity_falling, a warning at most', codesOf(blind) === 'liquidity_falling:warning', codesOf(blind));
+  const t0 = now - 10 * H;
+  const series = Array.from({ length: 9 }, (_, i) => ({ t: t0 + i * H, p: 0.001 * (1 - 0.07 * i), h: Math.round(100000 * Math.sqrt(1 - 0.07 * i)) }));
+  const curPt = { t: t0 + 9 * H, p: 0.001 * (1 - 0.07 * 9), h: Math.round(100000 * Math.sqrt(1 - 0.07 * 9)) };
+  ok('[3] a price bleeding -63% over 9 h, the hard side following sqrt(price) (-39%): no liquidity_draining', !RW.trendEvents(series, curPt).some((e) => e.code === 'liquidity_draining'), RW.trendEvents(series, curPt).map((e) => e.code).join());
+
+  // 4. flapping codes
+  const tcc = S({ caution: [{ code: 'tax_can_change' }] });
+  let f = stepC(W(), { ok: true, snap: tcc }, now);
+  const first = sentCodes(f);
+  let wf = { ...f.watch, saved_at: now };
+  f = stepC(wf, { ok: true, snap: base }, now + 7 * H); wf = { ...f.watch, saved_at: now + 7 * H };
+  f = stepC(wf, { ok: true, snap: tcc }, now + 7.25 * H);
+  ok('[4] present, absent for one read, present again (7 h later, past the 6 h repeat rule): not "new" a second time', first === 'tax_can_change:warning' && f.send.length === 0, `${first} | ${sentCodes(f)}`);
+  f = stepC(wf, { ok: true, snap: base }, now + 7.25 * H); const wf2 = { ...f.watch, saved_at: now + 7.25 * H };
+  f = stepC(wf2, { ok: true, snap: tcc }, now + 7.5 * H);
+  ok('[4] … absent for two reads in a row, then present: new again', sentCodes(f) === 'tax_can_change:warning', sentCodes(f) + ' ' + JSON.stringify(wf2.seen));
+  const unq = snapshotOf({ tool: 'bsc_token_preflight', kind: 'unquotable', gate: 'stop', token: { address: TOKEN }, size_usd: 250, stop: [{ code: 'not_quotable', why: 'source down' }], caution: [], entry: null, exit: null,
+    control: { read: true, owner: { address: OWNER, kind: 'eoa' }, proxy: null, mint_selector: false }, block: 2, measured_at: '2026-10-09T12:00:00.000Z' });
+  st = stepC(W(), { ok: true, snap: unq }, now, { ok: true, snap: base });
+  ok('[4] not_quotable in one read (a source that failed), the re-read quotes again: no event', st.send.length === 0 && st.watch.snapshot === base, sentCodes(st));
+
+  // 8. the pool gone, said as liquidity_pulled
+  st = stepC(W(), { ok: true, snap: unq }, now);
+  const st8 = stepC(st.watch, { ok: true, snap: unq }, now + 900e3);
+  ok('[8] a pool that held $100k reads not_quotable, confirmed by the re-read AND the next tick: liquidity_pulled, critical — not a generic not_quotable', st.send.length === 0 && sentCodes(st8) === 'liquidity_pulled:critical' && /not_quotable/.test(st8.send[0].what), `${sentCodes(st)} | ${sentCodes(st8)}`);
+
+  // 9. noise: insider_selling on a growing total
+  const R9 = (h, dep) => ({ h, dep });
+  const drive9 = (reads) => {
+    const t9 = Date.parse('2026-10-09T00:00:00Z');
+    const mk = (r) => S({ flow: r.dep != null ? { window_minutes: 59, deployer: { address: '0xdep', holds_pct: 5, sold_usd: r.dep, sells: r.dep ? 2 : 0 }, sellers: 5, top_holders_selling: 0, top_holders_sold_usd: 0 } : null });
+    let w = W({ baseline: mk(reads[0]), snapshot: mk(reads[0]), saved_at: t9 - 2 * H, created_at: t9 - 2 * H });
+    const out = [];
+    for (const r of reads) {
+      const n = t9 + r.h * H;
+      const s = stepC(w, { ok: true, snap: mk(r) }, n);
+      out.push(...s.send.filter((e) => e.code === 'insider_selling').map(() => r.h));
+      if (s.dirty) w = { ...s.watch, saved_at: n };
+    }
+    return out.join();
+  };
+  const slow = drive9([R9(0, 0), R9(1, 400), R9(2, 400), R9(3, 400), ...[4, 5, 6, 7, 8, 9, 10].map((h) => R9(h, h === 9 ? 100 : 0))]);
+  ok('[9] insider_selling at $1,200, the total then grows to $1,300 (+8%): not sent again after 6 h', slow === '3', slow);
+  const fast = drive9([R9(0, 0), R9(1, 400), R9(2, 400), R9(3, 400), R9(4, 400), R9(5, 400)]);
+  ok('[9] … grown by half ($1,200 -> $2,000): sent again, inside the 6 h', fast === '3,5', fast);
+}
+
+console.log('\nreview 2026-10-09: the cron (races, capacity, lock, budget)');
+{
+  const mkKV = () => {
+    const m = new Map();
+    const k = { m, puts: 0,
+      get: async (key) => (m.has(key) ? m.get(key).v : null),
+      put: async (key, v, o = {}) => { k.puts++; m.set(key, { v, m: o.metadata ?? null }); },
+      delete: async (key) => { m.delete(key); },
+      list: async ({ prefix }) => ({ keys: [...m.keys()].filter((x) => x.startsWith(prefix)).map((name) => ({ name, metadata: m.get(name).m })), list_complete: true }) };
+    return k;
+  };
+  const T0 = Date.now() + 90 * 86400e3;
+  const tk = (c) => '0x' + c.repeat(40);
+  const watchOf = (id, token, cb, over = {}) => ({ id, token, callback: cb, cb: 'q' + id, secret: 'rws_' + id, tier: 'free', owner: 'c:' + id, created_at: T0 - 86400e3, expires_at: T0 + 20 * 86400e3,
+    baseline: S(), snapshot: S(), fired: {}, events: [], saved_at: T0 - 900e3, ...over });
+  const putW = async (kvx, w) => kvx.put(RUG_PREFIX + w.id, JSON.stringify(w), { metadata: { t: w.tier, o: w.owner, e: w.expires_at, k: w.token, c: w.cb, p: w.paused ? 1 : 0 } });
+  const stopAnswer = (t) => ({ status: 200, body: pf({ token: { address: t }, gate: 'stop', stop: [{ code: 'not_sellable' }] }) });
+
+  // 5. cancel / renew during a run
+  {
+    const kv5 = mkKV(), env5 = { AGENT: kv5 };
+    const a = watchOf('w5a', tk('5'), 'https://hook.example/r5a'), b = watchOf('w5b', tk('6'), 'https://hook.example/r5b');
+    await putW(kv5, a); await putW(kv5, b);
+    answers.set(tk('5'), stopAnswer(tk('5'))); answers.set(tk('6'), stopAnswer(tk('6')));
+    const renewed = T0 + 30 * 86400e3;
+    const n0 = hooks.length;
+    await runRugWatches(env5, { now: T0, readToken: async (token, fetchFn, n) => {
+      if (token === tk('5')) kv5.m.delete(RUG_PREFIX + 'w5a'); // DELETE /rug-watch/<id> lands mid-run
+      if (token === tk('6') && kv5.m.has(RUG_PREFIX + 'w5b')) { const w = JSON.parse(kv5.m.get(RUG_PREFIX + 'w5b').v); await putW(kv5, { ...w, expires_at: renewed, saved_at: T0 - 1 }); } // a renewal lands mid-run
+      return RW.readToken(token, fetchFn, n);
+    } });
+    ok('[5] a watch cancelled during a run stays cancelled: not written back, nothing sent to it', !kv5.m.has(RUG_PREFIX + 'w5a') && !hooks.slice(n0).some((h) => h.url === 'https://hook.example/r5a'), [...kv5.m.keys()].join());
+    const bAfter = kv5.m.has(RUG_PREFIX + 'w5b') ? JSON.parse(kv5.m.get(RUG_PREFIX + 'w5b').v) : null;
+    ok('[5] … a watch renewed during a run keeps the renewal\'s expiry (and its alert is still sent)', bAfter?.expires_at === renewed && bAfter.events.some((e) => e.code === 'sell_blocked'), String(bAfter?.expires_at));
+  }
+
+  // 6. capacity: paused watches do not count; a day under the line ends them
+  {
+    const e = (i, o, p) => ({ name: `${RUG_PREFIX}id${i}`, metadata: { t: 'holder', o, e: T0 + 1e6, k: tk(String(i % 10)), c: 'c' + i, p } });
+    const pausedAll = Array.from({ length: RUG_WATCH.totalCap }, (_, i) => e(i, `w${i}`, 1));
+    ok('[6] 200 paused watches take no place: a new free watch is still taken', tierCheck(pausedAll, { tier: 'free', owner: 'new', token: TOKEN, cb: 'z', now: T0 }).ok === true);
+    const mine = Array.from({ length: RUG_WATCH.holderCap }, (_, i) => e(i, '0xh', 1));
+    ok('[6] … a wallet whose 25 watches are paused is under its cap', tierCheck(mine, { tier: 'holder', owner: '0xh', token: TOKEN, cb: 'z', now: T0 }).ok === true);
+    ok('[6] … a paused watch can still be renewed', tierCheck([e(1, '0xh', 1)], { tier: 'holder', owner: '0xh', token: tk('1'), cb: 'c1', now: T0 }).renew === 'id1');
+
+    const kv6 = mkKV(), env6 = { AGENT: kv6 };
+    const wallet = '0x' + '7'.repeat(40);
+    balances.set(wallet, 0n);
+    const hw = (id, created) => watchOf(id, tk('8'), 'https://hook.example/' + id, { tier: 'holder', owner: wallet, wallet, holder_checked_at: T0 - 2 * 86400e3, created_at: created });
+    await putW(kv6, hw('h6a', T0 - 5 * 86400e3)); await putW(kv6, hw('h6b', T0 - 4 * 86400e3));
+    answers.delete(tk('8'));
+    const rpc = async (method, params) => { const r = await fetch('https://bsc.publicnode.com', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) }); return (await r.json()).result; };
+    await runRugWatches(env6, { now: T0, rpc });
+    const paused1 = JSON.parse(kv6.m.get(RUG_PREFIX + 'h6b')?.v || 'null');
+    await runRugWatches(env6, { now: T0 + 86400e3, rpc });
+    ok('[6] a holder under the line: the second watch pauses, and a day later (still under) it is deleted, not kept paused', paused1?.paused === 'holder_line' && !kv6.m.has(RUG_PREFIX + 'h6b') && kv6.m.has(RUG_PREFIX + 'h6a'), `${paused1?.paused} ${[...kv6.m.keys()].join()}`);
+  }
+
+  // 7. the lock, the budget, the cron
+  {
+    const kv7 = mkKV(), env7 = { AGENT: kv7 };
+    await putW(kv7, watchOf('w7', tk('9'), 'https://hook.example/r7'));
+    answers.set(tk('9'), stopAnswer(tk('9')));
+    const n0 = hooks.length;
+    const [x, y] = await Promise.all([runRugWatches(env7, { now: T0 }), runRugWatches(env7, { now: T0 })]);
+    ok('[7] two overlapping runs: one delivers, the other stands down (lock)', hooks.slice(n0).filter((h) => h.url === 'https://hook.example/r7').length === 1 && [x, y].filter((r) => r.locked).length === 1, JSON.stringify([x, y]).slice(0, 200));
+    ok('[7] … and the lock is released after the run', !kv7.m.has(RW.RUG_LOCK || 'rugwatch-lock'));
+
+    const kvb = mkKV(), envb = { AGENT: kvb };
+    for (const c of ['1', '2', '3']) await putW(kvb, watchOf('b' + c, tk(c),'https://hook.example/b' + c));
+    for (const c of ['1', '2', '3']) answers.delete(tk(c));
+    const seenTok = [];
+    const slowClock = () => { let t = 0; return () => (t += 1000); };
+    const runB = (n) => runRugWatches(envb, { now: n, budgetMs: 1000, clock: slowClock(), readToken: async (token, f, nn) => { seenTok.push(token); return RW.readToken(token, f, nn); } });
+    const rb1 = await runB(T0);
+    const rb2 = await runB(T0 + 900e3);
+    ok('[7] a run stops starting watches when its wall-time budget is spent, and the next tick starts at another watch', rb1.checked === 1 && rb1.skipped_for_time === 2 && rb2.checked === 1 && seenTok.length === 2 && seenTok[0] !== seenTok[1], JSON.stringify({ rb1, seenTok }).slice(0, 300));
+
+    const toml = fs.readFileSync(path.join(ROOT, 'worker-agent/wrangler.toml'), 'utf8');
+    const crons = ((toml.match(/crons\s*=\s*\[([^\]]*)\]/) || [])[1] || '').match(/"[^"]+"/g) || [];
+    ok('[7] the rug watch has its own cron next to the quarter-hour one, and the code knows it by name', !!RW.RUG_CRON && crons.includes(`"${RW.RUG_CRON}"`) && crons.includes('"*/15 * * * *"'), crons.join(','));
+    const src = fs.readFileSync(path.join(ROOT, 'worker-agent/index.js'), 'utf8');
+    const sched = src.slice(src.indexOf('async scheduled(event, env, ctx)'));
+    ok('[7] … scheduled() runs the rug watch on that cron and only there', /event\.cron === RUG_CRON\)\s*\{\s*ctx\.waitUntil\(runRugWatches/.test(sched) && (sched.match(/runRugWatches\(/g) || []).length === 1);
+  }
+
+  // 10. callbacks that embed IPv4, and our own workers.dev / pages.dev hosts
+  {
+    const refused = ['https://[::7f00:1]/x', 'https://[::127.0.0.1]/x', 'https://[::ffff:7f00:1]/x', 'https://[::ffff:127.0.0.1]/x', 'https://[::ffff:0:a00:1]/x', 'https://[64:ff9b::a9fe:a9fe]/x', 'https://[64:ff9b:1::1]/x',
+      'https://[2002:7f00:1::1]/x', 'https://[2001:0:4136:e378::1]/x', 'https://[fec0::1]/x', 'https://[ff02::1]/x', 'https://[::]/x',
+      'https://bobbuildonbnb.workers.dev/x', 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/hook', 'https://bobai-dashboard.pages.dev/x', 'https://golive.bobai-dashboard.pages.dev/x', 'https://bobai-lab.pages.dev/x'];
+    const through = refused.filter((u) => callbackProblem(u) === null);
+    ok('[10] IPv4-compatible / mapped / NAT64 / 6to4 / Teredo / site-local IPv6 forms and our own workers.dev and pages.dev hosts are refused', through.length === 0, through.join(' '));
+    const good = ['https://[2606:4700:4700::1111]/x', 'https://someone-else.workers.dev/x', 'https://their-app.pages.dev/x', 'https://example.com/hook'];
+    const blocked = good.filter((u) => callbackProblem(u) !== null);
+    ok('[10] … a public IPv6 address and other people\'s workers.dev / pages.dev hosts still pass', blocked.length === 0, blocked.join(' '));
+  }
 }
 
 console.log('\nthe site: MCP tool bsc_rug_watch, preflight pointer, discovery');

@@ -2449,7 +2449,7 @@ const CMDS = {
   liq: () => { setFocus('liq'); const b = boost3();
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
-    if (!S.lp) return say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
+    if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
     say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `${defiRate()}; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
@@ -2457,7 +2457,7 @@ const CMDS = {
   price: () => { setFocus('src'); const c = chartWords(), f = LIFE.flow || {}, rB = CX.liqUsd > 0 && S.bnbP > 0 ? CX.liqUsd / 2 / S.bnbP : 0;
     say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned)${c ? `, ${c.s} in 24 h` : ''}.`
       + (f.b || f.s ? ` This hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} ($${nf(f.bu || 0)}) and ${nf(f.s)} sell${f.s === 1 ? '' : 's'} ($${nf(f.su || 0)}).` : '')
-      + (rB > 0 ? ` The pool holds ${bnbF(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(100 / (rB + 1)).toFixed(1)}%, plus the 3% tax.` : '')
+      + (rB > 0 ? ` The pool holds ${bnbF(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(((1 + 1 / rB) ** 2 - 1) * 100).toFixed(1)}%, plus the 3% tax.` : '')
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
@@ -2483,8 +2483,8 @@ CMDS.holders = async () => { setFocus('src');
   try {
     const j = await getJSON(`${SITE}/api/smart-money`, 12000), h = j?.whale_flows?.holdings; if (!h) throw new Error('no holdings');
     const w = h.change_7d || {}, d = h.change_1d || {}, sg = v => (v >= 0 ? '+' : '') + v;
-    say([vary('ask-holders', ['My watcher reads every transfer of wallets with 5M+ BOBAI: ', 'The big wallets, read from the chain: ', 'The big holders, on-chain: ', 'Who holds the most: ', 'The 5M+ club: ']),
-      [`${nf(h.wallets_tracked)} wallets hold ${h.percent_of_total_supply}% of supply`],
+    say([vary('ask-holders', ['My watcher follows every wallet that ever crossed 5M BOBAI: ', 'The big wallets, read from the chain: ', 'The big holders, on-chain: ', 'Who holds the most: ', 'The 5M+ club: ']),
+      [`${nf(h.wallets_tracked)} watched wallets hold ${h.percent_of_total_supply}% of supply`], h.wallets_at_or_above_threshold != null ? ` (${nf(h.wallets_at_or_above_threshold)} of them at 5M+ right now)` : '',
       `. 24 h ${d.percent_change != null ? sg(d.percent_change) + '%' : '?'}, 7 days ${w.percent_change != null ? sg(w.percent_change) + '%' : '?'}${w.bobai_change != null ? ` (${w.bobai_change >= 0 ? '+' : '−'}${bobaiAmt(Math.abs(w.bobai_change))})` : ''}. A total holder count would come from a third party, so I do not show one.`]);
   } catch { say(['The whale watcher did not answer just now — ask again in a minute.']); } };
 CMDS.whales = CMDS.holders;
@@ -2607,7 +2607,9 @@ function speakAnswer(k) {
   setPose(flowPose(l[0]) === l[0] ? l[0] : poseOr(l[0]), 6); speak(vary('ask-say-' + k, l[1]), 4200);
 }
 async function check(addr) {
-  setPose('defi', 6); fire(A.head, new THREE.Color('#22d3ee'));
+  // the move only when nothing of the chain waits or plays (2026-10-09): an urgent pose here overwrote a queued chain move
+  if (mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil && !VID.go && !ownBusy()) setPose('defi', 6);
+  fire(A.head, new THREE.Color('#22d3ee'));
   const wait = say(['checking ', [short(addr)], ' — buying $250 of it on paper, selling it back, reading the pool…'], [], '#22d3ee');
   try {
     const j = await getJSON(`${SITE}/api/preflight?address=${addr}&usd=250`, 25000);
@@ -2884,7 +2886,7 @@ cmdForm.addEventListener('submit', e => {
   if (a) return check(a[0]);
   const w = intentOf(q);
   if (w && !['help', 'hi', 'thanks', 'who', 'joke'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
-  if (w) { ASK.hit++; CMDS[w](q); speakAnswer(w); } else missed(q);
+  if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) speakAnswer(w); } else missed(q); // false: it answered "still reading"
 });
 cmdIn.addEventListener('focus', () => win.classList.add('typing'));
 cmdIn.addEventListener('blur', () => setTimeout(() => win.classList.remove('typing'), 200));
@@ -3747,13 +3749,13 @@ function awayBits(since) {
   const rows = CH.rows.filter(r => r.t > since), buys = rows.reduce((a, r) => a + (r.b || 0), 0), sells = rows.reduce((a, r) => a + (r.s || 0), 0);
   const before = [...CH.rows].reverse().find(r => r.t <= since), last = CH.rows[CH.rows.length - 1];
   const ch = before && last ? usdCh({ o: before.c, ou: before.u }, last) : null; // in USD (2026-10-04)
-  const drops = (S.nft.drops || []).filter(n => n.ts * 1000 > since).length;
+  const drops = (S.nft?.drops || []).filter(n => n.ts * 1000 > since).length; // S.nft is null until its state was read (2026-10-09)
   const liqBnb = S.liq.filter(l => Date.parse(l.time) > since).reduce((a, l) => a + (+l.bnb || 0), 0);
   const man = S.man.filter(l => Date.parse(l.time) > since), manBnb = man.reduce((a, l) => a + (+l.bnb || 0), 0), manBob = man.reduce((a, l) => a + (+l.bobai || 0), 0);
   const bits = [];
   // away longer than the ledger reaches back (seven days) or than the drop list is long: the count is said as what it
   // is (2026-10-05: twelve days away, and a week's trades were told as the twelve days')
-  const from = CH.rows[0]?.t || 0, short = from > since + 3600e3, all = S.nft.drops || [], dropsCut = all.length >= 100 && drops === all.length;
+  const from = CH.rows[0]?.t || 0, short = from > since + 3600e3, all = S.nft?.drops || [], dropsCut = all.length >= 100 && drops === all.length;
   if (buys || sells) bits.push(`${nf(buys)} buy${buys === 1 ? '' : 's'} and ${nf(sells)} sell${sells === 1 ? '' : 's'}${short ? ` in the last ${sinceWords(Date.now() - from)} alone` : ''}`);
   if (ch != null && Math.abs(ch) >= 0.1) bits.push(`price ${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%`);
   if (runs.length) bits.push(`${runs.length} burn run${runs.length > 1 ? 's' : ''}, ${cmp(burned)} BOBAI burned`);

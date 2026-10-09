@@ -148,9 +148,19 @@ async function lightRun(env, { notify, pauseMs = 60000 }) {
   if (!failing.length) { console.log('[HEALTH] hourly look: all green'); return { checks: first.length, failing: [], sent: null }; }
   const text = renderLightMessage(failing, new Date().toISOString().slice(0, 16).replace('T', ' '));
   let sent = null, fallback = null;
+  // ONCE PER PROBLEM, NOT EVERY HOUR (2026-10-09): a red that lasts was sent at every hourly look — up to 24 messages.
+  // The same failing set is told again only after 6 h; a new or different red is told at once. Kept in the edge cache
+  // (this worker has no KV); a cache miss in another colo can at worst repeat one message.
+  const key = failing.map((r) => `${r.area}|${r.name}`).sort().join(' ; ');
+  const memo = new Request('https://health.internal/light-last');
+  if (notify && globalThis.caches) {
+    const last = await caches.default.match(memo).then((r) => (r ? r.json() : null)).catch(() => null);
+    if (last && last.key === key && Date.now() - last.at < 6 * 3600e3) { console.log('[HEALTH] hourly look: same red as told', Math.round((Date.now() - last.at) / 60e3), 'min ago — not repeated'); return { checks: first.length, failing, sent: null, repeated: false, text }; }
+  }
   if (notify) {
     sent = await sendOperator(env, text);
     if (!sent) fallback = await emailFallback(env, text);
+    if (sent && globalThis.caches) await caches.default.put(memo, new Response(JSON.stringify({ key, at: Date.now() }), { headers: { 'cache-control': 'max-age=86400' } })).catch(() => {});
   }
   console.log(`[HEALTH] hourly look: ${failing.length} failing, sent=${sent}, fallback=${fallback}`);
   return { checks: first.length, failing, sent, fallback, text };

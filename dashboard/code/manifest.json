@@ -54,9 +54,9 @@
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
    "lines": 6896,
-   "zipBytes": 176866,
-   "txtBytes": 546333,
-   "sha256": "9d41dd83386a1096",
+   "zipBytes": 176955,
+   "txtBytes": 546627,
+   "sha256": "e70a94e83d1753a8",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
-   "lines": 17126,
-   "zipBytes": 386034,
-   "txtBytes": 1090453,
-   "sha256": "0d735944ad962e9a",
+   "lines": 17386,
+   "zipBytes": 393019,
+   "txtBytes": 1111467,
+   "sha256": "a4f8fa4fa42f8065",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -728,10 +728,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4539,
-   "zipBytes": 97441,
-   "txtBytes": 277277,
-   "sha256": "50b6ff7aa484a06d",
+   "lines": 4546,
+   "zipBytes": 97573,
+   "txtBytes": 277728,
+   "sha256": "3371e6009f8c3972",
    "reqs": [
     {
      "what": "Node 18+ and time",

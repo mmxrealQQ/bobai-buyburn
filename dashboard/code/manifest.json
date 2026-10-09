@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5496,
-   "zipBytes": 93271,
-   "txtBytes": 277365,
-   "sha256": "412aea9f8d7bfdab",
+   "lines": 5507,
+   "zipBytes": 93680,
+   "txtBytes": 278452,
+   "sha256": "b7e3ccdc0da91de1",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2736,
-   "zipBytes": 79180,
-   "txtBytes": 226299,
-   "sha256": "4f3b8a285bb068d8",
+   "lines": 2755,
+   "zipBytes": 79534,
+   "txtBytes": 228053,
+   "sha256": "02285aceba09f3dc",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

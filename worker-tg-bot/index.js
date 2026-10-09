@@ -45,6 +45,7 @@ const CAPTCHA_TIMEOUT = 60;
 // PancakeSwap V2 Swap event topic. In this pair BOBAI is token0, WBNB is token1,
 // so a BUY = WBNB in (amount1In > 0) & BOBAI out (amount0Out > 0).
 const SWAP_TOPIC = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+const TAXSWAP_TOPIC = '0x4ecbb010c79223623fc0a5fd2d955ed432e0d426d06c525f5a1bf8e344753bae'; // the token's SwapTax log (data: the BOBAI swapped)
 // ERC20 Transfer(address indexed from, address indexed to, uint256 value)
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
@@ -576,6 +577,14 @@ async function recordSwapBucket(env) {
   // the page's own read of the chain, about an hour, had passed it). Each transaction's swaps of one side are one trade;
   // the ones worth $100 or more are kept with the bucket, the six largest at most: [buy 1/0, BNB, BOBAI, tx, the swap's recipient] — the recipient tells a bot of ours from a trader.
   const byTx = new Map();
+  // THE TOKEN'S OWN TAX SWAP IS NO TRADER (2026-10-09 review: the market card's "Largest sell" could be it — the router
+  // is the recipient of every sell, so the recipient does not tell). The token logs each tax swap with its BOBAI amount;
+  // a sell of exactly that amount in that transaction is the tax swap: counted in the volume, kept out of the big trades.
+  // An unread tax-swap log only means nothing is told apart, as before.
+  const taxSw = new Map();
+  for (const l of (await getLogsKeyedThenFree('0x' + from.toString(16), BOBAI_TOKEN, TAXSWAP_TOPIC, 'TAXSWAP', env, { narrow: false }).catch(() => null)) || []) {
+    try { taxSw.set(String(l.transactionHash || '').toLowerCase(), BigInt('0x' + l.data.slice(2, 66))); } catch {}
+  }
   for (const log of logs) {
     const b = parseInt(log.blockNumber, 16);
     if (b < from || b > latest) continue;
@@ -589,7 +598,9 @@ async function recordSwapBucket(env) {
     else continue;
     volWei += amount1In + amount1Out;
     if (isBuy) buyWei += amount1In; else sellWei += amount1Out;
-    { const k = (log.transactionHash || '') + (isBuy ? ':b' : ':s'), e = byTx.get(k) || { buy: isBuy ? 1 : 0, bnb: 0n, bobai: 0n, tx: log.transactionHash || '', to: '0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase() };
+    const sw = !isBuy && taxSw.get(String(log.transactionHash || '').toLowerCase());
+    const isTax = !!sw && (amount0In > sw ? amount0In - sw : sw - amount0In) * 1000000n <= sw;
+    if (!isTax) { const k = (log.transactionHash || '') + (isBuy ? ':b' : ':s'), e = byTx.get(k) || { buy: isBuy ? 1 : 0, bnb: 0n, bobai: 0n, tx: log.transactionHash || '', to: '0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase() };
       e.bnb += amount1In + amount1Out; e.bobai += amount0In + amount0Out; byTx.set(k, e); }
     // the swap's own price, BNB per BOBAI: the candle's wick (the bucket's close is the reserves after it)
     const px = Number(amount1In + amount1Out) / Number(amount0In + amount0Out);

@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5496 lines
+12 files, 5507 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 2736 lines
+5 files, 2755 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

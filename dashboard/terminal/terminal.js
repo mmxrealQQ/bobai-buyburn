@@ -4208,7 +4208,10 @@ function drawChart(now) {
   if (cht) { g.fillStyle = upc ? BUYC : SELLC; g.fillText(cht, B.x0 + hw + pw + 10, B.y0 - 10); }
   g.font = '600 8px ' + mono; g.fillStyle = 'rgba(160,162,192,.38)';
   cxOpen.style.left = (portrait ? B.x1 - 110 : B.x0) + 'px'; cxOpen.style.top = (portrait ? B.y0 - 24 : B.y1 + 4) + 'px'; cxOpen.classList.add('show');
-  if (!portrait) g.fillText('· ' + CH.min + ' MIN CANDLES FROM THE POOL', B.x0 + hw + pw + 20 + (cht ? g.measureText(cht).width * 1.25 : 0), B.y0 - 10);
+  // AGAINST BNB BESIDE IT (2026-10-09, operator's 24h question): on a day BNB itself moves, the USD figure and BOBAI's own
+  // move differ — both stand in the head, so nobody has to ask why DexScreener or Binance shows another number
+  const vbn = ch != null ? bnbChange(all) : null, vbt = vbn && Math.abs(ch - vbn.vb) >= 0.5 ? `· ${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% VS BNB ` : '';
+  if (!portrait) g.fillText(vbt + '· ' + CH.min + ' MIN CANDLES FROM THE POOL', B.x0 + hw + pw + 20 + (cht ? g.measureText(cht).width * 1.25 : 0), B.y0 - 10);
   // every swap flashes where it traded: a ring on the live candle and its size
   for (const f of CH.flashes) {
     const k = (now - f.at) / 2600; if (k < 0 || k > 1) continue;
@@ -4363,7 +4366,8 @@ function cxPaintHead() {
   const all = cxCandles(); if (!all.length) return;
   const ch = CX.tf === '24H' ? chartChange(candles()) : usdCh(all[0], all[all.length - 1]);
   cxEl.querySelector('.cx-px').textContent = '$' + (S.price ? S.price.toPrecision(5) : '…');
-  const c = cxEl.querySelector('.cx-ch'); c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}`; c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
+  const c = cxEl.querySelector('.cx-ch'); const vb = CX.tf === '24H' && ch != null ? bnbChange(candles()) : null;
+  c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}` + (vb && Math.abs(ch - vb.vb) >= 0.5 ? ` · ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB` : ''); c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
   const w = chartWords(), runs = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3).length;
   cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, and I burned ${runs} time${runs === 1 ? '' : 's'}. Every mark is on BscScan.` : '';
@@ -4702,7 +4706,10 @@ function drawTl(now) {
     tx.textAlign = 'left'; tx.font = '700 9px ' + mono; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText('$BOBAI', TL0 + 2, 11);
     tx.fillStyle = '#f3efe6'; const pt = '$' + (cs[cs.length - 1].c * S.bnbP).toPrecision(4); tx.fillText(pt, TL0 + 44, 11);
     const cht = (upc ? '▲ +' : '▼ ') + ch.toFixed(2) + '% ' + winKey, chx = TL0 + 50 + tx.measureText(pt).width;
-    tx.fillStyle = upc ? BUYC : SELLC; tx.fillText(cht, chx, 11); const left = chx + tx.measureText(cht).width + 14;
+    tx.fillStyle = upc ? BUYC : SELLC; tx.fillText(cht, chx, 11); let left = chx + tx.measureText(cht).width + 14;
+    // against BNB beside it, when the two differ (2026-10-09): the USD figure carries BNB's own day
+    const vbn = cc != null ? bnbChange(candles()) : null;
+    if (vbn && Math.abs(ch - vbn.vb) >= 0.5) { const vt = `${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% vs BNB`; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText(vt, left - 6, 11); left += tx.measureText(vt).width + 8; }
     // the key to the marks, on a wide screen (a phone has the CHART tab with its own); from 520 px (3.10.: at 1440 the
     // timeline is 739 px and had no key at 760) — what does not fit beside the price leaves, BUY / SELL / BURN stay
     if (w > 520) {

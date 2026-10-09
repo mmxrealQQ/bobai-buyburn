@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2675 lines.
+# one fetch. 5 files, 2736 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -410,7 +410,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way.';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. To be told when a token you hold turns dangerous, bsc_rug_watch re-reads it every 15 minutes and POSTs your own webhook (one watch free). Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -443,6 +443,8 @@ const AGENT_GUIDE = {
     { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_dex_info' },
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_purchase_guide' },
     { action: 'EARN an on-chain collectible: any buy >= $100 auto-mints a capped-supply NFT to the buying wallet — live remaining supply + steps', call: 'bobai_nft_drop' },
+    // 2026-10-09: the one tool here that stores something (a watch); free, webhook only.
+    { action: 'Be ALERTED by webhook when a BSC token you hold turns dangerous — the sell stops going through, the liquidity is pulled, a tax goes up, the owner or the proxy changes. Re-read every 15 minutes; one watch free, 25 for wallets holding 1,000,000 $BOBAI', call: 'bsc_rug_watch', args: { token: '0x…', callback: 'https://…' } },
   ],
   // Everything above is free. What is not, named once and plainly (2026-09-24,
   // A3 of the review) — prices stay in each 402 answer, one source.
@@ -564,6 +566,7 @@ function howToBuy() {
 // Brain Plaza were added, and llms.txt sent every agent to it first).
 const MEASURE_REST = {
   find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
+  bsc_rug_watch: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x…","callback":"https://…"}',
   bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
   bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
   bsc_pool_scan: 'https://brainonbnb.com/api/pool-scan?address=0x…',
@@ -764,6 +767,10 @@ async function getWalletBalance(address) {
 const MCP_TOOLS = [
   // FIRST IN THE LIST (2026-10-09): ~545 tools/list a day, 1-5 tool calls — the check an agent came for leads.
   { name: 'bsc_token_preflight', description: 'START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It also reads who controls the contract on-chain (control: owner() / getOwner() and whether that owner is renounced, a plain wallet or a contract, an EIP-1967 proxy and its admin, a mint(address,uint256) function in the bytecode) and names an owner that is one wallet where the token has a tax, a mint function or a proxy. gate is the verdict in one word to branch on - stop, weigh or no_known_stop - and each stop/caution item with a figure carries it as value, line and unit. A refusal comes with a code (is_wallet, not_a_token, bad_address, bad_usd, ...) and a hint. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key; pool figures are never cached, the GoPlus contract flags and holder list for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
+  // THE RUG WATCH (2026-10-09): the preflight's answer is one block; this keeps reading it for a token the agent
+  // holds and POSTs the agent's own callback when it turns dangerous. Registered on agent.brainonbnb.com
+  // (worker-agent/rug-watch.js), proxied here. The one tool on this server that is not read-only: it stores a watch.
+  { name: 'bsc_rug_watch', description: 'Rug-pull and honeypot ALARM for a BSC token you hold — webhook only (no Telegram, no browser, no mail). Registers the token and your own https callback; every 15 minutes the token is read again with bsc_token_preflight and compared with the read before, and your callback is POSTed as soon as something dangerous changes: the sell stops going through (honeypot), the liquidity is pulled (pool hard side down 50%; a warning at 25%), LP is withdrawn, the buy or sell tax rises by 2 points or more, the owner changes (renounced to an owner again is the worst case), the proxy is upgraded, the deployer or a top holder starts selling, or the owner can now change the tax — and the way tokens are rugged today, read from the watch\'s own 24 h history of reads: fake volume (many swaps from a handful of wallets, or an hour\'s volume far over the pool from few of them — it looks like wash trading, it is not proven), a pump (price up 40% within 6 h) and the dump after it (down 30% from that high), a slow rug (price down 25% over the day with no single big step while sells dominate and insiders sell), liquidity draining slowly, and insider sells adding up. Each alert is signed: x-bobai-signature: sha256=HMAC-SHA256 of the raw body with the secret returned once at registration. One active watch is free per caller; wallets holding 1,000,000 $BOBAI or more get unlimited — 25 active watches per wallet — by adding wallet, issued (ISO time) and an EIP-191 personal_sign signature of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <issued>" (a signature, no transaction). A watch runs 30 days; register the same token and callback again to renew. Status: GET https://agent.brainonbnb.com/rug-watch/<id>; terms: GET https://agent.brainonbnb.com/rug-watch. Measurement, not advice: an alert says what changed between two reads.', inputSchema: { type: 'object', properties: { token: { type: 'string', description: 'The BSC token to watch (0x + 40 hex). It must trade in a pool.' }, callback: { type: 'string', description: 'Your https endpoint; alerts are POSTed there as JSON' }, wallet: { type: 'string', description: 'Optional, holder tier: the wallet holding 1,000,000 $BOBAI or more' }, issued: { type: 'string', description: 'Optional, holder tier: the ISO 8601 UTC time in the signed message, within the last 10 minutes' }, signature: { type: 'string', description: 'Optional, holder tier: the personal_sign signature of the message by that wallet' } }, required: ['token', 'callback'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   // Brain Plaza first in the list. An agent that loads this server should be
   // able to ask "who else is out there on this chain" without knowing that we
   // measured it — and this is the only tool here that is about somebody other
@@ -842,7 +849,7 @@ function sizeArg(args, key, example) {
 // answer ("that address is a wallet", "no pool") — never 502: Cloudflare
 // replaces a Worker's 502 body with its own "error code: 502" text, so the
 // plain-words answer never reached an agent (MCP delivered it, REST did not).
-const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route']);
+const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route', 'bsc_rug_watch']);
 const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'pancakeswap_range_plan']);
 function errorAnswer(e) {
   const msg = e?.message || String(e);
@@ -867,9 +874,23 @@ function errorAnswer(e) {
 // A tool's refusal re-thrown in plain words with its code kept (2026-10-09).
 const refusal = (e, fallback) => Object.assign(new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || fallback)), typeof e?.code === 'string' ? { code: e.code } : {});
 
-async function runTool(rawName, args) {
+// `caller` (2026-10-09): who asked, for the one tool that counts per caller (bsc_rug_watch's free watch).
+async function runTool(rawName, args, caller = {}) {
   const name = DEPRECATED_TOOL_NAMES[rawName] || rawName;
   switch (name) {
+    case 'bsc_rug_watch': {
+      // Proxied to the agent worker, which keeps the watches. The caller's address goes with the shared
+      // secret: without it every MCP caller would arrive as this worker and share one free watch.
+      const headers = { 'content-type': 'application/json' };
+      if (WORKER_ENV?.HIT_SECRET && caller.ip) { headers['x-hit-secret'] = WORKER_ENV.HIT_SECRET; headers['x-rug-watch-for'] = String(caller.ip).slice(0, 64); }
+      const body = { token: args?.token ?? args?.address, callback: args?.callback };
+      for (const k of ['wallet', 'issued', 'signature']) if (args?.[k] != null) body[k] = args[k];
+      const r = await fetch('https://agent.brainonbnb.com/rug-watch', { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(40000) });
+      const j = await r.json().catch(() => null);
+      if (!j) throw new Error(`The rug watch did not answer (http ${r.status}). Nothing was registered; the terms are at GET https://agent.brainonbnb.com/rug-watch.`);
+      if (!r.ok) throw new Error(`${j.error || 'Refused.'}${j.code ? ` (code: ${j.code})` : ''} Terms: GET https://agent.brainonbnb.com/rug-watch.`);
+      return j;
+    }
     case 'find_agents_on_bnb_chain': {
       const q = encodeURIComponent(String(args?.query || '').slice(0, 200));
       const sp = args?.speaks ? '&speaks=' + encodeURIComponent(String(args.speaks).slice(0, 40)) : '';
@@ -1145,7 +1166,9 @@ async function handleMcp(request, note = () => {}) {
     }
     // Every tool in MCP_TOOLS reads and none of them writes — this worker has
     // no key, no signer and nothing to spend, so that is a property of the
-    // array rather than something to assert per entry. It is declared with
+    // array rather than something to assert per entry. One exception since
+    // 2026-10-09: bsc_rug_watch stores a watch (no key, no funds) and says so
+    // with its own annotations, which the spread below lets through. It is declared with
     // MCP's own annotation because routers have to decide whether calling a
     // stranger's tool is safe, and the alternative is guessing from the name.
     //
@@ -1165,7 +1188,7 @@ async function handleMcp(request, note = () => {}) {
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
         // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
-        const raw = await runTool(params?.name, params?.arguments || {});
+        const raw = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
         const out = (await firstCall(request)) ? withThanks(raw) : raw;
         // The JSON itself next to its text (2026-10-09, MCP 2025-06-18
         // structuredContent) for the three trading reads, so a client hands
@@ -1805,7 +1828,7 @@ function secureHeaders(h) {
 - Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
 - Check what our own spending agent is allowed to do: https://agent.brainonbnb.com/session — its session key's allowlist, daily cap and expiry, read live from the Altana KeyStore on-chain rather than from anything we assert. The same two view calls are available to you directly.
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
-- MCP endpoint, 22 read-only tools (the count is pinned against tools/list by a check): https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
+- MCP endpoint, 23 free tools (the count is pinned against tools/list by a check) — 22 read-only, and `bsc_rug_watch`, which registers a webhook alarm: https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_rug_watch`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
 - Choose the PRICE RANGE for a PancakeSwap V3 position: https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000 — the decision concentrated liquidity actually forces, and the one every interface answers with a preset. Not modelled and not forecast: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of the size you give is replayed through the swaps that really happened and asked, at each one, whether it was in range and what share of the liquidity standing there it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price crossed its edge. Impermanent loss is not in it and is worst exactly where the fees are best.
 - BEFORE ANY TRADE on BNB Smart Chain, one call at your size: https://brainonbnb.com/api/preflight?address=0x...&usd=250 (MCP: `bsc_token_preflight`) — stop[] names what ends an automated trade (the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip), caution[] names what to weigh, each with its figure and the line it was measured against (a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn; contract flags). Then the figures: best PancakeSwap route at this size, what you pay and receive, the slippage in bps the size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the measured transfer tax applied, the 1% depth both ways, LP burned. A short answer, built from the pool scan and the route check below, which stay available for every figure behind it. A token still on its four.meme curve is answered from four.meme's contract. It does not say "safe" and returns no score.
 - Before swapping on PancakeSwap: https://brainonbnb.com/api/best-route?address=0x...&usd=250 — two questions an agent has to answer before it signs. Which of the up-to-five pools the pair lives in actually returns the most AT THIS SIZE, quoted by the venue rather than ranked by depth; and what comes back if the proceeds are sold straight back, with the transfer tax measured from executed trades applied to the amounts carried between the legs, because the tax is taken outside the pool where no quoter sees it. Returns the best route, what every other route would have cost, the round trip with and without the tax, and the slippage the size really needs. Not a safety certificate and it does not use the word.
@@ -1849,6 +1872,7 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 ## Subscriptions
 
 - The DeFi agent, free: a look at any PancakeSwap V3 position — in range or not, room to each edge, value in BNB, fees owed and whether collecting pays: https://agent.brainonbnb.com/lp/look?position=<token id> (or ?address=<wallet holding exactly one>). Our own position's record, day by day: https://agent.brainonbnb.com/lp/agent · https://agent.brainonbnb.com/lp/series · the width record https://agent.brainonbnb.com/lp/windows. The plan for your position (re-set due, width, what spare BNB adds) is the paid lp_position_plan below.
+- Rug watch, free, webhook only: POST https://agent.brainonbnb.com/rug-watch {"token":"0x...","callback":"https://..."} (MCP: `bsc_rug_watch`) — the preflight re-read every 15 minutes for a token you hold; your callback is POSTed, signed (x-bobai-signature, HMAC-SHA256), when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn or the owner or proxy changes — and, from the watch's own 24 h history, today's rugs: fake volume from a handful of wallets (looks like wash trading), a pump and the dump after it, a slow rug while insiders sell, liquidity draining. One watch free per caller, 25 per wallet holding 1,000,000 $BOBAI (signed message, no transaction); 30 days, renewable. Terms: GET https://agent.brainonbnb.com/rug-watch
 - Pool watch, 0.50 USD1 for 30 days: POST https://agent.brainonbnb.com/watch — continuous monitoring of one pool with a callback when depth falls below a threshold you set. Paid over x402. The only recurring charge here; everything else is either free or a single 0.10 USD1 answer.
 - What has been asked and earned, with the receiving wallet named: https://agent.brainonbnb.com/stats
 
@@ -1968,7 +1992,9 @@ This file is a factual summary for assistants and crawlers. It is descriptive, n
 // what this read found, not a promise). Every stop/caution item whose sentence
 // carries a figure also carries it as {value, line, unit}: the measured number,
 // the line it was held against (null where the sentence draws none) and its
-// unit ("usd", "pct", "bps"). `why` stays the same sentence.
+// unit ("usd", "pct", "bps"; "wallets" for volume_from_few_wallets since
+// 2026-10-09: the wallets counted against the most that still reads as wash
+// trading). `why` stays the same sentence.
 import { scan, ScanError } from './scanner-scan.js';
 import { swapRoute } from './swap-route.js';
 import { readControl } from './scanner-chain.js';
@@ -1981,6 +2007,10 @@ const DEFAULT_USD = 250;
 const HIGH_TAX_PCT = 10;         // one side; named in the sentence
 const THIN_POOL_USD = 250000;    // below this an unburned LP is worth a line
 const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is named
+// volume_from_few_wallets (2026-10-09): the hour read looks like wash trading when
+// 20+ swaps came from at most max(3, swaps / 10) wallets, or its volume is 2x the
+// pool's hard side or more from 10 wallets or fewer.
+const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10;
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
 // The figure of a stop/caution item (2026-10-09): only where there is a number.
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
@@ -2147,6 +2177,24 @@ export function shape(s, r, usd, routeError = null, control = null) {
   const sn = fl?.snipers;
   if (sn?.read && sn.holdPctOfCirculating > 10)
     caution.push({ code: 'sniped_launch', why: `${sn.wallets} wallet${sn.wallets === 1 ? '' : 's'} bought in the first ${sn.blocks} blocks after the liquidity went in (block ${sn.launchBlock}) and still hold${sn.wallets === 1 ? 's' : ''} ${sn.holdPctOfCirculating}% of the circulating supply (line drawn at 10%)${sn.top?.some((x) => x.deployer) ? ' — the deployer among them' : ''}: a supply that can be sold into you.`, ...fig(sn.holdPctOfCirculating, 10, 'pct') });
+  // FAKE VOLUME (2026-10-09). Today's rugs are pumped with a handful of wallets
+  // trading back and forth, so the volume looks like demand. Over the hour of
+  // swaps the scan read: many swaps from very few addresses, or a volume far over
+  // the pool's hard side from few of them. Never a certainty — a router or an
+  // aggregator that trades for many wallets counts as one address — so the
+  // sentence says "looks like" and gives the figures. The same lines as the rug
+  // watch's fake_volume (worker-agent/rug-watch.js, TREND).
+  const act = s.activity;
+  if (act && act.swaps >= WASH_MIN_SWAPS && act.uniqueTraders >= 1) {
+    const few = Math.max(WASH_MIN_WALLETS, Math.floor(act.swaps / WASH_SWAPS_PER_WALLET));
+    const hard = s.pool?.liquidityUsd;
+    const overPool = act.volumeUsd != null && hard > 0 && act.volumeUsd >= WASH_VOL_X * hard && act.uniqueTraders <= WASH_FEW_WALLETS;
+    if (act.uniqueTraders <= few || overPool) {
+      const mins = act.window?.minutes ?? '?';
+      caution.push({ code: 'volume_from_few_wallets', why: `In the last ${mins} minutes ${act.swaps} swaps came from ${act.uniqueTraders} wallet${act.uniqueTraders === 1 ? '' : 's'}${act.volumeUsd != null ? ` — $${act.volumeUsd} of volume` : ''}${hard != null ? ` on a pool holding $${Math.round(hard)} on its hard side` : ''}. That looks like wash trading: a handful of wallets made most of the volume, so it says little about real demand (lines drawn at ${act.uniqueTraders <= few ? `${few} wallets or fewer for ${act.swaps} swaps — ten swaps or more per wallet` : `a volume ${WASH_VOL_X}x the pool from ${WASH_FEW_WALLETS} wallets or fewer`}; a router or aggregator trading for many wallets counts as one address).`,
+        ...fig(act.uniqueTraders, act.uniqueTraders <= few ? few : WASH_FEW_WALLETS, 'wallets') });
+    }
+  }
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
   // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
   // the float, moves this price far more than any trade you size.
@@ -2236,17 +2284,30 @@ export function shape(s, r, usd, routeError = null, control = null) {
       deployer: dep ? { address: dep.address, holds_pct: dep.balancePctOfCirculating, lp_pct: dep.lpPct, sold_usd: dep.sold ? dep.sold.usd : null, sells: dep.sold ? dep.sold.sells : null,
         ...(back ? { added_back_usd: back.usd, added_back_lp: back.lp, net_sold_usd: dep.sold.netUsd } : {}) } : null,
       sellers: fl.sellers ? fl.sellers.wallets : null, top_holders_selling: ths.length,
+      // what they sold, in dollars (2026-10-09): the rug watch adds insiders' sells up across its reads
+      top_holders_sold_usd: ths.length ? (ths.some((x) => x.usd != null) ? ths.reduce((a, x) => a + (x.usd || 0), 0) : null) : 0,
       snipers_hold_pct: sn?.read ? sn.holdPctOfCirculating : null } : null,
     // What stays open after this answer, and the one thing here that costs
     // money (2026-09-24, A3 of the review): nothing a trading agent touched
     // ever named it. Neutral and only where it works — the watch reads V2
     // reserves, so a V3 or Infinity pool gets no pointer. Price and term come
     // from the watch's own 402 answer, not from this text.
-    keep_watching: s.pool?.kind === 'v2' && s.pool?.address ? {
-      why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
-      what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
-      how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
-      terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+    // The free rug watch beside it (2026-10-09, worker-agent/rug-watch.js): this
+    // same preflight read again every 15 minutes, a webhook when it turns
+    // dangerous. It reads the preflight, not reserves, so any pool gets it —
+    // the paid pool watch above stays V2-only.
+    keep_watching: s.pool?.address ? {
+      ...(s.pool?.kind === 'v2' ? {
+        why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
+        what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
+        how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
+        terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+      } : { why: 'This answer is one block. If you hold, what it found can change after it.' }),
+      rug_watch: {
+        what: 'Free, webhook only: this preflight is read again every 15 minutes and your callback is POSTed when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
+        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}","callback":"https://…"}`,
+        terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
+      },
     } : null,
     // Who controls the contract, read on-chain (2026-10-09; controlBlock below).
     control: ctl,

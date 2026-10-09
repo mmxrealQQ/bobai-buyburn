@@ -199,7 +199,12 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
     !!v2.keep_watching && v2.keep_watching.how.includes('0x' + 'c'.repeat(40)) && v2.keep_watching.how.includes(v2.token.address) && v2.keep_watching.how.includes('"depthBelowUsd":500'), JSON.stringify(v2.keep_watching));
   ok('… and states no price of its own (the 402 does)', !/\$\s?\d|USD1|\d+\s?days?/i.test(JSON.stringify(v2.keep_watching)));
   const v3 = shape(scan({ pool: { address: '0x' + 'd'.repeat(40), kind: 'v3', venue: 'PancakeSwap V3', liquidityUsd: 40000 } }), route(), 500);
-  ok('a V3 pool gets no pointer to a watch that cannot read it', v3.keep_watching === null);
+  // Since 2026-10-09 a V3 pool gets the free rug watch (it reads the preflight, not reserves) — still never the
+  // pool watch, which reads V2 reserves.
+  ok('a V3 pool gets no pointer to a watch that cannot read it', !!v3.keep_watching && !('how' in v3.keep_watching) && !/agent\.brainonbnb\.com\/watch\b/.test(JSON.stringify(v3.keep_watching)), JSON.stringify(v3.keep_watching));
+  ok('… both name the free rug watch with this token filled in, and no price', [v2, v3].every((o) => o.keep_watching?.rug_watch?.how?.includes(`/rug-watch {"token":"${o.token.address}"`)) && !/\$\s?\d|USD1|\d+\s?days?/i.test(JSON.stringify(v3.keep_watching)));
+  const none = shape(scan({ quotable: false, reason: 'no pool' }), null, 500);
+  ok('… and a token with no pool gets none', none.keep_watching == null);
 }
 
 // A size that is given but unreadable is refused, not answered at 250 (2026-10-05). sizeArg is lifted out of
@@ -270,6 +275,32 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… nor a renounced owner, tax or not', !codes(o.caution).includes('owner_is_eoa') && o.control?.owner?.kind === 'renounced', codes(o.caution));
   o = shape(scan(), route(), 250, null, { read: false, reason: 'the node did not answer the control reads' });
   ok('a control read that failed is said, not dropped', o.control?.read === false && /did not answer/.test(o.control.reason), JSON.stringify(o.control));
+}
+
+// FAKE VOLUME (2026-10-09): today's rugs are pumped by a handful of wallets trading back and forth. The scan's
+// hour of swaps becomes a caution when many swaps came from very few addresses — said as "looks like", never a fact.
+{
+  const act = (over = {}) => ({ window: { blocks: 7900, minutes: 59 }, swaps: 41, buys: 30, sells: 11, uniqueBuyers: 2, uniqueSellers: 2, uniqueTraders: 3, volumeUsd: 12000, largestSellUsd: 900, ...over });
+  const thin = { address: '0x' + 'b'.repeat(40), kind: 'v2', venue: 'PancakeSwap V2', liquidityUsd: 8000, shareOfLiquidity: 1, partialMarket: false };
+  o = shape(scan({ activity: act(), pool: thin }), route(), 250);
+  const vf = o.caution.find((c) => c.code === 'volume_from_few_wallets') || {};
+  ok('41 swaps from 3 wallets in 59 minutes is volume_from_few_wallets, with the figures, "looks like" and {value 3, line 4, unit wallets}',
+    /41 swaps came from 3 wallets/.test(vf.why || '') && /\$12000 of volume/.test(vf.why) && /\$8000 on its hard side/.test(vf.why) && /looks like wash trading/.test(vf.why) && /a handful of wallets made most of the volume/.test(vf.why) && /aggregator/.test(vf.why)
+    && vf.value === 3 && vf.line === 4 && vf.unit === 'wallets' && o.gate === 'weigh', JSON.stringify(vf));
+  o = shape(scan({ activity: act({ swaps: 60, uniqueTraders: 8, volumeUsd: 20000 }), pool: thin }), route(), 250);
+  const vf2 = o.caution.find((c) => c.code === 'volume_from_few_wallets') || {};
+  ok('… 60 swaps by 8 wallets, $20000 on an $8000 pool: the volume-over-the-pool line (10 wallets)', vf2.value === 8 && vf2.line === 10 && /2x the pool/.test(vf2.why || ''), JSON.stringify(vf2));
+  o = shape(scan({ activity: act({ swaps: 300, buys: 160, sells: 140, uniqueTraders: 120, volumeUsd: 50000 }), pool: { ...thin, liquidityUsd: 20000 } }), route(), 250);
+  ok('… a busy market of 120 wallets is not, even at $50000 on a $20000 pool', !codes(o.caution).includes('volume_from_few_wallets') && o.activity?.unique_traders === 120 && vf.code === 'volume_from_few_wallets', codes(o.caution));
+  o = shape(scan({ activity: act({ swaps: 19, uniqueTraders: 1 }), pool: thin }), route(), 250);
+  const under = !codes(o.caution).includes('volume_from_few_wallets');
+  o = shape(scan({ activity: act({ swaps: 41, uniqueTraders: 5 }), pool: thin }), route(), 250);
+  const five = !codes(o.caution).includes('volume_from_few_wallets');
+  o = shape(scan({ activity: act({ uniqueTraders: null }), pool: thin }), route(), 250);
+  ok('… nor 19 swaps (under 20), 41 swaps by 5 wallets (line 4), or wallets that could not be read — and the line is checked at all (the 3-wallet case above is)', under && five && !codes(o.caution).includes('volume_from_few_wallets') && vf.code === 'volume_from_few_wallets', String([under, five]));
+  // what top holders sold, in dollars, for the rug watch's insider sum
+  o = shape(scan({ flow: { window: { minutes: 59 }, deployer: null, sellers: { wallets: 4 }, topHolderSelling: [{ address: '0xw', soldPctOfBalance: 50, heldPctBefore: 4, holdsPctNow: 2, usd: 700 }, { address: '0xv', soldPctOfBalance: 30, heldPctBefore: 3, holdsPctNow: 2, usd: 300 }] } }), route(), 250);
+  ok('the compact flow carries what top holders sold in dollars (top_holders_sold_usd)', o.flow?.top_holders_sold_usd === 1000 && shape(scan({ flow: { window: { minutes: 59 }, deployer: null, topHolderSelling: [] } }), route(), 250).flow?.top_holders_sold_usd === 0, JSON.stringify(o.flow));
 }
 
 // The refusal an agent can branch on (2026-10-09): errorAnswer lifted out of the site worker as text, like sizeArg.

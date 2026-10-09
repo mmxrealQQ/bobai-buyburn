@@ -29,7 +29,9 @@
 // what this read found, not a promise). Every stop/caution item whose sentence
 // carries a figure also carries it as {value, line, unit}: the measured number,
 // the line it was held against (null where the sentence draws none) and its
-// unit ("usd", "pct", "bps"). `why` stays the same sentence.
+// unit ("usd", "pct", "bps"; "wallets" for volume_from_few_wallets since
+// 2026-10-09: the wallets counted against the most that still reads as wash
+// trading). `why` stays the same sentence.
 import { scan, ScanError } from './scanner-scan.js';
 import { swapRoute } from './swap-route.js';
 import { readControl } from './scanner-chain.js';
@@ -42,6 +44,10 @@ const DEFAULT_USD = 250;
 const HIGH_TAX_PCT = 10;         // one side; named in the sentence
 const THIN_POOL_USD = 250000;    // below this an unburned LP is worth a line
 const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is named
+// volume_from_few_wallets (2026-10-09): the hour read looks like wash trading when
+// 20+ swaps came from at most max(3, swaps / 10) wallets, or its volume is 2x the
+// pool's hard side or more from 10 wallets or fewer.
+const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10;
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
 // The figure of a stop/caution item (2026-10-09): only where there is a number.
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
@@ -208,6 +214,24 @@ export function shape(s, r, usd, routeError = null, control = null) {
   const sn = fl?.snipers;
   if (sn?.read && sn.holdPctOfCirculating > 10)
     caution.push({ code: 'sniped_launch', why: `${sn.wallets} wallet${sn.wallets === 1 ? '' : 's'} bought in the first ${sn.blocks} blocks after the liquidity went in (block ${sn.launchBlock}) and still hold${sn.wallets === 1 ? 's' : ''} ${sn.holdPctOfCirculating}% of the circulating supply (line drawn at 10%)${sn.top?.some((x) => x.deployer) ? ' — the deployer among them' : ''}: a supply that can be sold into you.`, ...fig(sn.holdPctOfCirculating, 10, 'pct') });
+  // FAKE VOLUME (2026-10-09). Today's rugs are pumped with a handful of wallets
+  // trading back and forth, so the volume looks like demand. Over the hour of
+  // swaps the scan read: many swaps from very few addresses, or a volume far over
+  // the pool's hard side from few of them. Never a certainty — a router or an
+  // aggregator that trades for many wallets counts as one address — so the
+  // sentence says "looks like" and gives the figures. The same lines as the rug
+  // watch's fake_volume (worker-agent/rug-watch.js, TREND).
+  const act = s.activity;
+  if (act && act.swaps >= WASH_MIN_SWAPS && act.uniqueTraders >= 1) {
+    const few = Math.max(WASH_MIN_WALLETS, Math.floor(act.swaps / WASH_SWAPS_PER_WALLET));
+    const hard = s.pool?.liquidityUsd;
+    const overPool = act.volumeUsd != null && hard > 0 && act.volumeUsd >= WASH_VOL_X * hard && act.uniqueTraders <= WASH_FEW_WALLETS;
+    if (act.uniqueTraders <= few || overPool) {
+      const mins = act.window?.minutes ?? '?';
+      caution.push({ code: 'volume_from_few_wallets', why: `In the last ${mins} minutes ${act.swaps} swaps came from ${act.uniqueTraders} wallet${act.uniqueTraders === 1 ? '' : 's'}${act.volumeUsd != null ? ` — $${act.volumeUsd} of volume` : ''}${hard != null ? ` on a pool holding $${Math.round(hard)} on its hard side` : ''}. That looks like wash trading: a handful of wallets made most of the volume, so it says little about real demand (lines drawn at ${act.uniqueTraders <= few ? `${few} wallets or fewer for ${act.swaps} swaps — ten swaps or more per wallet` : `a volume ${WASH_VOL_X}x the pool from ${WASH_FEW_WALLETS} wallets or fewer`}; a router or aggregator trading for many wallets counts as one address).`,
+        ...fig(act.uniqueTraders, act.uniqueTraders <= few ? few : WASH_FEW_WALLETS, 'wallets') });
+    }
+  }
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
   // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
   // the float, moves this price far more than any trade you size.
@@ -297,17 +321,30 @@ export function shape(s, r, usd, routeError = null, control = null) {
       deployer: dep ? { address: dep.address, holds_pct: dep.balancePctOfCirculating, lp_pct: dep.lpPct, sold_usd: dep.sold ? dep.sold.usd : null, sells: dep.sold ? dep.sold.sells : null,
         ...(back ? { added_back_usd: back.usd, added_back_lp: back.lp, net_sold_usd: dep.sold.netUsd } : {}) } : null,
       sellers: fl.sellers ? fl.sellers.wallets : null, top_holders_selling: ths.length,
+      // what they sold, in dollars (2026-10-09): the rug watch adds insiders' sells up across its reads
+      top_holders_sold_usd: ths.length ? (ths.some((x) => x.usd != null) ? ths.reduce((a, x) => a + (x.usd || 0), 0) : null) : 0,
       snipers_hold_pct: sn?.read ? sn.holdPctOfCirculating : null } : null,
     // What stays open after this answer, and the one thing here that costs
     // money (2026-09-24, A3 of the review): nothing a trading agent touched
     // ever named it. Neutral and only where it works — the watch reads V2
     // reserves, so a V3 or Infinity pool gets no pointer. Price and term come
     // from the watch's own 402 answer, not from this text.
-    keep_watching: s.pool?.kind === 'v2' && s.pool?.address ? {
-      why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
-      what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
-      how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
-      terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+    // The free rug watch beside it (2026-10-09, worker-agent/rug-watch.js): this
+    // same preflight read again every 15 minutes, a webhook when it turns
+    // dangerous. It reads the preflight, not reserves, so any pool gets it —
+    // the paid pool watch above stays V2-only.
+    keep_watching: s.pool?.address ? {
+      ...(s.pool?.kind === 'v2' ? {
+        why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
+        what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
+        how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
+        terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+      } : { why: 'This answer is one block. If you hold, what it found can change after it.' }),
+      rug_watch: {
+        what: 'Free, webhook only: this preflight is read again every 15 minutes and your callback is POSTed when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
+        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}","callback":"https://…"}`,
+        terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
+      },
     } : null,
     // Who controls the contract, read on-chain (2026-10-09; controlBlock below).
     control: ctl,

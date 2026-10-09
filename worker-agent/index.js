@@ -96,6 +96,8 @@ import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
+// The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
+import { handleRugWatch, runRugWatches } from './rug-watch.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -1506,12 +1508,13 @@ export default {
       return new Response(null, {
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+          // DELETE and x-rug-watch-secret: cancelling a rug watch (2026-10-09).
+          'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
           // x-operator-token: the revoke route's lock (session-revoke.js). A
           // header the preflight does not name is a fetch the browser refuses
           // before it leaves the page — "Failed to fetch", no status, no body.
           // The MCP ones (2026-10-05): this preflight answers for /mcp too, so a browser MCP client was refused here.
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token,Mcp-Protocol-Version,Mcp-Session-Id,Authorization,Accept,X-BOBAI-Thanks',
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,X-PAYMENT,x-operator-token,x-rug-watch-secret,Mcp-Protocol-Version,Mcp-Session-Id,Authorization,Accept,X-BOBAI-Thanks',
         },
       });
 
@@ -2565,7 +2568,8 @@ ${pageTail}`;
       // sweeps are counted too — they are worth knowing — but folding them into
       // the public total would inflate it with our own activity, which is the
       // exact dishonesty this block exists to avoid.
-      const INTERNAL = new Set(['watch_checks']);
+      // The rug-watch sweep and the alerts it sends are ours too (2026-10-09).
+      const INTERNAL = new Set(['watch_checks', 'rug_watch_checks', 'rug_watch_alerts']);
       const external = Object.fromEntries(
         Object.entries(counters.byKind).filter(([k]) => !INTERNAL.has(k)),
       );
@@ -2822,6 +2826,12 @@ ${pageTail}`;
       return json(out.body, out.status, out.headers || {});
     }
 
+    // THE RUG WATCH (2026-10-09, rug-watch.js): free, webhook only — GET the terms, POST to register,
+    // GET /rug-watch/<id> for the status, DELETE it with x-rug-watch-secret. Free of the payment path above.
+    if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
+      return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
+    }
+
     if (path === '/watch' && request.method === 'GET') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const terms = await purchaseWatch(env, ctx, payTo, {}, null);
@@ -2950,6 +2960,11 @@ ${pageTail}`;
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       const result = await checkWatches(env);
       return json({ ok: true, ...result });
+    }
+    // The rug-watch sweep on demand, for the same reason (2026-10-09).
+    if (path === '/run-rug-watch' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json({ ok: true, ...(await runRugWatches(env, { rpc, bump: (kind, n) => bump(env, kind, n) })) });
     }
 
     // Runs the census tick on demand. Same reason as /run-checks: a job that
@@ -3082,6 +3097,10 @@ ${pageTail}`;
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
+    // The free rug watches (rug-watch.js, 2026-10-09): every active one re-read with the preflight, six at a
+    // time, one read per token; a watch is written only when it changed. At the 200 cap that is 200 fetches
+    // of this invocation's 1,000 (Workers Paid) and ~200 KV reads.
+    ctx.waitUntil(runRugWatches(env, { rpc, bump: (kind, n) => bump(env, kind, n) }).catch(() => {}));
     // One point per liquidity-agent run; a tick that finds the same record
     // again records nothing.
     ctx.waitUntil(recordLpSeries(env).catch(() => {}));

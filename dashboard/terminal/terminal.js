@@ -2510,40 +2510,40 @@ CMDS.team = () => { const add = S.man.at?.(-1);
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
 CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
   ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 4% slippage. Not advice — type ', ['safe'], ' for the facts first.']);
-CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' — in English or German.']); })(CMDS.help);
+CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?']]); })(CMDS.help);
 // ================= what a typed question means (2026-10-09) =================
 // The prompt matched only the first word that WAS a command name: 10 of 64 real questions got an answer ("preis",
 // "is it safe", "wen moon", "what did I miss", every German one and every typo fell to one fixed sentence). Now:
-// phrases in English and German first, then single words with a typo allowance, then a fallback that says what he
+// phrases first, then single words with a typo allowance, then a fallback that says what he
 // can do with one live fact — five ways each. Every answer is the chain's or our own log's, never a third party's.
 const bobaiAmt = n => { const u = (+n || 0) * S.price; return `${cmp(+n || 0)} BOBAI (≈$${nf(u, u < 10 ? 2 : 0)})`; }; // $BOBAI always with USD
 const ASK = { hit: 0, miss: [] };
-const INTENTS = [
-  [/\b(safe|sicher|rug\w*|scam\w*|honeypot|legit|trust|vertrau\w*|renounc\w*|audit\w*|betrug)\b/, 'safe'],
-  [/\b(miss\w*|verpasst|today|heute|24 ?h|news|status|update|what'?s up|was (ist|war) los|happened|passiert)\b/, 'today'],
-  [/\b(why|warum|wieso|weshalb)\b|\b(dump\w*|falling|fällt|faellt|down|pump\w*)\b/, 'why'],
-  [/\b(holders?|halter|whales?|wal|wale|big wallets?|grosse wallets?|smart money)\b/, 'holders'],
-  [/\b(when|wann|eta|how long|wie lange)\b.*\b(burn\w*|buyback|verbrenn\w*)|\bnext\b|\bnaechst\w*|\bnächst\w*/, 'next'],
-  [/\b(moon|mond|wen|lambo|100x|1000x)\b/, 'moon'],
-  [/\b(who|wer)\b|\b(what are you|was bist du|about you|über dich|ueber dich)\b/, 'who'],
-  [/\b(joke|witz|funny|lustig|lol|haha)\b/, 'joke'],
-  [/\b(thanks?|thx|ty|danke|merci)\b/, 'thanks'],
-  [/^(hi|hey|hello|hallo|gm|gn|moin|servus|yo|sup)\b/, 'hi'],
-  [/\b(what can you do|was kannst du|commands?|befehle|hilfe|help)\b/, 'help'],
-  [/\b(tax|taxes|steuer\w*)\b/, 'tax'],
-  [/\b(price|preis|kurs|cost\w*|kostet|mcap|market ?cap|marketcap|worth|wert|chart)\b/, 'price'],
-  [/\b(burn\w*|verbrann\w*|verbrenn\w*|brenn\w*|dead ?address|supply)\b/, 'burns'],
-  [/\b(lp|liq\w*|pool|depth|tiefe|locked)\b/, 'liq'],
-  [/\b(defi|range|cake|fees?|gebühr\w*|gebuehr\w*|yield|apr|apy)\b/, 'defi'],
-  [/\b(giggle|academy|spende\w*|donat\w*|charity|kinder)\b/, 'giggle'],
-  [/\b(bots?|alive|läuft|laeuft|running)\b/, 'bots'],
-  [/\b(follow|trace|latest trade|letzter trade)\b/, 'follow'],
-  [/\b(how are you|wie geht|mood|stimmung|feeling)\b/, 'mood'],
-  [/\b(contract|ca|token address|adresse)\b/, 'ca'],
-  [/\b(nfts?|drops?|collection|sammlung)\b/, 'nft'],
-  [/\b(volume|volumen|trades|activity)\b/, 'today'],
-  [/\b(team|dev|devs|developer|entwickler|roadmap|who builds)\b/, 'team'],
-  [/\b(buy|kaufen|kauf|sell|verkaufen|swap|pancake\w*|slippage)\b/, 'buy'],
+const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus on that")
+  [/\b(safe|rug\w*|scam\w*|honeypot|legit|trust|renounc\w*|audit\w*)\b/, 'safe'],
+  [/\b(miss\w*|today|24 ?h|news|status|update|what'?s up|happened)\b/, 'today'],
+  [/\b(why)\b|\b(dump\w*|falling|down|pump\w*)\b/, 'why'],
+  [/\b(holders?|whales?|big wallets?|smart money)\b/, 'holders'],
+  [/\b(when|eta|how long)\b.*\b(burn\w*|buyback)|\bnext\b/, 'next'],
+  [/\b(moon|wen|lambo|100x|1000x)\b/, 'moon'],
+  [/\b(who)\b|\b(what are you|about you)\b/, 'who'],
+  [/\b(joke|funny|lol|haha)\b/, 'joke'],
+  [/\b(thanks?|thx|ty)\b/, 'thanks'],
+  [/^(hi|hey|hello|gm|gn|yo|sup)\b/, 'hi'],
+  [/\b(what can you do|commands?|help)\b/, 'help'],
+  [/\b(tax|taxes)\b/, 'tax'],
+  [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart)\b/, 'price'],
+  [/\b(burn\w*|dead ?address|supply)\b/, 'burns'],
+  [/\b(lp|liq\w*|pool|depth|locked)\b/, 'liq'],
+  [/\b(defi|range|cake|fees?|yield|apr|apy)\b/, 'defi'],
+  [/\b(giggle|academy|donat\w*|charity)\b/, 'giggle'],
+  [/\b(bots?|alive|running)\b/, 'bots'],
+  [/\b(follow|trace|latest trade)\b/, 'follow'],
+  [/\b(how are you|mood|feeling)\b/, 'mood'],
+  [/\b(contract|ca|token address)\b/, 'ca'],
+  [/\b(nfts?|drops?|collection)\b/, 'nft'],
+  [/\b(volume|trades|activity)\b/, 'today'],
+  [/\b(team|dev|devs|developer|roadmap|who builds)\b/, 'team'],
+  [/\b(buy|sell|swap|pancake\w*|slippage)\b/, 'buy'],
 ];
 const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
   if (Math.abs(a.length - b.length) > 2) return 9;
@@ -2554,7 +2554,7 @@ const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
 const TYPO_KEYS = ['price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
 const TYPO_TO = { whales: 'holders', burn: 'burns', liquidity: 'liq', buyback: 'next' };
 function intentOf(q) {
-  const t = q.toLowerCase().replace(/[^a-z0-9äöüß%' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = q.toLowerCase().replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t) return null;
   for (const [re, k] of INTENTS) if (re.test(t) && CMDS[k]) return k;
   for (const x of t.split(' ').filter(w => w.length >= 4)) {

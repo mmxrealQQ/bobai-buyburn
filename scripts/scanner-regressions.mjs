@@ -240,6 +240,9 @@ ok('V3 signed amounts: token out is a buy, token in is a sell', act.buys === 1 &
   chain.bytecode = { [T]: '0x6080', [IMPL]: '0x608063' + '40c10f19' };
   c = await read();
   ok('… the mint selector found in the implementation behind the proxy', c.mint_selector === true && c.mint_selector_in === 'implementation', JSON.stringify(c));
+  chain.bytecode = { [T]: '0x6080', [IMPL]: '0x608063' + 'a0712d68' };
+  c = await read();
+  ok('… mint(uint256) counts as a mint too (2026-10-09: USDT’s own mint read as none)', c.mint_selector === true, JSON.stringify(c));
   chain.code = { [T]: 0 }; chain.storage = {}; chain.bytecode = {};
   chain.answers = { [T + ':0x8da5cb5b']: '0x' + w(0) };
   c = await read();

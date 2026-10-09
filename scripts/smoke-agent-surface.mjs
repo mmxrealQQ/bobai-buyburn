@@ -524,7 +524,8 @@ section('The written numbers match the measured ones');
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
   }).then((r) => r.json()).then((j) => j?.result?.tools?.length).catch(() => null);
-  const claimed = Number((txt.match(/(\d+)\s+read-only tools/) || [])[1]);
+  // "N free tools" since 2026-10-09 (bsc_rug_watch stores a watch, so not every tool is read-only).
+  const claimed = Number((txt.match(/(\d+)\s+(?:free|read-only)\s+tools/) || [])[1]);
   ok('llms.txt states the number of tools the endpoint actually serves',
     !!served && claimed === served,
     served ? `llms.txt says ${claimed || '(none stated)'}, the endpoint serves ${served}` : 'tools/list did not answer');
@@ -547,7 +548,7 @@ section('The written numbers match the measured ones');
   // the considered version, so a stale number there costs more than in a file
   // written for machines.
   const wp = (await getText(`${SITE}/whitepaper`)).body;
-  const wpClaim = Number((wp.match(/>(\d+)\s+read-only tools</) || wp.match(/(\d+)\s+read-only tools/) || [])[1]);
+  const wpClaim = Number((wp.match(/>(\d+)\s+(?:free|read-only)\s+tools</) || wp.match(/(\d+)\s+(?:free|read-only)\s+tools/) || [])[1]);
   ok('the whitepaper states the number of tools the endpoint actually serves',
     !!served && wpClaim === served,
     served ? `whitepaper says ${wpClaim || '(none stated)'}, the endpoint serves ${served}` : 'tools/list did not answer');

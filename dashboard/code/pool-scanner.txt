@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7144 lines.
+# one fetch. 6 files, 7146 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -256,7 +256,9 @@ async function mixedBatch(reqs){
 }
 export const EIP1967_IMPL='0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
   EIP1967_ADMIN='0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
-  MINT_SEL='40c10f19';
+  MINT_SEL='40c10f19',
+  // mint(uint256) too (2026-10-09): USDT's own mint takes the amount alone, and read as no mint at all
+  MINT_SEL_AMOUNT='a0712d68';
 const DEADS=new Set([NULLA,DEAD,'0xdead000000000000000042069420694206942069']);
 // The selector as a PUSH4 operand in the dispatcher: "63" then the four bytes.
 export const hasSelector=(code,sel)=>typeof code==='string'&&code.length>2&&code.toLowerCase().includes('63'+sel);
@@ -271,7 +273,7 @@ export function controlFrom(r1,r2){
   const codeAt=a=>{if(!r2||!a)return undefined;const i=r2.addrs.indexOf(a);return i<0?undefined:r2.codes[i]};
   const kindOf=a=>{if(a==null)return null;if(DEADS.has(a))return 'renounced';const c=codeAt(a);return c===undefined||c===null?'unread':c==='0x'?'eoa':'contract'};
   const implCode=codeAt(impl);
-  const mintHere=hasSelector(code,MINT_SEL),mintImpl=hasSelector(implCode,MINT_SEL);
+  const mintHere=hasSelector(code,MINT_SEL)||hasSelector(code,MINT_SEL_AMOUNT),mintImpl=hasSelector(implCode,MINT_SEL)||hasSelector(implCode,MINT_SEL_AMOUNT);
   return {read:true,block:blk?parseInt(blk,16):null,
     has_code:code==null?null:code!=='0x',
     owner:owner?{address:owner,kind:kindOf(owner),source}:null,

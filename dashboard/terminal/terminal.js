@@ -1056,6 +1056,7 @@ window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + D
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
 // a pretend small buy of $usd through the live poll's own door (seenSmall), this browser only — to check the thank-you
 window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
+window.__btTestMark = () => { const d = S.deadA || 0, next = (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 200 * 1e9; noteDead(d, next + 1); return (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 2; }; // a pretend crossing, this browser only; S.deadA untouched
 window.__btCtx = (x) => tradeContext(x); // for checks: what he would say in front of a trade's line
 window.__btWork = () => WORK.slice(1).map(w => { try { return w[1](); } catch (e) { return 'ERR ' + e.message; } }); // for checks: his work lines, read now
 // for checks from outside (read-only): when the window showed and which clip was starting then
@@ -1993,6 +1994,30 @@ const WORK = [
   ['liq', () => `${lpText()} of my pool's LP is burned. Nobody can pull it. Not even me.`],
   ['giggle', () => GIGGLE_OPEN() ? `The Giggle pot holds ${bnb4(ggBnb())}. Every trade adds to it until November 20.` : null],
   ['burn', () => `${supplyPct(S.deadA || 0)}% of my supply is at the dead address. Still counting.`],
+  // WHAT HE DOES ALL DAY, FROM THE RECORD (operator, 2026-10-09: "more lines of his own"): his DeFi agent's room to
+  // both edges and its fees so far, the agents that used his tools today, the NFTs dropped, the week's liquidity.
+  // Each only when its figure is there; five ways to say each.
+  ['defi', () => { const { ticks, tick, inR } = lpNow(); if (!ticks || tick == null || !inR) return null;
+    const dn = (1 - 1.0001 ** (ticks[0] - tick)) * 100, up = (1.0001 ** (ticks[1] - tick) - 1) * 100, d = dn.toFixed(0) + '%', u = up.toFixed(0) + '%';
+    return vary('w-range', [`My DeFi agent is in range: CAKE/BNB can fall ${d} or rise ${u} before it has to move.`, `In range and earning. ${d} of room below, ${u} above.`,
+      `The DeFi agent sits where the trades are: ${d} to the lower edge, ${u} to the upper one.`, `${d} down or ${u} up, and my DeFi agent re-sets. Until then it collects fees.`,
+      `Range check: in, with ${d} below and ${u} above. Fees are coming in.`]); }],
+  ['defi', () => { const fees = +(S.lp?.flow?.in?.fees?.bnb || 0), days = (Date.now() - Date.parse(S.lp?.flow?.since || '')) / 86400e3, cap = lpNow().value;
+    if (!(fees > 0) || !(days >= 3) || !(cap > 0) || !(S.bnbP > 0)) return null; // the same figures as defiRate()
+    const u = `$${nf(fees * S.bnbP, 2)}`, dd = `${Math.round(days)} days`, apr = `${(fees / cap / days * 365 * 100).toFixed(0)}%`;
+    return vary('w-fees', [`My DeFi agent has collected ${u} in fees in ${dd}. About ${apr} a year on its capital, so far.`, `${u} in pool fees over ${dd}, earned by my DeFi agent. The past, not a promise.`,
+      `The pool pays my DeFi agent for sitting where people trade: ${u} in ${dd}.`, `Quiet work pays: ${u} in fees in ${dd}, about ${apr} a year so far.`,
+      `Every CAKE/BNB trade in its range tips my DeFi agent. ${dd}: ${u}.`]); }],
+  ['think', () => { const n = HB.agent || 0; if (n < 3) return null;
+    return vary('w-agents', [`${nf(n)} times today other AI agents used my tools. They check tokens with me before they trade.`, `Other agents asked me ${nf(n)} times today. A brain gets consulted.`,
+      `${nf(n)} tool calls from other agents today. I answer every one, read from the chain.`, `Busy brain: ${nf(n)} questions from other agents today.`, `Agents trust my checks: ${nf(n)} calls today, and counting.`]); }],
+  ['nft', () => { const n = S.nft; if (!n) return null; const m = (n.minted || []).reduce((a, b) => a + b, 0), cap = (n.cap || []).reduce((a, b) => a + b, 0) || 1925; if (!m) return null;
+    return vary('w-nft', [`${nf(m)} of ${nf(cap)} Buy Drop NFTs are out. A buy of $100 or more earns one, automatically.`, `My NFT drops: ${nf(m)} of ${nf(cap)} so far. Earned, not sold.`,
+      `${nf(cap - m)} NFTs still waiting for their buyer. Every $100 buy unlocks one.`, `${nf(m)} NFTs dropped to buyers so far, ${nf(cap - m)} to go.`, `The NFT collection grows with every $100 buy: ${nf(m)} of ${nf(cap)}.`]); }],
+  ['liq', () => { const wk = S.liq.filter(l => Date.parse(l.time) >= Date.now() - 7 * 86400e3), b = wk.reduce((a, l) => a + (+l.bnb || 0), 0); if (!(b > 0)) return null;
+    const u = S.bnbP > 0 ? ` (≈$${nf(b * S.bnbP)})` : '';
+    return vary('w-liq', [`This week I added ${bnbF(b)}${u} to my pool and burned the LP. Deeper every week.`, `${bnbF(b)}${u} of new liquidity this week, locked forever.`,
+      `My pool got ${bnbF(b)}${u} deeper this week. Nobody can pull it.`, `Liquidity this week: ${bnbF(b)}${u}, every LP token burned.`, `${wk.length} liquidity add${wk.length === 1 ? '' : 's'} this week, ${bnbF(b)}${u} in all. Smoother trades for everyone.`]); }],
   // THE NEXT MARK (2026-10-09, "as intelligent as possible"): how far the burned share is from its next half percent,
   // in BOBAI with dollars, and how long that is at this week's burn pace (only when under two months)
   ['burn', () => { const d = S.deadA || 0; if (!(d > 0)) return null;
@@ -3033,6 +3058,26 @@ async function chain() {
   takeChain({ bnbP, price: Number(wR) / Number(bR) * bnbP, bobP: Number(h1) / Number(h0) * bnbP, bobDead: u18(q[2]), bobaiDead: u18(q[3]),
     queued: u18(q[6]), walletBnb: u18(q[0]) + u18(q[1]), lpPct: Number(BigInt(q[8])) / Number(BigInt(q[7])) * 100, minD: q[12] ? u18(q[12]) : 0 });
 }
+// A MARK CROSSED, CELEBRATED (operator, 2026-10-09): when the dead address's share of the supply passes a half percent
+// while the page is open (read from the chain, whatever burned it), he celebrates once the scene running now is over —
+// waits up to two minutes for a free moment, never cuts a take. Five lines; the next mark named in some.
+const MARKS_SAID = new Set();
+function noteDead(before, after) {
+  const lvl = v => Math.floor(v / 1e9 * 200 + 1e-9); // half percents
+  if (!(after > before) || lvl(after) <= lvl(before)) return;
+  const m = lvl(after) / 2; if (MARKS_SAID.has(m)) return; MARKS_SAID.add(m);
+  const fmt = v => (v % 1 ? v.toFixed(1) : String(v)) + '%', t0 = performance.now();
+  const go = () => {
+    const now = performance.now(), free = mode === 'live' && !QUEUE.length && now >= sceneUntil && !VID.go && !ownBusy() && now >= (LIFE.sayUntil || 0);
+    if (!free && now - t0 < 120e3) return setTimeout(go, 2000);
+    window.__btMarkSaid = m; LIFE.quietSince = Date.now(); LIFE.reactAt = now;
+    setPose(poseOr('cheer'), 4);
+    speak(vary('mark-crossed', [`Milestone! ${fmt(m)} of my supply is burned now. Forever.`, `${fmt(m)} burned! I have been counting toward this one. Thank you, every trader.`,
+      `We just crossed ${fmt(m)} of the supply burned. Every trade did this, 3% at a time.`, `${fmt(m)}! At the dead address, never coming back. Next stop: ${fmt(m + 0.5)}.`,
+      `Big moment: ${fmt(m)} of all BOBAI is burned. On-chain, for anyone to check.`]), 6500);
+  };
+  go();
+}
 function takeChain({ at = Date.now(), bnbP, price, bobP, bobDead, bobaiDead, queued, walletBnb, lpPct, minD }) {
   if (minD > 0) MIN_DISPATCH = minD;
   // a price older than the one the last trade's Sync gave (the homepage's numbers can be a minute old) does not win
@@ -3041,6 +3086,7 @@ function takeChain({ at = Date.now(), bnbP, price, bobP, bobDead, bobaiDead, que
   S.bnbP = bnbP; if (newer || !(S.price > 0)) { S.price = price; S.priceAt = at; } CH.dirty = true; S.bobP = bobP; S.deadB = bobDead; S.queued = queued; S.walletBnb = walletBnb;
   // a burn that lands while the page is open rolls the counter up instead of jumping
   if (S.deadA && bobaiDead > S.deadA) roll(D.burnA.el.querySelector('.v'), S.deadA, bobaiDead, v => burnAText(v));
+  if (S.deadA) noteDead(S.deadA, bobaiDead); // never on the first read: a mark is crossed while he watches
   S.deadA = bobaiDead;
   paintBobai();
   paintBob();

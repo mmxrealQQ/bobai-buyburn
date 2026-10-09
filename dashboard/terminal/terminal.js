@@ -1054,6 +1054,8 @@ window.__btDup = () => { const d = new Set((S.nft?.drops || []).map(n => (n.buyT
 // for checks from outside: replay a REAL buy through the live path (queue + watchMint polling the real drop list); nothing is written
 window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx, mint: true }; events.push(x); enqueue(x); watchMint(x); };
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
+// a pretend small buy of $usd through the live poll's own door (seenSmall), this browser only — to check the thank-you
+window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
 window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
@@ -2319,6 +2321,54 @@ function sayMore(k, x) {
   if (mode !== 'live' || REOPEN) return; // a moment reopened from the list is shown, not re-announced
   const L = REACT_MORE[k] && REACT_MORE[k](x); if (!L) return;
   LIFE.quietSince = Date.now(); speak(vary('react-' + k, L), 5000);
+}
+// A THANK-YOU FOR THE SMALL ONES ON A QUIET DAY (operator, 2026-10-09: "when there is hardly any volume and someone
+// buys small, $1-2-3 or whatever, he can say thank you"): a buy under the alert line got only its dot. On a quiet
+// stretch — outside trades worth under $30 in the half hour before it, or no trade for 90 minutes — it gets his joy
+// and a thank-you with its own dollars, never over an answer still running.
+// NOT EVERY ONE, BUT NOW AND THEN (operator, same day: "not all of them, but sometimes — and the sells the same: thanks
+// for the tax, hope you made a profit and are happy"): on a quiet stretch every small trade is answered (react's 90 s
+// apart); on a busy one only about one in four, at most every ten minutes. A sell gets its own thanks, never a frown.
+function thankSmall(x) {
+  const why = r => (window.__btThankWhy = r, null);
+  if (!(x.usd > 0) || Date.now() - (x.t || Date.now()) > 5 * 60e3) return why('not fresh'); // a fresh trade, not one read back from the history
+  const now = performance.now(); if (now < (LIFE.reactAt || -1e9) + 90e3) return why('answered one under 90 s ago');
+  // LOW VOLUME = THE DAY'S, TOO (same day: "when volume is low, comment the buys and sells more"): under $1,500 traded in
+  // 24 hours (his chart's ledger), or under $30 in the half hour before, or no trade for 90 minutes — then every small
+  // trade is answered, 90 s apart at least
+  const before = S.hist.filter(e => !e.ours && !e.taxSwap && e.tx !== x.tx && e.t < x.t && e.t >= x.t - 30 * 60e3).reduce((a, e) => a + (e.usd || 0), 0);
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3).reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP || 0), 0);
+  const quiet = x.testQuiet || before < 30 || CH.rows.length && day < 1500 || LIFE.combo?.act === 'quiet';
+  if (!quiet && (now < (LIFE.thankAt || -1e9) + 600e3 || Math.random() > 0.25)) return why(`busy ($${Math.round(day)} in 24 h), not this time`);
+  window.__btThankWhy = 'said';
+  LIFE.thankAt = LIFE.reactAt = now; LIFE.quietSince = Date.now(); LIFE.next = Math.max(LIFE.next, now + 60e3 + Math.random() * 60e3);
+  const u = '$' + nf(x.usd, x.usd < 10 ? 2 : 0), tax = '$' + nf(x.usd * 0.03, 2);
+  if (!x.buy) {
+    setPose(poseOr('think'), 3);
+    return speak(vary('react-thanks-sell', [`A ${u} sell. Thank you for the ${tax} of tax, and I hope you took a profit.`,
+      `${u} out. Thanks for the ${tax} of tax, friend. Hope you are smiling.`,
+      `Someone sold ${u}. No hard feelings: ${tax} of it stays and works. Enjoy it!`,
+      `${u} sold. Thank you for the tax, and come back any time. The door stays open.`,
+      `A ${u} sell, ${tax} of tax left behind. Thank you, and I hope it was a good trade.`]), 4400);
+  }
+  setPose(joyMove(), 3);
+  speak(vary(quiet ? 'react-thanks' : 'react-thanks-busy', quiet ? [`A ${u} buy on a quiet day. Thank you! ${tax} of it is already working for the burns.`,
+    `${u}! Small buy, big heart. On a day this calm, every single one counts. Thank you.`,
+    `Thank you for the ${u}! The chain was quiet, you were not.`,
+    `${u} in while the market rests. That is not small, that is loyalty. Thank you, friend.`,
+    `Someone just bought ${u}. I see you, and I thank you. ${tax} of tax, charging my next buyback.`,
+    `Thank you! ${u} of BOBAI on a slow day. Brains notice these things.`] : [
+    `${u} buy. Thank you! ${tax} of it is already working for the burns.`, `Thanks for the ${u}! Every buy feeds the brain.`,
+    `A ${u} buy. I noticed, and I thank you.`, `${u} in. Small candle, big heart. Thank you!`, `Thank you for the ${u}, friend. ${tax} of tax, charging my next buyback.`]), 4400);
+}
+// a trade under the alert line, as the chain poll sees it (and __btTestSmall, through the same door)
+function seenSmall(x) {
+  tradeDot(x);
+  // HE NOTICES THE MIDDLE-SIZED TRADES TOO (2026-09-29): a buy or a sell of $50+ gets a line and a move (the lines were
+  // written but never called); react() keeps it to one in 90 s, and never over a scene of the chain
+  const free = mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil && !VID.go;
+  if (!x.ours && x.usd >= 50 && free) react(x.buy ? 'buy' : 'sell', x);
+  else if (!x.ours && !x.taxSwap && free) thankSmall(x);
 }
 function react(kind, x) {
   LIFE.quietSince = Date.now();
@@ -3999,13 +4049,7 @@ async function trades() {
       x.t = nowMs; S.hist.push(x); chartSwap(x); // every swap shows on the chart, however small
       // below the alert line: no scene, but the trade is SEEN — a light runs from the trades into the brain, green for a
       // buy, red for a sell, its size the trade's (2026-09-26, the core: "the blockchain visible, in the flow")
-      if (!isAlert(x)) {
-        tradeDot(x);
-        // HE NOTICES THE MIDDLE-SIZED TRADES TOO (2026-09-29): a buy or a sell of $50+ gets a line and a move (the lines were
-        // written but never called); react() keeps it to one in 90 s, and never over a scene of the chain
-        if (!ours && usd >= 50 && mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil && !VID.go) react(buy ? 'buy' : 'sell', x);
-        continue;
-      }
+      if (!isAlert(x)) { seenSmall(x); continue; }
       x.lit = performance.now(); events.push(x);
       if (ours) {
         if (x.taxSwap) react('tax', x);

@@ -144,10 +144,11 @@
     m.id = "bsPrintModal";
     m.setAttribute("role", "dialog");
     m.setAttribute("aria-modal", "true");
+    m.setAttribute("aria-labelledby", "bsPrintTitle");
     m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
     m.innerHTML = '' +
       '<div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:460px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">' +
-        '<p style="margin:0 0 12px;line-height:1.55;"><strong>PDF printing is not available in this in-app browser.</strong></p>' +
+        '<p id="bsPrintTitle" style="margin:0 0 12px;line-height:1.55;"><strong>PDF printing is not available in this in-app browser.</strong></p>' +
         '<p style="margin:0 0 16px;line-height:1.55;">Open this page in your regular browser (Safari or Chrome) — your result travels along in the link automatically. Use the <strong>&#8942; / share menu &rarr; &ldquo;Open in browser&rdquo;</strong>, or copy the link below.</p>' +
         '<div style="display:flex;gap:8px;margin:0 0 18px;">' +
           '<input id="bsPrintUrl" type="text" readonly style="flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:12px;background:var(--bg-alt,#0b0b20);color:var(--ink,#e8e9f4);" />' +
@@ -170,7 +171,22 @@
     var closeBtn = m.querySelector("#bsPrintClose");
     input.value = url;
     m.style.display = "flex";
-    var close = function () { m.style.display = "none"; };
+    // keyboard (2026-10-09, as the confirm dialogs): focus moves in, Tab stays inside, Escape closes, focus goes back
+    var back = document.activeElement;
+    var close = function () {
+      m.style.display = "none";
+      document.removeEventListener("keydown", onKey, true);
+      if (back && back.focus) back.focus();
+    };
+    var onKey = function (e) {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key !== "Tab") return;
+      var f = [input, copy, tryBtn, closeBtn], i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+    };
+    document.addEventListener("keydown", onKey, true);
+    copy.focus();
     closeBtn.onclick = close;
     m.onclick = function (e) { if (e.target === m) close(); };
     tryBtn.onclick = function () { close(); window.print(); };

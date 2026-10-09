@@ -522,10 +522,10 @@
    "title": "brainScreener",
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
-   "lines": 10108,
-   "zipBytes": 196986,
-   "txtBytes": 556192,
-   "sha256": "5effab914df4cc3c",
+   "lines": 10221,
+   "zipBytes": 199218,
+   "txtBytes": 563401,
+   "sha256": "0bdfe671e8b20d62",
    "reqs": [
     {
      "what": "A static host",

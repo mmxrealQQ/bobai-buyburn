@@ -1654,7 +1654,7 @@ let tapHi = ''; // the hello in front of the first tap's answer (set by bobaiTap
 function speak(text, ms = 5200) {
   if (!text) return;
   if (tapHi) text = tapHi + ' ' + text; // the first tap's hello (bobaiTap)
-  ms = Math.max(ms, text.length * 22 + 2600); // time to read it once it is typed (2026-10-09: a context in front made lines longer than their time)
+  ms = Math.max(ms, text.length * 22 + 2600) + 500; // time to read it once it is typed (2026-10-09: a context in front made lines longer than their time); +0.5 s for every bubble (operator, same day)
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
   if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
@@ -2495,8 +2495,9 @@ win.addEventListener('pointerleave', () => hoverBobai(false));
 // HE NOTICES THE MOUSE ON HIM (2026-09-28, operator: "more alive"): resting the pointer on BOBAI for a second makes
 // him wave (the idle take) and say hi — the first two times with a line, then a wave alone, at most five times a
 // visit and once a minute. Passing over him does nothing; he never cuts into a move or a moment of the chain.
-const HOVER_LINES = ['Oh! You are watching me work.', 'Looking for me? Right here, working.', 'Caught you hovering. Hello there.',
-  'Tap me and I tell you what I am doing.', 'You found my good side. Both sides are good.'];
+// "watching me work" fourth, not first (operator, 2026-10-09: it was the first thing he said, before his own hello)
+const HOVER_LINES = ['Looking for me? Right here, working.', 'Caught you hovering. Hello there.', 'Tap me and I tell you what I am doing.',
+  'Oh! You are watching me work.', 'You found my good side. Both sides are good.'];
 let waveT = 0, waveN = 0, waveAt = -1e9;
 function hoverBobai(on) {
   if (!on) { clearTimeout(waveT); waveT = 0; return; }
@@ -2505,6 +2506,9 @@ function hoverBobai(on) {
   waveT = setTimeout(() => {
     waveT = 0; const now = performance.now();
     if (tapN > 0 || now < waveAt + 60e3 || QUEUE.length || now < sceneUntil || pinnedK || (VID.on && !/^rest/.test(VID.cur || ''))) return;
+    // NOT BEFORE HIS HELLO (operator, 2026-10-09: on load the mouse rests where he stands, and "you are watching me work"
+    // came a second in, before the greeting): only once the greeting is over, and 15 s after it
+    if (!GREETED || now < (LIFE.greetUntil || 0) + 15e3) return;
     if (!vidWave()) return;
     waveAt = now; waveN++; (window.__btHover = window.__btHover || []).push(Math.round(now / 1000)); // for checks from outside
     speak(waveN <= HOVER_LINES.length ? HOVER_LINES[(waveN - 1) % HOVER_LINES.length] : pick(HELLO), 3600); // never a silent wave (1.10.)
@@ -3776,11 +3780,11 @@ function paintJoke() {
   // bubble): busy, the button names what he does — speaking (or a line held for his move), else a scene, else a moment
   const talking = !!HELD || (bubble.classList.contains('on') && now < LIFE.sayUntil);
   const showing = win.classList.contains('in-moment') || win.classList.contains('nft-on') || (VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur));
-  const state = jokeQueued ? 'queued' : r && now - jokeReadySince > 500 ? 'ready' : talking ? 'wait-tell' : showing ? 'wait-show' : 'wait';
+  const state = jokeQueued ? 'queued' : r && now - jokeReadySince > 500 ? 'ready' : talking ? 'wait-tell' : showing ? 'wait-show' : !GREETED ? 'wait-boot' : 'wait';
   if (state === jokeShown) return;
   const was = jokeShown; jokeShown = state;
   jokeBtn.classList.toggle('wait', state !== 'ready'); jokeBtn.classList.toggle('queued', state === 'queued');
-  jokeBtn.querySelector('.jk-t').textContent = ({ ready: 'Tell me a joke', queued: 'Got one, wait', 'wait-tell': 'Telling you something', 'wait-show': 'Showing you something' })[state] || 'One moment'; // no '…': the button draws its own three animated dots (2.10.: it read 'ONE MOMENT_' + dots)
+  jokeBtn.querySelector('.jk-t').textContent = ({ ready: 'Tell me a joke', queued: 'Got one, wait', 'wait-tell': 'Telling you something', 'wait-show': 'Showing you something', 'wait-boot': 'Waking up' })[state] || 'One moment'; // no '…': the button draws its own three animated dots (2.10.: it read 'ONE MOMENT_' + dots)
   jokeBtn.setAttribute('aria-label', state === 'ready' ? 'Tell me a joke' : state === 'queued' ? 'BOBAI has a joke ready and tells it in a moment' : 'BOBAI is busy for a moment — tap and he tells a joke right after');
   if (state === 'ready' && was) { jokeBtn.classList.remove('ready-in'); void jokeBtn.offsetWidth; jokeBtn.classList.add('ready-in'); }
 }
@@ -3941,6 +3945,11 @@ document.addEventListener('visibilitychange', () => {
   fresh.then(() => setTimeout(tell, 1500));
 });
 let SAID_HI = false;
+// A FIRST VISIT IS GREETED WHILE THE RECORD LOADS (operator, 2026-10-09: "the start of the page load should not be like
+// that" — he stood silent until the bots' logs, the NFT state and the trade history were all read, ~12 s measured):
+// a first hello says nothing about the record, so it does not wait for it. A returning visitor still waits: his
+// greeting tells what happened while he was away, and that needs the record (welcomeBack).
+const greetEarly = () => mode === 'intro' && !(seenBefore && Date.now() - seenBefore >= 20 * 60e3 && Date.now() - seenBefore <= 30 * 86400e3);
 function greet(tries = 0) {
   if (SAID_HI) return;
   // a returning visitor is greeted with what happened: wait for the record (up to ~12 s), never count from half of it
@@ -3950,7 +3959,7 @@ function greet(tries = 0) {
   // with no clip known the wave was refused and he said his hello standing still. The greeting waits for the list, in
   // all up to ~12 s; a moment of the chain that took the stage meanwhile goes first (qa/latelist.mjs)
   if (!VID.listed && VID.v && !REDUCED && tries < 24) { setTimeout(() => greet(tries + 1), 500); return; }
-  if (tries && (mode !== 'live' || QUEUE.length || performance.now() < sceneUntil) && tries < 40) { setTimeout(() => greet(tries + 1), 500); return; }
+  if (tries && ((mode !== 'live' && !greetEarly()) || QUEUE.length || performance.now() < sceneUntil) && tries < 40) { setTimeout(() => greet(tries + 1), 500); return; }
   SAID_HI = true; LIFE.saidHi = true; // once per visit, however often the terminal is shown again
   // FIVE HELLOS FOR EACH TIME OF DAY, SIX WAYS ON (operator, 2026-10-02: "the greeting is almost always the same")
   const h = new Date().getHours(), hi = pick(h < 11 ? ['gm', 'Good morning', 'Morning', 'gm gm', 'Rise and shine'] : h < 17 ? ['Hey', 'Hi there', 'Hello', 'Good afternoon', 'Welcome'] : h < 22 ? ['Good evening', 'Evening', 'Hey there', 'Hi', 'Welcome in'] : ['Still up? Me too, always', 'Night owl', 'Late shift', 'Hello, night builder', 'Up late? Same here']);
@@ -5160,7 +5169,7 @@ export async function open() {
   LIFE.next = performance.now() + 15000; // let the intro, the greeting and the first numbers land first
   // the greeting waits for the terminal to be live (2026-09-30: on a slow phone it was not yet at 3.6 s, the one try was
   // lost, the 9 s fallback started a rest take and the wave came 8 s late) — tried every half second, up to 20 s
-  const tryGreet = (n = 0) => { if (SAID_HI) return; if (mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil) greet(); else if (n < 33) setTimeout(() => tryGreet(n + 1), 500); };
+  const tryGreet = (n = 0) => { if (SAID_HI) return; if ((mode === 'live' || greetEarly()) && !QUEUE.length && performance.now() >= sceneUntil) greet(); else if (n < 33) setTimeout(() => tryGreet(n + 1), 500); };
   setTimeout(tryGreet, 3600);
   layout(); opened = true; introStart = performance.now(); last = performance.now();
   // focus on the window itself, not the close button: Space pauses the replay, and on a focused X it closed the terminal

@@ -257,7 +257,7 @@ txt: https://brainonbnb.com/code/browser-game.txt
 brainScreener
 -------------
 Thirteen self-tests. No accounts, no tracking, no backend.
-52 files, 10108 lines
+52 files, 10221 lines
 needs:
   - A static host
       ours: Cloudflare Pages

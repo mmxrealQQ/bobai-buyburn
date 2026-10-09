@@ -2,7 +2,7 @@
 # Thirteen self-tests. No accounts, no tracking, no backend.
 #
 # This is the complete brainscreener bundle as a single file, so it can be read in
-# one fetch. 52 files, 10108 lines.
+# one fetch. 52 files, 10221 lines.
 # Download as a zip: https://brainonbnb.com/code/brainscreener.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -35,7 +35,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10">
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -68,7 +68,7 @@
       <small>Anonymous · No warranty · Not a substitute for medical diagnosis<br>Part of <a href="/">brainonbnb.com</a> · Test library adapted with thanks from <a href="https://adhsiq.ch" target="_blank" rel="noopener">adhsiq.ch</a></small>
     </div>
   </footer>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 </body>
 </html>
 
@@ -98,7 +98,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -142,7 +142,7 @@
       <!-- Gesamtergebnis -->
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -153,22 +153,22 @@
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Interpretation</h3>
+        <h2 class="h3">Interpretation</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
 
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -214,8 +214,8 @@
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=8"></script>
 </body>
 </html>
 
@@ -246,7 +246,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + childhood scale","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
@@ -368,8 +368,8 @@
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=99"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=100"></script>
 </body>
 </html>
 
@@ -399,7 +399,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -445,7 +445,7 @@
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -456,21 +456,21 @@
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -506,8 +506,8 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=5"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -539,7 +539,7 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AQ-50 — Autism Screening · brainScreener","description":"AQ-50 autism spectrum test online: 50 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/aq50","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Autism spectrum disorder"}}</script>
@@ -625,9 +625,9 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=5"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -720,8 +720,9 @@ h1, h2, h3, h4 {
 }
 h1 { font-size: clamp(2.2rem, 4.5vw, 3.6rem); }
 h2 { font-size: clamp(1.7rem, 3vw, 2.4rem); }
-h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
-h4 { font-size: 1.1rem; font-weight: 600; font-family: var(--sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-soft); }
+/* .h3 / .h4: result-page headings that are h2 / h3 for the outline (2026-10-09) but keep the old look */
+h3, .h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+h4, .h4 { font-size: 1.1rem; font-weight: 600; font-family: var(--sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-soft); }
 
 p { margin: 0 0 1em 0; color: var(--ink-soft); }
 a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 4px; text-decoration-thickness: 1.5px; transition: color .2s; }
@@ -1180,7 +1181,7 @@ img { max-width: 100%; height: auto; display: block; }
   background: var(--bg-alt); border-radius: var(--radius);
   padding: 24px 28px; margin: 24px 0; border-left: 3px solid var(--gold);
 }
-.interpretation h3 { margin-top: 0; }
+.interpretation h3, .interpretation .h3 { margin-top: 0; }
 .interpretation p { font-size: 1rem; color: var(--ink-soft); margin-bottom: 8px; }
 .interpretation p:last-child { margin-bottom: 0; }
 
@@ -1271,7 +1272,7 @@ img { max-width: 100%; height: auto; display: block; }
   border-left: 4px solid var(--gold);
   border-radius: var(--radius);
 }
-.crisis-box h4 {
+.crisis-box h4, .crisis-box .h4 {
   color: var(--ink); margin: 0 0 10px;
   font-family: var(--sans); font-size: 0.92rem;
   text-transform: uppercase; letter-spacing: 0.12em;
@@ -1429,7 +1430,8 @@ img { max-width: 100%; height: auto; display: block; }
   /* ---- Headlines passend skalieren ---- */
   h1 { font-size: 1.85rem; line-height: 1.2; }
   h2 { font-size: 1.4rem; line-height: 1.2; }
-  h3 { font-size: 1.15rem; }
+  h3, .h3 { font-size: 1.15rem; }
+  .h3 { line-height: 1.15; }
 
   /* ---- Hero ---- */
   .hero { padding: 34px 0 22px; }
@@ -1527,7 +1529,7 @@ img { max-width: 100%; height: auto; display: block; }
     margin-right: 0;
   }
   .interpretation { margin: 18px 0; }
-  .interpretation h3 { font-size: 1.1rem; }
+  .interpretation h3, .interpretation .h3 { font-size: 1.1rem; }
   .crisis-list { font-size: 0.9rem; }
 
   /* Subskalen — Label und Wert untereinander statt nebeneinander */
@@ -1634,7 +1636,7 @@ img { max-width: 100%; height: auto; display: block; }
   #distributionWrap svg, .gauge svg { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
   h1, h2, h3, h4 { page-break-after: avoid; color: #14142b; }
-  h3 { font-size: 13pt; margin-top: 18pt; }
+  h3, .h3 { font-size: 13pt; margin-top: 18pt; }
 
   ul, ol { page-break-inside: avoid; }
 
@@ -1904,6 +1906,7 @@ img { max-width: 100%; height: auto; display: block; }
       m.id = "bsConfirmModal";
       m.setAttribute("role", "dialog");
       m.setAttribute("aria-modal", "true");
+      m.setAttribute("aria-labelledby", "bsConfirmMsg");
       m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
       m.innerHTML = `
         <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
@@ -1920,12 +1923,28 @@ img { max-width: 100%; height: auto; display: block; }
     const cancel = m.querySelector("#bsConfirmCancel");
     ok.textContent = okLabel;
     cancel.textContent = UI.confirmCancel || "Cancel";
+    // Keyboard and screen readers (2026-10-09): the message names the dialog, focus moves into it (onto the harmless
+    // choice) and back to the button that opened it, Tab stays inside, Escape closes it like the cancel button.
+    const opener = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if (e.key === "Tab") {
+        const f = [cancel, ok];
+        e.preventDefault();
+        f[(f.indexOf(document.activeElement) + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+      }
+    };
+    const close = () => {
+      m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null;
+      document.removeEventListener("keydown", onKey, true);
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
     m.style.display = "flex";
-    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    document.addEventListener("keydown", onKey, true);
     cancel.onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
     ok.onclick = () => { close(); onOk(); };
-    ok.focus();
+    cancel.focus();
   }
 
   const btnReset = document.getElementById("btnReset");
@@ -2392,7 +2411,7 @@ window.ADHS_DATA = (function () {
   const flagMap = {
     high: {
       title: "Markedly positive screening",
-      sub: "The symptom pattern is consistent with attention-deficit/hyperactivity disorder in adulthood.",
+      sub: "Screens positive for adult ADHD symptoms. A specialist assessment is recommended.",
       val: "High",
       gauge: 0.85,
       text: `On <strong>ASRS Part A</strong> you marked ${result.asrs.partAMarks} of 6 items within the diagnostically
@@ -2667,12 +2686,12 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable AQ-50 screening",
       moderate: "Elevated autistic trait expression",
-      high: "Consistent with an autistic phenotype",
+      high: "Screens positive for autistic traits",
     };
     const subMap = {
       low: "Scores within the range of the neurotypical general population.",
       moderate: "Scores are above the population average — a specialist assessment may be worthwhile.",
-      high: "Profile consistent with an autism spectrum condition; specialist diagnostic assessment is recommended.",
+      high: "Screens positive for autistic traits; specialist diagnostic assessment is recommended.",
     };
 
     const interp = `
@@ -2834,21 +2853,26 @@ window.TEST_DATA = (function () {
     { v: 4, label: "Yes, during the last year" },
   ] };
 
+  // WHO skip rule (Babor et al. 2001, AUDIT manual): "Never" on item 1 goes straight to items 9 and 10; items 2–8
+  // are not asked and score 0 (2026-10-09). Any other answer, or none yet, asks them.
+  const AFTER_DRINKING = (a) => a.A1 !== 0;
+
   const ITEMS = [
     { id: "A1",  scale: SCALE_FREQ,    text: "How often do you have a drink containing alcohol? <span class='muted small'>(one standard drink = approx. 10–12 g of pure alcohol: about 330 ml beer, 100 ml wine, 25–30 ml spirits; a US standard drink is 14 g)</span>" },
-    { id: "A2",  scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
-    { id: "A3",  scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
-    { id: "A4",  scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
-    { id: "A5",  scale: SCALE_PROBLEM, text: "How often during the last year have you failed to do what was normally expected from you because of drinking?" },
-    { id: "A6",  scale: SCALE_PROBLEM, text: "How often during the last year have you needed a first drink in the morning to get yourself going after a heavy drinking session?" },
-    { id: "A7",  scale: SCALE_PROBLEM, text: "How often during the last year have you had a feeling of guilt or remorse after drinking?" },
-    { id: "A8",  scale: SCALE_PROBLEM, text: "How often during the last year have you been unable to remember what happened the night before because you had been drinking?" },
+    { id: "A2",  showIf: AFTER_DRINKING, scale: SCALE_AMOUNT,  text: "How many drinks containing alcohol do you have on a typical day when you are drinking?" },
+    { id: "A3",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often do you have six or more drinks on one occasion?" },
+    { id: "A4",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you found that you were not able to stop drinking once you had started?" },
+    { id: "A5",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you failed to do what was normally expected from you because of drinking?" },
+    { id: "A6",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you needed a first drink in the morning to get yourself going after a heavy drinking session?" },
+    { id: "A7",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you had a feeling of guilt or remorse after drinking?" },
+    { id: "A8",  showIf: AFTER_DRINKING, scale: SCALE_PROBLEM, text: "How often during the last year have you been unable to remember what happened the night before because you had been drinking?" },
     { id: "A9",  scale: SCALE_YESNO,   text: "Have you or someone else been injured as a result of your drinking?" },
     { id: "A10", scale: SCALE_YESNO,   text: "Has a relative or friend or a doctor or another health worker been concerned about your drinking or suggested you cut down?" },
   ];
 
   function evaluate(answers) {
-    const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    const skip = answers.A1 === 0; // items 2–8 count 0 after "Never" on item 1, whatever is still stored for them
+    const get = (id) => (skip && /^A[2-8]$/.test(id) ? 0 : typeof answers[id] === "number" ? answers[id] : 0);
     const total = ITEMS.reduce((s, it) => s + get(it.id), 0);
     const consumption = get("A1") + get("A2") + get("A3");
     const dependence  = get("A4") + get("A5") + get("A6");
@@ -3661,7 +3685,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable eating behaviour screening",
       moderate: "Indications of disordered eating",
-      high: "Consistent with clinically relevant eating disorder symptoms",
+      high: "Screens positive for clinically relevant eating disorder symptoms",
     };
     const subMap = {
       low: "The scores are below the clinical cutoff (≥&nbsp;20).",
@@ -4694,7 +4718,7 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable MDQ screening",
       moderate: "Partially elevated screening",
-      high: "MDQ-positive · consistent with the bipolar spectrum",
+      high: "MDQ-positive · screens positive for bipolar-spectrum symptoms",
     };
     const subMap = {
       low: "The three MDQ criteria are not met.",
@@ -4894,12 +4918,12 @@ window.TEST_DATA = (function () {
     const titleMap = {
       low: "Unremarkable OCD screening",
       moderate: "Indications of obsessive-compulsive symptoms",
-      high: "Consistent with clinically relevant obsessive-compulsive symptoms",
+      high: "Screens positive for clinically relevant obsessive-compulsive symptoms",
     };
     const subMap = {
       low: "The scores are below the clinically established cutoff.",
       moderate: "The score suggests a specialist assessment is advisable.",
-      high: "The profile is consistent with obsessive-compulsive disorder; prompt specialist assessment is recommended.",
+      high: "Screens positive for obsessive-compulsive symptoms; prompt specialist assessment is recommended.",
     };
 
     const interp = `
@@ -5263,10 +5287,26 @@ window.TEST_DATA = (function () {
     { id: "P9", text: "Thoughts that you would be better off dead, or of hurting yourself in some way", crisisNote: true },
   ];
 
+  // The published closing question of the PHQ-9 (Kroenke, Spitzer & Williams 2001), asked only when a problem was
+  // reported and never scored: it feeds neither the total nor the cut-offs (2026-10-09).
+  const DIFFICULTY = {
+    id: "PD",
+    text: "If you checked off any problems, how difficult have these problems made it for you to do your work, take care of things at home, or get along with other people?",
+    scale: { cols: 4, options: [
+      { v: 0, label: "Not difficult at all" },
+      { v: 1, label: "Somewhat difficult" },
+      { v: 2, label: "Very difficult" },
+      { v: 3, label: "Extremely difficult" },
+    ] },
+    showIf: (a) => ITEMS.some((it) => typeof a[it.id] === "number" && a[it.id] >= 1),
+  };
+
   function evaluate(answers) {
     const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
     const total = ITEMS.reduce((s, it) => s + get(it.id), 0);
     const q9 = get("P9");
+    // The unscored closing question travels to the result page only; it is not part of the total or the cut-offs.
+    const difficulty = ITEMS.some((it) => get(it.id) >= 1) && [0, 1, 2, 3].includes(answers.PD) ? answers.PD : null;
 
     let severity, flag;
     if (total <= 4)        { severity = "minimal";    flag = "low"; }
@@ -5285,7 +5325,7 @@ window.TEST_DATA = (function () {
     const mddAlgorithm  = coreSymptom && itemsAtLeast2.length >= 5;
 
     return {
-      total, max: 27, severity, flag, q9,
+      total, max: 27, severity, flag, q9, difficulty,
       mddAlgorithm, itemsAtLeast2: itemsAtLeast2.length,
       cutoffReached: total >= 10,
     };
@@ -5327,8 +5367,11 @@ window.TEST_DATA = (function () {
       ${result.cutoffReached
         ? `The clinically established cutoff of ≥&nbsp;10 has been reached; in validation studies this value shows a sensitivity of approx.&nbsp;88&nbsp;% and a specificity of approx.&nbsp;88&nbsp;% for major depression at a score of 10 or more (Kroenke, Spitzer &amp; Williams 2001).`
         : `The clinical cutoff of ≥&nbsp;10 has not been reached. If the distress persists for weeks or worsens, a specialist assessment is nevertheless advisable.`}
-      ${result.mddAlgorithm
+      ${result.mddAlgorithm && result.difficulty >= 1
         ? ` In addition, your answers match the symptom count of the <strong>PHQ-9 diagnostic algorithm</strong> for major depression (at least one core symptom plus ≥&nbsp;5 symptoms rated "more than half the days"). The algorithm also needs the duration and the effect on daily life, which only a professional can assess.`
+        : ""}
+      ${result.difficulty != null
+        ? ` Additional question (not scored): these problems have made it <strong>${["not difficult at all","somewhat difficult","very difficult","extremely difficult"][result.difficulty]}</strong> for you to do your work, take care of things at home or get along with other people.`
         : ""}
     `;
 
@@ -5429,7 +5472,7 @@ window.TEST_DATA = (function () {
         id: "main",
         title: "PHQ-9 · Last 2 weeks",
         intro: "<strong>Over the last 2 weeks, how often have you been bothered by any of the following problems?</strong>",
-        items: ITEMS,
+        items: [...ITEMS, DIFFICULTY],
         scale: SCALE,
       },
     ],
@@ -5925,6 +5968,7 @@ window.TEST_DATA = (function () {
     m.id = "iqConfirmModal";
     m.setAttribute("role", "dialog");
     m.setAttribute("aria-modal", "true");
+    m.setAttribute("aria-labelledby", "iqConfirmMsg");
     m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
     m.innerHTML = `
       <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
@@ -5944,12 +5988,28 @@ window.TEST_DATA = (function () {
     const cancel = m.querySelector("#iqConfirmCancel");
     ok.textContent = okLabel;
     cancel.textContent = UI.confirmCancel;
+    // Keyboard and screen readers (2026-10-09): the message names the dialog, focus moves into it (onto the harmless
+    // choice) and back to the button that opened it, Tab stays inside, Escape closes it like the cancel button.
+    const opener = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if (e.key === "Tab") {
+        const f = [cancel, ok];
+        e.preventDefault();
+        f[(f.indexOf(document.activeElement) + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+      }
+    };
+    const close = () => {
+      m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null;
+      document.removeEventListener("keydown", onKey, true);
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
     m.style.display = "flex";
-    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    document.addEventListener("keydown", onKey, true);
     cancel.onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
     ok.onclick = () => { close(); onOk(); };
-    ok.focus();
+    cancel.focus();
   }
 
   // ---------- Navigation ----------
@@ -6219,10 +6279,11 @@ window.TEST_DATA = (function () {
     m.id = "bsPrintModal";
     m.setAttribute("role", "dialog");
     m.setAttribute("aria-modal", "true");
+    m.setAttribute("aria-labelledby", "bsPrintTitle");
     m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
     m.innerHTML = '' +
       '<div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:460px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">' +
-        '<p style="margin:0 0 12px;line-height:1.55;"><strong>PDF printing is not available in this in-app browser.</strong></p>' +
+        '<p id="bsPrintTitle" style="margin:0 0 12px;line-height:1.55;"><strong>PDF printing is not available in this in-app browser.</strong></p>' +
         '<p style="margin:0 0 16px;line-height:1.55;">Open this page in your regular browser (Safari or Chrome) — your result travels along in the link automatically. Use the <strong>&#8942; / share menu &rarr; &ldquo;Open in browser&rdquo;</strong>, or copy the link below.</p>' +
         '<div style="display:flex;gap:8px;margin:0 0 18px;">' +
           '<input id="bsPrintUrl" type="text" readonly style="flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:12px;background:var(--bg-alt,#0b0b20);color:var(--ink,#e8e9f4);" />' +
@@ -6245,7 +6306,22 @@ window.TEST_DATA = (function () {
     var closeBtn = m.querySelector("#bsPrintClose");
     input.value = url;
     m.style.display = "flex";
-    var close = function () { m.style.display = "none"; };
+    // keyboard (2026-10-09, as the confirm dialogs): focus moves in, Tab stays inside, Escape closes, focus goes back
+    var back = document.activeElement;
+    var close = function () {
+      m.style.display = "none";
+      document.removeEventListener("keydown", onKey, true);
+      if (back && back.focus) back.focus();
+    };
+    var onKey = function (e) {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key !== "Tab") return;
+      var f = [input, copy, tryBtn, closeBtn], i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+    };
+    document.addEventListener("keydown", onKey, true);
+    copy.focus();
     closeBtn.onclick = close;
     m.onclick = function (e) { if (e.target === m) close(); };
     tryBtn.onclick = function () { close(); window.print(); };
@@ -6584,8 +6660,23 @@ window.TEST_DATA = (function () {
   // Page-Title im Browser-Tab
   if (D.meta.pageTitle) document.title = D.meta.pageTitle;
 
-  // Gesamt-Itemzahl
-  const TOTAL_ITEMS = D.sections.reduce((s, sec) => s + sec.items.length, 0);
+  // Items a data file shows only under a condition (2026-10-09): the AUDIT skips items 2–8 after "Never" on item 1
+  // (WHO rule), the PHQ-9 asks its difficulty question only when a problem was reported. A hidden item is not asked,
+  // not counted as open, and its answer does not travel to the result page.
+  const ALL_ITEMS = D.sections.flatMap((s) => s.items);
+  const isShown = (it) => typeof it.showIf !== "function" || !!it.showIf(answers);
+  const shownAnswers = () => {
+    const out = {};
+    ALL_ITEMS.forEach((it) => { if (isShown(it) && typeof answers[it.id] === "number") out[it.id] = answers[it.id]; });
+    return out;
+  };
+  function applyVisibility() {
+    ALL_ITEMS.forEach((it) => {
+      if (typeof it.showIf !== "function") return;
+      const el = form.querySelector(`.item[data-id="${it.id}"]`);
+      if (el) el.hidden = !isShown(it);
+    });
+  }
 
   // ---------- Storage ----------
   let answers = loadAnswers();
@@ -6655,6 +6746,7 @@ window.TEST_DATA = (function () {
       container.innerHTML = sec.items.map((it, i) => itemHTML(it, i + 1, sec.scale)).join("");
       sec.items.forEach((it) => { if (it.crisisNote && typeof answers[it.id] === "number") crisisNote(it.id, answers[it.id], container.querySelector(`.item[data-id="${it.id}"]`)); });
     });
+    applyVisibility();
     form.addEventListener("change", onAnyChange);
   }
 
@@ -6669,6 +6761,7 @@ window.TEST_DATA = (function () {
       const itemEl = input.closest(".item");
       if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       crisisNote(id, val, itemEl);
+      applyVisibility();
       if (first) nextIntoView(itemEl);
       updateProgress();
       if (missingNote) missingNote.hidden = true;
@@ -6696,19 +6789,21 @@ window.TEST_DATA = (function () {
   function nextIntoView(itemEl) {
     if (!itemEl || itemEl.querySelector(".item-crisis")) return;
     let n = itemEl.nextElementSibling;
-    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered"))) n = n.nextElementSibling;
+    while (n && !(n.classList.contains("item") && !n.classList.contains("is-answered") && !n.hidden)) n = n.nextElementSibling;
     if (!n) return;
     const r = n.getBoundingClientRect();
     if (r.top > window.innerHeight * 0.55) setTimeout(() => n.scrollIntoView({ behavior: SCROLL, block: "center" }), 220);
   }
 
   function updateProgress() {
-    const answered = Object.keys(answers).length;
-    const pct = Math.round((answered / TOTAL_ITEMS) * 100);
+    const shown = ALL_ITEMS.filter(isShown);
+    const total = shown.length;
+    const answered = shown.filter((it) => typeof answers[it.id] === "number").length;
+    const pct = total ? Math.round((answered / total) * 100) : 0;
     if (progressFill) progressFill.style.width = pct + "%";
     const bar = progressFill && progressFill.parentElement;
-    if (bar) { bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", String(TOTAL_ITEMS)); bar.setAttribute("aria-valuenow", String(answered)); bar.setAttribute("aria-label", "Questions answered"); }
-    if (progressCount) progressCount.textContent = fmt(UI.answersCount, { answered, total: TOTAL_ITEMS });
+    if (bar) { bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", String(total)); bar.setAttribute("aria-valuenow", String(answered)); bar.setAttribute("aria-label", "Questions answered"); }
+    if (progressCount) progressCount.textContent = fmt(UI.answersCount, { answered, total });
     if (progressText) {
       const sec = D.sections[currentIdx];
       const label = D.sections.length > 1
@@ -6741,7 +6836,7 @@ window.TEST_DATA = (function () {
   }
 
   function sectionItemIds(idx) {
-    return D.sections[idx].items.map((i) => i.id);
+    return D.sections[idx].items.filter(isShown).map((i) => i.id);
   }
 
   function isSectionComplete(idx) {
@@ -6784,9 +6879,10 @@ window.TEST_DATA = (function () {
       focusFirstUnanswered(currentIdx);
       return;
     }
-    const result = D.evaluate(answers);
+    const given = shownAnswers();
+    const result = D.evaluate(given);
     const probandCode = (sessionStorage.getItem(CODE_KEY) || "").trim();
-    const payload = { result, answers, probandCode, ts: new Date().toISOString(), testId: D.id };
+    const payload = { result, answers: given, probandCode, ts: new Date().toISOString(), testId: D.id };
     const stored = sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload));
     testInProgress = false;
     toResult(D.meta.resultPath, payload, stored);
@@ -6819,6 +6915,7 @@ window.TEST_DATA = (function () {
       m.id = "bsConfirmModal";
       m.setAttribute("role", "dialog");
       m.setAttribute("aria-modal", "true");
+      m.setAttribute("aria-labelledby", "bsConfirmMsg");
       m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
       m.innerHTML = `
         <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
@@ -6835,12 +6932,28 @@ window.TEST_DATA = (function () {
     const cancel = m.querySelector("#bsConfirmCancel");
     ok.textContent = okLabel;
     cancel.textContent = UI.confirmCancel || "Cancel";
+    // Keyboard and screen readers (2026-10-09): the message names the dialog, focus moves into it (onto the harmless
+    // choice) and back to the button that opened it, Tab stays inside, Escape closes it like the cancel button.
+    const opener = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if (e.key === "Tab") {
+        const f = [cancel, ok];
+        e.preventDefault();
+        f[(f.indexOf(document.activeElement) + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+      }
+    };
+    const close = () => {
+      m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null;
+      document.removeEventListener("keydown", onKey, true);
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
     m.style.display = "flex";
-    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    document.addEventListener("keydown", onKey, true);
     cancel.onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
     ok.onclick = () => { close(); onOk(); };
-    ok.focus();
+    cancel.focus();
   }
 
   if (btnReset) {
@@ -6957,7 +7070,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7003,7 +7116,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -7014,21 +7127,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -7064,8 +7177,8 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -7097,7 +7210,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AUDIT — Alcohol Screening · brainScreener","description":"AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/audit","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Alcohol use disorder"}}</script>
@@ -7183,9 +7296,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -7215,7 +7328,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7261,7 +7374,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -7272,21 +7385,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -7323,7 +7436,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -7355,7 +7468,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"BFI-2 — Personality · brainScreener","description":"Big Five personality test online (BFI-2): 60 questions, about 10–14 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/bfi2","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
@@ -7442,8 +7555,8 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -7473,7 +7586,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <style>
@@ -7574,11 +7687,11 @@ window.TEST_DATA = (function () {
         <div class="char-wheel" id="charWheel" aria-hidden="true"></div>
       </div>
 
-      <h3 style="margin-top: 28px;">Your personal mix</h3>
+      <h2 class="h3" style="margin-top: 28px;">Your personal mix</h2>
       <p class="small muted" style="margin-top:-4px;">Everyone carries a bit of all four traits. This is how they are distributed in you:</p>
       <div class="char-bars" id="charBars"></div>
 
-      <h3 style="margin-top: 36px;">What the individual traits mean</h3>
+      <h2 class="h3" style="margin-top: 36px;">What the individual traits mean</h2>
       <p class="small muted" style="margin-top:-4px;">With strengths, typical behaviours and concrete tips — starting with your strongest trait.</p>
       <div class="char-types" id="charTypes"></div>
 
@@ -7622,7 +7735,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/charakter-data.js?v=3"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/charakter-result.js?v=4"></script>
 </body>
 </html>
@@ -7654,7 +7767,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Character profile — Dark Tetrad · brainScreener","description":"Character profile test online (Dark Tetrad): 28 questions, about 6–8 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/character","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
@@ -7741,8 +7854,8 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/charakter-data.js?v=3"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -7853,7 +7966,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -7899,7 +8012,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -7910,21 +8023,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -7960,8 +8073,8 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -7993,7 +8106,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"EAT-26 — Eating Disorder Screening · brainScreener","description":"EAT-26 eating disorders test online: 26 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/eat26","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Eating disorders"}}</script>
@@ -8079,9 +8192,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -8111,7 +8224,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -8157,7 +8270,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -8168,21 +8281,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -8219,7 +8332,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -8251,7 +8364,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"GAD-7 — Anxiety Screening · brainScreener","description":"GAD-7 anxiety test online: 7 questions, about 2–3 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/gad7","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Generalised anxiety disorder"}}</script>
@@ -8338,8 +8451,8 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -8373,7 +8486,7 @@ window.TEST_DATA = (function () {
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/","inLanguage":"en"}</script>
@@ -8797,7 +8910,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/year.js?v=1" defer></script>
 
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 </body>
 </html>
 
@@ -8827,7 +8940,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -8871,7 +8984,7 @@ window.TEST_DATA = (function () {
       <!-- IQ-Hauptwert -->
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="bandLabel">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="bandLabel">—</h2>
           <p id="bandHint" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="iqValue">—</span>
@@ -8883,18 +8996,18 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Interpretation</h3>
+        <h2 class="h3">Interpretation</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Profile across the cognitive domains</h3>
+      <h2 class="h3" style="margin-top: 36px;">Profile across the cognitive domains</h2>
       <p class="muted small" style="margin-top:-4px;">Share of correct answers per CHC domain.</p>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 32px;">Position in the distribution</h3>
+      <h2 class="h3" style="margin-top: 32px;">Position in the distribution</h2>
       <div id="distributionWrap"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText"></p>
 
       <div class="result-disclaimer">
@@ -8938,7 +9051,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/i18n/en/iq-result.js?v=4"></script>
 </body>
 </html>
@@ -8970,7 +9083,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"IQ test online — 40 tasks based on the CHC model","description":"Anonymous IQ test based on the CHC model: matrix reasoning, number series, verbal analogies, logical reasoning.","url":"https://brainonbnb.com/brainscreener/iq","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
@@ -9083,8 +9196,8 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/iq.js?v=5"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/iq.js?v=6"></script>
 </body>
 </html>
 
@@ -9114,7 +9227,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9160,7 +9273,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -9171,21 +9284,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -9221,8 +9334,8 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=5"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -9254,7 +9367,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"MDQ — Bipolar Screening · brainScreener","description":"MDQ bipolar spectrum screening online: 15 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/mdq","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Bipolar disorder"}}</script>
@@ -9340,9 +9453,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=5"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -9372,7 +9485,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9418,7 +9531,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -9429,21 +9542,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -9479,8 +9592,8 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -9512,7 +9625,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"OCI-R — OCD Screening · brainScreener","description":"OCI-R test for obsessive-compulsive symptoms online: 18 questions, about 4–5 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/ocir","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Obsessive-compulsive disorder"}}</script>
@@ -9598,9 +9711,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=6"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -9630,7 +9743,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9676,7 +9789,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -9687,21 +9800,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -9738,7 +9851,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -9770,7 +9883,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"PCL-5 — Trauma/PTSD screening · brainScreener","description":"PCL-5 trauma and PTSD test online: 20 questions, about 5–7 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/pcl5","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Post-traumatic stress disorder"}}</script>
@@ -9857,8 +9970,8 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=5"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -9888,7 +10001,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -9934,7 +10047,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -9945,21 +10058,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -9995,8 +10108,8 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=100"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=101"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -10028,7 +10141,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"PHQ-9 — Depression Screening · brainScreener","description":"PHQ-9 depression test online: 9 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/phq9","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Depression"}}</script>
@@ -10114,9 +10227,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=100"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=101"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>
 
@@ -10146,7 +10259,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -10192,7 +10305,7 @@ window.TEST_DATA = (function () {
 
       <div class="score-row" style="margin-bottom: 18px;">
         <div>
-          <h3 style="margin-bottom: 4px;" id="overallTitle">—</h3>
+          <h2 class="h3" style="margin-bottom: 4px;" id="overallTitle">—</h2>
           <p id="overallSubtitle" style="margin: 0;"></p>
           <div class="score-big">
             <span class="value" id="overallValue">—</span>
@@ -10203,21 +10316,21 @@ window.TEST_DATA = (function () {
       </div>
 
       <div class="interpretation" id="interpretation">
-        <h3>Results</h3>
+        <h2 class="h3">Results</h2>
         <p id="interpretationText">—</p>
       </div>
 
-      <h3 style="margin-top: 36px;">Detailed profile</h3>
+      <h2 class="h3" style="margin-top: 36px;">Detailed profile</h2>
       <div class="subscale-list" id="subscaleList"></div>
 
-      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <h2 class="h3" style="margin-top: 36px;">What does this mean?</h2>
       <p class="muted" id="contextText">—</p>
 
-      <h3 style="margin-top: 32px;">Recommended next steps</h3>
+      <h2 class="h3" style="margin-top: 32px;">Recommended next steps</h2>
       <ul id="nextSteps" style="padding-left: 1.1em; color: var(--ink-soft);"></ul>
 
       <div class="crisis-box">
-        <h4>In an acute crisis</h4>
+        <h3 class="h4">In an acute crisis</h3>
         <p class="small" style="margin-bottom:8px;">If you are currently under severe strain or in a mental health crisis, help is available around the clock — free of charge and confidential:</p>
         <ul class="crisis-list">
           <li><strong>Your local emergency number</strong> – e.g. <a href="tel:112">112</a> (EU), <a href="tel:911">911</a> (US), <a href="tel:999">999</a> (UK) in acute danger</li>
@@ -10254,7 +10367,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
 <script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
@@ -10286,7 +10399,7 @@ window.TEST_DATA = (function () {
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=10" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"WHODAS 2.0 (36) — Functioning & Participation · brainScreener","description":"WHODAS 2.0 daily functioning test online: 36 questions, about 8–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/whodas36","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"}}</script>
@@ -10373,7 +10486,7 @@ window.TEST_DATA = (function () {
 </footer>
 
 <script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=7"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=5"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=8"></script>
 </body>
 </html>

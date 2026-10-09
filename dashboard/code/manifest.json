@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5507,
-   "zipBytes": 93680,
-   "txtBytes": 278452,
-   "sha256": "b7e3ccdc0da91de1",
+   "lines": 5520,
+   "zipBytes": 94069,
+   "txtBytes": 279659,
+   "sha256": "fb0c664abf02f772",
    "reqs": [
     {
      "what": "A bot token",
@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
    "lines": 17386,
-   "zipBytes": 393019,
-   "txtBytes": 1111467,
-   "sha256": "a4f8fa4fa42f8065",
+   "zipBytes": 393025,
+   "txtBytes": 1111481,
+   "sha256": "514c197e15e84ed7",
    "reqs": [
     {
      "what": "A wallet to be paid into",

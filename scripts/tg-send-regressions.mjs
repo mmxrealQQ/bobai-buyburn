@@ -40,7 +40,14 @@ try {
   telegramSays(429, JSON.stringify({ ok: false, error_code: 429, description: 'Too Many Requests: retry after 5' }));
   await broadcast().catch(() => null);
   const rec2 = JSON.parse(store.get('last_send_error') || 'null');
-  loud(); is('4 a passing refusal (429) is written down as not lasting', !!rec2 && rec2.code === 429 && rec2.lasting === false, JSON.stringify(rec2));
+  loud(); is('4 a passing refusal (429) is written down as not lasting', !!rec2 && rec2.code === 429 && rec2.lasting === false, JSON.stringify(rec2)); quiet();
+  // 2026-10-09 review: a user who blocked the bot refuses its private reply with "bot was blocked" — his choice, not a
+  // bot that cannot post; it must not turn the morning check red (only the group, operator and internal chat count)
+  store.delete('last_send_error');
+  telegramSays(403, JSON.stringify({ ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' }));
+  await worker.default.fetch(new Request('https://tg/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ update_id: 1, message: { message_id: 1, date: 1, text: '/help', chat: { id: 5550001, type: 'private' }, from: { id: 5550001, is_bot: false, first_name: 'x' } } }) }), env, { waitUntil() {} }).catch(() => null);
+  const rec3 = JSON.parse(store.get('last_send_error') || 'null');
+  loud(); is('8 a stranger who blocked the bot is no lasting refusal', !(rec3 && rec3.lasting), JSON.stringify(rec3));
 } finally { globalThis.fetch = real.fetch; loud(); }
 
 const src = fs.readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');

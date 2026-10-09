@@ -43,7 +43,7 @@ export const CATEGORIES = [
     blurb: 'Laying buy and sell orders across a price band and earning the spacing between them — if the spacing beats what the pool charges to trade.',
     aliases: ['grid-trading', 'grid', 'gridbot', 'grid-bot'],
     // grid ladder (2026-10-09): a phrase that names only this, like the others.
-    strong: /grid[ -]?trad|grid[ -]?bot|grid[ -]?strateg|grid[ -]?plan|grid[ -]?ladder/i,
+    strong: /grid[ -]?trad|grid[ -]?bot|grid[ -]?strateg|grid[ -]?plan|grid[ -]?ladder|grid[ -]?viab/i,
     loose: /\bgrid\b/i,
   },
   {

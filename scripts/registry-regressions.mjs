@@ -101,6 +101,7 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
     ['Hevo Yield (name only) without a quote', { name: 'Hevo Yield', description: 'ERC-8183 seller agent (hevoyield-agent) — negotiate + notify_funded over A2A.' }, 'yield-optimization', 'weak'],
     ['Hevo Yield (name only) that quoted for yield', { name: 'Hevo Yield', description: 'ERC-8183 seller agent', quoted_for: ['yield-optimization'] }, 'yield-optimization', 'in'],
     ['Grid Agent 3 (one loose word)', { name: 'Grid Agent 3' }, 'grid-trading', 'weak'],
+    ['SMEAI Grid Viability Checker #331794 (empty card, the name says grid viability)', { name: 'SMEAI Reference Grid Viability Checker' }, 'grid-trading', 'in'],
     ['Health Factor Monitor (strong, unchanged)', { name: 'Health Factor Monitor' }, 'health-factor', 'in'],
     ['a "yield" in prose only files nothing', { name: 'Agent X', description: 'yield yield on BNB' }, 'yield-optimization', 'out'],
   ];

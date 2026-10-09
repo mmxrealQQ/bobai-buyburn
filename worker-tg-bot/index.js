@@ -156,6 +156,7 @@ async function tg(method, body) {
     j = { ok: false, description: e?.name === 'TimeoutError' ? 'no answer within 10 s' : String(e?.message || e).slice(0, 120) };
   }
   if (j && j.ok === false && /^send/.test(method)) await noteSendError(method, body, j);
+  else if (j && j.ok && /^send/.test(method) && SEND_ERR_SET && OUR_CHATS.has(String(body?.chat_id ?? ''))) await clearSendError();
   return j;
 }
 
@@ -166,10 +167,22 @@ const SEND_LASTING = /forbidden|kicked|not enough rights|chat not found|bot was 
 async function noteSendError(method, body, j) {
   try {
     if (!WHALE_ENV || !WHALE_ENV.KV) return;
-    const rec = { at: new Date().toISOString(), method, chat: String(body?.chat_id ?? '').slice(-6), code: j.error_code ?? null, description: String(j.description || '').slice(0, 160), lasting: SEND_LASTING.test(String(j.description || '')) };
+    // LASTING ONLY WHERE IT MATTERS (2026-10-09 review): a user who blocked the bot refuses its private reply with the
+    // same "bot was blocked" — that is his choice, not a bot that cannot post. Only the group, the operator's and the internal chat count.
+    const chat = String(body?.chat_id ?? ''), ours = OUR_CHATS.has(chat);
+    const rec = { at: new Date().toISOString(), method, chat: chat.slice(-6), ours, code: j.error_code ?? null, description: String(j.description || '').slice(0, 160), lasting: ours && SEND_LASTING.test(String(j.description || '')) };
+    if (!ours && SEND_LASTING.test(rec.description)) { console.error('[TG SEND REFUSED, other chat]', method, rec.code, rec.description); return; } // not written: it must not cover a real one
     console.error('[TG SEND FAILED]', method, rec.code, rec.description);
     await WHALE_ENV.KV.put('last_send_error', JSON.stringify(rec));
+    SEND_ERR_SET = true;
   } catch { /* the trace itself must never break a send */ }
+}
+// a good send to the group or the operator after a failure clears it (this isolate wrote it; otherwise it ages out in 24 h)
+const OUR_CHATS = { has: (c) => c === TG_CHAT_ID || c === OPERATOR_CHAT_ID || (!!WHALE_ENV?.TG_INTERNAL_CHAT_ID && c === String(WHALE_ENV.TG_INTERNAL_CHAT_ID)) }; // group, operator, internal chat
+let SEND_ERR_SET = false;
+async function clearSendError() {
+  SEND_ERR_SET = false;
+  try { if (WHALE_ENV && WHALE_ENV.KV) await WHALE_ENV.KV.delete('last_send_error'); } catch { /* never break a send */ }
 }
 
 // ==================== RPC HELPERS ====================

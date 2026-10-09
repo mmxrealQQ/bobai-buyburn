@@ -38,7 +38,7 @@ import {
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
 import { alertsOf } from '../shared/lp-alerts.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch, ladderActive } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -166,7 +166,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const healed = await healLadder(pub, lp.address, ladder);
     if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), ...(healed.adopted ? { reserve_adopted: healed.reserve, reserve_was: ladder.reserve ?? null } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (healed.adopted) ladder.reserve = healed.reserve; if (!dry) await writeLadder(env, ladder); }
   } catch { /* an RPC that did not answer heals nothing; the guards refuse as before */ }
-  const ladderOn = String(env[LADDER_GATE] || '0') === '1';
+  const ladderOn = ladderActive(env); // off under centred re-sets (2026-10-09), whatever LP_LADDER says
   // The width record's verdict, replayed once per tick (the rebalance step
   // fills it; the ladder step reads it).
   let widthRecord = null;
@@ -398,7 +398,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     if (plan.no) return { ...base, acted: false, why: `${plan.why} — ${plan.no}` };
     if (!plan.act) return { ...base, acted: false, why: plan.why };
     if (plan.act === 'merge') return { ...base, acted: false, why: `${plan.why} (done at the main range's re-set)` };
-    if (!ladderOn) return { ...base, acted: false, why: `${plan.why} — ${LADDER_GATE} is not 1: planned, not run` };
+    if (!ladderOn) return { ...base, acted: false, why: `${plan.why} — ${env.LP_RESET_MODE === 'centred' ? 're-sets are centred, so a deposit joins the re-set and no reserve is minted' : `${LADDER_GATE} is not 1`}: planned, not run` };
     // The watch opens and grows the reserve; re-setting it is the hourly
     // check's (ladderActsInWatch) — the reserve does not chase the price
     // every ten minutes.

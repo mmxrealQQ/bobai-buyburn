@@ -37,7 +37,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_FLOOR_PCT, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_FLOOR_PCT, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderActive, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset, capSeries, SERIES_CAP, increaseIntoPosition } from '../shared/lp-flow.js';
 import { resetLosses } from '../worker-agent/lp-windows.js';
@@ -489,6 +489,7 @@ if (SELF) {
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
   is('a standing ladder says where the main range is: in range, not "above the price"', /main in range/.test(ladderDecision(R({ mainSide: 'both', spendableBnb: 0.001 })).why) && /main above the price/.test(ladderDecision(R({ spendableBnb: 0.001 })).why));
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
+  is('centred re-sets shut the ladder whatever LP_LADDER says (2026-10-09); one-sided keeps it on the gate', ladderActive({ LP_LADDER: '1', LP_RESET_MODE: 'centred' }) === false && ladderActive({ LP_LADDER: '1' }) === true && ladderActive({ LP_LADDER: '0' }) === false && ladderActive({}) === false);
   // The reserve does not chase (2026-09-18): not on the ten-minute watch, not under the re-set floor.
   is('the watch opens and grows the reserve, it never re-sets or merges one', ladderActsInWatch('mint_reserve') && ladderActsInWatch('increase_reserve') && !ladderActsInWatch('reset_reserve') && !ladderActsInWatch('merge') && !ladderActsInWatch(null));
   is('… and the worker asks that rule before the watch may act on the ladder (source pin)', /if \(watch && !ladderActsInWatch\(plan\.act\)\) return/.test((await import('node:fs')).readFileSync(new URL('../worker-lp/index.js', import.meta.url), 'utf8')));

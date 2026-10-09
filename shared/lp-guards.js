@@ -560,6 +560,13 @@ export function resumeSide(shareOther) {
   return null;
 }
 export const LADDER_GATE = 'LP_LADDER';
+// NO LADDER UNDER CENTRED RE-SETS (operator's go, 2026-10-09). The ladder exists to avoid a trade: a deposit beside
+// a one-sided range became a WBNB-only reserve below the price instead of buying the other side. Since 7.10. the
+// re-set is centred and trades anyway, so the reserve only added a second position, its gas, and a width of its
+// own (the record's ±10, not ±20). Centred, the gate is shut: the deposit joins the centred re-set (wrapFirst).
+export function ladderActive(env) {
+  return String(env?.[LADDER_GATE] || '0') === '1' && String(env?.LP_RESET_MODE || '') !== 'centred';
+}
 // WHAT THE TEN-MINUTE WATCH MAY DO TO THE LADDER (2026-09-18). The watch is
 // there so a deposit goes to work within minutes: it opens and grows the
 // reserve. It does not re-set one. While the main range is all of the other

@@ -1056,6 +1056,7 @@ window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + D
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
 // a pretend small buy of $usd through the live poll's own door (seenSmall), this browser only — to check the thank-you
 window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
+window.__btCtx = (x) => tradeContext(x); // for checks: what he would say in front of a trade's line
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
 window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
@@ -1651,6 +1652,7 @@ let tapHi = ''; // the hello in front of the first tap's answer (set by bobaiTap
 function speak(text, ms = 5200) {
   if (!text) return;
   if (tapHi) text = tapHi + ' ' + text; // the first tap's hello (bobaiTap)
+  ms = Math.max(ms, text.length * 22 + 2600); // time to read it once it is typed (2026-10-09: a context in front made lines longer than their time)
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
   if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
@@ -2326,6 +2328,25 @@ function sayMore(k, x) {
 // buys small, $1-2-3 or whatever, he can say thank you"): a buy under the alert line got only its dot. On a quiet
 // stretch — outside trades worth under $30 in the half hour before it, or no trade for 90 minutes — it gets his joy
 // and a thank-you with its own dollars, never over an answer still running.
+// WHAT A TRADE MEANS IN ITS HOUR (operator, 2026-10-09: "BOBAI as intelligent and likeable as possible"): the first
+// trade after an hour or more of silence, or the third buy (or sell) in ten minutes with none of the other side, is
+// said before his line. From the trades this page read and the ledger's candles; '' when nothing stands out.
+function tradeContext(x) {
+  const now = x.t || Date.now(), seen = S.hist.filter(e => !e.ours && !e.taxSwap && e.tx !== x.tx && e.t < now);
+  let last = 0; for (const e of seen) last = Math.max(last, e.t);
+  for (const r of CH.rows) if ((r.b || 0) + (r.s || 0) > 0 && r.t < now) last = Math.max(last, r.t);
+  const gap = last ? (now - last) / 60e3 : null;
+  if (gap != null && gap >= 60) {
+    const t = gap >= 120 ? `${Math.floor(gap / 60)} hours` : `${Math.round(gap)} minutes`;
+    return vary('ctx-gap', [`First trade in ${t}! `, `${t} of silence, and now this. `, `After ${t} of quiet: `, `The chain wakes up after ${t}. `, `${t} without a trade, until now. `]);
+  }
+  const ten = seen.filter(e => e.t >= now - 600e3), same = ten.filter(e => !!e.buy === !!x.buy).length, n = same + 1;
+  if (same < 2 || ten.length > same) return '';
+  return x.buy ? vary('ctx-buys', [`Buy number ${n} in ten minutes. Something is brewing. `, `${n} buys in ten minutes, not one sell. `, `That is ${n} buys in a row. I like this rhythm. `,
+      `${n} buys in ten minutes. The chart is waking up. `, `Buy, buy, buy: ${n} in ten minutes. `])
+    : vary('ctx-sells', [`Sell number ${n} in ten minutes. Calm hands here, the tax keeps working. `, `${n} sells in ten minutes. Every one pays 3%. `, `A few sells in a row, ${n} in ten minutes. That happens. `,
+      `${n} sells in ten minutes. I stay calm, the burns go on. `, `${n} sells in a row. Somebody takes profit, and that is fine. `]);
+}
 // NOT EVERY ONE, BUT NOW AND THEN (operator, same day: "not all of them, but sometimes — and the sells the same: thanks
 // for the tax, hope you made a profit and are happy"): on a quiet stretch every small trade is answered (react's 90 s
 // apart); on a busy one only about one in four, at most every ten minutes. A sell gets its own thanks, never a frown.
@@ -2345,14 +2366,14 @@ function thankSmall(x) {
   const u = '$' + nf(x.usd, x.usd < 10 ? 2 : 0), tax = '$' + nf(x.usd * 0.03, 2);
   if (!x.buy) {
     setPose(poseOr('think'), 3);
-    return speak(vary('react-thanks-sell', [`A ${u} sell. Thank you for the ${tax} of tax, and I hope you took a profit.`,
+    return speak(tradeContext(x) + vary('react-thanks-sell', [`A ${u} sell. Thank you for the ${tax} of tax, and I hope you took a profit.`,
       `${u} out. Thanks for the ${tax} of tax, friend. Hope you are smiling.`,
       `Someone sold ${u}. No hard feelings: ${tax} of it stays and works. Enjoy it!`,
       `${u} sold. Thank you for the tax, and come back any time. The door stays open.`,
       `A ${u} sell, ${tax} of tax left behind. Thank you, and I hope it was a good trade.`]), 4400);
   }
   setPose(joyMove(), 3);
-  speak(vary(quiet ? 'react-thanks' : 'react-thanks-busy', quiet ? [`A ${u} buy on a quiet day. Thank you! ${tax} of it is already working for the burns.`,
+  speak(tradeContext(x) + vary(quiet ? 'react-thanks' : 'react-thanks-busy', quiet ? [`A ${u} buy on a quiet day. Thank you! ${tax} of it is already working for the burns.`,
     `${u}! Small buy, big heart. On a day this calm, every single one counts. Thank you.`,
     `Thank you for the ${u}! The chain was quiet, you were not.`,
     `${u} in while the market rests. That is not small, that is loyalty. Thank you, friend.`,
@@ -2408,7 +2429,8 @@ function react(kind, x) {
     tax: [`Swapping my collected tax to BNB. The bots take it from here.`, `Tax pile to BNB. Next stop: my buyback bot, then the burns.`, `The tax queue was full, so the token swaps it to BNB. My bot splits it next.`,
       `Collected tax becomes BNB now. The burns are next in line.`, `Tax swap! The BNB goes to my buyback bot for splitting.`],
   }[kind];
-  if (lines) speak(vary('react-' + kind + (kind === 'buy' && x.usd >= ALERT_USD ? '-big' : '') + (kind === 'liq' && x?.dev ? '-dev' : ''), lines), kind === 'run' ? 5200 : kind === 'liq' ? 5000 : 4400);
+  const pre = (kind === 'buy' || kind === 'sell') && x && !x.ours && !(kind === 'buy' && x.usd >= ALERT_USD) ? tradeContext(x) : ''; // an alert buy has its own (buyContext)
+  if (lines) speak(pre + vary('react-' + kind + (kind === 'buy' && x.usd >= ALERT_USD ? '-big' : '') + (kind === 'liq' && x?.dev ? '-dev' : ''), lines), kind === 'run' ? 5200 : kind === 'liq' ? 5000 : 4400);
 }
 let mx = 0, my = 0, smx = 0, smy = 0; // the pointer, and the same eased: nothing follows a finger or a mouse in a jump
 // the 3D objects themselves answer the pointer too, not only their labels
@@ -4367,7 +4389,9 @@ function cxPaintHead() {
   const ch = CX.tf === '24H' ? chartChange(candles()) : usdCh(all[0], all[all.length - 1]);
   cxEl.querySelector('.cx-px').textContent = '$' + (S.price ? S.price.toPrecision(5) : '…');
   const c = cxEl.querySelector('.cx-ch'); const vb = CX.tf === '24H' && ch != null ? bnbChange(candles()) : null;
-  c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}` + (vb && Math.abs(ch - vb.vb) >= 0.5 ? ` · ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB` : ''); c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
+  c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}`;
+  // vs BNB in grey, as in the timeline: only BOBAI's own change is green or red (operator, 2026-10-09)
+  if (vb && Math.abs(ch - vb.vb) >= 0.5) { const g = document.createElement('span'); g.style.color = 'rgba(160,162,192,.75)'; g.textContent = `  ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB`; c.append(g); } c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
   const w = chartWords(), runs = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3).length;
   cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, and I burned ${runs} time${runs === 1 ? '' : 's'}. Every mark is on BscScan.` : '';

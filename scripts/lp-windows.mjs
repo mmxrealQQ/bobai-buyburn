@@ -227,6 +227,7 @@ if (SELF_TEST) {
     t('the replay figure is the width class row, gross fees per day', c && Math.abs(c.replay_usd_per_day_on_50 - 0.6) < 1e-9);
     t('the factor is measured over replay', c && Math.abs(c.factor - 0.83) < 0.01);
     t('owed fees count as earned (they are the position\'s, uncollected)', calibration([pt(0, 0.01, 0, 0.2), pt(24, 0.01, 0.002, 0.2)], rows, 2).measured_usd_per_day_on_50 === c.measured_usd_per_day_on_50);
+    t('given the position, only its own points count (2026-10-09): an older position in the window is left out', (() => { const a = { ...pt(0, 0.01, 0, 0.2), position: 'old' }, b = { ...pt(30, 0.02, 0, 0.2), position: 'new' }, c2 = { ...pt(60, 0.03, 0, 0.2), position: 'new' }; const k = calibration([a, b, c2], rows, 2, { position: 'new' }); return k && k.hours === 30 && k.position === 'new' && calibration([a, b, c2], rows, 2).hours === 60; })());
     t('under 20 h of series: no calibration', calibration([pt(0, 0.01, 0, 0.2), pt(12, 0.011, 0, 0.2)], rows, 2) === null);
     t('without a width class: no calibration', calibration(series, rows, null) === null);
     t('a width the record has no row for: measured, but no replay and no factor', (() => { const x = calibration(series, rows, 5); return x && x.replay_usd_per_day_on_50 === null && x.factor === null; })());

@@ -25,6 +25,8 @@ const topicOf = (a) => '0x' + '0'.repeat(24) + a.slice(2).toLowerCase();
 const A = (c) => '0x' + c.repeat(40);
 let chain = { head: 1000000, balances: {}, code: {}, logs: [] };
 globalThis.fetch = async (url, init) => {
+  // GoPlus, DexScreener and the other GETs have no answer in this chain (2026-10-09: scan() is asked here too).
+  if (!init?.body) return { ok: false, json: async () => null };
   const body = JSON.parse(init.body);
   const one = (q) => {
     const [p0, p1] = q.params || [];
@@ -32,11 +34,15 @@ globalThis.fetch = async (url, init) => {
     if (q.method === 'eth_blockNumber') result = '0x' + chain.head.toString(16);
     else if (q.method === 'eth_call') {
       const to = p0.to.toLowerCase(), who = ('0x' + p0.data.slice(-40)).toLowerCase();
-      result = '0x' + w(p0.data.startsWith('0x70a08231') ? (chain.balances[to]?.[who] ?? 0n) : 0n);
-    } else if (q.method === 'eth_getCode') {
+      // A fixed answer per contract and selector (2026-10-09, the control read): a word, or a revert.
+      const fixed = chain.answers?.[to + ':' + p0.data.slice(0, 10)];
+      if (fixed?.revert) return { jsonrpc: '2.0', id: q.id, error: { code: 3, message: 'execution reverted' } };
+      result = fixed ?? '0x' + w(p0.data.startsWith('0x70a08231') ? (chain.balances[to]?.[who] ?? 0n) : 0n);
+    } else if (q.method === 'eth_getStorageAt') result = chain.storage?.[p0.toLowerCase() + ':' + p1] ?? '0x' + w(0);
+    else if (q.method === 'eth_getCode') {
       const born = chain.code[p0.toLowerCase()];
       const at = p1 === 'latest' ? chain.head : parseInt(p1, 16);
-      result = born != null && at >= born ? '0x6080' : '0x';
+      result = born != null && at >= born ? (chain.bytecode?.[p0.toLowerCase()] ?? '0x6080') : '0x';
     } else if (q.method === 'eth_getBlockByNumber') result = { timestamp: '0x' + (1.7e9 + parseInt(p0, 16)).toString(16) };
     else if (q.method === 'eth_getLogs') {
       // Topic filters as a node applies them: null any, a string equal, an array any-of (readFlow asks by topic).
@@ -66,6 +72,9 @@ h = await C.readHolders({ ...base, gp: { ...gpOk, holder_count: '3', holders: [{
 ok('three holders counted (GOL at the review): unknown — the index has not caught up', h.unknown === true && /counts 3 holders/.test(h.reason));
 h = await C.readHolders({ ...base, gp: { ...gpOk, holder_count: '40', holders: [{ address: A('9') }, { address: C.DEAD }, { address: A('8') }] }, skip: [A('9')], lpOwners: [A('8')] });
 ok('a list that is only the pool, the burn address and the LP holder: unknown', h.unknown === true && /plumbing/.test(h.reason));
+// USDT, 2026-10-09: GoPlus answers holder_count "0" WITH a full list — no count, not a token nobody holds.
+h = await C.readHolders({ ...base, gp: { ...gpOk, holder_count: '0', holders: [{ address: A('1') }, { address: A('2') }] } });
+ok('holder_count "0" with a list: unknown because the source has no count — never "too few"', h.unknown === true && !/too few/.test(h.reason) && /unavailable/.test(h.reason) && h.count === null, JSON.stringify(h));
 const BIN8 = '0xf977814e90da44bfa03b6295a0616a897441acec';
 chain.balances[TOKEN] = { [BIN8]: 234n * 10n ** 18n, [A('1')]: 35n * 10n ** 18n, [A('2')]: 30n * 10n ** 18n };
 h = await C.readHolders({ ...base, gp: { ...gpOk, holder_count: '1900000', holders: [{ address: BIN8 }, { address: A('1'), is_contract: 1 }, { address: A('2') }] } });
@@ -209,6 +218,48 @@ ok('V3 signed amounts: token out is a buy, token in is a sell', act.buys === 1 &
   fr = await C.readFlow({ ...baseB, custody: null });
   ok('… nor when the pair’s logs were not read (V3, or refused) — said as addsNotRead', !fr.deployer.sold.addedBack && fr.deployer.addsNotRead === true, JSON.stringify(fr.deployer));
   chain.logs = []; chain.code = {};
+}
+
+// ---- 2026-10-09: who controls the contract, read on-chain ------------------------
+{
+  const T = A('c'), OWN = A('d'), IMPL = A('e'), ADM = A('f');
+  const word = (a) => '0x' + '0'.repeat(24) + a.slice(2);
+  const has = typeof C.readControl === 'function';
+  const read = async () => (has ? C.readControl(T) : { read: 'missing' });
+  chain.code = { [T]: 0, [OWN]: 0, [IMPL]: 0 }; chain.bytecode = { [T]: '0x60806040526340c10f1914' };
+  chain.answers = { [T + ':0x8da5cb5b']: word(OWN), [T + ':0x893d20e8']: { revert: true } }; chain.storage = {};
+  let c = await read();
+  ok('readControl: an owner() that is a contract, a mint(address,uint256) selector in the bytecode, no proxy',
+    c.read === true && c.owner?.address === OWN && c.owner.kind === 'contract' && c.owner.source === 'owner()' && c.mint_selector === true && c.proxy === null && c.block === chain.head, JSON.stringify(c));
+  chain.code = { [T]: 0, [IMPL]: 0 }; chain.bytecode = { [T]: '0x6080', [IMPL]: '0x6080634000000014' };
+  chain.answers = { [T + ':0x8da5cb5b']: { revert: true }, [T + ':0x893d20e8']: word(OWN) };
+  chain.storage = { [T + ':' + C.EIP1967_IMPL]: word(IMPL), [T + ':' + C.EIP1967_ADMIN]: word(ADM) };
+  c = await read();
+  ok('… getOwner() answering for a reverting owner(): a wallet (no code), and an EIP-1967 proxy with its admin, also a wallet',
+    c.owner?.kind === 'eoa' && c.owner.source === 'getOwner()' && c.proxy?.implementation === IMPL && c.proxy.admin === ADM && c.proxy.admin_kind === 'eoa' && c.mint_selector === false, JSON.stringify(c));
+  chain.bytecode = { [T]: '0x6080', [IMPL]: '0x608063' + '40c10f19' };
+  c = await read();
+  ok('… the mint selector found in the implementation behind the proxy', c.mint_selector === true && c.mint_selector_in === 'implementation', JSON.stringify(c));
+  chain.code = { [T]: 0 }; chain.storage = {}; chain.bytecode = {};
+  chain.answers = { [T + ':0x8da5cb5b']: '0x' + w(0) };
+  c = await read();
+  ok('… an owner() of the zero address is renounced', c.owner?.kind === 'renounced', JSON.stringify(c));
+  chain.answers = { [T + ':0x8da5cb5b']: { revert: true }, [T + ':0x893d20e8']: { revert: true } };
+  c = await read();
+  ok('… and with both reverting: no owner function, said, and the reverts did not sink the batch', c.read === true && c.owner === null && c.owner_function === false && c.has_code === true, JSON.stringify(c));
+
+  // A wallet pasted where a token belongs is answered as one, by the scan and by the route.
+  const W = A('9');
+  chain.code = {}; chain.answers = {}; chain.storage = {}; chain.bytecode = {};
+  const S = await import(pathToFileURL(path.resolve(import.meta.dirname, '../dashboard/scanner-scan.js')).href);
+  let e = null;
+  try { await S.scan(W); } catch (x) { e = x; }
+  ok('scan(): a wallet is refused as a wallet, code is_wallet', e?.code === 'is_wallet' && /a wallet, not a token/.test(e?.headline || ''), String(e?.headline || e));
+  const R = await import(pathToFileURL(path.resolve(import.meta.dirname, '../dashboard/swap-route.js')).href);
+  e = null;
+  try { await R.swapRoute(W, { usd: 250 }); } catch (x) { e = x; }
+  ok('swapRoute(): the same, code is_wallet', e?.code === 'is_wallet' && /a wallet, not a token/.test(e?.headline || ''), String(e?.headline || e));
+  chain.answers = {}; chain.code = {};
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nscanner: all pins hold');

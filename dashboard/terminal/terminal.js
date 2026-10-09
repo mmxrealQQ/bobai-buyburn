@@ -56,7 +56,7 @@ const DEST = [
   { k: 'liq',     name: 'LIQ BOOST III',  pct: 0.5, c: '#2ee6c8' },
   { k: 'defi',    name: 'DEFI AGENT',     pct: 0.3, c: '#60a5fa' },
   { k: 'giggle',  name: 'GIGGLE POT',     pct: 0.3, c: '#f472b6' },
-  { k: 'creator', name: 'CREATOR → d38',  pct: 0.8, c: '#c9b8a8' },
+  { k: 'creator', name: 'CREATOR',  pct: 0.8, c: '#c9b8a8' },
 ];
 const D = Object.fromEntries(DEST.map(d => [d.k, d]));
 const TIERS = ['NICE BUY', 'BIG BUY', 'HUGE BUY', 'WHALE BUY', 'THUNDER BUY', 'KRAKEN BUY'];
@@ -449,8 +449,8 @@ function fire(pos, color) {
 
 // ---------- the workers: satellites that orbit the brain and flare on every real heartbeat ----------
 const WORKERS = [
-  { k: 'buyback', name: 'BUYBACK BOT · 1ce', c: '#F0B90B', every: 'every 10 min' },
-  { k: 'dev',     name: 'DEV BOT · d38', c: '#ffcf6b', every: 'hourly' },
+  { k: 'buyback', name: 'BUYBACK BOT', c: '#F0B90B', every: 'every 10 min' },
+  { k: 'dev',     name: 'DEV BOT', c: '#ffcf6b', every: 'hourly' },
   { k: 'lp',      name: 'DEFI AGENT', c: '#60a5fa', every: 'hourly check' },
   { k: 'agent',   name: 'AGENT SERVER', c: '#22d3ee', every: 'serves agents & apps' },
   { k: 'nft',     name: 'NFT WATCHER', c: '#a78bfa', every: 'watches every buy' },
@@ -2440,19 +2440,25 @@ const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
   help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
+    // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
+    setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
     say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], ` and ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} BOB.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
   next: () => { setFocus('core'); const left = W.buyback.last ? W.buyback.last + 600e3 - Date.now() : 0;
     const sb = splitBnb(); void left;
-    say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.`]); },
+    say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
   liq: () => { setFocus('liq'); const b = boost3();
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) return say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
-    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
+    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `${defiRate()}; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
-  price: () => { setFocus('src'); say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned). Read from the pool reserves and Chainlink BNB/USD, this block.`]); },
+  price: () => { setFocus('src'); const c = chartWords(), f = LIFE.flow || {}, rB = CX.liqUsd > 0 && S.bnbP > 0 ? CX.liqUsd / 2 / S.bnbP : 0;
+    say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned)${c ? `, ${c.s} in 24 h` : ''}.`
+      + (f.b || f.s ? ` This hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} ($${nf(f.bu || 0)}) and ${nf(f.s)} sell${f.s === 1 ? '' : 's'} ($${nf(f.su || 0)}).` : '')
+      + (rB > 0 ? ` The pool holds ${bnbF(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(100 / (rB + 1)).toFixed(1)}%, plus the 3% tax.` : '')
+      + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
 CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
@@ -2565,6 +2571,41 @@ function missed(q) {
     `No idea, honestly. ${fact} You can ask `, `Lost me there. ${fact} Ask `]), ['help'], ', or paste any token address and I check it.']);
 }
 window.__btAsk = q => intentOf(q); window.__btAskLog = () => ({ hit: ASK.hit, miss: [...ASK.miss] }); // for checks from outside
+// the next buyback at the last 24 h's pace (2026-10-09): 3% of the dollars traded fills the queue; an estimate, said as one
+function nextEta() {
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP), 0);
+  const missUsd = Math.max(0, (MIN_DISPATCH - S.queued) * S.price), perH = volUsd * 0.03 / 24;
+  if (!(missUsd > 0) || !(perH > 0) || !S.price) return '';
+  const h = missUsd / perH;
+  return h > 72 ? ' At the last 24 h pace that takes more than three days.' : ` At the last 24 h pace that is about ${h < 1.5 ? Math.max(1, Math.round(h * 60)) + ' min' : Math.round(h) + ' h'} — a pace, not a promise.`;
+}
+// what the DeFi agent's fees come to a year on its capital, from its own record (2026-10-09); the past, not a forecast
+function defiRate() {
+  const fees = +(S.lp?.flow?.in?.fees?.bnb || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = lpNow().value;
+  const days = (Date.now() - since) / 86400e3;
+  if (!(fees > 0) || !(days >= 3) || !(cap > 0)) return '';
+  return ` in ${Math.round(days)} days (≈$${nf(fees * S.bnbP, 2)}), about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital so far`;
+}
+// HE ANSWERS WITH HIS BODY TOO (2026-10-09): a typed question got its answer in the log only; now he says one short line
+// with the move that shows it — only when nothing of the chain and no take of his own is running (a take is never cut),
+// five ways each, every line naming its own move or none (checked with the window lines by __btPools)
+const ASK_LINES = {
+  burns: ['burn', ['Burn time. My record is below.', 'Burning is what I do best. The numbers are below.', 'Every burn is on-chain. Read below.', 'Gone for good. Here is how much.', 'My burns, as the chain counts them.']],
+  next: ['burn', ['The next buyback is charging. Details below.', 'Tax in, burn out. Here is the charge.', 'Every trade fills it. Look below.', 'My next burn, measured. Below.', 'Charging up. The numbers are below.']],
+  liq: ['liq', ['More liquidity, and the LP is gone for good. Below.', 'The pool, read live. Below.', 'Liquidity: here is what I added.', 'Deep pools, nobody can pull them. See below.', 'My liquidity, line by line below.']],
+  defi: ['defi', ['My DeFi agent, at work. Details below.', 'The DeFi agent reports in. Below.', 'Here is what my DeFi agent earns.', 'DeFi agent check. Numbers below.', 'Tuning the DeFi agent. Read below.']],
+  giggle: ['giggle', ['A coin for Giggle Academy. Details below.', 'For the kids of Giggle Academy. Below.', 'The Giggle pot, counted. Below.', 'Giggle Academy, my favourite pot. Below.', 'Every trade gives a little to Giggle Academy.']],
+  price: ['think', ['Let me check the chain. Below.', 'Reading the pool for you. Below.', 'Checking. The answer is below.', 'One moment, reading the record. Below.', 'Here is what the chain says. Below.']],
+  moon: ['moon', ['Looking at the moon. No dates from me.', 'Wen moon? I only count what is on-chain.', 'The moon can wait. The record is below.', 'Moon talk? Facts below.', 'Hello, moon. Not today.']],
+};
+ASK_LINES.why = ASK_LINES.today = ASK_LINES.holders = ASK_LINES.safe = ASK_LINES.tax = ASK_LINES.price; ASK_LINES.buyback = ASK_LINES.next;
+function speakAnswer(k) {
+  const l = ASK_LINES[k], now = performance.now();
+  (window.__btAskSpoke = window.__btAskSpoke || []).push([k, !!l && mode === 'live' && !QUEUE.length && now >= sceneUntil && !ownBusy() && !VID.go && now >= (LIFE.sayUntil || 0)]); // for checks from outside
+  if (!l || mode !== 'live' || QUEUE.length || now < sceneUntil || ownBusy() || VID.go || now < (LIFE.sayUntil || 0)) return;
+  LIFE.touchAt = now; LIFE.next = Math.max(LIFE.next, now + 20e3);
+  setPose(flowPose(l[0]) === l[0] ? l[0] : poseOr(l[0]), 6); speak(vary('ask-say-' + k, l[1]), 4200);
+}
 async function check(addr) {
   setPose('defi', 6); fire(A.head, new THREE.Color('#22d3ee'));
   const wait = say(['checking ', [short(addr)], ' — buying $250 of it on paper, selling it back, reading the pool…'], [], '#22d3ee');
@@ -2843,7 +2884,7 @@ cmdForm.addEventListener('submit', e => {
   if (a) return check(a[0]);
   const w = intentOf(q);
   if (w && !['help', 'hi', 'thanks', 'who', 'joke'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
-  if (w) { ASK.hit++; CMDS[w](q); } else missed(q);
+  if (w) { ASK.hit++; CMDS[w](q); speakAnswer(w); } else missed(q);
 });
 cmdIn.addEventListener('focus', () => win.classList.add('typing'));
 cmdIn.addEventListener('blur', () => setTimeout(() => win.classList.remove('typing'), 200));
@@ -3010,9 +3051,9 @@ function run(x, fast) {
     moment('burn', burnUsd(e), flipBurn(e, x.l), x.t, fast, null);
     logLine('SPLIT', '#F0B90B', ['bot split ', [bnbF(e.totalBnb)], ' of collected tax'], [], x.t);
     const steps = [
-      ['burnA', 'burn', () => { floatAt(D.burnA.pos, '-' + cmp(e.bobaiBurned) + ' BOBAI', D.burnA.c); logLine('BURN', D.burnA.c, ['burned ', [nf(e.bobaiBurned) + ' BOBAI']], [['burn', e.bobaiBurnTx]], x.t); }],
+      ['burnA', 'burn', () => { floatAt(D.burnA.pos, '-' + cmp(e.bobaiBurned) + ' BOBAI', D.burnA.c); logLine('BURN', D.burnA.c, ['burned ', [bobaiAmt(e.bobaiBurned)]], [['burn', e.bobaiBurnTx]], x.t); }],
       ['burnB', 'burn', () => { floatAt(D.burnB.pos, '-' + cmp(bobOf(e)) + ' BOB', D.burnB.c); logLine('BURN', D.burnB.c, ['burned ', [cmp(bobOf(e)) + ' BOB']], [['burn', e.bobBurnTx || e.burnTx]], x.t); }],
-      ...(x.l ? [['liq', 'liq', () => { floatAt(D.liq.pos, '+' + nf(x.l.lpBurned, 1) + ' LP burned', D.liq.c); logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [cmp(x.l.bobaiBought) + ' BOBAI'], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t); }]] : []),
+      ...(x.l ? [['liq', 'liq', () => { floatAt(D.liq.pos, '+' + nf(x.l.lpBurned, 1) + ' LP burned', D.liq.c); logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [bobaiAmt(x.l.bobaiBought)], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t); }]] : []),
       ...(e.lpAgentTx ? [['defi', 'defi', () => { floatAt(D.defi.pos, '+' + bnbF(e.lpAgentBnb), D.defi.c); logLine('DEFI', D.defi.c, ['agent got ', [bnbF(e.lpAgentBnb)]], [['tx', e.lpAgentTx]], x.t); }]] : []),
       ...(e.giggleTx ? [['giggle', 'giggle', () => { floatAt(D.giggle.pos, '+' + bnbF(e.giggleBnb), D.giggle.c); logLine('GIGGLE', D.giggle.c, ['pot got ', [bnbF(e.giggleBnb)]], [['tx', e.giggleTx]], x.t); }]] : []),
       ...(e.creatorTx ? [['creator', null, () => { floatAt(D.creator.pos, '+' + bnbF(e.creatorBnb), D.creator.c); }]] : []),
@@ -3025,8 +3066,8 @@ function run(x, fast) {
   } else if (x.kind === 'liq') {
     boardScene(x.t, D.liq.c, 'liq', x.l.dev ? 'THE DEV WALLET ADDS LIQUIDITY' : 'BOBAI ADDS LIQUIDITY', 'LIQUIDITY ADDED', flipLiq(x.l), 6.5); D.liq.boost = 1;
     comet(A.core, D.liq.pos, D.liq.c, 1, () => { hitDest('liq'); floatAt(D.liq.pos, '+' + nf(x.l.lpBurned, 1) + ' LP', D.liq.c); });
-    if (x.l.dev) logLine('LIQ', D.liq.c, ['dev wallet d38 added ', [bnbF(x.l.bnb)], ' + ', [cmp(x.l.bobai) + ' BOBAI'], ' to the pool · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t);
-    else logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [cmp(x.l.bobaiBought) + ' BOBAI'], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx]], x.t);
+    if (x.l.dev) logLine('LIQ', D.liq.c, ['dev wallet d38 added ', [bnbF(x.l.bnb)], ' + ', [bobaiAmt(x.l.bobai)], ' to the pool · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t);
+    else logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [bobaiAmt(x.l.bobaiBought)], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx]], x.t);
   } else if (x.kind === 'defi') {
     defiScene(x, fast); sayMore('defi-' + x.key, x);
     const fees = x.s.produced_bnb ? ` ${bnbF(x.s.produced_bnb)}` : '';
@@ -3604,7 +3645,7 @@ function jokeTap() {
 jokeBtn.addEventListener('click', e => { e.stopPropagation(); jokeTap(); });
 jokeBtn.addEventListener('pointerdown', e => e.stopPropagation());
 function bobaiTap() {
-  if (performance.now() < sceneUntil || QUEUE.length) return speak('One second, I am on the chain right now.', 2600);
+  if (performance.now() < sceneUntil || QUEUE.length) return speak(vary('v-busy', ['One second, I am on the chain right now.', 'Hold on, something is happening on my chain.', 'Wait, wait. The chain first, then you.', 'Busy for a moment. A trade needs me.', 'Give me a second. I am reading a block.']), 2600);
   tapN++;
   const moves = ['saber', 'moon', 'coffee', 'hodl', 'cheer', 'think', 'pushups', 'shrug', 'bull', 'dance', 'walk'].filter(p => flowPose(p) === p && !RECENT.includes(p)); // only moves he can play, not the last four
   const today = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3);
@@ -3659,7 +3700,7 @@ const WIN_LINES = {
 // for checks from outside (qa/variety.mjs): how many variants every pool has, and any line that names a move other than its own
 window.__btPools = () => {
   const n = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, (Array.isArray(v) ? v : v.lines || v[1] || []).length]));
-  const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
+  const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(ASK_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
     .map(([p, l]) => [p, l, moveForLine(l, null)]).filter(([p, , m]) => m && m !== p);
   const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 } };
   const more = Object.fromEntries(Object.entries(REACT_MORE).map(([k, f]) => [k, f(SX)]));
@@ -3944,7 +3985,7 @@ async function trades() {
       x.lit = performance.now(); events.push(x);
       if (ours) {
         if (x.taxSwap) react('tax', x);
-        if (x.taxSwap) logLine('BOBAI', '#F0B90B', ['the token contract swapped ', [cmp(x.bobai) + ' BOBAI'], ' of collected tax to ', [bnbF(x.bnb)], ' for the buyback bot'], [['tx', x.tx]]);
+        if (x.taxSwap) logLine('BOBAI', '#F0B90B', ['the token contract swapped ', [bobaiAmt(x.bobai)], ' of collected tax to ', [bnbF(x.bnb)], ' for the buyback bot'], [['tx', x.tx]]);
         else logLine('BOBAI', '#F0B90B', [whoTraded(x), [buy ? 'bought' : 'sold'], ' $' + nf(usd, 2) + ' of BOBAI'], [['tx', x.tx]]);
         fire(A.core, new THREE.Color('#F0B90B')); continue;
       }
@@ -4296,7 +4337,7 @@ window.__btDots = 0; // for checks from outside (read-only): how many trade dots
 function tradeDot(x) { window.__btDots++; const [dc, dk] = dotOf(x.buy), c3 = new THREE.Color(dc); comet(A.src, A.core, dc, 1.5, () => fire(A.core, c3), clamp(0.5 + Math.sqrt(x.usd || 0) / 12, 0.55, 1.3) * dk); }
 async function followTrade(x) {
   if (!x || x.kind !== 'trade') return say(['pick a trade: tap a ▲ or ▼ on the timeline, type ', ['follow'], ' for the latest, or paste its tx hash.']);
-  if (x.taxSwap) return say(['that one is BOBAI at work, not a trader: the token contract swapped ', [cmp(x.bobai) + ' BOBAI'], ' of collected tax to ', [bnbF(x.bnb)], '. Follow a buy or a sell to see where its 3% goes.'], [['tx', x.tx]]);
+  if (x.taxSwap) return say(['that one is BOBAI at work, not a trader: the token contract swapped ', [bobaiAmt(x.bobai)], ' of collected tax to ', [bnbF(x.bnb)], '. Follow a buy or a sell to see where its 3% goes.'], [['tx', x.tx]]);
   const ph = livePhase(); if (!ph) return say(['the split in force is not known right now — try again in a moment.']);
   setFocus(null); pinnedK = null;
   const col = x.buy ? BUYC : SELLC, kind = x.buy ? 'BUY' : 'SELL';

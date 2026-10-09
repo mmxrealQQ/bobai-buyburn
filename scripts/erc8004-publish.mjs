@@ -66,6 +66,41 @@ try { census = JSON.parse(fs.readFileSync(path.join(DIR, 'census.json'), 'utf8')
 let registrations = {};
 try { registrations = JSON.parse(fs.readFileSync(path.join(DIR, 'registrations.json'), 'utf8')); } catch {}
 
+// What happened the last time each hireable agent was actually asked for a
+// price. A "Hire" button on a seller that cannot quote is a button that wastes
+// the visitor's time, and this page is in no position to complain about other
+// people's unverified numbers while shipping one of its own.
+const hireConfirm = (() => {
+  const f = path.join(DIR, 'hire-confirm.json');
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+})();
+// An agent listed in two categories is asked once per category, and the two
+// answers can differ; the one for the row's own category wins (2026-10-09).
+const quoteOf = (id, cat = null) => {
+  const all = (hireConfirm?.agents || []).filter((a) => String(a.id) === String(id));
+  return (cat && all.find((a) => a.category === cat)) || all[0] || null;
+};
+// THREE ANSWERS, NOT TWO (2026-10-09). Every refusal printed as one red "No
+// price when asked", so an agent that answered "send me a GRID_PLAN_V1" stood
+// beside one whose endpoint was a 405. They are different facts: the first is
+// a working seller that wants structured input, the second did not answer.
+//   'quotes'  returned a price
+//   'input'   answered, but not with a price we could use — asked for a
+//             structured plan, said it has no negotiate skill, answered
+//             without a price, priced in a token this escrow does not settle
+//   'none'    did not answer: HTTP error, unreadable card, auth wall, timeout
+// Unknown reasons count as 'none' only when they read like a transport
+// failure; anything else that came back in words was an answer.
+const NO_ANSWER = /HTTP \d{3}|could not be read|not an A2A reply|Unauthori[sz]ed|Authentication|Forbidden|timed? ?out|timeout|fetch failed|ECONN|ENOTFOUND|EAI_AGAIN|certificate|no A2A endpoint|did not answer/i;
+const quoteState = (q) => {
+  if (!q) return null;
+  if (q.quotes) return 'quotes';
+  const why = String(q.reason || '').trim();
+  return !why || NO_ANSWER.test(why) ? 'none' : 'input';
+};
+const QUOTE_RANK = { quotes: 0, input: 1, none: 2 };
+
 const reachable = [];
 try {
   for (const line of fs.readFileSync(path.join(DIR, 'reachable.jsonl'), 'utf8').split('\n')) {
@@ -316,6 +351,22 @@ try {
   }
 } catch { /* nothing registered yet */ }
 
+// Which categories each agent returned a price for when asked (2026-10-09).
+// classifyAgent counts that as evidence for a loose-word match — and it rides
+// in api-agents.json, so /find on the worker reads the same evidence.
+{
+  const quotedFor = new Map();
+  for (const a of hireConfirm?.agents || []) {
+    if (!a.quotes || !a.category) continue;
+    const k = String(a.id);
+    if (!quotedFor.has(k)) quotedFor.set(k, new Set());
+    quotedFor.get(k).add(a.category);
+  }
+  for (const d of directory) {
+    const q = quotedFor.get(String(d.id));
+    if (q) d.quoted_for = [...q].sort();
+  }
+}
 const operators = groupByOperator(directory);
 api.independent_operators = operators.length;
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
@@ -582,16 +633,8 @@ const exampleBlock = (ex) => {
           </details>`;
 };
 
-// What happened the last time each hireable agent was actually asked for a
-// price. A "Hire" button on a seller that cannot quote is a button that wastes
-// the visitor's time, and this page is in no position to complain about other
-// people's unverified numbers while shipping one of its own.
-const hireConfirm = (() => {
-  const f = path.join(DIR, 'hire-confirm.json');
-  if (!fs.existsSync(f)) return null;
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
-})();
-const quoteOf = (id) => (hireConfirm?.agents || []).find((a) => String(a.id) === String(id)) || null;
+// hireConfirm, quoteOf and quoteState are defined near the top (2026-10-09):
+// the categories read them before the directory is written.
 
 // The other half of ERC-8004. The identity registry says who exists, the
 // escrow census says who has been paid, and this says who has been RATED —
@@ -697,6 +740,11 @@ const REPUTATION_ADDR = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63';
 // How old each kind of evidence on the cards is, said once per category:
 // the dates lived only in tooltips, which a phone never shows (2026-10-09).
 const dayOf = (t) => { const d = t ? new Date(t) : null; return d && !Number.isNaN(+d) ? `${d.getUTCDate()} ${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getUTCMonth()]}` : ''; };
+// Whole days from a delivery (job submitted_at, unix seconds; milliseconds
+// accepted too) to the job scan that read it. No delivery sorts last.
+const JOBS_AT = Date.parse(jobCensus?.measuredAt || '') || Date.parse(state.updatedAt || '') || 0;
+const tsMs = (t) => { const n = Number(t); return Number.isFinite(n) && n > 0 ? (n < 1e12 ? n * 1000 : n) : 0; };
+const daysSince = (t) => { const ms = tsMs(t); return ms ? Math.max(0, Math.floor((JOBS_AT - ms) / 86400000)) : 1e9; };
 const EVIDENCE_DATES = [
   hireConfirm?.measured_at && `quotes ${dayOf(hireConfirm.measured_at)}`,
   jobCensus?.measuredAt && `jobs ${dayOf(jobCensus.measuredAt)}`,
@@ -727,7 +775,7 @@ const categorised = CATEGORIES.map((cat) => {
 
   for (const a of directory) {
     const own = distinctHosts.has(hostOf(a));
-    const hit = classifyAgent({ ...a, attributes: attrsFor(a.id) })
+    const hit = classifyAgent({ ...a, attributes: attrsFor(a.id) }, null, { withWeak: true })
       .find((m) => m.category === cat.id && (m.source !== 'derived' || own));
     if (!hit) continue;
     let host = '';
@@ -752,7 +800,8 @@ const categorised = CATEGORIES.map((cat) => {
     const hit = classifyAgent({
       name: o.name || o.operator, description: o.description,
       tools: o.tools, skills: o.skills, declared_services: o.declared_services,
-    }).find((m) => m.category === cat.id);
+      quoted_for: [...new Set(directory.filter((d) => (o.ids || []).includes(d.id)).flatMap((d) => d.quoted_for || []))],
+    }, null, { withWeak: true }).find((m) => m.category === cat.id);
     if (!hit || hit.source !== 'derived') continue;
     if (seenOperator.has(o.operator) || claimed.has(o.name)) continue;
     seenOperator.add(o.operator);
@@ -792,7 +841,9 @@ const categorised = CATEGORIES.map((cat) => {
   // evidence among themselves, and ours close the category, ordered the same
   // way. Where a category has no stranger that quotes, the first click now
   // leads to one that does not — the cold-start check says so when it does.
-  const answers = (r) => (r.agentId && quoteOf(r.agentId)?.quotes ? 0 : 1);
+  // Three answers since 2026-10-09: a price, an answer that wants structured
+  // input, no answer. A row nobody asked ranks with the ones that did not answer.
+  const answers = (r) => QUOTE_RANK[quoteState(r.agentId ? quoteOf(r.agentId, cat.id) : null)] ?? 2;
   const rank = { declared: 0, registered: 1, derived: 2 };
   // Evidence the ranking used to skip (2026-10-09): two category leaders
   // were up 3% of the time, four sibling agents ranked on one provider's
@@ -808,10 +859,18 @@ const categorised = CATEGORIES.map((cat) => {
     || (down(a) - down(b))
     || (market(a) - market(b))
     || ((b.employment?.completed || 0) / share(b) - (a.employment?.completed || 0) / share(a))
+    // after paid-out, the more recent delivery (2026-10-09), in whole days so
+    // two deliveries an hour apart still fall through to the hire count
+    || (daysSince(a.employment?.last_submission) - daysSince(b.employment?.last_submission))
     || ((b.employment?.funded || 0) - (a.employment?.funded || 0))
     || (rank[a.hit.source] - rank[b.hit.source])
     || (b.instances - a.instances));
-  return { cat, rows };
+  // POSSIBLY RELATED (2026-10-09): rows filed on one loose word alone (see
+  // classifyAgent) leave the list and sit folded under it, cards intact, so
+  // a seller that can be hired still can be — and the next quote run still
+  // asks it, which is how one of them earns its way back.
+  const maybe = rows.filter((r) => r.hit.weak);
+  return { cat, rows: rows.filter((r) => !r.hit.weak), maybe };
 });
 
 if (reputation) {
@@ -846,12 +905,67 @@ if (reputation) {
 // can I hire it and for how much, and only then — behind a fold — how we know
 // any of that. The evidence is not reduced by one word. It stops being the
 // first thing in the way of the button.
-const categorySections = categorised.map(({ cat, rows }) => {
+// The amber chip in words that fit the answer: a schema demand is "needs
+// structured input"; a missing negotiate skill or a reply without a price is
+// not, and saying so would be the kind of rounding this page objects to.
+const inputLabel = (q) => {
+  const why = String(q?.reason || '');
+  if (/requires\s+[A-Z][A-Z0-9_]*_V\d/.test(why)) return 'Answers, needs structured input';
+  if (/cannot be funded here/i.test(why)) return 'Answers, prices in another token';
+  return 'Answers, no price';
+};
+// "Quotes or has paid out, or is ours": what stays open on a phone (2026-10-09).
+const isProven = (r, cat) => !!(r.ours
+  || (r.agentId && quoteOf(r.agentId, cat)?.quotes)
+  || (r.employment?.completed || 0) > 0);
+const priceOf = (p) => { const m = /^\s*([\d.]+)\s*(.*)$/.exec(String(p || '')); return m ? { n: Number(m[1]), unit: m[2].trim() } : null; };
+const numShort = (n) => String(Number(n.toPrecision(3)));
+
+// ONE SENTENCE A VISITOR CAN STOP AT (2026-10-09): the leader of the category
+// — the first other operator's row in the order below — with the facts that
+// put it there, then the spread of prices in the category and how many quoted.
+// Computed from the same rows the cards are, so it cannot say what they do not.
+const leaderLine = (cat, rows) => {
+  const lead = rows.find((r) => !r.ours);
+  const parts = [];
+  if (lead) {
+    const q = lead.agentId ? quoteOf(lead.agentId, cat.id) : null;
+    const st = quoteState(q);
+    const e = lead.employment;
+    const bits = [];
+    if (st === 'quotes') bits.push(`quotes ${esc(q.price || 'a price')}`);
+    else if (st === 'input') bits.push(esc(inputLabel(q).toLowerCase()));
+    else if (st === 'none') bits.push('did not answer when asked');
+    if (e && e.funded) {
+      bits.push(`${(providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded)}&times;${e.funded_buyers ? ` by ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
+      bits.push(e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet');
+    } else bits.push('never hired');
+    parts.push(`<b>Best evidence: ${esc(lead.label)}</b> &mdash; ${bits.join(', ')}`);
+  } else {
+    parts.push('<b>No other operator&rsquo;s agent here yet</b> &mdash; only ours');
+  }
+  const prices = rows.map((r) => (r.agentId ? quoteOf(r.agentId, cat.id) : null)).filter((q) => q?.quotes).map((q) => priceOf(q.price)).filter(Boolean);
+  if (prices.length) {
+    const units = new Map();
+    for (const p of prices) units.set(p.unit, (units.get(p.unit) || 0) + 1);
+    const unit = [...units.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const ns = prices.filter((p) => p.unit === unit).map((p) => p.n).sort((a, b) => a - b);
+    const mid = ns.length % 2 ? ns[ns.length >> 1] : (ns[ns.length / 2 - 1] + ns[ns.length / 2]) / 2;
+    parts.push(ns.length > 1 && ns[0] !== ns[ns.length - 1]
+      ? `prices quoted ${numShort(ns[0])}&ndash;${numShort(ns[ns.length - 1])} ${esc(unit)} (median ${numShort(mid)})`
+      : `price quoted ${numShort(ns[0])} ${esc(unit)}`);
+  }
+  if (hireConfirm) parts.push(`${fmt(prices.length)} of ${fmt(rows.length)} quoted when asked${hireConfirm.measured_at ? ` on ${dayOf(hireConfirm.measured_at)}` : ''}`);
+  return `<p class="rg-catlead">${parts.join(' &middot; ')}.</p>`;
+};
+
+const categorySections = categorised.map(({ cat, rows, maybe }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
-  const body = rows.map((r) => {
+  const card = (r) => {
     const [badge, why] = SOURCE_BADGE[r.hit.source];
     const hireable = canHire(r);
-    const q = hireable && r.agentId ? quoteOf(r.agentId) : null;
+    const q = hireable && r.agentId ? quoteOf(r.agentId, cat.id) : null;
+    const qs = quoteState(q);
     const d = describes(r);
     const caps = (r.capabilities || []).slice(0, 6);
     const more = (r.capabilities || []).length - caps.length;
@@ -871,12 +985,16 @@ const categorySections = categorised.map(({ cat, rows }) => {
     const chips = [];
     const facts = [];
     if (q) {
-      chips.push(q.quotes
+      chips.push(qs === 'quotes'
         ? `<li class="rgc-yes" title="Answered with a price the last time it was actually asked">Quotes <b>${esc(q.price || 'a price')}</b></li>`
-        : '<li class="rgc-no" title="Did not answer with a price the last time it was asked — the reason is under the fold">No price when asked</li>');
-      facts.push(q.quotes
+        : qs === 'input'
+          ? `<li class="rgc-input" title="Answered the last time it was asked, but not with a price — what it said is under the fold">${esc(inputLabel(q))}</li>`
+          : '<li class="rgc-no" title="Did not answer the last time it was asked — the reason is under the fold">Did not answer</li>');
+      facts.push(qs === 'quotes'
         ? `<li class="rgc-ok">Answers with a price when asked: <b>${esc(q.price || 'a price')}</b></li>`
-        : `<li class="rgc-bad">Did not answer when we asked it for a price &mdash; ${esc(q.reason || 'no answer')}</li>`);
+        : qs === 'input'
+          ? `<li>Answered when we asked it for a price, without one &mdash; ${esc(q.reason || 'no price')}</li>`
+          : `<li class="rgc-bad">Did not answer when we asked it for a price &mdash; ${esc(q.reason || 'no answer')}</li>`);
     }
     if (r.employment) {
       const e = r.employment;
@@ -887,7 +1005,13 @@ const categorySections = categorised.map(({ cat, rows }) => {
       const shared = providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
       if (e.funded) {
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}${e.funded_buyers ? ` &middot; ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}</li>`);
+        // last delivery (2026-10-09): the newest submission on the kernel for
+        // this provider, counted in days at the job scan and recounted in the
+        // visitor's browser (data-t, unix seconds) so it does not age on the page
+        const lastMs = tsMs(e.last_submission);
+        const ago = lastMs ? daysSince(e.last_submission) : null;
+        const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}${e.funded_buyers ? ` &middot; ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -908,7 +1032,11 @@ const categorySections = categorised.map(({ cat, rows }) => {
               <div class="rg-note">${esc(r.sub)}${r.instances > 1 ? ` &middot; ${r.instances} registry ids, one deployment` : ''}</div>
             </div>
             ${hireable && r.agentId
-    ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`
+    ? (qs === 'none'
+      // Did not answer: the button stays (an endpoint can come back) but it
+      // does not promise anything — muted, and named for what it is.
+      ? `<button class="rg-hirebtn rg-hire-muted" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="Did not answer when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again">Try anyway &rarr;</button>`
+      : `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`)
     : '<span class="rgc-nohire">Not hireable</span>'}
           </div>
           <p class="rgc-what${d.weak && !caps.length ? ' rg-weak' : ''}"${d.full ? ` title="${esc(d.full)}"` : ''}>${d.text ? esc(d.text) : caps.length ? esc('From its skills: ' + caps.slice(0, 3).map((c) => c.name).join(', ') + '.') : esc(d.why)}</p>
@@ -923,15 +1051,36 @@ const categorySections = categorised.map(({ cat, rows }) => {
             ${caps.length ? `<div class="rg-caps">${caps.map((c) => `<code${c.why ? ` title="${esc(clean(c.why)).slice(0, 300)}"` : ''}>${esc(c.name)}</code>`).join(' ')}${more > 0 ? ` <span class="rg-more">+${more}</span>` : ''}</div>` : ''}
           </details>
         </article>`;
-  }).join(NL);
+  };
+  // A PHONE SCROLLS PAST EVERY CARD (2026-10-09): the open list is what has
+  // proven itself — quoted, or paid out — and ours; the rest of the category
+  // is one tap away, in the same order, cards and buttons unchanged.
+  const open = rows.filter((r) => isProven(r, cat.id));
+  const rest = rows.filter((r) => !isProven(r, cat.id));
+  const body = open.map(card).join(NL);
+  const restBlock = rest.length ? `
+      <details class="rgc-more">
+        <summary>${fmt(rest.length)} more, unproven <span class="rg-note">&mdash; never quoted and never paid out</span></summary>
+        <div class="rgc-list">
+${rest.map(card).join(NL)}
+        </div>
+      </details>` : '';
+  const maybeBlock = (maybe || []).length ? `
+      <details class="rgc-maybe">
+        <summary>Possibly related: ${maybe.map((r) => esc(r.label)).join(', ')} <span class="rg-note">&mdash; matched on one loose word, not counted above</span></summary>
+        <div class="rgc-list">
+${maybe.map(card).join(NL)}
+        </div>
+      </details>` : '';
 
   return `    <div class="rg-box" id="cat-${cat.id}">
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, measured up less than half the time last, then paid out by several buyers, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      ${rows.length ? leaderLine(cat, rows) : ''}
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then answers without a price, then no answer; measured up less than half the time last; then paid out by several buyers, then paid out, then the latest delivery, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
-      </div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
+      </div>${restBlock}` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}${maybeBlock}
       <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
     </div>`;
 }).join(NL);
@@ -943,7 +1092,7 @@ const categoryChips = categorised.map(({ cat, rows }) => {
   // The chip advertises what will actually happen, not how many buttons exist:
   // a picker promising four and delivering two is the failure mode this whole
   // page was built to point out in other people's numbers.
-  const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId)?.quotes).length;
+  const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId, cat.id)?.quotes).length;
   return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
     + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote back' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;
 }).join('');
@@ -954,7 +1103,8 @@ const categoryChips = categorised.map(({ cat, rows }) => {
 // The exact rows that render a Hire button, kept as a list rather than a count.
 // Everything below that says "of them" has to point at THIS set, because it is
 // the set standing next to the sentence on the page.
-const hireableRows = categorised.flatMap(({ rows }) => rows.filter((r) => canHire(r) && r.agentId));
+// The folded "possibly related" cards carry buttons too, so they count here.
+const hireableRows = categorised.flatMap(({ rows, maybe }) => [...rows, ...maybe].filter((r) => canHire(r) && r.agentId));
 // Distinct agents, not rows: an agent listed under two categories carries two
 // buttons and is one agent to hire (26 rows were 24 agents on 2026-09-18).
 api.hireable_here = new Set(hireableRows.map((r) => String(r.agentId))).size;
@@ -988,7 +1138,9 @@ fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringi
 // the one a visitor sees.
 fs.writeFileSync(path.join(DIR, 'hireable.json'), JSON.stringify({
   measured_at: api.measured_at,
-  agents: categorised.flatMap(({ cat, rows }) => rows
+  // The folded "possibly related" rows are asked as well: a price for this
+  // category's task is how one earns its way back into the list (2026-10-09).
+  agents: categorised.flatMap(({ cat, rows, maybe }) => [...rows, ...maybe]
     .filter((r) => canHire(r) && r.agentId)
     // The seed is the sentence the button puts into the panel. A row that has
     // one is asked with it, so the pass tests the button and not a paraphrase.
@@ -1304,6 +1456,15 @@ const page = `<!doctype html>
   .rgc-strip li.rgc-yes b{color:var(--acc,var(--gold));font-weight:600}
   .rgc-strip li.rgc-no{border-color:rgba(255,107,107,.4)}
   .rgc-strip li.rgc-no::before{content:'×';color:#ff6b6b}
+  /* three quote answers (2026-10-09): amber = answered without a price */
+  .rgc-strip li.rgc-input{border-color:rgba(245,184,61,.45)}
+  .rgc-strip li.rgc-input::before{content:'?';color:#f5b83d}
+  .rgc .rg-hirebtn.rg-hire-muted{border-color:var(--line);color:var(--muted);background:transparent}
+  .rgc .rg-hirebtn.rg-hire-muted:hover{border-color:var(--muted);color:var(--text);background:transparent}
+  .rg-catlead{margin:-6px 0 14px;font-size:.85rem;line-height:1.5}
+  .rgc-more,.rgc-maybe{margin-top:12px}
+  .rgc-more>summary,.rgc-maybe>summary{cursor:pointer;font-size:.8rem;color:var(--muted);padding:6px 0}
+  .rgc-more>.rgc-list,.rgc-maybe>.rgc-list{margin-top:10px}
   .rgc-strip li.rgc-rep::before{content:'●';color:#2ecc71;font-size:.6em;vertical-align:1px}
   .rgc-strip li.rgc-rep.rgc-warn::before{color:#f5b83d}
   .rgc-strip li.rgc-rep.rgc-down{border-color:rgba(255,107,107,.4)}
@@ -1536,7 +1697,7 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n" id="rg-tile-total">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
-      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' ids at the last full scan' : 'probe pending'}</div></div>
+      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' scanned ' + dayOf(api.measured_at) : 'probe pending'}</div></div>
     </div>
 
     <div class="rg-box rg-start">
@@ -2029,6 +2190,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           o.querySelectorAll('[data-ask-hire]').forEach(function(x){x.addEventListener('click',function(){
             var hb=hireBtnFor(x.getAttribute('data-ask-hire'));if(!hb)return;
             hb.setAttribute('data-seed',t);hb.click();
+            // a card can sit in a folded list since 2026-10-09: unfold it first
+            var fold=hb.closest('details');if(fold&&!fold.classList.contains('rgc-ev'))fold.open=true;
             hb.closest('article,tr,.rg-box')&&hb.closest('article,tr,.rg-box').scrollIntoView({behavior:'smooth',block:'center'});
           })});
         })
@@ -2565,6 +2728,17 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           say('Escrow is funded, but the delivery request did not go through. Send it again: POST '+AGENT+'/hire/notify with {"agent":"'+esc(String(current&&current.id||''))+'","job_id":'+esc(jobId)+'} — or wait: a seller that watches the escrow delivers by itself. Job <b>#'+esc(jobId)+'</b> · <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>','rg-err');
         });
     }
+  })();
+
+  // "last delivery N days ago" counted from the visitor's clock, not the
+  // scan's: the page is read for days after it is built (2026-10-09).
+  (function(){
+    var now=Date.now()/1000;
+    [].slice.call(document.querySelectorAll('.rg-ago[data-t]')).forEach(function(x){
+      var n=Math.floor((now-Number(x.getAttribute('data-t')))/86400);
+      if(!(n>=0))return;
+      x.textContent=n===0?'today':n===1?'1 day ago':n.toLocaleString('en-US')+' days ago';
+    });
   })();
 
   // Filter only — no data fetching, nothing that can fail and leave the page

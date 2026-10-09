@@ -6,6 +6,8 @@
   const GOLD = '#F0B90B', UP = '#35e07a', DOWN = '#ff4d6d';
   const NUMS = () => window.__bobaiNums || {};
   const cmp = (n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+  // $BOBAI with its dollars (2026-10-09), at the price the homepage read from its own pool
+  const usdOf = (n) => { const p = NUMS().chain?.priceUsd; return p > 0 ? ` <small class="cv-usd">≈$${cmp(n * p)}</small>` : ''; };
   const viz = (n) => { const c = $(`[data-open="w${n}"] .bw-viz`); return c; };
   const canvasIn = (el, h) => {
     let cv = el.querySelector('canvas'); if (!cv) { cv = document.createElement('canvas'); el.appendChild(cv); }
@@ -19,7 +21,7 @@
     const el = viz('01'), c = NUMS().chain; if (!el || !c || !c.bobaiDead) return;
     const dead = c.bobaiDead, pct = dead / 1e9 * 100;
     // classes, not inline styles (2026-09-28): on a tall screen brain.css lets the bar and its figures grow with the card
-    el.innerHTML = `<div class="cv-sup"><div class="cv-sup-bar"><i style="width:${pct}%"></i><i></i></div><div class="cv-sup-k"><span>🔥 burned</span><span>circulating</span></div><div class="cv-sup-v"><span>${cmp(dead)}</span><span>${cmp(1e9 - dead)}</span></div></div>`;
+    el.innerHTML = `<div class="cv-sup"><div class="cv-sup-bar"><i style="width:${pct}%"></i><i></i></div><div class="cv-sup-k"><span>🔥 burned</span><span>circulating</span></div><div class="cv-sup-v"><span>${cmp(dead)}${usdOf(dead)}</span><span>${cmp(1e9 - dead)}${usdOf(1e9 - dead)}</span></div></div>`;
     const v = $('[data-open="w01"] .bw-v'); if (v) v.textContent = pct.toFixed(2) + '%';
   }
 
@@ -85,7 +87,7 @@
     const end = ph && (typeof ph.end === 'number' ? ph.end : Date.parse(ph.end)) || window.__bobaiNums?.gg?.end;
     if (v2 && end) { const d = Math.max(0, Math.ceil((end - Date.now()) / 86400e3)); v2.textContent = d + ' days'; }
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
-    if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI';
+    if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd);
   }
   function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); }
   addEventListener('bobai:nums', all);

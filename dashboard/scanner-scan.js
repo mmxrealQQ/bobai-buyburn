@@ -16,7 +16,7 @@
 // scanner-chain.js, which the browser page loads directly.
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
-  balOf, call, hx, addrAt, res2, decStr, rpcBatch,
+  balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
@@ -28,11 +28,14 @@ const parseInput = (s) => {
   return m ? m[0].toLowerCase() : null;
 };
 
+// `code` (2026-10-09) is the refusal in one machine-readable word — not_a_token,
+// is_wallet — so a caller can branch on it instead of on the sentence.
 export class ScanError extends Error {
-  constructor(headline, detail) {
+  constructor(headline, detail, code) {
     super(headline);
     this.headline = headline;
     this.detail = detail;
+    if (code) this.code = code;
   }
 }
 
@@ -227,15 +230,25 @@ export async function scan(input, env) {
   // real token once that is known and this first answer dropped.
   let gpP = askGoPlus(input, env);
 
-  let what;
+  // Is there any code at the address (2026-10-09)? Asked beside classify(), so
+  // it costs no time: a wallet pasted where a token belongs is answered "that
+  // is a wallet" at once, instead of after a full scan of nothing as "not a
+  // token". No answer leaves the old path in charge.
+  let what, code;
   try {
-    what = await classify(input);
+    [what, code] = await Promise.all([classify(input), rpc('eth_getCode', [input, 'latest']).catch(() => null)]);
   } catch {
     throw new ScanError(
       'The chain did not answer.',
       'The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.',
     );
   }
+  if (code === '0x')
+    throw new ScanError(
+      'That address is a wallet, not a token.',
+      'There is no contract code at it on BNB Smart Chain, so there is nothing to trade or measure. Paste the token’s contract address (or its pool, or a link containing one).',
+      'is_wallet',
+    );
 
   let token, pool = null, tokDec, bnbUsd, hop, deeper = null, oneSided = [];
 
@@ -411,7 +424,8 @@ export async function scan(input, env) {
   if (!pool && !others.length && !gpOk && !(supply > 0) && !decStr(nameInfo[0]))
     throw new ScanError(
       'That address is not a BSC token.',
-      'It answers nothing to symbol() or totalSupply(), has no pool at any venue this tool can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.',
+      'It answers nothing to symbol() or totalSupply(), has no pool at any venue this tool can read, and GoPlus does not list it. ' + (code == null ? 'A wallet address, or a contract that is not a token, looks exactly like this.' : 'There is contract code at it, so it is a contract that is not a token.'),
+      'not_a_token',
     );
 
   const mineUsd = mine != null ? mine : hard * 2;

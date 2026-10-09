@@ -373,10 +373,14 @@
   (function(){
     var m=document.getElementById('wip-modal'),b=document.getElementById('wip-ok');
     if(!m||!b)return;
+    // ONCE PER BROWSER (2026-10-09): shown on every visit it stood between a returning visitor and the field each
+    // time, while the homepage calls the scanner Live. The first visit still reads it; the long version stays below.
+    try{if(localStorage.getItem('bobai-scan-wip')==='1'){m.hidden=true;return;}}catch(e){}
     var prev=document.body.style.overflow;
     document.body.style.overflow='hidden';
     function close(){
       m.hidden=true;
+      try{localStorage.setItem('bobai-scan-wip','1');}catch(e){}
       document.body.style.overflow=prev;
       document.removeEventListener('keydown',key);
       // Focus the field so you can type straight away — but never let that

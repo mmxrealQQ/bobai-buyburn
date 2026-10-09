@@ -22,11 +22,20 @@
 // end an automated trade (the sell does not go through, nothing quotes, half
 // the money is gone on the round trip). `caution` lists facts with the figure
 // and the threshold in the sentence, so the caller can disagree with the line.
+//
+// MACHINE-READABLE, NEXT TO THE SENTENCE (2026-10-09). `gate` is the verdict in
+// one word an agent can branch on — "stop" when stop[] holds anything, "weigh"
+// when only caution[] does, "no_known_stop" when neither (never "safe": it is
+// what this read found, not a promise). Every stop/caution item whose sentence
+// carries a figure also carries it as {value, line, unit}: the measured number,
+// the line it was held against (null where the sentence draws none) and its
+// unit ("usd", "pct", "bps"). `why` stays the same sentence.
 import { scan, ScanError } from './scanner-scan.js';
 import { swapRoute } from './swap-route.js';
+import { readControl } from './scanner-chain.js';
 
 export class PreflightError extends Error {
-  constructor(headline, detail) { super(headline); this.headline = headline; this.detail = detail; }
+  constructor(headline, detail, code) { super(headline); this.headline = headline; this.detail = detail; if (code) this.code = code; }
 }
 
 const DEFAULT_USD = 250;
@@ -34,6 +43,9 @@ const HIGH_TAX_PCT = 10;         // one side; named in the sentence
 const THIN_POOL_USD = 250000;    // below this an unburned LP is worth a line
 const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is named
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
+// The figure of a stop/caution item (2026-10-09): only where there is a number.
+const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
+export const gateOf = (stop, caution) => (stop.length ? 'stop' : caution.length ? 'weigh' : 'no_known_stop');
 
 // The cost of a size the ladder does not carry, read between the two rungs
 // around it. Used only when the route check could not answer (a venue outside
@@ -41,43 +53,55 @@ const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixe
 export function costAtSize(rows, usd, key) {
   const pts = (rows || []).filter((r) => r && r[key] != null).sort((a, b) => a.sizeUsd - b.sizeUsd);
   if (!pts.length) return { pct: null, beyondLadder: false };
-  if (usd <= pts[0].sizeUsd) return { pct: pts[0][key], beyondLadder: false };
   const last = pts[pts.length - 1];
-  if (usd >= last.sizeUsd) return { pct: last[key], beyondLadder: usd > last.sizeUsd };
+  if (usd <= pts[0].sizeUsd) return { pct: pts[0][key], beyondLadder: false };
+  if (usd >= last.sizeUsd) return { pct: last[key], beyondLadder: usd > last.sizeUsd, largestUsd: last.sizeUsd };
   const i = pts.findIndex((p) => p.sizeUsd >= usd);
   const a = pts[i - 1], b = pts[i];
   return { pct: a[key] + ((b[key] - a[key]) * (usd - a.sizeUsd)) / (b.sizeUsd - a.sizeUsd), beyondLadder: false };
 }
 
 // The shaping, apart from the chain, so it can be pinned offline: `s` is a
-// pool-scan answer, `r` a route answer or null, `routeError` why it is null.
-export function shape(s, r, usd, routeError = null) {
+// pool-scan answer, `r` a route answer or null, `routeError` why it is null,
+// `control` the own read of who controls the contract (readControl) or null.
+export function shape(s, r, usd, routeError = null, control = null) {
   const stop = [], caution = [];
   const details = {
     pool_scan: `https://brainonbnb.com/api/pool-scan?address=${s.address}`,
     best_route: `https://brainonbnb.com/api/best-route?address=${s.address}&usd=${usd}`,
   };
-  const head = { tool: 'bsc_token_preflight', token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null }, size_usd: usd };
+  // One shape on every branch (2026-10-09): `kind` names which of the three
+  // answers this is, and `block` / `measured_at` are always there — the curve
+  // and the unquotable answers had neither. The scan's block where it has one,
+  // the control read's head otherwise.
+  const kind = s.quotable ? 'pool' : s.curve ? 'curve' : 'unquotable';
+  const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null }, size_usd: usd,
+    block: s.block ?? (control?.read ? control.block : null) ?? null, measured_at: s.measuredAt ?? new Date().toISOString() };
+  const ctl = controlBlock(control);
+  // The verdict word sits next to stop/caution, worked out once both are final.
+  const out = (o) => ({ ...head, gate: gateOf(o.stop, o.caution), ...o });
 
   // Still on its four.meme curve: no pool, no route — the curve's own figures.
   if (!s.quotable && s.curve) {
     const c = s.curve;
     const buy = costAtSize(c.tradeCost, usd, 'buyCostPct'), sell = costAtSize(c.tradeCost, usd, 'sellCostPct');
     if (!c.sellQuoted) stop.push({ code: 'sell_not_quotable', why: 'four.meme’s contract returned no sell quote at any size asked.' });
-    caution.push({ code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.` });
-    if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the cost shown is the largest rung’s and the real one is higher.` });
-    return { ...head, venue: 'four.meme bonding curve', stop, caution,
+    caution.push({ code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.`, ...fig(c.progressPct, 100, 'pct') });
+    if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the cost shown is the largest rung’s and the real one is higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
+    return out({ venue: 'four.meme bonding curve', stop, caution,
       entry: { cost_pct: round(buy.pct, 3), fee_pct: c.feePct ?? null },
       exit: { sell_quoted: !!c.sellQuoted, cost_pct: round(sell.pct, 3) },
+      control: ctl,
       cannot_see: ['What the token does after it lists: its transfer tax and its owner’s powers only show once there is a pool to measure.'],
-      details, disclaimer: 'Measurement, not advice. Figures are for this block.' };
+      details, disclaimer: 'Measurement, not advice. Figures are for this block.' });
   }
 
   if (!s.quotable) {
     stop.push({ code: 'not_quotable', why: s.reason || 'No pool that could be read describes this token’s market.' });
-    return { ...head, stop, caution, entry: null, exit: null,
+    return out({ stop, caution, entry: null, exit: null,
       ...(s.liquidity ? { liquidity: s.liquidity } : {}),
-      details, disclaimer: 'Measurement, not advice. Figures are for this block.' };
+      control: ctl,
+      details, disclaimer: 'Measurement, not advice. Figures are for this block.' });
   }
 
   // ---- exit first: a buy that works and a sell that does not is the trap
@@ -94,7 +118,10 @@ export function shape(s, r, usd, routeError = null) {
     stop.push({ code: 'not_buyable', why: `A test buy on the router did not go through${sim.buy_error ? `: ${String(sim.buy_error).slice(0, 140)}` : '.'}` });
   if (!sim.ok) caution.push({ code: 'sell_not_simulated', why: `The sell simulation did not run${sim.reason ? ` (${String(sim.reason).slice(0, 120)})` : ''} — that is "not checked", never "sellable".` });
   else if (!simHere) caution.push({ code: 'sell_tested_on_another_pair', why: `The sell test could not trade through the pool measured here; it went through this token’s PancakeSwap V2 pair against BNB (${sim.pair}) and ${sim.sellable === false ? 'did NOT go through there' : 'went through there'}. That says nothing certain about the pool you would trade in — "not checked" for it.` });
-  for (const why of (r?.refuse_to_trade || [])) stop.push({ code: 'round_trip', why });
+  for (const why of (r?.refuse_to_trade || [])) {
+    const kept = /returns ([0-9.]+)% of what went in/.exec(why);
+    stop.push({ code: 'round_trip', why, ...(kept ? fig(+kept[1], 50, 'pct') : {}) });
+  }
 
   // ---- the tax
   const t = s.tax || {};
@@ -109,13 +136,13 @@ export function shape(s, r, usd, routeError = null) {
   const buySource = sideSource('buy_pct', t.buySource), sellSource = sideSource('sell_pct', t.sellSource);
   for (const [side, v, src] of [['buy', taxBuy, t.buySource], ['sell', taxSell, t.sellSource]]) {
     if (fromRoute(`${side}_pct`)) continue;
-    if (v != null && src === 'label') caution.push({ code: `${side}_tax_label_only`, why: `The ${side} tax of ${v}% is a GoPlus label: no executed ${side} could be read and no simulation ran for it. A label has read 0% on tokens that charged more.` });
+    if (v != null && src === 'label') caution.push({ code: `${side}_tax_label_only`, why: `The ${side} tax of ${v}% is a GoPlus label: no executed ${side} could be read and no simulation ran for it. A label has read 0% on tokens that charged more.`, ...fig(v, null, 'pct') });
     else if (v == null && (taxBuy != null || taxSell != null)) caution.push({ code: `${side}_tax_unknown`, why: `No ${side} tax could be established — only the other side was. The costs below exclude it on the ${side}.` });
   }
   if (taxBuy == null && taxSell == null)
-    caution.push({ code: 'tax_unknown', why: 'No transfer tax could be established, neither from executed trades nor by simulation. The costs below exclude it; if the token takes a cut, the trade costs more and needs about 1500 bps of slippage.' });
+    caution.push({ code: 'tax_unknown', why: 'No transfer tax could be established, neither from executed trades nor by simulation. The costs below exclude it; if the token takes a cut, the trade costs more and needs about 1500 bps of slippage.', ...fig(1500, null, 'bps') });
   for (const [side, v] of [['buy', taxBuy], ['sell', taxSell]])
-    if (v != null && v >= HIGH_TAX_PCT) caution.push({ code: `high_${side}_tax`, why: `The token takes ${v}% on every ${side} (line drawn at ${HIGH_TAX_PCT}%).` });
+    if (v != null && v >= HIGH_TAX_PCT) caution.push({ code: `high_${side}_tax`, why: `The token takes ${v}% on every ${side} (line drawn at ${HIGH_TAX_PCT}%).`, ...fig(v, HIGH_TAX_PCT, 'pct') });
   const props = s.contract?.properties || {};
   if (props.slippage_modifiable === true && (taxBuy > 0 || taxSell > 0 || taxBuy == null))
     caution.push({ code: 'tax_can_change', why: 'The contract lets its owner change the transfer tax: the figure measured now is not a promise.' });
@@ -124,11 +151,11 @@ export function shape(s, r, usd, routeError = null) {
   const d = s.onePercentDepth || {};
   const thinSide = Math.min(d.buyUsd ?? Infinity, d.sellUsd ?? Infinity);
   if (Number.isFinite(thinSide) && usd > thinSide)
-    caution.push({ code: 'size_moves_price', why: `$${usd} is more than the $${thinSide} that moves this pool’s price by 1%: you are the market at this size.` });
+    caution.push({ code: 'size_moves_price', why: `$${usd} is more than the $${thinSide} that moves this pool’s price by 1%: you are the market at this size.`, ...fig(usd, thinSide, 'usd') });
   if (s.deeperPoolElsewhere)
-    caution.push({ code: 'deeper_pool_elsewhere', why: `A deeper pool for this token exists (${s.deeperPoolElsewhere.pair}, about $${s.deeperPoolElsewhere.liquidityUsd} hard side) than the one measured.` });
+    caution.push({ code: 'deeper_pool_elsewhere', why: `A deeper pool for this token exists (${s.deeperPoolElsewhere.pair}, about $${s.deeperPoolElsewhere.liquidityUsd} hard side) than the one measured.`, ...fig(s.deeperPoolElsewhere.liquidityUsd, null, 'usd') });
   if (s.pool?.partialMarket)
-    caution.push({ code: 'partial_market', why: `The pool measured holds ${round((s.pool.shareOfLiquidity || 0) * 100, 1)}% of this token’s liquidity; the rest trades elsewhere.` });
+    caution.push({ code: 'partial_market', why: `The pool measured holds ${round((s.pool.shareOfLiquidity || 0) * 100, 1)}% of this token’s liquidity; the rest trades elsewhere.`, ...fig(round((s.pool.shareOfLiquidity || 0) * 100, 1), 25, 'pct') });
 
   // ---- who can pull what
   // WHO HOLDS THE LP, by name (2026-09-27). The scan now reads the LP ledger
@@ -145,15 +172,15 @@ export function shape(s, r, usd, routeError = null) {
   if (cuRead && lw && lw.pct >= LP_PULL_PCT) {
     const who = lw.tokenCreator ? 'The token’s creator' : lw.addedFirstLiquidity ? 'The wallet that added the first liquidity' : 'One wallet';
     const hardUsd = s.pool?.liquidityUsd;
-    caution.push({ code: 'lp_pullable', why: `${who} (${lw.address}) holds ${lw.pct}% of the LP and can withdraw ${lw.pct >= 99.99 ? 'all of the liquidity' : 'that share of the liquidity'}${hardUsd != null ? ` — about $${Math.round(hardUsd * lw.pct / 100)} of the pool’s hard side` : ''} — at any moment (line drawn at ${LP_PULL_PCT}% of the LP; ${cu.read === 'complete' ? 'every LP transfer since the pair was created was read' : `${cu.unreadPct}% of the LP could not be attributed`}).` });
+    caution.push({ code: 'lp_pullable', why: `${who} (${lw.address}) holds ${lw.pct}% of the LP and can withdraw ${lw.pct >= 99.99 ? 'all of the liquidity' : 'that share of the liquidity'}${hardUsd != null ? ` — about $${Math.round(hardUsd * lw.pct / 100)} of the pool’s hard side` : ''} — at any moment (line drawn at ${LP_PULL_PCT}% of the LP; ${cu.read === 'complete' ? 'every LP transfer since the pair was created was read' : `${cu.unreadPct}% of the LP could not be attributed`}).`, ...fig(lw.pct, LP_PULL_PCT, 'pct') });
   } else if (!cuRead && s.lp && s.lp.burnedPct != null && s.lp.burnedPct < 50 && (s.pool?.liquidityUsd ?? 0) < THIN_POOL_USD)
-    caution.push({ code: 'lp_withdrawable', why: `${s.lp.burnedPct}% of the LP is burned and the pool holds $${s.pool.liquidityUsd} on its hard side (line drawn at $${THIN_POOL_USD}): whoever holds the rest of the LP can take the liquidity out.` });
+    caution.push({ code: 'lp_withdrawable', why: `${s.lp.burnedPct}% of the LP is burned and the pool holds $${s.pool.liquidityUsd} on its hard side (line drawn at $${THIN_POOL_USD}): whoever holds the rest of the LP can take the liquidity out.`, ...fig(s.lp.burnedPct, 50, 'pct') });
   // Liquidity that has ALREADY gone: GOL and SUPE, half an hour old at the
   // review, had 99.9% of all the LP ever minted withdrawn — the pool the scan
   // measured is what was left behind.
   const gone = (cu?.withdrawnSinceCreation || [])[0];
   if (gone && gone.pctOfLpEverMinted >= 50)
-    caution.push({ code: 'lp_withdrawn', why: `${gone.pctOfLpEverMinted}% of all the LP ever minted for this pair has already been withdrawn, by ${gone.address}${gone.tokenCreator ? ' (the token’s creator)' : gone.addedFirstLiquidity ? ' (the wallet that added the first liquidity)' : ''}. The pool measured here is what is left.` });
+    caution.push({ code: 'lp_withdrawn', why: `${gone.pctOfLpEverMinted}% of all the LP ever minted for this pair has already been withdrawn, by ${gone.address}${gone.tokenCreator ? ' (the token’s creator)' : gone.addedFirstLiquidity ? ' (the wallet that added the first liquidity)' : ''}. The pool measured here is what is left.`, ...fig(gone.pctOfLpEverMinted, 50, 'pct') });
   // WHO IS SELLING (2026-09-27, the scan's flow block): the three sellers a buyer
   // fears, each only on what the logs show over the window read. The deployer or
   // a wallet it paid selling at all is the line (any size: the one wallet that
@@ -171,16 +198,16 @@ export function shape(s, r, usd, routeError = null) {
   const LP_FATE = { burned: 'its LP burned', kept: 'its LP kept by the wallet — withdrawable', 'partly burned': `${back?.lpBurnedPct}% of its LP burned`, 'not read': 'where its LP went not read' };
   if (dep?.sold?.sells > 0 && (leftUsd == null ? leftQ > 0 : leftUsd >= 1)) {
     const via = dep.sold.viaWalletsItFunded || [];
-    caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}${back ? ` and added $${back.usd ?? '?'} back as liquidity (${LP_FATE[back.lp]}), so about $${leftUsd ?? '?'} left the pool` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.` });
+    caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}${back ? ` and added $${back.usd ?? '?'} back as liquidity (${LP_FATE[back.lp]}), so about $${leftUsd ?? '?'} left the pool` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.`, ...fig(leftUsd ?? dep.sold.usd, 1, 'usd') });
   }
   const ths = fl?.topHolderSelling || [];
   if (ths.length) {
     const w = ths[0];
-    caution.push({ code: 'top_holder_selling', why: `${ths.length === 1 ? 'A top holder' : `${ths.length} top holders`} sold into this pool in the last ${fl.window?.minutes ?? '?'} minutes: ${w.address} sold ${w.soldPctOfBalance}% of what it held (${w.heldPctBefore}% of the circulating supply before, ${w.holdsPctNow}% now${w.usd != null ? `, about $${w.usd}` : ''}) (line drawn at 25% of its balance; ${fl.topHolderBasis === 'size' ? 'no holder list — a seller that held 2% or more counts' : 'the top ten of the holder list'}).` });
+    caution.push({ code: 'top_holder_selling', why: `${ths.length === 1 ? 'A top holder' : `${ths.length} top holders`} sold into this pool in the last ${fl.window?.minutes ?? '?'} minutes: ${w.address} sold ${w.soldPctOfBalance}% of what it held (${w.heldPctBefore}% of the circulating supply before, ${w.holdsPctNow}% now${w.usd != null ? `, about $${w.usd}` : ''}) (line drawn at 25% of its balance; ${fl.topHolderBasis === 'size' ? 'no holder list — a seller that held 2% or more counts' : 'the top ten of the holder list'}).`, ...fig(w.soldPctOfBalance, 25, 'pct') });
   }
   const sn = fl?.snipers;
   if (sn?.read && sn.holdPctOfCirculating > 10)
-    caution.push({ code: 'sniped_launch', why: `${sn.wallets} wallet${sn.wallets === 1 ? '' : 's'} bought in the first ${sn.blocks} blocks after the liquidity went in (block ${sn.launchBlock}) and still hold${sn.wallets === 1 ? 's' : ''} ${sn.holdPctOfCirculating}% of the circulating supply (line drawn at 10%)${sn.top?.some((x) => x.deployer) ? ' — the deployer among them' : ''}: a supply that can be sold into you.` });
+    caution.push({ code: 'sniped_launch', why: `${sn.wallets} wallet${sn.wallets === 1 ? '' : 's'} bought in the first ${sn.blocks} blocks after the liquidity went in (block ${sn.launchBlock}) and still hold${sn.wallets === 1 ? 's' : ''} ${sn.holdPctOfCirculating}% of the circulating supply (line drawn at 10%)${sn.top?.some((x) => x.deployer) ? ' — the deployer among them' : ''}: a supply that can be sold into you.`, ...fig(sn.holdPctOfCirculating, 10, 'pct') });
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
   // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
   // the float, moves this price far more than any trade you size.
@@ -195,10 +222,22 @@ export function shape(s, r, usd, routeError = null) {
   else if (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50) {
     const big = hd.top?.[0];
     const named = (hd.excluded || []).slice(0, 3).map((x) => `${x.name} ${x.pct}%`).join(', ');
-    caution.push({ code: 'holders_concentrated', why: `The largest wallet${big?.contract ? ' (a contract the list does not name)' : ''} holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's${named ? `; left out as exchange, lock or staking wallets: ${named}` : ''}).` });
+    caution.push({ code: 'holders_concentrated', why: `The largest wallet${big?.contract ? ' (a contract the list does not name)' : ''} holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's${named ? `; left out as exchange, lock or staking wallets: ${named}` : ''}).`,
+      ...(hd.largestSellTakesPctOfPool >= 25 ? fig(hd.largestSellTakesPctOfPool, 25, 'pct') : fig(hd.top10PctOfCirculating, 50, 'pct')) });
   }
   if (flags.length) caution.push({ code: 'contract_flags', why: `GoPlus reads these as true: ${flags.join(', ')}. A label, not a measurement — and none of them has to have been used yet.` });
   if (s.contract?.openSource === false) caution.push({ code: 'source_not_verified', why: 'The contract source is not verified, so nobody has read what it can do.' });
+  // ONE KEY OVER A LEVER (2026-10-09), from the own control read: an owner that
+  // is a plain wallet (no code at it) is one private key, and it matters where
+  // the contract gives the owner something to pull — a tax, a mint function, an
+  // upgradeable implementation. An EOA owner of a contract with none of the
+  // three is not a line; a renounced or contract owner never is here.
+  const levers = [];
+  if ((taxBuy ?? 0) > 0 || (taxSell ?? 0) > 0) levers.push(`takes a transfer tax (${taxBuy ?? '?'}% buy, ${taxSell ?? '?'}% sell)`);
+  if (ctl?.mint_selector) levers.push('carries a mint(address,uint256) function in its bytecode');
+  if (ctl?.proxy) levers.push(`is an upgradeable EIP-1967 proxy (implementation ${ctl.proxy.implementation})`);
+  if (ctl?.owner?.kind === 'eoa' && levers.length)
+    caution.push({ code: 'owner_is_eoa', why: `The owner (${ctl.owner.address}, read from ${ctl.owner.source}) is a plain wallet — one private key, no contract or timelock in front of it — and the token ${levers.join(', ')}. Whatever the contract lets its owner do, that one key can do at any block.` });
 
   // ---- the figures at this size: the route's when it answered, the ladder's otherwise
   let entry, exit;
@@ -224,7 +263,7 @@ export function shape(s, r, usd, routeError = null) {
   } else {
     const buy = costAtSize(s.tradeCost, usd, 'buyCostPct'), sell = costAtSize(s.tradeCost, usd, 'sellCostPct');
     caution.push({ code: 'no_route_quote', why: `The route check did not answer (${String(routeError || 'no PancakeSwap route').slice(0, 160)}). Entry and exit below come from the measured pool’s cost ladder, read between its rungs — the pool is ${s.pool?.venue || 'the one scanned'}.` });
-    if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the costs shown are the largest rung’s and the real ones are higher.` });
+    if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the costs shown are the largest rung’s and the real ones are higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
     const fot = (taxBuy ?? 0) > 0.1 || (taxSell ?? 0) > 0.1;
     entry = { route: null, pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, cost_pct: round(buy.pct, 3),
       slippage_bps_needed: fot || (taxBuy == null && taxSell == null) ? 1500 : (buy.pct == null ? null : Math.max(50, Math.ceil((buy.pct + 0.5) * 100))) };
@@ -232,19 +271,22 @@ export function shape(s, r, usd, routeError = null) {
       round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) };
   }
 
-  return {
-    ...head,
-    block: s.block ?? null, measured_at: s.measuredAt ?? null,
+  // LP burned, one number under both names (2026-10-09): lp_burned_pct (kept
+  // for callers that read it) and lp_custody.burned_pct came from two reads and
+  // could differ in the last digit. Both are now the scan's direct read of the
+  // burn addresses, the custody's sum only where that read is missing.
+  const lpBurned = s.lp?.burnedPct ?? cu?.burnedPct ?? null;
+  return out({
     stop, caution, entry, exit,
     tax: { buy_pct: taxBuy, sell_pct: taxSell, buy_source: buySource, sell_source: sellSource,
       source: buySource === sellSource ? buySource : `buy: ${buySource}; sell: ${sellSource}` },
     // `pool` names what the depth describes — the pool the scan measured, which
     // is not always the pool the best route goes through (entry.pool).
     depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
-    lp_burned_pct: s.lp?.burnedPct ?? null,
+    lp_burned_pct: lpBurned,
     // Who holds the rest (2026-09-27), in the scan's own words — null on a V3
     // pool (position NFTs, not read) or when the reads failed.
-    lp_custody: cu ? { read: cu.read, burned_pct: cu.burnedPct, locked_pct: cu.lockedPct, wallet_pct: cu.walletPct, unread_pct: cu.unreadPct, farm_pct: cu.farmPct ?? null, exchange_fee_pct: cu.exchangeFeePct ?? null, contract_pct: cu.contractPct ?? null,
+    lp_custody: cu ? { read: cu.read, burned_pct: lpBurned, locked_pct: cu.lockedPct, wallet_pct: cu.walletPct, unread_pct: cu.unreadPct, farm_pct: cu.farmPct ?? null, exchange_fee_pct: cu.exchangeFeePct ?? null, contract_pct: cu.contractPct ?? null,
       largest_wallet: lw ? { address: lw.address, pct: lw.pct, deployer: !!lw.deployer } : null } : null,
     // How old, and who trades it over the window read (the scan's age and activity).
     age_hours: { pool: s.age?.pool?.ageHours ?? null, token: s.age?.token?.ageHours ?? null },
@@ -267,32 +309,56 @@ export function shape(s, r, usd, routeError = null) {
       how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
       terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
     } : null,
+    // Who controls the contract, read on-chain (2026-10-09; controlBlock below).
+    control: ctl,
     cannot_see: [
       'An owner who has not acted yet, a proxy not yet upgraded, a blacklist you are not on today: this is the trip as it stands at this block.',
       'Anything off-chain — the team, the socials, the deployer’s history.',
     ],
     details,
     disclaimer: 'Measurement, not advice. Figures are for this block and this size; depth and tax can change block to block.',
+  });
+}
+
+// The control read as the answer states it (2026-10-09): own eth_call /
+// eth_getStorageAt / eth_getCode reads, no label. null when it was not run.
+export function controlBlock(c) {
+  if (!c) return null;
+  if (!c.read) return { read: false, reason: c.reason || 'not read' };
+  return {
+    read: true,
+    owner: c.owner ? { address: c.owner.address, kind: c.owner.kind, source: c.owner.source } : null,
+    owner_note: c.owner ? ({ renounced: 'The owner is the zero or dead address: ownership was given up.', eoa: 'The owner is a plain wallet: one private key.', contract: 'The owner is a contract (a multisig, a timelock or anything else — not read further).', unread: 'Whether the owner has code could not be read.' })[c.owner.kind] ?? null
+      : 'Neither owner() nor getOwner() answers: no owner function of the usual name (powers held another way are not seen here).',
+    proxy: c.proxy ? { standard: c.proxy.standard, implementation: c.proxy.implementation, admin: c.proxy.admin ?? null, admin_kind: c.proxy.admin_kind ?? null } : null,
+    mint_selector: !!c.mint_selector,
+    ...(c.mint_selector_in ? { mint_selector_in: c.mint_selector_in } : {}),
+    source: 'own reads at this block: owner() and getOwner(), the EIP-1967 implementation and admin slots, eth_getCode on each address found, and the bytecode searched for the mint(address,uint256) selector 0x40c10f19 (a function by that name exists; who may call it is not read)',
   };
 }
 
 export async function preflight(input, opts = {}, env) {
   const address = String(input || '').toLowerCase();
   const usd = Number(opts.usd) > 0 ? Number(opts.usd) : DEFAULT_USD;
+  // The control read (two small batches, 2026-10-09) runs beside the scan, on
+  // the address as given; a pasted pool is read again once the scan has named
+  // its token, beside the route.
+  const ctlP = readControl(address).catch(() => null);
   let s;
   try { s = await scan(address, env); }
   catch (e) {
-    if (e instanceof ScanError) throw new PreflightError(e.headline, e.detail);
+    if (e instanceof ScanError) throw new PreflightError(e.headline, e.detail, e.code);
     throw e;
   }
+  const ctl2P = s.address && s.address !== address ? readControl(s.address).catch(() => null) : ctlP;
   // The route only where there is a pool to route through. One after the
   // other, not side by side: both walk the same pools, and an account cut off
   // at fifty outbound calls a request should lose the route — which has a
   // fallback in the scan's own ladder — and never the scan.
   let r = null, routeError = null;
   if (s.quotable) {
-    try { r = await swapRoute(address, { usd }); }
+    try { r = await swapRoute(address, { usd, codeChecked: true }); }
     catch (e) { routeError = e?.headline || e?.message || 'route check failed'; }
   }
-  return shape(s, r, usd, routeError);
+  return shape(s, r, usd, routeError, await ctl2P);
 }

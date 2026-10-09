@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5253 lines.
+# one fetch. 12 files, 5496 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -875,8 +875,8 @@ async function rpcCall(method, params) {
   return null;
 }
 
-async function tryGetLogs(rpc, fromBlock, address, topic, tag) {
-  const params = [{ address, topics: [topic], fromBlock, toBlock: 'latest' }];
+async function tryGetLogs(rpc, fromBlock, address, topic, tag, toBlock = 'latest') {
+  const params = [{ address, topics: [topic], fromBlock, toBlock }];
   try {
     const res = await fetch(rpc, {
       method: 'POST',
@@ -912,13 +912,59 @@ async function getLogsKeyedThenFree(fromBlock, address, topic, tag, env, { narro
   if (!narrow) return null;
   const latestHex = await rpcCall('eth_blockNumber', []);
   if (!latestHex) return null;
-  const cut = narrowedFrom(fromBlock, parseInt(latestHex, 16));
+  const latest = parseInt(latestHex, 16);
+  const cut = narrowedFrom(fromBlock, latest);
   if (parseInt(cut, 16) <= parseInt(fromBlock, 16)) return null;   // the full range was already that small
-  for (const rpc of LOGS_RPC_ENDPOINTS) {
-    const r = await tryGetLogs(rpc, cut, address, topic, tag + '-fb');
-    if (r !== null) return r;
+  return walkDegraded(fromBlock, latest, address, topic, tag, env);
+}
+
+// A DEGRADED READ WALKS ON FROM WHERE IT STOPPED (2026-10-09). The cut above read only the newest 50 blocks: about
+// 22 seconds of chain under a one-minute cron, so on a degraded hour roughly two buys in three were never seen. Now a
+// cursor per scan (KV `logs_cursor:<tag>`, written only on a degraded tick — a healthy tick writes nothing) remembers
+// the last block read, and each degraded tick reads up to DEGRADED_WINDOWS windows of 50 blocks from there: 400
+// blocks a tick against the ~133 the chain makes in a minute, so it catches up instead of skipping. The walk stops at
+// the first window no endpoint serves; the cursor stays before it. Never further back than the caller's own reach
+// (`fromBlock`); the posted-tx sets keep a transaction from being told twice. Pure part exported for the pins.
+const DEGRADED_WINDOWS = 8;
+export function degradedWindows(fromBlock, latest, cursor, maxBlocks = FREE_LOGS_BLOCKS, windows = DEGRADED_WINDOWS) {
+  const from = parseInt(fromBlock, 16);
+  let start = Number.isFinite(cursor) ? Math.max(from, cursor + 1) : from;
+  const out = [];
+  while (start <= latest && out.length < windows) {
+    const end = Math.min(latest, start + maxBlocks - 1);
+    out.push([start, end]);
+    start = end + 1;
   }
-  return null;
+  return out;
+}
+// An episode is one run of degraded ticks; a gap of ten minutes without one ends it.
+export function nextCursorRecord(prev, block, now = Date.now()) {
+  const same = prev && Number.isFinite(prev.at) && now - prev.at < 10 * 60 * 1000;
+  return { block, since: same && prev.since ? prev.since : now, at: now };
+}
+async function walkDegraded(fromBlock, latest, address, topic, tag, env) {
+  const key = 'logs_cursor:' + tag;
+  let prev = null;
+  try { prev = env && env.KV ? await env.KV.get(key, 'json') : null; } catch { prev = null; }
+  const plan = degradedWindows(fromBlock, latest, prev && Number.isFinite(prev.block) ? prev.block : NaN);
+  if (!plan.length) return [];   // the cursor already stands at the head: nothing new, not a failure
+  const logs = [];
+  let readTo = null, rpcs = [...LOGS_RPC_ENDPOINTS];
+  for (const [a, b] of plan) {
+    let r = null;
+    for (const rpc of rpcs) {
+      r = await tryGetLogs(rpc, '0x' + a.toString(16), address, topic, tag + '-fb', '0x' + b.toString(16));
+      if (r !== null) { rpcs = [rpc, ...rpcs.filter((x) => x !== rpc)]; break; }
+    }
+    if (r === null) break;
+    logs.push(...r); readTo = b;
+  }
+  console.error(`[${tag}] degraded read: ${plan.length ? `${plan[0][0]}-${readTo ?? 'none'}` : 'nothing to read'} of ${fromBlock}-${latest}`);
+  if (env && env.KV) {
+    try { await env.KV.put(key, JSON.stringify(nextCursorRecord(prev, readTo ?? (prev && prev.block) ?? plan[0][0] - 1))); }
+    catch (e) { console.error('[LOGS CURSOR]', e.message || e); }
+  }
+  return readTo === null ? null : logs;
 }
 
 async function getSwapLogs(fromBlock, env, opts) {
@@ -1210,7 +1256,8 @@ async function recordSwapBucket(env) {
   // next tick reads from the same block again.
   const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
-  let buys = 0, sells = 0, volWei = 0n, hi = 0, lo = 0;
+  // buy_bnb / sell_bnb (2026-10-09): the BNB each side moved, for the daily market card's buys-vs-sells in dollars.
+  let buys = 0, sells = 0, volWei = 0n, buyWei = 0n, sellWei = 0n, hi = 0, lo = 0;
   // THE BIG TRADES BY NAME (2026-10-05, operator: a $9.5K sell stood in its candle only as "6 sells, 17 BNB in all" once
   // the page's own read of the chain, about an hour, had passed it). Each transaction's swaps of one side are one trade;
   // the ones worth $100 or more are kept with the bucket, the six largest at most: [buy 1/0, BNB, BOBAI, tx, the swap's recipient] — the recipient tells a bot of ours from a trader.
@@ -1227,6 +1274,7 @@ async function recordSwapBucket(env) {
     else if (amount0In > 0n && amount1Out > 0n) sells++;
     else continue;
     volWei += amount1In + amount1Out;
+    if (isBuy) buyWei += amount1In; else sellWei += amount1Out;
     { const k = (log.transactionHash || '') + (isBuy ? ':b' : ':s'), e = byTx.get(k) || { buy: isBuy ? 1 : 0, bnb: 0n, bobai: 0n, tx: log.transactionHash || '', to: '0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase() };
       e.bnb += amount1In + amount1Out; e.bobai += amount0In + amount0Out; byTx.set(k, e); }
     // the swap's own price, BNB per BOBAI: the candle's wick (the bucket's close is the reserves after it)
@@ -1234,7 +1282,7 @@ async function recordSwapBucket(env) {
     if (px > 0 && Number.isFinite(px)) { hi = Math.max(hi, px); lo = lo ? Math.min(lo, px) : px; }
   }
   const pair = await readPairOnchain();
-  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
+  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, buy_bnb: Number(buyWei) / 1e18, sell_bnb: Number(sellWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
   if (pair && pair.bnbUsd > 0) {
     const big = [...byTx.values()].map((e) => [e.buy, Number(e.bnb) / 1e18, Number(e.bobai) / 1e18, e.tx, e.to]).filter((e) => e[1] * pair.bnbUsd >= 100).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (big.length) bucket.big = big;
@@ -1273,6 +1321,159 @@ function ledgerStats(ledger, priceNowBnb) {
     return (priceNowBnb / best.price_bnb - 1) * 100;
   };
   return { hours, buys, sells, trades: buys + sells, vol_bnb: volBnb, h1: change(1), h6: change(6), h24: change(24), first_at: rows[0].t, last_at: rows[rows.length - 1].t };
+}
+
+// ==================== BUY CONTEXT, POSTED EVIDENCE, DAILY MARKET CARD (2026-10-09) ====================
+
+const DAY_MS = 24 * 3600 * 1000;
+// One entry per buy alert that went out (KV `alerted_buys`): {since, buys: [{tx, buyer, usd, ts}]}. Written only in
+// a tick that sent an alert, one write for all of them; a week kept, 300 at most.
+const ALERTED_BUYS_KEY = 'alerted_buys';
+const ALERTED_KEEP_MS = 7 * DAY_MS, ALERTED_MAX = 300;
+export function addAlertedBuys(rec, add, now = Date.now()) {
+  const since = rec && Number.isFinite(rec.since) ? rec.since : now;
+  const buys = [...((rec && Array.isArray(rec.buys)) ? rec.buys : []), ...add].filter((b) => b && now - b.ts < ALERTED_KEEP_MS).slice(-ALERTED_MAX);
+  return { since, buys };
+}
+export const ordinal = (n) => { const t = n % 100, u = n % 10; return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th'); };
+const shortDay = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+// The ledger's own trades of $100 and more, one per transaction: [{tx, buy, bnb, usd, to, t}]. The project's own
+// wallets (IGNORED_WALLETS, read from the swap's recipient) are left out.
+export function ledgerBigTrades(ledger, sinceMs) {
+  const byTx = new Map();
+  for (const r of ledger || []) {
+    if (!r || r.t < sinceMs || !Array.isArray(r.big) || !(r.bnb_usd > 0)) continue;
+    for (const e of r.big) {
+      const to = String(e[4] || '').toLowerCase();
+      if (IGNORED_WALLETS.has(to)) continue;
+      const k = String(e[3] || '').toLowerCase() + (e[0] === 1 ? ':b' : ':s');
+      if (!byTx.has(k)) byTx.set(k, { tx: String(e[3] || ''), buy: e[0] === 1, bnb: e[1], usd: e[1] * r.bnb_usd, to, t: r.t });
+    }
+  }
+  return [...byTx.values()];
+}
+
+// THE BUY ALERT SAYS WHO THIS IS (operator, 2026-10-09). One line under the buyer: what the wallet holds now (read
+// from the chain; a failed read leaves the part out, it never says 0), whether it bought before this week (from the
+// alert record above — said only when a prior alert is on record, and "since <day>" while the record is younger than
+// a week), and whether it is the largest buy the ledger has seen in its window (the ledger keeps seven days; said in
+// days it really covers, never fewer than one). Nothing to say: no line. Pure; pinned by scripts/tg-alerts-regressions.mjs.
+export function buyContextLine({ usd, buyer, tx, now = Date.now(), alerted = null, ledger = [], holdTokens = null, price = 0 }) {
+  const parts = [];
+  if (Number.isFinite(holdTokens) && holdTokens > 0) parts.push(`holds ${formatNumber(holdTokens)} BOBAI${price > 0 ? ` (≈${formatUsd(holdTokens * price)})` : ''}`);
+  const me = String(buyer || '').toLowerCase(), txl = String(tx || '').toLowerCase();
+  const recent = alerted && Array.isArray(alerted.buys) ? alerted.buys.filter((b) => b && String(b.buyer).toLowerCase() === me && String(b.tx).toLowerCase() !== txl && now - b.ts < ALERTED_KEEP_MS) : [];
+  if (recent.length) {
+    const whole = Number.isFinite(alerted.since) && now - alerted.since >= ALERTED_KEEP_MS;
+    parts.push(`${ordinal(recent.length + 1)} buy from this wallet ${whole ? 'this week' : 'since ' + shortDay(alerted.since)}`);
+  }
+  const rows = (ledger || []).filter((r) => r && Number.isFinite(r.t));
+  if (rows.length && usd > 0) {
+    const first = Math.min(...rows.map((r) => r.t));
+    const days = Math.min(7, Math.floor((now - first) / DAY_MS));
+    const others = ledgerBigTrades(rows, now - days * DAY_MS).filter((e) => e.buy && e.tx.toLowerCase() !== txl);
+    if (days >= 1 && others.every((e) => e.usd < usd)) parts.push(days === 1 ? 'largest buy in 24 hours' : `largest buy in ${days} days`);
+  }
+  if (!parts.length) return '';
+  const s = parts.join(' · ');
+  return `\n📊 ${s[0].toUpperCase()}${s.slice(1)}`;
+}
+
+// WAS EVERY BIG BUY TOLD (2026-10-09). The ledger's buys of $100+ over the last day against what the alert scan
+// marked (posted_txs: told, queued for its NFT, or one of ours) and the alert record. Missing = not marked and older
+// than a quarter hour (the alert scan reads every minute; the NFT wait is five). $101, not $100: the ledger prices a
+// trade with the BNB price of its tick, the alert with its own — a buy at $100.40 may fall either side. Pure.
+export function postedBuyEvidence(ledger, marked, pending, now = Date.now()) {
+  const big = ledgerBigTrades(ledger, now - DAY_MS).filter((e) => e.buy && e.usd >= 100);
+  const has = (tx) => marked.has(String(tx).toLowerCase());
+  const missing = big.filter((e) => !has(e.tx) && e.usd >= 101 && e.t <= now - 15 * 60 * 1000).map((e) => e.tx);
+  const ages = (pending || []).map((p) => (now - (p && p.queuedAt)) / 60000).filter(Number.isFinite);
+  return {
+    buys_100_24h: big.length, posted: big.filter((e) => has(e.tx)).length, missing_count: missing.length, missing: missing.slice(0, 5),
+    pending: { count: (pending || []).length, oldest_min: ages.length ? Math.round(Math.max(...ages)) : null },
+  };
+}
+
+// THE DAY ON THE POOL, ONCE A DAY (operator, 2026-10-09). A plain card for the group from the bot's own ledger (the
+// pool's Swap events, read every ten minutes) and the buyback bot's own log: buys and sells by count and dollars, the
+// BNB that went in or out net, the largest buy and sell, and what the bot burned. Every swap counts, the project's
+// own bots included (the ledger cannot tell them apart below $100); the largest two leave ours out. A window the
+// ledger does not cover whole says its hours. Null when there is nothing to report. Pure.
+export function formatMarketCard(ledger, burns, { now = Date.now(), priceUsd = 0, bnbUsd = 0 } = {}) {
+  const rows = (ledger || []).filter((r) => r && r.t >= now - DAY_MS && Number.isFinite(r.buy_bnb) && Number.isFinite(r.sell_bnb)).sort((a, b) => a.t - b.t);
+  if (!rows.length) return null;
+  let buys = 0, sells = 0, buyBnb = 0, sellBnb = 0, buyUsd = 0, sellUsd = 0, lastTo = 0;
+  for (const r of rows) {
+    if (r.to <= lastTo) continue;   // an overlapping re-read is one observation
+    lastTo = r.to;
+    const px = r.bnb_usd > 0 ? r.bnb_usd : bnbUsd;
+    buys += r.buys; sells += r.sells; buyBnb += r.buy_bnb; sellBnb += r.sell_bnb; buyUsd += r.buy_bnb * px; sellUsd += r.sell_bnb * px;
+  }
+  const hours = Math.min(24, Math.round((now - rows[0].t) / 36e5 + 1 / 6));
+  const big = ledgerBigTrades(rows, now - DAY_MS);
+  const top = (buy) => big.filter((e) => e.buy === buy).sort((a, b) => b.usd - a.usd)[0];
+  const tb = top(true), ts = top(false);
+  const tradeLine = (e, word) => e ? `${formatUsd(e.usd)} (${e.bnb.toFixed(3)} BNB) · <a href="https://bscscan.com/tx/${e.tx}">TX</a>` : `no ${word} of $100 or more`;
+  const net = buyBnb - sellBnb;
+  const netLine = Math.abs(net) < 0.0005 ? 'about even' : `${net > 0 ? '+' : '−'}${Math.abs(net).toFixed(3)} BNB${bnbUsd > 0 ? ` (≈${formatUsd(Math.abs(net) * bnbUsd)})` : ''} ${net > 0 ? 'into the pool' : 'out of the pool'}`;
+  let burnLine;
+  if (!Array.isArray(burns)) burnLine = '<i>the bot log did not answer, not counted</i>';
+  else {
+    const day = burns.filter((b) => b && Date.parse(b.time) >= now - DAY_MS);
+    const amt = day.reduce((a, b) => a + (parseFloat(b.bobaiBurned) || 0), 0);
+    burnLine = amt > 0 ? `<b>${formatNumber(amt)} BOBAI</b>${priceUsd > 0 ? ` (≈${formatUsd(amt * priceUsd)})` : ''} in ${day.length} run${day.length === 1 ? '' : 's'}` : 'nothing in this window';
+  }
+  return `📊 <b>$BOBAI — the last ${hours} hours on the pool</b>
+
+📈 Buys: <b>${buys}</b> · ${formatUsd(buyUsd)}
+📉 Sells: <b>${sells}</b> · ${formatUsd(sellUsd)}
+💎 Net: ${netLine}
+💰 Largest buy: ${tradeLine(tb, 'buy')}
+💰 Largest sell: ${tradeLine(ts, 'sell')}
+🔥 Burned by the bot: ${burnLine}
+
+<i>From the pool's own Swap events, read every ten minutes. Every swap counts, the project's bots included; the largest two leave them out.</i>`;
+}
+
+async function postDailyMarketCard(env, now = Date.now()) {
+  const today = new Date(now).toISOString().slice(0, 10);
+  if ((await env.KV.get('market_card_date')) === today) return false;
+  let burns = null;
+  try { const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } }); if (r.ok) burns = await r.json(); } catch { /* said on the card */ }
+  const pair = await readPairOnchain();
+  const text = formatMarketCard(await readSwapLedger(env), burns, { now, priceUsd: pair ? pair.price : 0, bnbUsd: pair ? pair.bnbUsd : 0 });
+  if (!text) { console.log('[MARKET CARD] skipped: the ledger has no buckets with the buy/sell split'); return false; }
+  const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
+  if (!sent || sent.ok !== true) { console.error('[MARKET CARD] Telegram refused:', sent && sent.description); return false; }
+  await env.KV.put('market_card_date', today);
+  return true;
+}
+
+// WHAT /health SHOWS BEYOND THE HEARTBEAT (2026-10-09). A running cron said nothing about whether the buys were
+// told: buy_alerts (postedBuyEvidence; marked = posted_txs plus the alert record), burn_alerts (the dead address
+// against the last burn told, and since when an owed one could not go out), and whether the log scans run degraded
+// (scan_degraded_since: the oldest open episode, null when every scan read whole in the last five minutes). Reads
+// only; one chain read (the dead balance).
+async function healthEvidence(env, now = Date.now()) {
+  const json = async (k) => { try { return await env.KV.get(k, 'json'); } catch { return null; } };
+  const out = {};
+  try {
+    const [ledger, posted, pending, alerted] = await Promise.all([readSwapLedger(env), json('posted_txs'), json('pending_nft_buys'), json(ALERTED_BUYS_KEY)]);
+    const marked = new Set([...(Array.isArray(posted) ? posted : []), ...((alerted && Array.isArray(alerted.buys)) ? alerted.buys.map((b) => b && b.tx) : [])].map((t) => String(t || '').toLowerCase()));
+    out.buy_alerts = postedBuyEvidence(ledger, marked, Array.isArray(pending) ? pending : [], now);
+  } catch (e) { out.buy_alerts = { error: String(e && e.message || e).slice(0, 120) }; }
+  try {
+    const [lastRaw, stuck] = await Promise.all([env.KV.get('last_burned'), env.KV.get('burn_stuck_since')]);
+    let dead = null;
+    try { dead = await getBurnedTokens(); } catch { dead = null; }
+    const last = lastRaw != null && Number.isFinite(parseFloat(lastRaw)) ? parseFloat(lastRaw) : null;
+    out.burn_alerts = { last_burned: last, dead_balance: dead, gap: dead != null && last != null ? dead - last : null, stuck_since: stuck || null };
+  } catch (e) { out.burn_alerts = { error: String(e && e.message || e).slice(0, 120) }; }
+  const cur = await Promise.all(['BUY', 'WHALE'].map((t) => json('logs_cursor:' + t)));
+  const open = cur.filter((c) => c && Number.isFinite(c.at) && now - c.at < 5 * 60 * 1000 && Number.isFinite(c.since)).map((c) => c.since);
+  out.scan_degraded_since = open.length ? new Date(Math.min(...open)).toISOString() : null;
+  out.scan_cursor = { buys: cur[0] || null, whale: cur[1] || null };
+  return out;
 }
 
 // BOBAI/USD for alerts that only need a number. The chain is the source: pair
@@ -1608,8 +1809,10 @@ export async function sendPhotoWithRow(chatId, photo, row, rest, retry = true) {
 
 // `uncapped` is the preview's alone: it draws every brain whatever the room,
 // to show what Telegram does with a caption past its limit.
+// `ctxLine` (2026-10-09): buyContextLine's one line under the buyer. It is part of `rest`, so the brain row is sized
+// with it in — the count stays right; only past the caption's room does the row stop earlier.
 let lastPhotoRefusal = null, lastCaption = null;
-async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID, uncapped = false) {
+async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID, uncapped = false, ctxLine = '') {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
   const { icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
@@ -1619,7 +1822,7 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID,
 🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
 💎 ${bnbAmount.toFixed(4)} BNB <b>(${formatUsd(usdValue)})</b>
 💵 Price: $${pricePerToken.toFixed(8)}
-👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>${nftLine}
+👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>${ctxLine}${nftLine}
 
 🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
@@ -4047,8 +4250,9 @@ export default {
         // The date each daily post last went out. A running cron says nothing
         // about them: the whale recap was silent for six days in September
         // 2026 under a heartbeat that never missed.
-        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date') },
+        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date'), market_card: await env.KV.get('market_card_date') },
         webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
+        ...(await healthEvidence(env)),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
 
@@ -4073,7 +4277,9 @@ export default {
       const nft = body.nft === false ? '' : '\n🎁 +1 NFT <b>#1925</b> · 🦑 <b>KRAKEN</b> × 🩷 Legendary · 1925/1925';
       const price = 0.00023, bnbUsd = 780;
       const sent = await postBuyAlert({ bnbAmount: usd / bnbUsd, bobaiAmount: usd / price, usdValue: usd, buyer: '0x000000000000000000000000000000000000dEaD', txHash: '0x' + '0'.repeat(64) },
-        '0.00', nft + '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID, body.uncapped === true);
+        '0.00', nft + '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID, body.uncapped === true,
+        // the longest context line a real alert carries (2026-10-09), so the preview measures the same room
+        body.context === false ? '' : '\n📊 Holds 12.34M BOBAI (≈$2.8K) · 12th buy from this wallet this week · largest buy in 7 days');
       return new Response(JSON.stringify({ ok: !!sent, went_out_as: sent || null, photo_refused: lastPhotoRefusal, caption: lastCaption, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
@@ -4726,6 +4932,15 @@ export default {
       }
     }
 
+    // === DAILY MARKET CARD (16:00 UTC = 18:00 CEST, public, 2026-10-09) ===
+    // Away from the morning posts (DeFi card 05:00, whale recap 06:00 internal, health 09:10). Asked at minute 7 of
+    // each tenth minute until 18:57, so a refused send or a deploy mid-hour still posts that afternoon; the date flag
+    // (`market_card_date`, written only once Telegram took it) keeps it to one.
+    if (tick.getUTCMinutes() % 10 === 7 && tick.getUTCHours() >= 16 && tick.getUTCHours() < 19) {
+      try { await postDailyMarketCard(env, tick.getTime()); }
+      catch (e) { console.error('[MARKET CARD ERROR]', e.message || e); }
+    }
+
     // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===
     // The window runs to 08:59, like the LP card's: a recap that cannot go out
     // at 06:00 (Telegram down, a deploy mid-hour) still goes out that morning,
@@ -5166,6 +5381,24 @@ export default {
     let alertsThisRun = 0;
     const MAX_ALERTS_PER_RUN = 5;
 
+    // The buy alert's context line (2026-10-09): the alert record and the ledger are read once, and only in a tick
+    // that alerts; the buyer's holding is read per alert (strict: a failed read leaves that part out). The record is
+    // written once at the end of the tick, and only if an alert went out.
+    let alertedRec, ledgerCache;
+    const alertedNow = [];
+    const loadAlerted = async () => { if (alertedRec === undefined) alertedRec = await env.KV.get(ALERTED_BUYS_KEY, 'json').catch(() => null); return alertedRec; };
+    const buyCtx = async (trade) => {
+      try {
+        await loadAlerted();
+        if (ledgerCache === undefined) ledgerCache = await readSwapLedger(env);
+        let hold = null;
+        try { hold = Number(await getBobaiBalanceStrict(trade.buyer)) / 1e18; } catch { hold = null; }
+        return buyContextLine({ usd: trade.usdValue, buyer: trade.buyer, tx: trade.txHash, alerted: (alertedRec || alertedNow.length) ? addAlertedBuys(alertedRec, alertedNow) : null,
+          ledger: ledgerCache, holdTokens: hold, price: trade.bobaiAmount > 0 ? trade.usdValue / trade.bobaiAmount : 0 });
+      } catch (e) { console.error('[BUY CTX]', e.message || e); return ''; }
+    };
+    const noteAlerted = (trade) => alertedNow.push({ tx: trade.txHash, buyer: String(trade.buyer).toLowerCase(), usd: Math.round(trade.usdValue * 100) / 100, ts: Date.now() });
+
     // --- Phase 1: drain pending queue ----------------------------------------
     const nowMs = Date.now();
     const stillPending = [];
@@ -5173,14 +5406,15 @@ export default {
       if (alertsThisRun >= MAX_ALERTS_PER_RUN) { stillPending.push(p); continue; }
       const drop = dropByBuyTx.get(String(p.txHash || '').toLowerCase());
       if (drop) {
-        const sent = await postBuyAlert(alertTrade(p, drop), await burnedPct(), nftLineFromDrop(drop));
-        if (sent) { alertsThisRun++; console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
+        const t = alertTrade(p, drop);
+        const sent = await postBuyAlert(t, await burnedPct(), nftLineFromDrop(drop), TG_CHAT_ID, false, await buyCtx(t));
+        if (sent) { alertsThisRun++; noteAlerted(t); console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
         else { stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
         continue;
       }
       if (nowMs - p.queuedAt > NFT_PENDING_TIMEOUT_MS) {
-        const sent = await postBuyAlert(p, await burnedPct(), nftLineTimeout());
-        if (sent) { alertsThisRun++; console.log('[BUY] timeout-alert', p.txHash); }
+        const sent = await postBuyAlert(p, await burnedPct(), nftLineTimeout(), TG_CHAT_ID, false, await buyCtx(p));
+        if (sent) { alertsThisRun++; noteAlerted(p); console.log('[BUY] timeout-alert', p.txHash); }
         else { stillPending.push(p); console.error('[BUY] timeout-alert send failed, will retry', p.txHash); }
         continue;
       }
@@ -5249,8 +5483,8 @@ export default {
               console.log('[BUY] alert cap reached, sold-out alert left for the next cron', txHash);
             } else if (soldOut) {
               // No mint will happen — fire immediately with sold-out line
-              const sent = await postBuyAlert(tradeBase, await burnedPct(), nftLineSoldOut(tierIdx));
-              if (sent) { postedSet.add(txHash); alertsThisRun++; }
+              const sent = await postBuyAlert(tradeBase, await burnedPct(), nftLineSoldOut(tierIdx), TG_CHAT_ID, false, await buyCtx(tradeBase));
+              if (sent) { postedSet.add(txHash); alertsThisRun++; noteAlerted(tradeBase); }
               else console.error('[BUY] sold-out alert NOT sent, will retry next cron', txHash);
             } else {
               // Queue for matching with mint-worker drop — alert fires once #tokenId known
@@ -5273,6 +5507,10 @@ export default {
       const postedArr = [...postedSet].slice(-100);
       await env.KV.put('posted_txs', JSON.stringify(postedArr));
     }
+    if (alertedNow.length) {
+      try { await env.KV.put(ALERTED_BUYS_KEY, JSON.stringify(addAlertedBuys(await loadAlerted(), alertedNow))); }
+      catch (e) { console.error('[ALERTED BUYS]', e.message || e); }
+    }
 
     // === BURN ALERTS ===
     // Check if burned amount increased since last check (1 KV read + RPC calls)
@@ -5289,9 +5527,14 @@ export default {
       // Only alert if burn increased by at least 1000 BOBAI (avoid spam from rounding)
       if (currentBurned > lastBurned + 1000) {
         const sent = await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice);
+        // A BURN THAT CANNOT BE TOLD IS WRITTEN DOWN ONCE (2026-10-09): `burn_stuck_since` is set the first tick an
+        // owed alert does not go out (no price, Telegram refused) and removed once one does — a write only on a
+        // failure and on the recovery. /health serves it; the health check is red when it is over an hour old.
+        const stuckSince = await env.KV.get('burn_stuck_since');
         if (sent) {
           await env.KV.put('last_burned', currentBurned.toString());
-        }
+          if (stuckSince) await env.KV.delete('burn_stuck_since');
+        } else if (!stuckSince) await env.KV.put('burn_stuck_since', new Date().toISOString());
       }
     } catch (err) {
       console.error('[BURN BOT ERROR]', err.message || err);

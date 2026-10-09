@@ -52,10 +52,10 @@ body.brainpage{margin:0;min-height:100vh;min-height:100svh;color:var(--bp-text);
 .bp-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .bw-n{font:800 11px var(--bp-mono);color:var(--bp-gold);letter-spacing:.1em;margin-bottom:2px}
 .bw-go{position:absolute;top:8px;right:12px;font-style:normal;color:var(--bp-muted);font-size:13px}
-.bw-k{font:700 9px var(--bp-mono);letter-spacing:.2em;color:var(--bp-muted)}
+.bw-k{font:700 10px var(--bp-mono);letter-spacing:.2em;color:var(--bp-muted)}
 .bw-t{font:700 14px/1.2 'Space Grotesk',sans-serif}
 .bw-v{font:800 18px 'Space Grotesk',sans-serif;color:var(--bp-gold);font-variant-numeric:tabular-nums;min-height:1.1em;margin-top:4px;text-shadow:0 0 18px rgba(240,185,11,.3)}
-.bw-l{font:600 9.5px var(--bp-mono);color:var(--bp-muted);letter-spacing:.06em}
+.bw-l{font:600 10.5px var(--bp-mono);color:var(--bp-muted);letter-spacing:.06em}
 
 /* ---- a window, open: glass like the terminal, over it ---- */
 .bw-win{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:3vh 3vw;background:rgba(3,2,3,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .2s}
@@ -330,6 +330,7 @@ body.bp-winon{overflow:hidden}
 .cv-sup-bar i:last-child{flex:1;background:linear-gradient(90deg,rgba(240,185,11,.5),rgba(240,185,11,.2))}
 .cv-sup-k{display:flex;justify-content:space-between;margin-top:5px;font:600 9px ui-monospace,monospace;color:#a0a2c0}
 .cv-sup-v{display:flex;justify-content:space-between;margin-top:8px;font:700 13px 'Space Grotesk',sans-serif;color:#f3efe6}
+.cv-sup-v .cv-usd{font:600 .72em var(--bp-mono);color:var(--bp-muted)}
 /* ---- a tall desktop (2026-09-28, 1920x1080: "the side cards have big empty gaps"): the cards grow with the screen but
    their pictures stayed phone-sized; each picture and its figure now grow with the height, the phone layouts untouched ---- */
 @media (min-aspect-ratio:5/4) and (min-height:860px) and (min-width:1200px){

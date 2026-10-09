@@ -1157,7 +1157,7 @@ function fillLpPortfolio(){
     const tiles =
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
-      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost ($BOBAI held, fees)' : null].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost ($BOBAI held, fees)' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
     const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
     const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'

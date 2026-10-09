@@ -167,6 +167,101 @@ const dailyOnTimeHolds = () => {
   return pins.every(([got, want]) => got === want);
 };
 
+// THE BOT TOLD WHAT HAPPENED (2026-10-09). Read from the Telegram bot's /health (buy_alerts, burn_alerts): every buy
+// of $100+ in the last day that the ledger saw is marked by the alert scan (told, queued for its NFT, or one of the
+// project's own wallets — those are marked when skipped); no buy waits for its NFT past a quarter hour (the bot tells
+// it after five minutes either way); and the dead address does not hold 1,000+ BOBAI more than the last burn told for
+// over an hour. A bot that does not report it is red: the check cannot be green on silence. Pure; pinned below.
+export function tgEvidenceVerdicts(j, now = Date.now()) {
+  const out = [];
+  const add = (name, good, detail) => out.push({ name, good: !!good, detail });
+  const ba = j && j.buy_alerts;
+  if (!ba || ba.error) {
+    add('every $100+ buy of the last 24 h was posted', false, ba ? `the bot could not read it: ${ba.error}` : 'the bot does not report buy_alerts');
+    add('no buy alert waits for its NFT longer than 15 min', false, 'the bot does not report its queue');
+  } else {
+    const short = (t) => String(t).slice(0, 10) + '…';
+    add('every $100+ buy of the last 24 h was posted', ba.missing_count === 0,
+      `${ba.posted} of ${ba.buys_100_24h} marked${ba.missing_count ? ` — ${ba.missing_count} never told: ${(ba.missing || []).map(short).join(', ')}` : ''}`);
+    const old = ba.pending && ba.pending.oldest_min;
+    add('no buy alert waits for its NFT longer than 15 min', !(old > 15), ba.pending && ba.pending.count ? `${ba.pending.count} waiting, the oldest ${old} min` : 'nothing waiting');
+  }
+  const bu = j && j.burn_alerts;
+  if (!bu || bu.error) add('burn alerts are not stuck', false, bu ? `the bot could not read it: ${bu.error}` : 'the bot does not report burn_alerts');
+  else if (bu.gap == null) add('burn alerts are not stuck', false, `the dead balance or the last burn told could not be read (last_burned ${bu.last_burned})`);
+  else if (bu.gap < 1000) add('burn alerts are not stuck', true, `dead address ${Math.round(bu.gap).toLocaleString('en-US')} BOBAI above the last burn told`);
+  else {
+    const h = bu.stuck_since ? (now - Date.parse(bu.stuck_since)) / 36e5 : null;
+    add('burn alerts are not stuck', !(h != null && h >= 1), `${Math.round(bu.gap).toLocaleString('en-US')} BOBAI burned and not told${h == null ? ' — the bot meets it on its next tick' : `, could not go out for ${fmtAge(h)}`}`);
+  }
+  return out;
+}
+const tgEvidenceHolds = () => {
+  const now = Date.parse('2026-10-09T09:10:00Z');
+  const v = (j) => tgEvidenceVerdicts(j, now).map((x) => x.good).join();
+  const fine = { buy_alerts: { buys_100_24h: 4, posted: 4, missing_count: 0, missing: [], pending: { count: 0, oldest_min: null } }, burn_alerts: { gap: 12, last_burned: 1, stuck_since: null } };
+  return v(fine) === 'true,true,true'
+    && v({ ...fine, buy_alerts: { ...fine.buy_alerts, posted: 3, missing_count: 1, missing: ['0xabc'] } }) === 'false,true,true'
+    && v({ ...fine, buy_alerts: { ...fine.buy_alerts, pending: { count: 1, oldest_min: 22 } } }) === 'true,false,true'
+    && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: '2026-10-09T07:00:00Z' } }) === 'true,true,false'
+    && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: '2026-10-09T08:50:00Z' } }) === 'true,true,true'
+    && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: null } }) === 'true,true,true'
+    && v({ ok: true }) === 'false,false,false';
+};
+
+// FIVE WALLETS KEEP 808.41 BOBAI (operator, 2026-10-08): the buyback wallet 1ce (worker/index.js KEEP_TOKENS), the
+// creator wallet d38 (add-liquidity-safe.js KEEP_BOBAI), the NFT relayer, the Giggle pot and the operator's wallet.
+// "Exactly" to the hundredth: the operator's wallet carries 0.000000003 BOBAI of dust from a tax rounding, which is
+// not a broken rule; anything a cent off is. A transient while a burn or a liquidity run is mid-way recovers within
+// the minute the morning run waits before asking again. Pure; pinned below.
+export const KEEP_808_WALLETS = {
+  'buyback 0xdeFC…01ce': '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
+  'creator 0x15Ba…3d38': '0x15Ba17075ef5E0736292b030e3715d9100fe3d38',
+  'NFT relayer 0xBFB4…ddb2': '0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2',
+  'Giggle pot 0x5E41…D105': '0x5E4102520A71B2AA18a1208330d4848dea4BD105',
+  'operator 0x5c82…dc3C': '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C',
+};
+const KEEP_WEI = 80841n * 10n ** 16n, KEEP_TOL_WEI = 10n ** 16n;
+export function keepVerdict(label, wei) {
+  if (typeof wei !== 'bigint') return { name: `${label} holds 808.41 BOBAI`, good: false, detail: 'could not be read' };
+  const diff = wei - KEEP_WEI, off = diff < 0n ? -diff : diff;
+  const shown = (Number(wei) / 1e18).toLocaleString('en-US', { maximumFractionDigits: 4 });
+  return { name: `${label} holds 808.41 BOBAI`, good: off <= KEEP_TOL_WEI, detail: off <= KEEP_TOL_WEI ? `${shown} BOBAI` : `${shown} BOBAI — ${diff < 0n ? 'below' : 'above'} the 808.41 it keeps` };
+}
+const keepHolds = () => keepVerdict('x', 808410000002992638762n).good === true && keepVerdict('x', 808410000000000000000n).good === true
+  && keepVerdict('x', 0n).good === false && keepVerdict('x', 26792110000000000000000n).good === false && keepVerdict('x', 808390000000000000000n).good === false
+  && keepVerdict('x', null).good === false;
+export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org') {
+  const client = createPublicClient({ chain: bsc, transport: http(rpc) });
+  const abi = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
+  return Promise.all(Object.entries(KEEP_808_WALLETS).map(async ([label, a]) => {
+    try { return keepVerdict(label, await client.readContract({ address: '0x245c386dcfed896f5c346107596141e5edcbffff', abi, functionName: 'balanceOf', args: [a] })); }
+    catch { return keepVerdict(label, null); }
+  }));
+}
+
+// THE HOURLY LIGHT LOOK (2026-10-09). The morning run is once a day; a bot that stops at 09:30 was unseen for a day.
+// Every hour the health worker asks only the three things that silence the channel — the Telegram bot's heartbeat,
+// whether it can post, and the buyback bot's heartbeat — and speaks only when one is red (asked twice, like the
+// morning run). Pure over the two /health answers; runLight fetches them.
+export function lightVerdicts(tg, logs, now = Date.now()) {
+  const out = [];
+  const add = (name, good, detail) => out.push({ area: 'Bots', name, good: !!good, detail });
+  if (!tg || !tg.ok) add('telegram bot answers', false, tg && tg.error ? tg.error : 'no answer');
+  else {
+    add('telegram bot cron alive', tg.cron_alive === true, typeof tg.age_seconds === 'number' ? `last tick ${fmtAge(tg.age_seconds / 3600)} ago` : 'no heartbeat recorded');
+    const se = tg.last_send_error, seAge = se && se.at ? (now - Date.parse(se.at)) / 36e5 : null, seRed = !!(se && se.lasting && seAge != null && seAge < 24);
+    add('telegram bot can post', tg.channel_configured === true && !seRed, !tg.channel_configured ? 'BOT_TOKEN or chat id missing' : seRed ? `Telegram refused ${se.method} ${fmtAge(seAge)} ago: ${se.description}` : 'yes');
+  }
+  const b = logs && logs.buyback ? (now - Date.parse(logs.buyback)) / 36e5 : null;
+  add('buyback bot ran recently', b != null && b < 1, b == null ? 'no heartbeat' : `last run ${fmtAge(b)} ago`);
+  return out;
+}
+export async function runLight({ tgFetch = fetch } = {}) {
+  const [t, l] = await Promise.all([getJson(`${TG_BOT}/health`, undefined, tgFetch), getJson(`${LOGS}/health`)]);
+  return lightVerdicts(t.json || (t.error ? { error: t.error } : null), l.json || null);
+}
+
 // `rpc`: explicit, so the gas section reads the same node the bots spend
 // against. `tgFetch`: how to reach the Telegram bot — a worker cannot fetch a
 // sibling's workers.dev address (it gets a 404 from Cloudflare's own router),
@@ -178,6 +273,8 @@ const ok = (area, name, good, detail = '') => results.push({ area, name, good, d
 ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
 ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a run reads red, tax that just arrived does not)', buybackVerdictHolds());
+ok('Health', 'the told-buys / burn-alert rules pass their own pins (an untold buy, a stuck queue, a burn stuck an hour read red)', tgEvidenceHolds());
+ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is not, an unread wallet is red)', keepHolds());
 
 // ---- the bots -------------------------------------------------------------
 {
@@ -230,7 +327,15 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
     const d = j.daily || {};
     ok('Bots', 'whale recap went out (internal, 06:00 UTC)', dailyOnTime(d.whale_recap, 9), `last sent ${d.whale_recap || 'never'}`);
     ok('Bots', 'DeFi card went out (channel, 05:00 UTC)', dailyOnTime(d.lp_card, 8), `last sent ${d.lp_card || 'never'}`);
+    // 2026-10-09: the public 24 h market card (16:00-18:59 UTC); an older bot that does not name it is not asked
+    if ('market_card' in d) ok('Bots', 'market card went out (channel, 16:00 UTC)', dailyOnTime(d.market_card, 19), `last sent ${d.market_card || 'never'}`);
+    for (const v of tgEvidenceVerdicts(j)) ok('Bots', v.name, v.good, v.detail);
+    // informational: a degraded log scan walks on from its cursor (2026-10-09); said, not red
+    ok('Bots', 'telegram bot log scans read whole (informational)', true, j.scan_degraded_since ? `degraded since ${j.scan_degraded_since}, walking from the cursor` : 'not degraded');
   }
+}
+{
+  for (const v of await readKeepBalances(RPC)) ok('Bots', v.name, v.good, v.detail);
 }
 {
   const r = await getJson(`${LOGS}/logs/burns.json`);

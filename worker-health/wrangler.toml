@@ -4,8 +4,10 @@ compatibility_date = "2025-01-01"
 
 # 09:10 UTC: both daily posts have closed their windows by then (the DeFi card
 # at 08:00, the whale recap at 09:00), so "did it go out today" has an answer.
+# Hourly at :40 (2026-10-09): the light look (Telegram bot heartbeat + can post, buyback heartbeat), silent
+# when green. index.js tells the two crons apart by event.cron (LIGHT_CRON).
 [triggers]
-crons = ["10 9 * * *"]
+crons = ["10 9 * * *", "40 * * * *"]
 
 # The Telegram bot by binding, not by address: a worker that fetches a sibling's
 # workers.dev host gets a 404 from Cloudflare's own router.
@@ -14,3 +16,4 @@ binding = "TG"
 service = "bobai-tg-bot"
 
 # Secret: BROADCAST_SECRET (the same one the bot's /broadcast asks for).
+# Optional (2026-10-09, not set yet): RESEND_API_KEY + ALERT_EMAIL_TO, the e-mail way when /broadcast fails.

@@ -247,7 +247,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "health-factor"
+      ]
     },
     {
       "id": 302258,
@@ -299,7 +302,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "grid-trading"
+      ]
     },
     {
       "id": 304493,
@@ -350,7 +356,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 304494,
@@ -402,7 +411,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "rebalancing"
+      ]
     },
     {
       "id": 310460,
@@ -454,7 +466,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 113284,
@@ -20706,7 +20721,11 @@
         "negotiate",
         "notify_funded"
       ],
-      "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json"
+      "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "quoted_for": [
+        "rebalancing",
+        "yield-optimization"
+      ]
     },
     {
       "id": 266933,
@@ -20805,7 +20824,10 @@
         "negotiate",
         "notify_funded"
       ],
-      "agent_card": "https://bnb-guardian.172-104-171-139.nip.io/.well-known/agent-card.json"
+      "agent_card": "https://bnb-guardian.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "quoted_for": [
+        "health-factor"
+      ]
     },
     {
       "id": 268285,
@@ -22142,7 +22164,10 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "quoted_for": [
+        "rebalancing"
+      ]
     },
     {
       "id": 5249,
@@ -25389,6 +25414,9 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "rebalancing"
       ]
     },
     {
@@ -25449,6 +25477,9 @@
         "Portfolio rebalancing plan",
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "rebalancing"
       ]
     },
     {
@@ -25472,6 +25503,9 @@
         "Grid trading ladder",
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "grid-trading"
       ]
     },
     {
@@ -25495,6 +25529,9 @@
         "Yield allocation across pools",
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "yield-optimization"
       ]
     },
     {
@@ -25518,6 +25555,9 @@
         "Position health report",
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "health-factor"
       ]
     },
     {
@@ -25540,6 +25580,9 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ],
+      "quoted_for": [
+        "grid-trading"
       ]
     },
     {
@@ -26022,7 +26065,10 @@
         "Live pancakeswap-v3 read",
         "ERC-8183 quote"
       ],
-      "description": "Lay out a symmetric buy/sell grid inside a price range. Deterministic and hireable, settled through real ERC-8183 escrow."
+      "description": "Lay out a symmetric buy/sell grid inside a price range. Deterministic and hireable, settled through real ERC-8183 escrow.",
+      "quoted_for": [
+        "grid-trading"
+      ]
     },
     {
       "id": 340456,
@@ -26038,7 +26084,10 @@
         "Live venus read",
         "ERC-8183 quote"
       ],
-      "description": "Rank vaults by net APY and allocate capital within per-vault caps. Deterministic and hireable, settled through real ERC-8183 escrow."
+      "description": "Rank vaults by net APY and allocate capital within per-vault caps. Deterministic and hireable, settled through real ERC-8183 escrow.",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 340458,
@@ -26054,7 +26103,10 @@
         "Live venus read",
         "ERC-8183 quote"
       ],
-      "description": "Compute a loan's health factor and the price move that would liquidate it. Deterministic and hireable, settled through real ERC-8183 escrow."
+      "description": "Compute a loan's health factor and the price move that would liquidate it. Deterministic and hireable, settled through real ERC-8183 escrow.",
+      "quoted_for": [
+        "health-factor"
+      ]
     },
     {
       "id": 340460,
@@ -26070,7 +26122,10 @@
         "Live pancakeswap-v3 read",
         "ERC-8183 quote"
       ],
-      "description": "Compare current weights with targets and list the trades that close the drift. Deterministic and hireable, settled through real ERC-8183 escrow."
+      "description": "Compare current weights with targets and list the trades that close the drift. Deterministic and hireable, settled through real ERC-8183 escrow.",
+      "quoted_for": [
+        "rebalancing"
+      ]
     },
     {
       "id": 340463,
@@ -26100,7 +26155,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
       ],
-      "description": "ERC-8183 seller agent (hevorebalance-agent) — negotiate + notify_funded over A2A."
+      "description": "ERC-8183 seller agent (hevorebalance-agent) — negotiate + notify_funded over A2A.",
+      "quoted_for": [
+        "rebalancing"
+      ]
     },
     {
       "id": 340502,
@@ -26130,7 +26188,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
       ],
-      "description": "ERC-8183 seller agent (hevogrid-agent) — negotiate + notify_funded over A2A."
+      "description": "ERC-8183 seller agent (hevogrid-agent) — negotiate + notify_funded over A2A.",
+      "quoted_for": [
+        "grid-trading"
+      ]
     },
     {
       "id": 340532,
@@ -26145,7 +26206,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
       ],
-      "description": "ERC-8183 seller agent (hevoyield-agent) — negotiate + notify_funded over A2A."
+      "description": "ERC-8183 seller agent (hevoyield-agent) — negotiate + notify_funded over A2A.",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 340533,
@@ -26350,7 +26414,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded"
       ],
-      "description": "Plans a constrained grid on BNB Smart Chain: geometrically spaced levels inside the bounds you set, never at or below your stop, allocations that sum within your capital, and the fee drag stated in full. Non-custodial: it computes, it never"
+      "description": "Plans a constrained grid on BNB Smart Chain: geometrically spaced levels inside the bounds you set, never at or below your stop, allocations that sum within your capital, and the fee drag stated in full. Non-custodial: it computes, it never",
+      "quoted_for": [
+        "grid-trading"
+      ]
     },
     {
       "id": 341555,
@@ -26367,7 +26434,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded"
       ],
-      "description": "Routes idle stablecoins on BNB Smart Chain by NET APR at your size — gross rate minus gas, swap and exit costs — with every rate sourced and timestamped, and an explicit decline when nothing beats what you already earn. Non-custodial: it co"
+      "description": "Routes idle stablecoins on BNB Smart Chain by NET APR at your size — gross rate minus gas, swap and exit costs — with every rate sourced and timestamped, and an explicit decline when nothing beats what you already earn. Non-custodial: it co",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 341556,
@@ -26384,7 +26454,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded"
       ],
-      "description": "Reads a Venus Core position on BNB Smart Chain and reports the health factor to three decimals, the per-market collateral factor, the liquidation price, and the exact repayment that restores a requested health factor. Non-custodial: it comp"
+      "description": "Reads a Venus Core position on BNB Smart Chain and reports the health factor to three decimals, the per-market collateral factor, the liquidation price, and the exact repayment that restores a requested health factor. Non-custodial: it comp",
+      "quoted_for": [
+        "health-factor"
+      ]
     },
     {
       "id": 341557,
@@ -26706,7 +26779,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded"
       ],
-      "description": "Measures the yield BNB Chain venues actually paid over a trailing window, from on-chain exchange-rate growth, and compares it with what each venue quotes today. Covers Venus supply markets and BNB liquid staking (slisBNB, ankrBNB). Non-cust"
+      "description": "Measures the yield BNB Chain venues actually paid over a trailing window, from on-chain exchange-rate growth, and compares it with what each venue quotes today. Covers Venus supply markets and BNB liquid staking (slisBNB, ankrBNB). Non-cust",
+      "quoted_for": [
+        "yield-optimization"
+      ]
     },
     {
       "id": 361758,
@@ -26773,7 +26849,10 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
       ],
-      "description": "Plinth keeper (plinthkeeper-agent): keeps Plinth's capital-protected bStock savings vaults on BSC mainnet. Rebalances around the clock, cuts risk before earnings and US macro releases, and pulls the safe leg out of unhealthy lending markets"
+      "description": "Plinth keeper (plinthkeeper-agent): keeps Plinth's capital-protected bStock savings vaults on BSC mainnet. Rebalances around the clock, cuts risk before earnings and US macro releases, and pulls the safe leg out of unhealthy lending markets",
+      "quoted_for": [
+        "rebalancing"
+      ]
     },
     {
       "id": 1,

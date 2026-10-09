@@ -901,6 +901,9 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     runs_with_a_position: series.filter((p) => p.in_range === true || p.in_range === false).length,
     days_in_range: series.filter((p) => p.in_range === true).length,
     days_out_of_range: series.filter((p) => p.in_range === false).length,
+    // they count runs, not days (2026-10-09: 128 runs over 36 days read "108 days in range"); the old names stay for readers
+    runs_in_range: series.filter((p) => p.in_range === true).length,
+    runs_out_of_range: series.filter((p) => p.in_range === false).length,
     days_it_acted: series.filter((p) => p.acted).length,
     // The share of TIME in range, from the ten-minute tape (2026-09-24, D3):
     // the run counts above lean high, a run happens when the agent acts.
@@ -2238,8 +2241,10 @@ ${pageTail}`;
       if (v) {
         try {
           const rec = await readAgentRecord(env);
-          const ticks = rec?.last?.steps?.rebalance?.ticks || rec?.last?.steps?.increase?.ticks || null;
-          v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
+          // after a re-set the step's ticks are the range it LEFT; new_ticks is the one standing (2026-10-09, as lpNow)
+          const rbC = rec?.last?.steps?.rebalance, ticks = (rbC?.acted && !rbC?.error && rbC?.new_ticks) || rbC?.ticks || rec?.last?.steps?.increase?.ticks || null;
+          const pos = (rbC?.acted && rbC?.new_position) || rbC?.position || rec?.last?.steps?.increase?.position || null;
+          v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks), { position: pos });
           v.resets = resetLosses(rec, { bnbUsd: await bnbUsd().catch(() => null) });
         } catch { v.calibration = null; }
       }

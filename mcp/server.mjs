@@ -66,7 +66,10 @@ async function fetchJson(path) {
     // The REST mirror answers a refusal in plain words ({"error": "..."}); that
     // sentence is the answer, not "HTTP 400" (2026-10-05).
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error ? String(body.error) : body ? JSON.stringify(body) : `GET ${path} -> HTTP ${res.status}`);
+    // …with its code and hint (2026-10-09), carried on to the isError result below.
+    const e = new Error(body?.error ? String(body.error) : body ? JSON.stringify(body) : `GET ${path} -> HTTP ${res.status}`);
+    if (body?.code) { e.code = String(body.code); e.hint = body.hint ? String(body.hint) : undefined; }
+    throw e;
   }
   return res.json();
 }
@@ -150,6 +153,7 @@ function getPrompt(name, args) {
   throw new Error('Unknown prompt: ' + name);
 }
 
+const STRUCTURED = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route']);
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
@@ -168,9 +172,13 @@ async function handle(req) {
       // rather than a JSON-RPC error many clients swallow.
       try {
         const out = await runTool(params?.name, params?.arguments || {});
-        return send(ok(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] }));
+        // The JSON itself beside the text for the three trading reads (2026-10-09), as on the hosted server.
+        return send(ok(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }],
+          ...(STRUCTURED.has(params?.name) && out && typeof out === 'object' ? { structuredContent: out } : {}) }));
       } catch (e) {
-        return send(ok(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true }));
+        const msg = e.message || String(e);
+        if (!e.code || typeof e.code !== 'string') return send(ok(id, { content: [{ type: 'text', text: msg }], isError: true }));
+        return send(ok(id, { content: [{ type: 'text', text: `${msg}\n\ncode: ${e.code}${e.hint ? ` — ${e.hint}` : ''}` }], structuredContent: { error: msg, code: e.code, hint: e.hint ?? null }, isError: true }));
       }
     }
     if (method === 'resources/list') return send(ok(id, { resources: RESOURCES }));

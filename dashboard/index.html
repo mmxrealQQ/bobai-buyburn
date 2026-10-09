@@ -888,7 +888,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">17 files &middot; 6,893 lines &middot; 0.2 MB</span>
+          <span class="lib-m">17 files &middot; 6,896 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -957,7 +957,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,253 lines &middot; 85 KB</span>
+          <span class="lib-m">12 files &middot; 5,496 lines &middot; 91 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1029,7 +1029,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,061 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 7,144 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1144,7 +1144,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 2,548 lines &middot; 70 KB</span>
+          <span class="lib-m">5 files &middot; 2,675 lines &middot; 74 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1167,7 +1167,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">48 files &middot; 16,087 lines &middot; 0.3 MB</span>
+          <span class="lib-m">48 files &middot; 16,141 lines &middot; 0.3 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1190,7 +1190,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,365 lines &middot; 92 KB</span>
+          <span class="lib-m">7 files &middot; 4,539 lines &middot; 95 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1374,10 +1374,10 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=102" defer></script>
+<script src="app.js?v=103" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1791523016">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791526653">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1428,7 +1428,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1791523016'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1791526653'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

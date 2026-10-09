@@ -22,7 +22,7 @@
 //
 //   POST /run            (X-Broadcast-Secret)  run now, answer as JSON
 //   POST /run?notify=1   (X-Broadcast-Secret)  … and send the Telegram message
-import { runHealth, readBuybackLook, buybackWalletVerdict, msToSecondLook } from '../scripts/lib/health-checks.mjs';
+import { runHealth, runLight, readBuybackLook, buybackWalletVerdict, msToSecondLook } from '../scripts/lib/health-checks.mjs';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -112,18 +112,69 @@ async function buybackSecondLook(env, prior, { notify }) {
   }).catch((e) => console.error('[HEALTH] the second-look message did not go out:', e && e.message || e));
 }
 
+// THE HOURLY LIGHT RUN (2026-10-09). Cron LIGHT_CRON: the Telegram bot's heartbeat and whether it can post, and the
+// buyback bot's heartbeat (lightVerdicts). Silent when green — the morning message is the daily proof of life; this
+// one exists for the hours between. Red is asked twice, a minute apart, as in the morning. The message goes through
+// the bot's /broadcast; when that fails (the bot is what broke), an e-mail through Resend is the second way, if its
+// secrets are set (RESEND_API_KEY, ALERT_EMAIL_TO); without them it is logged and skipped.
+export const LIGHT_CRON = '40 * * * *';
+export function renderLightMessage(failing, at) {
+  return [`🚨 <b>Health ${at} UTC</b> · hourly look: ${failing.length} FAILING (twice, a minute apart)`, '',
+    ...failing.map((r) => `❌ <b>${esc(r.area)}</b> · ${esc(r.name)}${r.detail ? `\n     <i>${esc(String(r.detail).slice(0, 160))}</i>` : ''}`)].join('\n');
+}
+async function sendOperator(env, text) {
+  const r = await env.TG.fetch('https://tg/broadcast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET || '' },
+    body: JSON.stringify({ target: 'operator', text }),
+  }).then((x) => x.json()).catch((e) => ({ ok: false, error: e && e.message || String(e) }));
+  return !!(r && r.ok === true && r.message_id != null);
+}
+export async function emailFallback(env, text, doFetch = fetch) {
+  if (!env.RESEND_API_KEY || !env.ALERT_EMAIL_TO) { console.error('[HEALTH] fallback skipped: RESEND_API_KEY / ALERT_EMAIL_TO not set'); return 'not configured'; }
+  const plain = String(text).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const r = await doFetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: 'BOBAI Health <health@mail.brainonbnb.ai>', to: [env.ALERT_EMAIL_TO], subject: plain.split('\n')[0].slice(0, 120), text: plain }),
+  }).catch((e) => ({ ok: false, status: 0, e }));
+  return r && r.ok ? 'sent' : `refused (${r && r.status})`;
+}
+async function lightRun(env, { notify, pauseMs = 60000 }) {
+  const once = async () => { try { return await runLight({ tgFetch: (url, init) => env.TG.fetch(url, init) }); } catch (e) { return [{ area: 'Health', name: 'the hourly look itself completed', good: false, detail: e && e.message || String(e) }]; } };
+  const first = await once();
+  let failing = first.filter((r) => !r.good);
+  if (failing.length) { await new Promise((r) => setTimeout(r, pauseMs)); failing = failedTwice(first, await once()); }
+  if (!failing.length) { console.log('[HEALTH] hourly look: all green'); return { checks: first.length, failing: [], sent: null }; }
+  const text = renderLightMessage(failing, new Date().toISOString().slice(0, 16).replace('T', ' '));
+  let sent = null, fallback = null;
+  if (notify) {
+    sent = await sendOperator(env, text);
+    if (!sent) fallback = await emailFallback(env, text);
+  }
+  console.log(`[HEALTH] hourly look: ${failing.length} failing, sent=${sent}, fallback=${fallback}`);
+  return { checks: first.length, failing, sent, fallback, text };
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    if (event && event.cron === LIGHT_CRON) { ctx.waitUntil(lightRun(env, { notify: true })); return; }
     ctx.waitUntil(morningRun(env, { notify: true, secondLook: true }));
   },
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/light' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) return new Response('forbidden', { status: 403 });
+      const out = await lightRun(env, { notify: url.searchParams.get('notify') === '1', pauseMs: 20000 });
+      return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
     if (url.pathname === '/run' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';
       if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) return new Response('forbidden', { status: 403 });
       const out = await morningRun(env, { notify: url.searchParams.get('notify') === '1', pauseMs: 20000 });
       return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
-    return new Response(JSON.stringify({ ok: true, worker: 'bobai-health', runs: 'daily 09:10 UTC, reports to the operator on Telegram' }), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, worker: 'bobai-health', runs: 'daily 09:10 UTC, reports to the operator on Telegram; hourly at :40 a light look that speaks only on red' }), { headers: { 'content-type': 'application/json' } });
   },
 };

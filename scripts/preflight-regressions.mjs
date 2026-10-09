@@ -217,5 +217,99 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… and the REST route answers that refusal with 400, not 422', /const bad = \/[^\n]*must be a positive number/.test(w));
 }
 
+// ---- 2026-10-09: the answer an agent branches on, the own control read, one shape on every branch ----
+{
+  // gate, the verdict word, all three ways
+  o = shape(scan(), route(), 250);
+  ok('gate: nothing stops and nothing to weigh reads "no_known_stop" (never "safe")', o.gate === 'no_known_stop' && !/safe/i.test(String(o.gate)), String(o.gate));
+  o = shape(scan({ onePercentDepth: { buyUsd: 171, sellUsd: 400 } }), route(), 250);
+  ok('… a caution alone reads "weigh"', o.gate === 'weigh', String(o.gate));
+  o = shape(scan({ sellability: { ok: true, sellable: false, buyable: true } }), route(), 250);
+  ok('… and a stop reads "stop"', o.gate === 'stop', String(o.gate));
+  // the figures beside the sentence, and the sentence unchanged
+  o = shape(scan({ onePercentDepth: { buyUsd: 171, sellUsd: 400 } }), route(), 250);
+  const sm = o.caution.find((c) => c.code === 'size_moves_price') || {};
+  ok('size_moves_price carries value 250, line 171, unit usd — and its sentence is the old one', sm.value === 250 && sm.line === 171 && sm.unit === 'usd'
+    && sm.why === '$250 is more than the $171 that moves this pool’s price by 1%: you are the market at this size.', JSON.stringify(sm));
+  o = shape(scan({ tax: { buyPct: 12, sellPct: 3, buySource: 'measured', sellSource: 'measured' } }), route({ transfer_tax: { buy_pct: 12, sell_pct: 3, source: 'measured' } }), 250);
+  const hb = o.caution.find((c) => c.code === 'high_buy_tax') || {};
+  ok('high_buy_tax carries value 12, line 10, unit pct', hb.value === 12 && hb.line === 10 && hb.unit === 'pct', JSON.stringify(hb));
+  o = shape(scan(), route({ refuse_to_trade: ['An immediate round trip returns 31.2% of what went in. Whatever the cause, it is not a cost anybody would accept knowingly.'] }), 250);
+  const rt = o.stop.find((c) => c.code === 'round_trip') || {};
+  ok('a round-trip stop carries what came back (31.2) against the 50% line', rt.value === 31.2 && rt.line === 50 && rt.unit === 'pct', JSON.stringify(rt));
+  o = shape(scan({ holders: { wallets: 8, top10PctOfCirculating: 36.3, largestPct: 8.2, largestSellTakesPctOfPool: 31 } }), route(), 250);
+  const hcf = o.caution.find((c) => c.code === 'holders_concentrated') || {};
+  ok('holders_concentrated carries the figure that crossed its line (31% of the pool, line 25)', hcf.value === 31 && hcf.line === 25 && hcf.unit === 'pct', JSON.stringify(hcf));
+  o = shape(scan({ contract: { openSource: false, properties: {} } }), route(), 250);
+  const sv = o.caution.find((c) => c.code === 'source_not_verified') || {};
+  ok('… and an item with no number in its sentence carries none', sv.why && !('value' in sv) && !('line' in sv), JSON.stringify(sv));
+
+  // kind, block and measured_at on every branch
+  const ctlRead = { read: true, block: 4242, has_code: true, owner: null, owner_function: false, proxy: null, mint_selector: false };
+  o = shape({ address: '0xc', symbol: 'C', name: 'C', quotable: false, reason: 'curve', curve: { progressPct: 41.5, feePct: 1, sellQuoted: true, tradeCost: [{ sizeUsd: 100, buyCostPct: 1.2, sellCostPct: 1.3 }] } }, null, 100, null, ctlRead);
+  ok('the curve answer says kind "curve", a block and measured_at', o.kind === 'curve' && o.block === 4242 && typeof o.measured_at === 'string' && o.gate === 'weigh', JSON.stringify({ k: o.kind, b: o.block, m: o.measured_at, g: o.gate }));
+  o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool.' }, null, 100, null, ctlRead);
+  ok('… the unquotable one "unquotable", with them too', o.kind === 'unquotable' && o.block === 4242 && typeof o.measured_at === 'string' && o.gate === 'stop', JSON.stringify({ k: o.kind, b: o.block, m: o.measured_at }));
+  o = shape(scan(), route(), 250);
+  ok('… and a pool answer "pool", with the scan’s block', o.kind === 'pool' && o.block === 1 && o.measured_at === 'now');
+  // one LP-burned number under both names
+  o = shape(scan({ lp: { burnedPct: 99.9972, custody: cust({ burnedPct: 99.99, largestWallet: null, walletPct: 0 }) } }), route(), 250);
+  ok('lp_burned_pct and lp_custody.burned_pct are the same number (the direct read)', o.lp_burned_pct === 99.9972 && o.lp_custody?.burned_pct === 99.9972, JSON.stringify([o.lp_burned_pct, o.lp_custody?.burned_pct]));
+
+  // the own control read
+  const ctl = (over = {}) => ({ read: true, block: 9, has_code: true, owner: { address: '0x' + 'e'.repeat(40), kind: 'eoa', source: 'owner()' }, owner_function: true, proxy: null, mint_selector: false, ...over });
+  o = shape(scan({ tax: { buyPct: 3, sellPct: 3, buySource: 'measured', sellSource: 'measured' } }), route({ transfer_tax: { buy_pct: 3, sell_pct: 3, source: 'measured' } }), 250, null, ctl());
+  ok('an EOA owner of a taxed token is a caution, naming the owner and the tax', /0xeeee.*plain wallet.*3% buy, 3% sell/.test(o.caution.find((c) => c.code === 'owner_is_eoa')?.why || '') && o.control?.owner?.kind === 'eoa', codes(o.caution));
+  o = shape(scan(), route(), 250, null, ctl({ mint_selector: true }));
+  ok('… of a token with a mint function, too', codes(o.caution).includes('owner_is_eoa') && o.control?.mint_selector === true, codes(o.caution));
+  o = shape(scan(), route(), 250, null, ctl({ proxy: { implementation: '0x' + '1'.repeat(40), admin: null, admin_kind: null, standard: 'EIP-1967' } }));
+  ok('… and of an upgradeable proxy', /EIP-1967 proxy/.test(o.caution.find((c) => c.code === 'owner_is_eoa')?.why || '') && o.control?.proxy?.implementation === '0x' + '1'.repeat(40), codes(o.caution));
+  o = shape(scan(), route(), 250, null, ctl());
+  ok('… but an EOA owner with no tax, no mint and no proxy is not a line', !codes(o.caution).includes('owner_is_eoa') && o.gate === 'no_known_stop', codes(o.caution));
+  o = shape(scan({ tax: { buyPct: 3, sellPct: 3 } }), route({ transfer_tax: { buy_pct: 3, sell_pct: 3, source: 'measured' } }), 250, null, ctl({ owner: { address: '0x' + '0'.repeat(40), kind: 'renounced', source: 'owner()' } }));
+  ok('… nor a renounced owner, tax or not', !codes(o.caution).includes('owner_is_eoa') && o.control?.owner?.kind === 'renounced', codes(o.caution));
+  o = shape(scan(), route(), 250, null, { read: false, reason: 'the node did not answer the control reads' });
+  ok('a control read that failed is said, not dropped', o.control?.read === false && /did not answer/.test(o.control.reason), JSON.stringify(o.control));
+}
+
+// The refusal an agent can branch on (2026-10-09): errorAnswer lifted out of the site worker as text, like sizeArg.
+{
+  const fs = await import('node:fs');
+  const w = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/_worker.js'), 'utf8');
+  const src = w.match(/function errorAnswer\([\s\S]*?\n\}/)?.[0];
+  const errorAnswer = src ? new Function(src + '\nreturn errorAnswer;')() : () => ({ status: 0, body: {} });
+  const E = (msg, code) => Object.assign(new Error(msg), code ? { code } : {});
+  let a = errorAnswer(E('That address is a wallet, not a token. There is no contract code at it on BNB Smart Chain.', 'is_wallet'));
+  ok('a wallet answers 422 with code is_wallet and a hint', a.status === 422 && a.body.code === 'is_wallet' && /wallet/.test(a.body.hint || '') && /a wallet, not a token/.test(a.body.error), JSON.stringify(a));
+  a = errorAnswer(E('That address is not a BSC token. It answers nothing to symbol()…', 'not_a_token'));
+  ok('… a contract that is no token: not_a_token', a.status === 422 && a.body.code === 'not_a_token' && !!a.body.hint, JSON.stringify(a));
+  a = errorAnswer(E('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.'));
+  ok('… a malformed address: 400 bad_address', a.status === 400 && a.body.code === 'bad_address' && !!a.body.hint, JSON.stringify(a));
+  a = errorAnswer(E('usd must be a positive number, e.g. 250 (got "abc").'));
+  ok('… a size that is no number: 400 bad_usd', a.status === 400 && a.body.code === 'bad_usd' && !!a.body.hint, JSON.stringify(a));
+  a = errorAnswer(E('The chain did not answer. The public BSC node refused or timed out.'));
+  ok('… the chain silent: 503 chain_unavailable', a.status === 503 && a.body.code === 'chain_unavailable', JSON.stringify(a));
+  a = errorAnswer(E('That pool cannot be priced. It trades against a token with no BNB pool of its own.'));
+  ok('… and any other determinate answer: 422 with a code too', a.status === 422 && a.body.code === 'not_measurable' && !!a.body.hint, JSON.stringify(a));
+  const rest = w.match(/const \{ status, body \} = errorAnswer\(e\);\s*return new Response\(JSON\.stringify\(body\), \{ status, headers \}\)/);
+  ok('the REST route answers with errorAnswer’s status and body', !!rest);
+  const mcpErr = /const \{ body: eb \} = errorAnswer\(e\);[\s\S]{0,300}code: \$\{eb\.code\}[\s\S]{0,120}structuredContent: eb, isError: true/.test(w);
+  ok('MCP carries the same code: in the text and as structuredContent, with isError', mcpErr);
+  // structuredContent for the three trading reads (MCP 2025-06-18)
+  const st = w.match(/const STRUCTURED_TOOLS = new Set\(\[([^\]]*)\]\)/)?.[1] || '';
+  ok('tools/call answers bsc_token_preflight, bsc_pool_scan and pancakeswap_best_route with structuredContent', ['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route'].every((n) => st.includes(`'${n}'`))
+    && /STRUCTURED_TOOLS\.has\([^)]*\)[^\n]*\{ structuredContent: out \}/.test(w) && /protocolVersion: '2025-06-18'/.test(w));
+  const stdio = fs.readFileSync(path.resolve(import.meta.dirname, '../mcp/server.mjs'), 'utf8');
+  ok('… and the stdio server the same, carrying the REST refusal’s code and hint', /STRUCTURED\.has\(params\?\.name\)[^\n]*structuredContent: out/.test(stdio) && /e\.code = String\(body\.code\)/.test(stdio) && /structuredContent: \{ error: msg, code: e\.code/.test(stdio));
+  // fee tiers: sixty seconds in the edge cache, and no tool description says "nothing cached" any more
+  const ft = w.match(/case 'pancakeswap_fee_tiers': \{[\s\S]*?\n    \}/)?.[0] || '';
+  ok('pancakeswap_fee_tiers is cached 60 s per token in caches.default, and says which copy it is', /caches\.default/.test(ft) && /max-age=60/.test(ft) && /fee-tiers\/\$\{m\[0\]\.toLowerCase\(\)\}/.test(ft) && /cache: \{ hit: true/.test(ft));
+  const pfDesc = w.match(/name: 'bsc_token_preflight', description: '((?:[^'\\]|\\.)*)'/)?.[1] || '';
+  ok('the preflight description no longer says "nothing cached" and names the 6 h GoPlus cache', !!pfDesc && !/nothing cached/i.test(pfDesc) && /6 h/.test(pfDesc), pfDesc.slice(-160));
+  // the route answer names its block too
+  const sr = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/swap-route.js'), 'utf8');
+  ok('the best-route answer carries block and measured_at', /\n    block: tag !== 'latest' \? parseInt\(tag, 16\) : \(tax\.block \?\? null\), measured_at: new Date\(\)\.toISOString\(\),/.test(sr));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

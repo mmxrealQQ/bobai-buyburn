@@ -222,6 +222,67 @@ export async function rpc(method,params,url){
   throw new Error('every BSC endpoint refused '+method);
 }
 
+// WHO CONTROLS THE CONTRACT, read on-chain (2026-10-09) instead of taken from a
+// label: owner() and getOwner() (BEP-20's name for it), the EIP-1967
+// implementation and admin slots, the code at each address found (none = a
+// plain wallet, one key), and whether the bytecode carries the selector of
+// mint(address,uint256). Two round trips of one batch each. A revert is an
+// answer here ("no owner() function"), so unlike rawBatch an entry's error
+// leaves that entry null; only a throttled or silent endpoint moves on.
+async function mixedBatch(reqs){
+  for(let n=0;n<RPCS.length;n++){
+    const j=await tryPost(RPCS[(epi+n)%RPCS.length],reqs.map((r,k)=>({jsonrpc:'2.0',id:k,...r})));
+    if(!Array.isArray(j)||j.length!==reqs.length||j.some(x=>x.error&&throttled(x.error)))continue;
+    const s=[];for(const x of j)s[x.id]=x.error?null:x.result;
+    return s;
+  }
+  return null;
+}
+export const EIP1967_IMPL='0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
+  EIP1967_ADMIN='0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
+  MINT_SEL='40c10f19';
+const DEADS=new Set([NULLA,DEAD,'0xdead000000000000000042069420694206942069']);
+// The selector as a PUSH4 operand in the dispatcher: "63" then the four bytes.
+export const hasSelector=(code,sel)=>typeof code==='string'&&code.length>2&&code.toLowerCase().includes('63'+sel);
+const word2addr=h=>{if(!h||h==='0x'||h.length<66)return null;const a='0x'+h.slice(-40).toLowerCase();return /^0x0{40}$/.test(a)?null:a};
+export function controlFrom(r1,r2){
+  if(!r1)return {read:false,reason:'the node did not answer the control reads'};
+  const [blk,code,own,getOwn,implW,adminW]=r1;
+  const ownerAddr=(h)=>h&&h!=='0x'&&h.length>=66?('0x'+h.slice(2,66).slice(-40)).toLowerCase():null;
+  const o1=ownerAddr(own),o2=ownerAddr(getOwn);
+  const owner=o1??o2,source=o1!=null?'owner()':o2!=null?'getOwner()':null;
+  const impl=word2addr(implW),admin=word2addr(adminW);
+  const codeAt=a=>{if(!r2||!a)return undefined;const i=r2.addrs.indexOf(a);return i<0?undefined:r2.codes[i]};
+  const kindOf=a=>{if(a==null)return null;if(DEADS.has(a))return 'renounced';const c=codeAt(a);return c===undefined||c===null?'unread':c==='0x'?'eoa':'contract'};
+  const implCode=codeAt(impl);
+  const mintHere=hasSelector(code,MINT_SEL),mintImpl=hasSelector(implCode,MINT_SEL);
+  return {read:true,block:blk?parseInt(blk,16):null,
+    has_code:code==null?null:code!=='0x',
+    owner:owner?{address:owner,kind:kindOf(owner),source}:null,
+    owner_function:source!=null,
+    proxy:impl?{implementation:impl,admin,admin_kind:kindOf(admin),standard:'EIP-1967'}:null,
+    mint_selector:mintHere||mintImpl,
+    ...(impl&&(mintHere||mintImpl)?{mint_selector_in:mintHere&&mintImpl?'proxy and implementation':mintImpl?'implementation':mintHere?'proxy':null}:{}),
+  };
+}
+export async function readControl(token){
+  token=String(token||'').toLowerCase();
+  const r1=await mixedBatch([
+    {method:'eth_blockNumber',params:[]},
+    {method:'eth_getCode',params:[token,'latest']},
+    {method:'eth_call',params:[{to:token,data:'0x8da5cb5b'},'latest']},
+    {method:'eth_call',params:[{to:token,data:'0x893d20e8'},'latest']},
+    {method:'eth_getStorageAt',params:[token,EIP1967_IMPL,'latest']},
+    {method:'eth_getStorageAt',params:[token,EIP1967_ADMIN,'latest']},
+  ]).catch(()=>null);
+  if(!r1)return controlFrom(null);
+  const pre=controlFrom(r1,null);
+  const addrs=[...new Set([pre.owner?.address,pre.proxy?.implementation,pre.proxy?.admin].filter(a=>a&&!DEADS.has(a)))];
+  let r2=null;
+  if(addrs.length){const c=await mixedBatch(addrs.map(a=>({method:'eth_getCode',params:[a,'latest']}))).catch(()=>null);if(c)r2={addrs,codes:c}}
+  return controlFrom(r1,r2);
+}
+
 // === WHAT IS THIS ADDRESS? ===
 // People paste what they have, and what they have is usually a DexScreener link
 // — which carries the POOL address, not the token. Guessing wrong here sends the
@@ -1672,13 +1733,17 @@ async function rawBatch(reqs,urls,chunk=25){
 // a constant-product pair (0 elsewhere: a V3 pool's depth depends on its ticks).
 export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok=0,share=1,lpOwners=[]}){
   const hc=gp&&gp.holder_count;
-  const count=hc!=null&&String(hc).trim()!==''&&isFinite(Number(hc))?Number(hc):null;
+  // A count of 0 is GoPlus having no count, not a token held by nobody (2026-10-09): USDT, millions of holders,
+  // answers holder_count "0" with a full list, and was told "0 holders — too few to be the market".
+  const count0=hc!=null&&String(hc).trim()!==''&&isFinite(Number(hc))?Number(hc):null;
+  const count=count0===0?null:count0;
   const unknown=reason=>({unknown:true,count,reason});
   const gpOk=!!(gp&&(gp.token_name||gp.dex||gp.is_open_source!=null));
   if(!(supply>0))return unknown('the total supply could not be read');
   if(!gpOk)return unknown('GoPlus, which supplies the holder list, did not answer');
   const list=(Array.isArray(gp.holders)?gp.holders:[]).filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||''));
   if(!list.length)return unknown('GoPlus lists no holders for this token yet — its index lags new tokens');
+  if(count0===0)return unknown('GoPlus, the holder source, gives no holder count for this token, so its list cannot be checked against the market — the source is unavailable here, which says nothing about how many hold it');
   if(count!=null&&count<10)return unknown('GoPlus counts '+count+' holder'+(count===1?'':'s')+' — too few to be the market; its index has not caught up');
   const skipS=new Set(skip.map(x=>String(x||'').toLowerCase())),own=new Set(lpOwners.map(x=>String(x||'').toLowerCase()));
   const named=[],cand=[];

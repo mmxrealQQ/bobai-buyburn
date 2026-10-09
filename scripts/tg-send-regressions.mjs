@@ -29,7 +29,9 @@ try {
   await broadcast().catch(() => null);
   const rec = store.get('last_send_error') ? JSON.parse(store.get('last_send_error')) : null;
   loud(); is('1 a lasting refusal (kicked) is written down', !!rec && rec.lasting === true && /kicked/.test(rec.description), JSON.stringify(rec)); quiet();
-  globalThis.fetch = real.fetch;
+  // offline (2026-10-09): /health now reads the dead balance; the chain answers 503 here (a live socket left open at
+  // exit trips a libuv assertion on Windows)
+  globalThis.fetch = async () => new Response('{}', { status: 503 });
   const h = await (await worker.default.fetch(new Request('https://tg/health'), env, { waitUntil() {} })).json();
   loud(); is('2 /health serves the refusal', !!h.last_send_error && h.last_send_error.lasting === true, JSON.stringify(h.last_send_error)); quiet();
   telegramSays(502, '<html><body>Bad Gateway</body></html>', 'text/html');
@@ -50,7 +52,9 @@ is('6 the whale alert reads balances strictly (a failed read is unknown, never 0
 
 // 7: the morning health check's rule for the bot, read from the module and run on three records
 const hsrc = fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'health-checks.mjs'), 'utf8');
-const line = hsrc.slice(hsrc.indexOf("const se = j.last_send_error"), hsrc.indexOf("'telegram bot can post'") + 400);
+// the end searched from the start (2026-10-09): the hourly light look now names 'telegram bot can post' earlier in the file
+const seAt = hsrc.indexOf("const se = j.last_send_error");
+const line = hsrc.slice(seAt, hsrc.indexOf("'telegram bot can post'", seAt) + 400);
 // the rule itself, lifted from the module and run on three records
 const rule = (j) => { const se = j.last_send_error, seAge = se && se.at ? (Date.now() - Date.parse(se.at)) / 36e5 : null; return j.channel_configured === true && !(!!(se && se.lasting && seAge != null && seAge < 24)); };
 const now = new Date().toISOString(), old = new Date(Date.now() - 30 * 36e5).toISOString();

@@ -42,7 +42,8 @@ export const CATEGORIES = [
     label: 'Grid Trading',
     blurb: 'Laying buy and sell orders across a price band and earning the spacing between them — if the spacing beats what the pool charges to trade.',
     aliases: ['grid-trading', 'grid', 'gridbot', 'grid-bot'],
-    strong: /grid[ -]?trad|grid[ -]?bot|grid[ -]?strateg|grid[ -]?plan/i,
+    // grid ladder (2026-10-09): a phrase that names only this, like the others.
+    strong: /grid[ -]?trad|grid[ -]?bot|grid[ -]?strateg|grid[ -]?plan|grid[ -]?ladder/i,
     loose: /\bgrid\b/i,
   },
   {
@@ -50,7 +51,9 @@ export const CATEGORIES = [
     label: 'Yield Optimisation',
     blurb: 'Finding where capital earns more, and what moving it costs.',
     aliases: ['yield-optimization', 'yield-optimisation', 'yield', 'yield-farming', 'apy-optimization'],
-    strong: /yield[ -]?optimi|yield[ -]?farm|auto.?compound|best[ -]?(apy|apr)|harvest[ -]?reward/i,
+    // yield allocation / routing and net APR (2026-10-09): phrases that say an
+    // agent decides where capital earns, which the loose words below do not.
+    strong: /yield[ -]?optimi|yield[ -]?farm|yield[ -]?allocat|yield[ -]?rout|auto.?compound|best[ -]?(apy|apr)|net[ -]apr|harvest[ -]?reward/i,
     loose: /\byield\b|\bapy\b|\bapr\b|farming|vault/i,
   },
   {
@@ -124,8 +127,11 @@ function evidenceOf(agent) {
  * it plausibly belongs to — an agent that both optimises yield and watches a
  * health factor is not misfiled by appearing twice, whereas forcing it into one
  * bucket loses a real capability.
+ *
+ * `opts.withWeak` also returns the loose single-word matches the rule below
+ * rejects, each marked `weak: true` (2026-10-09).
  */
-export function classifyAgent(agent, status = null) {
+export function classifyAgent(agent, status = null, opts = {}) {
   const out = [];
   const seen = new Set();
 
@@ -151,7 +157,25 @@ export function classifyAgent(agent, status = null) {
 
   // 3. Matched from what it exposes. Lowest confidence, and the match is kept
   //    so the page can show the string rather than the conclusion.
+  //
+  // ONE LOOSE WORD IS NOT A CATEGORY (2026-10-09). A single "APY" in a tool
+  // name filed Pretium — fiat payouts across Africa — under yield
+  // optimisation; "Vault" filed HyperliquidVault, which works on another
+  // chain; three strategy names filed Moments, a trading agent. A loose title
+  // hit now counts only with one of:
+  //   - two or more loose hits, one of them in its own name or description
+  //     (what it says it IS, not one of its many skills), and a BSC/BNB
+  //     mention anywhere — it says it does this, here;
+  //   - a price it returned when asked for this category's task (`quoted_for`,
+  //     written by scripts/erc8004-publish.mjs from the quote run) — it
+  //     accepted the work, which outweighs any word.
+  // Anything else is returned only on request ({ withWeak: true }) and marked
+  // `weak`, so the page can fold it under "possibly related" and /find, which
+  // asks without the option, leaves it out of a category answer.
   const { titles, prose } = evidenceOf(agent);
+  const all = [...titles, ...prose];
+  const onChain = all.some((b) => CHAIN_MENTION.test(b.text));
+  const quotedFor = new Set((agent.quoted_for || []).map(String));
   for (const c of CATEGORIES) {
     let hit = null;
     for (const b of prose) {
@@ -159,14 +183,37 @@ export function classifyAgent(agent, status = null) {
       if (m) { hit = { m: m[0], where: b.where }; break; }
     }
     if (!hit) for (const b of titles) {
-      const m = b.text.match(c.strong) || b.text.match(c.loose);
+      const m = b.text.match(c.strong);
       if (m) { hit = { m: m[0], where: b.where }; break; }
     }
-    if (hit) add(c.id, 'derived', `matched "${hit.m}" in its ${hit.where}`);
+    if (hit) { add(c.id, 'derived', `matched "${hit.m}" in its ${hit.where}`); continue; }
+
+    let first = null;
+    for (const b of titles) {
+      const m = b.text.match(c.loose);
+      if (m) { first = { m: m[0], where: b.where }; break; }
+    }
+    if (!first) continue;
+    const looseIn = all.filter((b) => c.loose.test(b.text));
+    const selfSaid = looseIn.some((b) => b.where === 'name' || b.where === 'description');
+    if (looseIn.length >= 2 && selfSaid && onChain) {
+      add(c.id, 'derived', `matched "${first.m}" in its ${first.where}, ${looseIn.length} loose hits in all, and it names BNB Chain`);
+    } else if (quotedFor.has(c.id)) {
+      add(c.id, 'derived', `matched "${first.m}" in its ${first.where}, and it quoted a price for this category's task when asked`);
+    } else if (opts.withWeak && !seen.has(c.id)) {
+      seen.add(c.id);
+      out.push({
+        category: c.id, source: 'derived', weak: true,
+        detail: `only matched "${first.m}" in its ${first.where}${looseIn.length >= 2 ? ` (${looseIn.length} loose hits${selfSaid ? '' : ', none in its own name or description'}${onChain ? '' : ', no BSC/BNB mention'})` : ' — one loose word'}`,
+      });
+    }
   }
 
   return out;
 }
+
+// What "it names BNB Chain" means for the loose-word rule above.
+const CHAIN_MENTION = /\bbsc\b|\bbnb\b|bnb[ -]?chain|binance smart chain/i;
 
 /** Convenience: does this agent belong to `categoryId` at all, and how well. */
 export function categoryMatch(agent, categoryId, status = null) {

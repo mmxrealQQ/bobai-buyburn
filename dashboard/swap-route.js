@@ -30,11 +30,13 @@ import {
   classify, priceToken, discover, measureTax, simulateRoundTrip, V2_FEE, decOf, rpc,
 } from './scanner-chain.js';
 
+// `code` (2026-10-09): the refusal in one machine-readable word, as ScanError.
 export class RouteError extends Error {
-  constructor(headline, detail) {
+  constructor(headline, detail, code) {
     super(headline);
     this.headline = headline;
     this.detail = detail;
+    if (code) this.code = code;
   }
 }
 
@@ -52,14 +54,23 @@ export async function swapRoute(input, opts = {}) {
   const address = String(input || '').toLowerCase();
   const usd = Number(opts.usd) > 0 ? Number(opts.usd) : 250;
 
-  let what;
-  try { what = await classify(address); }
+  // A wallet is said to be one (2026-10-09), asked beside classify() so it costs
+  // no time. The preflight has asked already (its scan) and skips it: one
+  // outbound call less against the fifty a request may make.
+  let what, code = null;
+  try {
+    [what, code] = await Promise.all([classify(address),
+      opts.codeChecked ? null : rpc('eth_getCode', [address, 'latest']).catch(() => null)]);
+  }
   catch {
     throw new RouteError('The chain did not answer.',
       'The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.');
   }
+  if (code === '0x')
+    throw new RouteError('That address is a wallet, not a token.',
+      'There is no contract code at it on BNB Smart Chain, so there is nothing to route through. Paste the token’s contract address (or its pool, or a link containing one).', 'is_wallet');
   if (what.kind !== 'token' && what.kind !== 'v2pair' && what.kind !== 'v3pool') {
-    throw new RouteError('That address is not a token or a pool.', 'Nothing to route through.');
+    throw new RouteError('That address is not a token or a pool.', 'Nothing to route through.', 'not_a_token');
   }
 
   const base = await rpcBatch([call(BNB_PAIR, S.reserves), call(BNB_PAIR, S.token0)]);
@@ -86,7 +97,7 @@ export async function swapRoute(input, opts = {}) {
   const cands = await discover(token, dec, bnbUsd);
   if (!cands.length)
     throw new RouteError('No pool found for that address.',
-      'Every fee tier against BNB, USDT, BUSD, USDC and USD1 was asked directly, and none of them has a pool.');
+      'Every fee tier against BNB, USDT, BUSD, USDC and USD1 was asked directly, and none of them has a pool.', 'no_pool');
 
   const quote = pinnedQuote && cands.some((c) => c.quote === pinnedQuote) ? pinnedQuote : cands[0].quote;
   const known = QUOTES.find(([x]) => x === quote);
@@ -259,6 +270,9 @@ export async function swapRoute(input, opts = {}) {
     // so a router that refuses mutating verbs can reach it (_worker.js); the
     // answer still carried the old name a caller cannot call.
     tool: 'pancakeswap_best_route',
+    // Which block the figures are for, and when (2026-10-09): the head the V3
+    // legs were quoted at, else the head the tax was read at — as the preflight.
+    block: tag !== 'latest' ? parseInt(tag, 16) : (tax.block ?? null), measured_at: new Date().toISOString(),
     token: { address: token, symbol: sym, decimals: dec },
     quote: { address: quote, symbol: quoteSym },
     size_usd: usd,

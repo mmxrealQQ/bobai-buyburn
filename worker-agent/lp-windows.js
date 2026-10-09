@@ -612,8 +612,10 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
 // value_bnb, at), `rows` the verdict's rows, `widthClass` the position's
 // width class. Gross fees on both sides: the measured window may hold
 // re-sets, whose cost is not a fee. Null under a day of series.
-export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72 } = {}) {
-  const pts = (points || []).filter((p) => p && p.at && typeof p.value_bnb === 'number' && p.value_bnb > 0 && p.fees_total_bnb != null);
+export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72, position = null } = {}) {
+  // ONE POSITION AT A TIME (2026-10-09): the 72 h window mixed a ±10 one-sided range, four ±0.25 ranges and the ±20
+  // since the re-set, and set all of it against one width's replay. Given the position, only its own points count.
+  const pts = (points || []).filter((p) => p && p.at && typeof p.value_bnb === 'number' && p.value_bnb > 0 && p.fees_total_bnb != null && (position == null || String(p.position) === String(position)));
   if (pts.length < 2 || widthClass == null) return null;
   const last = pts[pts.length - 1];
   const cutoff = Date.parse(last.at) - maxHours * 36e5;
@@ -636,7 +638,7 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
   const factor = replay > 0 ? measured / replay : null;
   return {
     hours: r2(hours), from: first.at, to: last.at,
-    position_width_pct: widthClass,
+    position_width_pct: widthClass, position: position == null ? null : String(position),
     fees_bnb: Number(feesBnb.toFixed(6)),
     capital_bnb: Number(capitalBnb.toFixed(6)),
     measured_usd_per_day_on_50: r4(measured),

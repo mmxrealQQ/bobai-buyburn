@@ -239,9 +239,21 @@ const keepHolds = () => keepVerdict('x', 808410000002992638762n).good === true &
 export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org') {
   const client = createPublicClient({ chain: bsc, transport: http(rpc) });
   const abi = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
+  const bal = (a) => client.readContract({ address: '0x245c386dcfed896f5c346107596141e5edcbffff', abi, functionName: 'balanceOf', args: [a] });
   return Promise.all(Object.entries(KEEP_808_WALLETS).map(async ([label, a]) => {
-    try { return keepVerdict(label, await client.readContract({ address: '0x245c386dcfed896f5c346107596141e5edcbffff', abi, functionName: 'balanceOf', args: [a] })); }
-    catch { return keepVerdict(label, null); }
+    try {
+      const v = keepVerdict(label, await bal(a));
+      if (v.good) return v;
+      // MID-RUN IS NOT BROKEN (2026-10-09 review): a liquidity run of d38 lasts minutes, longer than the minute the
+      // morning run waits, and its wallet holds more than 808.41 between its steps. Off by more than a cent: look
+      // again 45 s later — a wallet that sent a transaction meanwhile (or is back at 808.41) is mid-run, not judged.
+      const n0 = await client.getTransactionCount({ address: a, blockTag: 'latest' });
+      await new Promise((r) => setTimeout(r, 45000));
+      const [n1, again] = await Promise.all([client.getTransactionCount({ address: a, blockTag: 'latest' }), bal(a)]);
+      const v2 = keepVerdict(label, again);
+      if (v2.good) return v2;
+      return n1 > n0 ? { ...v2, good: true, detail: `${v2.detail.split(' — ')[0]} — mid-run (sent ${n1 - n0} tx in 45 s), not judged` } : v2;
+    } catch { return keepVerdict(label, null); }
   }));
 }
 

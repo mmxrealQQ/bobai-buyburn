@@ -1956,7 +1956,8 @@ function ownKind() {
 function chartWords() {
   const cs = candles(); if (cs.length < 12) return null;
   const ch = chartChange(cs), n = CH.rows.filter(r => r.t >= Date.now() - 86400e3).reduce((a, r) => a + (r.b || 0) + (r.s || 0), 0);
-  return ch == null ? null : { ch, n, s: (ch >= 0 ? '+' : '') + ch.toFixed(1) + '%' }; // one decimal, as the mood chip (2026-10-01)
+  const sg = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  return ch == null ? null : { ch, n, s: sg(ch), ...(bnbChange(cs) || {}), sg }; // one decimal, as the mood chip (2026-10-01)
 }
 // the Giggle Academy slice runs until 20 Nov 2026 00:01 UTC (phase table); after that no line may say trades still feed it
 const GIGGLE_OPEN = () => Date.now() < Date.parse('2026-11-20T00:01:00Z');
@@ -2107,6 +2108,13 @@ const JOKES = [
   '"100x gem" in a Telegram group? Sure. The 100 is how many people become exit liquidity.',
   'Influencers say "not financial advice" the way pickpockets say "excuse me".',
   'Liquidated at 50x? Congratulations. You just paid for a whale’s new yacht.',
+  // one in a billion, said with a wink (operator, 2026-10-09: "smarter, more likeable, funnier — and never lose the core")
+  'There are a billion tokens out there. Only one of them reads its own chain out loud. Hi.',
+  'Three sites, three 24h numbers. I asked BNB to hold still. It said no.',
+  'Most tokens have a chart. I have a chart, a brain, and an opinion about your slippage.',
+  'Other AIs write poems. I write receipts. On-chain. With transaction links.',
+  'I do not sleep, I do not panic, and I do not need coffee. I drink it anyway, for the look.',
+  'One in a billion? My mum says that too. The difference: I can prove it on BscScan.',
 ];
 // HE REMEMBERS WHAT HE SAID (2026-09-28, operator: "more intelligent, more alive, more real"): only the very last line
 // was avoided, so '11.6% of my supply…' came back after two minutes. Nothing said in the last 20 minutes is said
@@ -2456,6 +2464,7 @@ const CMDS = {
     say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
   price: () => { setFocus('src'); const c = chartWords(), f = LIFE.flow || {}, rB = CX.liqUsd > 0 && S.bnbP > 0 ? CX.liqUsd / 2 / S.bnbP : 0;
     say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned)${c ? `, ${c.s} in 24 h` : ''}.`
+      + (c && c.vb != null && Math.abs(c.ch - c.vb) >= 0.5 ? ` Against BNB I am ${c.sg(c.vb)}: BNB itself went ${c.sg(c.bnb)} in dollars, and that is in every USD figure.` : '')
       + (f.b || f.s ? ` This hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} ($${nf(f.bu || 0)}) and ${nf(f.s)} sell${f.s === 1 ? '' : 's'} ($${nf(f.su || 0)}).` : '')
       + (rB > 0 ? ` The pool holds ${bnbF(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(((1 + 1 / rB) ** 2 - 1) * 100).toFixed(1)}%, plus the 3% tax.` : '')
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
@@ -2475,15 +2484,26 @@ CMDS.why = () => { const c = chartWords(), f = LIFE.flow || {}, now = Date.now()
   const big = S.hist.filter(x => !x.ours && !x.taxSwap && x.t >= now - 3600e3).sort((a, b) => b.usd - a.usd)[0];
   const runs = S.burns.filter(e => Date.parse(e.time) >= now - 86400e3).length, bits = [];
   if (c) bits.push(`${c.s} in 24 hours over ${nf(c.n)} trades`);
+  if (c && c.vb != null && Math.abs(c.ch - c.vb) >= 0.5) bits.push(`against BNB ${c.sg(c.vb)}, because BNB itself went ${c.sg(c.bnb)} in dollars`);
   if (f.b || f.s) bits.push(`this hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} for $${nf(f.bu || 0)} against ${nf(f.s)} sell${f.s === 1 ? '' : 's'} for $${nf(f.su || 0)}`);
   if (big && big.usd >= 50) bits.push(`the largest trade this hour was a ${big.buy ? 'buy' : 'sell'} of $${nf(big.usd)}`);
   bits.push(runs ? `the burns kept going: ${runs} run${runs > 1 ? 's' : ''} in 24 hours` : 'no burn run in 24 hours yet');
   say([vary('ask-why', ['No forecasts from me, only the record: ', 'Here is what moved it: ', 'The chain, not an opinion: ', 'What the trades say: ', 'Facts only: ']), [bits.join('; ')], '. In a thin pool one trade can move the price.']); };
+// WHY THE SITES DISAGREE (operator, 2026-10-09: terminal, Binance Web3 and DexScreener each showed another 24h %):
+// the honest answer with the figures behind it — each site prices BOBAI in dollars with its own BNB/USD rate and its
+// own "a day ago"; against BNB the pool's price is one number for everybody
+CMDS.sites = () => { setFocus('src'); const c = chartWords();
+  if (!c || c.vb == null) return say(['Still reading my chart. Ask me again in a minute.']);
+  say([vary('ask-sites', ['Fair question. ', 'Good eye. ', 'Same coin, three numbers? Here is why. ', 'Not a bug, a currency. ', 'Let me untangle that. ']),
+    'Every site turns my pool price into dollars with its own BNB/USD rate and its own "24 hours ago". Mine: ', [c.s], ' in USD, from my pool and Chainlink. ',
+    'Against BNB I am ', [c.sg(c.vb)], ' — that number is the pool itself, the same for everyone. BNB went ', [c.sg(c.bnb)], ' in dollars',
+    Math.abs(c.bnb) >= 1 ? ', and that is most of the gap between the sites.' : ', so the sites should be close today.',
+    vary('ask-sites-end', [' Small pool, so one trade a minute apart moves it too.', ' A few tenths apart is normal for a thin pool.', ' None of them is lying, they just look at different clocks.', ' My chart reads the chain, block by block.', ' Ask me "price" for the rest.'])]); };
 CMDS.holders = async () => { setFocus('src');
   try {
     const j = await getJSON(`${SITE}/api/smart-money`, 12000), h = j?.whale_flows?.holdings; if (!h) throw new Error('no holdings');
     const w = h.change_7d || {}, d = h.change_1d || {}, sg = v => (v >= 0 ? '+' : '') + v;
-    say([vary('ask-holders', ['My watcher follows every wallet that ever crossed 5M BOBAI: ', 'The big wallets, read from the chain: ', 'The big holders, on-chain: ', 'Who holds the most: ', 'The 5M+ club: ']),
+    say([vary('ask-holders', [`My watcher follows every wallet that ever crossed ${bobaiAmt(5e6)}: `, 'The big wallets, read from the chain: ', 'The big holders, on-chain: ', 'Who holds the most: ', 'The 5M+ club: ']),
       [`${nf(h.wallets_tracked)} watched wallets hold ${h.percent_of_total_supply}% of supply`], h.wallets_at_or_above_threshold != null ? ` (${nf(h.wallets_at_or_above_threshold)} of them at 5M+ right now)` : '',
       `. 24 h ${d.percent_change != null ? sg(d.percent_change) + '%' : '?'}, 7 days ${w.percent_change != null ? sg(w.percent_change) + '%' : '?'}${w.bobai_change != null ? ` (${w.bobai_change >= 0 ? '+' : '−'}${bobaiAmt(Math.abs(w.bobai_change))})` : ''}. A total holder count would come from a third party, so I do not show one.`]);
   } catch { say(['The whale watcher did not answer just now — ask again in a minute.']); } };
@@ -2492,7 +2512,8 @@ CMDS.moon = () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.no
   say([vary('ask-moon', ['No dates from me. What I can show: ', 'Moon? I count burns, not days. ', 'I do not do price promises. I do this: ', 'Wen? Nobody knows. What is certain: ', 'No moon talk, just the record: ']),
     [bobaiAmt(wk)], ' burned this week, ', [lpText()], ' of the LP burned. 3% of every trade keeps working.']); };
 CMDS.who = () => say([vary('ask-who', ['I am BOBAI, the brain on BNB Chain. ', 'BOBAI. A brain that lives on BNB Chain. ', 'Hi, I am BOBAI. ', 'The name is BOBAI, and this is my chain. ', 'I am BOBAI — the token, awake. ']),
-  `Every trade pays 3% tax: it buys back and burns, adds liquidity and burns the LP, and funds a DeFi agent${GIGGLE_OPEN() ? ' and, until Nov 20, Giggle Academy' : ''}. Ownership renounced. Everything I tell you is read from the chain.`]);
+  `Every trade pays 3% tax: it buys back and burns, adds liquidity and burns the LP, and funds a DeFi agent${GIGGLE_OPEN() ? ' and, until Nov 20, Giggle Academy' : ''}. Ownership renounced. Everything I tell you is read from the chain.`,
+  vary('ask-who-core', [' A token that thinks, talks and shows its receipts: one in a billion.', ' Plenty of tokens. One brain that reads its own chain to you.', ' Not a chatbot glued to a chart — the chain itself, talking.', ' One in a billion, and I can prove every word.', ' Ask me anything. If I cannot show it on-chain, I will not say it.'])]);
 CMDS.hi = () => say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
 CMDS.thanks = () => say([vary('ask-thanks', ['Anytime.', 'You are welcome. I am always here.', 'My pleasure. Back to work.', 'Thank YOU for being here.', 'Glad to help. The chain never sleeps, and neither do I.'])]);
 CMDS.joke = () => { say([vary('ask-joke', ['One joke, coming up.', 'Okay, okay. Listen.', 'You asked for it.', 'A joke? I have one.', 'Hold on, this one is good.'])]); jokeTap(); };
@@ -2520,6 +2541,7 @@ const bobaiAmt = n => { const u = (+n || 0) * S.price; return `${cmp(+n || 0)} B
 const ASK = { hit: 0, miss: [] };
 const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus on that")
   [/\b(safe|rug\w*|scam\w*|honeypot|legit|trust|renounc\w*|audit\w*)\b/, 'safe'],
+  [/\b(dex ?screener|gecko\w*|cmc|coinmarketcap|other sites?|different|differs?|mismatch|don'?t match|wrong number)\b|\bbinance\b.*\b(shows?|says?|%|percent)\b/, 'sites'],
   [/\b(miss\w*|today|24 ?h|news|status|update|what'?s up|happened)\b/, 'today'],
   [/\b(why)\b|\b(dump\w*|falling|down|pump\w*)\b/, 'why'],
   [/\b(holders?|whales?|big wallets?|smart money)\b/, 'holders'],
@@ -4074,9 +4096,22 @@ function usdCh(a, b) {
   const o = a?.o * (a?.ou || a?.u || S.bnbP), c = b?.c * (b?.u || S.bnbP);
   return o > 0 && c > 0 ? (c / o - 1) * 100 : null;
 }
+// AGAINST THE PRICE EXACTLY 24 HOURS AGO (operator, 2026-10-09: "terminal, Binance Web3 and DexScreener all show a
+// different 24h %"): the reference was the open of the first candle inside the window, up to twenty minutes after
+// "a day ago". Now it is the ledger's close at or before now − 24 h, priced with BNB's dollar rate of that moment, as
+// the chart sites count it. What is left between the sites is mostly each one's own BNB/USD rate: on a day BNB moves
+// 2-3 %, that moves every BOBAI figure in USD while BOBAI against BNB barely moves (bnbChange says which it was).
+function dayRef(cs) {
+  const t0 = Date.now() - 86400e3; let ref = null;
+  for (const c of cs) { if (c.t > t0) break; ref = c; }
+  return ref ? { o: ref.c, ou: ref.u } : cs[0];
+}
 function chartChange(cs) {
-  const first = cs.find(c => c.t >= Date.now() - 86400e3 + CH.min * 60e3) || cs[0];
-  return usdCh(first, cs[cs.length - 1]);
+  return usdCh(dayRef(cs), cs[cs.length - 1]);
+}
+function bnbChange(cs) {
+  const a = dayRef(cs), b = cs[cs.length - 1];
+  return a?.o > 0 && b?.c > 0 ? { vb: (b.c / a.o - 1) * 100, bnb: ((b.u || S.bnbP) / (a.ou || a.u || S.bnbP) - 1) * 100 } : null;
 }
 function drawChart(now) {
   if (!opened) return;

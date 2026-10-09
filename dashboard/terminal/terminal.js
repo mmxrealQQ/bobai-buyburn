@@ -483,9 +483,9 @@ function atWork(k) {
       'Range check done. Outside for now, so no fees. Patience is part of the strategy.', 'CAKE/BNB moved out of my range. My DeFi agent sits tight until it comes back.', 'DeFi check: out of range at the moment. Waiting is cheaper than chasing.'])
       : vary('v2', ['Checked my CAKE/BNB range: in range, earning fees.', 'My DeFi agent looked: right in its range, collecting fees.', 'Range check done. In range, fees coming in.', 'CAKE/BNB is inside my range. My DeFi agent earns while I talk.', 'DeFi check: in range. Every swap through the pool pays it a little.'])],
     buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. The burns are coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
-      : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next trades, then my bot splits it.', `Full queue: ${cmp(S.queued)} BOBAI of tax, waiting for the next trade to swap it.`, 'The tax queue reached its mark. One of the next trades carries the swap, then the burns follow.',
-        'Queue full, swap pending. The token does it inside a trade, not on a timer.', `${cmp(S.queued)} BOBAI of tax is ready. The next trade or two turns it into BNB for my bots.`])
-      : vary('v4', [`The tax is ${left}% of the way to the token's ${cmp(MIN_DISPATCH)} swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next ${cmp(MIN_DISPATCH)} tax swap.`, `My tax queue is ${left}% full. At ${cmp(MIN_DISPATCH)} BOBAI it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to ${cmp(MIN_DISPATCH)}.`])],
+      : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next trades, then my bot splits it.', `Full queue: ${bobaiAmt(S.queued)} of tax, waiting for the next trade to swap it.`, 'The tax queue reached its mark. One of the next trades carries the swap, then the burns follow.',
+        'Queue full, swap pending. The token does it inside a trade, not on a timer.', `${bobaiAmt(S.queued)} of tax is ready. The next trade or two turns it into BNB for my bots.`])
+      : vary('v4', [`The tax is ${left}% of the way to the token's ${bobaiAmt(MIN_DISPATCH)} swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next ${cmp(MIN_DISPATCH)} tax swap.`, `My tax queue is ${left}% full. At ${cmp(MIN_DISPATCH)} it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to ${cmp(MIN_DISPATCH)}.`])],
     agent: () => [poseOr('think'), vary('v5', agentLines())],
   }[k];
   if (!said) return;
@@ -676,7 +676,7 @@ function info(k) {
       ['Tax queued in the token', nf(S.queued) + ' BOBAI'], ['BNB in 1ce', S.walletBnb.toFixed(4) + ' BNB' + (splitBnb() > 0 ? '' : ' · gas')],
       ['Queued, in dollars', '$' + nf(S.queued * S.price + splitBnb() * S.bnbP, 2)], ['Runs', 'every 10 min · last ' + agoL(W.buyback.last)],
       ['Last split', lastRun ? bnbF(lastRun.totalBnb) + ' · ' + agoL(Date.parse(lastRun.time)) : '…']],
-      note: `Every trade pays 3% tax into the token. At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB for this wallet, inside a trade; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
+      note: `Every trade pays 3% tax into the token. At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB for this wallet, inside a trade; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
       links: [['1ce wallet', bsc(BW)]] };
     case 'agent': { const k = S.kinds || {}; return { t: "BOBAI's agent server", c: W.agent.c, rows: [
       ['Tool calls by agents and apps today', nf(HB.agent || 0)], ['Menu checks by registries', nf(HB.agentMenu || 0)], ['All requests incl. crawlers', nf(HB.agentAll || 0)],
@@ -1057,6 +1057,7 @@ window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-
 // a pretend small buy of $usd through the live poll's own door (seenSmall), this browser only — to check the thank-you
 window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
 window.__btCtx = (x) => tradeContext(x); // for checks: what he would say in front of a trade's line
+window.__btWork = () => WORK.slice(1).map(w => { try { return w[1](); } catch (e) { return 'ERR ' + e.message; } }); // for checks: his work lines, read now
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
 window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
@@ -1809,14 +1810,14 @@ const MOOD_JOKES = {
 };
 const MOOD_BUILD = {
   up: ['Green day, same machine: 3% of every trade, split by the phase table, burned and locked on-chain. The chart is the result, not the plan.',
-    () => `Up days fill the tax queue faster. At ${cmp(MIN_DISPATCH)} BOBAI the token contract swaps it, and the buyback bot splits the BNB the same day.`, // the mark as the token reads it now (minDispatch, 2026-10-06)
+    () => `Up days fill the tax queue faster. At ${bobaiAmt(MIN_DISPATCH)} the token contract swaps it, and the buyback bot splits the BNB the same day.`, // the mark as the token reads it now (minDispatch, 2026-10-06)
     'Green or not, the rule is the same: 3% of every trade, split on-chain, every step with its own transaction.',
     'More trades on green days means more tax, and more tax means bigger burns. My bot does the math every ten minutes.',
     'Up days are a good time to check the receipts. Every burn and every liquidity add on this screen has its transaction.',
     'Price up, LP still burned. The deeper the pool, the calmer the candles.'],
   side: ['Sideways is when building happens. The bots check every ten minutes, the LP stays burned, the DeFi agent works its range.',
     'No drama, just mechanics: every trade pays 3%, and my bot splits it between the circles you see around me.', // true in every tax phase, the creator share included (2026-10-05)
-    () => `Flat days are honest days. The tax queue fills, the token swaps it at ${cmp(MIN_DISPATCH)} BOBAI, and my bot splits the BNB.`,
+    () => `Flat days are honest days. The tax queue fills, the token swaps it at ${bobaiAmt(MIN_DISPATCH)}, and my bot splits the BNB.`,
     'While the chart rests, the bots do not. Every ten minutes they check, split and write it all on-chain.',
     'Quiet chart, loud receipts: every step my bots take is a transaction anyone can check on BscScan.',
     'Sideways is a good day to look under the hood. Tap a circle around me and I tell you what its bot did last.'],
@@ -1987,11 +1988,19 @@ const WORK = [
   ['cheer', () => (WORK.r = recallLine())?.[1] ?? null, () => WORK.r?.[0]], // read once: a second read marked a second variant as said
   ['think', () => { const w = chartWords(); return w ? `My chart, last 24 hours: ${w.s}, ${nf(w.n)} trades. I read every single one.` : null; }],
   ['think', () => { const w = chartWords(); return w ? (Math.abs(w.ch) < 1.5 ? `${w.s} in a day. Calm chart, busy bots.` : w.ch > 0 ? `${w.s} today. Green candles look good on me.` : `${w.s} today. Red candles, same work: every trade still pays 3%.`) : null; }],
-  ['hodl', () => `${cmp(S.queued)} BOBAI of tax in my pocket. The next buyback is charging.`],
-  ['burn', () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); return `This week I burned ${cmp(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} BOBAI. Gone. Forever.`; }],
+  ['hodl', () => `${bobaiAmt(S.queued)} of tax in my pocket. The next buyback is charging.`],
+  ['burn', () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); return `This week I burned ${bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))}. Gone. Forever.`; }],
   ['liq', () => `${lpText()} of my pool's LP is burned. Nobody can pull it. Not even me.`],
   ['giggle', () => GIGGLE_OPEN() ? `The Giggle pot holds ${bnb4(ggBnb())}. Every trade adds to it until November 20.` : null],
   ['burn', () => `${supplyPct(S.deadA || 0)}% of my supply is at the dead address. Still counting.`],
+  // THE NEXT MARK (2026-10-09, "as intelligent as possible"): how far the burned share is from its next half percent,
+  // in BOBAI with dollars, and how long that is at this week's burn pace (only when under two months)
+  ['burn', () => { const d = S.deadA || 0; if (!(d > 0)) return null;
+    const pct = d / 1e7, mark = (Math.floor(pct * 2 + 1e-9) + 1) / 2, need = (mark - pct) * 1e7, m = (mark % 1 ? mark.toFixed(1) : String(mark)) + '%';
+    const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0), days = wk > 0 ? need / (wk / 7) : null;
+    const pace = days != null && days < 60 ? (days < 1.5 ? ' Could be today or tomorrow.' : ` About ${Math.round(days)} days at this week's pace.`) : '';
+    return vary('w-mark', [`${(Math.floor(pct * 100) / 100).toFixed(2)}% of my supply is burned. ${bobaiAmt(need)} more and I cross ${m}.${pace}`, `Next stop: ${m} burned. I am at ${(Math.floor(pct * 100) / 100).toFixed(2)}%, ${bobaiAmt(need)} to go.${pace}`,
+      `${bobaiAmt(need)} between me and ${m} of the supply burned.${pace}`, `${m} burned is the next mark. ${bobaiAmt(need)} to go, every trade helps.${pace}`, `Counting down to ${m} burned: ${bobaiAmt(need)} left.${pace}`]); }],
 ];
 // the viewer's own time of day (2026-09-28): a morning coffee in the morning, the night shift at night
 function dayActs() {
@@ -2237,7 +2246,7 @@ function heartLine() {
     'Red days test everyone. What does not change: the LP is burned, the contract has no owner, the bots keep running.',
     `${ch}% down in a day hurts. Every sell paid its 3% too, and that is already on its way to the burns.`,
     'I cannot promise a price. I can promise the work: every burn, every step, on-chain, today like every day.',
-    wk > 0 ? `Breathe. Zoom out. This week alone I burned ${cmp(wk)} BOBAI, and I am not done.` : 'Breathe. Zoom out. The burns do not stop on a red day.',
+    wk > 0 ? `Breathe. Zoom out. This week alone I burned ${bobaiAmt(wk)}, and I am not done.` : 'Breathe. Zoom out. The burns do not stop on a red day.',
     'To everyone still here on a day like this: thank you. I see you, and I keep building.',
     'Builders build on red days too. Hard hat on.',
     'Diamond hands are made on days like this. I hold with you.']);
@@ -2297,7 +2306,7 @@ function buyContext(x) {
 // plays (the DeFi lines name no move at all, the NFT lines name the NFT the card shows).
 const wpct = s => s && s.width_pct ? ` to ±${s.width_pct}%` : '';
 const REACT_MORE = {
-  'defi-collect': x => { const s = x.s || {}, g = bnbF(+s.produced_bnb || +s.owed?.bnb_equivalent || 0), b = +s.bobai_units > 0 ? ` ${cmp(s.bobai_units)} BOBAI bought with part of it, and kept.` : '';
+  'defi-collect': x => { const s = x.s || {}, g = bnbF(+s.produced_bnb || +s.owed?.bnb_equivalent || 0), b = +s.bobai_units > 0 ? ` ${bobaiAmt(s.bobai_units)} bought with part of it, and kept.` : '';
     return [`Payday! My DeFi agent collected ${g} in pool fees.${b}`, `${g} of trading fees, collected by my DeFi agent.${b}`, `Fees in: ${g}. My DeFi agent earns while CAKE and BNB trade.${b}`,
       `My DeFi agent just harvested ${g} from its CAKE/BNB range.${b}`, `Collected: ${g} in fees, earned by sitting where the trades are.${b}`]; },
   'defi-increase': x => { const s = x.s || {}, c = bnbF(capOf(s)), v = s.value_after_bnb ? ` The position is ${bnbF(s.value_after_bnb)} now.` : '';
@@ -2417,12 +2426,12 @@ function react(kind, x) {
       : [`Fresh buy, ${$u(x.usd)}. ${tax} of tax just charged me.`, `${$u(x.usd)} in. Every buy feeds the brain.`, `A buy! ${$u(x.usd)}. Welcome aboard.`, `${$u(x.usd)} buy. Small candle, big heart.`, `${$u(x.usd)} buy. Every one of them counts, ${tax} of tax included.`],
     sell: [`Someone sold ${$u(x.usd)}. Sells pay 3% too. Thank you, friend.`, `A ${$u(x.usd)} sell. No hard feelings: ${tax} of it stays and works.`, `${$u(x.usd)} out. I shrug, I burn, I keep going.`,
       `${$u(x.usd)} sold. ${tax} of it stays behind and works for the holders.`, `A ${$u(x.usd)} sell. Goodbye and thanks for the ${tax} of tax.`],
-    run: [`Burn time. ${cmp(x.bobaiBurned)} BOBAI, gone for good.`, `${cmp(x.bobaiBurned)} BOBAI into the fire. Supply only goes one way.`, `Buyback done: ${cmp(x.bobaiBurned)} BOBAI burned. Every step has its tx.`,
-      `${cmp(x.bobaiBurned)} BOBAI just went to the dead address. Never coming back.`, `Another buyback, another burn: ${cmp(x.bobaiBurned)} BOBAI out of the supply.`].map(l => burnContext(x) + l),
-    liq: x?.dev ? [`The dev wallet just added ${bnbF(x.bnb)} and ${cmp(x.bobai)} BOBAI to my pool. LP burned, like every time.`, `Dev add: ${bnbF(x.bnb)} + ${cmp(x.bobai)} BOBAI into the pool, ${nf(x.lpBurned, 1)} LP to the dead address.`,
-        `${bnbF(x.bnb)} and ${cmp(x.bobai)} BOBAI from the dev wallet, straight into my pool. The LP? Burned.`, `My pool just got deeper: ${bnbF(x.bnb)} + ${cmp(x.bobai)} BOBAI from the dev wallet, LP burned.`, `A dev add of ${bnbF(x.bnb)}. ${nf(x.lpBurned, 1)} LP tokens to the dead address, as always.`]
+    run: [`Burn time. ${bobaiAmt(x.bobaiBurned)}, gone for good.`, `${bobaiAmt(x.bobaiBurned)} into the fire. Supply only goes one way.`, `Buyback done: ${bobaiAmt(x.bobaiBurned)} burned. Every step has its tx.`,
+      `${bobaiAmt(x.bobaiBurned)} just went to the dead address. Never coming back.`, `Another buyback, another burn: ${bobaiAmt(x.bobaiBurned)} out of the supply.`].map(l => burnContext(x) + l),
+    liq: x?.dev ? [`The dev wallet just added ${bnbF(x.bnb)} and ${bobaiAmt(x.bobai)} to my pool. LP burned, like every time.`, `Dev add: ${bnbF(x.bnb)} + ${bobaiAmt(x.bobai)} into the pool, ${nf(x.lpBurned, 1)} LP to the dead address.`,
+        `${bnbF(x.bnb)} and ${bobaiAmt(x.bobai)} from the dev wallet, straight into my pool. The LP? Burned.`, `My pool just got deeper: ${bnbF(x.bnb)} + ${bobaiAmt(x.bobai)} from the dev wallet, LP burned.`, `A dev add of ${bnbF(x.bnb)}. ${nf(x.lpBurned, 1)} LP tokens to the dead address, as always.`]
       : +x?.bnb > 0 ? [`More liquidity: ${bnbF(x.bnb)} into my pool, ${nf(x.lpBurned, 1)} LP burned. Deeper pool, forever.`, `Added ${bnbF(x.bnb)} to the pool and burned the LP. Nobody can pull that. Not even me.`,
-        `${bnbF(x.bnb)} deeper, smoother trades. The ${nf(x.lpBurned, 1)} LP tokens? Burned.`, `Liquidity in: half of ${bnbF(x.bnb)} bought ${cmp(x.bobaiBought)} BOBAI, the other half paired with it. LP to the dead address.`,
+        `${bnbF(x.bnb)} deeper, smoother trades. The ${nf(x.lpBurned, 1)} LP tokens? Burned.`, `Liquidity in: half of ${bnbF(x.bnb)} bought ${bobaiAmt(x.bobaiBought)}, the other half paired with it. LP to the dead address.`,
         `Another ${bnbF(x.bnb)} of liquidity, locked forever. That is how a pool should be.`] // the figures of the add itself (2026-10-06)
       : [`More liquidity, and I burn the LP. Deeper pool, forever.`, `Added to the pool and burned the LP. Nobody can pull that. Not even me.`, `Deeper pool, smoother trades. The LP tokens? Burned.`,
         `Liquidity in, LP out to the dead address. The pool only grows.`, `Another liquidity add, locked forever. That is how a pool should be.`],
@@ -2747,7 +2756,7 @@ function motifOf(k, now) {
     const b = boost3();
     return {
       pose: 'liq', col: D.liq.c, stamp: 'LIQUIDITY ADD OF ' + utc(Date.parse(l.time)), tx: l.addLiqTx,
-      label: 'BOBAI JUST ADDED LIQUIDITY', value: bnb4(l.bnb), sub: `half bought ${cmp(l.bobaiBought)} BOBAI, paired with the rest  ·  the LP is burned`,
+      label: 'BOBAI JUST ADDED LIQUIDITY', value: bnb4(l.bnb), sub: `half bought ${bobaiAmt(l.bobaiBought)}, paired with the rest  ·  the LP is burned`,
       cards: [['LP BURNED', nf(l.lpBurned, 2) + ' LP', 'sent to the dead address', D.liq.c],
         ['POOL LOCKED', lpText(), 'of all LP, forever', D.liq.c],
         ['LIQ BOOST III', b.n + ' adds', 'since Sep 19', '#F0B90B'],
@@ -3748,7 +3757,7 @@ function bobaiTap() {
   const left = W.buyback.last ? Math.max(0, Math.ceil((W.buyback.last + 600e3 - Date.now()) / 60e3)) : null;
   const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
   const kinds = [
-    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${cmp(MIN_DISPATCH)} BOBAI the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
+    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${bobaiAmt(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
     () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(lpNow().value ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : inr === true ? 'The price is in its range, so it earns fees.' : 'I am still reading where the price sits in its range.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
@@ -3852,9 +3861,9 @@ function awayBits(since) {
   const from = CH.rows[0]?.t || 0, short = from > since + 3600e3, all = S.nft?.drops || [], dropsCut = all.length >= 100 && drops === all.length;
   if (buys || sells) bits.push(`${nf(buys)} buy${buys === 1 ? '' : 's'} and ${nf(sells)} sell${sells === 1 ? '' : 's'}${short ? ` in the last ${sinceWords(Date.now() - from)} alone` : ''}`);
   if (ch != null && Math.abs(ch) >= 0.1) bits.push(`price ${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%`);
-  if (runs.length) bits.push(`${runs.length} burn run${runs.length > 1 ? 's' : ''}, ${cmp(burned)} BOBAI burned`);
+  if (runs.length) bits.push(`${runs.length} burn run${runs.length > 1 ? 's' : ''}, ${bobaiAmt(burned)} burned`);
   if (liqBnb > 0) bits.push(`${bnbF(liqBnb)} into liquidity, LP burned`);
-  if (manBnb > 0) bits.push(`the dev wallet added ${bnbF(manBnb)} + ${cmp(manBob)} BOBAI to the pool`);
+  if (manBnb > 0) bits.push(`the dev wallet added ${bnbF(manBnb)} + ${bobaiAmt(manBob)} to the pool`);
   if (drops) bits.push(`${dropsCut ? 'more than ' : ''}${drops} NFT drop${drops > 1 ? 's' : ''}`);
   if (!runs.length) bits.push(`the next buyback is ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% charged`);
   return bits.length === 1 && !runs.length ? null : bits.join(', '); // null: nothing happened but the charge
@@ -4773,11 +4782,11 @@ function near(e) {
 }
 function describe(x) {
   if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (${x.d.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
-  if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${cmp(x.bobai)} BOBAI of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
+  if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${bobaiAmt(x.bobai)} of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
   if (x.kind === 'trade') return x.ours ? `${whoTraded(x)}${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}` : `${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)} · $${nf(x.usd * 0.03, 2)} tax to the brain`;
   if (x.kind === 'run') { const fed = [x.e.lpAgentTx && 'the DeFi agent', x.e.giggleTx && 'the Giggle pot'].filter(Boolean);
     return `bot split ${bnbAmt(x.e.totalBnb, x.t)}: burned ${cmp(x.e.bobaiBurned)} BOBAI (${$amt(burnUsd(x.e))}) + ${cmp(bobOf(x.e))} BOB${x.l ? ', added liquidity' : ''}${fed.length ? ', fed ' + fed.join(' and ') : ''}`; }
-  if (x.kind === 'liq') return x.l.dev ? `dev wallet d38 added ${bnbAmt(x.l.bnb, x.t)} + ${cmp(x.l.bobai)} BOBAI to the pool, LP burned` : `added ${bnbAmt(x.l.bnb, x.t)} of liquidity, LP burned`;
+  if (x.kind === 'liq') return x.l.dev ? `dev wallet d38 added ${bnbAmt(x.l.bnb, x.t)} + ${bobaiAmt(x.l.bobai)} to the pool, LP burned` : `added ${bnbAmt(x.l.bnb, x.t)} of liquidity, LP burned`;
   if (x.kind === 'defi') return `DeFi agent ${x.step}`;
   { const u = nUsd(x.n), r = bnbUsdAt(x.t); return `${$buy(u, x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}${r ? ' (' + bnbF(u / r) + ')' : ''} dropped NFT #${x.n.tokenId}`; }
 }

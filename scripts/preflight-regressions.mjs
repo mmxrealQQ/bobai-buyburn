@@ -145,6 +145,9 @@ ok('costAtSize: below the first rung is the first rung; no rows is null', costAt
 
 o = shape({ address: '0xc', symbol: 'C', name: 'C', quotable: false, reason: 'curve', curve: { progressPct: 41.5, feePct: 1, sellQuoted: false, tradeCost: [{ sizeUsd: 100, buyCostPct: 1.2, sellCostPct: null }] } }, null, 100);
 ok('on the four.meme curve: said so, the curve’s figures, and no sell quote STOPS', codes(o.caution).includes('on_launch_curve') && codes(o.stop) === 'sell_not_quotable' && o.entry.cost_pct === 1.2 && o.venue === 'four.meme bonding curve');
+// 2026-10-09 review: a raise in a quote token this tool cannot price asked no dollar size; that is no refused sell
+o = shape({ address: '0xc', symbol: 'C', name: 'C', quotable: false, reason: 'curve', curve: { progressPct: 5, feePct: 1, sellQuoted: false, quotePriced: false, quoteSymbol: null, tradeCost: [] } }, null, 100);
+ok('… but a raise in an unpriced quote token is a caution (quote_not_priced), not a stop', !codes(o.stop) && codes(o.caution).includes('quote_not_priced'), JSON.stringify([o.stop, o.caution]));
 
 o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool at a venue whose swap fee has been verified here.' }, null, 100);
 ok('no readable market: a stop with the scan’s reason, entry and exit null', codes(o.stop) === 'not_quotable' && o.entry === null && o.exit === null && /No pool/.test(o.stop[0].why));

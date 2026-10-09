@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2755 lines.
+# one fetch. 5 files, 2758 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2073,7 +2073,10 @@ export function shape(s, r, usd, routeError = null, control = null) {
   if (!s.quotable && s.curve) {
     const c = s.curve;
     const buy = costAtSize(c.tradeCost, usd, 'buyCostPct'), sell = costAtSize(c.tradeCost, usd, 'sellCostPct');
-    if (!c.sellQuoted) stop.push({ code: 'sell_not_quotable', why: 'four.meme’s contract returned no sell quote at any size asked.' });
+    // A raise in a quote token this tool cannot price asks no dollar size at all: that is our blind spot, not a sell
+    // that fails (2026-10-09 review: it read "stop" for a token that sells fine). Only an asked and refused sell stops.
+    if (!c.sellQuoted && c.quotePriced === false) caution.push({ code: 'quote_not_priced', why: `The raise is in ${c.quoteSymbol || 'a token'} this tool cannot price, so no trade size in dollars was measured; the sell was not tested.` });
+    else if (!c.sellQuoted) stop.push({ code: 'sell_not_quotable', why: 'four.meme’s contract returned no sell quote at any size asked.' });
     caution.push({ code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.`, ...fig(c.progressPct, 100, 'pct') });
     if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the cost shown is the largest rung’s and the real one is higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
     return out({ venue: 'four.meme bonding curve', stop, caution,

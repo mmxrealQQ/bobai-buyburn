@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7156 lines.
+# one fetch. 6 files, 7157 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2749,6 +2749,7 @@ export async function scan(input, env) {
             note: r.buyNote || r.sellNote || undefined,
           })),
           sellQuoted: !!sellRow,
+          quotePriced: quoteUsd > 0, // false: the raise is in a token this tool cannot price, so no size in dollars was asked (2026-10-09)
           custody: 'The money raised sits in four.meme’s TokenManager contract until the raise completes, not in the creator’s wallet; there is no pool and therefore no liquidity to withdraw.',
           onCompletion: 'When the raise completes, four.meme lists the token on PancakeSwap; the pool path of this tool applies from then on.',
           source: 'four.meme TokenManagerHelper3 (getTokenInfo, tryBuy, trySell) on BNB Smart Chain, at this block',

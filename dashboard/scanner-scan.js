@@ -464,6 +464,7 @@ export async function scan(input, env) {
             note: r.buyNote || r.sellNote || undefined,
           })),
           sellQuoted: !!sellRow,
+          quotePriced: quoteUsd > 0, // false: the raise is in a token this tool cannot price, so no size in dollars was asked (2026-10-09)
           custody: 'The money raised sits in four.meme’s TokenManager contract until the raise completes, not in the creator’s wallet; there is no pool and therefore no liquidity to withdraw.',
           onCompletion: 'When the raise completes, four.meme lists the token on PancakeSwap; the pool path of this tool applies from then on.',
           source: 'four.meme TokenManagerHelper3 (getTokenInfo, tryBuy, trySell) on BNB Smart Chain, at this block',

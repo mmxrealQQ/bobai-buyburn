@@ -182,7 +182,7 @@ try {
     && lv(null, null) === 'telegram bot answers|buyback bot ran recently');
   const hsrc = fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'health-checks.mjs'), 'utf8');
   const run = hsrc.slice(hsrc.indexOf('export async function runHealth'));
-  is('7 runHealth asks them every morning (told buys, burn alerts, the five wallets, the market card) and pins its rules', /tgEvidenceVerdicts\(j\)/.test(run) && /readKeepBalances\(RPC\)/.test(run) && /dailyOnTime\(d\.market_card, 19\)/.test(run) && /tgEvidenceHolds\(\)/.test(run) && /keepHolds\(\)/.test(run));
+  is('7 runHealth asks them every morning (told buys, burn alerts, the five wallets, the market card) and pins its rules', /tgEvidenceVerdicts\(j\)/.test(run) && /readKeepBalances\(RPC\)/.test(run) && /dailyOnTime\(d\.market_card, 19,/.test(run) && /tgEvidenceHolds\(\)/.test(run) && /keepHolds\(\)/.test(run));
 
   // 8 -------------------------------------------------------------------------
   let W = {};

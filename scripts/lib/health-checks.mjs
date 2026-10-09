@@ -63,9 +63,12 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
 // A daily post is on time when its date flag names today — or yesterday, while
 // today's window (it closes at `closesUtc`) is still open. Pinned both ways on
 // every run: a rule that can only say "fine" is how six silent days got by.
-export const dailyOnTime = (flag, closesUtc, now = new Date()) => {
+// `since` = the first day the post existed: a day before it is not owed (the market card was born 2026-10-09 06:29 UTC
+// and the morning check called its missing 10-08 card red).
+export const dailyOnTime = (flag, closesUtc, now = new Date(), since = '') => {
   const day = (d) => d.toISOString().slice(0, 10);
   const due = now.getUTCHours() >= closesUtc ? day(now) : day(new Date(now.getTime() - 86400000));
+  if (since && due < since) return true;
   return typeof flag === 'string' && flag >= due;
 };
 // THE DeFi AGENT, WATCHED (2026-09-18). Until now the only things known about
@@ -163,7 +166,9 @@ const buybackVerdictHolds = () => {
 const dailyOnTimeHolds = () => {
   const at = (h) => new Date(Date.UTC(2026, 8, 17, h, 30));
   const pins = [[dailyOnTime('2026-09-17', 9, at(10)), true], [dailyOnTime('2026-09-16', 9, at(10)), false], [dailyOnTime('2026-09-16', 9, at(7)), true],
-    [dailyOnTime('2026-09-11', 9, at(7)), false], [dailyOnTime(null, 9, at(7)), false]];
+    [dailyOnTime('2026-09-11', 9, at(7)), false], [dailyOnTime(null, 9, at(7)), false],
+    // born on the 17th: the 16th's post is not owed, the 17th's is once its window closed
+    [dailyOnTime(null, 9, at(7), '2026-09-17'), true], [dailyOnTime(null, 9, at(10), '2026-09-17'), false], [dailyOnTime(null, 9, at(10), '2026-09-16'), false]];
   return pins.every(([got, want]) => got === want);
 };
 
@@ -328,7 +333,7 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     ok('Bots', 'whale recap went out (internal, 06:00 UTC)', dailyOnTime(d.whale_recap, 9), `last sent ${d.whale_recap || 'never'}`);
     ok('Bots', 'DeFi card went out (channel, 05:00 UTC)', dailyOnTime(d.lp_card, 8), `last sent ${d.lp_card || 'never'}`);
     // 2026-10-09: the public 24 h market card (16:00-18:59 UTC); an older bot that does not name it is not asked
-    if ('market_card' in d) ok('Bots', 'market card went out (channel, 16:00 UTC)', dailyOnTime(d.market_card, 19), `last sent ${d.market_card || 'never'}`);
+    if ('market_card' in d) ok('Bots', 'market card went out (channel, 16:00 UTC)', dailyOnTime(d.market_card, 19, new Date(), '2026-10-09'), `last sent ${d.market_card || 'never'}`);
     for (const v of tgEvidenceVerdicts(j)) ok('Bots', v.name, v.good, v.detail);
     // informational: a degraded log scan walks on from its cursor (2026-10-09); said, not red
     ok('Bots', 'telegram bot log scans read whole (informational)', true, j.scan_degraded_since ? `degraded since ${j.scan_degraded_since}, walking from the cursor` : 'not degraded');

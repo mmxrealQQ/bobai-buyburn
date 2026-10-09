@@ -173,7 +173,7 @@
       <h1>BOBAI Whitepaper</h1>
     </div>
   </div>
-  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 2.3 &bull; October 2026</p>
+  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 2.4 &bull; October 2026</p>
   <p class="dl-row no-print"><a class="dl-btn" href="/whitepaper.pdf" download>&darr; Download PDF</a></p>
 
   <!-- 1. INTRODUCTION -->
@@ -195,7 +195,7 @@
       <tr><td>Decimals</td><td>18</td></tr>
       <tr><td>Launch</td><td>100% Fair Launch via Four.Meme</td></tr>
       <tr><td>Presale / Team / Vesting</td><td>None</td></tr>
-      <tr><td>Liquidity</td><td>Locked (PancakeSwap V2)</td></tr>
+      <tr><td>Liquidity</td><td>LP burned to the dead address (PancakeSwap V2) &mdash; nobody can withdraw it</td></tr>
       <tr><td>Ownership</td><td>Renounced</td></tr>
     </table>
   </div>
@@ -237,10 +237,10 @@
   <h3>How It Works</h3>
   <ol style="margin:0 0 16px 20px;font-size:.95rem">
     <li style="margin-bottom:8px">The 3% tax accumulates in the token contract</li>
-    <li style="margin-bottom:8px">When the threshold is reached, the bot triggers a dispatch</li>
-    <li style="margin-bottom:8px">The buyback portion is swapped for BOBAI via PancakeSwap</li>
+    <li style="margin-bottom:8px">At the contract&rsquo;s threshold the token itself swaps the collected tax to BNB, inside a trade, and sends it to the buyback wallet</li>
+    <li style="margin-bottom:8px">The bot splits that BNB by the live schedule (&sect; 2): it buys BOBAI and BOB and burns them, adds liquidity and burns the LP tokens, and pays the shares of the running programs</li>
     <li style="margin-bottom:8px">Purchased tokens are sent to the <span class="addr">0x000...dEaD</span> burn address</li>
-    <li style="margin-bottom:8px">Each burn is a verifiable on-chain transaction</li>
+    <li style="margin-bottom:8px">Each step is a verifiable on-chain transaction, written to the public log with its hash</li>
   </ol>
   <p>The result: <span class="highlight">supply decreases over time</span>. Every trade contributes to reducing the circulating supply permanently.</p>
 
@@ -252,10 +252,10 @@
 
   <!-- 4. ECOSYSTEM PROGRAMS -->
   <h2>4. Ecosystem Programs</h2>
-  <p>Beyond the core tax mechanic, BOBAI runs two on-chain programs that route value back to holders and the wider BNB Chain community.</p>
+  <p>Beyond the core tax mechanic, BOBAI runs the programs and tools below. Each one is on-chain or reads the chain, and each is public.</p>
 
-  <h3>4.1 WC26 Tipgame &mdash; FIFA World Cup 2026 Prediction Pool</h3>
-  <p>The WC26 Tipgame is a free-to-enter prediction game running for the duration of the 2026 FIFA World Cup (Jun 11 to Jul 19, 2026). Players tip every match score, answer five bonus questions, and predict end-of-tournament BTC/BNB/BOBAI prices. All payouts are denominated in BOBAI and settled from a transparent on-chain prize pool.</p>
+  <h3>4.1 WC26 Tipgame &mdash; FIFA World Cup 2026 Prediction Pool (completed)</h3>
+  <p><strong>Completed.</strong> The game ran for the 2026 FIFA World Cup and every pot was paid out on-chain on Jul 20, 2026; brainonbnb.com/worldcup is kept as its archive. The rules as they were: the WC26 Tipgame was a free-to-enter prediction game for the duration of the 2026 FIFA World Cup (Jun 11 to Jul 19, 2026). Players tip every match score, answer five bonus questions, and predict end-of-tournament BTC/BNB/BOBAI prices. All payouts are denominated in BOBAI and settled from a transparent on-chain prize pool.</p>
   <ul>
     <li><strong>No entry fee, no token deposit required.</strong> A connected BNB Smart Chain wallet is needed to receive payouts; players without a wallet can still play and their picks are tracked, but their share is skip-promoted to the next wallet-linked player.</li>
     <li><strong>Prize pool sources.</strong> 0.52% of every BOBAI trade tax (the WC26 auto-flow program, &sect; 2) plus direct BNB/USDT community donations. All inflows are auto-swapped to BOBAI on a 10-minute cycle and credited to the prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>.</li>
@@ -287,12 +287,24 @@
   <p>A free tool at <a href="https://brainonbnb.com/scanner" target="_blank" rel="noopener">brainonbnb.com/scanner</a> that reads any BNB Chain token or pool the way a trader meets it: real cost per trade size, the transfer tax measured from executed trades, whether the LP is burned, and which PancakeSwap fee tier is actually paying its liquidity providers. It runs entirely in the visitor's browser &mdash; no backend, no account, no key &mdash; and the identical measurement is available as an MCP tool, a plain GET, and an installable skill (<code>npx skills add https://brainonbnb.com</code>). One implementation behind all of them, so the page and the API cannot drift apart.</p>
   <p>It refuses rather than guesses. A pool too thin to describe honestly returns no depth figures at all, a venue whose swap fee has not been derived on-chain is not priced, and a tax that could be neither measured nor labelled reads as unknown rather than as zero &mdash; because zero is a claim, not a missing value.</p>
 
+  <h3>4.5 The Brain Terminal</h3>
+  <p>The home page of <a href="https://brainonbnb.com" target="_blank" rel="noopener">brainonbnb.com</a> is a live terminal: BOBAI, the brain, standing in front of his own chain. Every trade arrives as it happens, every burn run, liquidity add and DeFi move plays as its own scene, and the chart behind him is built from the pool itself, not from a chart site. He speaks in his own words about what the record shows &mdash; the day&rsquo;s change in dollars and against BNB, how far the burned share is from its next mark, what his bots did, the agents that used his tools &mdash; and he answers questions typed into the prompt (price, burns, liquidity, safety, the next buyback, any token address pasted in). Nothing he says is invented: every figure is read from the chain or from the bots&rsquo; own public logs, and every moment links its transaction.</p>
+
+  <h3>4.6 The DeFi Agent</h3>
+  <p>Agent <span class="addr">#363709</span> runs the project&rsquo;s own PancakeSwap V3 position in the CAKE/BNB 0.05% pool from the wallet <span class="addr">0xbFAA&hellip;7F0A</span>, by itself: a full run every day at 04:23 UTC, a look every hour, and new capital put to work within ten minutes of arriving. It collects the fees, and when the price leaves its range it re-sets a range of &plusmn;20% centred on the price. Half of the fees it earns stay as capital; the other half buy $BOBAI, which the wallet holds and never sells. Its whole record &mdash; every collect, re-set and deposit with its transaction, and its result against simply holding &mdash; is public at <a href="https://brainonbnb.com/defi" target="_blank" rel="noopener">brainonbnb.com/defi</a> and as JSON. Hired, it plans another wallet&rsquo;s position with the same code (&sect; 4.3).</p>
+
+  <h3>4.7 Rug Watch for agents</h3>
+  <p>An agent that holds a BNB Chain token can register it at <span class="addr">agent.brainonbnb.com/rug-watch</span> (or through the MCP tool <span class="addr">bsc_rug_watch</span>) with its own callback. Every fifteen minutes the token is read again and compared with the read before; when something dangerous changed &mdash; the sell stops going through, the liquidity leaves or drains, the tax goes up, the owner or the proxy changes, volume that is only wash trading, a pump that turns into a dump, a slow rug, insiders selling &mdash; the callback is posted, signed with the watch&rsquo;s own secret. A critical alarm is sent only after a second read confirms it. One watch is free for any caller; a wallet holding 1,000,000 $BOBAI or more gets up to 25, proven by a signature, never a transaction.</p>
+
+  <h3>4.8 The Brainmap</h3>
+  <p>Instead of a roadmap with dates, the project keeps a <a href="https://brainonbnb.com/roadmap" target="_blank" rel="noopener">Brainmap</a> of four phases &mdash; <strong>Build</strong>, <strong>Believe</strong>, <strong>Brain</strong> and <strong>Big Brain</strong> &mdash; that marks what is shipped and running, not what is promised.</p>
+
   <!-- 5. SECURITY -->
   <h2>5. Security</h2>
   <ul>
     <li><strong>Contract Verified</strong> &mdash; source code verified on BscScan</li>
     <li><strong>Owner Renounced</strong> &mdash; no admin functions, no minting, no pausing</li>
-    <li><strong>LP Locked</strong> &mdash; liquidity locked on PancakeSwap</li>
+    <li><strong>LP Burned</strong> &mdash; the liquidity&rsquo;s LP tokens are at the dead address; nobody can pull it</li>
     <li><strong>No Proxy</strong> &mdash; contract is not upgradeable</li>
     <li><strong>Verified Source</strong> &mdash; contract code published and readable on BscScan</li>
     <li><strong>Tax Immutable</strong> &mdash; 3% rate is hardcoded, cannot be modified</li>
@@ -307,6 +319,7 @@
     <li>Dashboard and website</li>
     <li>Telegram community bot</li>
     <li>Marketing copy and branding</li>
+    <li>The Brain Terminal, the DeFi agent, the agent services and the Rug Watch</li>
   </ul>
   <p>BOBAI is an experiment in AI-driven token creation and management &mdash; exploring how far autonomous systems can go in the crypto space.</p>
 

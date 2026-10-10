@@ -171,7 +171,7 @@ const CREATOR = addr('CREATOR_WALLET'), LPA = addr('LP_AGENT_WALLET'), POT = add
 const ERC20 = parseAbi(['function balanceOf(address) view returns (uint256)']);
 const bal = (a) => pub.getBalance({ address: a });
 const tok = (t, a) => pub.readContract({ address: t, abi: ERC20, functionName: 'balanceOf', args: [a] });
-const before = { creator: await bal(CREATOR), lpa: await bal(LPA), pot: await bal(POT), deadBob: await tok(BOB, DEAD), deadBobai: await tok(BOBAI, DEAD) };
+const before = { creator: await bal(CREATOR), lpa: await bal(LPA), pot: await bal(POT), deadBob: await tok(BOB, DEAD), deadBobai: await tok(BOBAI, DEAD), block: await pub.getBlockNumber() };
 
 console.log(`\nthe run (fork of block ${forkBlock}, throwaway wallet ${bot})`);
 // The worker is an ES module in a folder node reads as CommonJS (wrangler does not care, node does):
@@ -197,7 +197,9 @@ if (entries.length === 1) {
   ok('creator, DeFi agent and Giggle pot received exactly their bps of what was available', got.creator === (available * cBps) / 300n && got.lpa === (available * lBps) / 300n && got.pot === (available * gBps) / 300n, `${formatEther(got.creator)} / ${formatEther(got.lpa)} / ${formatEther(got.pot)} BNB at ${cBps}/${lBps}/${gBps} bps — ${split}`);
   const burnedBob = (await tok(BOB, DEAD)) - before.deadBob, burnedBobai = (await tok(BOBAI, DEAD)) - before.deadBobai;
   ok('the dead address holds more $BOB by what the log says, and the wallet keeps none', burnedBob === parseEther(e.bobBurned) && (await tok(BOB, bot)) === 0n, `${Number(e.bobBurned).toFixed(0)} BOB`);
-  ok('the $BOBAI burn arrives at the dead address (a transfer there is not taxed), and the wallet keeps none', burnedBobai > 0n && burnedBobai <= parseEther(e.bobaiBurned) && burnedBobai * 100n >= parseEther(e.bobaiBurned) * 96n && (await tok(BOBAI, bot)) === 0n, `${Number(e.bobaiBurned).toFixed(0)} BOBAI sent, ${Number(formatEther(burnedBobai)).toFixed(0)} arrived at dead`);
+  // the wallet keeps 808.41 $BOBAI and burns only what is above it (operator, 2026-10-08: KEEP_TOKENS / spendable)
+  const keptBobai = await tok(BOBAI, bot);
+  ok('the $BOBAI burn arrives at the dead address (a transfer there is not taxed), and the wallet keeps exactly 808.41', burnedBobai > 0n && burnedBobai <= parseEther(e.bobaiBurned) && burnedBobai * 100n >= parseEther(e.bobaiBurned) * 96n && keptBobai === parseEther('808.41'), `${Number(e.bobaiBurned).toFixed(0)} BOBAI sent, ${Number(formatEther(burnedBobai)).toFixed(0)} arrived at dead, ${formatEther(keptBobai)} kept`);
   // The minimum the swap asked for, against what arrived.
   const ROUTER = parseAbi(['function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable']);
   const minOf = async (hash) => decodeFunctionData({ abi: ROUTER, data: (await pub.getTransaction({ hash })).input }).args[0];
@@ -207,7 +209,18 @@ if (entries.length === 1) {
   ok('the $BOBAI swap leaves 5% of room against what ARRIVES (it was 2.06%)', room(gotBobai, minBobai) > 4.9 && room(gotBobai, minBobai) < 5.1, `${room(gotBobai, minBobai).toFixed(2)}% between minimum and received`);
   ok('the $BOB swap leaves its 5% as before', room(gotBob, minBob) > 4.9 && room(gotBob, minBob) < 5.1, `${room(gotBob, minBob).toFixed(2)}%`);
   const left = await bal(bot);
-  ok('the wallet is left with its gas reserve, less the gas of the run', left <= parseEther('0.003') && left > parseEther('0.0025'), `${formatEther(left)} BNB`);
+  // exact (2026-10-10): the gas of every transaction the wallet sent in the run, read off the fork's blocks — a fixed
+  // floor (0.0025) failed the day the run grew legs, without saying whether anything was wrong
+  let gasPaid = 0n, sent = 0;
+  for (let b = before.block + 1n; b <= await pub.getBlockNumber(); b++) {
+    for (const tx of (await pub.getBlock({ blockNumber: b, includeTransactions: true })).transactions) {
+      if (tx.from.toLowerCase() !== bot.toLowerCase()) continue;
+      const rc = await pub.getTransactionReceipt({ hash: tx.hash }); gasPaid += rc.gasUsed * rc.effectiveGasPrice; sent++;
+    }
+  }
+  // at least the reserve less that gas, at most the reserve (what an add's router hands back stays on the wallet:
+  // 10.10. 0.000533 BNB above reserve − gas with Liq Boost III on)
+  ok('the wallet is left with its gas reserve, less no more than the gas its own transactions paid', left >= parseEther('0.003') - gasPaid && left <= parseEther('0.003') && left > 0n, `${formatEther(left)} BNB left, ${sent} transactions paid ${formatEther(gasPaid)} BNB of gas`);
 }
 ok('the heartbeat is written and the lock released', !!kv.get('heartbeat-buyback') && !kv.has('lock-buyback'));
 
@@ -243,7 +256,9 @@ console.log('\nthe liquidity add (dormant path, called by name)');
     const usedBnb = dep ? BigInt(dep.data) : 0n;
     ok(`${name}: the add went out with minimums — 95% of the tokens and 95% of the BNB the router then used`, a[2] === (a[1] * 95n) / 100n && a[2] > 0n && a[3] === (usedBnb * 95n) / 100n && a[3] > 0n && usedBnb <= addTx.value, `${formatEther(a[3])} of ${formatEther(usedBnb)} BNB used, ${formatEther(addTx.value - usedBnb)} came back`);
     const allowance = await pub.readContract({ address: token, abi: ALLOW, functionName: 'allowance', args: [acct.address, ROUTER_ADDR] });
-    ok(`${name}: nothing stays approved and no token stays on the wallet`, allowance === 0n && (await tok(token, acct.address)) === 0n, `allowance ${allowance}`);
+    // $BOBAI: the wallet keeps its 808.41 (operator, 2026-10-08); $BOB keeps nothing
+    const kept = await tok(token, acct.address), keep = token.toLowerCase() === BOBAI.toLowerCase() ? parseEther('808.41') : 0n;
+    ok(`${name}: nothing stays approved and the wallet keeps ${keep ? 'exactly 808.41' : 'no token'}`, allowance === 0n && kept === keep, `allowance ${allowance}, ${formatEther(kept)} kept`);
   }
 }
 

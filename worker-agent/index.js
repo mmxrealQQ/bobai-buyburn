@@ -2877,7 +2877,8 @@ ${pageTail}`;
     if (path === '/watch' && request.method === 'POST') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const spec = await request.json().catch(() => null);
-      const proof = request.headers.get('PAYMENT-SIGNATURE');
+      // both headers its own 402 names (2026-10-10): a payment in X-PAYMENT was answered as an unpaid call
+      const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
 
       // Price discovery must not require a valid body. An x402 client — or an
       // aggregator indexing the catalogue at /.well-known/x402 — probes the

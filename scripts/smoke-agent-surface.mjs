@@ -348,6 +348,15 @@ for (const [label, sig, want] of [
   }).then((r) => r.json()).catch(() => ({}));
   ok(`rejects ${label}`, want.test(j.reason || ''), j.reason || 'no reason given');
 }
+// The 402 names both headers, so a payment in X-PAYMENT is read too (2026-10-10: it was answered as an unpaid call, 402)
+{
+  const j = await fetch(`${AGENT}/watch`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-PAYMENT': 'not-a-hash' },
+    body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', pair: '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', depthBelowUsd: 5000 }),
+  }).then((r) => r.json()).catch(() => ({}));
+  ok('reads a payment in X-PAYMENT too', /malformed/.test(j.reason || ''), j.reason || JSON.stringify(j).slice(0, 120));
+}
 {
   const r = await fetch(`${AGENT}/hit`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"kind":"x"}' });
   ok('counter endpoint refuses without the secret', r.status === 403, `got ${r.status}`);

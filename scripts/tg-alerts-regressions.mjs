@@ -168,6 +168,9 @@ try {
   const keep = H.keepVerdict;
   is('7 808.41 to the hundredth: dust is fine, 808.39 and 26,792 are red, an unread wallet is red',
     !!keep && keep('a', 808410000002992638762n).good && !keep('a', 808390000000000000000n).good && !keep('a', 26792110000000000000000n).good && !keep('a', null).good);
+  is('7 the operator wallet only at least: more is fine, below 808.41 is red; the four bot wallets stay exact',
+    !!H.KEEP_808_AT_LEAST && H.KEEP_808_AT_LEAST.has('0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C') && H.KEEP_808_AT_LEAST.size === 1
+    && keep('a', 26792110000000000000000n, true).good && !keep('a', 808390000000000000000n, true).good && !keep('a', 26792110000000000000000n).good);
   const want = ['0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce', '0x15Ba17075ef5E0736292b030e3715d9100fe3d38', '0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2', '0x5E4102520A71B2AA18a1208330d4848dea4BD105', '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C'];
   const liq = fs.existsSync(path.join(ROOT, 'add-liquidity-safe.js')) ? fs.readFileSync(path.join(ROOT, 'add-liquidity-safe.js'), 'utf8') : fs.readFileSync(path.join(import.meta.dirname, '..', 'add-liquidity-safe.js'), 'utf8');
   is('7 the five wallets are the operator\'s list, and 1ce / d38 are the wallets whose code keeps 808.41', !!H.KEEP_808_WALLETS && want.every((a) => Object.values(H.KEEP_808_WALLETS).includes(a)) && Object.keys(H.KEEP_808_WALLETS).length === 5

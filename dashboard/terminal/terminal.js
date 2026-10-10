@@ -4245,6 +4245,10 @@ async function loadCandles() {
   } catch {}
   // no ledger: the hour of swaps this page read itself, in the same ten-minute buckets
   if (CH.src === 'ledger') return;
+  // A FIRST READ THAT FAILED IS ASKED AGAIN SOON (2026-10-10, operator: "on the phone I no longer see the chart … now
+  // it is back"): a slow phone or the ledger's worker mid-deploy left the hour of own swaps for a whole minute; three
+  // more tries 8 s apart, then the minute's rhythm as before
+  if ((CH.retry = (CH.retry || 0) + 1) <= 3) setTimeout(loadCandles, 8000);
   const rows = [], ms = CH.min * 60e3;
   for (const x of [...S.hist].sort((a, b) => a.t - b.t)) {
     if (!(x.bnb > 0 && x.bobai > 0)) continue;

@@ -226,23 +226,29 @@ export const KEEP_808_WALLETS = {
   'Giggle pot 0x5E41…D105': '0x5E4102520A71B2AA18a1208330d4848dea4BD105',
   'operator 0x5c82…dc3C': '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C',
 };
+// AT LEAST, FOR HIS OWN WALLET (operator, 2026-10-10: "I added BOBAI to c3c — that is normal and must not be an error"):
+// the operator's wallet is his own; it may hold more than 808.41 whenever he likes, only below it is red. The other four
+// are bots' wallets whose code keeps exactly 808.41.
+export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C']);
 const KEEP_WEI = 80841n * 10n ** 16n, KEEP_TOL_WEI = 10n ** 16n;
-export function keepVerdict(label, wei) {
-  if (typeof wei !== 'bigint') return { name: `${label} holds 808.41 BOBAI`, good: false, detail: 'could not be read' };
-  const diff = wei - KEEP_WEI, off = diff < 0n ? -diff : diff;
+export function keepVerdict(label, wei, atLeast = false) {
+  const name = `${label} holds ${atLeast ? 'at least ' : ''}808.41 BOBAI`;
+  if (typeof wei !== 'bigint') return { name, good: false, detail: 'could not be read' };
+  const diff = wei - KEEP_WEI, off = diff < 0n ? -diff : diff, good = atLeast ? diff >= -KEEP_TOL_WEI : off <= KEEP_TOL_WEI;
   const shown = (Number(wei) / 1e18).toLocaleString('en-US', { maximumFractionDigits: 4 });
-  return { name: `${label} holds 808.41 BOBAI`, good: off <= KEEP_TOL_WEI, detail: off <= KEEP_TOL_WEI ? `${shown} BOBAI` : `${shown} BOBAI — ${diff < 0n ? 'below' : 'above'} the 808.41 it keeps` };
+  return { name, good, detail: good ? `${shown} BOBAI` : `${shown} BOBAI — ${diff < 0n ? 'below' : 'above'} the 808.41 it keeps` };
 }
 const keepHolds = () => keepVerdict('x', 808410000002992638762n).good === true && keepVerdict('x', 808410000000000000000n).good === true
   && keepVerdict('x', 0n).good === false && keepVerdict('x', 26792110000000000000000n).good === false && keepVerdict('x', 808390000000000000000n).good === false
-  && keepVerdict('x', null).good === false;
+  && keepVerdict('x', null).good === false
+  && keepVerdict('x', 26792110000000000000000n, true).good === true && keepVerdict('x', 808390000000000000000n, true).good === false && keepVerdict('x', null, true).good === false;
 export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org') {
   const client = createPublicClient({ chain: bsc, transport: http(rpc) });
   const abi = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
   const bal = (a) => client.readContract({ address: '0x245c386dcfed896f5c346107596141e5edcbffff', abi, functionName: 'balanceOf', args: [a] });
   return Promise.all(Object.entries(KEEP_808_WALLETS).map(async ([label, a]) => {
     try {
-      const v = keepVerdict(label, await bal(a));
+      const least = KEEP_808_AT_LEAST.has(a), v = keepVerdict(label, await bal(a), least);
       if (v.good) return v;
       // MID-RUN IS NOT BROKEN (2026-10-09 review): a liquidity run of d38 lasts minutes, longer than the minute the
       // morning run waits, and its wallet holds more than 808.41 between its steps. Off by more than a cent: look
@@ -250,7 +256,7 @@ export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org')
       const n0 = await client.getTransactionCount({ address: a, blockTag: 'latest' });
       await new Promise((r) => setTimeout(r, 45000));
       const [n1, again] = await Promise.all([client.getTransactionCount({ address: a, blockTag: 'latest' }), bal(a)]);
-      const v2 = keepVerdict(label, again);
+      const v2 = keepVerdict(label, again, least);
       if (v2.good) return v2;
       return n1 > n0 ? { ...v2, good: true, detail: `${v2.detail.split(' — ')[0]} — mid-run (sent ${n1 - n0} tx in 45 s), not judged` } : v2;
     } catch { return keepVerdict(label, null); }

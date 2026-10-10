@@ -1,6 +1,6 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-10T11:53:28.611Z",
+  "measured_at": "2026-10-10T14:20:01.983Z",
   "asked": 58,
   "quoted": 27,
   "agents": [

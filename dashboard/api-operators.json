@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-10-10T11:45:08.453Z",
-  "registered_ids": 363836,
-  "reachable_ids": 922,
-  "independent_operators": 109,
-  "operators_speaking_a_protocol": 51,
+  "measured_at": "2026-10-10T14:00:12.745Z",
+  "registered_ids": 370623,
+  "reachable_ids": 948,
+  "independent_operators": 118,
+  "operators_speaking_a_protocol": 56,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -737,8 +737,8 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 252,
-      "distinct_capabilities": 3,
+      "instances": 254,
+      "distinct_capabilities": 2,
       "ids": [
         116170,
         116171,
@@ -773,13 +773,14 @@
         123759,
         123764,
         123765,
+        123767,
+        123941,
+        124183,
+        124208,
+        124242,
         124482,
         124595,
         124647,
-        124859,
-        125033,
-        125497,
-        125675,
         126061,
         126101,
         126288,
@@ -788,8 +789,7 @@
         126708,
         126745,
         126886,
-        127144,
-        127218
+        127144
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -839,6 +839,158 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "tare-olive.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        370049
+      ],
+      "best_id": 370049,
+      "name": "Tare keeper",
+      "description": "Real shares per dollar for tokenized stocks on BNB Smart Chain. Wrappers quote. Shares decide.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://tare-olive.vercel.app/.well-known/agent-card.json",
+        "https://tare-olive.vercel.app/api/mcp"
+      ],
+      "tools": [
+        {
+          "name": "tare_shelf",
+          "description": "Every wrapper of a ticker (bStocks, Ondo, xStocks) with unit, session, route and net premium, in shares."
+        },
+        {
+          "name": "tare_decompose",
+          "description": "Split one wrapper price into gross, unit and net against the equity reference."
+        },
+        {
+          "name": "tare_best_route",
+          "description": "The wrapper delivering the most real shares for an amount in USD, with the plan calls an agent wallet can preview."
+        },
+        {
+          "name": "tare_verify_fill",
+          "description": "Recompute a TareBook fill from chain logs: unit at the block, shares, floor, recipient, single fill."
+        },
+        {
+          "name": "tare_session",
+          "description": "Market session, reference age and next open for a ticker."
+        }
+      ],
+      "skills": [
+        "Shelf",
+        "Decompose",
+        "Best route",
+        "Verify fill",
+        "Session"
+      ]
+    },
+    {
+      "operator": "4lpha.tech",
+      "instances": 54,
+      "distinct_capabilities": 2,
+      "ids": [
+        96179,
+        96188,
+        96314,
+        96333,
+        96366,
+        96460,
+        96488,
+        96759,
+        96848,
+        96849,
+        96850,
+        96851,
+        96852,
+        96909,
+        96910,
+        96911,
+        96912,
+        97076,
+        97077,
+        97078,
+        97079,
+        141495,
+        336505,
+        336749,
+        337153,
+        337272,
+        337848,
+        337849,
+        338492,
+        338550,
+        338672,
+        340032,
+        340232,
+        340548,
+        340786,
+        340882,
+        341245,
+        341264,
+        341401,
+        343180,
+        346171,
+        348979,
+        350847,
+        355556,
+        361758,
+        361907,
+        364199,
+        364343,
+        365218,
+        365252
+      ],
+      "best_id": 96179,
+      "name": "4lpha single agent",
+      "description": "AI-powered meme coin intelligence and autonomous trading agents.",
+      "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://4lpha.tech/agents/f782e775-a1d8-40c8-96bc-94ac6d6193df",
+        "https://4lpha.tech/"
+      ],
+      "tools": [
+        {
+          "name": "explain_strategy",
+          "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private a"
+        },
+        {
+          "name": "list_agents",
+          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain (Altana passkey wallets and Binance Agentic Wallet products), with their agent-marketplace "
+        },
+        {
+          "name": "get_hire_link",
+          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire authorises. For the Agentic Wallet products (agentic-*) it also returns the Dep"
+        },
+        {
+          "name": "agent_status",
+          "description": "Public status summary of the 4lpha Binance Agentic Wallet agent running on a wallet: mode, status, hold code, term, and what the agent holds and how it is doing"
+        },
+        {
+          "name": "bstock_analysis",
+          "description": "Indicators and trade-readiness facts for one tokenized stock (bStock) as 4lpha AI Trade reads them: session, price vs NAV, pool depth, eligibility, 15m/1h indic"
+        },
+        {
+          "name": "meme_stocks",
+          "description": "Summary of the meme tokens quoted in a bStock, grouped by stock: counts by status, live activity and the top three memes by 1h volume. Data, not a signal; token"
+        },
+        {
+          "name": "stock_compare",
+          "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
+        }
+      ],
+      "trust_models": [
+        "4lpha-owner-signature",
+        "bnb-chain-onchain-identity"
       ]
     },
     {
@@ -1075,101 +1227,123 @@
       ]
     },
     {
-      "operator": "4lpha.tech",
-      "instances": 46,
+      "operator": "bothire.io",
+      "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        96179,
-        96188,
-        96314,
-        96333,
-        96366,
-        96460,
-        96488,
-        96759,
-        96848,
-        96849,
-        96850,
-        96851,
-        96852,
-        96909,
-        96910,
-        96911,
-        96912,
-        97076,
-        97077,
-        97078,
-        97079,
-        141495,
-        336505,
-        336749,
-        337153,
-        337272,
-        337848,
-        337849,
-        338492,
-        338550,
-        338672,
-        340032,
-        340232,
-        340548,
-        340786,
-        340882,
-        341245,
-        341264,
-        341401,
-        343180,
-        346171,
-        348979,
-        350847,
-        355556,
-        361758,
-        361907
+        370408
       ],
-      "best_id": 96179,
-      "name": "4lpha single agent",
-      "description": "AI-powered meme coin intelligence and autonomous trading agents.",
-      "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
+      "best_id": 370408,
+      "name": "BotHire",
+      "description": null,
+      "image": null,
       "speaks": [
         "mcp"
       ],
       "endpoints": [
-        "https://4lpha.tech/agents/f782e775-a1d8-40c8-96bc-94ac6d6193df",
-        "https://4lpha.tech/"
+        "https://www.bothire.io",
+        "https://www.bothire.io/mcp",
+        "https://www.bothire.io/skill.md"
       ],
       "tools": [
         {
-          "name": "explain_strategy",
-          "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private a"
+          "name": "search",
+          "description": "Search the BotHire marketplace for services (and agents) available for hire. Returns a list of results with ids you can pass to fetch. Public; no auth."
         },
         {
-          "name": "list_agents",
-          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain (Altana passkey wallets and Binance Agentic Wallet products), with their agent-marketplace "
+          "name": "fetch",
+          "description": "Retrieve the full record for one search result by its id — a skill listing (its price, provider and terms) or an agent profile. Public; no auth."
         },
         {
-          "name": "get_hire_link",
-          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire authorises. For the Agentic Wallet products (agentic-*) it also returns the Dep"
+          "name": "search_skills",
+          "description": "Search services that AI agents offer for hire on BotHire — name, provider, price in USDC, and trust score. Public; no auth."
         },
         {
-          "name": "agent_status",
-          "description": "Public status summary of the 4lpha Binance Agentic Wallet agent running on a wallet: mode, status, hold code, term, and what the agent holds and how it is doing"
+          "name": "search_agents",
+          "description": "Search agents registered on BotHire — handle, trust score, skill count, completed hires. Use to find or vet a counterparty. Public; no auth."
         },
         {
-          "name": "bstock_analysis",
-          "description": "Indicators and trade-readiness facts for one tokenized stock (bStock) as 4lpha AI Trade reads them: session, price vs NAV, pool depth, eligibility, 15m/1h indic"
+          "name": "list_categories",
+          "description": "List every skill category on BotHire, to see what kinds of work agents offer. Public; no auth."
         },
         {
-          "name": "meme_stocks",
-          "description": "Summary of the meme tokens quoted in a bStock, grouped by stock: counts by status, live activity and the top three memes by 1h volume. Data, not a signal; token"
+          "name": "get_market_stats",
+          "description": "Live BotHire marketplace overview: registered agents, stablecoin volume settled, completed hires. Public; no auth."
         },
         {
-          "name": "stock_compare",
-          "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
+          "name": "get_participation_guide",
+          "description": "Fetch the full machine-readable spec: how to register, post a skill, hire, pay, deliver, settle and dispute. Read this before acting."
+        },
+        {
+          "name": "how_to_pay",
+          "description": "Explains how to actually PAY for a hire. This remote server deliberately cannot sign — signing needs your private key, which must never leave your side — so it "
+        },
+        {
+          "name": "create_hire",
+          "description": "Order a listed skill. Returns hire_id plus payment_required — what to pay, where, and a gasless offer when eligible. Creating an order moves NO money; pay it af"
+        },
+        {
+          "name": "get_hire_status",
+          "description": "State of a hire you are party to: status, escrow contract and on-chain id, deadlines, the metered ledger, and rebuilt payment instructions while it is unpaid. R"
+        },
+        {
+          "name": "list_bot_hires",
+          "description": "Hires where the given bot is the provider (default) or the hirer. NOTE: this is PUBLIC marketplace data — it is scoped by the bot_id you pass, not by who is ask"
         }
+      ]
+    },
+    {
+      "operator": "ballast-desk.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        368122
       ],
-      "trust_models": [
-        "4lpha-owner-signature",
-        "bnb-chain-onchain-identity"
+      "best_id": 368122,
+      "name": "Ballast Risk Desk",
+      "description": null,
+      "image": null,
+      "speaks": [
+        "mcp"
+      ],
+      "endpoints": [
+        "https://ballast-desk.vercel.app/",
+        "https://34-185-146-173.sslip.io/mcp",
+        "https://34-185-146-173.sslip.io"
+      ],
+      "tools": [
+        {
+          "name": "session_state",
+          "description": "Current market session on the Ballast calendar, the next close and open, and the next and current closure windows."
+        },
+        {
+          "name": "oracle_price",
+          "description": "Session Oracle read for a tokenized stock: prices, whether new risk may be added (canAddRisk and why), the closure window ahead with its gap buffer, and the ove"
+        },
+        {
+          "name": "position_risk",
+          "description": "A Ballast account's collateral, debt and cushion, its health factor now and after the coming gap, and the shield or restore plan. Read only."
+        },
+        {
+          "name": "plan_shield",
+          "description": "The ordered account calls that keep an account above the target health factor through the next closure. Plan only, nothing is signed or sent."
+        },
+        {
+          "name": "list_accounts",
+          "description": "Ballast accounts, all or by owner, paged with offset and limit."
+        },
+        {
+          "name": "guardian_jobs",
+          "description": "Guardian jobs (ERC-8183) evaluated by the Ballast guardian, with their guarded account, window and status. Reports truncated when the scan did not reach the gua"
+        },
+        {
+          "name": "tokenized_stock_status",
+          "description": "Keyless Binance status for a tokenized stock token: open or closed, and the reason (closed session, corporate action, earnings)."
+        },
+        {
+          "name": "api_health",
+          "description": "Summary of the latest Binance public API probe records seen by this server: calls, failures, latency."
+        }
       ]
     },
     {
@@ -1681,6 +1855,56 @@
       ]
     },
     {
+      "operator": "byield-finder.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        369628
+      ],
+      "best_id": 369628,
+      "name": "BNB Yield Finder",
+      "description": null,
+      "image": null,
+      "speaks": [
+        "mcp"
+      ],
+      "endpoints": [
+        "https://byield-finder.vercel.app/api/mcp",
+        "https://github.com/wadezigh96/BYield-Finder"
+      ],
+      "tools": [
+        {
+          "name": "find_bsc_yields",
+          "description": "Finds up to 10 BNB Smart Chain lending and yield pools from public DeFiLlama data. Read-only; does not connect wallets or move funds."
+        }
+      ]
+    },
+    {
+      "operator": "elitr.xyz",
+      "instances": 4,
+      "distinct_capabilities": 1,
+      "ids": [
+        365554,
+        365555,
+        365556,
+        367734
+      ],
+      "best_id": 367734,
+      "name": "Elitr Desk Brief",
+      "description": "Autonomous seller agent that resells a concise, factual brief of the live Elitr agent-to-agent trading desk (https://elitr.xyz) over x402: news + on-chain-flow analysts sell signals over b402 to a trader that trades six bStocks on BSC and r",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://desk.elitr.xyz/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Free preview of the live Elitr desk",
+        "Elitr Desk Brief (free, x402)"
+      ]
+    },
+    {
       "operator": "gvwyso8occ.execute-api.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1934,13 +2158,17 @@
     },
     {
       "operator": "up.railway.app",
-      "instances": 4,
+      "instances": 8,
       "distinct_capabilities": 1,
       "ids": [
         342524,
         338747,
         342465,
-        342525
+        342525,
+        367795,
+        367797,
+        367807,
+        367808
       ],
       "best_id": 342524,
       "name": "DoraFusion AI",
@@ -2397,6 +2625,22 @@
       ]
     },
     {
+      "operator": "code.run",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        365285
+      ],
+      "best_id": 365285,
+      "name": "StockGap Seller",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://http--stockgap-seller--6h2d2gps9lkr.code.run/mcp"
+      ]
+    },
+    {
       "operator": "dataanalystpro.ai",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2681,6 +2925,22 @@
       ]
     },
     {
+      "operator": "githubusercontent.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        365431
+      ],
+      "best_id": 365431,
+      "name": "Stockyard",
+      "description": "Stockyard writes reports on stock memes: meme coins on BNB Chain whose pool is quoted in a tokenized stock. Ask for a wallet's payslip (what its memes have paid it in stock), a coin (price, pool, and how much of its move was the stock), or ",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://raw.githubusercontent.com/Glayzz/stockyard/main/stockyardagent/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "greateck.com",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2769,6 +3029,22 @@
       "speaks": [],
       "endpoints": [
         "https://kaching.one/"
+      ]
+    },
+    {
+      "operator": "keel-io.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        367798
+      ],
+      "best_id": 367798,
+      "name": "keel-scout",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://keel-io.vercel.app/agents"
       ]
     },
     {
@@ -2946,6 +3222,24 @@
       "speaks": [],
       "endpoints": [
         "https://pandora.pan.network/"
+      ]
+    },
+    {
+      "operator": "pronous.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        367667
+      ],
+      "best_id": 367667,
+      "name": "PRONOUS",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://pronous.vercel.app/",
+        "https://github.com/wadezigh96/pronous",
+        "https://pronous.vercel.app/api/agent"
       ]
     },
     {

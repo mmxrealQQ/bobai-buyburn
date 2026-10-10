@@ -2,34 +2,34 @@
   "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-10-10T11:45:08.453Z",
-  "registered_ids": 363836,
-  "ids_scanned": 363836,
+  "measured_at": "2026-10-10T14:00:12.745Z",
+  "registered_ids": 370623,
+  "ids_scanned": 370623,
   "registrations": {
-    "parses": 165303,
+    "parses": 166524,
     "unparsable": 4600,
-    "empty": 11258,
-    "points_offchain": 182675,
+    "empty": 11308,
+    "points_offchain": 188191,
     "unread_after_retries": 0,
-    "active_flag": 162788,
-    "names_a_service": 2491,
-    "has_http_endpoint": 1985,
-    "endpoint_on_a_real_tld": 1532,
-    "speaks_mcp": 336,
-    "speaks_a2a": 417,
-    "supports_x402": 13833
+    "active_flag": 163989,
+    "names_a_service": 2517,
+    "has_http_endpoint": 2011,
+    "endpoint_on_a_real_tld": 1557,
+    "speaks_mcp": 351,
+    "speaks_a2a": 423,
+    "supports_x402": 13836
   },
   "reachability": {
-    "claim_an_endpoint": 1985,
-    "probed": 1985,
-    "reachable": 922,
+    "claim_an_endpoint": 2011,
+    "probed": 2011,
+    "reachable": 948,
     "dead": 1063,
-    "answering_mcp": 296,
-    "serving_an_agent_card": 356,
-    "a2a_callable": 338,
-    "a2a_confirmed_by_probe": 2
+    "answering_mcp": 317,
+    "serving_an_agent_card": 365,
+    "a2a_callable": 346,
+    "a2a_confirmed_by_probe": 5
   },
-  "independent_operators": 109,
+  "independent_operators": 118,
   "method": {
     "registrations": "Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.",
     "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",
@@ -48,5 +48,5 @@
   "quote_agents_asked": 55,
   "quoted_when_asked": 27,
   "quoted_of_hireable": 26,
-  "quotes_measured_at": "2026-10-10T11:53:28.611Z"
+  "quotes_measured_at": "2026-10-10T14:20:01.983Z"
 }

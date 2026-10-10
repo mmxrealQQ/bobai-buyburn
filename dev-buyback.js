@@ -4,7 +4,7 @@
 // Runs every 1 hour via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
-// 3. Splits: 80% personal (Binance), 4% builder #1-#4, 2% builder #5 + #6
+// 3. Splits: 82% personal (Binance), 4% builder #1-#4, 2% builder #6 (builder #5 removed 2026-10-10, its 2% to personal)
 
 const { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } = require('viem');
 const { bsc } = require('viem/chains');
@@ -22,7 +22,6 @@ const BUILDER_1 = '0xede0e2bf714b50f131869c6a39abc5bed1e6ce47';
 const BUILDER_2 = '0x7abada2b8430eee0acdce7ce9fc3f83bddb609b6';
 const BUILDER_3 = '0x4fa13c52724bcadffefef91676cc429fa6216a48';
 const BUILDER_4 = '0x257bA6d47Ae316526448b57d64e4fd18B3Fd4221';
-const BUILDER_5 = '0xa2953b3A35B19fb0078A85A6C87b37F43C14fBB2';
 const BUILDER_6 = '0xEB3DfBA4b66Cf4fB65420351964C114B9AF9a4F6';   // since 2026-10-01
 const GAS_RESERVE = parseEther('0.003');
 const MIN_BNB = parseEther('0.001');
@@ -71,7 +70,7 @@ async function main() {
   console.log(`[${new Date().toISOString()}] Dev Buyback Bot`);
   console.log(`Wallet: ${account.address}`);
   console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
-  console.log(`Strategy: 80% -> personal (Binance), 4% -> builder #1-#4, 2% -> builder #5 + #6`);
+  console.log(`Strategy: 82% -> personal (Binance), 4% -> builder #1-#4, 2% -> builder #6`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -122,22 +121,20 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Split: 80% personal, 4% each builder #1-#4, 2% builder #5 + #6
+  // Split: 82% personal, 4% each builder #1-#4, 2% builder #6 (operator, 2026-10-10: builder #5 removed, its 2% to personal)
   const builder1Amount = (available * 4n) / 100n;
   const builder2Amount = (available * 4n) / 100n;
   const builder3Amount = (available * 4n) / 100n;
   const builder4Amount = (available * 4n) / 100n;
-  const builder5Amount = (available * 2n) / 100n;
   const builder6Amount = (available * 2n) / 100n;
-  const personalAmount = available - builder1Amount - builder2Amount - builder3Amount - builder4Amount - builder5Amount - builder6Amount;
+  const personalAmount = available - builder1Amount - builder2Amount - builder3Amount - builder4Amount - builder6Amount;
 
   const sends = [
-    { label: 'Binance Wallet (80%)', to: PERSONAL_WALLET, value: personalAmount },
+    { label: 'Binance Wallet (82%)', to: PERSONAL_WALLET, value: personalAmount },
     { label: 'Builder #1 (4%)', to: BUILDER_1, value: builder1Amount },
     { label: 'Builder #2 (4%)', to: BUILDER_2, value: builder2Amount },
     { label: 'Builder #3 (4%)', to: BUILDER_3, value: builder3Amount },
     { label: 'Builder #4 (4%)', to: BUILDER_4, value: builder4Amount },
-    { label: 'Builder #5 (2%)', to: BUILDER_5, value: builder5Amount },
     { label: 'Builder #6 (2%)', to: BUILDER_6, value: builder6Amount },
   ];
 
@@ -183,7 +180,6 @@ async function main() {
       builder2Bnb: formatEther(builder2Amount),
       builder3Bnb: formatEther(builder3Amount),
       builder4Bnb: formatEther(builder4Amount),
-      builder5Bnb: formatEther(builder5Amount),
       builder6Bnb: formatEther(builder6Amount),
       personalTx: personalTxHash,
       txs,
@@ -197,7 +193,7 @@ async function main() {
 
   console.log('\n============================================');
   console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);
-  console.log(`Sent: ${formatEther(personalAmount)} BNB Binance / ${formatEther(builder1Amount)} #1 / ${formatEther(builder2Amount)} #2 / ${formatEther(builder3Amount)} #3 / ${formatEther(builder4Amount)} #4 / ${formatEther(builder5Amount)} #5 / ${formatEther(builder6Amount)} #6`);
+  console.log(`Sent: ${formatEther(personalAmount)} BNB Binance / ${formatEther(builder1Amount)} #1 / ${formatEther(builder2Amount)} #2 / ${formatEther(builder3Amount)} #3 / ${formatEther(builder4Amount)} #4 / ${formatEther(builder6Amount)} #6`);
   console.log('============================================');
 }
 

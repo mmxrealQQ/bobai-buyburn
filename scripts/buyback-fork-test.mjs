@@ -48,7 +48,8 @@ console.log('the helpers (offline)');
   const swap = (text) => text.slice(text.indexOf('async function swapAndBurn('), text.indexOf('async function sleep('));
   ok('and the same swap-and-burn', swap(workerSrc).length > 500 && swap(workerSrc) === swap(fallbackSrc));
   const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', BOB = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
-  const lifted = new Function('BOBAI_TOKEN', 'sleep', `${block(workerSrc)}; return { waitMined, mined, say, minOutFor };`)(BOBAI, async () => {});
+  // parseEther: the 808.41 keep (2026-10-08) sits in this block
+  const lifted = new Function('BOBAI_TOKEN', 'sleep', 'parseEther', `${block(workerSrc)}; return { waitMined, mined, say, minOutFor };`)(BOBAI, async () => {}, parseEther);
   ok('$BOBAI: the 3% the token keeps comes off the quote first, then the 5%', lifted.minOutFor(1000000n, BOBAI) === 921500n && lifted.minOutFor(1000000n, BOBAI.toUpperCase().replace('0X', '0x')) === 921500n);
   ok('$BOB has no transfer tax: 95% of the quote, as before', lifted.minOutFor(1000000n, BOB) === 950000n);
   // The transport: the first node, the public ones behind it, in order; alone on a fork.
@@ -301,15 +302,15 @@ console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a th
 }
 
 // ── the dev sweep, same fork ────────────────────────────────────────────────
-console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2)');
+console.log('\nthe dev sweep (82% / 4 / 4 / 4 / 4 / 2; builder #5 removed 2026-10-10)');
 {
   const devSrc = fs.readFileSync(path.join(ROOT, 'worker-dev-buyback', 'index.js'), 'utf8');
   const twin = fs.readFileSync(path.join(ROOT, 'dev-buyback.js'), 'utf8');
   const loop = (t) => t.slice(t.indexOf('  let personalTxHash;'), t.indexOf('  // Step 3: Log'));
   ok('the worker and its local twin carry the same send loop', loop(devSrc).length > 400 && loop(devSrc) === loop(twin));
   const dAddr = (name) => (devSrc.match(new RegExp(`const ${name} = '(0x[0-9a-fA-F]{40})'`)) || [])[1];
-  const who = ['PERSONAL_WALLET', 'BUILDER_1', 'BUILDER_2', 'BUILDER_3', 'BUILDER_4', 'BUILDER_5', 'BUILDER_6'].map(dAddr);
-  const pct = [80n, 4n, 4n, 4n, 4n, 2n, 2n];
+  const who = ['PERSONAL_WALLET', 'BUILDER_1', 'BUILDER_2', 'BUILDER_3', 'BUILDER_4', 'BUILDER_6'].map(dAddr).concat(['0xa2953b3A35B19fb0078A85A6C87b37F43C14fBB2']); // last: the former builder #5, who gets nothing
+  const pct = [82n, 4n, 4n, 4n, 4n, 2n, 0n];
   const devCopy = path.join(ROOT, 'temp', 'dev-worker-fork.mjs');
   fs.writeFileSync(devCopy, devSrc);
   const dev = (await import(pathToFileURL(devCopy).href)).default;
@@ -324,14 +325,15 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2)');
   };
   const A = parseEther('0.1');
   const clean = await runDev();
-  const builders = [1, 2, 3, 4, 5, 6].map((i) => (A * pct[i]) / 100n);
+  const builders = [1, 2, 3, 4, 5].map((i) => (A * pct[i]) / 100n);
   ok('a clean run pays every builder its percent and the rest to the first wallet', builders.every((v, i) => clean.got[i + 1] === v) && clean.got[0] === A - builders.reduce((x, y) => x + y, 0n), clean.got.map((v) => formatEther(v)).join(' / '));
-  ok('and the log carries all seven hashes and no failure', clean.log.length === 1 && Object.keys(clean.log[0].txs || {}).length === 7 && (clean.log[0].failed || []).length === 0);
+  ok('builder #5 is gone (operator, 2026-10-10): not in the code, paid nothing, its 2% in the first wallet', !/BUILDER_5|a2953b3a35b19fb0078a85a6c87b37f43c14fbb2/i.test(devSrc) && clean.got[6] === 0n && clean.got[0] === A - (A * 18n) / 100n, clean.got.map((v) => formatEther(v)).join(' / '));
+  ok('and the log carries all six hashes and no failure', clean.log.length === 1 && Object.keys(clean.log[0].txs || {}).length === 6 && (clean.log[0].failed || []).length === 0);
   // Builder #3 turns into a contract that refuses BNB: its transfer reverts.
   await test.setCode({ address: who[3], bytecode: '0x60006000fd' });
   const hurt = await runDev();
-  ok('one builder\'s transfer reverting leaves the other five paid in full (they were not, before)', hurt.got[3] === 0n && [1, 2, 4, 5, 6].every((i) => hurt.got[i] === (A * pct[i]) / 100n) && hurt.got[0] === clean.got[0], hurt.got.map((v) => formatEther(v)).join(' / '));
-  ok('only the failed share waits on the wallet, and the log names it', hurt.left > parseEther('0.0065') && hurt.left < parseEther('0.0071') && hurt.log.length === 1 && hurt.log[0].failed.length === 1 && /#3/.test(hurt.log[0].failed[0]) && Object.keys(hurt.log[0].txs).length === 6, `${formatEther(hurt.left)} BNB left, failed: ${(hurt.log[0] || {}).failed}`);
+  ok('one builder\'s transfer reverting leaves the other four paid in full (they were not, before)', hurt.got[3] === 0n && [1, 2, 4, 5].every((i) => hurt.got[i] === (A * pct[i]) / 100n) && hurt.got[0] === clean.got[0], hurt.got.map((v) => formatEther(v)).join(' / '));
+  ok('only the failed share waits on the wallet, and the log names it', hurt.left > parseEther('0.0065') && hurt.left < parseEther('0.0071') && hurt.log.length === 1 && hurt.log[0].failed.length === 1 && /#3/.test(hurt.log[0].failed[0]) && Object.keys(hurt.log[0].txs).length === 5, `${formatEther(hurt.left)} BNB left, failed: ${(hurt.log[0] || {}).failed}`);
   ok('the heartbeat is written and the lock released', !!hurt.store.get('heartbeat-dev') && !hurt.store.has('lock-dev'));
 }
 

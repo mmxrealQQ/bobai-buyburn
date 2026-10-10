@@ -2664,7 +2664,7 @@ CMDS.team = () => { const add = S.man.at?.(-1);
   say([vary('ask-team', ['One dev and his AI agent, building in the open. ', 'A solo builder and an AI agent. ', 'No big team: one dev, one AI agent, all on-chain. ', 'Built by one dev with an AI agent. ', 'The team is small: a dev and his agent. ']),
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
 CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
-  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 4% slippage. Not advice — type ', ['safe'], ' for the facts first.']);
+  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage for a small trade (more for a big one). Not advice — type ', ['safe'], ' for the facts first.']);
 CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · or tell me to ', ['dance']]); })(CMDS.help);
 // THE SMALL TALK PEOPLE REALLY TYPE (2026-10-10 review): each fell to the fallback before; five ways each, no claims
 // beyond what the chain or our own logs show
@@ -6106,13 +6106,21 @@ window.__btHwSeason = hwSeason;
     Object.assign(grab.style, { width: cw + 'px', height: ch + 'px', left: x0 + 'px', top: rim - ch + 'px', transition: 'none', transform: 'translateX(0px)' });
     Object.assign(gm.style, { transition: 'none', transform: 'none', height: ch + 'px' });
     grab.classList.add('vid'); grab.classList.remove('fast', 'sneak'); void grab.offsetWidth; grab.classList.add('on');
-    LIFE.next = Math.max(LIFE.next, performance.now() + 42e3); // his own next move waits for the scene
+    LIFE.next = Math.max(LIFE.next, performance.now() + 46e3); // his own next move waits for the scene (two 7.2 s sneaks since 2026-10-10)
     // HE WALKS, HE DOES NOT GLIDE (2026-10-06, operator: the slide was a still picture that bobbed — "it repeats oddly, like
     // spikes"): the sneak clip's tiptoe steps play while the page carries him over, mirrored when he goes to the right
     // (the clip walks to the left); 5.5 s, where its steps end in his standing pose
-    const SNEAK = 5.5, cv = CLOWN.cv;
-    const walk = (x, toRight, then) => { cv.style.transform = toRight ? 'scaleX(-1)' : ''; Object.assign(grab.style, { transition: `transform ${SNEAK * 1000}ms linear`, transform: `translateX(${x}px)` });
-      clownPlay('sneak', () => { cv.style.transform = ''; then(); }, SNEAK); };
+    // BY THE CLIP'S OWN TIME (2026-10-10, operator: "the big clown that sneaks up looks frozen above the brain.log"): the
+    // slide ran on a 5.5 s clock of its own while the steps came from the video — a video running late or stalling left him
+    // gliding without a step, or standing at the end while the clock had already arrived. Now every frame puts him where
+    // the clip's time says, so a stalled clip holds him in place mid-step and a slow one walks slowly. And the re-shot
+    // take (FIG_H 0.52) steps until 7.2 s, where it settles into his standing pose (5.5 s cut it mid-step).
+    const SNEAK = 7.2, cv = CLOWN.cv;
+    const walk = (x, toRight, then) => { cv.style.transform = toRight ? 'scaleX(-1)' : '';
+      const v = CLOWN.v.sneak, from = parseFloat((grab.style.transform.match(/-?[\d.]+/) || [0])[0]) || 0; let raf = 0; grab.style.transition = 'none';
+      const step = () => { if (!grabT || leaving || CLOWN.cur !== v) return; const k = Math.min(1, (v.currentTime || 0) / SNEAK);
+        grab.style.transform = `translateX(${(from + (x - from) * k).toFixed(1)}px)`; if (k < 1) raf = requestAnimationFrame(step); };
+      clownPlay('sneak', () => { cancelAnimationFrame(raf); if (!leaving) grab.style.transform = `translateX(${x}px)`; cv.style.transform = ''; then(); }, SNEAK); raf = requestAnimationFrame(step); };
     let leaving = false;
     // BOBAI starts a move or the chain takes the stage: he does not vanish, he climbs down where he is (operator: "at the
     // end he is simply gone — he should climb down")
@@ -6155,7 +6163,7 @@ window.__btHwSeason = hwSeason;
       const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0, lastShow = 0;
       const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
       // how long each scene holds the stage (s), so the replay's quiet stretch can be matched to it
-      const secsOf = f => f === grabScene ? (CLOWN.ready ? 38 : 15) : f === skelGrab ? 22 : f === handScene ? (portrait ? 20 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
+      const secsOf = f => f === grabScene ? (CLOWN.ready ? 42 : 15) : f === skelGrab ? 22 : f === handScene ? (portrait ? 20 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
       const direct = room => { if (busy() || win.classList.contains('in-moment')) return false;
         for (let n = 0; n < SHOW.length; n++) { const f = SHOW[i++ % SHOW.length]; if (secsOf(f) > room) continue; if (f()) { lastShow = performance.now(); return true; } } return false; };
       loop(22000, 34000, () => direct(replayRoom()), 9000);

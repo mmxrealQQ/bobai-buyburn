@@ -163,7 +163,7 @@ const TRADE_INFO = {
   slippage_rule: 'tax_bps + price_impact_bps + 50 + 200 buffer, per side; call bsc_token_preflight or /api/best-route for the exact figure at your size',
   buy_method: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
   sell_method: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
-  note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance to the 3% tax + this trade's price impact + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
+  note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance to the 3% tax + the price impact of the trade + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
 };
 
 // Live price + liquidity — computed fully on-chain (pair reserves × Chainlink
@@ -458,7 +458,7 @@ const AGENT_GUIDE = {
     { prompt: 'evaluate_bobai', does: 'full neutral due-diligence walkthrough (prompts/get)' },
     { prompt: 'prepare_bobai_swap', does: 'fee-on-transfer-safe swap preparation, optional wallet arg (prompts/get)' },
   ],
-  must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage of the 3% tax + this trade's price impact + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), or it reverts. Everything here is verifiable on-chain. Not financial advice.',
+  must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage of the 3% tax + the price impact of the trade + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), or it reverts. Everything here is verifiable on-chain. Not financial advice.',
 };
 
 // Neutral, verifiable value-accrual mechanics — the "how it works" thesis
@@ -673,7 +673,7 @@ Agents routinely lose gas to reverted swaps on BSC because **fee-on-transfer (Fo
 ## ⚠️ Must know before swapping
 $BOBAI is a **fee-on-transfer** token (3% tax). A naive swap **reverts**. You MUST:
 - use \`swapExactETHForTokensSupportingFeeOnTransferTokens\` (buy) / \`swapExactTokensForETHSupportingFeeOnTransferTokens\` (sell)
-- set slippage tolerance to **tax + price impact + ~2.5%** (about 6% / 600 bps for a ~$100 trade; `bsc_token_preflight` gives it at your size)
+- set slippage tolerance to **tax + price impact + ~2.5%** (about 6% / 600 bps for a ~$100 trade; \`bsc_token_preflight\` gives it at your size)
 
 ## Trade parameters
 - DEX: **PancakeSwap V2**

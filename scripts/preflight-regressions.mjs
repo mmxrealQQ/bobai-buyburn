@@ -301,6 +301,14 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   const five = !codes(o.caution).includes('volume_from_few_wallets');
   o = shape(scan({ activity: act({ uniqueTraders: null }), pool: thin }), route(), 250);
   ok('… nor 19 swaps (under 20), 41 swaps by 5 wallets (line 4), or wallets that could not be read — and the line is checked at all (the 3-wallet case above is)', under && five && !codes(o.caution).includes('volume_from_few_wallets') && vf.code === 'volume_from_few_wallets', String([under, five]));
+  // DEEP POOL (2026-10-10): WBNB/USDT read "looks like wash trading" — 1,600 swaps by 153 wallets (bots, aggregators)
+  // with $93.8k of volume on a $29M pool. The few-wallets line needs the hour's volume at 5% of the hard side or more.
+  const deep = { ...thin, liquidityUsd: 14500000 };
+  o = shape(scan({ activity: act({ swaps: 1600, buys: 800, sells: 800, uniqueTraders: 153, volumeUsd: 93800 }), pool: deep }), route(), 250);
+  const deepQuiet = !codes(o.caution).includes('volume_from_few_wallets');
+  o = shape(scan({ activity: act({ swaps: 1600, buys: 800, sells: 800, uniqueTraders: 153, volumeUsd: 800000 }), pool: deep }), route(), 250);
+  const deepLoud = codes(o.caution).includes('volume_from_few_wallets');
+  ok('… nor 1,600 swaps by 153 wallets with $93.8k on a $14.5M hard side (WBNB/USDT, under 5% of it) — but the same wallets moving $800k (5.5%) still are', deepQuiet && deepLoud, String([deepQuiet, deepLoud]));
   // what top holders sold, in dollars, for the rug watch's insider sum
   o = shape(scan({ flow: { window: { minutes: 59 }, deployer: null, sellers: { wallets: 4 }, topHolderSelling: [{ address: '0xw', soldPctOfBalance: 50, heldPctBefore: 4, holdsPctNow: 2, usd: 700 }, { address: '0xv', soldPctOfBalance: 30, heldPctBefore: 3, holdsPctNow: 2, usd: 300 }] } }), route(), 250);
   ok('the compact flow carries what top holders sold in dollars (top_holders_sold_usd)', o.flow?.top_holders_sold_usd === 1000 && shape(scan({ flow: { window: { minutes: 59 }, deployer: null, topHolderSelling: [] } }), route(), 250).flow?.top_holders_sold_usd === 0, JSON.stringify(o.flow));

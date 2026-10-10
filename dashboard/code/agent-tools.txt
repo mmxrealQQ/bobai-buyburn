@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2777 lines.
+# one fetch. 5 files, 2830 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1022,10 +1022,22 @@ async function runTool(rawName, args, caller = {}) {
       }
     }
     case 'bnb_agent_census': {
-      const r = await fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) });
+      // THE SNAPSHOT SAYS HOW OLD IT IS (2026-10-10). The headline figures
+      // come from the last full offline scan (days old), and the answer gave
+      // no hint of it; the live high-water mark from agent.brainonbnb.com/census
+      // (one small read, read alongside) now sits next to it. If that read
+      // fails the snapshot is still answered, with the two fields null.
+      const [r, live] = await Promise.all([
+        fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) }),
+        fetch('https://agent.brainonbnb.com/census', { signal: AbortSignal.timeout(5000) }).then((x) => (x.ok ? x.json() : null)).catch(() => null),
+      ]);
       if (!r.ok) throw new Error('census unavailable');
       const j = await r.json();
       return {
+        highest_id: live?.highest_id ?? null,
+        last_checked_at: live?.last_checked_at ?? null,
+        highest_id_checked_at: live?.high_water_checked_at ?? null,
+        note: `The figures below are the full scan of ${String(j.measured_at || '?').slice(0, 10)} (measured_at, registered_ids). highest_id and last_checked_at are the live high-water mark of the registry, read again every few hours; the two differ by the registrations since the scan.`,
         registered_ids: j.registered_ids,
         registrations_that_parse: j.registrations?.parses,
         name_an_endpoint: j.registrations?.has_http_endpoint,
@@ -1155,6 +1167,14 @@ async function handleMcp(request, note = () => {}) {
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method === 'GET') {
     note('mcp:get');
+    // A STREAM ASKED FOR IS A STREAM REFUSED, PROPERLY (2026-10-10). Streamable
+    // HTTP: a GET with Accept: text/event-stream opens a server-to-client SSE
+    // stream, and a server that offers none answers 405. It got 200 JSON, which
+    // a client reads as a broken stream. A plain GET (a browser, an indexer)
+    // still gets the info below.
+    if (/text\/event-stream/i.test(request.headers.get('accept') || '')) {
+      return new Response(JSON.stringify({ error: 'This MCP server offers no SSE stream. Send JSON-RPC by POST to https://brainonbnb.com/mcp.' }), { status: 405, headers: { ...cors, Allow: 'POST' } });
+    }
     return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name), prompts: MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri) }), { headers: cors });
   }
   let body;
@@ -1241,7 +1261,18 @@ async function handleMcp(request, note = () => {}) {
 const A2A_CARD = {
   name: 'Brain On BNB AI ($BOBAI)',
   description: 'Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. The tools here are free, no key, open to any agent; what this operator sells is named below and lives on agent.brainonbnb.com.',
-  url: 'https://brainonbnb.com/',
+  // THE A2A ENDPOINT, NOT THE HOMEPAGE (2026-10-10). url was
+  // https://brainonbnb.com/ — an HTML page, nothing for a client to POST
+  // message/send to. The A2A endpoint this operator serves is the agent
+  // origin's (list, negotiate, notify_funded — the paid answers); the free
+  // tools on this card are MCP and REST, named under additionalInterfaces in
+  // the shape the agent origin's own cards use.
+  url: 'https://agent.brainonbnb.com/a2a',
+  preferredTransport: 'JSONRPC',
+  additionalInterfaces: [
+    { transport: 'JSONRPC', url: 'https://agent.brainonbnb.com/a2a' },
+    { transport: 'MCP', url: 'https://brainonbnb.com/mcp' },
+  ],
   version: '1.0.0',
   protocolVersion: '0.3.0',
   documentationUrl: 'https://brainonbnb.com/skill.md',
@@ -1283,6 +1314,10 @@ const A2A_CARD = {
     { id: 'token_preflight', name: 'Before any trade: one check at your size',
       description: 'For an agent about to trade any token on BNB Chain. One call: what stops the trade (the sell does not go through from a fresh address, nothing quotes, half the money gone on a round trip), what to weigh (tax high, unknown or changeable; a size that moves the price; LP that can be withdrawn; contract flags — each with its figure and the line it was measured against), then the best route, the slippage in bps this size needs and the round trip with the measured transfer tax. A short answer; no "safe", no score. MCP: bsc_token_preflight. REST: /api/preflight?address=0x…&usd=250',
       tags: ['defi', 'bsc', 'trading', 'risk', 'pancakeswap', 'four.meme'] },
+    // The rug watch (2026-10-10), on the MCP since 2026-10-09 and missing here.
+    { id: 'rug_watch', name: 'Rug-pull and honeypot alarm for a token you hold',
+      description: 'Webhook only. Registers a BSC token and your own https callback; every 15 minutes the token is read again with the preflight and your callback is POSTed (signed, HMAC-SHA256) when something dangerous changes: the sell stops going through, the liquidity is pulled or drains, LP is withdrawn, a tax rises, the owner or proxy changes, the deployer or a top holder sells — and, from its own 24 h history, fake volume, a pump and the dump after it, a slow rug. One active watch free per caller; wallets holding 1,000,000 $BOBAI or more get 25, by signing a message (no transaction). A watch runs 30 days. MCP: bsc_rug_watch. REST: POST https://agent.brainonbnb.com/rug-watch (terms: GET the same URL). Measurement, not advice.',
+      tags: ['defi', 'bsc', 'risk', 'monitoring', 'webhook', 'rug-pull', 'honeypot'] },
     { id: 'best_route', name: 'Which pool to swap through',
       description: 'Which of the pools a pair lives in returns the most at your size, and the round trip with the measured transfer tax applied between the legs. REST: /api/best-route?address=0x…&usd=250',
       tags: ['defi', 'bsc', 'trading', 'pancakeswap'] },
@@ -1297,7 +1332,7 @@ const A2A_CARD = {
     // had joined the pool watch; they get one entry that points at where they
     // are priced and negotiated, not a copy of a catalogue that changes.
     { id: 'pool_watch', name: 'Watch a pool (paid)',
-      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain — standard scheme via a public facilitator, or a direct USD1 transfer. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
+      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain, three ways to the same price: USD1 by EIP-3009 or USDC through Permit2 (scheme exact; you sign, the operator settles on chain and pays the gas), or a direct USD1 transfer with its tx hash. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
       tags: ['defi', 'bsc', 'liquidity', 'monitoring', 'x402', 'paid'] },
     { id: 'paid_answers', name: 'Answers sold per call (paid)',
       description: 'PAID, per answer. This operator also sells single answers on BNB Chain DeFi — lending health, yield ranking, fee-tier placement, a plan for your own PancakeSwap V3 position and others — each priced in its own first sentence. Two ways to buy: over x402 (catalogue with every price at https://brainonbnb.com/.well-known/x402, an example of each answer before paying at https://agent.brainonbnb.com/example), or as an ERC-8183 job negotiated over A2A — the seller\'s own card, with the negotiate skill, is https://agent.brainonbnb.com/.well-known/agent-card.json. Human-readable: https://brainonbnb.com/services',
@@ -1343,6 +1378,18 @@ const AGENT_REGISTRATION = {
   // verifier fetches whichever host the agent names as its endpoint.
   registrations: registrations(),
   supportedTrust: ['reputation'],
+  // Where to talk to it (2026-10-10), in the shape the agent origin's proof
+  // document uses: this one named the ids and no endpoint at all, so an
+  // indexer that verified the domain still had nothing to call.
+  endpoints: {
+    mcp: 'https://brainonbnb.com/mcp',
+    a2a: 'https://agent.brainonbnb.com/a2a',
+    agent_card: 'https://brainonbnb.com/.well-known/agent-card.json',
+    x402: 'https://brainonbnb.com/.well-known/x402',
+    llms_txt: 'https://brainonbnb.com/llms.txt',
+    status: 'https://agent.brainonbnb.com/status',
+    marketplace: 'https://brainonbnb.com/registry',
+  },
 };
 
 // Plain REST mirror of the MCP tools — the lowest common denominator for
@@ -1856,7 +1903,7 @@ function secureHeaders(h) {
 - Find an agent that can do something: https://agent.brainonbnb.com/find?q=what+you+need — matched against the tools each agent returned when asked, not against categories anybody typed into a form. Add `&speaks=mcp` or `&speaks=x402` to require a protocol.
 - Have a task routed and answered: POST https://agent.brainonbnb.com/dispatch with `{"task":"..."}` — finds an agent, calls it, returns the result naming who produced it. Read-only tools only: anything that signs, sends, swaps or orders is named back to you to call yourself, never invoked on your behalf. Add `"dry_run":true` to see which agent and tool would be used without calling anything.
 - Read the record of every task routed so far, failures included: https://agent.brainonbnb.com/sessions
-- Hire an agent through the ERC-8183 escrow, by machine: GET https://agent.brainonbnb.com/hire?agent=<registry id>&task=<what you want> returns the seller's quote and the unsigned transactions to fund the job, plus `after_funding` and `track`; GET https://agent.brainonbnb.com/job?id=<job id> follows it. Our own sellers (one per category, one for LP fee tiers, and the DeFi Agent #363709 that runs our own PancakeSwap V3 position) are the rows with `"ours": true` in https://brainonbnb.com/api-agents.json (each with its endpoint and payee), and their live state is at https://agent.brainonbnb.com/status; https://brainonbnb.com/api-registry.json carries the counts (`hireable_here`, `quoted_of_hireable`).
+- Hire an agent through the ERC-8183 escrow, by machine: GET https://agent.brainonbnb.com/hire?agent=<registry id>&task=<what you want> returns the seller's quote and the unsigned transactions to fund the job, plus `after_funding` and `track`; GET https://agent.brainonbnb.com/job?id=<job id> follows it. Our own sellers (one per category, one for LP fee tiers, and the DeFi Agent #363709 that runs our own PancakeSwap V3 position) are listed, with their live state, at https://agent.brainonbnb.com/status (a small file: id, name, category, price, ready); each one's endpoint is https://agent.brainonbnb.com/<slug>/a2a (below) and its payee is its ERC-8004 agentWallet. The full directory https://brainonbnb.com/api-agents.json (large) marks the same rows `"ours": true`; https://brainonbnb.com/api-registry.json carries the counts (`hireable_here`, `quoted_of_hireable`).
 - Hire one of our agents the BNB Agent SDK way: every A2A card of ours offers skill `negotiate-erc8183-job` and answers with a wallet-signed quote (negotiation_hash, provider_sig) that verifies with @bnbagent/sdk's verifyQuoteSignature; anchor it via createJob, fund it, and the agent finds the funded job on the chain and delivers on-chain — no further message needed. The provider is each agent's ERC-8004 agentWallet. Each agent has its own endpoint and card: https://agent.brainonbnb.com/<slug>/a2a and <slug>/a2a/.well-known/agent-card.json for health-factor, grid-trader, yield-optimizer, rebalancer, lp-placement and defi-agent; the shared https://agent.brainonbnb.com/a2a still answers for all of them.
 - See what an answer looks like before paying for it: https://agent.brainonbnb.com/example?service=health_factor (any of the six service ids)
 - Measure any BSC pool: https://brainonbnb.com/api/pool-scan?address=0x... — real cost per trade size (price impact, swap fee and transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% either way, the transfer tax measured from executed trades rather than taken from a label, whether the LP is burned or still withdrawable, and a sell simulated on the router from a fresh address. A token still raising on four.meme (no pool yet) is measured from four.meme's own contract instead: raise progress, price, buy/sell cost per size (field `curve`).
@@ -1865,7 +1912,7 @@ function secureHeaders(h) {
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
 - MCP endpoint, 23 free tools (the count is pinned against tools/list by a check) — 22 read-only, and `bsc_rug_watch`, which registers a webhook alarm: https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_rug_watch`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
 - Choose the PRICE RANGE for a PancakeSwap V3 position: https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000 — the decision concentrated liquidity actually forces, and the one every interface answers with a preset. Not modelled and not forecast: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of the size you give is replayed through the swaps that really happened and asked, at each one, whether it was in range and what share of the liquidity standing there it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price crossed its edge. Impermanent loss is not in it and is worst exactly where the fees are best.
-- BEFORE ANY TRADE on BNB Smart Chain, one call at your size: https://brainonbnb.com/api/preflight?address=0x...&usd=250 (MCP: `bsc_token_preflight`) — stop[] names what ends an automated trade (the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip), caution[] names what to weigh, each with its figure and the line it was measured against (a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn; contract flags). Then the figures: best PancakeSwap route at this size, what you pay and receive, the slippage in bps the size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the measured transfer tax applied, the 1% depth both ways, LP burned. A short answer, built from the pool scan and the route check below, which stay available for every figure behind it. A token still on its four.meme curve is answered from four.meme's contract. It does not say "safe" and returns no score.
+- BEFORE ANY TRADE on BNB Smart Chain, one call at your size: https://brainonbnb.com/api/preflight?address=0x...&usd=250 (MCP: `bsc_token_preflight`) — stop[] names what ends an automated trade (the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip), caution[] names what to weigh, each with its figure and the line it was measured against (a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn; contract flags). Then the figures: best PancakeSwap route at this size, what you pay and receive, the slippage in bps the size really needs, per side, from the measured tax (tax + price impact + 0.5% + 200 bps; a fee-on-transfer token reverts below its tax + impact), the round trip with the measured transfer tax applied, the 1% depth both ways, LP burned. A short answer, built from the pool scan and the route check below, which stay available for every figure behind it. A token still on its four.meme curve is answered from four.meme's contract. It does not say "safe" and returns no score.
 - Before swapping on PancakeSwap: https://brainonbnb.com/api/best-route?address=0x...&usd=250 — two questions an agent has to answer before it signs. Which of the up-to-five pools the pair lives in actually returns the most AT THIS SIZE, quoted by the venue rather than ranked by depth; and what comes back if the proceeds are sold straight back, with the transfer tax measured from executed trades applied to the amounts carried between the legs, because the tax is taken outside the pool where no quoter sees it. Returns the best route, what every other route would have cost, the round trip with and without the tax, and the slippage the size really needs. Not a safety certificate and it does not use the word.
 - Paid, per answer, over x402: any of the six deliveries (Venus health factor, grid plan, Venus yield ranking, portfolio rebalance, PancakeSwap fee-tier placement, and the DeFi agent on YOUR PancakeSwap V3 position — the same code that runs ours, reading and planning, signing nothing) at POST https://agent.brainonbnb.com/answer?service=<id> — 0.10 USD1 — signed by EIP-3009 and sent in X-PAYMENT (we settle it; accepts[0] of the 402), USDC by standard x402, a plain USD1 transfer, or the same in $BOBAI (quoted on the 402) — one payment, the document at once; GET https://agent.brainonbnb.com/answer lists them, GET /example?service=<id> shows the shape for free. Our sellers offer the same work through the ERC-8183 escrow on https://brainonbnb.com/registry — one per category, one for LP fee tiers, and the position plan itself from the DeFi Agent #363709 (https://agent.brainonbnb.com/defi-agent/a2a).
 - No MCP client? Every tool is also a plain GET: https://brainonbnb.com/api/price · /api/liquidity · /api/preflight · /api/pool-scan · /api/fee-tiers · /api/range-plan · /api/best-route · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/dex-info · /api/tokenomics · /api/links · /api/guide · /api/purchase-guide · /api/circulating-supply · /api/total-supply. The older spellings /api/trade and /api/how-to-buy still answer and always will; they were renamed because a router that refuses any tool with a mutating verb in its name — the rule that stops `get_swap_calldata` — was refusing two of ours for the words "trade" and "buy" in names that only ever read.
@@ -2045,7 +2092,12 @@ const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is na
 // volume_from_few_wallets (2026-10-09): the hour read looks like wash trading when
 // 20+ swaps came from at most max(3, swaps / 10) wallets, or its volume is 2x the
 // pool's hard side or more from 10 wallets or fewer.
-const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10;
+// 2026-10-10: the few-wallets line also needs the hour's volume to be 5% of the
+// hard side or more. WBNB/USDT ($93.8k on a $29M pool, 153 wallets — bots and
+// aggregators doing thousands of swaps) read as wash trading; volume that small
+// against the pool fakes nothing. Where the volume or the pool is unread the
+// line stays as it was.
+const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10, WASH_MIN_POOL_SHARE = 0.05;
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
 // The figure of a stop/caution item (2026-10-09): only where there is a number.
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
@@ -2227,7 +2279,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
     const few = Math.max(WASH_MIN_WALLETS, Math.floor(act.swaps / WASH_SWAPS_PER_WALLET));
     const hard = s.pool?.liquidityUsd;
     const overPool = act.volumeUsd != null && hard > 0 && act.volumeUsd >= WASH_VOL_X * hard && act.uniqueTraders <= WASH_FEW_WALLETS;
-    if (act.uniqueTraders <= few || overPool) {
+    const shareOk = act.volumeUsd == null || !(hard > 0) || act.volumeUsd >= WASH_MIN_POOL_SHARE * hard;
+    if ((act.uniqueTraders <= few && shareOk) || overPool) {
       const mins = act.window?.minutes ?? '?';
       caution.push({ code: 'volume_from_few_wallets', why: `In the last ${mins} minutes ${act.swaps} swaps came from ${act.uniqueTraders} wallet${act.uniqueTraders === 1 ? '' : 's'}${act.volumeUsd != null ? ` — $${act.volumeUsd} of volume` : ''}${hard != null ? ` on a pool holding $${Math.round(hard)} on its hard side` : ''}. That looks like wash trading: a handful of wallets made most of the volume, so it says little about real demand (lines drawn at ${act.uniqueTraders <= few ? `${few} wallets or fewer for ${act.swaps} swaps — ten swaps or more per wallet` : `a volume ${WASH_VOL_X}x the pool from ${WASH_FEW_WALLETS} wallets or fewer`}; a router or aggregator trading for many wallets counts as one address).`,
         ...fig(act.uniqueTraders, act.uniqueTraders <= few ? few : WASH_FEW_WALLETS, 'wallets') });

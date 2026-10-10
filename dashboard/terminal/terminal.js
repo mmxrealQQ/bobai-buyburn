@@ -1163,9 +1163,12 @@ function freshJoke() {
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
 function tellJoke(ms) {
-  if (REDUCED || !VID.v) { speak(freshJoke(), ms); return true; }
+  // THE PUNCHLINE IN THE LOG (2026-10-10 review): a joke the visitor asked for (button, "joke") was only in the bubble —
+  // the log, the record of the visit, said "One joke, coming up." and nothing after it; jokes of his own stay bubble-only
+  const logIt = j => { if (LIFE.jokeAsk && performance.now() - LIFE.jokeAsk < 60e3) { LIFE.jokeAsk = 0; say([j]); } };
+  if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); logIt(j); return true; }
   if (VID.go || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
-  const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
+  const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); logIt(j); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
 const bubble = document.createElement('div'); bubble.className = 'say'; bubble.setAttribute('aria-live', 'polite');
@@ -3863,7 +3866,7 @@ function paintJoke() {
 }
 setInterval(() => { try { paintJoke(); } catch {} }, 250); // (the scene and the video are made further down: until then, nothing to paint)
 function jokeTap() {
-  LIFE.touchAt = performance.now();
+  LIFE.touchAt = performance.now(); LIFE.jokeAsk = performance.now(); // an asked-for joke goes into the log too (tellJoke)
   if (!jokeReady()) { jokeQueued = true; paintJoke(); return; }
   jokeQueued = false;
   if (tellJoke(6500)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }

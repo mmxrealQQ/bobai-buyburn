@@ -330,6 +330,7 @@ export const TREND = {
   washMinWallets: 3,
   washVolX: 2,              // or the hour's volume >= 2x the pool's hard side …
   washFewWallets: 10,       // … made by 10 wallets or fewer
+  washMinPoolShare: 0.05,   // (2026-10-10) the few-wallets line needs the hour's volume >= 5% of the hard side (WBNB/USDT: $93.8k on $29M is not wash); unread volume/pool keeps the old line
   // pump and dump, against the watch's own prices
   pumpPct: 40, pumpWindowMs: 6 * 3600e3,   // up 40% or more on the lowest price of the last 6 h
   dumpPct: 30,                             // down 30% or more from the 24 h high, when that high came from a pump
@@ -362,7 +363,7 @@ export function washOf(swaps, wallets, vol, hard, minutes = null) {
   const n = num(swaps), u = num(wallets), v = num(vol), h = num(hard);
   if (n == null || u == null || u < 1 || n < TREND.washMinSwaps) return null;
   const line = Math.max(TREND.washMinWallets, Math.floor(n / TREND.washSwapsPerWallet));
-  if (u <= line) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'few_wallets', line };
+  if (u <= line && (v == null || !(h > 0) || v >= TREND.washMinPoolShare * h)) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'few_wallets', line };
   if (v != null && h > 0 && v >= TREND.washVolX * h && u <= TREND.washFewWallets) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'volume_over_pool', line: TREND.washFewWallets };
   return null;
 }
@@ -879,7 +880,7 @@ export function rugWatchTerms() {
       { code: 'tax_can_change', level: 'warning', when: 'newly in the preflight\'s caution list' },
       // How tokens are rugged today (2026-10-09): pumped with fake wallets and fake volume, then dumped — or bled slowly.
       // These read the watch's own history of reads (see `history`), not one diff.
-      { code: 'fake_volume', level: 'warning', when: `the last hour read looks like wash trading: ${TREND.washMinSwaps}+ swaps by at most max(${TREND.washMinWallets}, swaps / ${TREND.washSwapsPerWallet}) wallets, or the hour's volume ${TREND.washVolX}x the pool's hard side or more from ${TREND.washFewWallets} wallets or fewer (a router or aggregator trading for many wallets counts as one address, so this can also be a market that trades through one)` },
+      { code: 'fake_volume', level: 'warning', when: `the last hour read looks like wash trading: ${TREND.washMinSwaps}+ swaps by at most max(${TREND.washMinWallets}, swaps / ${TREND.washSwapsPerWallet}) wallets with the hour's volume at least ${TREND.washMinPoolShare * 100}% of the pool's hard side, or the hour's volume ${TREND.washVolX}x the pool's hard side or more from ${TREND.washFewWallets} wallets or fewer (a router or aggregator trading for many wallets counts as one address, so this can also be a market that trades through one)` },
       { code: 'pump', level: 'warning', when: `the price at the $${RUG_WATCH.usd} test size rose ${TREND.pumpPct}% or more on its lowest of the last ${TREND.pumpWindowMs / 3600e3} h — you are holding into a pump; buys against wallets are named` },
       { code: 'dump', level: 'critical when insiders sold over the day, else warning', when: `the price fell ${TREND.dumpPct}% or more from its high of the last 24 h, and that high came out of a pump (${TREND.pumpPct}%+ within ${TREND.pumpWindowMs / 3600e3} h)` },
       { code: 'slow_rug', level: 'critical', when: `over the last 24 h (${TREND.slowMinSpanMs / 3600e3} h of history at least): the price down ${TREND.slowPct}% or more with no single step of ${TREND.slowMaxStepPct}% between two stored reads, sells outnumbering buys in ${Math.round(TREND.slowSellShare * 100)}% of the reads, and insiders (the deployer, wallets it funded, top holders) selling` },

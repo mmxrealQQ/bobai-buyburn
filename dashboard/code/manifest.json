@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7191,
-   "zipBytes": 158726,
-   "txtBytes": 475664,
-   "sha256": "937c369621ecb030",
+   "lines": 7192,
+   "zipBytes": 158782,
+   "txtBytes": 475770,
+   "sha256": "348639f0616e1dcb",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1322,
-   "zipBytes": 27945,
-   "txtBytes": 73578,
-   "sha256": "423c3ed8ba447955",
+   "lines": 1323,
+   "zipBytes": 28039,
+   "txtBytes": 73918,
+   "sha256": "a808c2ac94511945",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2777,
-   "zipBytes": 80593,
-   "txtBytes": 231559,
-   "sha256": "e9949dc6db34ec98",
+   "lines": 2830,
+   "zipBytes": 82335,
+   "txtBytes": 236289,
+   "sha256": "7adab9c0d8bd67d5",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
-   "lines": 17405,
-   "zipBytes": 393589,
-   "txtBytes": 1112866,
-   "sha256": "933e772dbdff987f",
+   "lines": 17430,
+   "zipBytes": 394418,
+   "txtBytes": 1115293,
+   "sha256": "f84653691bc06bd1",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -729,9 +729,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4549,
-   "zipBytes": 97698,
-   "txtBytes": 278193,
-   "sha256": "9fe74419042bdfdc",
+   "zipBytes": 97715,
+   "txtBytes": 278254,
+   "sha256": "ea81f1fede0646c0",
    "reqs": [
     {
      "what": "Node 18+ and time",

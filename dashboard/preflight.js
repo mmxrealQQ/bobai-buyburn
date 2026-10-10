@@ -47,7 +47,12 @@ const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is na
 // volume_from_few_wallets (2026-10-09): the hour read looks like wash trading when
 // 20+ swaps came from at most max(3, swaps / 10) wallets, or its volume is 2x the
 // pool's hard side or more from 10 wallets or fewer.
-const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10;
+// 2026-10-10: the few-wallets line also needs the hour's volume to be 5% of the
+// hard side or more. WBNB/USDT ($93.8k on a $29M pool, 153 wallets — bots and
+// aggregators doing thousands of swaps) read as wash trading; volume that small
+// against the pool fakes nothing. Where the volume or the pool is unread the
+// line stays as it was.
+const WASH_MIN_SWAPS = 20, WASH_SWAPS_PER_WALLET = 10, WASH_MIN_WALLETS = 3, WASH_VOL_X = 2, WASH_FEW_WALLETS = 10, WASH_MIN_POOL_SHARE = 0.05;
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
 // The figure of a stop/caution item (2026-10-09): only where there is a number.
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
@@ -229,7 +234,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
     const few = Math.max(WASH_MIN_WALLETS, Math.floor(act.swaps / WASH_SWAPS_PER_WALLET));
     const hard = s.pool?.liquidityUsd;
     const overPool = act.volumeUsd != null && hard > 0 && act.volumeUsd >= WASH_VOL_X * hard && act.uniqueTraders <= WASH_FEW_WALLETS;
-    if (act.uniqueTraders <= few || overPool) {
+    const shareOk = act.volumeUsd == null || !(hard > 0) || act.volumeUsd >= WASH_MIN_POOL_SHARE * hard;
+    if ((act.uniqueTraders <= few && shareOk) || overPool) {
       const mins = act.window?.minutes ?? '?';
       caution.push({ code: 'volume_from_few_wallets', why: `In the last ${mins} minutes ${act.swaps} swaps came from ${act.uniqueTraders} wallet${act.uniqueTraders === 1 ? '' : 's'}${act.volumeUsd != null ? ` — $${act.volumeUsd} of volume` : ''}${hard != null ? ` on a pool holding $${Math.round(hard)} on its hard side` : ''}. That looks like wash trading: a handful of wallets made most of the volume, so it says little about real demand (lines drawn at ${act.uniqueTraders <= few ? `${few} wallets or fewer for ${act.swaps} swaps — ten swaps or more per wallet` : `a volume ${WASH_VOL_X}x the pool from ${WASH_FEW_WALLETS} wallets or fewer`}; a router or aggregator trading for many wallets counts as one address).`,
         ...fig(act.uniqueTraders, act.uniqueTraders <= few ? few : WASH_FEW_WALLETS, 'wallets') });

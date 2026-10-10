@@ -17,7 +17,7 @@
     const c = N().chain; if (!c || !c.priceUsd) return;
     const dead = c.bobaiDead || 0, circ = 1e9 - dead;
     strip(win).innerHTML = fig('PRICE', '$' + c.priceUsd.toPrecision(4)) + fig('MARKET CAP', '$' + nf(c.priceUsd * circ)) + fig('BURNED FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', 1) + fig('CIRCULATING', cmp(circ) + ' BOBAI')
-      + `<div class="hd"><div class="ht">THE SUPPLY · 1,000,000,000 BOBAI</div><div class="sup"><i style="width:${dead / 1e7}%;background:linear-gradient(90deg,#ff7a3d,#ffb46b);box-shadow:0 0 12px #ff7a3d"></i><i style="flex:1;background:linear-gradient(90deg,rgba(240,185,11,.55),rgba(240,185,11,.25))"></i></div><div class="sup-k"><span>🔥 ${nf(dead)} at the dead address</span><span>${nf(circ)} circulating</span></div></div>`;
+      + `<div class="hd"><div class="ht">THE SUPPLY · 1,000,000,000 BOBAI</div><div class="sup"><i style="width:${dead / 1e7}%;background:linear-gradient(90deg,#ff7a3d,#ffb46b);box-shadow:0 0 12px #ff7a3d"></i><i style="flex:1;background:linear-gradient(90deg,rgba(240,185,11,.55),rgba(240,185,11,.25))"></i></div><div class="sup-k"><span>🔥 ${nf(dead)} at the dead address · ≈$${nf(dead * c.priceUsd)}</span><span>${nf(circ)} circulating</span></div></div>`;
   }
   // 02 TOKENOMICS: the 3% of every trade as one ring, every share of the table in force
   const SPLIT = [['bobaiPct', '#ff7a3d', 'BOBAI bought & burned'], ['bobPct', '#fbbf24', '$BOB bought & burned'], ['liqPct', '#2dd4bf', 'liquidity, LP burned'], ['lpPct', '#60a5fa', 'DeFi agent'], ['gigglePct', '#f472b6', 'Giggle Academy pot'], ['creatorPct', '#d6c7b8', 'creator']];
@@ -44,7 +44,8 @@
     for (const e of b) { const i = 29 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 30) { A[i] += +e.bobaiBurned || 0; Bnb[i] += +e.bobaiBurnBnb || 0; Runs[i]++; } }
     const tot = b.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     const h = strip(win);
-    h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot), 1) + fig('LAST 7 DAYS', cmp(n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI') + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toISOString().replace('T', ' ').slice(0, 16) + ' UTC')
+    const px = N().chain?.priceUsd > 0 ? N().chain.priceUsd : 0, usd = (n) => px ? ' ≈$' + nf(n * px) : '', w7 = n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0); // BOBAI with its dollars at today's price (2026-10-10)
+    h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot) + usd(tot), 1) + fig('LAST 7 DAYS', cmp(w7) + ' BOBAI' + usd(w7)) + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toISOString().replace('T', ' ').slice(0, 16) + ' UTC')
       + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90"></canvas><div class="bbt" hidden></div></div></div>`;
     const cv = $('canvas', h), tip = $('.bbt', h);
     let hi = -1;

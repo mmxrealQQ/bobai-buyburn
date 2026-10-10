@@ -229,6 +229,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .ledger-table .serial{font-family:'Space Grotesk',monospace;color:var(--gold);font-weight:600}
 .ledger-table .tier-cell{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text)}
 .ledger-table .tier-cell .e{font-size:1.05rem}
+.ledger-table .tier-cell .th{width:32px;height:40px;border-radius:4px;object-fit:cover;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.08)} /* the card itself in the live list (2026-10-10) */
 .rarity-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;letter-spacing:.2px;border:1px solid}
 .rarity-dot{width:8px;height:8px;border-radius:4px;display:inline-block}
 .ledger-table .drop-note{display:inline-flex;align-items:center;gap:4px;margin-left:7px;padding:2px 8px;border-radius:6px;font-size:.66rem;font-weight:600;letter-spacing:.2px;color:var(--gold);background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.28);vertical-align:middle}
@@ -526,7 +527,7 @@ function renderLedger(drops, latestBlock, holders) {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td class="serial">#${d.tokenId}</td>
-      <td><div class="tier-cell"><span class="e">${t.emoji}</span> ${t.label.replace(' BUY','')}</div></td>
+      <td><div class="tier-cell">${t.slug && r.slug ? `<img class="th" src="cards/${t.slug}-${r.slug}-sm.webp" width="32" height="40" loading="lazy" decoding="async" alt="">` : `<span class="e">${t.emoji}</span>`} ${t.label.replace(' BUY','')}</div></td>
       <td><span class="rarity-tag" style="color:${r.hex};border-color:${r.hex}55;background:${r.hex}10"><span class="rarity-dot" style="background:${r.hex}"></span>${r.name}</span>${d.note ? `<span class="drop-note">🎁 ${d.note}</span>` : ''}</td>
       <td class="wallet"><a href="${BSCSCAN}/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d?a=${d.to}" target="_blank" rel="noopener">${fmtAddr(d.to)}</a></td>
       <td class="age">${fmtUtc(d.ts)}</td>

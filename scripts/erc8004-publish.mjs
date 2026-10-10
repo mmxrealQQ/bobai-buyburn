@@ -2123,7 +2123,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       return fetch('https://agent.brainonbnb.com/a2a',{method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',kind:'message',messageId:'ask-'+Date.now(),parts:[{kind:'data',data:{skill:'negotiate',task_description:t}}]}}})})
         .then(function(r){return r.json()}).then(function(j){
-          var q=j&&j.result&&(j.result.data||j.result);
+          var q=j&&j.result&&((j.result.parts&&j.result.parts[0]&&j.result.parts[0].data)||j.result.data||j.result);
           if(!q||!q.accepted||!q.service||!OWN_SELLERS[q.service])return null;
           return {id:OWN_SELLERS[q.service],service:q.service,price:q.price_display||'0.10 $U',needs:q.needs||null};
         }).catch(function(){return null});

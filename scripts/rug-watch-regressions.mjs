@@ -184,6 +184,11 @@ console.log('\ntoday\'s rugs: fake volume, pump, dump, slow rug, draining, insid
   ok('… a normal busy market (300 swaps by 120 wallets, even at $50k volume on a $20k pool) is NOT fake volume', !has(d, 'fake_volume') && d.w.series?.length >= 2, d.codes.join() + ' series ' + d.w.series?.length);
   d = drive([{ h: 0 }, { h: 1, act: { swaps: 19, buys: 10, sells: 9, unique_traders: 1, volume_usd: 900 } }, { h: 2, act: { swaps: 41, buys: 21, sells: 20, unique_traders: 5, volume_usd: 3000 } }, { h: 3, act: { swaps: 41, buys: 21, sells: 20, unique_traders: null, volume_usd: 3000 } }]);
   ok('… 19 swaps (under 20), 41 swaps by 5 wallets (line 4), and wallets not read: none of them', !has(d, 'fake_volume') && d.w.series?.length >= 3, d.codes.join());
+  // (2026-10-10) a deep pool: WBNB/USDT, 1,600 swaps by 153 wallets but $93.8k on a $14.5M hard side (under 5%)
+  const deepAct = (v) => ({ swaps: 1600, buys: 800, sells: 800, unique_traders: 153, volume_usd: v });
+  const dq = drive([{ h: 0, hard: 14500000 }, { h: 1, hard: 14500000, act: deepAct(93800) }]);
+  const dl = drive([{ h: 0, hard: 14500000 }, { h: 1, hard: 14500000, act: deepAct(800000) }]);
+  ok('… a deep pool (1,600 swaps by 153 wallets, $93.8k on a $14.5M hard side) is NOT fake volume — the same wallets moving $800k (5.5%) are', !has(dq, 'fake_volume') && has(dl, 'fake_volume'), dq.codes.join() + ' | ' + dl.codes.join());
   const wash = { swaps: 41, buys: 30, sells: 11, unique_traders: 3, volume_usd: 12000 };
   d = drive([{ h: 0 }, { h: 1, act: wash }, { h: 1.25, act: wash }, { h: 4, act: wash }, { h: 7.5, act: wash }]);
   ok('… repeated: once, not again within 6 h, again after 6 h', d.sent.filter((e) => e.code === 'fake_volume').map((e) => e.h).join() === '1,7.5', d.sent.map((e) => e.code + '@' + e.h).join());

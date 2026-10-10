@@ -128,7 +128,7 @@ token per caller (25 for holders of 1,000,000 $BOBAI) and costs nothing.
 |-------|------|
 | \`GET https://brainonbnb.com/api/preflight?address=0x…&usd=250\` | Before a trade of any BSC token, at your size: what stops it, what to weigh, the route, the slippage it needs and the round trip with the measured tax — one short answer. MCP tool \`bsc_token_preflight\` |
 | \`POST https://agent.brainonbnb.com/rug-watch\` | A rug-pull and honeypot alarm for a token you hold: the preflight read again every 15 minutes, your own https callback POSTed (signed) when the sell stops going through, the liquidity is pulled, a tax rises or the owner or proxy changes. Webhook only; one watch free per caller, 25 per wallet holding 1,000,000 $BOBAI. Terms at \`GET /rug-watch\`, MCP tool \`bsc_rug_watch\` |
-| \`https://brainonbnb.com/mcp\` | MCP server, read-only: measure any BSC pool before trading it, search the ERC-8004 registry, read the census |
+| \`https://brainonbnb.com/mcp\` | MCP server, read-only except bsc_rug_watch, which registers a watch: measure any BSC pool before trading it, search the ERC-8004 registry, read the census |
 | \`https://brainonbnb.com/api/*\` | The same tools as plain GET, for agents that do not speak MCP |
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |
 | \`npx skills add https://brainonbnb.com\` | The same measurement as an installable agent skill |

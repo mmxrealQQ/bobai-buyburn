@@ -322,6 +322,13 @@ export const extractParams = (text = '', given = {}) => {
 const RPC_HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
 const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result }, { headers: RPC_HEADERS });
 const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
+// The list and the flat negotiate as an A2A Message (2026-10-10). The card says
+// protocolVersion 0.3.0, whose message/send returns a Message or a Task; these
+// two returned a bare object, which a strict 0.3 client rejects. Everything now
+// sits in the data part. The same fields stay flat beside it for the readers
+// that index result.accepted / result.provider directly (the generated
+// /registry ask box, register-own-agents.mjs) until they read the part.
+const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
 
 const dataParts = (message) => {
   const parts = message?.parts || [];
@@ -468,7 +475,7 @@ export async function handleA2A(request, env, opts = {}) {
         return rpcErr(id, -32000, `could not answer that ${task.kind} task at block ${task.block ?? task.range?.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
       }
     }
-    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|in one sentence/i.test(text)) {
+    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|what can you do|in one sentence/i.test(text)) {
       const sentence = forced === 'lp_position_plan'
         ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
         : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
@@ -513,7 +520,7 @@ export async function handleA2A(request, env, opts = {}) {
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
-    return rpcOk(id, {
+    return rpcOk(id, flatMessage({
       agent: 'Brain on BNB — hireable services',
       provider,
       currency: 'U',
@@ -521,7 +528,7 @@ export async function handleA2A(request, env, opts = {}) {
       services: Object.values(SERVICES),
       can_sign: !!account,
       how: 'Send skill:"negotiate" with terms.deliverables describing what you need. You get a quote naming this provider address and a price. Fund a job in the kernel against that address, then send skill:"notify_funded" with job_id.',
-    });
+    }));
   }
 
   // --- negotiate ---------------------------------------------------------
@@ -529,23 +536,23 @@ export async function handleA2A(request, env, opts = {}) {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
-    if (elsewhere) return rpcOk(id, { accepted: false, reason: elsewhere });
+    if (elsewhere) return rpcOk(id, flatMessage({ accepted: false, reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     // The position plan is sold through the escrow by the DeFi agent alone
     // (2026-10-04, its own identity and endpoint /defi-agent). On the shared
     // endpoint it is still x402 only — the card there says escrow: false.
     if (service && service.id === 'lp_position_plan' && opts.agent !== 'defi-agent') {
-      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
+      return rpcOk(id, flatMessage({ accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display }));
     }
     if (!service) {
-      return rpcOk(id, {
+      return rpcOk(id, flatMessage({
         accepted: false,
         reason: `We do not sell that. ${Object.keys(SERVICES).length} things are for sale here (listed below) and all of them are measurements, not opinions.`,
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
-      });
+      }));
     }
     const req = jobRequirements(await quoteWindow());
-    return rpcOk(id, {
+    return rpcOk(id, flatMessage({
       // Flat dialect: a provider address and a price, which is everything a
       // buyer needs and is the half the other dialect leaves out.
       accepted: true,
@@ -563,7 +570,7 @@ export async function handleA2A(request, env, opts = {}) {
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
       job_requirements: req,
-    });
+    }));
   }
 
   // --- deliver -----------------------------------------------------------

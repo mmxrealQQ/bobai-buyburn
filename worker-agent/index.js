@@ -2236,6 +2236,23 @@ ${pageTail}`;
     }
 
     if (path === '/lp/windows') {
+      // AT THE EDGE, AS THE PORTFOLIO (2026-10-10): built fresh on every call it took 4 to 9 s and 674 KB of JSON
+      // under no-store, for a record the cron changes once an hour. A pure read (KV and a price, nothing written),
+      // so the last copy is served at once, one per variant (page or JSON); a copy older than five minutes is
+      // rebuilt in the background, and each is kept 15 minutes.
+      const asHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      const ck = new Request(`https://agent.brainonbnb.com/lp/windows?as=${asHtml ? 'html' : 'json'}`);
+      const put = (res) => { if (globalThis.caches) { const c = res.clone(); c.headers.set('cache-control', 'public, max-age=900'); c.headers.set('x-built-at', String(Date.now())); return caches.default.put(ck, c).catch(() => {}); } };
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) {
+        if (Date.now() - Number(hit.headers.get('x-built-at') || 0) > 300e3) ctx.waitUntil(buildWindows().then((r) => r.status === 200 && put(r)).catch(() => {}));
+        const out = new Response(hit.body, hit); out.headers.set('cache-control', 'public, max-age=60'); return out;
+      }
+      const res = await buildWindows();
+      if (res.status === 200) ctx.waitUntil(put(res));
+      return res;
+    }
+    async function buildWindows() {
       const { log, v } = await lpWidthVerdict(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
       // What the agent's own position earned against the replay's figure

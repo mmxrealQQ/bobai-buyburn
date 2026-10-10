@@ -6,10 +6,10 @@
       "description": "Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades, not a label. A honeypot / rug-pull pre-trade check (measured, not a certificate) answers at your size: what stops the trade (the sell does not go through, nothing quotes), what to weigh, entry, exit, tax and depth. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it, and per dollar standing within 2% of the price. And it replays candidate V3 price ranges against real swaps. Any BEP-20 token or pool. Use when asked whether a token is a honeypot, whether it is liquid enough to trade, whether it can be sold again, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take.",
       "type": "archive",
       "url": "https://brainonbnb.com/skills/bsc-pool-depth.tar.gz",
-      "digest": "sha256:361c46d45dd8094abf330c2be43968a7283ce4d20fe179c51411f55e12450faf",
+      "digest": "sha256:1c43aa6da8b6dd4268200bacc5dac3c45e47c9b34ab1fcc2e795a27b1ecb9834",
       "version": "1.5.1",
       "license": "MIT",
-      "bytes": 113843
+      "bytes": 114012
     }
   ]
 }

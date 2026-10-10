@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="$BOBAI — the Brainmap">
   <meta name="twitter:description" content="Build, believe, brain: how the brain of $BOBAI grows, honestly. No dates, no moon.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=56" as="style">
-  <link rel="stylesheet" href="styles.css?v=56">
+  <link rel="preload" href="styles.css?v=57" as="style">
+  <link rel="stylesheet" href="styles.css?v=57">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
@@ -63,7 +63,7 @@
       <div class="rm rmn fi"><div class="rp">04 &middot; Growing</div><h3>Big Brain</h3><ul>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Volume. No neuron can fake it, so we earn it</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>More agents thinking with our tools</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>Nov 20: the Giggle pot goes to the kids</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Nov 20: the Giggle pot goes to the kids<span id="gg-pot" style="color:var(--muted)"></span></span></li>
         <li><span class="ck">&#x2713;</span><span>No price dates, no moon. Just a brain that keeps growing</span></li>
       </ul></div>
     </div>
@@ -75,5 +75,15 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
+<script>
+/* THE POT, LIVE (2026-10-10): what the kids get on Nov 20, read from the chain — the pot wallet's BNB balance, in dollars at
+   the site's own on-chain BNB price, and the days left; nothing is written into the text that would go stale */
+(() => { const el = document.getElementById('gg-pot'); if (!el) return; const END = Date.parse('2026-11-20T00:01:00Z'); if (Date.now() > END) return;
+  const bal = fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: ['0x5E4102520A71B2AA18a1208330d4848dea4BD105', 'latest'] }) }).then((r) => r.json()).then((j) => parseInt(j.result, 16) / 1e18);
+  const px = fetch('/api/price').then((r) => r.json()).then((j) => +j.bnb_usd || 0).catch(() => 0);
+  Promise.all([bal, px]).then(([b, u]) => { if (!(b >= 0)) return; const d = Math.ceil((END - Date.now()) / 86400e3);
+    el.textContent = ' · in the pot now: ' + b.toFixed(3) + ' BNB' + (u ? ' (≈$' + Math.round(b * u).toLocaleString('en-US') + ')' : '') + ' · ' + d + ' day' + (d === 1 ? '' : 's') + ' to go'; }).catch(() => {});
+})();
+</script>
 </body>
 </html>

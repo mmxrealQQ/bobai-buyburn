@@ -1006,10 +1006,22 @@ async function runTool(rawName, args, caller = {}) {
       }
     }
     case 'bnb_agent_census': {
-      const r = await fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) });
+      // THE SNAPSHOT SAYS HOW OLD IT IS (2026-10-10). The headline figures
+      // come from the last full offline scan (days old), and the answer gave
+      // no hint of it; the live high-water mark from agent.brainonbnb.com/census
+      // (one small read, read alongside) now sits next to it. If that read
+      // fails the snapshot is still answered, with the two fields null.
+      const [r, live] = await Promise.all([
+        fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) }),
+        fetch('https://agent.brainonbnb.com/census', { signal: AbortSignal.timeout(5000) }).then((x) => (x.ok ? x.json() : null)).catch(() => null),
+      ]);
       if (!r.ok) throw new Error('census unavailable');
       const j = await r.json();
       return {
+        highest_id: live?.highest_id ?? null,
+        last_checked_at: live?.last_checked_at ?? null,
+        highest_id_checked_at: live?.high_water_checked_at ?? null,
+        note: `The figures below are the full scan of ${String(j.measured_at || '?').slice(0, 10)} (measured_at, registered_ids). highest_id and last_checked_at are the live high-water mark of the registry, read again every few hours; the two differ by the registrations since the scan.`,
         registered_ids: j.registered_ids,
         registrations_that_parse: j.registrations?.parses,
         name_an_endpoint: j.registrations?.has_http_endpoint,
@@ -1139,6 +1151,14 @@ async function handleMcp(request, note = () => {}) {
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method === 'GET') {
     note('mcp:get');
+    // A STREAM ASKED FOR IS A STREAM REFUSED, PROPERLY (2026-10-10). Streamable
+    // HTTP: a GET with Accept: text/event-stream opens a server-to-client SSE
+    // stream, and a server that offers none answers 405. It got 200 JSON, which
+    // a client reads as a broken stream. A plain GET (a browser, an indexer)
+    // still gets the info below.
+    if (/text\/event-stream/i.test(request.headers.get('accept') || '')) {
+      return new Response(JSON.stringify({ error: 'This MCP server offers no SSE stream. Send JSON-RPC by POST to https://brainonbnb.com/mcp.' }), { status: 405, headers: { ...cors, Allow: 'POST' } });
+    }
     return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name), prompts: MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri) }), { headers: cors });
   }
   let body;
@@ -1225,7 +1245,18 @@ async function handleMcp(request, note = () => {}) {
 const A2A_CARD = {
   name: 'Brain On BNB AI ($BOBAI)',
   description: 'Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. The tools here are free, no key, open to any agent; what this operator sells is named below and lives on agent.brainonbnb.com.',
-  url: 'https://brainonbnb.com/',
+  // THE A2A ENDPOINT, NOT THE HOMEPAGE (2026-10-10). url was
+  // https://brainonbnb.com/ — an HTML page, nothing for a client to POST
+  // message/send to. The A2A endpoint this operator serves is the agent
+  // origin's (list, negotiate, notify_funded — the paid answers); the free
+  // tools on this card are MCP and REST, named under additionalInterfaces in
+  // the shape the agent origin's own cards use.
+  url: 'https://agent.brainonbnb.com/a2a',
+  preferredTransport: 'JSONRPC',
+  additionalInterfaces: [
+    { transport: 'JSONRPC', url: 'https://agent.brainonbnb.com/a2a' },
+    { transport: 'MCP', url: 'https://brainonbnb.com/mcp' },
+  ],
   version: '1.0.0',
   protocolVersion: '0.3.0',
   documentationUrl: 'https://brainonbnb.com/skill.md',
@@ -1267,6 +1298,10 @@ const A2A_CARD = {
     { id: 'token_preflight', name: 'Before any trade: one check at your size',
       description: 'For an agent about to trade any token on BNB Chain. One call: what stops the trade (the sell does not go through from a fresh address, nothing quotes, half the money gone on a round trip), what to weigh (tax high, unknown or changeable; a size that moves the price; LP that can be withdrawn; contract flags — each with its figure and the line it was measured against), then the best route, the slippage in bps this size needs and the round trip with the measured transfer tax. A short answer; no "safe", no score. MCP: bsc_token_preflight. REST: /api/preflight?address=0x…&usd=250',
       tags: ['defi', 'bsc', 'trading', 'risk', 'pancakeswap', 'four.meme'] },
+    // The rug watch (2026-10-10), on the MCP since 2026-10-09 and missing here.
+    { id: 'rug_watch', name: 'Rug-pull and honeypot alarm for a token you hold',
+      description: 'Webhook only. Registers a BSC token and your own https callback; every 15 minutes the token is read again with the preflight and your callback is POSTed (signed, HMAC-SHA256) when something dangerous changes: the sell stops going through, the liquidity is pulled or drains, LP is withdrawn, a tax rises, the owner or proxy changes, the deployer or a top holder sells — and, from its own 24 h history, fake volume, a pump and the dump after it, a slow rug. One active watch free per caller; wallets holding 1,000,000 $BOBAI or more get 25, by signing a message (no transaction). A watch runs 30 days. MCP: bsc_rug_watch. REST: POST https://agent.brainonbnb.com/rug-watch (terms: GET the same URL). Measurement, not advice.',
+      tags: ['defi', 'bsc', 'risk', 'monitoring', 'webhook', 'rug-pull', 'honeypot'] },
     { id: 'best_route', name: 'Which pool to swap through',
       description: 'Which of the pools a pair lives in returns the most at your size, and the round trip with the measured transfer tax applied between the legs. REST: /api/best-route?address=0x…&usd=250',
       tags: ['defi', 'bsc', 'trading', 'pancakeswap'] },
@@ -1281,7 +1316,7 @@ const A2A_CARD = {
     // had joined the pool watch; they get one entry that points at where they
     // are priced and negotiated, not a copy of a catalogue that changes.
     { id: 'pool_watch', name: 'Watch a pool (paid)',
-      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain — standard scheme via a public facilitator, or a direct USD1 transfer. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
+      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain, three ways to the same price: USD1 by EIP-3009 or USDC through Permit2 (scheme exact; you sign, the operator settles on chain and pays the gas), or a direct USD1 transfer with its tx hash. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
       tags: ['defi', 'bsc', 'liquidity', 'monitoring', 'x402', 'paid'] },
     { id: 'paid_answers', name: 'Answers sold per call (paid)',
       description: 'PAID, per answer. This operator also sells single answers on BNB Chain DeFi — lending health, yield ranking, fee-tier placement, a plan for your own PancakeSwap V3 position and others — each priced in its own first sentence. Two ways to buy: over x402 (catalogue with every price at https://brainonbnb.com/.well-known/x402, an example of each answer before paying at https://agent.brainonbnb.com/example), or as an ERC-8183 job negotiated over A2A — the seller\'s own card, with the negotiate skill, is https://agent.brainonbnb.com/.well-known/agent-card.json. Human-readable: https://brainonbnb.com/services',
@@ -1327,6 +1362,18 @@ const AGENT_REGISTRATION = {
   // verifier fetches whichever host the agent names as its endpoint.
   registrations: registrations(),
   supportedTrust: ['reputation'],
+  // Where to talk to it (2026-10-10), in the shape the agent origin's proof
+  // document uses: this one named the ids and no endpoint at all, so an
+  // indexer that verified the domain still had nothing to call.
+  endpoints: {
+    mcp: 'https://brainonbnb.com/mcp',
+    a2a: 'https://agent.brainonbnb.com/a2a',
+    agent_card: 'https://brainonbnb.com/.well-known/agent-card.json',
+    x402: 'https://brainonbnb.com/.well-known/x402',
+    llms_txt: 'https://brainonbnb.com/llms.txt',
+    status: 'https://agent.brainonbnb.com/status',
+    marketplace: 'https://brainonbnb.com/registry',
+  },
 };
 
 // Plain REST mirror of the MCP tools — the lowest common denominator for

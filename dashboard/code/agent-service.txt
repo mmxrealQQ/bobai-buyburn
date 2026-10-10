@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 49 files, 17405 lines.
+# one fetch. 49 files, 17430 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -9032,6 +9032,23 @@ ${pageTail}`;
     }
 
     if (path === '/lp/windows') {
+      // AT THE EDGE, AS THE PORTFOLIO (2026-10-10): built fresh on every call it took 4 to 9 s and 674 KB of JSON
+      // under no-store, for a record the cron changes once an hour. A pure read (KV and a price, nothing written),
+      // so the last copy is served at once, one per variant (page or JSON); a copy older than five minutes is
+      // rebuilt in the background, and each is kept 15 minutes.
+      const asHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      const ck = new Request(`https://agent.brainonbnb.com/lp/windows?as=${asHtml ? 'html' : 'json'}`);
+      const put = (res) => { if (globalThis.caches) { const c = res.clone(); c.headers.set('cache-control', 'public, max-age=900'); c.headers.set('x-built-at', String(Date.now())); return caches.default.put(ck, c).catch(() => {}); } };
+      const hit = globalThis.caches ? await caches.default.match(ck).catch(() => null) : null;
+      if (hit) {
+        if (Date.now() - Number(hit.headers.get('x-built-at') || 0) > 300e3) ctx.waitUntil(buildWindows().then((r) => r.status === 200 && put(r)).catch(() => {}));
+        const out = new Response(hit.body, hit); out.headers.set('cache-control', 'public, max-age=60'); return out;
+      }
+      const res = await buildWindows();
+      if (res.status === 200) ctx.waitUntil(put(res));
+      return res;
+    }
+    async function buildWindows() {
       const { log, v } = await lpWidthVerdict(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
       // What the agent's own position earned against the replay's figure
@@ -13089,6 +13106,7 @@ export const TREND = {
   washMinWallets: 3,
   washVolX: 2,              // or the hour's volume >= 2x the pool's hard side …
   washFewWallets: 10,       // … made by 10 wallets or fewer
+  washMinPoolShare: 0.05,   // (2026-10-10) the few-wallets line needs the hour's volume >= 5% of the hard side (WBNB/USDT: $93.8k on $29M is not wash); unread volume/pool keeps the old line
   // pump and dump, against the watch's own prices
   pumpPct: 40, pumpWindowMs: 6 * 3600e3,   // up 40% or more on the lowest price of the last 6 h
   dumpPct: 30,                             // down 30% or more from the 24 h high, when that high came from a pump
@@ -13121,7 +13139,7 @@ export function washOf(swaps, wallets, vol, hard, minutes = null) {
   const n = num(swaps), u = num(wallets), v = num(vol), h = num(hard);
   if (n == null || u == null || u < 1 || n < TREND.washMinSwaps) return null;
   const line = Math.max(TREND.washMinWallets, Math.floor(n / TREND.washSwapsPerWallet));
-  if (u <= line) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'few_wallets', line };
+  if (u <= line && (v == null || !(h > 0) || v >= TREND.washMinPoolShare * h)) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'few_wallets', line };
   if (v != null && h > 0 && v >= TREND.washVolX * h && u <= TREND.washFewWallets) return { swaps: n, wallets: u, minutes, vol: v, hard: h, rule: 'volume_over_pool', line: TREND.washFewWallets };
   return null;
 }
@@ -13638,7 +13656,7 @@ export function rugWatchTerms() {
       { code: 'tax_can_change', level: 'warning', when: 'newly in the preflight\'s caution list' },
       // How tokens are rugged today (2026-10-09): pumped with fake wallets and fake volume, then dumped — or bled slowly.
       // These read the watch's own history of reads (see `history`), not one diff.
-      { code: 'fake_volume', level: 'warning', when: `the last hour read looks like wash trading: ${TREND.washMinSwaps}+ swaps by at most max(${TREND.washMinWallets}, swaps / ${TREND.washSwapsPerWallet}) wallets, or the hour's volume ${TREND.washVolX}x the pool's hard side or more from ${TREND.washFewWallets} wallets or fewer (a router or aggregator trading for many wallets counts as one address, so this can also be a market that trades through one)` },
+      { code: 'fake_volume', level: 'warning', when: `the last hour read looks like wash trading: ${TREND.washMinSwaps}+ swaps by at most max(${TREND.washMinWallets}, swaps / ${TREND.washSwapsPerWallet}) wallets with the hour's volume at least ${TREND.washMinPoolShare * 100}% of the pool's hard side, or the hour's volume ${TREND.washVolX}x the pool's hard side or more from ${TREND.washFewWallets} wallets or fewer (a router or aggregator trading for many wallets counts as one address, so this can also be a market that trades through one)` },
       { code: 'pump', level: 'warning', when: `the price at the $${RUG_WATCH.usd} test size rose ${TREND.pumpPct}% or more on its lowest of the last ${TREND.pumpWindowMs / 3600e3} h — you are holding into a pump; buys against wallets are named` },
       { code: 'dump', level: 'critical when insiders sold over the day, else warning', when: `the price fell ${TREND.dumpPct}% or more from its high of the last 24 h, and that high came out of a pump (${TREND.pumpPct}%+ within ${TREND.pumpWindowMs / 3600e3} h)` },
       { code: 'slow_rug', level: 'critical', when: `over the last 24 h (${TREND.slowMinSpanMs / 3600e3} h of history at least): the price down ${TREND.slowPct}% or more with no single step of ${TREND.slowMaxStepPct}% between two stored reads, sells outnumbering buys in ${Math.round(TREND.slowSellShare * 100)}% of the reads, and insiders (the deployer, wallets it funded, top holders) selling` },
@@ -14300,6 +14318,13 @@ export const extractParams = (text = '', given = {}) => {
 const RPC_HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
 const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result }, { headers: RPC_HEADERS });
 const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
+// The list and the flat negotiate as an A2A Message (2026-10-10). The card says
+// protocolVersion 0.3.0, whose message/send returns a Message or a Task; these
+// two returned a bare object, which a strict 0.3 client rejects. Everything now
+// sits in the data part. The same fields stay flat beside it for the readers
+// that index result.accepted / result.provider directly (the generated
+// /registry ask box, register-own-agents.mjs) until they read the part.
+const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
 
 const dataParts = (message) => {
   const parts = message?.parts || [];
@@ -14446,7 +14471,7 @@ export async function handleA2A(request, env, opts = {}) {
         return rpcErr(id, -32000, `could not answer that ${task.kind} task at block ${task.block ?? task.range?.block ?? 'latest'}: ${String(e.message || e).slice(0, 160)}`);
       }
     }
-    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|in one sentence/i.test(text)) {
+    if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|what can you do|in one sentence/i.test(text)) {
       const sentence = forced === 'lp_position_plan'
         ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
         : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
@@ -14491,7 +14516,7 @@ export async function handleA2A(request, env, opts = {}) {
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
-    return rpcOk(id, {
+    return rpcOk(id, flatMessage({
       agent: 'Brain on BNB — hireable services',
       provider,
       currency: 'U',
@@ -14499,7 +14524,7 @@ export async function handleA2A(request, env, opts = {}) {
       services: Object.values(SERVICES),
       can_sign: !!account,
       how: 'Send skill:"negotiate" with terms.deliverables describing what you need. You get a quote naming this provider address and a price. Fund a job in the kernel against that address, then send skill:"notify_funded" with job_id.',
-    });
+    }));
   }
 
   // --- negotiate ---------------------------------------------------------
@@ -14507,23 +14532,23 @@ export async function handleA2A(request, env, opts = {}) {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
-    if (elsewhere) return rpcOk(id, { accepted: false, reason: elsewhere });
+    if (elsewhere) return rpcOk(id, flatMessage({ accepted: false, reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
     // The position plan is sold through the escrow by the DeFi agent alone
     // (2026-10-04, its own identity and endpoint /defi-agent). On the shared
     // endpoint it is still x402 only — the card there says escrow: false.
     if (service && service.id === 'lp_position_plan' && opts.agent !== 'defi-agent') {
-      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
+      return rpcOk(id, flatMessage({ accepted: false, reason: 'The position plan is sold per answer over x402 here, or through the ERC-8183 escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display }));
     }
     if (!service) {
-      return rpcOk(id, {
+      return rpcOk(id, flatMessage({
         accepted: false,
         reason: `We do not sell that. ${Object.keys(SERVICES).length} things are for sale here (listed below) and all of them are measurements, not opinions.`,
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
-      });
+      }));
     }
     const req = jobRequirements(await quoteWindow());
-    return rpcOk(id, {
+    return rpcOk(id, flatMessage({
       // Flat dialect: a provider address and a price, which is everything a
       // buyer needs and is the half the other dialect leaves out.
       accepted: true,
@@ -14541,7 +14566,7 @@ export async function handleA2A(request, env, opts = {}) {
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
       job_requirements: req,
-    });
+    }));
   }
 
   // --- deliver -----------------------------------------------------------
@@ -16879,7 +16904,7 @@ token per caller (25 for holders of 1,000,000 $BOBAI) and costs nothing.
 |-------|------|
 | \`GET https://brainonbnb.com/api/preflight?address=0x…&usd=250\` | Before a trade of any BSC token, at your size: what stops it, what to weigh, the route, the slippage it needs and the round trip with the measured tax — one short answer. MCP tool \`bsc_token_preflight\` |
 | \`POST https://agent.brainonbnb.com/rug-watch\` | A rug-pull and honeypot alarm for a token you hold: the preflight read again every 15 minutes, your own https callback POSTed (signed) when the sell stops going through, the liquidity is pulled, a tax rises or the owner or proxy changes. Webhook only; one watch free per caller, 25 per wallet holding 1,000,000 $BOBAI. Terms at \`GET /rug-watch\`, MCP tool \`bsc_rug_watch\` |
-| \`https://brainonbnb.com/mcp\` | MCP server, read-only: measure any BSC pool before trading it, search the ERC-8004 registry, read the census |
+| \`https://brainonbnb.com/mcp\` | MCP server, read-only except bsc_rug_watch, which registers a watch: measure any BSC pool before trading it, search the ERC-8004 registry, read the census |
 | \`https://brainonbnb.com/api/*\` | The same tools as plain GET, for agents that do not speak MCP |
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |
 | \`npx skills add https://brainonbnb.com\` | The same measurement as an installable agent skill |

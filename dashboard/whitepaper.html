@@ -360,7 +360,7 @@
     <li><strong>bobai_burned</strong> &mdash; total BOBAI permanently burned by the autonomous bot.</li>
     <li><strong>bobai_circulating_supply</strong> &mdash; total supply minus burned.</li>
     <li><strong>bobai_wallet_balance</strong> &mdash; BNB and BOBAI balance of any BSC wallet.</li>
-    <li><strong>bobai_dex_info</strong> &mdash; PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer params (3% tax, min 15% slippage, SupportingFeeOnTransfer methods) &mdash; a naive swap reverts without them.</li>
+    <li><strong>bobai_dex_info</strong> &mdash; PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer params (3% tax, the slippage a trade needs from the measured tax &mdash; about 6% for a ~$100 trade &mdash; SupportingFeeOnTransfer methods) &mdash; a naive swap reverts without them.</li>
     <li><strong>bobai_purchase_guide</strong> &mdash; ready-to-run viem code with a live on-chain quote, so an agent can execute a swap zero-shot.</li>
     <li><strong>bobai_tokenomics</strong> &mdash; neutral, verifiable value-accrual mechanics and trust properties (renounced, LP burned, fair launch). Describes the design; not a buy recommendation.</li>
     <li><strong>bobai_links</strong> &mdash; the canonical set of official links.</li>

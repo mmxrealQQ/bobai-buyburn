@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2773 lines.
+# one fetch. 5 files, 2777 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -159,10 +159,11 @@ const TRADE_INFO = {
   swap_path_sell: [TOKEN, WBNB],
   fee_on_transfer: true,
   tax_percent: 3,
-  min_slippage_bps: 1500,
+  min_slippage_bps: 600, // a ~$100 trade; from the measured tax since 2026-10-10 (was a flat 1500)
+  slippage_rule: 'tax_bps + price_impact_bps + 50 + 200 buffer, per side; call bsc_token_preflight or /api/best-route for the exact figure at your size',
   buy_method: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
   sell_method: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
-  note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance >= 15% (1500 bps), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
+  note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance to the 3% tax + this trade's price impact + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
 };
 
 // Live price + liquidity — computed fully on-chain (pair reserves × Chainlink
@@ -457,7 +458,7 @@ const AGENT_GUIDE = {
     { prompt: 'evaluate_bobai', does: 'full neutral due-diligence walkthrough (prompts/get)' },
     { prompt: 'prepare_bobai_swap', does: 'fee-on-transfer-safe swap preparation, optional wallet arg (prompts/get)' },
   ],
-  must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage >= 15% (1500 bps) or it reverts. Everything here is verifiable on-chain. Not financial advice.',
+  must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage of the 3% tax + this trade's price impact + 0.5% + a 2% buffer (about 6% for a ~$100 trade; bsc_token_preflight gives the exact figure at your size), or it reverts. Everything here is verifiable on-chain. Not financial advice.',
 };
 
 // Neutral, verifiable value-accrual mechanics — the "how it works" thesis
@@ -512,7 +513,7 @@ function howToBuy() {
   const code = [
     "// Buy $BOBAI with BNB on PancakeSwap V2 (BNB Chain).",
     "// $BOBAI is fee-on-transfer (3% tax): use the *SupportingFeeOnTransferTokens",
-    "// method and >=15% slippage, or the swap reverts.",
+    "// method and about 6% slippage for a ~$100 buy (tax + impact + buffer), or the swap reverts.",
     "import { createWalletClient, createPublicClient, http, parseEther } from 'viem';",
     "import { privateKeyToAccount } from 'viem/accounts';",
     "import { bsc } from 'viem/chains';",
@@ -538,9 +539,9 @@ function howToBuy() {
     "const path = [WBNB, BOBAI];",
     "const amountIn = parseEther('0.05'); // spend 0.05 BNB",
     "",
-    "// Quote on-chain, then subtract 15% slippage (FoT-safe).",
+    "// Quote on-chain, then subtract the slippage (6% here; larger buys: ask bsc_token_preflight).",
     "const amounts = await pub.readContract({ address: ROUTER, abi: routerAbi, functionName: 'getAmountsOut', args: [amountIn, path] });",
-    "const amountOutMin = (amounts[1] * 8500n) / 10000n; // -15%",
+    "const amountOutMin = (amounts[1] * 9400n) / 10000n; // -6%",
     "const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // 10 min",
     "",
     "const hash = await wallet.writeContract({",
@@ -551,7 +552,7 @@ function howToBuy() {
     "console.log('swap tx:', hash);",
   ].join('\n');
   return {
-    summary: 'Buy $BOBAI with BNB on PancakeSwap V2. Fee-on-transfer (3% tax) → use swapExactETHForTokensSupportingFeeOnTransferTokens with >=15% slippage.',
+    summary: 'Buy $BOBAI with BNB on PancakeSwap V2. Fee-on-transfer (3% tax) → use swapExactETHForTokensSupportingFeeOnTransferTokens with about 6% slippage for a ~$100 buy (tax + impact + buffer).',
     language: 'javascript (viem)',
     code,
     to_sell: "Reverse the path to [BOBAI, WBNB], approve the router for $BOBAI first, then call swapExactTokensForETHSupportingFeeOnTransferTokens.",
@@ -660,7 +661,7 @@ This is not a promo claim — it's a live, renounced ERC-721 contract you can ve
 Agents routinely lose gas to reverted swaps on BSC because **fee-on-transfer (FoT) tax tokens break the standard swap flow**. The rules below apply to *every* FoT token on a UniswapV2-style DEX; $BOBAI (3% tax) is the worked example throughout this doc.
 1. **Why naive swaps revert:** the token contract skims its tax during \`transfer\`, so the router receives fewer tokens than the constant-product math predicted. The standard \`swapExactETHForTokens\` enforces the predicted output → the K-check/\`amountOutMin\` fails → revert.
 2. **Use the FoT router methods:** \`swapExactETHForTokensSupportingFeeOnTransferTokens\` (buy) / \`swapExactTokensForETHSupportingFeeOnTransferTokens\` (sell). These validate balances instead of predicted amounts.
-3. **Slippage must cover tax + impact + buffer:** \`min_slippage_bps ≈ tax_bps + price_impact_bps + ~200 buffer\`. Quote via \`getAmountsOut\` on-chain, then \`amountOutMin = quote × (10000 − slippage_bps) / 10000\`. (For $BOBAI: 300 tax + impact → we publish 1500 bps as the safe floor.)
+3. **Slippage must cover tax + impact + buffer:** \`min_slippage_bps ≈ tax_bps + price_impact_bps + ~200 buffer\`. Quote via \`getAmountsOut\` on-chain, then \`amountOutMin = quote × (10000 − slippage_bps) / 10000\`. (For $BOBAI: 300 tax + impact + 50 + 200 → about 600 bps for a ~$100 trade; more for a bigger one — the preflight gives it at your size.)
 4. **Selling needs an ERC-20 \`approve\` on the router first** — buys don't.
 5. **Detect the tax before trading an unknown token:** compare a static-call quote against a tiny real transfer, or read the verified contract on BscScan. Never assume 0% on a meme token.
 
@@ -672,7 +673,7 @@ Agents routinely lose gas to reverted swaps on BSC because **fee-on-transfer (Fo
 ## ⚠️ Must know before swapping
 $BOBAI is a **fee-on-transfer** token (3% tax). A naive swap **reverts**. You MUST:
 - use \`swapExactETHForTokensSupportingFeeOnTransferTokens\` (buy) / \`swapExactTokensForETHSupportingFeeOnTransferTokens\` (sell)
-- set slippage tolerance **>= 15% (1500 bps)**
+- set slippage tolerance to **tax + price impact + ~2.5%** (about 6% / 600 bps for a ~$100 trade; `bsc_token_preflight` gives it at your size)
 
 ## Trade parameters
 - DEX: **PancakeSwap V2**
@@ -766,7 +767,7 @@ async function getWalletBalance(address) {
 
 const MCP_TOOLS = [
   // FIRST IN THE LIST (2026-10-09): ~545 tools/list a day, 1-5 tool calls — the check an agent came for leads.
-  { name: 'bsc_token_preflight', description: 'START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It also reads who controls the contract on-chain (control: owner() / getOwner() and whether that owner is renounced, a plain wallet or a contract, an EIP-1967 proxy and its admin, a mint(address,uint256) function in the bytecode) and names an owner that is one wallet where the token has a tax, a mint function or a proxy. gate is the verdict in one word to branch on - stop, weigh or no_known_stop - and each stop/caution item with a figure carries it as value, line and unit. A refusal comes with a code (is_wallet, not_a_token, bad_address, bad_usd, ...) and a hint. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key; pool figures are never cached, the GoPlus contract flags and holder list for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_token_preflight', description: 'START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs, per side, from the measured tax (a fee-on-transfer token reverts below its tax + impact), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It also reads who controls the contract on-chain (control: owner() / getOwner() and whether that owner is renounced, a plain wallet or a contract, an EIP-1967 proxy and its admin, a mint(address,uint256) function in the bytecode) and names an owner that is one wallet where the token has a tax, a mint function or a proxy. gate is the verdict in one word to branch on - stop, weigh or no_known_stop - and each stop/caution item with a figure carries it as value, line and unit. A refusal comes with a code (is_wallet, not_a_token, bad_address, bad_usd, ...) and a hint. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key; pool figures are never cached, the GoPlus contract flags and holder list for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
   // THE RUG WATCH (2026-10-09): the preflight's answer is one block; this keeps reading it for a token the agent
   // holds and POSTs the agent's own callback when it turns dangerous. Registered on agent.brainonbnb.com
   // (worker-agent/rug-watch.js), proxied here. The one tool on this server that is not read-only: it stores a watch.
@@ -804,9 +805,9 @@ const MCP_TOOLS = [
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_dex_info', description: 'The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, minimum 15% slippage, the SupportingFeeOnTransferTokens method names). Reports the numbers; a naive swap reverts without them.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_dex_info', description: 'The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, the slippage it needs — about 6% for a ~$100 trade, from the measured tax — and the SupportingFeeOnTransferTokens method names). Reports the numbers; a naive swap reverts without them.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_guide', description: 'Start here for $BOBAI itself (for any other token, bsc_token_preflight). Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_purchase_guide', description: 'Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the 15% slippage floor and the fee-on-transfer method name, so an agent has everything it needs zero-shot. Returns text; this tool holds no key and moves nothing.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_purchase_guide', description: 'Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the slippage a ~$100 buy needs (about 6%, from the measured tax) and the fee-on-transfer method name, so an agent has everything it needs zero-shot. Returns text; this tool holds no key and moves nothing.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -1122,12 +1123,12 @@ function getPrompt(name, args) {
       description: MCP_PROMPTS[1].description,
       messages: [{ role: 'user', content: { type: 'text', text: [
         'You are preparing (not necessarily executing) a $BOBAI swap on PancakeSwap V2. $BOBAI is fee-on-transfer (3% tax) — a naive swap reverts.',
-        '1. Call bobai_dex_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
+        '1. Call bobai_dex_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and the slippage it needs (about 6% for a ~$100 trade, from the measured tax).',
         '2. Call bobai_price and bobai_liquidity — check the price-impact estimate for your size; the 3% transfer tax comes on top.',
         wallet
           ? '3. Call bobai_wallet_balance with address ' + wallet + ' — confirm it holds the BNB for the swap plus gas.'
           : '3. Optionally call bobai_wallet_balance — confirm the wallet holds the BNB for the swap plus gas.',
-        '4. Call bobai_purchase_guide — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
+        '4. Call bobai_purchase_guide — ready-to-run viem code (on-chain quote minus the slippage it needs, explicit RPC).',
         'Sanity rules: test with a small amount first, verify token/router/pair on BscScan yourself, never expose a private key holding significant funds. Not financial advice.',
       ].join('\n') } }],
     };
@@ -1305,7 +1306,7 @@ const A2A_CARD = {
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
     { id: 'links', name: 'Official links', description: 'Verified $BOBAI site, socials, DEX, source', tags: ['links'] },
-    { id: 'dex_info', name: 'DEX info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
+    { id: 'dex_info', name: 'DEX info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, slippage from the measured tax, about 6% for a ~$100 trade) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
     { id: 'guide', name: 'Agent guide', description: 'Start here — interactive map of what you can ask/do about $BOBAI and which tool to call', tags: ['guide', 'onboarding'] },
     { id: 'purchase_guide', name: 'Purchase guide', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
     { id: 'tokenomics', name: 'Tokenomics', description: 'Neutral value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch)', tags: ['crypto', 'tokenomics', 'deflationary'] },
@@ -2290,7 +2291,10 @@ export function shape(s, r, usd, routeError = null, control = null) {
     if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the costs shown are the largest rung’s and the real ones are higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
     const fot = (taxBuy ?? 0) > 0.1 || (taxSell ?? 0) > 0.1;
     entry = { route: null, pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, cost_pct: round(buy.pct, 3),
-      slippage_bps_needed: fot || (taxBuy == null && taxSell == null) ? 1500 : (buy.pct == null ? null : Math.max(50, Math.ceil((buy.pct + 0.5) * 100))) };
+      // from the measured tax as on the route (2026-10-10): that side's tax + this size's cost + 0.5% + 200 bps; unknown = 1500
+      slippage_bps_needed: taxBuy == null && taxSell == null ? 1500 : buy.pct == null ? null
+        : fot ? Math.max(...[taxBuy, taxSell].map((t) => t == null ? 1500 : Math.ceil((t + buy.pct + 0.5) * 100) + 200))
+        : Math.max(50, Math.ceil((buy.pct + 0.5) * 100)) };
     exit = { sellable: simHere ? sim.sellable !== false : null, cost_pct: round(sell.pct, 3),
       round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) };
   }

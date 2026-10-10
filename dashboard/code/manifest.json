@@ -191,9 +191,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 5520,
-   "zipBytes": 94069,
-   "txtBytes": 279659,
-   "sha256": "fb0c664abf02f772",
+   "zipBytes": 94096,
+   "txtBytes": 279716,
+   "sha256": "143aaf1464c449c6",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2773,
-   "zipBytes": 80264,
-   "txtBytes": 230284,
-   "sha256": "44d71a75ac32d559",
+   "lines": 2777,
+   "zipBytes": 80594,
+   "txtBytes": 231549,
+   "sha256": "4e39dba2c2748ec1",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

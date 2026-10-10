@@ -3035,7 +3035,7 @@ async function handleCommand(msg, env) {
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
 
-<b>Step 3:</b> Set slippage to 4-5%
+<b>Step 3:</b> Set slippage to about 6% (3% tax + price move + buffer; a big buy needs more)
 <i>(3% on-chain tax on every trade)</i>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;

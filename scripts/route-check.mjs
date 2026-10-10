@@ -130,8 +130,14 @@ const skip = (name, why) => {
       r.round_trip.you_keep_pct < r.round_trip.you_keep_pct_pools_only,
       `${r.round_trip.you_keep_pct}% against ${r.round_trip.you_keep_pct_pools_only}%`);
 
-    ok('BOBAI: fee-on-transfer gets the 1500 bps floor',
-      r.slippage_bps_needed === 1500, `${r.slippage_bps_needed} bps`);
+    // from the measured tax since 2026-10-10 (was a flat 1500): each side at least
+    // its own tax + the 200 bps buffer, the headline the larger side, and a 3% tax
+    // at a small size nowhere near the old floor
+    const sb = r.slippage_bps_needed_buy, ss = r.slippage_bps_needed_sell;
+    ok('BOBAI: slippage from the measured tax, side by side',
+      sb >= Math.round((t.buy_pct || 0) * 100) + 200 && ss >= Math.round((t.sell_pct || 0) * 100) + 200
+        && r.slippage_bps_needed === Math.max(sb, ss) && r.slippage_bps_needed < 1500,
+      `buy ${sb} bps, sell ${ss} bps, headline ${r.slippage_bps_needed} bps`);
 
     // A tax measured on one side only makes the answer optimistic, and the reader
     // has to be told which way the error runs.

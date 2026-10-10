@@ -260,7 +260,11 @@ export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = 
     .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
     .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
   // the floor: widths under it are not candidates (a record without any width at or above it picks as before)
-  const wide = all.filter((c) => c.width >= floor), cand = wide.length ? wide : all;
+  // ONLY REPLAYED WIDTHS ARE CANDIDATES (2026-10-10 review): ±15/20/30 are read off the widest replayed row (±10),
+  // never replayed themselves, and the live pick had named ±30. They stay in the record, labelled; a record with
+  // nothing else picks among them as before.
+  const real = all.filter((c) => !c.row.extrapolated), base = real.length ? real : all;
+  const wide = base.filter((c) => c.width >= floor), cand = wide.length ? wide : base;
   if (!cand.length) return null;
   // The most money against holding; a tie goes to the wider width, which
   // is crossed less often.

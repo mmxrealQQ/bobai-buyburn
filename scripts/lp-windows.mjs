@@ -248,9 +248,9 @@ if (SELF_TEST) {
   t('a day of flat prices picks the floor (2026-10-07): narrower earns more on the fixture, but under the floor no width is a candidate', verdict(dayFlat).earnings_pick?.width === 10); /* before the floor the narrowest won here (±1% / ±1.5%, a tie to the wider) */
   const dayDrift = { windows: drift };
   t('a day of drifting prices picks a wider width than the narrowest', verdict(dayDrift).earnings_pick && verdict(dayDrift).earnings_pick.width > 1);
-  t('a price that climbs 2% every hour: the widest width loses the least against holding and is the pick; the basis says so', (() => {
+  t('a price that climbs 2% every hour: the widest REPLAYED width loses the least against holding and is the pick (±15/20/30 are read off it, no candidates since 2026-10-10); the basis says so', (() => {
     const v = verdict({ windows: Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01), row(5, true, 0.003), row(10, true, 0.001)])) });
-    return v.earnings_pick && v.earnings_pick.width === Math.max(...RECORD_WIDTHS) && v.earnings_pick.vs_holding_usd <= 0 && /against holding/.test(v.earnings_pick.basis) && (v.net_pick === null || v.net_pick.width != null);
+    return v.earnings_pick && v.earnings_pick.width === 10 && v.rows.filter((r) => r.extrapolated).map((r) => r.width).join() === EXTRAPOLATED_WIDTHS.join() && v.earnings_pick.vs_holding_usd <= 0 && /against holding/.test(v.earnings_pick.basis) && (v.net_pick === null || v.net_pick.width != null);
   })());
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
   // The delay test, both ways: reported for every wait, the wait in use
@@ -366,6 +366,22 @@ if (SELF_TEST) {
   const dw = deriveWidths(wReal);
   t(`the widths above ±10 (${EXTRAPOLATED_WIDTHS.join('/')}) are read off ±10: its rate times 10/width, in range whenever it was`, EXTRAPOLATED_WIDTHS.every((w) => { const r = dw.rows.find((x) => x.width === w); return r && r.extrapolated && Math.abs(r.fees - 0.002 * widthShare(10, w)) < 1e-6 && r.in_range_pct === 100; }));
   t('the agent’s ±20% range (ticks -60370…-56730) is the ±20 class, not ±10', widthClassOf([-60370, -56730]) === 20);
+  // 2026-10-10 review: the wait is scored on the width the agent mints, and the calibration on the position's own hours
+  t('with a fixed width (LP_WIDTH_PCT) every wait is scored on that width alone; without one the floor\'s widths compete', (() => {
+    const ws = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01), row(5, true, 0.003), row(10, true, 0.001)]));
+    const fx = verdict({ windows: ws }, { fixedWidth: 20 }).delay_test, free = verdict({ windows: ws }).delay_test;
+    return fx.delays.length > 0 && fx.delays.every((d) => d.width === 20) && fx.fixed_width === 20 && /±20%/.test(fx.note)
+      && free.fixed_width === null && free.delays.some((d) => d.width !== 20);
+  })());
+  t('the calibration replays the position\'s own hours when the verdict gives replayBetween (and says so); not in the JSON', (() => {
+    const ws = Array.from({ length: 30 }, (_, i) => pwin(i, 100, [row(1, true, 0.01), row(5, true, 0.003), row(10, true, 0.001)]));
+    const v = verdict({ windows: ws }), H = 36e5, a = Date.parse(ws[4].at);
+    const pt = (h, fees) => ({ at: new Date(a + h * H).toISOString(), fees_total_bnb: fees, owed_bnb: 0, value_bnb: 0.2 });
+    const c = calibration([pt(0, 0.01), pt(12, 0.011), pt(22, 0.012)], v.rows, 10, { replayBetween: v.replayBetween });
+    const whole = calibration([pt(0, 0.01), pt(12, 0.011), pt(22, 0.012)], v.rows, 10);
+    return c && c.replay_same_hours === true && c.replay_hours <= 22.01 && /over the same hours/.test(c.basis)
+      && whole && whole.replay_same_hours === false && whole.replay_hours > 22.01 && !('replayBetween' in JSON.parse(JSON.stringify(v)));
+  })());
   t('a centred replay re-sets centred (one_sided false); the default stays one-sided', (() => { const ws = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(10, true, 0.001)])); return verdict({ windows: ws }, { centred: true }).rows.find((r) => r.width === 10).earnings.one_sided === false && verdict({ windows: ws }).rows.find((r) => r.width === 10).earnings.one_sided === true; })());
   t(`the derived widths ${DERIVED_WIDTHS.join('/')} are added to a window`, DERIVED_WIDTHS.every((w) => dw.rows.some((r) => r.width === w && r.derived)) && dw.rows.length === wReal.rows.length + DERIVED_WIDTHS.length + EXTRAPOLATED_WIDTHS.length);
   t('a derived width\'s fees are the wider neighbour\'s by the liquidity law (±3% from ±5%, ±1.5% from ±2%) — a little under neighbour/width, which the record\'s own rows never followed', Math.abs(dw.rows.find((r) => r.width === 3).fees - 0.004 * widthShare(5, 3)) < 1e-6 && Math.abs(dw.rows.find((r) => r.width === 1.5).fees - 0.01 * widthShare(2, 1.5)) < 1e-6 && widthShare(5, 3) < 5 / 3 && widthShare(5, 3) > 1.6);

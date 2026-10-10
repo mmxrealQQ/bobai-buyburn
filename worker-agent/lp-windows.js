@@ -259,6 +259,8 @@ export function verdict(log, opts = {}) {
     return {
       width: w,
       derived: rs.length > 0 && rs.every((r) => r.derived === true),
+      // read off the widest replayed row, never replayed itself (2026-10-10): shown, but no candidate for the pick
+      extrapolated: rs.length > 0 && rs.every((r) => r.extrapolated === true),
       derived_from: rs.find((r) => r.derived)?.derived_from || null,
       of: rs.length,
       held: rs.filter((r) => r.held).length,
@@ -299,11 +301,15 @@ export function verdict(log, opts = {}) {
   // be its answer, so the grid now reaches a full day, the wait a position
   // nobody watches would get.
   const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12, 18, 24];
+  // THE WIDTH THE AGENT MINTS (2026-10-10 review): with a width set by hand (LP_WIDTH_PCT, opts.fixedWidth) every wait
+  // is scored on that width alone — the best width per wait had named ±15, a width the agent never mints, and the
+  // wait in use came from it. Without one (or no row for it) the floor's widths compete as before.
+  const fixedW = Number(opts.fixedWidth) > 0 && rows.some((r) => r.width === Number(opts.fixedWidth)) ? Number(opts.fixedWidth) : null;
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
     // Scored as the width is (2026-10-07): fees, less re-sets, PLUS the range against holding, and only the widths a
     // re-set may mint (the floor). A one-sided re-set books no loss in net_usd, so on net alone more re-sets always
     // won and the wait test answered 0 h on the narrowest width every time.
-    const best = rows.filter((r) => r.width !== 'full' && Number(r.width) >= WIDTH_FLOOR_PCT)
+    const best = rows.filter((r) => r.width !== 'full' && (fixedW != null ? r.width === fixedW : Number(r.width) >= WIDTH_FLOOR_PCT))
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
       .filter((x) => x.e && x.e.hours > 0)
       // fees − re-sets + against holding, as pickWidth scores (2026-10-09): net_usd already takes a centred re-set's
@@ -339,11 +345,11 @@ export function verdict(log, opts = {}) {
   const weekWins = used.filter((w) => Date.parse(w.at) >= weekAgo);
   const weekTape = tape.filter((x) => Date.parse(x.at) >= weekAgo);
   for (const r of rows) r.earnings_7d = r.width === 'full' ? null : earningsTest(weekWins, r.width, { ...opts, tape: weekTape, resetAfterHours: wait.hours });
-  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
+  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0 && !r.extrapolated)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const widthPick = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : pickWidth(rows);
   const first = used[0], last = used[used.length - 1];
-  return {
+  const out = {
     windows: used.length,
     overlapping_runs_not_counted: skipped,
     thin,
@@ -375,13 +381,26 @@ export function verdict(log, opts = {}) {
       why: wait.why,
       delays,
       pick: delayPick,
-      note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
+      fixed_width: fixedW,
+      note: (fixedW != null ? `Every wait scored on ±${fixedW}%, the width the agent mints (LP_WIDTH_PCT).` : 'Every width replayed with each wait before a re-set; the best width per wait is named.') + ' The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. ${opts.centred ? 'Since 2026-10-07 a re-set is centred: one swap back to the range’s mix, so it costs its gas and the swap, and what the old range had lost against holding is realised at it' : 'A one-sided re-set trades nothing, so it costs its gas and nothing is lost to the price at it'}` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: `assumed by the replay (median over the windows) — no re-set has been measured yet. ${opts.centred ? 'A centred re-set costs its gas and one swap' : 'A one-sided re-set trades nothing, so it costs its gas alone'}` },
     earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). ${opts.centred ? 'Since 2026-10-07 the re-set is centred, the way the agent does it: a new range around the price with one swap, charged its cost and what the old range had lost against holding.' : 'The re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone.'} Net per day is fees less re-sets. The width a re-set uses is the one that ended the most ahead against holding over the last ${WIDTH_WINDOW_HOURS} h in that replay, fees included (fees_usd + vs_holding_usd: what the liquidity earned plus where it ended against a wallet that held the minted amounts — the line the card judges the agent by); a width in use is kept unless another leads it by a tenth of its own score and at least two cents on $50 a week; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
+  // THE SAME HOURS FOR THE CALIBRATION (2026-10-10 review): the position's own 36 h were set against the replay's
+  // average over the whole record (401 h). replayBetween replays one width over a from-to span with the wait in use;
+  // not enumerable, so it never reaches the JSON.
+  Object.defineProperty(out, 'replayBetween', {
+    enumerable: false,
+    value: (width, fromIso, toIso) => {
+      const a = Date.parse(fromIso), b = Date.parse(toIso);
+      const ws = used.filter((w) => Date.parse(w.at) >= a && Date.parse(w.at) <= b);
+      return ws.length ? earningsTest(ws, width, { ...opts, tape: tape.filter((x) => Date.parse(x.at) >= a && Date.parse(x.at) <= b), resetAfterHours: wait.hours }) : null;
+    },
+  });
+  return out;
 }
 
 // The re-set cost the earnings test charges: what the agent's last real
@@ -612,7 +631,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
 // value_bnb, at), `rows` the verdict's rows, `widthClass` the position's
 // width class. Gross fees on both sides: the measured window may hold
 // re-sets, whose cost is not a fee. Null under a day of series.
-export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72, position = null } = {}) {
+export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72, position = null, replayBetween = null } = {}) {
   // ONE POSITION AT A TIME (2026-10-09): the 72 h window mixed a ±10 one-sided range, four ±0.25 ranges and the ±20
   // since the re-set, and set all of it against one width's replay. Given the position, only its own points count.
   const pts = (points || []).filter((p) => p && p.at && typeof p.value_bnb === 'number' && p.value_bnb > 0 && p.fees_total_bnb != null && (position == null || String(p.position) === String(position)));
@@ -633,8 +652,13 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
   if (!(capitalBnb > 0) || !(feesBnb >= 0)) return null;
   // Fees over capital is a rate; on $50 a day it is dollars, whatever BNB costs.
   const measured = (feesBnb / capitalBnb) * 50 * (24 / hours);
+  // the replay over the position's own hours when the verdict can give it (replayBetween), else its whole record
+  let span = null;
+  try { span = typeof replayBetween === 'function' ? replayBetween(widthClass, first.at, last.at) : null; } catch { span = null; }
+  const sameHours = !!(span && span.hours > 0);
   const row = (rows || []).find((r) => r.width === widthClass && r.earnings && r.earnings.hours > 0);
-  const replay = row ? row.earnings.fees_usd / (row.earnings.hours / 24) : null;
+  const rep = sameHours ? span : row ? row.earnings : null;
+  const replay = rep ? rep.fees_usd / (rep.hours / 24) : null;
   const factor = replay > 0 ? measured / replay : null;
   return {
     hours: r2(hours), from: first.at, to: last.at,
@@ -645,12 +669,13 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
     replay_usd_per_day_on_50: replay == null ? null : r4(replay),
     // The replay's own window: not the same hours as the position's, and the
     // page names both rather than implying one period (2026-09-24, D6).
-    replay_hours: row ? r2(row.earnings.hours) : null,
+    replay_hours: rep ? r2(rep.hours) : null,
+    replay_same_hours: sameHours,
     factor: factor == null ? null : r2(factor),
     // Which way the replay is off, from the figure itself. The page said
     // "overstates" as a fixed sentence and read it beside 170%.
     replay_is: factor == null ? null : factor < 0.9 ? 'above' : factor > 1.1 ? 'below' : 'close',
-    basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
+    basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width ${sameHours ? 'over the same hours' : `over its whole record (${rep ? r2(rep.hours) : '?'} h)`}, both on $50 a day; the pick compares widths with each other and is not scaled`,
   };
 }
 
@@ -765,7 +790,7 @@ export async function widthVerdict(env, bnbUsd = null) {
     // the full figure is what a real re-set pays (the width-upgrade rule).
     if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
   } catch { /* the replay's assumption stands */ }
-  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env), centred: env.LP_RESET_MODE === 'centred' }) };
+  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env), centred: env.LP_RESET_MODE === 'centred', fixedWidth: Number(env.LP_WIDTH_PCT) || null }) };
 }
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);

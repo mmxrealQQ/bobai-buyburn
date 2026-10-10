@@ -22,7 +22,8 @@
       "REJECTED": 8
     },
     "ever_funded": 55859,
-    "escrow_released": 28292,
+    "escrow_released": 28283,
+    "completed_with_zero_budget": 9,
     "deliverable_never_released": 27229,
     "never_funded": 1028,
     "total_escrowed_u": 627.460677,
@@ -34,7 +35,7 @@
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
       "jobs": 739,
-      "completed": 116,
+      "completed": 107,
       "escrowed_u": 75.380677,
       "providers": 133
     }

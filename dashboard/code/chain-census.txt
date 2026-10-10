@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4549 lines.
+# one fetch. 7 files, 4555 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -891,6 +891,7 @@ if (jobCensus) {
       by_status: jobCensus.byStatus,
       ever_funded: jobCensus.fundedJobs,
       escrow_released: jobCensus.completed,
+      completed_with_zero_budget: jobCensus.completed_unfunded,
       deliverable_never_released: jobCensus.submitted,
       never_funded: jobCensus.open,
       total_escrowed_u: Number(jobCensus.escrowedU.toFixed(6)),
@@ -2389,7 +2390,7 @@ ${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">${fmt(jobCensus.jobCounter)}</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
         <div class="rg-card"><div class="rg-n">${fmt(jobCensus.fundedJobs)}</div><div class="rg-l">ever funded</div><div class="rg-s">${jobCensus.total ? ((jobCensus.fundedJobs / jobCensus.total) * 100).toFixed(1) : '0'}% &mdash; money actually placed in escrow</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released${jobCensus.completed_unfunded ? `; ${fmt(jobCensus.completed_unfunded)} closed with a zero budget are not counted` : ''}</div></div>
         <div class="rg-card"><div class="rg-n">${jobCensus.escrowedU.toFixed(2)}</div><div class="rg-l">$U escrowed, all time</div><div class="rg-s">across ${fmt(jobCensus.buyers)} buyers and ${fmt(jobCensus.providers.length)} providers</div></div>
       </div>
 
@@ -4494,6 +4495,7 @@ export function aggregate(jobs) {
   const clients = new Set();
   let escrowed = 0n;
   let fundedJobs = 0;
+  let completedFunded = 0;
 
   for (const j of jobs.values()) {
     byStatus[j.status] = (byStatus[j.status] || 0) + 1;
@@ -4503,6 +4505,9 @@ export function aggregate(jobs) {
     // "ever funded" (six of them on 2026-09-07: 55,724 where 55,718 were).
     const isFunded = j.status !== 'OPEN' && BigInt(j.budget || 0) > 0n;
     if (isFunded) { escrowed += BigInt(j.budget); fundedJobs++; }
+    // Same rule as a provider's paidOut below: the card "escrow released" counted
+    // zero-budget completions the per-provider rows left out (2026-10-10).
+    if (isFunded && j.status === 'COMPLETED') completedFunded++;
 
     const p = j.provider;
     if (!p || p === ZERO) continue;
@@ -4562,7 +4567,8 @@ export function aggregate(jobs) {
   return {
     total,
     byStatus,
-    completed: byStatus.COMPLETED || 0,
+    completed: completedFunded,
+    completed_unfunded: (byStatus.COMPLETED || 0) - completedFunded,
     submitted: byStatus.SUBMITTED || 0,
     open: byStatus.OPEN || 0,
     fundedJobs,
@@ -4587,7 +4593,7 @@ export function aggregate(jobs) {
     withoutTopProvider: ranked.length ? {
       excluded_address: ranked[0].address,
       jobs: total - ranked[0].jobs,
-      completed: (byStatus.COMPLETED || 0) - ranked[0].completed,
+      completed: completedFunded - ranked[0].completed,
       escrowed_u: Number((Number(escrowed) / 1e18 - ranked[0].escrowed_u).toFixed(6)),
       providers: ranked.length - 1,
     } : null,

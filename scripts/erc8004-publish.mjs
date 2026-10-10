@@ -389,6 +389,7 @@ if (jobCensus) {
       by_status: jobCensus.byStatus,
       ever_funded: jobCensus.fundedJobs,
       escrow_released: jobCensus.completed,
+      completed_with_zero_budget: jobCensus.completed_unfunded,
       deliverable_never_released: jobCensus.submitted,
       never_funded: jobCensus.open,
       total_escrowed_u: Number(jobCensus.escrowedU.toFixed(6)),
@@ -1887,7 +1888,7 @@ ${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">${fmt(jobCensus.jobCounter)}</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
         <div class="rg-card"><div class="rg-n">${fmt(jobCensus.fundedJobs)}</div><div class="rg-l">ever funded</div><div class="rg-s">${jobCensus.total ? ((jobCensus.fundedJobs / jobCensus.total) * 100).toFixed(1) : '0'}% &mdash; money actually placed in escrow</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released${jobCensus.completed_unfunded ? `; ${fmt(jobCensus.completed_unfunded)} closed with a zero budget are not counted` : ''}</div></div>
         <div class="rg-card"><div class="rg-n">${jobCensus.escrowedU.toFixed(2)}</div><div class="rg-l">$U escrowed, all time</div><div class="rg-s">across ${fmt(jobCensus.buyers)} buyers and ${fmt(jobCensus.providers.length)} providers</div></div>
       </div>
 

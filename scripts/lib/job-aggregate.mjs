@@ -51,6 +51,7 @@ export function aggregate(jobs) {
   const clients = new Set();
   let escrowed = 0n;
   let fundedJobs = 0;
+  let completedFunded = 0;
 
   for (const j of jobs.values()) {
     byStatus[j.status] = (byStatus[j.status] || 0) + 1;
@@ -60,6 +61,9 @@ export function aggregate(jobs) {
     // "ever funded" (six of them on 2026-09-07: 55,724 where 55,718 were).
     const isFunded = j.status !== 'OPEN' && BigInt(j.budget || 0) > 0n;
     if (isFunded) { escrowed += BigInt(j.budget); fundedJobs++; }
+    // Same rule as a provider's paidOut below: the card "escrow released" counted
+    // zero-budget completions the per-provider rows left out (2026-10-10).
+    if (isFunded && j.status === 'COMPLETED') completedFunded++;
 
     const p = j.provider;
     if (!p || p === ZERO) continue;
@@ -119,7 +123,8 @@ export function aggregate(jobs) {
   return {
     total,
     byStatus,
-    completed: byStatus.COMPLETED || 0,
+    completed: completedFunded,
+    completed_unfunded: (byStatus.COMPLETED || 0) - completedFunded,
     submitted: byStatus.SUBMITTED || 0,
     open: byStatus.OPEN || 0,
     fundedJobs,
@@ -144,7 +149,7 @@ export function aggregate(jobs) {
     withoutTopProvider: ranked.length ? {
       excluded_address: ranked[0].address,
       jobs: total - ranked[0].jobs,
-      completed: (byStatus.COMPLETED || 0) - ranked[0].completed,
+      completed: completedFunded - ranked[0].completed,
       escrowed_u: Number((Number(escrowed) / 1e18 - ranked[0].escrowed_u).toFixed(6)),
       providers: ranked.length - 1,
     } : null,

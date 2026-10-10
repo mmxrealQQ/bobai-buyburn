@@ -326,7 +326,7 @@
   <!-- 7. AI AGENT INTERFACE -->
   <h2>7. Machine-Readable AI Agent Interface</h2>
   <p>BOBAI is not just built by AI &mdash; it is built to be <span class="highlight">read by AI</span>. The token exposes a verifiable, on-chain agent identity and a live query interface so that other AI agents can pull BOBAI's real on-chain data <em>straight from the source</em> before they act, rather than relying on second-hand or cached third-party data.</p>
-  <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool is <strong>read-only</strong> &mdash; nothing here can move funds or change state &mdash; and every value returned is independently verifiable on-chain.</p>
+  <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool but one is <strong>read-only</strong> &mdash; nothing here can move funds, and the one exception only registers a webhook alarm (below) &mdash; and every value returned is independently verifiable on-chain.</p>
 
   <h3>On-Chain Agent Identity (ERC-8004)</h3>
   <p>BOBAI holds a registered <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">ERC-8004 agent identity</a>, <span class="highlight">Agent #49467</span>, on the BNB Chain Identity Registry <span class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</span> (<span class="addr">eip155:56:0x8004A169&hellip;a432#49467</span>). The registration metadata &mdash; name, token, official services, and agent wallet &mdash; lives on-chain and is the only editable copy, so what an agent reads is what the project actually signed.</p>

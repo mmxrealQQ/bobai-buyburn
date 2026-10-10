@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1809,
-   "zipBytes": 25998,
-   "txtBytes": 79989,
-   "sha256": "522cdcd75d11ad66",
+   "lines": 1817,
+   "zipBytes": 26119,
+   "txtBytes": 80426,
+   "sha256": "d415bf1a363a3fdf",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -115,10 +115,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that empties the tax wallet.",
    "files": 3,
-   "lines": 463,
-   "zipBytes": 9467,
-   "txtBytes": 20038,
-   "sha256": "d73c7bf1a08cf022",
+   "lines": 455,
+   "zipBytes": 9387,
+   "txtBytes": 19666,
+   "sha256": "d1604a2d85185d83",
    "reqs": [
     {
      "what": "A wallet that receives the tax",

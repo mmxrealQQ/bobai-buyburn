@@ -669,7 +669,7 @@ function info(k) {
       links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1]; return { t: 'Creator share → d38', c: D.creator.c, rows: [
       ['Share of each trade', pctOf('creator')], ['Last in from 1ce', lastRun ? bnbF(lastRun.creatorBnb) : '…'], ['Last payout from d38', dv ? bnbF(dv.availableBnb) : '…'],
-      ['Payout split', '80% creator · 20% to 6 builders'] /* builder #6 from 1.10. (worker-dev-buyback 32bc2ff) */, ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
+      ['Payout split', '82% creator · 18% to 5 builders'] /* builder #6 from 1.10. (worker-dev-buyback 32bc2ff); builder #5 out, its 2% to the creator, from 10.10. */, ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
       note: 'The 1ce bot sends the creator share to d38; the dev bot pays it out every hour. Both wallets are public.',
       links: [['d38 wallet', bsc('0x15Ba17075ef5E0736292b030e3715d9100fe3d38')]] }; }
     case 'core': case 'buyback': return { t: 'The buyback bot · 1ce', c: '#F0B90B', rows: [
@@ -836,7 +836,7 @@ function circleLine(k) {
     giggle: () => { const p = bnb4(ggBnb()); return GIGGLE_OPEN() ? vary('v10', [`The Giggle pot holds ${p} for Giggle Academy. Every trade adds to it until November 20.`, `${p} in the Giggle pot so far. It goes to Giggle Academy on November 20.`,
       `Every trade adds a coin for Giggle Academy. The pot: ${p}.`, `The Giggle pot: ${p}, growing with every trade until November 20.`, `For the kids of Giggle Academy: ${p} in the pot, and counting.`])
       : vary('v11', [`The Giggle pot went to Giggle Academy. ${p}, from every trade.`, `${p} from every trade went to Giggle Academy.`, `The Giggle pot is delivered: ${p} for Giggle Academy.`, `Giggle Academy got the pot: ${p}.`, `${p} for Giggle Academy, made by every trade.`]); },
-    creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'; return vary('v12', [
+    creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,
       `The creator slice pays the builders too: ${sp}. Last payout ${b}, ${t}.`, `Last creator payout: ${b}, ${t}. ${sp}.`]); },
     src: () => { const t = `${nf(f.b || 0)} buy${f.b === 1 ? '' : 's'}, ${nf(f.s || 0)} sell${f.s === 1 ? '' : 's'}`; return vary('v13', [`Every trade pays 3% tax into my brain. This hour: ${t}.`, `This hour: ${t}. Each one paid 3% to the brain.`,
@@ -1163,12 +1163,11 @@ function freshJoke() {
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
 function tellJoke(ms) {
-  // THE PUNCHLINE IN THE LOG (2026-10-10 review): a joke the visitor asked for (button, "joke") was only in the bubble —
-  // the log, the record of the visit, said "One joke, coming up." and nothing after it; jokes of his own stay bubble-only
-  const logIt = j => { if (LIFE.jokeAsk && performance.now() - LIFE.jokeAsk < 60e3) { LIFE.jokeAsk = 0; say([j]); } };
-  if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); logIt(j); return true; }
+  // A JOKE IS SAID, NOT LOGGED (operator, 2026-10-10 evening: "A bear wandered into my pool" does not belong in the
+  // brain.log — the log keeps what the bots and the ecosystem do; a joke, asked for or his own, is the bubble alone)
+  if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); return true; }
   if (VID.go || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
-  const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); logIt(j); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
+  const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
 const bubble = document.createElement('div'); bubble.className = 'say'; bubble.setAttribute('aria-live', 'polite');
@@ -2653,7 +2652,7 @@ CMDS.who = () => say([vary('ask-who', ['I am BOBAI, the brain on BNB Chain. ', '
   vary('ask-who-core', [' A token that thinks, talks and shows its receipts: one in a billion.', ' Plenty of tokens. One brain that reads its own chain to you.', ' Not a chatbot glued to a chart — the chain itself, talking.', ' One in a billion, and I can prove every word.', ' Ask me anything. If I cannot show it on-chain, I will not say it.'])]);
 CMDS.hi = q => (new Date().getHours() >= 18 && !/^\s*gm/i.test(q || '')) ? say([vary('ask-hi-eve', ['Good evening! Ask me anything, or type ', 'Evening, builder. Try ', 'Hey, good evening. Start with ', 'Good evening! I am listening. Ask me ', 'Evening! Want the facts? Type ']), ['today'], ' or ', ['help'], '.']) : say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
 CMDS.thanks = () => say([vary('ask-thanks', ['Anytime.', 'You are welcome. I am always here.', 'My pleasure. Back to work.', 'Thank YOU for being here.', 'Glad to help. The chain never sleeps, and neither do I.'])]);
-CMDS.joke = () => { say([vary('ask-joke', ['One joke, coming up.', 'Okay, okay. Listen.', 'You asked for it.', 'A joke? I have one.', 'Hold on, this one is good.'])]); jokeTap(); };
+CMDS.joke = () => { jokeTap(); }; // the joke is the bubble alone, nothing for the log (operator, 2026-10-10)
 CMDS.tax = () => say([vary('ask-tax', ['The tax, as the contract has it: ', 'Every buy and every sell: ', 'Simple: ', 'Here is where the tax goes: ', 'The split: ']),
   ['3% on every trade'], ': buyback and burn, liquidity with the LP burned, and the DeFi agent and pots. The token swaps it to BNB once ', [bobaiAmt(MIN_DISPATCH)], ' are collected; the bot splits it within 10 minutes. Type ', ['next'], ' for the charge.']);
 CMDS.mood = () => say([moodLine()]);
@@ -3867,7 +3866,7 @@ function paintJoke() {
 }
 setInterval(() => { try { paintJoke(); } catch {} }, 250); // (the scene and the video are made further down: until then, nothing to paint)
 function jokeTap() {
-  LIFE.touchAt = performance.now(); LIFE.jokeAsk = performance.now(); // an asked-for joke goes into the log too (tellJoke)
+  LIFE.touchAt = performance.now();
   if (!jokeReady()) { jokeQueued = true; paintJoke(); return; }
   jokeQueued = false;
   if (tellJoke(6500)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }
@@ -4917,7 +4916,7 @@ function near(e) {
   return best;
 }
 function describe(x) {
-  if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (${x.d.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
+  if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (${x.d.builder5Bnb && x.d.builder6Bnb ? '80% creator, 20% to 6 builders' /* only 1.10.-10.10. paid six; before and since, five (#6 in, then #5 out) */ : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
   if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${bobaiAmt(x.bobai)} of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
   if (x.kind === 'trade') return x.ours ? `${whoTraded(x)}${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}` : `${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)} · $${nf(x.usd * 0.03, 2)} tax to the brain`;
   if (x.kind === 'run') { const fed = [x.e.lpAgentTx && 'the DeFi agent', x.e.giggleTx && 'the Giggle pot'].filter(Boolean);

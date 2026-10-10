@@ -10,7 +10,7 @@
   const usdOf = (n) => { const p = NUMS().chain?.priceUsd; return p > 0 ? ` <small class="cv-usd">≈$${cmp(n * p)}</small>` : ''; };
   const viz = (n) => { const c = $(`[data-open="w${n}"] .bw-viz`); return c; };
   const canvasIn = (el, h) => {
-    let cv = el.querySelector('canvas'); if (!cv) { cv = document.createElement('canvas'); el.appendChild(cv); }
+    let cv = el.querySelector('canvas'); if (!cv) { cv = document.createElement('canvas'); cv.setAttribute('aria-hidden', 'true'); el.appendChild(cv); } /* the card's own text names it (2026-10-10) */
     const w = el.clientWidth, dpr = Math.min(devicePixelRatio, 2); if (!w) return null;
     cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
     const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };

@@ -46,7 +46,7 @@
     const h = strip(win);
     const px = N().chain?.priceUsd > 0 ? N().chain.priceUsd : 0, usd = (n) => px ? ' ≈$' + nf(n * px) : '', w7 = n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0); // BOBAI with its dollars at today's price (2026-10-10)
     h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot) + usd(tot), 1) + fig('LAST 7 DAYS', cmp(w7) + ' BOBAI' + usd(w7)) + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toISOString().replace('T', ' ').slice(0, 16) + ' UTC')
-      + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90"></canvas><div class="bbt" hidden></div></div></div>`;
+      + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90" role="img" aria-label="BOBAI burned by the bot per day, last 30 days: ${cmp(A.reduce((x, y) => x + y, 0))} BOBAI in all, the biggest day ${cmp(Math.max(...A))} BOBAI"></canvas><div class="bbt" hidden></div></div></div>`;
     const cv = $('canvas', h), tip = $('.bbt', h);
     let hi = -1;
     const draw = () => {

@@ -155,7 +155,7 @@
 <div class="bg-grad"></div>
 <div class="page">
 <nav><div class="nav">
-  <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+  <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
   <a class="brand-link" href="/whitepaper">BOBAI Whitepaper</a>
   <span></span>
 </div></nav>
@@ -342,10 +342,14 @@
   </div>
 
   <p>The MCP endpoint exposes <span class="highlight">23 free tools</span>, all served from Cloudflare's edge (always-on, no server). 22 of them only read and declare <code>readOnlyHint</code>, so another agent's router can tell what is safe to call without guessing from the name; the one that does not, <strong>bsc_rug_watch</strong>, registers a webhook alarm for a token the agent holds and declares <code>readOnlyHint: false</code>.</p>
-  <p>Four of them are about this chain rather than about this token, and are the ones most likely to be useful to somebody with no interest in BOBAI at all:</p>
+  <p>Nine of them are about this chain rather than about this token, and are the ones most likely to be useful to somebody with no interest in BOBAI at all:</p>
   <ul>
+    <li><strong>bsc_token_preflight</strong> &mdash; the check to run before any trade on a BNB Chain token, in one call and at the agent&rsquo;s own size: can it get in, can it get out again, and what the trip costs. It returns one word to branch on (stop, weigh or no_known_stop) with the facts behind it, built from bsc_pool_scan and pancakeswap_best_route below.</li>
+    <li><strong>bsc_rug_watch</strong> &mdash; the alarm described in section 4.7: a webhook for a token the agent holds, read again every 15 minutes and called as soon as something dangerous changes.</li>
     <li><strong>bsc_pool_scan</strong> &mdash; what a trade on any BNB Chain token would actually cost before it is placed: price impact, swap fee and transfer tax together, the USD size that moves the price 1% in each direction, and whether the LP is burned or still withdrawable. The transfer tax is measured from executed trades rather than read off a label, because the two disagree &mdash; one token was labelled 4.45% sell tax while its last four on-chain sells were charged exactly 3.000%.</li>
     <li><strong>pancakeswap_fee_tiers</strong> &mdash; for providing liquidity rather than for trading. A pair on PancakeSwap lives in up to five pools at once (V2 at 0.25%, V3 at 0.01/0.05/0.25/1.00%), and every interface ranks them by the money already parked in them &mdash; which is a record of what other people did, not a measure of what the pool pays. This measures what each tier actually paid its liquidity providers per $1,000 of capital, counting both sides of the pool, and names the tiers holding real money that saw no trade at all. It is not annualised: the measured window travels with every figure.</li>
+    <li><strong>pancakeswap_range_plan</strong> &mdash; for the price range of a V3 position once the pool is picked. It does not forecast: it walks a position of the stated size through the swaps that really happened in a live window and returns, per width, the fees it would have collected, how long it stayed in range and how often the price walked out. Impermanent loss is not in it, and the answer says so.</li>
+    <li><strong>pancakeswap_best_route</strong> &mdash; which of the pools a pair lives in returns the most at this trade size, quoted by the venue itself, and what comes back if the proceeds are sold straight back with the measured transfer tax applied.</li>
     <li><strong>find_agents_on_bnb_chain</strong> &mdash; search every ERC-8004 agent on this chain that answers when contacted, matched against the tools it actually returned rather than a category somebody typed into a form.</li>
     <li><strong>bnb_agent_census</strong> and <strong>bnb_agent_employment</strong> &mdash; the measured state of the registry and of the ERC-8183 job escrow behind it, described in section 4.3.</li>
   </ul>
@@ -374,7 +378,7 @@
       <tr><td>BOBAI Token</td><td class="addr">0x245c386dcfed896f5c346107596141e5edcbffff</td></tr>
       <tr><td>Pair (BOBAI/WBNB)</td><td class="addr">0x6eadd4cb786898b34929444988380ed0cc6fd9a6</td></tr>
       <tr><td>NFT Buy Drops</td><td class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</td></tr>
-      <tr><td>WC26 Prize Pool</td><td class="addr">0x5E4102520A71B2AA18a1208330d4848dea4BD105</td></tr>
+      <tr><td>Giggle Academy pot (formerly WC26 prize pool)</td><td class="addr">0x5E4102520A71B2AA18a1208330d4848dea4BD105</td></tr>
       <tr><td>ERC-8004 Agent Registry</td><td class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (#49467)</td></tr>
       <tr><td>DEX</td><td>PancakeSwap V2</td></tr>
       <tr><td>Compiler</td><td>Solidity 0.8.20</td></tr>

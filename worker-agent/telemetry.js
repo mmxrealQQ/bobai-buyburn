@@ -207,6 +207,20 @@ const isChainRefusal = (e) => {
   return CHAIN_REFUSED.test(m);
 };
 
+// A headline that fits (2026-10-10): a cut at a fixed length ended mid-word
+// ("Gro ·"). The cut lands on the last sentence end inside the limit, else on
+// the last word boundary with an ellipsis.
+export function clipHeadline(text, max = 220) {
+  const s = String(text).trim();
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  let end = -1;
+  for (const m of head.matchAll(/[.!?](?=\s|$)/g)) end = m.index + 1;
+  if (end > max * 0.4) return head.slice(0, end); // never down to a stub of a first sentence
+  const sp = head.slice(0, max - 1).search(/\s\S*$/);
+  return (sp > 0 ? head.slice(0, sp) : head.slice(0, max - 1)).replace(/[\s,;:·–—-]+$/, '') + '…';
+}
+
 /**
  * The failure half of a probe, with the cause named.
  *
@@ -384,7 +398,7 @@ async function probeDefiAgent(env) {
       ready: true,
       checked_at: at,
       live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
-      headline: plan.verdict ? String(plan.verdict).slice(0, 220) : 'position read, no verdict formed',
+      headline: plan.verdict ? clipHeadline(plan.verdict, 220) : 'position read, no verdict formed',
       measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
       not_ready_because: null,
       chain_needed_a_second_attempt: attempt.retried === true,

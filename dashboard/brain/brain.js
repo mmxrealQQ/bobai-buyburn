@@ -21,6 +21,8 @@
     if (!keep) pushLayer();
     back = back || document.activeElement; open = w; w.hidden = false;
     document.body.classList.add('bp-winon');
+    // the page behind a window takes no focus (2026-10-10: Tab left the dialog for the header and the cards)
+    $$('.bp-h, .bp-grid').forEach((e) => { e.inert = true; });
     requestAnimationFrame(() => { w.classList.add('on'); if (w.querySelector('.ts-rows')) window.__bobaiFitSchedule?.(); });
     w.querySelector('.bw-x')?.focus({ preventScroll: true });
     // the classic sections fade in on scroll (class "fi"); inside a window everything is simply there
@@ -35,7 +37,7 @@
   function hide(switching) {
     if (!open) return;
     const w = open; open = null; w.classList.remove('on');
-    if (!switching) { document.body.classList.remove('bp-winon'); back?.focus?.({ preventScroll: true }); back = null; }
+    if (!switching) { document.body.classList.remove('bp-winon'); $$('.bp-h, .bp-grid').forEach((e) => { e.inert = false; }); back?.focus?.({ preventScroll: true }); back = null; }
     setTimeout(() => { if (open !== w) w.hidden = true; }, 220);
   }
   // closed by the × / the backdrop / Esc: close, then give the history step back
@@ -49,6 +51,7 @@
     u.searchParams.set('embed', '1');
     const w = document.getElementById('wpage'), src = u.pathname + u.search + u.hash;
     $('.pg-t', w).textContent = NAMES[key] || title || 'Page';
+    w.setAttribute('aria-label', NAMES[key] || title || 'Page'); $('.pg-f', w)?.setAttribute('title', NAMES[key] || title || 'Page'); // a screen reader names the page, not "Page"
     // the header carries the page's own logo, the one on its ecosystem card, instead of an arrow (operator, 2026-09-27);
     // a page without a card (the library, the lite paper …) carries the BOBAI logo
     const k = $('.pg-k', w), card = $$('a.ec').find((a) => new URL(a.getAttribute('href'), location.origin).pathname.split('/')[1] === key);

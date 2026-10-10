@@ -600,7 +600,7 @@
     .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
     .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}
     table{width:100%;border-collapse:collapse;background:var(--card);backdrop-filter:blur(16px)}
-    table thead th{position:sticky;top:0;z-index:1}
+    table thead th{position:sticky;top:0;z-index:1;background:linear-gradient(rgba(240,185,11,.03),rgba(240,185,11,.03)),#1a1615} /* solid: a scrolled row no longer shows through the header (2026-10-10) */
     table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
     table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
     table tr:hover{background:rgba(240,185,11,.015)}

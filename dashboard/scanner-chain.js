@@ -1363,6 +1363,12 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     if(kind==='v3')return await simulateV3Sell(token,pair);
     if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs and V3 pools; this pool is neither'};
     token=token.toLowerCase();
+    // WBNB ITSELF (2026-10-10). The probe sells into WBNB, so for WBNB the path
+    // became [WBNB, USDT, WBNB], the second hop got nothing in, and the
+    // preflight stopped WBNB as not sellable and not buyable. WBNB is BNB
+    // wrapped one to one by its own contract, with no transfer tax: there is
+    // no trip to test, and the answer says so instead of running one.
+    if(token===WBNB)return wbnbItself(pair);
     const url=RPCS[0];
     // THE PAIR THE PROBE REALLY TRADES THROUGH (2026-09-18). The probe sells
     // token -> WBNB through PancakeSwap's V2 router, whatever pair was scanned.
@@ -1394,6 +1400,9 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
       const qp=addrAt((await rpcBatch([call(V2FACTORY,getPair(quote,WBNB))],url))[0]);
       if(qp&&qp!==NULLA){path=[token,quote,WBNB];through=true}
     }
+    // A path that ends on the token it starts from is a trip to nowhere: the
+    // last hop gets nothing in and reads as a refusal.
+    if(path[0]===path[path.length-1])return wbnbItself(pair);
     if(!through){
       if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and neither this token nor the pool that was read has a route there — not run, not cleared'};
       pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);
@@ -1446,6 +1455,13 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     }
     return {...plain,...named,tax:null};
   }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}
+function wbnbItself(pair){
+  return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:null,
+    size_note:'no test balance: WBNB is the coin the test sells into',pair:String(pair||'').toLowerCase(),path:[WBNB],through_scanned_pool:true,
+    tax:{sell_pct:0,buy_pct:0,method:'not simulated: WBNB unwraps to BNB 1:1 through its own contract (withdraw) and charges no transfer tax'},
+    note:'WBNB is BNB wrapped one to one; it unwraps 1:1 through its own contract at any time, so there is no sell to test.',
+    source:'the WBNB contract itself, not a simulation'};
 }
 async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path=[token,WBNB]){
   const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');

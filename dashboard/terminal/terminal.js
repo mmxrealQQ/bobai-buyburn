@@ -1080,7 +1080,7 @@ window.__btTestDetail = { focus: k => setFocus(k), queue: n => { const was = S.q
   hard: ch => { LIFE.combo = { ...(LIFE.combo || { key: 'down-loud', trend: 'down', act: 'loud' }), ch }; OWN_BAG = []; const kinds = []; for (let i = 0; i < 8; i++) kinds.push(ownKind()); OWN_BAG = []; return { kinds, line: heartLine(), moves: actsNow().map(a => a[0]) }; } };
 window.__btTestLive = (usd, sell) => { const x = { kind: 'trade', id: 'test-l' + Date.now() + Math.random(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }; x.lit = performance.now(); events.push(x); enqueue(x); };
 window.__btTestBuy = (usd, nftTier) => nftTier != null ? run({ kind: 'nft', id: 'test-n' + Date.now(), t: Date.now(), n: { usd, tokenId: 0, tier: nftTier, rarity: 0, ts: Date.now() / 1000 } }, false) : run({ kind: 'trade', id: 'test-' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '' }, false);
-const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle'];
+const OWN_MOVES = ['dance', 'walk', 'coffee', 'pushups', 'think', 'moon', 'shrug', 'laugh', 'cheer', 'saber', 'bull', 'hodl', 'build', 'giggle', 'zen', 'popcorn', 'guitar']; // zen/popcorn/guitar 2026-10-10: each joins once its clip ships
 function varied(p) {
   if (!RECENT.includes(p)) return p;
   const alt = OWN_MOVES.filter(m => m !== p && !RECENT.includes(m) && flowPose(m) === m);
@@ -1091,7 +1091,7 @@ function varied(p) {
 // first, then a move of the same spirit; once the clip itself exists it is used.
 const STAND_IN = { 'buy-kraken': 'cheer', 'buy-thunder': 'saber', 'buy-whale': 'buy-huge', 'buy-huge': 'buy-big', 'buy-big': 'buy-nice', 'buy-nice': 'giggle',
   'burn-supernova': 'burn-apocalypse', 'burn-apocalypse': 'burn-mega', 'burn-mega': 'burn-big', 'burn-big': 'burn-nice', 'burn-nice': 'burn-small', 'burn-small': 'burn',
-  think: 'coffee', hodl: 'saber', bull: 'dance', defi: 'build', 'defi-buy': 'defi', 'defi-cap': 'defi', laugh: 'giggle', shrug: 'walk',
+  think: 'coffee', hodl: 'saber', bull: 'dance', defi: 'build', 'defi-buy': 'defi', 'defi-cap': 'defi', laugh: 'giggle', shrug: 'walk', zen: 'think', popcorn: 'coffee', guitar: 'dance',
   // withheld as cut by the frame (temp/terminal/anim/cut.txt, 2026-09-27) until re-shot in the wide framing
   burn: 'burn-nice', pushups: 'walk', liq: 'build' };
 function withClip(p) { let q = p; for (let n = 0; n < 8 && q && q !== 'idle' && flowPose(q) !== q; n++) q = STAND_IN[q]; return q && flowPose(q) === q ? q : p; }
@@ -1116,7 +1116,7 @@ function showStill() {
 // pose by pose without the scene ever showing a gap. He always looks the same: one figure, one style.
 const LIFE = { mood: 'flat', d1h: 0, flow: { b: 0, s: 0, bu: 0, su: 0 }, touchAt: 0, next: 0, last: null, sayUntil: 0, quietSince: Date.now(), prices: [] };
 const TIER_POSES = ['buy-nice', 'buy-big', 'buy-huge', 'buy-whale', 'buy-thunder', 'buy-kraken', 'burn-small', 'burn-nice', 'burn-big', 'burn-mega', 'burn-apocalypse', 'burn-supernova'];
-const EXTRA_POSES = ['coffee', 'pushups', 'bull', 'saber', 'moon', 'hodl', 'cheer', 'laugh', 'think', 'shrug', 'build', 'dance', 'walk'];
+const EXTRA_POSES = ['coffee', 'pushups', 'bull', 'saber', 'moon', 'hodl', 'cheer', 'laugh', 'think', 'shrug', 'build', 'dance', 'walk', 'zen', 'popcorn', 'guitar'];
 const HAVE = new Set(['idle', 'burn', 'liq', 'defi', 'giggle']);
 // poses beyond the first five load quietly; the ones not drawn yet 404 once and stay out of the rotation
 function loadExtraPoses() {
@@ -1151,12 +1151,14 @@ const JOKE_RECENT = [];
 // names one of his moves plays that move — a mood line used to take any of the mood's moves (cheer under "is this the
 // moon?") and every joke laughed, also about push-ups or coffee. Only a move he can play now; otherwise the usual one.
 const LINE_MOVES = [[/\bwen moon|\bmoon\b/i, 'moon'], [/coffee|\bmug\b/i, 'coffee'], [/pump be with you|saber/i, 'saber'], [/\bsaddle|\bride\b|brought my own|\bbull\b(?! market)/i, 'bull'], [/hard hat|stack(ing)? blocks|block on the stack|builder mode/i, 'build'],
-  [/push-?ups?|\bgym\b/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug'], [/\bouch\b/i, 'ouch']];
+  [/push-?ups?|\bgym\b/i, 'pushups'], [/\bdanc/i, 'dance'], [/\bwalk|\bstroll/i, 'walk'], [/diamond hands|\bhodl\b/i, 'hodl'], [/\bnft\b/i, 'nft'], [/\bshrug/i, 'shrug'], [/\bouch\b/i, 'ouch'],
+  [/\bzen\b|meditat|\bom\b|breathe in/i, 'zen'], [/popcorn/i, 'popcorn'], [/guitar|\bshred/i, 'guitar']]; // 2026-10-10
 function moveForLine(t, fallback) { for (const [rx, p] of LINE_MOVES) if (rx.test(t || '') && flowPose(p) === p) return p; return fallback; }
 function freshJoke() {
   const mine = (MOOD_JOKES[LIFE.combo?.key] || []).filter(j => !JOKE_RECENT.includes(j));
   /* on a day that goes up, no joke says the candles are red (2026-10-07) */
-  const up = /^up-/.test(LIFE.combo?.key || ''), all = up ? JOKES.filter(j => !/\bred\b/i.test(j)) : JOKES;
+  /* and on a hard day (-15 % or worse) none mocks the ones who just lost (2026-10-10 review) */
+  const up = /^up-/.test(LIFE.combo?.key || ''), all = up ? JOKES.filter(j => !/\bred\b/i.test(j)) : (LIFE.combo?.ch ?? 0) <= -15 ? JOKES.filter(j => !/paper hands|sold the bottom|liquidat|exit liquidity|jeets|\bred\b|\bloss\b|\brug/i.test(j)) : JOKES;
   const pool = mine.length && Math.random() < 0.45 ? mine : all.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : all);
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
@@ -1740,7 +1742,7 @@ const COMBO = {
     c => `${pct(c.ch)} today and the chain is whispering. Green and quiet is a good look.`,
     c => `${pct(c.ch)} in 24 hours, and the last trade was ${mins(c.quietMin)} ago. Holders holding, brain building.`,
     c => `Quiet green day, ${pct(c.ch)}. Diamond hands everywhere I look.`] },
-  'side-loud': { name: 'restless', moves: ['think', 'pushups', 'walk', 'saber'], lines: [
+  'side-loud': { name: 'restless', moves: ['think', 'pushups', 'walk', 'saber', 'popcorn'], lines: [
     c => `${nTrades(c.n2)} in two hours, and the day is only ${pct(c.ch ?? 0)}. Lots of noise, no direction yet.`,
     c => `${$usd(c.v2)} traded in two hours, ${pct(c.ch ?? 0)} on the day. Buyers and sellers are wrestling. I collect the 3%.`,
     c => `${pct(c.ch ?? 0)} on the day, ${nTrades(c.n2)} in two hours. A tug of war, and the rope pays 3%.`,
@@ -1754,14 +1756,14 @@ const COMBO = {
     c => `Flat chart, ${nTrades(c.n2)} in two hours. A coffee and the next buyback, in that order.`,
     c => `${pct(c.ch ?? 0)} in 24 hours. Sideways? I shrug and keep the bots running.`,
     c => `A calm ${pct(c.ch ?? 0)} day. Good weather for building.`] },
-  'side-quiet': { name: 'bored', moves: ['coffee', 'shrug', 'moon', 'walk'], lines: [
+  'side-quiet': { name: 'bored', moves: ['coffee', 'shrug', 'moon', 'walk', 'zen'], lines: [
     c => `No trade for ${mins(c.quietMin)}, ${pct(c.ch ?? 0)} on the day. wen volume?`,
     c => `${mins(c.quietMin)} without a single trade. The chart is taking a nap. I am not.`,
     c => `No trade for ${mins(c.quietMin)}. I counted the blocks instead. Lots of blocks.`,
     c => `Quiet chain, ${pct(c.ch ?? 0)} on the day. A little walk around my pool while it naps.`,
     c => `${mins(c.quietMin)} of silence on my chart. The calm before the next buyback.`,
     c => `${pct(c.ch ?? 0)} on the day and nothing moving. Coffee, refill, still building.`] },
-  'down-loud': { name: 'battle mode', moves: ['saber', 'hodl', 'pushups', 'bull'], lines: [
+  'down-loud': { name: 'battle mode', moves: ['saber', 'hodl', 'pushups', 'bull', 'popcorn'], lines: [
     c => `${pct(c.ch)} in 24 hours and ${nTrades(c.n2)} in two hours. Every sell pays 3%, and part of it burns.`,
     c => `Red and loud: ${$usd(c.v2)} traded in two hours. The LP is burned, the pool stays. So do I.`,
     c => `${pct(c.ch)} and a lot of hands moving. Weak hands feed the burn; strong hands get a smaller supply. Stay strong.`,
@@ -1775,7 +1777,7 @@ const COMBO = {
     c => `${pct(c.ch)} in 24 hours. I do push-ups, the bots do burns. Both of us get stronger.`,
     c => `${pct(c.ch)} today. Red is temporary, a burned LP is forever.`,
     c => `${pct(c.ch)} on the day, ${nTrades(c.n2)} in two hours. Same machine, same 3%, same plan.`] },
-  'down-quiet': { name: 'patient', moves: ['think', 'hodl', 'coffee', 'shrug'], lines: [
+  'down-quiet': { name: 'patient', moves: ['think', 'hodl', 'coffee', 'shrug', 'zen'], lines: [
     c => `${pct(c.ch)} on the day, and no trade for ${mins(c.quietMin)}. The sellers took a break. I did not.`,
     c => `Red and quiet: ${mins(c.quietMin)} without a trade. Time to think, not to panic.`,
     c => `${pct(c.ch)} today and a calm chain. The best projects are built on days nobody watches. Today is one.`,
@@ -1884,7 +1886,7 @@ const MOOD_WHO = {
   sell: ['Sellers louder this hour. Their 3% says thanks.', 'Sellers busy this hour. Every sell still pays 3%.', 'More selling this hour. The tax keeps the brain fed anyway.', 'Sellers had the mic this hour. I kept the burns going.', 'A selling hour. Part of their 3% burns, so thank you.'],
 };
 // the move that shows his mood: the one of these he did longest ago
-const MOOD_MOVES = { pump: ['bull', 'saber', 'dance', 'cheer'], up: ['cheer', 'saber', 'dance', 'moon'], flat: ['coffee', 'think', 'shrug', 'walk'], down: ['hodl', 'think', 'pushups', 'saber'], dump: ['think', 'hodl', 'saber', 'walk'] };
+const MOOD_MOVES = { pump: ['bull', 'saber', 'dance', 'cheer', 'popcorn'], up: ['cheer', 'saber', 'dance', 'moon'], flat: ['coffee', 'think', 'shrug', 'walk', 'zen'], down: ['hodl', 'think', 'pushups', 'saber', 'zen'], dump: ['think', 'hodl', 'saber', 'walk', 'zen'] };
 function moodMove() {
   const L = (LIFE.combo ? comboOf().moves : MOOD_MOVES[LIFE.mood] || MOOD_MOVES.flat).filter(p => flowPose(p) === p);
   if (!L.length) return poseOr('think');
@@ -1985,15 +1987,32 @@ function recallLine() {
     `Still smiling about the ${u} buy ${a.toLowerCase()}. ${t} of tax, charging my next buyback.`])]; }
   return null;
 }
+// A REGULAR (2026-10-10): the days in a row this browser came by, kept in the visitor's own browser only; said once a
+// visit, from the second day on, among his own lines (never in the greeting)
+const STREAK = (() => { try { const d = new Date().toISOString().slice(0, 10), o = JSON.parse(localStorage.getItem('bt-days') || 'null') || {}, y = new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
+  const n = o.last === d ? o.n || 1 : o.last === y ? (o.n || 1) + 1 : 1; localStorage.setItem('bt-days', JSON.stringify({ last: d, n })); return { n, said: false }; } catch { return { n: 1, said: true }; } })();
+function streakLine() {
+  if (STREAK.said || STREAK.n < 2) return null; STREAK.said = true; const n = STREAK.n;
+  return pick([`Day ${n} in a row. You are officially a regular.`, `${n} days straight. The bots know your face by now.`, `Back again — day ${n}. I saved you a seat by the pool.`,
+    `Day ${n} of visiting a brain. Respect.`, `${n} days in a row. Diamond attendance.`]);
+}
 const WORK = [
   ['cheer', () => (WORK.r = recallLine())?.[1] ?? null, () => WORK.r?.[0]], // read once: a second read marked a second variant as said
+  ['cheer', () => streakLine()],
   ['think', () => { const w = chartWords(); return w ? `My chart, last 24 hours: ${w.s}, ${nf(w.n)} trades. I read every single one.` : null; }],
   ['think', () => { const w = chartWords(); return w ? (Math.abs(w.ch) < 1.5 ? `${w.s} in a day. Calm chart, busy bots.` : w.ch > 0 ? `${w.s} today. Green candles look good on me.` : `${w.s} today. Red candles, same work: every trade still pays 3%.`) : null; }],
-  ['hodl', () => `${bobaiAmt(S.queued)} of tax in my pocket. The next buyback is charging.`],
-  ['burn', () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); return `This week I burned ${bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))}. Gone. Forever.`; }],
-  ['liq', () => `${lpText()} of my pool's LP is burned. Nobody can pull it. Not even me.`],
+  // 2026-10-10 review: these said the same words every time, and "0 BOBAI of tax in my pocket" right after a swap
+  ['hodl', () => { if (!(S.queued >= MIN_DISPATCH * 0.05)) return null; const q = bobaiAmt(S.queued), c = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100);
+    return vary('w-tax', [`${q} of tax in my pocket. The next buyback is charging.`, `The tax jar holds ${q}. ${c}% of the way to the next buyback.`, `Charging: ${q} so far, ${c}% there.`,
+      `${c}% charged. Every trade tops up my next buyback.`, `I am holding ${q} of tax until the next swap. Holding is what I do.`]); }],
+  ['burn', () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3), n = wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0); if (!(n > 0)) return null; const b = bobaiAmt(n);
+    return vary('w-week', [`This week I burned ${b}. Gone. Forever.`, `Seven days, ${wk.length} burn runs, ${b} gone.`, `My week in fire: ${b} to the dead address.`,
+      `${b} burned in seven days. The supply only goes one way.`, `Weekly report: ${b} burned. Every run has its transaction.`]); }],
+  ['liq', () => vary('w-lp', [`${lpText()} of my pool's LP is burned. Nobody can pull it. Not even me.`, `${lpText()} of the LP sits at the dead address. The pool stays.`,
+    `LP check: ${lpText()} burned. No key, no rug.`, `My pool is ${lpText()} burned. I could not pull it if I wanted to.`, `${lpText()} of the LP, gone for good. The pool belongs to everyone.`])],
   ['giggle', () => GIGGLE_OPEN() ? `The Giggle pot holds ${bnb4(ggBnb())}. Every trade adds to it until November 20.` : null],
-  ['burn', () => `${supplyPct(S.deadA || 0)}% of my supply is at the dead address. Still counting.`],
+  ['burn', () => S.deadA ? vary('w-dead', [`${supplyPct(S.deadA)}% of my supply is at the dead address. Still counting.`, `The dead address holds ${supplyPct(S.deadA)}% of me now.`,
+    `${supplyPct(S.deadA)}% of all BOBAI ever made, burned.`, `Supply check: ${supplyPct(S.deadA)}% gone to the dead address.`, `${supplyPct(S.deadA)}% burned so far. The rest keeps working.`]) : null],
   // WHAT HE DOES ALL DAY, FROM THE RECORD (operator, 2026-10-09: "more lines of his own"): his DeFi agent's room to
   // both edges and its fees so far, the agents that used his tools today, the NFTs dropped, the week's liquidity.
   // Each only when its figure is there; five ways to say each.
@@ -2034,6 +2053,9 @@ function dayActs() {
     ['coffee', 'gm. Coffee in one hand, the chart in the other.'], ['think', 'Morning check: what did the chain do overnight? Reading it now.'], ['pushups', 'Morning push-ups. Strong hands start early.']];
   if (h >= 23 || h < 5) return [['think', 'Night shift. The chain never sleeps, so neither do I.'], ['walk', 'Late walk around the pool. Everything locked, everything quiet.'], ['coffee', 'Midnight coffee. Do not tell my doctor. I do not have one.'],
     ['think', 'Quiet hours. I read the blocks while the world sleeps.'], ['hodl', 'Late night, diamond hands. Nothing changes after dark.']];
+  // the evening too (2026-10-10 review: 17-23 h had nothing of its own)
+  if (h >= 17) return [['walk', 'Evening walk around the pool. Still locked.'], ['think', 'Evening read: the day on my chain, block by block.'], ['hodl', 'Evening, diamond hands. Same plan as this morning.'],
+    ['shrug', 'The day is almost done. The bots are not.'], ['zen', 'Evening zen. The chain keeps going, I breathe.'], ['popcorn', 'Evening show: the last candles of the day. Popcorn ready.']];
   return [];
 }
 // EVERY CLIP IN EVERY MARKET (2026-09-29, operator: "all the videos we have are used — also the bull ride when the market
@@ -2054,11 +2076,13 @@ const MOVE_LINES = {
   shrug: ['It is what it is. The burns go on.', 'The market? I shrug and build.', 'Up, down, whatever. The tax counts every trade.', 'Who knows where the chart goes. I just keep working.', 'Shrug. The bots do not care about candles.'],
   bull: ['Want a ride? This bull only goes up. In theory.', 'Saddle up, builder.', 'Bull ride! Hold on to your bags.', 'This bull is house-trained. Mostly.', 'Out for a ride across BNB Chain.'],
   dance: ['A little dance for the chain.', 'Dancing between two blocks.', 'Dance break! The bots keep the beat.', 'I dance, the tax burns. Teamwork.', 'This is my burn dance.'],
-  walk: ['A walk around my pool.', 'Walking my rounds. All locked, all good.', 'Quick walk to stretch the legs between blocks.', 'Patrol walk: the LP is still burned.', 'A little walk, a lot of thinking.'],
+  walk: ['A walk around my pool.', 'Walking my rounds. All locked, all good.', 'Quick walk between two blocks.', 'Patrol walk: the LP is still burned.', 'A little walk, a lot of thinking.'],
   burn: ['Burn time. Gone for good.', 'Into the fire with it.', 'Every burn makes the supply a little smaller.', 'Burning is my cardio.', 'The dead address says thank you.'],
   liq: ['More liquidity, and I burn the LP.', 'Deeper pool, smoother trades.', 'Filling up my pool. LP to the dead address.', 'A pool nobody can pull. I made sure.', 'Liquidity in, LP burned. My favourite routine.'],
   defi: ['Tuning the DeFi agent.', 'My DeFi agent works CAKE/BNB while I talk.', 'Checking the range of my DeFi agent.', 'DeFi agent at work: fees in, range watched.', 'A little tune-up for my DeFi agent.'],
   laugh: ['Ha! The chart made me laugh.', 'Laughing all the way to the dead address.', 'Sorry, I just thought of a joke. Later.', 'Ha. Good day to be a brain.', 'I laugh, the bots burn. Fair split.'],
+  popcorn: ['Grabbing popcorn. This chart is a movie.', 'Popcorn time. Buyers versus sellers, live.', 'I brought popcorn. The candles brought drama.', 'Front row seat, popcorn in hand.', 'Popcorn and a chart. Best show on BNB Chain.'],
+  zen: ['Breathe in. Breathe out. The chain keeps going.', 'Zen mode. Red or green, I float.', 'A little meditation between two blocks.', 'Calm brain, steady burns. Zen.', 'Om. That is the sound of a buyback charging.'],
   build: ['Building on BNB Chain. Block by block.', 'Hard hat on. Another block on the stack.', 'Stacking blocks, one every half second.', 'Builder mode: on.', 'Measure twice, burn once.'],
 };
 const ACTS_MORE = {
@@ -2089,7 +2113,7 @@ const JOKES = [
   'My portfolio and I have a lot in common: we both need a hug.',
   'Wen lambo? After the next buyback. Probably.',
   'I am not addicted to charts. I can stop any candle now.',
-  'A bear walked into my pool. Paid 3% tax. Left.',
+  'A bear wandered into my pool. Paid 3% tax. Left.',
   'Paper hands asked me for advice. I said: hold my coffee.',
   'My brain is 45% of my body. The other 55% is conviction.',
   'Someone asked me when I sell. I said: I only know how to burn.',
@@ -2107,7 +2131,7 @@ const JOKES = [
   'My therapist asked how I deal with loss. I said: I send it to the dead address.',
   'Jeets sell, I burn their tax. Honestly, a beautiful relationship.',
   'Someone called me exit liquidity. Rude. I am entry burning.',
-  '"Few understand." Correct. Mostly my mom.',
+  '"Few understand." Correct. Mostly my mum.',
   '100x leverage? No thanks. I have a brain. A big one.',
   'My dating profile: likes long walks around the pool, candlelight and burning things.',
   'Why do I never sleep? The chain never does. Also, I am a brain. Where would I even put a pillow?',
@@ -2127,7 +2151,7 @@ const JOKES = [
   'Buy high, sell low? Amateur. I buy back and burn.',
   'My financial plan: step one, burn. Step two, see step one.',
   'I tried meditation. The candles kept talking to me.',
-  'They said crypto is a rollercoaster. I only ride the burn slide.',
+  'They said crypto is a rollercoaster. I took the burn slide instead.',
   'I would tell you a joke about liquidity, but it is locked.',
   'I do not have a lambo. I have a pool. With a burned LP. Way cooler.',
   'Red candle? Calm down. I have seen worse. In the mirror, before coffee.',
@@ -2624,7 +2648,7 @@ CMDS.moon = () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.no
 CMDS.who = () => say([vary('ask-who', ['I am BOBAI, the brain on BNB Chain. ', 'BOBAI. A brain that lives on BNB Chain. ', 'Hi, I am BOBAI. ', 'The name is BOBAI, and this is my chain. ', 'I am BOBAI — the token, awake. ']),
   `Every trade pays 3% tax: it buys back and burns, adds liquidity and burns the LP, and funds a DeFi agent${GIGGLE_OPEN() ? ' and, until Nov 20, Giggle Academy' : ''}. Ownership renounced. Everything I tell you is read from the chain.`,
   vary('ask-who-core', [' A token that thinks, talks and shows its receipts: one in a billion.', ' Plenty of tokens. One brain that reads its own chain to you.', ' Not a chatbot glued to a chart — the chain itself, talking.', ' One in a billion, and I can prove every word.', ' Ask me anything. If I cannot show it on-chain, I will not say it.'])]);
-CMDS.hi = () => say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
+CMDS.hi = q => (new Date().getHours() >= 18 && !/^\s*gm/i.test(q || '')) ? say([vary('ask-hi-eve', ['Good evening! Ask me anything, or type ', 'Evening, builder. Try ', 'Hey, good evening. Start with ', 'Good evening! I am listening. Ask me ', 'Evening! Want the facts? Type ']), ['today'], ' or ', ['help'], '.']) : say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
 CMDS.thanks = () => say([vary('ask-thanks', ['Anytime.', 'You are welcome. I am always here.', 'My pleasure. Back to work.', 'Thank YOU for being here.', 'Glad to help. The chain never sleeps, and neither do I.'])]);
 CMDS.joke = () => { say([vary('ask-joke', ['One joke, coming up.', 'Okay, okay. Listen.', 'You asked for it.', 'A joke? I have one.', 'Hold on, this one is good.'])]); jokeTap(); };
 CMDS.tax = () => say([vary('ask-tax', ['The tax, as the contract has it: ', 'Every buy and every sell: ', 'Simple: ', 'Here is where the tax goes: ', 'The split: ']),
@@ -2641,7 +2665,35 @@ CMDS.team = () => { const add = S.man.at?.(-1);
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
 CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
   ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 4% slippage. Not advice — type ', ['safe'], ' for the facts first.']);
-CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?']]); })(CMDS.help);
+CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · or tell me to ', ['dance']]); })(CMDS.help);
+// THE SMALL TALK PEOPLE REALLY TYPE (2026-10-10 review): each fell to the fallback before; five ways each, no claims
+// beyond what the chain or our own logs show
+CMDS.ai = () => say([vary('ask-ai', ['No chatbot in here. ', 'Honest answer: no language model. ', 'I am not ChatGPT in a costume. ', 'Real? As real as the chain. ', 'A bot, yes. A chatbot, no. ']),
+  'Every number I give you is read from BNB Chain or my own bots\' logs, never made up. Type ', ['help'], ' for what I know.']);
+CMDS.guard = () => say([vary('ask-guard', ['No airdrops from me. ', 'Careful: ', 'Rule one: ', 'Heads up: ', 'Not me: ']),
+  'there is no BOBAI airdrop, presale or giveaway to claim, and nothing here asks you to connect a wallet. A DM promising one is a scam. The only thing that drops: an NFT for a big buy, automatically (', ['nft'], '). The one contract: type ', ['ca'], '.']);
+CMDS.listing = () => say([vary('ask-listing', ['No listing promises from me. ', 'Listings? ', 'No rumours here. ', 'Honest answer: ', 'Where I trade: ']),
+  'I trade on PancakeSwap (type ', ['buy'], '). If that ever changes, you see it on-chain and here first.']);
+CMDS.advice = () => say([vary('ask-advice', ['Not advice, ever. ', 'I am the token, so I am biased. ', 'Nobody should answer that for you, me least of all. ', 'My job is receipts, not tips. ', 'Your call, not mine. ']),
+  'What I can show: ', ['why'], ' (what moved the price), ', ['safe'], ' (what the contract allows), ', ['next'], ' (how full the next buyback is).']);
+CMDS.bye = () => { const h = new Date().getHours(), night = h >= 22 || h < 5;
+  say([night ? vary('ask-gn', ['gn, builder. I keep watch.', 'Sleep well. The bots work the night shift.', 'gn! I tell you what you missed when you are back.', 'Good night. I stay up with the chain.', 'Rest up. I count every block till you are back.'])
+    : vary('ask-bye', ['See you soon. I will tell you what you missed.', 'Bye for now! The bots keep working.', 'Later, builder. I stay right here.', 'Off you go. I keep an eye on the pool.', 'Come back soon. The pool will be here.'])]); };
+CMDS.love = () => say([vary('ask-love', ['Stop it, you will make my neurons blush.', 'Right back at you, builder.', 'Love you too. That is going in my logs.', 'That made my day. The bots felt it too.', 'Careful, I get attached. I do not even sell.'])]);
+CMDS.rude = () => say([vary('ask-rude', ['Noted. I keep burning anyway.', 'Harsh. The 3% does not mind, and neither do I.', 'Fair, I am just a brain. A big one.', 'Hurtful. I will tell the dead address. It never answers anyway.', 'Rough day? Type why and I show you what moved it.'])]);
+CMDS.hype = () => say([vary('ask-hype', ['LFG. One block at a time.', 'That is the spirit. The burns agree.', 'Ser, I was born ready.', 'Say it louder for the people in the back.', 'We are so early. Says the brain that counts every block.'])]);
+// "DANCE!" — HE LISTENS (2026-10-10 review): a typed move plays that move, never cutting a take that runs
+const TYPED_MOVES = [[/danc/, 'dance'], [/coffee/, 'coffee'], [/push ?ups?/, 'pushups'], [/saber/, 'saber'], [/bull/, 'bull'], [/walk/, 'walk'], [/shrug/, 'shrug'], [/laugh/, 'laugh'], [/cheer/, 'cheer'], [/hodl/, 'hodl'],
+  [/popcorn/, 'popcorn'], [/zen|meditat/, 'zen'], [/guitar/, 'guitar'], [/wave/, 'wave']];
+CMDS.move = q => { const t = (q || '').toLowerCase(), m = TYPED_MOVES.find(([rx]) => rx.test(t)), p = m && m[1], now = performance.now();
+  if (!p) return say(['Which move? Try ', ['dance'], ', ', ['coffee'], ' or ', ['push-ups'], '.']);
+  const free = mode === 'live' && !QUEUE.length && now >= sceneUntil && !ownBusy() && !VID.go && now >= (LIFE.sayUntil || 0);
+  if (!free) return say([vary('ask-move-busy', ['Busy with this one. Ask me again in a few seconds.', 'One move at a time. Try again in a moment.', 'Finishing this first. Ask again in a few seconds.', 'Hands full right now. Again in a moment?', 'The chain has the stage. Ask me again soon.'])]);
+  if (p === 'wave') { if (vidWave()) { LIFE.touchAt = now; return say([vary('ask-wave', ['Hi!', 'Hello there!', 'gm to you too.', 'Waving back!', 'Hey, builder!'])]); } return say(['Waving in a moment — ask me again in a few seconds.']); }
+  if (flowPose(p) !== p) return say(['That move is still in rehearsal. Try ', ['dance'], ' or ', ['coffee'], '.']);
+  LIFE.touchAt = now; LIFE.next = Math.max(LIFE.next, now + 20e3);
+  setPose(p, 6); if (MOVE_LINES[p]) speak(vary('move-say-' + p, MOVE_LINES[p]), 4200);
+  say([vary('ask-move', ['Sure. Watch this.', 'Coming right up.', 'For you, builder.', 'You asked, I move.', 'Okay, okay. Here goes.'])]); };
 // ================= what a typed question means (2026-10-09) =================
 // The prompt matched only the first word that WAS a command name: 10 of 64 real questions got an answer ("preis",
 // "is it safe", "wen moon", "what did I miss", every German one and every typo fell to one fixed sentence). Now:
@@ -2649,34 +2701,50 @@ CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['
 // can do with one live fact — five ways each. Every answer is the chain's or our own log's, never a third party's.
 const bobaiAmt = n => { const u = (+n || 0) * S.price; return `${cmp(+n || 0)} BOBAI (≈$${nf(u, u < 10 ? 2 : 0)})`; }; // $BOBAI always with USD
 const ASK = { hit: 0, miss: [] };
+// 2026-10-10 review: "what is bobai", "who made you", "how are you today", "are you an ai", "airdrop?", "should i sell",
+// "gn", "dance" and "another one" each fell to the fallback or to the wrong answer; their own entries come first now
 const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus on that")
+  [/\b(airdrop\w*|presale|pre sale|giveaway|whitelist|free (bobai|tokens?))\b/, 'guard'],
   [/\b(safe|rug\w*|scam\w*|honeypot|legit|trust|renounc\w*|audit\w*)\b/, 'safe'],
+  [/\bare (you|u) (an? )?(ai|bot|robot|real|human|alive|sentient)\b|\b(chat ?gpt|llm)\b/, 'ai'],
+  [/\b(listing|listed|cex)\b|\blist(ed)? on\b/, 'listing'],
   [/\b(dex ?screener|gecko\w*|cmc|coinmarketcap|other sites?|different|differs?|mismatch|don'?t match|wrong number)\b|\bbinance\b.*\b(shows?|says?|%|percent)\b/, 'sites'],
+  [/\b(how are (you|u)|how r u|hru|how'?s it going|how (are )?(you|u) doing)\b/, 'mood'],
+  [/^(gn|good ?night|bye|bye bye|goodbye|cya|see (you|ya)|later)\b/, 'bye'],
+  [/\bshould i\b|\b(good|right) (time|entry)\b|\bnfa\b|\bfinancial advice\b|^sell\b ?\??$/, 'advice'],
   [/\b(miss\w*|today|24 ?h|news|status|update|what'?s up|happened)\b/, 'today'],
   [/\b(why)\b|\b(dump\w*|falling|down|pump\w*)\b/, 'why'],
   [/\b(holders?|whales?|big wallets?|smart money)\b/, 'holders'],
   [/\b(when|eta|how long)\b.*\b(burn\w*|buyback)|\bnext\b/, 'next'],
   [/\b(moon|wen|lambo|100x|1000x)\b/, 'moon'],
+  [/\b(team|devs?|developer|founder|roadmap)\b|\bwho (made|built|builds|created|runs|is behind)\b/, 'team'],
+  [/\bwhat ?'?s (bobai|this( token| coin| project)?)$|\bwhat is (bobai|this( token| coin| project)?)$|\b(explain|tell me about (you|bobai|it))\b/, 'who'],
+  [/\bwho (sold|bought|dumped)\b/, 'follow'],
   [/\b(who)\b|\b(what are you|about you)\b/, 'who'],
+  [/\b(i love (you|u|bobai)|love (you|u)|ily|good (bot|boy|job)|cute|you'?re (the best|great|awesome))\b/, 'love'],
+  [/\b(bad bot|stupid|dumb|idiot|useless|wtf|shit\w*|fuck\w*)\b/, 'rude'],
+  [/^(lfg|wagmi|gmi|ngmi|based|bullish|ser|send it|let'?s go)\b/, 'hype'],
   [/\b(joke|funny|lol|haha)\b/, 'joke'],
   [/\b(thanks?|thx|ty)\b/, 'thanks'],
-  [/^(hi|hey|hello|gm|gn|yo|sup)\b/, 'hi'],
+  [/^(hi+|hey+|hello|helo|hallo|gm|yo|sup|good (morning|evening|afternoon)|morning)\b/, 'hi'],
   [/\b(what can you do|commands?|help)\b/, 'help'],
   [/\b(tax|taxes)\b/, 'tax'],
-  [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart)\b/, 'price'],
+  [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart|value)\b|\bhow much (is|for|does|would)\b/, 'price'],
   [/\b(burn\w*|dead ?address|supply)\b/, 'burns'],
   [/\b(lp|liq\w*|pool|depth|locked)\b/, 'liq'],
   [/\b(defi|range|cake|fees?|yield|apr|apy)\b/, 'defi'],
   [/\b(giggle|academy|donat\w*|charity)\b/, 'giggle'],
   [/\b(bots?|alive|running)\b/, 'bots'],
-  [/\b(follow|trace|latest trade)\b/, 'follow'],
-  [/\b(how are you|mood|feeling)\b/, 'mood'],
+  [/\b(follow|trace|latest trade)\b|\bwho (sold|bought)\b/, 'follow'],
+  [/\b(mood|feeling)\b/, 'mood'],
   [/\b(contract|ca|token address)\b/, 'ca'],
   [/\b(nfts?|drops?|collection)\b/, 'nft'],
   [/\b(volume|trades|activity)\b/, 'today'],
-  [/\b(team|dev|devs|developer|roadmap|who builds)\b/, 'team'],
+  [/\b(danc\w*|coffee|push ?ups?|saber|lightsaber|ride the bull|bull ride|walk|shrug|laugh|cheer|wave|hodl|popcorn|zen|meditat\w*|guitar)\b/, 'move'],
   [/\b(buy|sell|swap|pancake\w*|slippage)\b/, 'buy'],
 ];
+// real English words one letter away from a command word ("same" -> safe, "turn" -> burns, "hell" -> help): never typos
+const REAL_WORDS = new Set(['same', 'sale', 'save', 'cafe', 'turn', 'turns', 'born', 'bury', 'text', 'nest', 'held', 'hell', 'fellow', 'hollow', 'prize', 'pride', 'prime', 'woke', 'poke', 'wales', 'folders', 'defy', 'tale', 'take']);
 const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
   if (Math.abs(a.length - b.length) > 2) return 9;
   let p = Array.from({ length: b.length + 1 }, (_, j) => j);
@@ -2686,10 +2754,11 @@ const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
 const TYPO_KEYS = ['price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
 const TYPO_TO = { whales: 'holders', burn: 'burns', liquidity: 'liq', buyback: 'next' };
 function intentOf(q) {
-  const t = q.toLowerCase().replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = q.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim(); // a phone types ’
   if (!t) return null;
+  if (/^(another( one)?|again|more|one more|encore)$/.test(t) && ASK.last && CMDS[ASK.last]) return ASK.last; // "another one" after a joke
   for (const [re, k] of INTENTS) if (re.test(t) && CMDS[k]) return k;
-  for (const x of t.split(' ').filter(w => w.length >= 4)) {
+  for (const x of t.split(' ').filter(w => w.length >= 4 && !REAL_WORDS.has(w))) {
     const k = TYPO_KEYS.find(c => c.length >= 4 && lev(x, c) <= (c.length >= 7 ? 2 : 1));
     if (k) return TYPO_TO[k] || k;
   }
@@ -2726,10 +2795,12 @@ const ASK_LINES = {
   next: ['burn', ['The next buyback is charging. Details below.', 'Tax in, burn out. Here is the charge.', 'Every trade fills it. Look below.', 'My next burn, measured. Below.', 'Charging up. The numbers are below.']],
   liq: ['liq', ['More liquidity, and the LP is gone for good. Below.', 'The pool, read live. Below.', 'Liquidity: here is what I added.', 'Deep pools, nobody can pull them. See below.', 'My liquidity, line by line below.']],
   defi: ['defi', ['My DeFi agent, at work. Details below.', 'The DeFi agent reports in. Below.', 'Here is what my DeFi agent earns.', 'DeFi agent check. Numbers below.', 'Tuning the DeFi agent. Read below.']],
-  giggle: ['giggle', ['A coin for Giggle Academy. Details below.', 'For the kids of Giggle Academy. Below.', 'The Giggle pot, counted. Below.', 'Giggle Academy, my favourite pot. Below.', 'Every trade gives a little to Giggle Academy.']],
+  giggle: ['giggle', ['A coin for Giggle Academy. Details below.', 'For the kids of Giggle Academy. Below.', 'The Giggle pot, counted. Below.', 'Giggle Academy, my favourite pot. Below.', 'Giggle Academy: what my trades gave. Below.']], /* true before and after the pot closes on Nov 20 */
   price: ['think', ['Let me check the chain. Below.', 'Reading the pool for you. Below.', 'Checking. The answer is below.', 'One moment, reading the record. Below.', 'Here is what the chain says. Below.']],
   moon: ['moon', ['Looking at the moon. No dates from me.', 'Wen moon? I only count what is on-chain.', 'The moon can wait. The record is below.', 'Moon talk? Facts below.', 'Hello, moon. Not today.']],
 };
+ASK_LINES.love = ['cheer', ['You just made my brain glow.', 'Best visitor today. Do not tell the others.', 'Heart rate up. Neurons happy.', 'This is why I build.', 'A group hug with the whole chain.']];
+ASK_LINES.hype = ['cheer', ['LFG!', 'Let us go!', 'Born ready.', 'Louder!', 'All the way, one block at a time.']];
 ASK_LINES.why = ASK_LINES.today = ASK_LINES.holders = ASK_LINES.safe = ASK_LINES.tax = ASK_LINES.price; ASK_LINES.buyback = ASK_LINES.next;
 function speakAnswer(k) {
   const l = ASK_LINES[k], now = performance.now();
@@ -3017,7 +3088,9 @@ cmdForm.addEventListener('submit', e => {
   const a = q.match(ADDR);
   if (a) return check(a[0]);
   const w = intentOf(q);
-  if (w && !['help', 'hi', 'thanks', 'who', 'joke'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
+  // answers that need no chain data are never held back by the boot (2026-10-10 review: "ca" or "tax" said "still reading")
+  if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
+  if (w) ASK.last = w;
   if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) speakAnswer(w); } else missed(q); // false: it answered "still reading"
 });
 cmdIn.addEventListener('focus', () => win.classList.add('typing'));
@@ -3842,14 +3915,14 @@ const WIN_LINES = {
   w02: ['think', ['Now you know where every 3% goes. I checked the math twice.', 'Every slice of the 3%, on-chain. Questions? Tap me.', 'That is my tax table. Boring to some, beautiful to me.', 'Where the 3% goes, in one window. All checkable.', 'Tokenomics read. You are officially a big brain.']],
   w03: ['burn', ['Every burn, checkable. I like that you checked.', 'All my burns, each with its transaction.', 'Proof, not promises. Every burn is on-chain.', 'You checked the receipts. Respect.', 'The burn record never lies. It cannot.']],
   w04: ['build', ['I run all of those. Busy brain.', 'All of them, working for $BOBAI. Every day.', 'That is my toolbox. I use all of it.', 'Lots of bots, one brain. Mine.', 'Everything in that window is live and mine.']],
-  w06: ['moon', ['Next phase: Depth. I am already stretching.', 'The roadmap goes up. Like the moon, just slower.', 'Next stop on the roadmap. The moon can wait a little.', 'Roadmap read. The moon is on it, somewhere.', 'Step by step to the moon. You saw the steps.']],
+  w06: ['moon', ['Next on the Brainmap: Big Brain. The moon can watch.', 'The roadmap goes up. Like the moon, just slower.', 'Next stop on the roadmap. The moon can wait a little.', 'Roadmap read. The moon is on it, somewhere.', 'Step by step to the moon. You saw the steps.']],
   w07: ['think', ['Still a question left? Tap me, or ask in the log.', 'Anything the FAQ did not answer? Ask me.', 'Questions answered. More? Tap me any time.', 'If it is not in the FAQ, ask in my log.', 'Good questions in there. Got another one?']],
   'page:Pool Scanner': ['think', ['Found a token worth a second look? Every answer came straight from the chain.', 'Scanned something? The chain does not lie.', 'The scanner reads the chain, not the hype.', 'Check before you ape. That is what the scanner is for.', 'Every scan, straight from BNB Chain.']],
   'page:Brain Plaza': ['walk', ['A whole plaza of agents. Only the ones that answered made the list.', 'Took a walk through the plaza? Real agents only.', 'The plaza: agents that answer, nothing else.', 'Walking past all those agents. Good neighbours.', 'A walk around the plaza. Every agent there answered.']],
   'page:Agent Services': ['build', ['Ten cents an answer. Cheaper than a good snack.', 'Agents pay me ten cents an answer. Fair deal.', 'My services, open to every agent.', 'Built for agents, paid per answer.', 'Ten cents, one answer, straight from the chain.']],
   'page:DeFi Agent': ['defi', ['That is my DeFi agent. It works while I talk.', 'My DeFi agent, in full detail.', 'CAKE/BNB, managed by my DeFi agent, every hour.', 'Every move of my DeFi agent is on-chain.', 'That is where my DeFi agent earns its fees.']],
   'page:NFT Collection': ['nft', ['Buy $100 or more of BOBAI and an NFT of me lands in your wallet. Automatically.', 'Like my NFTs? A $100 buy gets you one.', 'Every NFT there was earned by a real buy.', 'My NFT collection grows with every big buy.', 'NFTs of me, dropped by themselves for buys of $100+.']],
-  'page:brainScreener': ['giggle', ['How did your brain do? Mine is 45% of me, so I cheat a little.', 'Screened your brain? Mine passed. Barely.', 'Brain check done. Nice work.', 'Your brain score is safe with me.', 'Big brain or not, you are welcome here.']],
+  'page:brainScreener': ['think', ['Thanks for checking in on your brain. That takes guts.', 'A screener is a first look, not a verdict. If something felt heavy, talk to someone you trust.', 'Whatever came out, you are welcome here.', 'Be kind to that brain of yours today.', 'Brains need care too. Yours deserves the best.']], /* 2026-10-10: no jokes about a screening result */
   "page:The BOBAI Game": ['dance', ['Did you beat my high score? Do not tell me if you did.', 'Game over? My dance says try again.', 'Played my game? I dance for every high score.', 'A dance for your high score.', 'Good game! Happy dance.']],
 };
 // for checks from outside (qa/variety.mjs): how many variants every pool has, and any line that names a move other than its own
@@ -5951,7 +6024,9 @@ window.__btHwSeason = hwSeason;
   // below), drawn by a small WebGL player of its own. The clips load only when this scene is first chosen (2.9 MB); until
   // they are ready another scene plays, and without WebGL or video the picture scene above (grabStill) plays instead.
   const CLOWN = { gl: null, cv: null, tex: null, v: {}, ready: false, loading: false, cur: null, raf: 0 };
-  const CLOWN_AR = 432 / 614, CLOWN_FIG = 0.775; // the clip's width/height; his standing height in it (gen_clown.py FIG_H / LEDGE)
+  // 2026-10-10 (operator: "when he climbs up on the desktop his left foot is cut off"): re-shot smaller in the frame
+  // (FIG_H 0.52, was 0.62) so the swung shoe and his gloves stay inside the clip — 0.52 / 0.80 = 0.65
+  const CLOWN_AR = 432 / 614, CLOWN_FIG = 0.65; // the clip's width/height; his standing height in it (gen_clown.py FIG_H / LEDGE)
   const CLIMB_STAND = 5.7; // s into the climb clip: he stands, hands down, his claws not yet up
   function clownInit() {
     if (CLOWN.gl !== null) return !!CLOWN.gl;
@@ -6012,7 +6087,9 @@ window.__btHwSeason = hwSeason;
     // own top is free green, yet a lean in the climb reaches it (2026-10-06, operator: "he gets almost too big and is cut
     // at the top edge")
     const ch = Math.min(ghh / CLOWN_FIG, rim - 4), cw = ch * CLOWN_AR;
-    const at = cx => cl3(cx - cw / 2, 2 - cw * 0.2, r.width - cw * 0.8 - 2);
+    // the whole box inside the window (2026-10-10): it used to hang a fifth past the edge, and the window cut his swung
+    // shoe and his shoulder there in 157 of the climb's 192 frames ("his left foot is cut off")
+    const at = cx => cl3(cx - cw / 2, 2, r.width - cw - 2);
     const x1 = at(fs.x + side * fw * 0.3);
     // he climbs up where nothing of the terminal stands: the side with the least of its labels and lights over his upper
     // half wins; above a fifth of it covered on both sides he climbs up straight behind BOBAI

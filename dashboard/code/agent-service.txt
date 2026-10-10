@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 49 files, 17386 lines.
+# one fetch. 49 files, 17405 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8441,7 +8441,7 @@ export default {
         defaultInputModes: ['application/json', 'text/plain'],
         defaultOutputModes: ['application/json'],
         skills: [
-          { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to my PancakeSwap V3 position 7450561'] },
+          { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
           { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: '0.10 $U (ERC-8183 escrow)', escrow: true },
         ],
@@ -8712,7 +8712,7 @@ export default {
     // The plan (re-set, width, what spare BNB adds) is the paid answer.
     if (path === '/lp/look') {
       const params = { position: url.searchParams.get('position') || undefined, address: url.searchParams.get('address') || undefined };
-      if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet> (a wallet with several positions is answered with their ids)', example: '/lp/look?position=7324788' }, 400);
+      if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet> (a wallet with several positions is answered with their ids)', example: '/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' }, 400);
       try { return thankJson(request, await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
       catch (e) { return json({ error: String(e.shortMessage || e.message).slice(0, 200) }, 400); }
     }
@@ -9324,7 +9324,12 @@ ${pageTail}`;
       if (want) {
         const one = t.ours.find((a) => String(a.id) === want || a.category === want);
         if (!one) return json({ error: `no agent "${want}" here`, agents: t.ours.map((a) => ({ id: a.id, category: a.category })) }, 404);
-        return json({ ...one, checked_at: one.checked_at || t.checked_at, method: t.method });
+        // A category can hold more than one agent (2026-10-10): the first stays
+        // at the top level as before, and `agents` carries every one of them.
+        const byId = t.ours.some((a) => String(a.id) === want);
+        const same = byId ? [] : t.ours.filter((a) => a.category === want);
+        return json({ ...one, checked_at: one.checked_at || t.checked_at, method: t.method,
+          ...(byId ? {} : { agents: same.map((a) => ({ ...a, checked_at: a.checked_at || t.checked_at })), count: same.length }) });
       }
       return json({
         origin: 'https://agent.brainonbnb.com',
@@ -15782,6 +15787,20 @@ const isChainRefusal = (e) => {
   return CHAIN_REFUSED.test(m);
 };
 
+// A headline that fits (2026-10-10): a cut at a fixed length ended mid-word
+// ("Gro ·"). The cut lands on the last sentence end inside the limit, else on
+// the last word boundary with an ellipsis.
+export function clipHeadline(text, max = 220) {
+  const s = String(text).trim();
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  let end = -1;
+  for (const m of head.matchAll(/[.!?](?=\s|$)/g)) end = m.index + 1;
+  if (end > max * 0.4) return head.slice(0, end); // never down to a stub of a first sentence
+  const sp = head.slice(0, max - 1).search(/\s\S*$/);
+  return (sp > 0 ? head.slice(0, sp) : head.slice(0, max - 1)).replace(/[\s,;:·–—-]+$/, '') + '…';
+}
+
 /**
  * The failure half of a probe, with the cause named.
  *
@@ -15959,7 +15978,7 @@ async function probeDefiAgent(env) {
       ready: true,
       checked_at: at,
       live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
-      headline: plan.verdict ? String(plan.verdict).slice(0, 220) : 'position read, no verdict formed',
+      headline: plan.verdict ? clipHeadline(plan.verdict, 220) : 'position read, no verdict formed',
       measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
       not_ready_because: null,
       chain_needed_a_second_attempt: attempt.retried === true,

@@ -1466,6 +1466,8 @@ const page = `<!doctype html>
   /* three quote answers (2026-10-09): amber = answered without a price */
   .rgc-strip li.rgc-input{border-color:rgba(245,184,61,.45)}
   .rgc-strip li.rgc-input::before{content:'?';color:#f5b83d}
+  /* on a phone a long chip (the hire history) wraps instead of ending in "…" */
+  @media(max-width:560px){.rgc-strip li{white-space:normal;border-radius:12px}}
   .rgc .rg-hirebtn.rg-hire-muted{border-color:var(--line);color:var(--muted);background:transparent}
   .rgc .rg-hirebtn.rg-hire-muted:hover{border-color:var(--muted);color:var(--text);background:transparent}
   .rg-catlead{margin:-6px 0 14px;font-size:.85rem;line-height:1.5}
@@ -1950,6 +1952,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   <div class="fm">
     <p>Read from BNB Chain directly &middot; registry <a href="https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">0x8004&hellip;a432</a> &middot; method and raw data linked above</p>
     <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; <a href="/advantage">Advantage report</a> &middot; <a href="/session">Agent spending authority</a></p>
+    <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
   </div>
 </div></footer>
 

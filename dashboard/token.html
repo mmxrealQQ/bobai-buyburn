@@ -23,15 +23,15 @@
   <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
   <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=55" as="style">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="preload" href="styles.css?v=56" as="style">
+  <link rel="stylesheet" href="styles.css?v=56">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
   <nav><div class="nav">
-    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/token">The Token</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
@@ -43,7 +43,7 @@
       <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
-        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens and nothing hidden: the 3% rate is fixed in the contract, and every change of the split is announced and logged.</p>
         <div class="about-tags">
           <span>AI-Built</span>
           <span>Deflationary</span>
@@ -57,7 +57,7 @@
     <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
     <div class="fl">
       <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax collects in the token contract, then goes out as BNB.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
     </div>
@@ -146,7 +146,7 @@
     <div class="sh fi"><h2><em>Token</em>omics</h2></div>
     <div class="tg4">
       <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
-      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>All burned. Fully community.</p></div>
+      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>No dev tokens — 100% fair launch on Four.Meme.</p></div>
       <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
       <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
     </div>

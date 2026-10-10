@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7174 lines.
+# one fetch. 6 files, 7191 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1379,6 +1379,12 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     if(kind==='v3')return await simulateV3Sell(token,pair);
     if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs and V3 pools; this pool is neither'};
     token=token.toLowerCase();
+    // WBNB ITSELF (2026-10-10). The probe sells into WBNB, so for WBNB the path
+    // became [WBNB, USDT, WBNB], the second hop got nothing in, and the
+    // preflight stopped WBNB as not sellable and not buyable. WBNB is BNB
+    // wrapped one to one by its own contract, with no transfer tax: there is
+    // no trip to test, and the answer says so instead of running one.
+    if(token===WBNB)return wbnbItself(pair);
     const url=RPCS[0];
     // THE PAIR THE PROBE REALLY TRADES THROUGH (2026-09-18). The probe sells
     // token -> WBNB through PancakeSwap's V2 router, whatever pair was scanned.
@@ -1410,6 +1416,9 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
       const qp=addrAt((await rpcBatch([call(V2FACTORY,getPair(quote,WBNB))],url))[0]);
       if(qp&&qp!==NULLA){path=[token,quote,WBNB];through=true}
     }
+    // A path that ends on the token it starts from is a trip to nowhere: the
+    // last hop gets nothing in and reads as a refusal.
+    if(path[0]===path[path.length-1])return wbnbItself(pair);
     if(!through){
       if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and neither this token nor the pool that was read has a route there — not run, not cleared'};
       pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);
@@ -1462,6 +1471,13 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     }
     return {...plain,...named,tax:null};
   }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}
+function wbnbItself(pair){
+  return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:null,
+    size_note:'no test balance: WBNB is the coin the test sells into',pair:String(pair||'').toLowerCase(),path:[WBNB],through_scanned_pool:true,
+    tax:{sell_pct:0,buy_pct:0,method:'not simulated: WBNB unwraps to BNB 1:1 through its own contract (withdraw) and charges no transfer tax'},
+    note:'WBNB is BNB wrapped one to one; it unwraps 1:1 through its own contract at any time, so there is no sell to test.',
+    source:'the WBNB contract itself, not a simulation'};
 }
 async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path=[token,WBNB]){
   const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');
@@ -3128,8 +3144,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=55" as="style">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="preload" href="styles.css?v=56" as="style">
+  <link rel="stylesheet" href="styles.css?v=56">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -3606,6 +3622,7 @@ export async function scan(input, env) {
   <div class="fm">
     <p>Read live from BNB Chain in your own browser &mdash; nothing stored, nothing logged &middot; contract properties by <a href="https://gopluslabs.io" target="_blank" rel="noopener">GoPlus</a> &middot; venue index by <a href="https://dexscreener.com" target="_blank" rel="noopener">DexScreener</a></p>
     <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
+    <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
   </div>
 </div></footer>
 </div>
@@ -6043,7 +6060,7 @@ export { flagsCard, verdictCard };
     .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
     .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}
     table{width:100%;border-collapse:collapse;background:var(--card);backdrop-filter:blur(16px)}
-    table thead th{position:sticky;top:0;z-index:1}
+    table thead th{position:sticky;top:0;z-index:1;background:linear-gradient(rgba(240,185,11,.03),rgba(240,185,11,.03)),#1a1615} /* solid: a scrolled row no longer shows through the header (2026-10-10) */
     table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
     table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
     table tr:hover{background:rgba(240,185,11,.015)}

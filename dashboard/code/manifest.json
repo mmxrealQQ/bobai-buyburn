@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7174,
-   "zipBytes": 158212,
-   "txtBytes": 473998,
-   "sha256": "2a37867a845881ba",
+   "lines": 7191,
+   "zipBytes": 158726,
+   "txtBytes": 475664,
+   "sha256": "937c369621ecb030",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1321,
-   "zipBytes": 27841,
-   "txtBytes": 73274,
-   "sha256": "32841bbedfb1a30d",
+   "lines": 1322,
+   "zipBytes": 27945,
+   "txtBytes": 73578,
+   "sha256": "423c3ed8ba447955",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2758,
-   "zipBytes": 79708,
-   "txtBytes": 228536,
-   "sha256": "4e46fe029d7b46a1",
+   "lines": 2773,
+   "zipBytes": 80264,
+   "txtBytes": 230284,
+   "sha256": "44d71a75ac32d559",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
-   "lines": 17386,
-   "zipBytes": 393108,
-   "txtBytes": 1111668,
-   "sha256": "baf817ef78212963",
+   "lines": 17405,
+   "zipBytes": 393589,
+   "txtBytes": 1112866,
+   "sha256": "933e772dbdff987f",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -728,10 +728,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4546,
-   "zipBytes": 97573,
-   "txtBytes": 277728,
-   "sha256": "3371e6009f8c3972",
+   "lines": 4549,
+   "zipBytes": 97698,
+   "txtBytes": 278193,
+   "sha256": "9fe74419042bdfdc",
    "reqs": [
     {
      "what": "Node 18+ and time",

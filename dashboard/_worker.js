@@ -845,15 +845,27 @@ function errorAnswer(e) {
     no_pool: 'No pool was found at the venues read. A token still on its four.meme launch curve is answered by bsc_token_preflight and bsc_pool_scan from the curve.',
     not_measurable: 'A determinate answer about this address: asking again will not change it. The error sentence says why.',
     chain_unavailable: 'The chain or a log endpoint did not answer in time. Retry in a few seconds.',
+    // bsc_rug_watch's own refusals (2026-10-10), passed through from the agent worker with their code.
+    bad_body: 'Send the arguments token (the BSC token address) and callback (your https endpoint).',
+    bad_token: 'token must be the BSC token contract: 0x followed by 40 hex characters.',
+    bad_callback: 'callback must be your own public https:// URL — no localhost, private address, user name or password, and not a brainonbnb.com host. The error sentence names what was wrong.',
+    free_limit: 'Your one free watch is already running. Cancel it (DELETE /rug-watch/<id> with x-rug-watch-secret), or add wallet, issued and signature for the holder tier.',
+    free_capacity: 'Every free watch slot is taken right now. Try again later, or register with the holder tier.',
+    holder_limit: 'This wallet already has the most active watches a holder gets. Cancel one to add another.',
+    capacity: 'Every watch slot is taken right now. Try again later; watches end after 30 days.',
+    below_holder_line: 'The holder tier needs 1,000,000 $BOBAI in the signing wallet. Without wallet, issued and signature you get one watch free.',
   };
   const bad = /Invalid BSC address|Give a BSC token|must be a positive number/.test(msg);
   const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$/i.test(msg);
   const code = bad ? (/must be a positive number/.test(msg) ? 'bad_usd' : 'bad_address')
     : HINTS[e?.code] && e.code !== 'bad_address' && e.code !== 'bad_usd' ? e.code
+    // a refusal relayed from another worker keeps its own code, hint or not
+    : e?.relayed && typeof e.code === 'string' && /^[a-z_]{2,40}$/.test(e.code) ? e.code
     : infra ? 'chain_unavailable'
     : /not a BSC token|not a token or a pool/.test(msg) ? 'not_a_token'
     : 'not_measurable';
-  return { status: bad ? 400 : code === 'chain_unavailable' ? 503 : 422, body: { error: msg, code, hint: HINTS[code] } };
+  const relayedStatus = e?.relayed && [400, 403, 404, 429, 503].includes(e.status) ? e.status : 0;
+  return { status: bad ? 400 : relayedStatus || (code === 'chain_unavailable' ? 503 : 422), body: { error: msg, code, hint: HINTS[code] || 'The error sentence says why and what to change.' } };
 }
 // A tool's refusal re-thrown in plain words with its code kept (2026-10-09).
 const refusal = (e, fallback) => Object.assign(new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || fallback)), typeof e?.code === 'string' ? { code: e.code } : {});
@@ -872,7 +884,10 @@ async function runTool(rawName, args, caller = {}) {
       const r = await fetch('https://agent.brainonbnb.com/rug-watch', { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(40000) });
       const j = await r.json().catch(() => null);
       if (!j) throw new Error(`The rug watch did not answer (http ${r.status}). Nothing was registered; the terms are at GET https://agent.brainonbnb.com/rug-watch.`);
-      if (!r.ok) throw new Error(`${j.error || 'Refused.'}${j.code ? ` (code: ${j.code})` : ''} Terms: GET https://agent.brainonbnb.com/rug-watch.`);
+      // The agent worker's code goes through (2026-10-10): bad_callback came back as not_measurable, "asking again
+      // will not change it", for a callback the caller only had to fix.
+      if (!r.ok) throw Object.assign(new Error(`${j.error || 'Refused.'} Terms: GET https://agent.brainonbnb.com/rug-watch.`),
+        { relayed: true, status: r.status, ...(typeof j.code === 'string' ? { code: j.code } : {}) });
       return j;
     }
     case 'find_agents_on_bnb_chain': {

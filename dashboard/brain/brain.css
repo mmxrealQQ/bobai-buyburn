@@ -43,12 +43,13 @@ body.brainpage{margin:0;min-height:100vh;min-height:100svh;color:var(--bp-text);
    differently under a shadowed ancestor — measured 2026-09-26: 59,53,56 instead of 11,9,10) */
 
 /* ---- a card: the window, closed ---- */
-.bw-card{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px;text-align:left;cursor:pointer;padding:12px 14px;border-radius:16px;
+/* button.bw-card (2026-10-10): the Classic markup inside window 03 uses .bw-card for its plain boxes — they looked clickable */
+button.bw-card{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px;text-align:left;cursor:pointer;padding:12px 14px;border-radius:16px;
   color:var(--bp-text);font:inherit;border:1px solid var(--bp-line);
   background:radial-gradient(120% 90% at 0% 0%,rgba(240,185,11,.07),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/11px 11px,rgba(14,11,12,.72);
   transition:border-color .25s,transform .25s,box-shadow .25s}
-.bw-card:hover,.bw-card:focus-visible{border-color:var(--bp-line2);transform:translateY(-2px);box-shadow:0 0 26px rgba(240,185,11,.12);outline:none}
-.bw-card:focus-visible{outline:2px solid var(--bp-gold);outline-offset:2px}
+button.bw-card:hover,button.bw-card:focus-visible{border-color:var(--bp-line2);transform:translateY(-2px);box-shadow:0 0 26px rgba(240,185,11,.12);outline:none}
+button.bw-card:focus-visible{outline:2px solid var(--bp-gold);outline-offset:2px}
 .bp-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .bw-n{font:800 11px var(--bp-mono);color:var(--bp-gold);letter-spacing:.1em;margin-bottom:2px}
 .bw-go{position:absolute;top:8px;right:12px;font-style:normal;color:var(--bp-muted);font-size:13px}
@@ -84,7 +85,7 @@ body.bp-winon{overflow:hidden}
   .bp-grid{grid-template-columns:repeat(4,1fr);grid-template-rows:minmax(0,1fr) auto auto;height:auto;min-height:calc(100svh - 54px)}
   .bp-center{grid-column:1/-1;grid-row:1;order:-1;height:calc(100svh - 54px - 24px - 2*96px - 20px);min-height:440px}
   .bp-side{display:contents}
-  .bw-card{min-height:96px}
+  button.bw-card{min-height:96px}
   .bp-tick{display:none}
 }
 /* ---- tall: a phone, a foldable closed ---- */
@@ -97,7 +98,7 @@ body.bp-winon{overflow:hidden}
   .bp-grid{display:grid;grid-template-columns:1fr 1fr;height:auto;padding:8px;gap:8px}
   .bp-center{grid-column:1/-1;order:-1;height:calc(100svh - 54px - 16px);border-radius:16px}
   .bp-side{display:contents}
-  .bw-card{min-height:108px}
+  button.bw-card{min-height:108px}
   .bw-win{padding:0}
   .bw-frame{width:100%;height:100%;border-radius:0}
 }
@@ -107,7 +108,7 @@ body.bp-winon{overflow:hidden}
   .bp-grid{grid-template-columns:repeat(3,1fr);height:auto;padding:8px;gap:8px}
   .bp-center{grid-column:1/-1;order:-1;height:max(calc(100svh - 54px - 16px),520px);border-radius:16px}
   .bp-side{display:contents}
-  .bw-card{min-height:120px}
+  button.bw-card{min-height:120px}
   .bp-tick{display:none}
 }
 /* ---- two screens side by side (dual-screen foldables): the terminal on one, the cards on the other ---- */
@@ -116,7 +117,7 @@ body.bp-winon{overflow:hidden}
   .bp-center{grid-column:1;grid-row:1/span 7}
   .bp-side{display:contents}
 }
-@media (prefers-reduced-motion:reduce){.bw-card,.bw-frame,.bw-win{transition:none}}
+@media (prefers-reduced-motion:reduce){button.bw-card,.bw-frame,.bw-win{transition:none}}
 /* the card's own picture (cards.js) */
 .bw-viz{display:block;margin:8px 0 4px;min-height:0;flex:1;display:flex;align-items:flex-end}
 .bw-viz canvas{display:block}
@@ -144,10 +145,10 @@ body.bp-winon{overflow:hidden}
 /* ==== STAGE 2 (2026-09-26, operator: "the pop-ups in the style of the terminal's flipcharts") ====
    A window is a board of light: a whisper of its colour, the grid of dots, a glowing edge — the page shows through,
    blurred. The classic block inside loses its own frame (the window is the frame) and its cards turn to glass. */
-.bw-card{border-color:color-mix(in srgb,var(--c) 26%,transparent);
+button.bw-card{border-color:color-mix(in srgb,var(--c) 26%,transparent);
   background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--c) 10%,transparent),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/11px 11px,rgba(14,11,12,.72)}
-.bw-card:hover,.bw-card:focus-visible{border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:0 0 26px color-mix(in srgb,var(--c) 18%,transparent)}
-.bw-card .bw-n{color:var(--c)}
+button.bw-card:hover,button.bw-card:focus-visible{border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:0 0 26px color-mix(in srgb,var(--c) 18%,transparent)}
+button.bw-card .bw-n{color:var(--c)}
 .bw-frame{position:relative;border:1px solid color-mix(in srgb,var(--c) 42%,transparent);
   background:radial-gradient(90% 50% at 50% 0%,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%),
     radial-gradient(circle,rgba(255,236,200,.055) .8px,transparent 1.2px) 0 0/12px 12px,rgba(9,7,8,.8);
@@ -204,6 +205,7 @@ body.bp-winon{overflow:hidden}
 .bw-hero .ring li i{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor}
 .bw-hero .ring li b{margin-left:auto;color:#fff}
 .bw-hero .fq{width:100%;padding:11px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);background:rgba(0,0,0,.3);color:#f3efe6;font:500 14px 'Space Grotesk',sans-serif;outline:none}
+.bw-hero .fq-none{margin:10px 2px 0;color:var(--bp-muted);font-size:13px}
 .bw-hero .fq:focus{border-color:var(--c);box-shadow:0 0 18px color-mix(in srgb,var(--c) 20%,transparent)}
 @media (max-width:559px){.bw-hero .ring ul{grid-template-columns:1fr}.bw-hero .ring svg{width:110px;height:110px}.bw-hero .hf b{font-size:18px}}
 
@@ -233,9 +235,9 @@ body.bp-winon{overflow:hidden}
   border-color:rgba(255,255,255,.06)!important;background:rgba(255,255,255,.025)!important}
 .bw-body th{color:var(--bp-gold)!important}
 .bw-body h2 em,.bw-body .sh h2 em{color:var(--bp-gold)}
-.bw-card{border-color:rgba(240,185,11,.2);background:radial-gradient(120% 80% at 30% 0%,rgba(240,185,11,.06),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/12px 12px,rgba(9,7,8,.72)}
-.bw-card:hover,.bw-card:focus-visible{border-color:rgba(240,185,11,.45);box-shadow:0 0 26px rgba(240,185,11,.12)}
-.bw-card .bw-n{color:var(--bp-gold)}
+button.bw-card{border-color:rgba(240,185,11,.2);background:radial-gradient(120% 80% at 30% 0%,rgba(240,185,11,.06),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/12px 12px,rgba(9,7,8,.72)}
+button.bw-card:hover,button.bw-card:focus-visible{border-color:rgba(240,185,11,.45);box-shadow:0 0 26px rgba(240,185,11,.12)}
+button.bw-card .bw-n{color:var(--bp-gold)}
 .bp-soc a{width:auto;padding:0 9px;gap:6px;display:flex;align-items:center}
 .bp-soc a small{font:700 9px var(--bp-mono);letter-spacing:.08em}
 /* (the old text labels are gone; the CT badge shows at every width) */
@@ -267,8 +269,8 @@ body.bp-winon{overflow:hidden}
 .cv-nft b{color:#f3efe6}
 
 /* six cards, sized by what they hold (operator, 2026-09-26): the ecosystem gets room, roadmap and questions less */
-.bp-side .bw-card[data-open="w04"]{flex:1.5}
-.bp-side .bw-card[data-open="w06"],.bp-side .bw-card[data-open="w07"]{flex:.75}
+.bp-side button.bw-card[data-open="w04"]{flex:1.5}
+.bp-side button.bw-card[data-open="w06"],.bp-side button.bw-card[data-open="w07"]{flex:.75}
 /* the windows fit their content: the roadmap and the questions are narrower */
 #w06 .bw-frame{width:min(1040px,100%)}
 #w07 .bw-frame{width:min(860px,100%)}
@@ -307,7 +309,7 @@ body.bp-winon{overflow:hidden}
 .bp-side .cv-icons:has(.cv-app){grid-template-columns:repeat(2,max-content);justify-content:space-evenly;gap:12px 10px;width:100%}
 .bp-side .cv-app svg,.bp-side .cv-app img{flex:none;width:22px;height:22px}
 /* a card too narrow for two named columns (phone: 183 px) keeps the four-across icons without names */
-.bp-side .bw-card[data-open="w04"]{container-type:inline-size}
+.bp-side button.bw-card[data-open="w04"]{container-type:inline-size}
 @container (min-width:280px){.cv-app em{font-size:12px}.bp-side .cv-app svg,.bp-side .cv-app img{width:28px;height:28px}.bp-side .cv-icons:has(.cv-app){gap:18px 14px}.cv-app{gap:10px}} /* big screens: the card grows, so do its apps */
 @container (max-width:200px){.bp-side .cv-icons:has(.cv-app){grid-template-columns:repeat(4,auto);justify-content:center;gap:12px 14px}.cv-app em{display:none}}
 @media (max-aspect-ratio:3/4),(max-width:559px){.bp-side .cv-ring{justify-content:center}.bp-side .cv-ring ul{display:none}.bp-side .cv-ring svg{width:74px;height:74px}}
@@ -361,7 +363,7 @@ body.bp-big{overflow:hidden}
 body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
 
 /* 07 MORE (2026-10-05): the Classic footer's links as a small card and a window; the cards above it give a little */
-.bp-side .bw-card.bw-mini{flex:.36;justify-content:center}
+.bp-side button.bw-card.bw-mini{flex:.36;justify-content:center}
 .bw-mini .bw-viz,.bw-mini .bw-v{display:none}
 .bw-mini .bw-l{margin-top:2px}
 #w08 .bw-frame{width:min(760px,100%)}

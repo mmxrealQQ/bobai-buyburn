@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="$BOBAI — questions">
   <meta name="twitter:description" content="Answers about Brain On BNB AI: the contract, the buyback, the tax, safety, the agents.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=55" as="style">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="preload" href="styles.css?v=56" as="style">
+  <link rel="stylesheet" href="styles.css?v=56">
   <link rel="stylesheet" href="home.css?v=1">
   <script type="application/ld+json">
   {
@@ -92,7 +92,7 @@
           {
             "@type": "Question",
             "name": "How does the buyback & burn work?",
-            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade pays its 3% tax into the buyback wallet on-chain. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
+            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside a trade and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
           },
           {
             "@type": "Question",
@@ -182,7 +182,7 @@
         <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>From then on it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. The split in force and every earlier phase are in the <a href="/classic#about">tax schedule on the Classic page</a>.</div>
       </details>
       <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">A bot does it, not a person. Every trade pays its 3% tax into the buyback wallet on-chain. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
+        <div class="faq-body">A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside a trade and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
       <details class="faq-item"><summary>Is $BOBAI safe? Is the contract verified?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">The contract is verified and the usual rug-pull levers are gone; the price is not protected. What you can check on-chain: the source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, there is no proxy and no upgrade path, no mint and no pause function, and ownership is renounced. The LP tokens are burned (permanently locked): they sit at the dead address. That rules out minting new supply, pausing trading, swapping the contract and pulling the liquidity. It says nothing about the price: like any token, $BOBAI can go to zero. Independent trackers reading the same contract: <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>

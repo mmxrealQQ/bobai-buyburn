@@ -32,7 +32,7 @@
     const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
     const R = 17, C = 2 * Math.PI * R; let off = 0;
     el.innerHTML = `<div class="cv-ring"><svg viewBox="0 0 44 44"><circle r="${R}" cx="22" cy="22" class="bg"/>${parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="22" cy="22" stroke="${c}" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`; off += len; return s; }).join('')}<text x="22" y="25.5">3%</text></svg>`
-      + `<ul>${parts.slice(0, 4).map(([v, c, l]) => `<li><i style="background:${c}"></i>${l}<b>${v}%</b></li>`).join('')}</ul></div>`;
+      + `<ul>${parts.slice(0, 4).map(([v, c, l]) => `<li><i style="background:${c}"></i>${l}<b>${v}%</b></li>`).join('')}${parts.length > 4 ? `<li><i style="background:linear-gradient(90deg,${parts.slice(4).map((p) => p[1]).join(',')})"></i>${parts.slice(4).map((p) => p[2]).join(' · ')}<b>${+parts.slice(4).reduce((a, p) => a + p[0], 0).toFixed(2)}%</b></li>` : ''}</ul></div>`; /* all six slices of the ring (2026-10-10: the legend summed to 1.9 % under a 3 % ring) */
   }
 
   // 03 PROOF: BOBAI burned per day, 14 days (the burn log the homepage already read; read here when it has not)
@@ -68,7 +68,7 @@
     // "What comes next" names what comes next (2026-10-05: it showed the last shipped phase), with how many are shipped under it
     const act = ph.filter((p) => !p.classList.contains('rmn')).pop(), next = ph.find((p) => p.classList.contains('rmn')), v = $('[data-open="w06"] .bw-v'), l = $('[data-open="w06"] .bw-l');
     if (v && (next || act)) v.textContent = next ? 'Next · ' + (next.querySelector('h3')?.textContent || '') : act.querySelector('.rp')?.textContent.replace(/\s+—.*/, '') + ' · ' + (act.querySelector('h3')?.textContent || '');
-    if (l && next) l.textContent = `${ph.filter((p) => !p.classList.contains('rmn')).length} of ${ph.length} phases shipped`;
+    if (l && next) l.textContent = `${ph.filter((p) => !p.classList.contains('rmn')).length} of ${ph.length} phases live`; /* shipped or running, as the window says */
     el.dataset.done = 1;
   }
 
@@ -85,9 +85,9 @@
   function figs() {
     const ph = typeof window.__bobaiPhase === 'function' && window.__bobaiPhase(), v2 = $('[data-open="w02"] .bw-v');
     const end = ph && (typeof ph.end === 'number' ? ph.end : Date.parse(ph.end)) || window.__bobaiNums?.gg?.end;
-    if (v2 && end) { const d = Math.max(0, Math.ceil((end - Date.now()) / 86400e3)); v2.textContent = d + ' days'; }
+    if (v2 && end) { const ms = Math.max(0, end - Date.now()), d = Math.floor(ms / 86400e3), h = Math.floor(ms % 86400e3 / 3600e3); v2.textContent = d + ' d ' + h + ' h'; } /* as the window counts it (2026-10-10: card 41 days, window 40 days 19 hours) */
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
-    if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd);
+    if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }
   function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); }
   addEventListener('bobai:nums', all);

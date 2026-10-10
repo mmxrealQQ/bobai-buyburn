@@ -345,5 +345,17 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('the best-route answer carries block and measured_at', /\n    block: tag !== 'latest' \? parseInt\(tag, 16\) : \(tax\.block \?\? null\), measured_at: new Date\(\)\.toISOString\(\),/.test(sr));
 }
 
+// WBNB itself (2026-10-10): the sell test sells INTO WBNB, so for WBNB the path was [WBNB, USDT, WBNB], the second
+// hop got nothing in, and the preflight stopped WBNB as not_sellable / not_buyable. Now no trip is run (offline:
+// the answer comes before any node is asked), and the preflight has nothing to stop on.
+{
+  const { simulateRoundTrip } = await import(pathToFileURL(path.resolve(import.meta.dirname, '../dashboard/scanner-chain.js')).href);
+  const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', USDT_WBNB = '0x16b9a82891338f9ba80e2d6970fdda79d1eb0dae';
+  const sim = await Promise.race([simulateRoundTrip(WBNB, USDT_WBNB, false, 'v2'), new Promise((r) => setTimeout(() => r({ timeout: true }), 3000))]);
+  ok('WBNB: the sell test answers sellable and buyable without a trip, and says it unwraps 1:1', sim.ok === true && sim.sellable === true && sim.buyable === true && /1:1/.test(sim.note || '') && sim.tax?.sell_pct === 0, JSON.stringify(sim).slice(0, 200));
+  const o = shape(scan({ address: WBNB.toLowerCase(), sellability: sim }), route(), 250);
+  ok('… and the preflight does not stop WBNB', !/not_sellable|not_buyable/.test(codes(o.stop)) && o.gate !== 'stop', codes(o.stop));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

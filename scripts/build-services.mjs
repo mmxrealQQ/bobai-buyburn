@@ -366,6 +366,7 @@ ${CAPABILITIES[k].map(capRow).join('\n')}
   <div class="fm">
     <p>Everything here is generated from <code>worker-agent/catalog.js</code> &middot; the same offer a machine reads at <a href="https://agent.brainonbnb.com/stats" rel="noopener">/stats</a> &middot; the code is published at <a href="/source">/source</a></p>
     <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/scanner">Pool Scanner</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
+    <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
   </div>
 </div></footer>
 </div>

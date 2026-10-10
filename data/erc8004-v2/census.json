@@ -1,7 +1,7 @@
 {
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "BNB Smart Chain (eip155:56)",
-  "measured_at": "2026-10-04T16:11:20.994Z",
+  "measured_at": "2026-10-10T11:45:08.453Z",
   "method": "Every agent id in the identity registry read via tokenURI, then every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401/403/404 — only a failed connection counts as dead.",
   "registered_ids": 363836,
   "ids_scanned": 363836,
@@ -22,9 +22,9 @@
   "endpoints": {
     "claim_an_endpoint": 1985,
     "probed": 1985,
-    "reachable": 921,
-    "dead": 1064,
-    "answering_mcp": 300,
+    "reachable": 922,
+    "dead": 1063,
+    "answering_mcp": 296,
     "serving_an_agent_card": 356,
     "a2a_callable": 338,
     "a2a_confirmed_by_probe": 2

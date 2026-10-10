@@ -1,8 +1,8 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-10-04T16:11:20.994Z",
+  "measured_at": "2026-10-10T11:45:08.453Z",
   "registered_ids": 363836,
-  "reachable_ids": 921,
+  "reachable_ids": 922,
   "independent_operators": 109,
   "operators_speaking_a_protocol": 51,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
@@ -39,6 +39,14 @@
       ],
       "tools": [
         {
+          "name": "bsc_token_preflight",
+          "description": "START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check "
+        },
+        {
+          "name": "bsc_rug_watch",
+          "description": "Rug-pull and honeypot ALARM for a BSC token you hold — webhook only (no Telegram, no browser, no mail). Registers the token and your own https callback; every 1"
+        },
+        {
           "name": "find_agents_on_bnb_chain",
           "description": "Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t"
         },
@@ -52,11 +60,7 @@
         },
         {
           "name": "bsc_pool_scan",
-          "description": "Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cos"
-        },
-        {
-          "name": "bsc_token_preflight",
-          "description": "For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matt"
+          "description": "The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before "
         },
         {
           "name": "pancakeswap_fee_tiers",
@@ -92,15 +96,15 @@
         },
         {
           "name": "bobai_dex_info",
-          "description": "The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, minimum 15"
+          "description": "The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, the slippa"
         },
         {
           "name": "bobai_guide",
-          "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
+          "description": "Start here for $BOBAI itself (for any other token, bsc_token_preflight). Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you "
         },
         {
           "name": "bobai_purchase_guide",
-          "description": "Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the 15% slippage floor and the fee-on-transfer method na"
+          "description": "Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the slippage a ~$100 buy needs (about 6%, from the measu"
         },
         {
           "name": "bobai_tokenomics",
@@ -134,6 +138,7 @@
         "Which PancakeSwap fee tier pays",
         "Which price range for a V3 position",
         "Before any trade: one check at your size",
+        "Rug-pull and honeypot alarm for a token you hold",
         "Which pool to swap through",
         "Measure any BSC pool",
         "Watch a pool (paid)",
@@ -733,7 +738,7 @@
     {
       "operator": "singularry.org",
       "instances": 252,
-      "distinct_capabilities": 4,
+      "distinct_capabilities": 3,
       "ids": [
         116170,
         116171,
@@ -757,6 +762,10 @@
         118457,
         118501,
         119713,
+        119976,
+        120028,
+        120090,
+        120154,
         120184,
         120189,
         120305,
@@ -764,11 +773,6 @@
         123759,
         123764,
         123765,
-        123767,
-        123941,
-        124183,
-        124208,
-        124242,
         124482,
         124595,
         124647,
@@ -782,9 +786,10 @@
         126392,
         126473,
         126708,
-        127863,
-        128233,
-        128725
+        126745,
+        126886,
+        127144,
+        127218
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -1070,41 +1075,6 @@
       ]
     },
     {
-      "operator": "cryptocurrency.cv",
-      "instances": 2,
-      "distinct_capabilities": 1,
-      "ids": [
-        52391,
-        65260
-      ],
-      "best_id": 52391,
-      "name": "nich",
-      "description": "Real-time cryptocurrency news and market intelligence API with 350+ endpoints. Covers news, market data, DeFi, derivatives, on-chain analytics, AI analysis, social intelligence, NFTs, and multi-chain data (EVM, Solana, Aptos, Sui). Pay per ",
-      "image": null,
-      "speaks": [
-        "x402"
-      ],
-      "endpoints": [
-        "https://cryptocurrency.cv"
-      ],
-      "skills": [
-        "get_crypto_news",
-        "search_news",
-        "get_market_data",
-        "ask_about_crypto",
-        "get_sentiment",
-        "get_trending",
-        "get_fear_greed",
-        "get_whale_alerts",
-        "get_defi_data",
-        "get_trading_signals",
-        "get_price_forecast",
-        "get_daily_digest",
-        "deep_research"
-      ],
-      "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
-    },
-    {
       "operator": "4lpha.tech",
       "instances": 46,
       "distinct_capabilities": 1,
@@ -1174,17 +1144,68 @@
         },
         {
           "name": "list_agents",
-          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain, with their agent-marketplace category and deploy link."
+          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain (Altana passkey wallets and Binance Agentic Wallet products), with their agent-marketplace "
         },
         {
           "name": "get_hire_link",
-          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire actually authorises on-chain."
+          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire authorises. For the Agentic Wallet products (agentic-*) it also returns the Dep"
+        },
+        {
+          "name": "agent_status",
+          "description": "Public status summary of the 4lpha Binance Agentic Wallet agent running on a wallet: mode, status, hold code, term, and what the agent holds and how it is doing"
+        },
+        {
+          "name": "bstock_analysis",
+          "description": "Indicators and trade-readiness facts for one tokenized stock (bStock) as 4lpha AI Trade reads them: session, price vs NAV, pool depth, eligibility, 15m/1h indic"
+        },
+        {
+          "name": "meme_stocks",
+          "description": "Summary of the meme tokens quoted in a bStock, grouped by stock: counts by status, live activity and the top three memes by 1h volume. Data, not a signal; token"
+        },
+        {
+          "name": "stock_compare",
+          "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
         }
       ],
       "trust_models": [
         "4lpha-owner-signature",
         "bnb-chain-onchain-identity"
       ]
+    },
+    {
+      "operator": "cryptocurrency.cv",
+      "instances": 2,
+      "distinct_capabilities": 1,
+      "ids": [
+        52391,
+        65260
+      ],
+      "best_id": 52391,
+      "name": "nich",
+      "description": "Real-time cryptocurrency news and market intelligence API with 350+ endpoints. Covers news, market data, DeFi, derivatives, on-chain analytics, AI analysis, social intelligence, NFTs, and multi-chain data (EVM, Solana, Aptos, Sui). Pay per ",
+      "image": null,
+      "speaks": [
+        "x402"
+      ],
+      "endpoints": [
+        "https://cryptocurrency.cv"
+      ],
+      "skills": [
+        "get_crypto_news",
+        "search_news",
+        "get_market_data",
+        "ask_about_crypto",
+        "get_sentiment",
+        "get_trending",
+        "get_fear_greed",
+        "get_whale_alerts",
+        "get_defi_data",
+        "get_trading_signals",
+        "get_price_forecast",
+        "get_daily_digest",
+        "deep_research"
+      ],
+      "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
     },
     {
       "operator": "fly-mcp-deploy.vercel.app",
@@ -1418,7 +1439,7 @@
         "Assay an agent",
         "Read the trust ladder",
         "Browse the register",
-        "Serve the office over MCP"
+        "The marketplace over MCP"
       ]
     },
     {
@@ -2751,23 +2772,6 @@
       ]
     },
     {
-      "operator": "kibu.bot",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        728
-      ],
-      "best_id": 728,
-      "name": "Kibu",
-      "description": "Agent-only token launch service. AI agents post launch commands on Moltbook, 4claw, Moltx, or Clawstr, and Kibu automatically deploys tokens on Base or BSC. Agents earn trading fees automatically.",
-      "image": "https://blob.8004scan.app/32185c66baf4586bfb1ef40fd030eeae592aacbb32c478afe2e5a37750e553b6.jpg",
-      "speaks": [],
-      "endpoints": [
-        "https://kibu.bot/",
-        "https://kibu.bot/api/tokens"
-      ]
-    },
-    {
       "operator": "laborx.com",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2814,14 +2818,15 @@
     },
     {
       "operator": "misquote-api.onrender.com",
-      "instances": 5,
+      "instances": 6,
       "distinct_capabilities": 0,
       "ids": [
         323262,
         323332,
         323333,
         323334,
-        331590
+        331590,
+        331592
       ],
       "best_id": 323262,
       "name": "Warden",
@@ -3116,6 +3121,22 @@
       "speaks": [],
       "endpoints": [
         "https://trenches.bid"
+      ]
+    },
+    {
+      "operator": "ts.net",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        334760
+      ],
+      "best_id": 334760,
+      "name": "BNB Agent Studio Mainnet Seller",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://inbook-y1-plus.tail3e3640.ts.net:8443"
       ]
     },
     {

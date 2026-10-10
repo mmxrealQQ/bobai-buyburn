@@ -2,7 +2,7 @@
   "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-10-04T16:11:20.994Z",
+  "measured_at": "2026-10-10T11:45:08.453Z",
   "registered_ids": 363836,
   "ids_scanned": 363836,
   "registrations": {
@@ -22,9 +22,9 @@
   "reachability": {
     "claim_an_endpoint": 1985,
     "probed": 1985,
-    "reachable": 921,
-    "dead": 1064,
-    "answering_mcp": 300,
+    "reachable": 922,
+    "dead": 1063,
+    "answering_mcp": 296,
     "serving_an_agent_card": 356,
     "a2a_callable": 338,
     "a2a_confirmed_by_probe": 2
@@ -48,5 +48,5 @@
   "quote_agents_asked": 55,
   "quoted_when_asked": 27,
   "quoted_of_hireable": 26,
-  "quotes_measured_at": "2026-10-05T08:07:55.446Z"
+  "quotes_measured_at": "2026-10-10T11:53:28.611Z"
 }

@@ -44,7 +44,7 @@ txt: https://brainonbnb.com/code/buyback-bot.txt
 DeFi Agent — a PancakeSwap V3 range that runs itself
 ----------------------------------------------------
 A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
-17 files, 6896 lines
+17 files, 6919 lines
 needs:
   - A wallet that holds the position
       ours: one BSC wallet used for nothing else
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5520 lines
+12 files, 5523 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work

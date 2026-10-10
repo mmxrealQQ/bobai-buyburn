@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 6896,
-   "zipBytes": 176955,
-   "txtBytes": 546627,
-   "sha256": "e70a94e83d1753a8",
+   "lines": 6919,
+   "zipBytes": 177839,
+   "txtBytes": 549038,
+   "sha256": "3ae91bba87d1a8e8",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5520,
-   "zipBytes": 94096,
-   "txtBytes": 279716,
-   "sha256": "143aaf1464c449c6",
+   "lines": 5523,
+   "zipBytes": 94256,
+   "txtBytes": 280221,
+   "sha256": "29ce013f46ddaedd",
    "reqs": [
     {
      "what": "A bot token",

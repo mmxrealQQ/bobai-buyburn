@@ -23,8 +23,10 @@
 //   node scripts/lp-agent.mjs --step collect        one step
 //   node scripts/lp-agent.mjs --step ladder         what the worker's ladder step would do (planned here, never sent)
 //   node scripts/lp-agent.mjs --self-test           prove the guards fire
+//   --width N / --centred / --one-sided              override the re-set the worker uses (worker-lp/wrangler.toml)
 //   node scripts/lp-agent.mjs --confirm [--step x]  send it
 import 'dotenv/config';
+import fs from 'node:fs';
 import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -55,7 +57,20 @@ const TO = argOf('--to');
 const STEPS = stepArg ? [stepArg] : ALL.filter((x) => x !== 'relocate');
 // A width named by a person for the re-set. It is printed as a hand-made
 // choice and never remembered: the record's earnings test is the standing rule.
-const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
+// THE HAND RE-SET MINTS AS THE WORKER MINTS (2026-10-10 review): it planned one-sided at the record's pick while the
+// worker re-sets centred at ±20%. Width and mode are read from worker-lp/wrangler.toml, the one place they are set;
+// --width, --centred and --one-sided override them by hand and are printed as such.
+const WORKER_VARS = (() => {
+  try {
+    const toml = fs.readFileSync(new URL('../worker-lp/wrangler.toml', import.meta.url), 'utf8');
+    const v = (k) => (toml.match(new RegExp(`^${k}\\s*=\\s*"([^"]*)"`, 'm')) || [])[1] ?? '';
+    return { LP_WIDTH_PCT: v('LP_WIDTH_PCT'), LP_RESET_MODE: v('LP_RESET_MODE') };
+  } catch { return { LP_WIDTH_PCT: '', LP_RESET_MODE: '' }; }
+})();
+const WORKER_WIDTH = Number(WORKER_VARS.LP_WIDTH_PCT) > 0 && Number(WORKER_VARS.LP_WIDTH_PCT) <= 50 ? Number(WORKER_VARS.LP_WIDTH_PCT) : null;
+const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : WORKER_WIDTH;
+const CENTRED = process.argv.includes('--one-sided') ? false : process.argv.includes('--centred') ? true : WORKER_VARS.LP_RESET_MODE === 'centred';
+const MODE_BASIS = process.argv.includes('--one-sided') || process.argv.includes('--centred') ? 'named by hand' : 'worker-lp/wrangler.toml';
 // The share of a collect kept as capital. Default is the standing rule in
 // lp-guards.js (the worker reads the same figure from LP_FEE_KEEP_PCT).
 const KEEP = argOf('--keep') != null ? Number(argOf('--keep')) : FEE_SHARE_KEPT_PCT;
@@ -489,6 +504,12 @@ if (SELF) {
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
   is('a standing ladder says where the main range is: in range, not "above the price"', /main in range/.test(ladderDecision(R({ mainSide: 'both', spendableBnb: 0.001 })).why) && /main above the price/.test(ladderDecision(R({ spendableBnb: 0.001 })).why));
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
+  is('the hand re-set mints as the worker does (2026-10-10): mode and width from worker-lp/wrangler.toml, passed to planRebalance', (() => {
+    const toml = fs.readFileSync(new URL('../worker-lp/wrangler.toml', import.meta.url), 'utf8'), me = fs.readFileSync(new URL(import.meta.url), 'utf8');
+    const tomlMode = /^LP_RESET_MODE\s*=\s*"centred"/m.test(toml), tomlWidth = Number((toml.match(/^LP_WIDTH_PCT\s*=\s*"(\d+)"/m) || [])[1]) || null;
+    return CENTRED === (tomlMode && !process.argv.includes('--one-sided')) && (argOf('--width') != null || WIDTH === tomlWidth)
+      && /planRebalance\(pub, lp\.address, \{[^}]*centred: CENTRED/.test(me);
+  })());
   is('centred re-sets shut the ladder whatever LP_LADDER says (2026-10-09); one-sided keeps it on the gate', ladderActive({ LP_LADDER: '1', LP_RESET_MODE: 'centred' }) === false && ladderActive({ LP_LADDER: '1' }) === true && ladderActive({ LP_LADDER: '0' }) === false && ladderActive({}) === false);
   // The reserve does not chase (2026-09-18): not on the ten-minute watch, not under the re-set floor.
   is('the watch opens and grows the reserve, it never re-sets or merges one', ladderActsInWatch('mint_reserve') && ladderActsInWatch('increase_reserve') && !ladderActsInWatch('reset_reserve') && !ladderActsInWatch('merge') && !ladderActsInWatch(null));
@@ -938,7 +959,8 @@ async function main() {
       pool = w.pool || null;
       if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
-    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool, keptPct: KEEP, ladder });
+    console.log(`  mode: ${CENTRED ? 'centred (around the price, one trade back to the mix)' : 'one-sided (beside the price, no trade)'} — ${MODE_BASIS}; width ${WIDTH != null ? `±${WIDTH}% — ${argOf('--width') != null ? 'named by hand' : 'worker-lp/wrangler.toml'}` : "the record's pick"}`);
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool, keptPct: KEEP, ladder, centred: CENTRED });
     const s = plan.summary;
     if (plan.resume) console.log(`  no position — the wallet holds ${s.held?.other} of the other side and ${s.held?.wbnb} WBNB (worth ${f(s.value_bnb)} BNB), tick now ${s.tick}: a re-set that stopped before its mint`);
     else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB${s.reserve ? `; reserve #${s.reserve.position} ticks ${s.reserve.ticks[0]} … ${s.reserve.ticks[1]}, worth ${f(s.reserve.value_bnb)} BNB` : ''}`);
@@ -980,6 +1002,7 @@ async function main() {
 
   if (STEPS.includes('ladder')) {
     console.log('\nLADDER — BNB beside a main range that is all of the other side -> a reserve range below the price');
+    if (CENTRED) console.log(`  re-sets are centred (${MODE_BASIS}), so the worker's ladder is shut (ladderActive) — what follows is the plan only`);
     let record = null;
     try { record = (await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json())).verdict || null; } catch { record = null; }
     const plan = await planLadder(pub, lp.address, { record, ladder });

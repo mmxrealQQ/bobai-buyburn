@@ -2777,7 +2777,8 @@ function missed(q) {
 window.__btAsk = q => intentOf(q); window.__btAskLog = () => ({ hit: ASK.hit, miss: [...ASK.miss] }); // for checks from outside
 // the next buyback at the last 24 h's pace (2026-10-09): 3% of the dollars traded fills the queue; an estimate, said as one
 function nextEta() {
-  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP), 0);
+  /* r.o = the tax swap + our bots' buys in that bucket (2026-10-10): not traders, so not the pace */
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + Math.max(0, (r.v || 0) - (r.o || 0)) * (r.u || S.bnbP), 0);
   const missUsd = Math.max(0, (MIN_DISPATCH - S.queued) * S.price), perH = volUsd * 0.03 / 24;
   if (!(missUsd > 0) || !(perH > 0) || !S.price) return '';
   const h = missUsd / perH;

@@ -585,7 +585,7 @@ async function recordSwapBucket(env) {
   const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
   // buy_bnb / sell_bnb (2026-10-09): the BNB each side moved, for the daily market card's buys-vs-sells in dollars.
-  let buys = 0, sells = 0, volWei = 0n, buyWei = 0n, sellWei = 0n, hi = 0, lo = 0;
+  let buys = 0, sells = 0, volWei = 0n, buyWei = 0n, sellWei = 0n, ownWei = 0n, hi = 0, lo = 0;
   // THE BIG TRADES BY NAME (2026-10-05, operator: a $9.5K sell stood in its candle only as "6 sells, 17 BNB in all" once
   // the page's own read of the chain, about an hour, had passed it). Each transaction's swaps of one side are one trade;
   // the ones worth $100 or more are kept with the bucket, the six largest at most: [buy 1/0, BNB, BOBAI, tx, the swap's recipient] — the recipient tells a bot of ours from a trader.
@@ -613,6 +613,9 @@ async function recordSwapBucket(env) {
     if (isBuy) buyWei += amount1In; else sellWei += amount1Out;
     const sw = !isBuy && taxSw.get(String(log.transactionHash || '').toLowerCase());
     const isTax = !!sw && (amount0In > sw ? amount0In - sw : sw - amount0In) * 1000000n <= sw;
+    // OUR OWN SWAPS, SEPARATELY (2026-10-10): the tax swap and a buy into one of our bots' wallets are in the volume,
+    // but they are not traders — the terminal's "next buyback at the last 24 h pace" takes them out (own_bnb, row `o`).
+    if (isTax || (isBuy && IGNORED_WALLETS.has('0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase()))) ownWei += amount1In + amount1Out;
     if (!isTax) { const k = (log.transactionHash || '') + (isBuy ? ':b' : ':s'), e = byTx.get(k) || { buy: isBuy ? 1 : 0, bnb: 0n, bobai: 0n, tx: log.transactionHash || '', to: '0x' + String((log.topics || [])[2] || '').slice(26).toLowerCase() };
       e.bnb += amount1In + amount1Out; e.bobai += amount0In + amount0Out; byTx.set(k, e); }
     // the swap's own price, BNB per BOBAI: the candle's wick (the bucket's close is the reserves after it)
@@ -620,7 +623,7 @@ async function recordSwapBucket(env) {
     if (px > 0 && Number.isFinite(px)) { hi = Math.max(hi, px); lo = lo ? Math.min(lo, px) : px; }
   }
   const pair = await readPairOnchain();
-  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, buy_bnb: Number(buyWei) / 1e18, sell_bnb: Number(sellWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
+  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, ...(ownWei > 0n ? { own_bnb: Number(ownWei) / 1e18 } : {}),buy_bnb: Number(buyWei) / 1e18, sell_bnb: Number(sellWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
   if (pair && pair.bnbUsd > 0) {
     const big = [...byTx.values()].map((e) => [e.buy, Number(e.bnb) / 1e18, Number(e.bobai) / 1e18, e.tx, e.to]).filter((e) => e[1] * pair.bnbUsd >= 100).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (big.length) bucket.big = big;
@@ -3564,7 +3567,7 @@ export default {
     // The Brain Terminal draws BOBAI's chart from it: one ten-minute bucket per candle, the close from the pool's
     // reserves, the wicks from the swaps' own prices. Public on-chain figures only; one KV read, cached a minute.
     if (url.pathname === '/candles' && request.method === 'GET') {
-      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, b: x.buys, s: x.sells, u: x.bnb_usd, ...(x.big ? { x: x.big } : {}) }));
+      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, ...(x.own_bnb ? { o: x.own_bnb } : {}), b: x.buys, s: x.sells, u: x.bnb_usd, ...(x.big ? { x: x.big } : {}) }));
       return new Response(JSON.stringify({ minutes: BUCKET_MINUTES, source: 'PancakeSwap pool Swap events + reserves, read every ten minutes', rows }), {
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*' },
       });

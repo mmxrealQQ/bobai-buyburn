@@ -7,6 +7,8 @@
   const N = () => window.__bobaiNums || {};
   const NF = {}; const nf = (n, d = 0) => (NF[d] || (NF[d] = new Intl.NumberFormat('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
   const cmp = (n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
+  // every BOBAI / BNB amount with its dollars at today's price (2026-10-10, operator); no price yet: no dollars
+  const usdAt = (n, p) => p > 0 && n > 0 ? ' ≈$' + nf(n * p, n * p < 10 ? 2 : 0) : '';
   const fig = (k, v, c) => `<div class="hf"><span>${k}</span><b${c ? ' class="c"' : ''}>${v}</b></div>`;
   let burnsOwn = null;
   const burns = async () => N().burns || burnsOwn || (burnsOwn = await fetch('/logs/burns.json').then((r) => r.json()).catch(() => null));
@@ -16,8 +18,8 @@
   function w01(win) {
     const c = N().chain; if (!c || !c.priceUsd) return;
     const dead = c.bobaiDead || 0, circ = 1e9 - dead;
-    strip(win).innerHTML = fig('PRICE', '$' + c.priceUsd.toPrecision(4)) + fig('MARKET CAP', '$' + nf(c.priceUsd * circ)) + fig('BURNED FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', 1) + fig('CIRCULATING', cmp(circ) + ' BOBAI')
-      + `<div class="hd"><div class="ht">THE SUPPLY · 1,000,000,000 BOBAI</div><div class="sup"><i style="width:${dead / 1e7}%;background:linear-gradient(90deg,#ff7a3d,#ffb46b);box-shadow:0 0 12px #ff7a3d"></i><i style="flex:1;background:linear-gradient(90deg,rgba(240,185,11,.55),rgba(240,185,11,.25))"></i></div><div class="sup-k"><span>🔥 ${nf(dead)} at the dead address · ≈$${nf(dead * c.priceUsd)}</span><span>${nf(circ)} circulating</span></div></div>`;
+    strip(win).innerHTML = fig('PRICE', '$' + c.priceUsd.toPrecision(4)) + fig('MARKET CAP', '$' + nf(c.priceUsd * circ)) + fig('BURNED FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', 1) + fig('CIRCULATING', cmp(circ) + ' BOBAI' + usdAt(circ, c.priceUsd))
+      + `<div class="hd"><div class="ht">THE SUPPLY · 1,000,000,000 BOBAI${usdAt(1e9, c.priceUsd)}</div><div class="sup"><i style="width:${dead / 1e7}%;background:linear-gradient(90deg,#ff7a3d,#ffb46b);box-shadow:0 0 12px #ff7a3d"></i><i style="flex:1;background:linear-gradient(90deg,rgba(240,185,11,.55),rgba(240,185,11,.25))"></i></div><div class="sup-k"><span>🔥 ${nf(dead)} at the dead address · ≈$${nf(dead * c.priceUsd)}</span><span>${nf(circ)} circulating</span></div></div>`;
   }
   // 02 TOKENOMICS: the 3% of every trade as one ring, every share of the table in force
   const SPLIT = [['bobaiPct', '#ff7a3d', 'BOBAI bought & burned'], ['bobPct', '#fbbf24', '$BOB bought & burned'], ['liqPct', '#2dd4bf', 'liquidity, LP burned'], ['lpPct', '#60a5fa', 'DeFi agent'], ['gigglePct', '#f472b6', 'Giggle Academy pot'], ['creatorPct', '#d6c7b8', 'creator']];
@@ -29,10 +31,10 @@
     // the same next-buyback figure as the Classic tile (2026-10-05): app.js publishes it with the bot's gas reserve left out
     const q = N().chain, sBnb = q ? (q.splitBnb ?? (q.walletBnb > 0.004 ? q.walletBnb - 0.003 : 0)) : 0, nextUsd = q ? (q.nextBuybackUsd ?? q.queuedBobai * q.priceUsd + sBnb * q.bnbUsd) : 0;
     strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · THE TABLE IN FORCE</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul>${parts.map(([v, c, l]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b></li>`).join('')}</ul></div></div>`
-      + (q ? fig('NEXT BUYBACK CHARGING', '$' + nf(nextUsd, 2), 1) + fig('TAX IN THE TOKEN', cmp(q.queuedBobai) + ' BOBAI' + (q.priceUsd > 0 ? ' ≈$' + nf(q.queuedBobai * q.priceUsd, 2) : '')) + (sBnb > 0 ? fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB') : '')
+      + (q ? fig('NEXT BUYBACK CHARGING', '$' + nf(nextUsd, 2), 1) + fig('TAX IN THE TOKEN', cmp(q.queuedBobai) + ' BOBAI' + (q.priceUsd > 0 ? ' ≈$' + nf(q.queuedBobai * q.priceUsd, 2) : '')) + (sBnb > 0 ? fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB' + usdAt(sBnb, q.bnbUsd)) : '')
         // THE CHARGE AS A BAR (2026-10-10): the token sends its tax on at minDispatch(); a bar fills toward it — the 0.0000 BNB
         // tile it replaces said nothing most of the time
-        + (q.minDispatch > 0 ? ((k) => `<div class="hd"><div class="ht">NEXT BUYBACK · ${Math.round(k * 100)}% CHARGED</div><div class="sup"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(90deg,#ff7a3d,#ffd28a);box-shadow:0 0 12px #ff7a3d"></i></div><div class="sup-k"><span>${cmp(q.queuedBobai)} of ${cmp(q.minDispatch)} BOBAI</span><span>at 100% the token swaps it, the bot buys back and burns</span></div></div>`)(Math.max(0, Math.min(1, q.queuedBobai / q.minDispatch))) : '') : '');
+        + (q.minDispatch > 0 ? ((k) => `<div class="hd"><div class="ht">NEXT BUYBACK · ${Math.round(k * 100)}% CHARGED</div><div class="sup"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(90deg,#ff7a3d,#ffd28a);box-shadow:0 0 12px #ff7a3d"></i></div><div class="sup-k"><span>${cmp(q.queuedBobai)} of ${cmp(q.minDispatch)} BOBAI${usdAt(q.minDispatch, q.priceUsd)}</span><span>at 100% the token swaps it, the bot buys back and burns</span></div></div>`)(Math.max(0, Math.min(1, q.queuedBobai / q.minDispatch))) : '') : '');
   }
   // 03 PROOF: thirty days of burns, BOBAI and $BOB, one bar a day
   async function w03(win) {

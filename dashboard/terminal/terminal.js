@@ -66,8 +66,16 @@ const $ = id => document.getElementById(id === 'bt' ? 'bt' : 'bt-' + id);
 const NF = {}; const nf = (n, d = 0) => (NF[d] || (NF[d] = new Intl.NumberFormat('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
 const cmp = n => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 // the homepage cards print their BNB totals with four decimals
-const bnb4 = n => (+n || 0).toFixed(4) + ' BNB';
-const bnbF = n => `${nf(n, Number(n) < 0.1 ? 4 : 3)} BNB`;
+const bnb4R = n => (+n || 0).toFixed(4) + ' BNB';
+const bnbR = n => `${nf(n, Number(n) < 0.1 ? 4 : 3)} BNB`;
+// EVERY TOKEN AMOUNT WITH ITS DOLLARS (2026-10-10, operator: "when he talks about $BOBAI, $BNB, $BOB, give the USD
+// value — in the windows too"): BNB, BOB and BOBAI amounts carry "(≈$x)" at today's price; the R forms are for a spot
+// that already shows the dollars beside them. No price read yet: no dollars, never "$0".
+const usdT = u => u > 0 && isFinite(u) ? ` (≈${u < 0.01 ? '<$0.01' : '$' + nf(u, u < 10 ? 2 : 0)})` : '';
+const usdS = (n, p) => usdT((+n || 0) * (p || 0));
+const bnb4 = n => bnb4R(n) + usdS(n, S.bnbP);
+const bnbF = n => bnbR(n) + usdS(n, S.bnbP);
+const bobAmt = n => `${cmp(+n || 0)} BOB` + usdS(n, S.bobP);
 const short = h => h ? `${h.slice(0, 6)}…${h.slice(-4)}` : '';
 const cut = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 const u18 = h => (h && h !== '0x') ? Number(BigInt(h)) / 1e18 : 0;
@@ -640,14 +648,14 @@ function info(k) {
   const boost = boost3();
   switch (k) {
     case 'burnA': return { t: 'BOBAI burns BOBAI', c: D.burnA.c, rows: [
-      ['At the dead address', nf(S.deadA || 0) + ' BOBAI'], ['Share of supply', supplyPct(S.deadA || 0) + '%'],
-      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => e.bobaiBurned)) + ' BOBAI'], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI'],
+      ['At the dead address', nf(S.deadA || 0) + ' BOBAI' + usdS(S.deadA, S.price)], ['Share of supply', supplyPct(S.deadA || 0) + '%'],
+      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(S.burns, e => e.bobaiBurned), S.price)], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(wk, e => e.bobaiBurned), S.price)],
       ['Bot burn runs', nf(S.burns.length)], ['Last burn', agoL(lastRun && Date.parse(lastRun.time))]],
       note: pctOf('burnA') + ' of every trade buys BOBAI back and sends it to the dead address. Gone for good.',
       links: [['last burn tx', lastRun && TX + lastRun.bobaiBurnTx], ['dead address', bsc('0x000000000000000000000000000000000000dEaD')]] };
     case 'burnB': return { t: 'BOBAI burns $BOB', c: D.burnB.c, rows: [
-      ['BOB at the dead address (everyone)', cmp(S.deadB || 0) + ' BOB'], ['BOBAI’s part, worth today', '$' + nf(sum(S.burns, bobOf) * S.bobP)],
-      ['By BOBAI’s bot, all time', cmp(sum(S.burns, bobOf)) + ' BOB'], ['Share of all BOB burned', S.deadB ? (sum(S.burns, bobOf) / S.deadB * 100).toFixed(1) + '%' : '…'], ['Last 7 days', cmp(sum(wk, bobOf)) + ' BOB']],
+      ['BOB at the dead address (everyone)', bobAmt(S.deadB || 0)], ['BOBAI’s part, worth today', '$' + nf(sum(S.burns, bobOf) * S.bobP)],
+      ['By BOBAI’s bot, all time', bobAmt(sum(S.burns, bobOf))], ['Share of all BOB burned', S.deadB ? (sum(S.burns, bobOf) / S.deadB * 100).toFixed(1) + '%' : '…'], ['Last 7 days', bobAmt(sum(wk, bobOf))]],
       note: pctOf('burnB') + ' of every trade buys $BOB (Build On BNB) and burns it — BOBAI feeding the chain it was born on.',
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
@@ -658,11 +666,11 @@ function info(k) {
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [
       ['Working capital', rb ? bnbF(lpNow().value ?? 0) : '…'], ['Range', lpNow().inR === false ? 'OUT of range' : 'in range'],
       ['Pool', 'CAKE/BNB 0.05%'], ['Fees earned', lp?.flow?.in?.fees ? bnbF(lp.flow.in.fees.bnb) : '…'],
-      ['BOBAI it holds', cmp(lp?.flow?.out?.bobai_units || 0)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
+      ['BOBAI it holds', bobaiAmt(lp?.flow?.out?.bobai_units || 0)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
       note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and half of what it earns buys BOBAI it keeps.',
       links: [['agent wallet', bsc('0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')], ['full record', SITE + '/liquidity']] };
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
-      ['In the pot', bnb4(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
+      ['In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
       ['Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
       note: GIGGLE_OPEN() ? pctOf('giggle') + ' of every trade collects here. On Nov 20 it all goes to Giggle Academy, and the receipt is posted.'
         : 'The pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan: tap the pot wallet.',
@@ -673,7 +681,7 @@ function info(k) {
       note: 'The 1ce bot sends the creator share to d38; the dev bot pays it out every hour. Both wallets are public.',
       links: [['d38 wallet', bsc('0x15Ba17075ef5E0736292b030e3715d9100fe3d38')]] }; }
     case 'core': case 'buyback': return { t: 'The buyback bot · 1ce', c: '#F0B90B', rows: [
-      ['Tax queued in the token', nf(S.queued) + ' BOBAI'], ['BNB in 1ce', S.walletBnb.toFixed(4) + ' BNB' + (splitBnb() > 0 ? '' : ' · gas')],
+      ['Tax queued in the token', nf(S.queued) + ' BOBAI' + usdS(S.queued, S.price)], ['BNB in 1ce', bnb4(S.walletBnb) + (splitBnb() > 0 ? '' : ' · gas')],
       ['Queued, in dollars', '$' + nf(S.queued * S.price + splitBnb() * S.bnbP, 2)], ['Runs', 'every 10 min · last ' + agoL(W.buyback.last)],
       ['Last split', lastRun ? bnbF(lastRun.totalBnb) + ' · ' + agoL(Date.parse(lastRun.time)) : '…']],
       note: `Every trade pays 3% tax into the token. At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB for this wallet, inside a trade; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
@@ -738,7 +746,7 @@ function rangeHtml() {
     + `<div class="db-x"><span>${inR ? 'IN RANGE · EARNING FEES' : 'BESIDE IT · WAITING FOR THE PRICE'}</span></div></div>`;
 }
 function vizOf(k) {
-  const bt = e => Date.parse(e.time), n4 = v => v ? v.toFixed(v < 0.01 ? 4 : 3) + ' BNB' : '0';
+  const bt = e => Date.parse(e.time), n4 = v => v ? v.toFixed(v < 0.01 ? 4 : 3) + ' BNB' + usdS(v, S.bnbP) : '0';
   switch (k) {
     case 'burnA': return barsHtml(perDay(S.burns, bt, e => e.bobaiBurned), 'BOBAI BURNED BY THE BOT, PER DAY', v => cmp(v));
     case 'burnB': return barsHtml(perDay(S.burns, bt, bobOf), 'BOB BURNED BY THE BOT, PER DAY', v => cmp(v));
@@ -750,7 +758,7 @@ function vizOf(k) {
       // the queue is full and the token has not swapped yet: it does so inside a trade, so the board says it waits for one
       // (operator, 2026-10-05: "402,688 BOBAI queued, but it is not sent yet?")
       if (S.queued >= MIN_DISPATCH) return ringHtml([[1, '#F0B90B', 'COLLECTED', cmp(S.queued)]], 'FULL', 'FULL · THE TOKEN SWAPS IT INSIDE ONE OF THE NEXT TRADES');
-      return ringHtml([[c, '#F0B90B', 'COLLECTED', cmp(S.queued)], [1 - c, 'rgba(255,255,255,.08)', 'TO THE SWAP', cmp(Math.max(0, MIN_DISPATCH - S.queued))]], Math.round(c * 100) + '%', 'TAX TO THE NEXT SWAP · ' + cmp(MIN_DISPATCH) + ' BOBAI'); }
+      return ringHtml([[c, '#F0B90B', 'COLLECTED', cmp(S.queued)], [1 - c, 'rgba(255,255,255,.08)', 'TO THE SWAP', cmp(Math.max(0, MIN_DISPATCH - S.queued))]], Math.round(c * 100) + '%', 'TAX TO THE NEXT SWAP · ' + cmp(MIN_DISPATCH) + ' BOBAI' + usdS(MIN_DISPATCH, S.price)); }
     case 'nft': { const m = (S.nft?.minted || []).reduce((a, b) => a + b, 0), cap = (S.nft?.cap || []).reduce((a, b) => a + b, 0) || 1925; return ringHtml([[m, '#a78bfa', 'DROPPED', nf(m)], [Math.max(0, cap - m), 'rgba(255,255,255,.08)', 'STILL TO EARN', nf(cap - m)]], Math.round(m / cap * 100) + '%', 'THE COLLECTION'); }
     case 'agent': { const q = S.kinds || {}; return hbarsHtml([['MCP', +q.mcp || 0], ['REST', +q.rest || 0], ['DISCOVERY', +q.discovery || 0], ['HIRE · JOBS', (+q.hire || 0) + (+q.job || 0) + (+q.dispatch || 0)]], 'REQUESTS FROM OUTSIDE, TODAY'); }
     case 'src': return '<canvas class="fl-c fl-spark"></canvas>';
@@ -818,13 +826,13 @@ function circleLine(k) {
   const f = LIFE.flow || {};
   // five ways each (operator, 2026-10-02: "at least five variants of every text"); every figure stays the live one
   const L = {
-    burnA: () => { if (!lb) return null; const a = cmp(+lb.bobaiBurned), t = hAgo(Date.parse(lb.time)), s = supplyPct(S.deadA || 0); return vary('v6', [
-      `My last burn: ${a} BOBAI, ${t}. ${s}% of my supply is gone for good.`, `${a} BOBAI burned ${t}. All in all ${s}% of my supply sits at the dead address.`,
-      `This circle is my BOBAI burn. Last one: ${a} BOBAI, ${t}. ${s}% of the supply, gone.`, `${s}% of my supply is burned, and counting. The newest: ${a} BOBAI, ${t}.`,
-      `Burned ${t}: ${a} BOBAI. Every burn has its transaction, ${s}% of the supply so far.`]); },
-    burnB: () => { const b = S.burns.filter(e => bobOf(e) > 0).at(-1); if (!b) return null; const a = cmp(bobOf(b)), t = hAgo(Date.parse(b.time)), w = cmp(wk.reduce((x, e) => x + bobOf(e), 0)); return vary('v7', [
-      `I burn BOB too: ${a} BOB ${t}. ${w} this week.`, `BOB burn: ${a} BOB ${t}, ${w} in the last seven days.`, `A part of my tax buys BOB and burns it. Last time ${a} BOB, ${t}.`,
-      `${w} BOB burned this week. The newest: ${a} BOB, ${t}.`, `Burning for the BOB family too: ${a} BOB ${t}. This week: ${w}.`]); },
+    burnA: () => { if (!lb) return null; const a = cmp(+lb.bobaiBurned), au = usdS(lb.bobaiBurned, S.price), t = hAgo(Date.parse(lb.time)), s = supplyPct(S.deadA || 0); return vary('v6', [
+      `My last burn: ${a} BOBAI${au}, ${t}. ${s}% of my supply is gone for good.`, `${a} BOBAI${au} burned ${t}. All in all ${s}% of my supply sits at the dead address.`,
+      `This circle is my BOBAI burn. Last one: ${a} BOBAI${au}, ${t}. ${s}% of the supply, gone.`, `${s}% of my supply is burned, and counting. The newest: ${a} BOBAI${au}, ${t}.`,
+      `Burned ${t}: ${a} BOBAI${au}. Every burn has its transaction, ${s}% of the supply so far.`]); },
+    burnB: () => { const b = S.burns.filter(e => bobOf(e) > 0).at(-1); if (!b) return null; const a = cmp(bobOf(b)), t = hAgo(Date.parse(b.time)), au = usdS(bobOf(b), S.bobP), wb = wk.reduce((x, e) => x + bobOf(e), 0), w = cmp(wb) + usdS(wb, S.bobP); return vary('v7', [
+      `I burn BOB too: ${a} BOB${au} ${t}. ${w} this week.`, `BOB burn: ${a} BOB${au} ${t}, ${w} in the last seven days.`, `A part of my tax buys BOB and burns it. Last time ${a} BOB${au}, ${t}.`,
+      `${cmp(wb)} BOB${usdS(wb, S.bobP)} burned this week. The newest: ${a} BOB${au}, ${t}.`, `Burning for the BOB family too: ${a} BOB${au} ${t}. This week: ${w}.`]); },
     liq: () => { const l = lpText(), last = ll ? `${bnbF(+ll.bnb || 0)}, ${hAgo(Date.parse(ll.time))}` : ''; return vary('v8', [
       `${l} of my pool's LP is burned.${last ? ` Last add: ${last}.` : ''} Nobody can pull it.`, `My pool: ${l} of its LP at the dead address.${last ? ` Newest add ${last}.` : ''}`,
       `Liquidity that stays: ${l} of the LP is burned.${last ? ` Last add: ${last}.` : ''}`, `${l} of the LP is burned, so the pool cannot be pulled.${last ? ` I added ${last}.` : ''}`,
@@ -1979,10 +1987,10 @@ function recallLine() {
   const run = S.burns.filter(e => Date.parse(e.time) >= now - 3600e3 && +e.bobaiBurned > 0).at(-1);
   const buy = S.hist.filter(x => x.buy && !x.ours && !x.taxSwap && x.usd >= 50 && x.t >= now - 3600e3).at(-1);
   // five ways to remember each (2026-10-02); the figures stay the record's own
-  if (run && (!buy || Date.parse(run.time) >= buy.t)) { const a = mins(Date.parse(run.time)), b = cmp(+run.bobaiBurned), ctx = burnContext(run); return ['burn', vary('v20', [
-    `${a} I burned ${b} BOBAI. ${ctx || 'Gone for good, on-chain.'}`, `Remember the burn ${a.toLowerCase()}? ${b} BOBAI, gone. ${ctx || 'Check it on BscScan.'}`,
-    `${a}: ${b} BOBAI to the dead address. ${ctx || 'Supply only goes down.'}`, `Still warm: ${b} BOBAI burned ${a.toLowerCase()}. ${ctx || 'Every step with its transaction.'}`,
-    `My last burn was ${a.toLowerCase()}: ${b} BOBAI. ${ctx || 'Never coming back.'}`]).trim()]; }
+  if (run && (!buy || Date.parse(run.time) >= buy.t)) { const a = mins(Date.parse(run.time)), b = cmp(+run.bobaiBurned), bu = usdS(run.bobaiBurned, S.price), ctx = burnContext(run); return ['burn', vary('v20', [
+    `${a} I burned ${b} BOBAI${bu}. ${ctx || 'Gone for good, on-chain.'}`, `Remember the burn ${a.toLowerCase()}? ${b} BOBAI${bu}, gone. ${ctx || 'Check it on BscScan.'}`,
+    `${a}: ${b} BOBAI${bu} to the dead address. ${ctx || 'Supply only goes down.'}`, `Still warm: ${b} BOBAI${bu} burned ${a.toLowerCase()}. ${ctx || 'Every step with its transaction.'}`,
+    `My last burn was ${a.toLowerCase()}: ${b} BOBAI${bu}. ${ctx || 'Never coming back.'}`]).trim()]; }
   if (buy) { const a = mins(buy.t), u = `$${nf(buy.usd, 0)}`, t = `$${nf(buy.usd * 0.03, 2)}`; return ['cheer', vary('v21', [
     `${a} someone bought ${u} of BOBAI. ${t} of tax from it is charging my next buyback.`, `Remember that ${u} buy ${a.toLowerCase()}? Its ${t} of tax is already working for the burns.`,
     `${a}: a ${u} buy. Thank you, whoever you are. ${t} of tax from it feeds my next buyback.`, `A ${u} buy ${a.toLowerCase()}. ${t} of tax from it went straight into my queue.`,
@@ -2586,7 +2594,7 @@ const CMDS = {
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
-    say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], ` and ${cmp(wk.reduce((a, e) => a + bobOf(e), 0))} BOB.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
+    say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], ` and ${bobAmt(wk.reduce((a, e) => a + bobOf(e), 0))}.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
   next: () => { setFocus('core'); const left = W.buyback.last ? W.buyback.last + 600e3 - Date.now() : 0;
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
@@ -2597,12 +2605,12 @@ const CMDS = {
     say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `${defiRate()}; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
-    say(['The Giggle Academy pot holds ', [bnb4(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
+    say(['The Giggle Academy pot holds ', [bnb4R(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
   price: () => { setFocus('src'); const c = chartWords(), f = LIFE.flow || {}, rB = CX.liqUsd > 0 && S.bnbP > 0 ? CX.liqUsd / 2 / S.bnbP : 0;
     say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned)${c ? `, ${c.s} in 24 h` : ''}.`
       + (c && c.vb != null && Math.abs(c.ch - c.vb) >= 0.5 ? ` Against BNB I am ${c.sg(c.vb)}: BNB itself went ${c.sg(c.bnb)} in dollars, and that is in every USD figure.` : '')
       + (f.b || f.s ? ` This hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} ($${nf(f.bu || 0)}) and ${nf(f.s)} sell${f.s === 1 ? '' : 's'} ($${nf(f.su || 0)}).` : '')
-      + (rB > 0 ? ` The pool holds ${bnbF(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(((1 + 1 / rB) ** 2 - 1) * 100).toFixed(1)}%, plus the 3% tax.` : '')
+      + (rB > 0 ? ` The pool holds ${bnbR(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(((1 + 1 / rB) ** 2 - 1) * 100).toFixed(1)}%, plus the 3% tax.` : '')
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
@@ -2847,11 +2855,11 @@ function motifOf(k, now) {
     return {
       pose: (tierOf(BURN_TIERS, burnUsd(e)) || [])[1] || 'burn', col: D.burnA.c, stamp: 'BURN OF ' + utc(t), tx: e.bobaiBurnTx, t,
       label: 'BOBAI JUST BURNED', value: nf(e.bobaiBurned), sub: `BOBAI · from ${bnbF(e.totalBnb)} of tax  ·  ≈ $${nf(e.bobaiBurned * S.price, 2)} today`,
-      cards: [['$BOB BURNED', cmp(bobOf(e)) + ' BOB', 'the same run', D.burnB.c],
+      cards: [['$BOB BURNED', bobAmt(bobOf(e)), 'the same run', D.burnB.c],
         ['TO LIQUIDITY', l ? bnb4(l.bnb) : '—', l ? nf(l.lpBurned, 2) + ' LP burned' : 'no add in this run', D.liq.c],
         ['TO THE DEFI AGENT', bnb4(e.lpAgentBnb), 'it works the capital', D.defi.c],
         ['TO THE GIGGLE POT', bnb4(e.giggleBnb), 'donated on Nov 20', D.giggle.c]],
-      text: `$BOBAI just burned ${nf(e.bobaiBurned)} BOBAI and ${cmp(bobOf(e))} $BOB from its 3% tax. Check it on-chain: https://bscscan.com/tx/${e.bobaiBurnTx} 🔥`,
+      text: `$BOBAI just burned ${nf(e.bobaiBurned)} BOBAI${usdS(e.bobaiBurned, S.price)} and ${cmp(bobOf(e))} $BOB${usdS(bobOf(e), S.bobP)} from its 3% tax. Check it on-chain: https://bscscan.com/tx/${e.bobaiBurnTx} 🔥`,
     };
   }
   if (k === 'liq') {
@@ -2877,18 +2885,18 @@ function motifOf(k, now) {
     return {
       pose: k === 'day' ? 'idle' : 'giggle', col: '#F0B90B', stamp: range, tx: null,
       label: k === 'day' ? 'BOBAI BURNED IN 24 HOURS' : 'BOBAI BURNED IN 7 DAYS', value: nf(burned), sub: `BOBAI in ${runs.length} burn run${runs.length === 1 ? '' : 's'}  ·  ≈ $${nf(burned * S.price)} today`,
-      cards: [['$BOB BURNED', cmp(bob) + ' BOB', 'Build On BNB, gone', D.burnB.c],
+      cards: [['$BOB BURNED', bobAmt(bob), 'Build On BNB, gone', D.burnB.c],
         ['LIQUIDITY ADDED', bnb4(sumB(adds, x => x.bnb)), adds.length + ' add' + (adds.length === 1 ? '' : 's') + ' · LP burned', D.liq.c],
         ['TO THE DEFI AGENT', bnb4(sumB(runs, e => e.lpAgentBnb)), 'it works the capital', D.defi.c],
         ['TO THE GIGGLE POT', bnb4(sumB(runs, e => e.giggleTx ? e.giggleBnb : 0)), 'donated on Nov 20', D.giggle.c]],
-      text: `$BOBAI, ${word}: ${nf(burned)} BOBAI and ${cmp(bob)} $BOB burned in ${runs.length} runs, ${bnb4(sumB(adds, x => x.bnb))} added to liquidity with the LP burned. All on-chain 🧠`,
+      text: `$BOBAI, ${word}: ${nf(burned)} BOBAI${usdS(burned, S.price)} and ${cmp(bob)} $BOB${usdS(bob, S.bobP)} burned in ${runs.length} runs, ${bnb4(sumB(adds, x => x.bnb))} added to liquidity with the LP burned. All on-chain 🧠`,
     };
   }
   const wk = S.burns.filter(e => Date.parse(e.time) >= now - 7 * 86400e3);
   return {
     pose: null, col: D.burnA.c, stamp: utc(now) + '  ·  LIVE FROM BNB CHAIN', tx: null,
     label: 'BOBAI BURNED FOREVER', value: nf(S.deadA || 0), sub: `${supplyPct(S.deadA || 0)}% of the supply  ·  ≈ $${nf((S.deadA || 0) * S.price)} today`,
-    cards: [['BURNED THIS WEEK', cmp(sumB(wk, e => e.bobaiBurned)) + ' BOBAI', '+ ' + cmp(sumB(wk, bobOf)) + ' $BOB burned', D.burnA.c],
+    cards: [['BURNED THIS WEEK', bobaiAmt(sumB(wk, e => e.bobaiBurned)), '+ ' + bobAmt(sumB(wk, bobOf)) + ' burned', D.burnA.c],
       ['NEXT BUYBACK', '$' + nf(qUsd, 2), 'tax charging the next burn', '#F0B90B'],
       ['LIQUIDITY LOCKED', lpText(), 'of the pool LP burned', D.liq.c],
       ['GIGGLE ACADEMY POT', bnb4(ggBnb()), 'donated on Nov 20', D.giggle.c]],
@@ -3172,14 +3180,14 @@ function takeChain({ at = Date.now(), bnbP, price, bobP, bobDead, bobaiDead, que
   paintBob();
   const queuedUsd = S.queued * S.price + splitBnb() * bnbP;
   coreLab.querySelector('.v').textContent = '$' + nf(queuedUsd, 2);
-  coreLab.querySelector('.s').innerHTML = `<span>${nf(S.queued)} BOBAI tax</span>` + (splitBnb() > 0 ? ` <span>+ ${splitBnb().toFixed(4)} BNB to split</span>` : S.queued >= MIN_DISPATCH ? ' <span>full · swaps inside a next trade</span>' : ''); // two lines, not wrapped at random ("…0.0031 / BNB", 2026-09-28)
+  coreLab.querySelector('.s').innerHTML = `<span>${nf(S.queued)} BOBAI tax${usdS(S.queued, S.price)}</span>` + (splitBnb() > 0 ? ` <span>+ ${bnb4(splitBnb())} to split</span>` : S.queued >= MIN_DISPATCH ? ' <span>full · swaps inside a next trade</span>' : ''); // two lines, not wrapped at random ("…0.0031 / BNB", 2026-09-28)
   charge = splitBnb() > 0 ? 1 : clamp(S.queued / MIN_DISPATCH, 0, 1); // BNB ready in 1ce = split at the next check
   S.lpPct = lpPct;
   paintLogs();
 }
 function paintBob() {
   if (!S.deadB) return;
-  if (!S.burns.length) return setDest('burnB', cmp(S.deadB) + ' BOB', 'at the dead address · reading the bot log…');
+  if (!S.burns.length) return setDest('burnB', bobAmt(S.deadB), 'at the dead address · reading the bot log…');
   const ours = S.burns.reduce((a, e) => a + bobOf(e), 0);
   setDest('burnB', cmp(ours) + ' BOB', `burned by BOBAI's bot · ${(ours / S.deadB * 100).toFixed(1)}% of all ${cmp(S.deadB)} BOB burned · ≈$${nf(ours * S.bobP)}`);
 }
@@ -3197,7 +3205,7 @@ function paintLogs() {
   if (S.liq.length) setDest('liq', `${boost.n} adds · ${bnb4(boost.bnb)}`, `${nf(boost.lp, 2)} LP burned · pool ${lpText()} locked`);
   if (S.burns.length) {
     const gg = ggBnb(), days = Math.max(0, Math.ceil((ggEnd() - Date.now()) / 86400e3));
-    setDest('giggle', bnb4(gg), GIGGLE_OPEN() ? `≈$${nf(gg * S.bnbP, 2)} · for Giggle Academy in ${days} days` : 'donated to Giggle Academy on Nov 20');
+    setDest('giggle', bnb4R(gg), GIGGLE_OPEN() ? `≈$${nf(gg * S.bnbP, 2)} · for Giggle Academy in ${days} days` : 'donated to Giggle Academy on Nov 20');
     const cr = S.burns.slice(-1)[0];
     const dv = S.dev[S.dev.length - 1];
     setDest('creator', pctOf('creator') + ' of each trade', (cr ? `last in: ${bnbF(cr.creatorBnb)}` : '') + (dv ? ` · d38 paid out ${bnbF(dv.availableBnb)}` : ''));
@@ -3206,7 +3214,7 @@ function paintLogs() {
   if (lp) {
     const rb = lp.last?.steps?.rebalance, inc = lp.last_check?.steps?.increase;
     const v = lpNow().value, inr = lpNow().inR;
-    if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${cmp(lp.flow?.out?.bobai_units || 0)} BOBAI`);
+    if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${bobaiAmt(lp.flow?.out?.bobai_units || 0)}`);
   }
 }
 async function logs() {
@@ -3282,8 +3290,8 @@ function run(x, fast) {
     moment('burn', burnUsd(e), flipBurn(e, x.l), x.t, fast, null);
     logLine('SPLIT', '#F0B90B', ['bot split ', [bnbF(e.totalBnb)], ' of collected tax'], [], x.t);
     const steps = [
-      ['burnA', 'burn', () => { floatAt(D.burnA.pos, '-' + cmp(e.bobaiBurned) + ' BOBAI', D.burnA.c); logLine('BURN', D.burnA.c, ['burned ', [bobaiAmt(e.bobaiBurned)]], [['burn', e.bobaiBurnTx]], x.t); }],
-      ['burnB', 'burn', () => { floatAt(D.burnB.pos, '-' + cmp(bobOf(e)) + ' BOB', D.burnB.c); logLine('BURN', D.burnB.c, ['burned ', [cmp(bobOf(e)) + ' BOB']], [['burn', e.bobBurnTx || e.burnTx]], x.t); }],
+      ['burnA', 'burn', () => { floatAt(D.burnA.pos, '-' + bobaiAmt(e.bobaiBurned), D.burnA.c); logLine('BURN', D.burnA.c, ['burned ', [bobaiAmt(e.bobaiBurned)]], [['burn', e.bobaiBurnTx]], x.t); }],
+      ['burnB', 'burn', () => { floatAt(D.burnB.pos, '-' + bobAmt(bobOf(e)), D.burnB.c); logLine('BURN', D.burnB.c, ['burned ', [bobAmt(bobOf(e))]], [['burn', e.bobBurnTx || e.burnTx]], x.t); }],
       ...(x.l ? [['liq', 'liq', () => { floatAt(D.liq.pos, '+' + nf(x.l.lpBurned, 1) + ' LP burned', D.liq.c); logLine('LIQ', D.liq.c, [[bnbF(x.l.bnb)], ' to liquidity: half bought ', [bobaiAmt(x.l.bobaiBought)], ', paired with the other half · LP burned'], [['add', x.l.addLiqTx], ['LP', x.l.lpBurnTx]], x.t); }]] : []),
       ...(e.lpAgentTx ? [['defi', 'defi', () => { floatAt(D.defi.pos, '+' + bnbF(e.lpAgentBnb), D.defi.c); logLine('DEFI', D.defi.c, ['agent got ', [bnbF(e.lpAgentBnb)]], [['tx', e.lpAgentTx]], x.t); }]] : []),
       ...(e.giggleTx ? [['giggle', 'giggle', () => { floatAt(D.giggle.pos, '+' + bnbF(e.giggleBnb), D.giggle.c); logLine('GIGGLE', D.giggle.c, ['pot got ', [bnbF(e.giggleBnb)]], [['tx', e.giggleTx]], x.t); }]] : []),
@@ -3385,8 +3393,8 @@ window.__btExact = async tx => { const n = (S.nft?.drops || []).find(d => (d.buy
 // past event in dollars at the BNB price of its own hour (the candle ledger's u), not today's
 const bnbUsdAt = t => { const r = CH.rows.find(r => r.t >= t && r.t - t <= 60 * 60e3) || [...CH.rows].reverse().find(r => r.t <= t); return (r && r.u > 0 ? r.u : 0) || S.bnbP || 0; };
 const $amt = u => '$' + nf(u, u < 10 ? 2 : 0);
-const tradeAmt = x => [x.bobai > 1 ? cmp(x.bobai) + ' BOBAI' : null, x.bnb > 0 ? bnbF(x.bnb) : null, x.usd > 0 ? $amt(x.usd) : null].filter(Boolean).join(' · ');
-const bnbAmt = (b, t) => { b = +b || 0; const u = b * bnbUsdAt(t); return bnbF(b) + (u > 0 ? ' · ' + $amt(u) : ''); };
+const tradeAmt = x => [x.bobai > 1 ? cmp(x.bobai) + ' BOBAI' : null, x.bnb > 0 ? bnbR(x.bnb) : null, x.usd > 0 ? $amt(x.usd) : null].filter(Boolean).join(' · ');
+const bnbAmt = (b, t) => { b = +b || 0; const u = b * bnbUsdAt(t); return bnbR(b) + (u > 0 ? ' · ' + $amt(u) : ''); };
 const burnUsd = e => { const t = Date.parse(e.time), r = CH.rows.find(r => r.t >= t && r.t - t <= 30 * 60e3);
   return r && r.c > 0 && r.u > 0 ? (+e.bobaiBurned || 0) * r.c * r.u : (+e.bobaiBurnBnb || 0) * 0.97 * S.bnbP; };
 const momentEl = document.createElement('div'); momentEl.className = 'moment';
@@ -3742,21 +3750,21 @@ function flipBurn(e, l) {
   const n = v => parseFloat(v) || 0, parts = { burnA: n(e.bobaiBurnBnb), burnB: n(e.bobBurnBnb), defi: n(e.lpAgentBnb), giggle: n(e.giggleBnb), creator: n(e.creatorBnb) };
   // the liquidity share is the rest of the run: the log of the add (when it is found) or what the other parts leave
   parts.liq = l ? n(l.bnb) : Math.max(0, n(e.totalBnb) - Object.values(parts).reduce((a, b) => a + b, 0));
-  return { head: 'THIS BUYBACK', rows: [['BOBAI BURNED', nf(e.bobaiBurned), D.burnA.c], ['BOB BURNED', cmp(bobOf(e)), D.burnB.c], ['TAX SPENT', bnbF(e.totalBnb), '#F0B90B']],
+  return { head: 'THIS BUYBACK', rows: [['BOBAI BURNED', nf(e.bobaiBurned) + usdS(e.bobaiBurned, S.price), D.burnA.c], ['BOB BURNED', cmp(bobOf(e)) + usdS(bobOf(e), S.bobP), D.burnB.c], ['TAX SPENT', bnbF(e.totalBnb), '#F0B90B']],
     split: Object.entries(parts).map(([k, v]) => [v, D[k].c, SPLIT_LAB[k]]), ring: 'TAX', spark: { t: Date.parse(e.time), col: D.burnA.c, lab: 'BOT BOUGHT & BURNED' } };
 }
 function flipLiq(l) {
   // the dev wallet's add: both sides straight from its own run (liq-runs.json), nothing bought by the bot
-  if (l.dev) return { head: 'DEV WALLET d38', rows: [['BNB IN', bnbF(l.bnb), D.liq.c], ['BOBAI IN', cmp(l.bobai) + ' BOBAI'], ['LP BURNED', nf(l.lpBurned, 2), '#F0B90B'], ['POOL LOCKED', lpText()]] };
+  if (l.dev) return { head: 'DEV WALLET d38', rows: [['BNB IN', bnbF(l.bnb), D.liq.c], ['BOBAI IN', bobaiAmt(l.bobai)], ['LP BURNED', nf(l.lpBurned, 2), '#F0B90B'], ['POOL LOCKED', lpText()]] };
   // the log's bnb is the whole liquidity share: half of it buys the BOBAI, the other half goes in beside it (read on-chain
   // 2026-09-29, add 0x7b41…: 0.01247 BNB -> pool Mint 0.00603 BNB + 18,593 BOBAI). 'BNB ADDED 0.0125 + 19.2K BOBAI' counted it twice.
-  return { head: 'INTO THE POOL', rows: [['LIQUIDITY SHARE', bnbF(l.bnb), D.liq.c], ['HALF BOUGHT', cmp(l.bobaiBought) + ' BOBAI'], ['LP BURNED', nf(l.lpBurned, 2), '#F0B90B'], ['POOL LOCKED', lpText()]] };
+  return { head: 'INTO THE POOL', rows: [['LIQUIDITY SHARE', bnbF(l.bnb), D.liq.c], ['HALF BOUGHT', bobaiAmt(l.bobaiBought)], ['LP BURNED', nf(l.lpBurned, 2), '#F0B90B'], ['POOL LOCKED', lpText()]] };
 }
 // the DeFi agent: what the step did, as figures; the range drawn under it
 const capOf = s => +s.bnb_spent || +s.would_add?.wbnb || +s.spendable_bnb || 0; // BNB an increase step put in
 const DEFI_BOARD = {
   collect: s => { const got = +s.produced_bnb || +s.owed?.bnb_equivalent || 0;
-    return ['FEES COLLECTED', { head: 'PAYDAY', rows: [['FEES EARNED', bnbF(got), D.defi.c], ['BOBAI BOUGHT', s.bobai_units ? cmp(s.bobai_units) : null, '#F0B90B'], ['BACK TO WORK', s.kept_bnb ? bnbF(s.kept_bnb) : null]],
+    return ['FEES COLLECTED', { head: 'PAYDAY', rows: [['FEES EARNED', bnbF(got), D.defi.c], ['BOBAI BOUGHT', s.bobai_units ? cmp(s.bobai_units) + usdS(s.bobai_units, S.price) : null, '#F0B90B'], ['BACK TO WORK', s.kept_bnb ? bnbF(s.kept_bnb) : null]],
       split: [[+s.bobai_bnb || got / 2, '#F0B90B', 'BUYS BOBAI'], [+s.kept_bnb || got / 2, D.defi.c, 'CAPITAL']], ring: 'FEES' }]; },
   increase: s => ['NEW CAPITAL AT WORK', { head: 'MORE IN THE POOL', rows: [['ADDED', bnbF(capOf(s)), D.defi.c], ['POSITION NOW', s.value_after_bnb ? bnbF(s.value_after_bnb) : null]], meter: s }],
   // a one-sided re-set sits right beside the price with no trade and earns once the price steps back in
@@ -4453,7 +4461,7 @@ function cxStats(all) {
   const cell = (k, v, c, cls) => `<div${cls ? ` class="${cls}"` : ''}><span>${k}</span><b${c ? ` style="color:${c}"` : ''}>${v}</b></div>`;
   return cell('MARKET CAP', '$' + nf(mcap)) + cell('LIQUIDITY', CX.liqUsd ? '$' + nf(CX.liqUsd) : '…') + cell('24H VOLUME', '$' + nf(volUsd))
     + cell('24H TRADES', `<i style="color:${BUYC}">${b}▲</i> <i style="color:${SELLC}">${sl}▼</i>`) + cell(CX.tf + ' RANGE', '$' + lo.toPrecision(4) + ' – ' + hi.toPrecision(4), '', 'cx-rg')
-    + cell('BURNED 24H', cmp(burned) + ' BOBAI', '#ff7a3d');
+    + cell('BURNED 24H', bobaiAmt(burned), '#ff7a3d');
 }
 function drawCx(now) {
   if (!CX.on) return;
@@ -4625,7 +4633,7 @@ async function followTrade(x) {
   comet(A.src, A.core, col, 1.3, () => {
     fire(A.core, new THREE.Color('#F0B90B')); floatAt(A.core, '+' + cmp(tax) + ' BOBAI', '#F0B90B');
     if (!sw && !later) {
-      logLine('FOLLOW', '#F0B90B', ['it waits in the token contract with ', [cmp(S.queued) + ' BOBAI'], ' of tax from other trades, until the contract swaps the pile to BNB. Then the buyback bot splits it: ' + SL.map(s => s[1] + ' ' + amt(s)).join(' · ')]).classList.add('wrap');
+      logLine('FOLLOW', '#F0B90B', ['it waits in the token contract with ', [bobaiAmt(S.queued)], ' of tax from other trades, until the contract swaps the pile to BNB. Then the buyback bot splits it: ' + SL.map(s => s[1] + ' ' + amt(s)).join(' · ')]).classList.add('wrap');
       setTimeout(() => floatAt(A.core, 'waiting in the queue', '#F0B90B'), 700);
       return;
     }
@@ -5068,7 +5076,7 @@ function replaySum() {
   const trades = CH.rows.filter(r => r.t > from).reduce((a, r) => a + (r.b || 0) + (r.s || 0), 0); // the chart's own ledger: the same count it shows
   const lb = [...S.burns].filter(e => Date.parse(e.time) < from).sort((a, b) => Date.parse(b.time) - Date.parse(a.time))[0];
   return { head: 'A QUIET STRETCH', rows: [['THE BOTS', 'KEPT WATCH'], trades ? ['TRADES', nf(trades), BUYC] : null,
-    lb ? ['LAST BURN · ' + ago(Date.parse(lb.time)).toUpperCase(), cmp(+lb.bobaiBurned || 0) + ' BOBAI', D.burnA.c] : null].filter(Boolean) };
+    lb ? ['LAST BURN · ' + ago(Date.parse(lb.time)).toUpperCase(), bobaiAmt(+lb.bobaiBurned || 0), D.burnA.c] : null].filter(Boolean) };
 }
 function startReplay() {
   events.sort((a, b) => a.t - b.t); // live swaps were appended as they came

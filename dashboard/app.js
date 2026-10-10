@@ -214,6 +214,36 @@ const NUMS=window.__bobaiNums={chain:null,lpLocked:null,burns:null,liq:null,gg:n
 function numsOut(){try{dispatchEvent(new Event('bobai:nums'))}catch(e){}}
 function bobSub(){const e=document.getElementById('bob-burned-usd');if(!e)return;const p=[];if(BOB_USD>0)p.push('≈$'+nf(BOB_USD,BOB_USD>=1000?0:2));if(BOB_OURS>0){const ou=BOB_DEAD>0&&BOB_USD>0?BOB_USD*BOB_OURS/BOB_DEAD:0;p.push(nf(BOB_OURS)+' by the bot'+(BOB_DEAD>0?' ('+(BOB_OURS/BOB_DEAD*100).toFixed(1)+'%'+(ou>0?', ≈$'+nf(ou,ou>=1000?0:2):'')+')':''))}e.textContent=p.join(' · ')}
 function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))return;e.textContent="$"+(GG_BNB*BNBP).toFixed(2)}
+// EVERY TOKEN AMOUNT WITH ITS DOLLARS (2026-10-10, operator: "when he talks about $BOBAI, $BNB, $BOB, the USD value —
+// in the windows too"): every "<amount> BOBAI / BNB / BOB" this page prints gets "≈$x" beside it at today's price (the
+// token figure may be history, the dollars follow the market, as everywhere on the site). Only what changed is read
+// again; never inside the Brain Terminal (it writes its own), links, buttons or fields; an amount with a $ figure close
+// by keeps it alone. PX is filled by chain().
+const PX={BNB:0,BOBAI:0,BOB:0};
+const AMT_RX=/(^|[^\w.$≈])([+\-−]?\d[\d,]*(?:\.\d+)?)(\s?[KMB])?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/g,AMT_HAS=/\d[\d,]*(?:\.\d+)?\s?[KMB]?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/;
+const usdTx=u=>u>0&&u<0.01?' ≈<$0.01':' ≈$'+nf(u,u<10?2:0);
+function usdOf(s){const k=s.dataset.k,p=PX[k];return p>0?usdTx(+s.dataset.v*p):''}
+function usdIn(root){
+  if(!(PX.BNB>0)||!root)return;if(root.nodeType===3)root=root.parentNode;if(!root||root.nodeType!==1||root.closest('#bt'))return;
+  // a link is left alone, except a card link that holds a whole text block (the ecosystem cards)
+  const skip='#bt,button,input,textarea,select,option,script,style,code,pre,svg,.usdv,[data-nousd]',nodes=[];
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:t=>{const p=t.parentElement,a=p&&p.closest('a');return !p||p.closest(skip)||(a&&!a.querySelector('p,div'))||!AMT_HAS.test(t.data)?2:1}});
+  while(w.nextNode())nodes.push(w.currentNode);
+  for(const t of nodes){
+    const p=t.parentElement,row=(p.closest('tr,li')||p).textContent;let m,cut=null;AMT_RX.lastIndex=0;
+    while((m=AMT_RX.exec(t.data))){const s=m.index+m[1].length,e=m.index+m[0].length,txt=t.data.slice(s,e),at=row.indexOf(txt);
+      const near=at<0?'':row.slice(Math.max(0,at-30),at)+row.slice(at+txt.length,at+txt.length+45);
+      if(/\$\s?\d|≈\s?<?\$/.test(near))continue;
+      const k=m[4].replace('$',''),mul={K:1e3,M:1e6,B:1e9}[(m[3]||'').trim()]||1,v=Math.abs(parseFloat(m[2].replace(/[,−+-]/g,'')))*mul;
+      if(v>0&&PX[k]>0){cut=[e,k,v];break}}
+    if(!cut)continue;
+    const after=t.splitText(cut[0]),s=document.createElement('span');s.className='usdv';s.dataset.k=cut[1];s.dataset.v=cut[2];s.style.opacity='.72';
+    s.textContent=usdOf(s);p.insertBefore(s,after);if(AMT_HAS.test(after.data))usdIn(p);
+  }
+}
+function usdAll(){if(!(PX.BNB>0))return;for(const s of document.querySelectorAll('.usdv'))s.textContent=usdOf(s);usdIn(document.body)}
+{let q=new Set(),tm=0;new MutationObserver(rs=>{for(const r of rs){if(r.target.closest&&r.target.closest('#bt'))continue;q.add(r.target)}
+  if(!tm)tm=setTimeout(()=>{tm=0;const a=[...q];q=new Set();for(const n of a)if(n.isConnected)usdIn(n)},300)}).observe(document.documentElement,{childList:true,subtree:true,characterData:true})}
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
       DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
@@ -357,6 +387,7 @@ async function chain(){
     try{const bobUsd=bAmt>0?bAmt*pU:0;put('bobai-burned-usd',bobUsd>0?'≈$'+nf(bobUsd,bobUsd>=1000?0:2):'');
       const hH=q[15],h0=BigInt('0x'+hH.slice(2,66)),h1=BigInt('0x'+hH.slice(66,130)),bobP=(Number(h1)/Number(h0))*bnbP;
       BOB_USD=bobAmt>0&&bobP>0?bobAmt*bobP:0;BOB_DEAD=bobAmt;bobSub()}catch(e){}
+    PX.BNB=bnbP;PX.BOBAI=pU;try{const hH=q[15];PX.BOB=Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){}usdAll();
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
     // The Brain Terminal reads these instead of a chain read of its own: one source, one figure.
     NUMS.chain={at:Date.now(),bobDead:bobAmt,bobaiDead:bAmt,priceUsd:pU,bnbUsd:bnbP,

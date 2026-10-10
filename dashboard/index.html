@@ -700,7 +700,7 @@
         <div class="tg-body">
           <div class="tg-eyebrow"><span style="color:var(--green);font-weight:700">&#x2713; Complete</span> &middot; BOBAI Worldcup '26 &middot; Jun 11 &ndash; Jul 19, 2026</div>
           <div class="tg-pool">
-            <div class="pv" id="tg-pool-bobai">--</div>
+            <div class="pv" id="tg-pool-bobai" data-nousd>--</div>
             <div class="pu" id="tg-pool-usd">--</div>
           </div>
           <div class="tg-cta">Final prize pool &middot; all pots paid out on-chain &middot; view archive &amp; payout receipts <span class="arr">&rarr;</span></div>
@@ -1370,10 +1370,10 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=104" defer></script>
+<script src="app.js?v=105" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1791640309">
+<link rel="stylesheet" href="terminal/terminal.css?v=1791653391">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1424,7 +1424,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1791640309'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1791653391'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

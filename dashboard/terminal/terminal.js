@@ -5602,8 +5602,22 @@ window.__btHwSeason = hwSeason;
     const g = Math.round(cl3(A.figHpx * (portrait ? 0.0525 : 0.0575), 11, 20)); /* 25% up again (operator: "a tiny bit larger") */ if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
     for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i], tf = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)', op = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); if (e._tf !== tf) e.style.transform = e._tf = tf; if (e._op !== op) e.style.opacity = e._op = op; } /* written only when changed */
   }
+  // WHAT STANDS FIRST, WHAT PLAYS LATER (2026-10-11, operator chose "a faster start"): the 42 pictures (915 KB) all came
+  // in the first 5 s and held up his first clip on a slow phone (22-24 s). What is seen at the start loads now; the
+  // pictures only a scene or a fright shows (the clowns, the skeleton, the hand, every scared/scream/panic frame, ~450
+  // KB) come 6 s later, and the director starts no scene before they are all there (laterOk).
+  const LATER = /^(stalker|skeleton|hand|clown|balloon)|_(scared|scream|panic|peek|hide|hiss|grab)$/;
+  let laterP = null, laterOk = false;
+  const pic = i => { i.addEventListener('load', () => { sig = ''; }, { once: true }); i.src = BASE + 'hw/' + i.dataset.hw + '.webp' + Q; };
   function load() {
-    for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (!i.getAttribute('src')) { i.addEventListener('load', () => { sig = ''; }, { once: true }); i.src = BASE + 'hw/' + i.dataset.hw + '.webp' + Q; } });
+    for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (!i.getAttribute('src') && !LATER.test(i.dataset.hw)) pic(i); });
+    setTimeout(loadLater, 6000);
+  }
+  function loadLater() {
+    if (laterP) return laterP; const ps = [];
+    for (const root of [el, dl, dw]) root.querySelectorAll('img[data-hw]').forEach(i => { if (i.getAttribute('src')) return;
+      ps.push(new Promise(r => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); })); pic(i); });
+    return laterP = Promise.all(ps).then(() => { laterOk = true; });
   }
 
   // ---- finding free spots (all in window pixels) ----
@@ -5757,6 +5771,7 @@ window.__btHwSeason = hwSeason;
   function detailDecor() {
     const open = on && detail.classList.contains('on');
     if (!open) { if (dKey) { dKey = ''; dl.classList.remove('on', 'go'); dw.classList.remove('on'); } return; }
+    loadLater(); // a window opened in the first seconds: its peeking ghost or clown is fetched now
     const r = win.getBoundingClientRect(), d = detail.getBoundingClientRect(), b = { l: d.left - r.left, t: d.top - r.top, r: d.right - r.left, b: d.bottom - r.top };
     if (b.r - b.l < 40) return;
     const dp = dl.querySelector('.hw-dp'), ds = dl.querySelector('.hw-ds'), pw = portrait ? 46 : 54, ph = pw * 1.1;
@@ -6194,6 +6209,7 @@ window.__btHwSeason = hwSeason;
       // how long each scene holds the stage (s), so the replay's quiet stretch can be matched to it
       const secsOf = f => f === grabScene ? (CLOWN.ready ? 42 : 15) : f === skelGrab ? 22 : f === handScene ? (portrait ? 20 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
       const direct = room => { if (busy() || win.classList.contains('in-moment')) return false;
+        if (!laterOk) { loadLater(); return false; } // a scene's pictures not all there yet: no scene with an empty piece
         for (let n = 0; n < SHOW.length; n++) { const f = SHOW[i++ % SHOW.length]; if (secsOf(f) > room) continue; if (f()) { lastShow = performance.now(); return true; } } return false; };
       loop(22000, 34000, () => direct(replayRoom()), 9000);
       // in a replay, a quiet stretch is used as soon as one is long enough (and the last scene is a while ago)

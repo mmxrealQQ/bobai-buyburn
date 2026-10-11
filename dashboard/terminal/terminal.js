@@ -1172,11 +1172,11 @@ function freshJoke() {
   const pool = mine.length && Math.random() < 0.45 ? mine : all.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : all);
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
-function tellJoke(ms) {
+function tellJoke(ms, queued = false) {
   // A JOKE IS SAID, NOT LOGGED (operator, 2026-10-10 evening: "A bear wandered into my pool" does not belong in the
   // brain.log — the log keeps what the bots and the ecosystem do; a joke, asked for or his own, is the bubble alone)
   if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); return true; }
-  if (VID.go || VID.goOn || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
+  if (VID.go || VID.goOn || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) && !(queued && !/^idle/.test(VID.cur)) || performance.now() < (LIFE.greetUntil || 0)) return false;
   const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
@@ -1308,7 +1308,7 @@ function vidInit() {
   const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', ...EXTRA_POSES, ...TIER_POSES]; // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
   // every take up to -v9 (2026-09-30: new waiting takes rest-v3..v6 and third takes of moves would have been ignored)
   const V = n => Array.from({ length: 8 }, (_, i) => n + '-v' + (i + 2));
-  const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
+  const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...Array.from({ length: 8 }, (_, i) => 'rest-s' + (i + 1)), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
   // which clips were shot in the wide framing (FRAMING.wide); a list that does not answer means none
   // no greeting came (a moment took the stage): alive anyway — but a greeting only waiting for the boot gets until 22 s
   const fb = () => { if (!SAID_HI && performance.now() < 22e3 && !QUEUE.length) return setTimeout(fb, 1000); GREETED = true; LIFE.saidHi = true; if (!VID.cur) vidRest(); }; // no greeting: the joke button is free anyway
@@ -1565,11 +1565,16 @@ function vidWave() {
 // and never twice running: on its own on repeat it showed the same chuckle every 8 s (2026-09-27).
 let GREETED = false;
 function restTake() {
-  const r = takesOf('rest'); if (r.length < 2) return r[0] || null;
+  // SHORT CALM MOMENTS (2026-10-11, operator chose "forward and back"): every reaction waits for the rest take playing to
+  // end (a take is never cut), and with the 8 s takes he answered after ~4 s, up to 8 s (flowlag.mjs). The 4.5-5 s
+  // moments rest-s1..s6 (rest_pingpong.py: each 8 s take's first ~2.3 s forward and back, turned where he moves least)
+  // play instead; the 8 s takes only while fewer than two short ones are there
+  const s = [...VID.have].filter(c => /^rest-s\d$/.test(c)).sort(), short = s.length >= 2, r = short ? s : takesOf('rest'), plain = short ? s[0] : 'rest';
+  if (r.length < 2) return r[0] || null;
   // MORE WAITING TAKES (2026-09-30, operator: "3-4 different ones, lots of variety"): the plain breathing one about 40%
   // of the time, the others share the rest, never the same take twice running (the broad smile no longer on repeat)
-  const others = r.filter(c => c !== 'rest' && c !== VID.lastRest);
-  return VID.lastRest = (VID.lastRest !== 'rest' && Math.random() < 0.4) || !others.length ? 'rest' : pick(others);
+  const others = r.filter(c => c !== plain && c !== VID.lastRest);
+  return VID.lastRest = (VID.lastRest !== plain && Math.random() < 0.4) || !others.length ? plain : pick(others);
 }
 function vidRest() {
   const c = !REDUCED && VID.v && (VID.nextRest && VID.have.has(VID.nextRest) ? VID.nextRest : restTake()); VID.nextRest = null; if (!c) { vidStop(); return; }
@@ -2244,7 +2249,7 @@ function lifeTick(now) {
   if (poseT > 0 || pinnedK || QUEUE.length || now < sceneUntil + 2500) return; // the chain's own moments and the reader's focus go first
   // A TAPPED JOKE GOES BEFORE HIS OWN MOVES (3.10., qa/situations: the queued joke waited for paintJoke's 250 ms tick and
   // his own coffee move took the free stage first): told here the moment the stage is free; after 30 s he lives on
-  if (jokeQueued && now - (LIFE.touchAt || 0) < 30e3) { if (jokeReady()) jokeTap(); return; }
+  if (jokeQueued && now - (LIFE.touchAt || 0) < 30e3) { if (jokeReady(true)) jokeTap(true); return; }
   // THE MARKET TURNS (2026-09-26): when the hour's price crosses into a new mood he answers at once, with the real
   // figure — not at his next idle move two minutes later. At most once in ten minutes, so a choppy hour stays calm.
   if (now >= (LIFE.moodAt || 0)) {
@@ -3858,18 +3863,20 @@ let tapKind = -1, tapN = 0;
 // a click then keeps the joke (GOT ONE… WAIT) and it is told the moment the window opens. Ready shows only after it has
 // held for half a second, so it does not flicker between two takes.
 let jokeQueued = false, jokeReadySince = 0, jokeShown = null;
-function jokeReady() {
+// queued (2026-10-11, flowlag.mjs: a joke tapped during his coffee came 12 s later — the coffee's end, then a whole rest
+// moment, then the laugh): a joke already asked for queues behind the move playing (never cut: it follows its last frame)
+function jokeReady(queued = false) {
   if (mode !== 'live' || performance.now() < sceneUntil || QUEUE.length || momentEl.classList.contains('held')) return false;
   if (REDUCED || !VID.v) return true;
   if (VID.go || VID.goOn || (VID.want && VID.want.p !== 'idle') || !HAVE.has('laugh') || !moveTakes('laugh').length) return false;
   // his wave is an action too (2026-09-30, operator: "at the start his first action can be cut off by a joke"): only the
   // calm rest takes give way; the greeting, until its line is said, never
   if (!LIFE.saidHi || performance.now() < (LIFE.greetUntil || 0)) return false;
-  return !(VID.on && VID.cur && !/^rest/.test(VID.cur));
+  return !(VID.on && VID.cur && !/^rest/.test(VID.cur)) || (queued && !/^idle/.test(VID.cur));
 }
 function paintJoke() {
   const now = performance.now(), r = jokeReady();
-  if (r && jokeQueued) { jokeTap(); return; }
+  if (jokeQueued && jokeReady(true)) { jokeTap(true); return; }
   jokeReadySince = r ? (jokeReadySince || now) : 0;
   // NEVER "TELLING YOU SOMETHING" WITHOUT A SENTENCE (operator rule, 1.10.; 2.10. it still showed under the NFT card with no
   // bubble): busy, the button names what he does — speaking (or a line held for his move), else a scene, else a moment
@@ -3884,11 +3891,11 @@ function paintJoke() {
   if (state === 'ready' && was) { jokeBtn.classList.remove('ready-in'); void jokeBtn.offsetWidth; jokeBtn.classList.add('ready-in'); }
 }
 setInterval(() => { try { paintJoke(); } catch {} }, 250); // (the scene and the video are made further down: until then, nothing to paint)
-function jokeTap() {
+function jokeTap(queued = false) {
   LIFE.touchAt = performance.now();
-  if (!jokeReady()) { jokeQueued = true; paintJoke(); return; }
+  if (!jokeReady(queued)) { jokeQueued = true; paintJoke(); return; }
   jokeQueued = false;
-  if (tellJoke(6500)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }
+  if (tellJoke(6500, queued)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }
   else jokeQueued = true; // no clip could start after all: it waits for the next window
   paintJoke();
 }
@@ -5901,14 +5908,23 @@ window.__btHwSeason = hwSeason;
   const restFits = (ready, go, t0 = performance.now()) => {
     if (!on) return;
     const rest = VID.on && VID.cur && /^(rest|idle)/.test(VID.cur), left = rest && VID.v ? (VID.v.duration || 8) - VID.v.currentTime : -1;
-    if (!VID.on || (left >= ready && left <= ready + 0.3) || performance.now() - t0 > 10000) return go();
+    // the rest moments are 4.5-5 s since 2026-10-11 (shorter than a scene's run-up): the beat may be the end of the NEXT
+    // one too — the one preloaded in the spare (vidPreload), its length known
+    const sp = VID.spare, nx = rest && sp && sp._c && /^rest/.test(sp._c) && sp.duration ? left + sp.duration : -1;
+    const fits = x => x >= ready && x <= ready + 0.3;
+    if (!VID.on || fits(left) || fits(nx) || performance.now() - t0 > 10000) return go();
     after(100, () => restFits(ready, go, t0));
   };
-  function throwMoon(m, lift, release, start = null, spin0 = 0) {
+  // the throw is decided when the wind-up starts, and his ouch queued right then (2026-10-11, ouchsync.mjs on live: queued
+  // only at the release, 0.3 s later, a late timer let his rest moment end first — a new one began and the hit landed
+  // on it, the ouch 4.5 s behind). Only a MOVE of his or a scene of the chain calls the throw off (a sentence does not).
+  const throwOk = m => !!headHit((m.l + m.r) / 2) && !ownBusy() && !win.classList.contains('in-moment') && !detail.classList.contains('on');
+  function throwMoon(m, lift, release, start = null, spin0 = 0, pre = false) {
     const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx), sx = start ? start.x : 0, sy = start ? start.y : lift;
     release();
-    // only a MOVE of his or a scene of the chain calls the throw off (a sentence does not: the ouch line simply follows it)
-    if (!h || ownBusy() || win.classList.contains('in-moment') || detail.classList.contains('on')) { // no throw, the moon floats home
+    // pre: the ouch is queued already (VID.want) — that is no move of his that calls it off
+    if (!h || (!pre && ownBusy()) || win.classList.contains('in-moment') || detail.classList.contains('on')) { // no throw, the moon floats home
+      if (pre && VID.want && /ouch/.test(VID.want.c || '')) VID.want = null; // and no ouch without a hit
       mo.style.transition = 'transform 1.6s cubic-bezier(.3,.7,.4,1)'; mo.style.transform = ''; after(1700, () => moonHome(m)); return;
     }
     // the copy in front of him, at the moon's lifted spot; the sky's moon hides meanwhile
@@ -5916,7 +5932,7 @@ window.__btHwSeason = hwSeason;
     Object.assign(c.style, { left: m.l + 'px', top: m.t + 'px', width: m.r - m.l + 'px' }); flyL.appendChild(c);
     mo.style.transition = 'none'; mo.style.opacity = '0'; mo.style.transform = '';
     const dx = h.x - mx, dy = h.y - my, spin = dx > 0 ? 1 : -1;
-    setPose('ouch', 6); // queued to the end of his rest take, which is the moment of the hit (homeSoon)
+    if (!pre) setPose('ouch', 6); // queued to the end of his rest take, which is the moment of the hit (homeSoon)
     // AN ARC, NOT A LINE (2026-10-06, operator: "the moon is thrown oddly" — on a phone the moon sits just above him and
     // the straight flight was a short drop): up over the top of the throw, then down onto his head
     const apex = Math.max(Math.min(sy, dy) - Math.max(50, Math.abs(dx - sx) * 0.35), 4 - m.t); // never over the top edge (the skeleton throws from up there)
@@ -5948,13 +5964,14 @@ window.__btHwSeason = hwSeason;
     after(2700, () => { const go = 'transform 1s cubic-bezier(.45,0,.3,1)'; Object.assign(mh.style, { transition: go, transform: 'translateY(' + (reach + lift) + 'px)' }); Object.assign(mo.style, { transition: go, transform: 'translateY(' + lift + 'px)' }); });
     const away = (A.figScreen ? A.figScreen.x : 0) > (m.l + m.r) / 2 ? -26 : 26, wind = { x: away, y: lift - 22 };
     after(4000, () => homeSoon(() => {
+      const pre = throwOk(m); if (pre) setPose('ouch', 6); // decided and queued at the wind-up (throwOk)
       // the wind-up: hand and moon pull back, away from him, then the throw (the flight leaves from there)
       const w = 'transform .28s cubic-bezier(.3,0,.5,1)';
       Object.assign(mh.style, { transition: w, transform: `translate(${away}px,${reach + lift - 22}px)` }); Object.assign(mo.style, { transition: w, transform: `translate(${away}px,${lift - 22}px)` });
       after(290, () => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
       frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
       after(1400, () => mh.classList.remove('on'));
-    }, wind)); }, 0.75));
+    }, wind, 0, pre)); }, 0.75));
     });
     return true;
   }
@@ -5988,6 +6005,7 @@ window.__btHwSeason = hwSeason;
     const pivotY = reach - 600, ang = toward * 6, /* 6 deg on the long rope is about 100 px at the hands (14 flung them 240 px) */ rad = ang * Math.PI / 180;
     const held = { x: cx + (0 * Math.cos(rad) - (cy + lift - (pivotY + lift)) * Math.sin(rad)) - cx, y: (pivotY + lift) + (0 * Math.sin(rad) + (cy + lift - (pivotY + lift)) * Math.cos(rad)) - cy };
     after(4300, () => homeSoon(() => {
+      const pre = throwOk(m); if (pre) setPose('ouch', 6); // decided and queued at the wind-up (throwOk)
       const sw = 'transform .32s cubic-bezier(.4,0,.6,1)';
       skl.style.transition = sw; skl.style.transform = 'translateY(' + (reach + lift) + 'px) rotate(' + ang + 'deg)';
       Object.assign(mo.style, { transition: sw, transformOrigin: `${cx - m.l}px ${pivotY - m.t}px`, transform: 'translateY(' + lift + 'px) rotate(' + ang + 'deg)' });
@@ -5995,7 +6013,7 @@ window.__btHwSeason = hwSeason;
       skl.classList.remove('hold');
       Object.assign(skl.style, { transition: 'transform 1.6s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-sh - 60) + 'px) rotate(0deg)' });
       after(1700, () => skl.classList.remove('on'));
-    }, held, ang); });
+    }, held, ang, pre); });
     }, 0.9));
     });
     return true;

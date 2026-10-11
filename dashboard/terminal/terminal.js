@@ -812,7 +812,7 @@ function hoverMove(k) {
 }
 // a happy move, in turns: the one of these he did longest ago (among those with a clip)
 function joyMove() {
-  const J = ['dance', 'giggle', 'moon', 'saber', 'cheer'].filter(p => flowPose(p) === p);
+  const J = ['dance', 'giggle', 'moon', 'saber', 'cheer', 'guitar'].filter(p => flowPose(p) === p);
   if (!J.length) return 'idle';
   const fresh = J.filter(p => !RECENT.includes(p)); const L = fresh.length ? fresh : J;
   return L[Math.floor(Math.random() * L.length)];
@@ -1897,7 +1897,7 @@ const MOOD_WHO = {
   sell: ['Sellers louder this hour. Their 3% says thanks.', 'Sellers busy this hour. Every sell still pays 3%.', 'More selling this hour. The tax keeps the brain fed anyway.', 'Sellers had the mic this hour. I kept the burns going.', 'A selling hour. Part of their 3% burns, so thank you.'],
 };
 // the move that shows his mood: the one of these he did longest ago
-const MOOD_MOVES = { pump: ['bull', 'saber', 'dance', 'cheer', 'popcorn'], up: ['cheer', 'saber', 'dance', 'moon'], flat: ['coffee', 'think', 'shrug', 'walk', 'zen'], down: ['hodl', 'think', 'pushups', 'saber', 'zen'], dump: ['think', 'hodl', 'saber', 'walk', 'zen'] };
+const MOOD_MOVES = { pump: ['bull', 'saber', 'dance', 'cheer', 'popcorn', 'guitar'], up: ['cheer', 'saber', 'dance', 'moon', 'guitar'], flat: ['coffee', 'think', 'shrug', 'walk', 'zen'], down: ['hodl', 'think', 'pushups', 'saber', 'zen'], dump: ['think', 'hodl', 'saber', 'walk', 'zen'] };
 function moodMove() {
   const L = (LIFE.combo ? comboOf().moves : MOOD_MOVES[LIFE.mood] || MOOD_MOVES.flat).filter(p => flowPose(p) === p);
   if (!L.length) return poseOr('think');
@@ -2066,7 +2066,8 @@ function dayActs() {
     ['think', 'Quiet hours. I read the blocks while the world sleeps.'], ['hodl', 'Late night, diamond hands. Nothing changes after dark.']];
   // the evening too (2026-10-10 review: 17-23 h had nothing of its own)
   if (h >= 17) return [['walk', 'Evening walk around the pool. Still locked.'], ['think', 'Evening read: the day on my chain, block by block.'], ['hodl', 'Evening, diamond hands. Same plan as this morning.'],
-    ['shrug', 'The day is almost done. The bots are not.'], ['zen', 'Evening zen. The chain keeps going, I breathe.'], ['popcorn', 'Evening show: the last candles of the day. Popcorn ready.']];
+    ['shrug', 'The day is almost done. The bots are not.'], ['zen', 'Evening zen. The chain keeps going, I breathe.'], ['popcorn', 'Evening show: the last candles of the day. Popcorn ready.'],
+    ['guitar', 'Evening jam: one guitar riff for every trade of the day.']];
   return [];
 }
 // EVERY CLIP IN EVERY MARKET (2026-09-29, operator: "all the videos we have are used — also the bull ride when the market
@@ -2093,6 +2094,7 @@ const MOVE_LINES = {
   defi: ['Tuning the DeFi agent.', 'My DeFi agent works CAKE/BNB while I talk.', 'Checking the range of my DeFi agent.', 'DeFi agent at work: fees in, range watched.', 'A little tune-up for my DeFi agent.'],
   laugh: ['Ha! The chart made me laugh.', 'Laughing all the way to the dead address.', 'Sorry, I just thought of a joke. Later.', 'Ha. Good day to be a brain.', 'I laugh, the bots burn. Fair split.'],
   popcorn: ['Grabbing popcorn. This chart is a movie.', 'Popcorn time. Buyers versus sellers, live.', 'I brought popcorn. The candles brought drama.', 'Front row seat, popcorn in hand.', 'Popcorn and a chart. Best show on BNB Chain.'],
+  guitar: ['Guitar solo for every burn.', 'One riff on the guitar, then back to the chart.', 'Shred time. The buyback keeps the beat.', 'Air guitar? No, a real one. It appears when the chart rocks.', 'A little guitar between two blocks.'],
   zen: ['Breathe in. Breathe out. The chain keeps going.', 'Zen mode. Red or green, I float.', 'A little meditation between two blocks.', 'Calm brain, steady burns. Zen.', 'Om. That is the sound of a buyback charging.'],
   build: ['Building on BNB Chain. Block by block.', 'Hard hat on. Another block on the stack.', 'Stacking blocks, one every half second.', 'Builder mode: on.', 'Measure twice, burn once.'],
 };
@@ -4385,7 +4387,7 @@ function drawChart(now) {
   cxOpen.style.left = (portrait ? B.x1 - 110 : B.x0) + 'px'; cxOpen.style.top = (portrait ? B.y0 - 24 : B.y1 + 4) + 'px'; cxOpen.classList.add('show');
   // AGAINST BNB BESIDE IT (2026-10-09, operator's 24h question): on a day BNB itself moves, the USD figure and BOBAI's own
   // move differ — both stand in the head, so nobody has to ask why DexScreener or Binance shows another number
-  const vbn = ch != null ? bnbChange(all) : null, vbt = vbn && Math.abs(ch - vbn.vb) >= 0.5 ? `· ${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% VS BNB ` : '';
+  const vbn = ch != null ? bnbChange(all) : null, vbt = vbn ? `· ${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% VS BNB ` : '';
   if (!portrait) g.fillText(vbt + '· ' + CH.min + ' MIN CANDLES FROM THE POOL', B.x0 + hw + pw + 20 + (cht ? g.measureText(cht).width * 1.25 : 0), B.y0 - 10);
   // every swap flashes where it traded: a ring on the live candle and its size
   for (const f of CH.flashes) {
@@ -4544,7 +4546,7 @@ function cxPaintHead() {
   const c = cxEl.querySelector('.cx-ch'); const vb = CX.tf === '24H' && ch != null ? bnbChange(candles()) : null;
   c.textContent = ch == null ? '' : `${ch >= 0 ? '▲ +' : '▼ '}${ch.toFixed(2)}% ${CX.tf}`;
   // vs BNB in grey, as in the timeline: only BOBAI's own change is green or red (operator, 2026-10-09)
-  if (vb && Math.abs(ch - vb.vb) >= 0.5) { const g = document.createElement('span'); g.style.color = 'rgba(160,162,192,.75)'; g.textContent = `  ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB`; c.append(g); } c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
+  if (vb) { /* always, also when BNB barely moved (operator 2026-10-11: "vs BNB is gone") */ const g = document.createElement('span'); g.style.color = 'rgba(160,162,192,.75)'; g.textContent = `  ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB`; c.append(g); } c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
   const w = chartWords(), runs = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3).length;
   cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, and I burned ${runs} time${runs === 1 ? '' : 's'}. Every mark is on BscScan.` : '';
@@ -4886,7 +4888,7 @@ function drawTl(now) {
     tx.fillStyle = upc ? BUYC : SELLC; tx.fillText(cht, chx, 11); let left = chx + tx.measureText(cht).width + 14;
     // against BNB beside it, when the two differ (2026-10-09): the USD figure carries BNB's own day
     const vbn = cc != null ? bnbChange(candles()) : null;
-    if (vbn && Math.abs(ch - vbn.vb) >= 0.5) { const vt = `${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% vs BNB`; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText(vt, left - 6, 11); left += tx.measureText(vt).width + 8; }
+    if (vbn) { const vt = `${vbn.vb >= 0 ? '+' : ''}${vbn.vb.toFixed(2)}% vs BNB`; tx.fillStyle = 'rgba(160,162,192,.75)'; tx.fillText(vt, left - 6, 11); left += tx.measureText(vt).width + 8; }
     // the key to the marks, on a wide screen (a phone has the CHART tab with its own); from 520 px (3.10.: at 1440 the
     // timeline is 739 px and had no key at 760) — what does not fit beside the price leaves, BUY / SELL / BURN stay
     if (w > 520) {

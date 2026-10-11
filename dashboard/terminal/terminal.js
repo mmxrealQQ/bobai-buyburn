@@ -5900,7 +5900,8 @@ window.__btHwSeason = hwSeason;
     // a MOVE of his (or the chain's) calls the throw off at once — it used to be waited out, up to 12 s with the moon held
     // up in view (2026-10-11, ouchsync.mjs: a 'think' came in and the hit landed 15.9 s after the grab); fn's throwOk says
     // no and the moon floats home
-    if (performance.now() - t0 > 12000 || ownBusy() || !(talk || (rest && left >= lead))) return fn();
+    // (a busy moment of under 2.5 s is waited out: on live a short one at the very start called the throw off, 2026-10-11)
+    if (performance.now() - t0 > 12000 || (ownBusy() && performance.now() - t0 > 2500) || !(talk || ownBusy() || (rest && left >= lead))) return fn();
     after(100, () => homeSoon(fn, lead, t0));
   };
   // THE THROW MEETS THE END OF HIS TAKE, NOT A WAIT (2026-10-11, operator: "when the skeleton throws the moon at BOBAI's
@@ -5930,7 +5931,9 @@ window.__btHwSeason = hwSeason;
     const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx), sx = start ? start.x : 0, sy = start ? start.y : lift;
     release();
     // pre: the ouch is queued already (VID.want) — that is no move of his that calls it off
-    if (!h || (!pre && ownBusy()) || win.classList.contains('in-moment') || detail.classList.contains('on')) { // no throw, the moon floats home
+    // a throw not planned at the wind-up (pre) never happens: it would land off his beat (2026-10-11, live: three hits in
+    // the middle of a rest moment)
+    if (!h || !pre || win.classList.contains('in-moment') || detail.classList.contains('on')) { // no throw, the moon floats home
       if (pre && VID.want && /ouch/.test(VID.want.c || '')) VID.want = null; // and no ouch without a hit
       mo.style.transition = 'transform 1.6s cubic-bezier(.3,.7,.4,1)'; mo.style.transform = ''; after(1700, () => moonHome(m)); return;
     }
@@ -5944,7 +5947,6 @@ window.__btHwSeason = hwSeason;
     // so it lands HIT_AT s into the ouch whatever the timers did (0.5-1.2 s, 0.76 nominal)
     const vc = VID.on && VID.v && VID.cur ? (/ouch/.test(VID.cur) ? -VID.v.currentTime : /^(rest|idle)/.test(VID.cur) ? (VID.v.duration || 8) - VID.v.currentTime : null) : null;
     const fly = pre && vc != null ? Math.round(Math.min(1200, Math.max(500, (vc + HIT_AT) * 1000))) : 760;
-    if (!pre) setPose('ouch', 6); // queued to the end of his rest take, which is the moment of the hit (homeSoon)
     // AN ARC, NOT A LINE (2026-10-06, operator: "the moon is thrown oddly" — on a phone the moon sits just above him and
     // the straight flight was a short drop): up over the top of the throw, then down onto his head
     const apex = Math.max(Math.min(sy, dy) - Math.max(50, Math.abs(dx - sx) * 0.35), 4 - m.t); // never over the top edge (the skeleton throws from up there)

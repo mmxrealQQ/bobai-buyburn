@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1323 lines.
+# one fetch. 10 files, 1325 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -100,7 +100,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .hero{padding:48px 24px;text-align:center;position:relative}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(240,185,11,.12),transparent 70%);pointer-events:none;z-index:0}
 .hero-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1}
-.hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:14px;letter-spacing:-.5px;background:linear-gradient(135deg,var(--text),#fff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:14px;letter-spacing:-.5px;color:var(--text)}
+/* light with a gold part, like every other page's title (operator 2026-10-11: "BOBAI Buy Drop is grey, not the yellow-blue like everywhere") */
+.hero h1 em{font-style:normal;color:var(--gold)}
 .hero p{color:var(--muted);font-size:1.02rem;max-width:680px;margin:0 auto;line-height:1.65}
 .hero p strong{color:var(--gold);font-weight:600}
 .hero-meta{margin-top:26px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:center;font-size:.78rem;color:var(--muted)}
@@ -322,7 +324,7 @@ footer a:hover{color:var(--gold)}
       <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1,000+ · 50 max</div></div></div>
       <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2,500+ · 25 max</div></div></div>
     </div>
-    <h1>BOBAI Buy Drops</h1>
+    <h1>BOBAI <em>Buy Drops</em></h1>
     <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>

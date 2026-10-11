@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1323,
-   "zipBytes": 28039,
-   "txtBytes": 73918,
-   "sha256": "a808c2ac94511945",
+   "lines": 1325,
+   "zipBytes": 28108,
+   "txtBytes": 74019,
+   "sha256": "046a367632314586",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",

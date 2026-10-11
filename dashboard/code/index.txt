@@ -200,7 +200,7 @@ txt: https://brainonbnb.com/code/pool-scanner.txt
 NFT Buy Drops
 -------------
 The contract, the metadata server and the collection page.
-10 files, 1323 lines
+10 files, 1325 lines
 needs:
   - A wallet with gas for the deployment
       ours: one transaction on BSC, a few cents

@@ -749,8 +749,9 @@ function rangeHtml() {
 function vizOf(k) {
   const bt = e => Date.parse(e.time), n4 = v => v ? v.toFixed(v < 0.01 ? 4 : 3) + ' BNB' + usdS(v, S.bnbP) : '0';
   switch (k) {
-    case 'burnA': return barsHtml(perDay(S.burns, bt, e => e.bobaiBurned), 'BOBAI BURNED BY THE BOT, PER DAY', v => cmp(v));
-    case 'burnB': return barsHtml(perDay(S.burns, bt, bobOf), 'BOB BURNED BY THE BOT, PER DAY', v => cmp(v));
+    // today's figure with its unit and dollars like every other amount (2026-10-11, operator: "TODAY at the bottom, the $ is missing")
+    case 'burnA': return barsHtml(perDay(S.burns, bt, e => e.bobaiBurned), 'BOBAI BURNED BY THE BOT, PER DAY', v => cmp(v) + ' BOBAI' + usdS(v, S.price));
+    case 'burnB': return barsHtml(perDay(S.burns, bt, bobOf), 'BOB BURNED BY THE BOT, PER DAY', v => bobAmt(v));
     case 'liq': return barsHtml(perDay(S.liq, bt, l => l.bnb), 'BNB ADDED TO THE POOL, PER DAY', n4);
     case 'giggle': return barsHtml(perDay(S.burns, bt, e => e.giggleBnb), 'BNB INTO THE POT, PER DAY', n4);
     case 'creator': case 'dev': return barsHtml(perDay(S.burns, bt, e => e.creatorBnb), 'CREATOR SHARE IN, PER DAY', n4);
@@ -5892,6 +5893,17 @@ window.__btHwSeason = hwSeason;
     if (performance.now() - t0 > 12000 || !(talk || ownBusy() || (rest && left >= lead))) return fn();
     after(100, () => homeSoon(fn, lead, t0));
   };
+  // THE THROW MEETS THE END OF HIS TAKE, NOT A WAIT (2026-10-11, operator: "when the skeleton throws the moon at BOBAI's
+  // head, the animation comes very late"; ouchsync.mjs: ready at 4.3 s, the hit at 7.6-10 s — it hung 3-6 s with the
+  // moon, waiting for his rest take to end, since a take is never cut). The scene now starts unseen, the moment his take
+  // has just the time left the scene needs to get ready (ready .. ready + 0.3 s): it comes, grabs, and throws on the
+  // beat. A move of his or a still figure: it starts at once and homeSoon waits as before (at most 10 s unseen).
+  const restFits = (ready, go, t0 = performance.now()) => {
+    if (!on) return;
+    const rest = VID.on && VID.cur && /^(rest|idle)/.test(VID.cur), left = rest && VID.v ? (VID.v.duration || 8) - VID.v.currentTime : -1;
+    if (!VID.on || (left >= ready && left <= ready + 0.3) || performance.now() - t0 > 10000) return go();
+    after(100, () => restFits(ready, go, t0));
+  };
   function throwMoon(m, lift, release, start = null, spin0 = 0) {
     const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx), sx = start ? start.x : 0, sy = start ? start.y : lift;
     release();
@@ -5921,6 +5933,10 @@ window.__btHwSeason = hwSeason;
   }
   function moonGrab() {
     if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
+    mhOn = true; // the stage is taken, also while the scene waits unseen for its beat (restFits)
+    LIFE.next = Math.max(LIFE.next, performance.now() + 36e3); // and his own moves wait from now on (one in the unseen wait called the throw off)
+    restFits(4.75, () => { // ready at 4.0 s, thrown when his take has 0.75 s left
+    if (!portrait || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || !stands()) { mhOn = false; return; }
     const m = mo._b, hi = mh.querySelector('.hw-mhi img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
     read(); const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, lift = Math.min(-10, hudB + 6 - m.t); // fingertips at the moon's middle; lifted to just under the title row (behind it the moon was hidden)
     mhOn = true; frame(mh, ''); frame(mo, ''); for (const c of moveTakes('ouch')) prefetchClip(c); // his head-rub, ready for the hit
@@ -5939,6 +5955,7 @@ window.__btHwSeason = hwSeason;
       frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
       after(1400, () => mh.classList.remove('on'));
     }, wind)); }, 0.75));
+    });
     return true;
   }
   // THE DESKTOP: A WHOLE SKELETON (2026-10-06, operator: "a skeleton comes down and grabs the moon with both arms and hands,
@@ -5948,8 +5965,12 @@ window.__btHwSeason = hwSeason;
   // 46% of its width, just under the skull (measured on hw/skeleton.webp).
   function skelGrab() {
     if (portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
-    const m = mo._b, si = skl.querySelector('.hw-sklb'); if (!si.naturalWidth) return false;
-    const d = m.r - m.l, sw = d / 0.46, sh = sw * si.naturalHeight / si.naturalWidth, cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2;
+    const si = skl.querySelector('.hw-sklb'); if (!si.naturalWidth) return false;
+    mhOn = true; // the stage is taken from now on, also while the scene waits unseen for its beat (restFits)
+    LIFE.next = Math.max(LIFE.next, performance.now() + 37e3); // and his own moves wait from now on: one started in the unseen wait called the throw off
+    restFits(5.2, () => { // ready at 4.3 s, thrown when his take has 0.9 s left
+    if (portrait || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || !stands()) { mhOn = false; return; }
+    const m = mo._b, d = m.r - m.l, sw = d / 0.46, sh = sw * si.naturalHeight / si.naturalWidth, cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2;
     // lifted to just under the title row, not behind it (2026-10-06: held at the very top edge, the title row hid it)
     read(); const reach = cy - sh * 0.905, lift = Math.min(-10, hudB + 6 - m.t); // the moon's middle at the hands
     mhOn = true; frame(mo, ''); for (const c of moveTakes('ouch')) prefetchClip(c); // his head-rub, ready for the hit
@@ -5976,6 +5997,7 @@ window.__btHwSeason = hwSeason;
       after(1700, () => skl.classList.remove('on'));
     }, held, ang); });
     }, 0.9));
+    });
     return true;
   }
   // the hand comes up behind the timeline, gropes, grabs twice, and is gone
@@ -6207,7 +6229,7 @@ window.__btHwSeason = hwSeason;
       const SHOW = [clownScene, batRun, roam, handScene, skelGrab, grabScene, batRun, roam]; let i = 0, lastShow = 0;
       const busy = () => cl.classList.contains('act') || hd.classList.contains('up') || mhOn || !!grabT || ghOn || bat.classList.contains('fly');
       // how long each scene holds the stage (s), so the replay's quiet stretch can be matched to it
-      const secsOf = f => f === grabScene ? (CLOWN.ready ? 42 : 15) : f === skelGrab ? 22 : f === handScene ? (portrait ? 20 : 6) : f === roam ? 10 : f === clownScene ? 9 : 7;
+      const secsOf = f => f === grabScene ? (CLOWN.ready ? 42 : 15) : f === skelGrab ? 31 : f === handScene ? (portrait ? 29 : 6) /* +9 s: the unseen wait for his take's beat (restFits) */ : f === roam ? 10 : f === clownScene ? 9 : 7;
       const direct = room => { if (busy() || win.classList.contains('in-moment')) return false;
         if (!laterOk) { loadLater(); return false; } // a scene's pictures not all there yet: no scene with an empty piece
         for (let n = 0; n < SHOW.length; n++) { const f = SHOW[i++ % SHOW.length]; if (secsOf(f) > room) continue; if (f()) { lastShow = performance.now(); return true; } } return false; };

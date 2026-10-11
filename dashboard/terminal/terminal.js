@@ -5919,6 +5919,10 @@ window.__btHwSeason = hwSeason;
   // only at the release, 0.3 s later, a late timer let his rest moment end first — a new one began and the hit landed
   // on it, the ouch 4.5 s behind). Only a MOVE of his or a scene of the chain calls the throw off (a sentence does not).
   const throwOk = m => !!headHit((m.l + m.r) / 2) && !ownBusy() && !win.classList.contains('in-moment') && !detail.classList.contains('on');
+  // THE HIT ON HIS FLINCH (2026-10-11, ouchsync.mjs on live: the hit landed anywhere from his rest moment's last frame to
+  // 0.78 s into the ouch, by when the timer fired): the ouch takes flinch 0.25-0.65 s in, so the throw (wind-up + flight,
+  // `run` s) starts when it lands HIT_AT s after his take ends
+  const HIT_AT = 0.4, beatMs = run => { const r = VID.on && VID.cur && /^(rest|idle)/.test(VID.cur) && VID.v ? (VID.v.duration || 8) - VID.v.currentTime : 0; return Math.max(0, (r + HIT_AT - run) * 1000); };
   function throwMoon(m, lift, release, start = null, spin0 = 0, pre = false) {
     const mx = (m.l + m.r) / 2, my = (m.t + m.b) / 2, h = headHit(mx), sx = start ? start.x : 0, sy = start ? start.y : lift;
     release();
@@ -5951,7 +5955,7 @@ window.__btHwSeason = hwSeason;
     if (!portrait || mhOn || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || REDUCED || !stands()) return false;
     mhOn = true; // the stage is taken, also while the scene waits unseen for its beat (restFits)
     LIFE.next = Math.max(LIFE.next, performance.now() + 36e3); // and his own moves wait from now on (one in the unseen wait called the throw off)
-    restFits(4.75, () => { // ready at 4.0 s, thrown when his take has 0.75 s left
+    restFits(4.7, () => { // ready at 4.0 s with 0.7-1.0 s of his take left: the throw starts on the beat (beatMs)
     if (!portrait || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || !stands()) { mhOn = false; return; }
     const m = mo._b, hi = mh.querySelector('.hw-mhi img'), hw = (m.r - m.l) * 1.3, hh = hw * (hi.naturalWidth ? hi.naturalHeight / hi.naturalWidth : 1.8);
     read(); const reach = (m.t + m.b) / 2 + hw * 0.2 - hh, lift = Math.min(-10, hudB + 6 - m.t); // fingertips at the moon's middle; lifted to just under the title row (behind it the moon was hidden)
@@ -5965,13 +5969,14 @@ window.__btHwSeason = hwSeason;
     const away = (A.figScreen ? A.figScreen.x : 0) > (m.l + m.r) / 2 ? -26 : 26, wind = { x: away, y: lift - 22 };
     after(4000, () => homeSoon(() => {
       const pre = throwOk(m); if (pre) setPose('ouch', 6); // decided and queued at the wind-up (throwOk)
+      after(beatMs(1.05), () => { // started so the hit lands HIT_AT s into his ouch (wind-up 0.29 + flight 0.76)
       // the wind-up: hand and moon pull back, away from him, then the throw (the flight leaves from there)
       const w = 'transform .28s cubic-bezier(.3,0,.5,1)';
       Object.assign(mh.style, { transition: w, transform: `translate(${away}px,${reach + lift - 22}px)` }); Object.assign(mo.style, { transition: w, transform: `translate(${away}px,${lift - 22}px)` });
       after(290, () => throwMoon(m, lift, () => { // the hand lets go and goes back up, empty
       frame(mh, ''); Object.assign(mh.style, { transition: 'transform 1.3s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-hh - 40 - m.b) + 'px)' });
       after(1400, () => mh.classList.remove('on'));
-    }, wind, 0, pre)); }, 0.75));
+    }, wind, 0, pre)); }); }, 1.5));
     });
     return true;
   }
@@ -5985,7 +5990,7 @@ window.__btHwSeason = hwSeason;
     const si = skl.querySelector('.hw-sklb'); if (!si.naturalWidth) return false;
     mhOn = true; // the stage is taken from now on, also while the scene waits unseen for its beat (restFits)
     LIFE.next = Math.max(LIFE.next, performance.now() + 37e3); // and his own moves wait from now on: one started in the unseen wait called the throw off
-    restFits(5.2, () => { // ready at 4.3 s, thrown when his take has 0.9 s left
+    restFits(5.0, () => { // ready at 4.3 s with 0.7-1.0 s of his take left: the throw starts on the beat (beatMs)
     if (portrait || !mo._b || !mo.classList.contains('put') || +getComputedStyle(mo).opacity < 0.99 || !stands()) { mhOn = false; return; }
     const m = mo._b, d = m.r - m.l, sw = d / 0.46, sh = sw * si.naturalHeight / si.naturalWidth, cx = (m.l + m.r) / 2, cy = (m.t + m.b) / 2;
     // lifted to just under the title row, not behind it (2026-10-06: held at the very top edge, the title row hid it)
@@ -6006,6 +6011,7 @@ window.__btHwSeason = hwSeason;
     const held = { x: cx + (0 * Math.cos(rad) - (cy + lift - (pivotY + lift)) * Math.sin(rad)) - cx, y: (pivotY + lift) + (0 * Math.sin(rad) + (cy + lift - (pivotY + lift)) * Math.cos(rad)) - cy };
     after(4300, () => homeSoon(() => {
       const pre = throwOk(m); if (pre) setPose('ouch', 6); // decided and queued at the wind-up (throwOk)
+      after(beatMs(1.06), () => { // started so the hit lands HIT_AT s into his ouch (swing 0.3 + flight 0.76)
       const sw = 'transform .32s cubic-bezier(.4,0,.6,1)';
       skl.style.transition = sw; skl.style.transform = 'translateY(' + (reach + lift) + 'px) rotate(' + ang + 'deg)';
       Object.assign(mo.style, { transition: sw, transformOrigin: `${cx - m.l}px ${pivotY - m.t}px`, transform: 'translateY(' + lift + 'px) rotate(' + ang + 'deg)' });
@@ -6014,7 +6020,7 @@ window.__btHwSeason = hwSeason;
       Object.assign(skl.style, { transition: 'transform 1.6s cubic-bezier(.6,0,.85,.35)', transform: 'translateY(' + (-sh - 60) + 'px) rotate(0deg)' });
       after(1700, () => skl.classList.remove('on'));
     }, held, ang, pre); });
-    }, 0.9));
+    }); }, 1.5));
     });
     return true;
   }

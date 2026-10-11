@@ -70,7 +70,7 @@ button.bw-card:focus-visible{outline:2px solid var(--bp-gold);outline-offset:2px
 .bw-bar i:first-child{background:#ff5f57}.bw-bar i:nth-child(2){background:#febc2e}.bw-bar i:nth-child(3){background:#28c840}
 .bw-bar span{margin-left:8px}
 .bw-x{margin-left:auto;width:30px;height:30px;border-radius:9px;border:1px solid var(--bp-line2);background:transparent;color:var(--bp-text);font-size:18px;cursor:pointer}
-.bw-body{overflow:auto;overscroll-behavior:contain;padding:6px 0 18px}
+.bw-body{overflow:auto;overscroll-behavior:contain;padding:6px 0 18px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
 .bw-body .sec,.bw-body .liq-boost{margin:0 auto;padding-top:24px;padding-bottom:24px}
 body.bp-winon{overflow:hidden}
 .bw-tools{display:grid;gap:12px;padding:22px}

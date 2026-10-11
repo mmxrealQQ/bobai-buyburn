@@ -1175,7 +1175,7 @@ function tellJoke(ms) {
   // A JOKE IS SAID, NOT LOGGED (operator, 2026-10-10 evening: "A bear wandered into my pool" does not belong in the
   // brain.log — the log keeps what the bots and the ecosystem do; a joke, asked for or his own, is the bubble alone)
   if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); return true; }
-  if (VID.go || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
+  if (VID.go || VID.goOn || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) || performance.now() < (LIFE.greetUntil || 0)) return false;
   const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
@@ -1397,7 +1397,9 @@ function vidStart(c, loop = false) {
   }
   VID.cur = c; VID.v.loop = loop; VID.v._last = false; trace('start', c, VID.v === sp ? 'swap' : 'load', !!HELD);
   // the canvas shows only once the clip's first frame is on it (vidDraw), so there is never an empty frame between
-  VID.v.play().then(() => { trace('playing', c, VID.cur === c); if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true; if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
+  VID.v.play().then(() => { trace('playing', c, VID.cur === c); if (VID.cur !== c) return; VID.on = true; VID.showOn = true; VID.fresh = true;
+      if (VID.goOn && VID.goOn.c === c) { const g = VID.goOn.g; VID.goOn = null; g(); } // the board that waited for this move
+      if (!/^rest/.test(c) && !/-enter-/.test(c)) flushSay(); })
     .catch(err => {
       if (VID.cur !== c) return;
       // NEVER A FROZEN STILL FOR A HICCUP (2026-09-29, flow.mjs: 3-4% still): any failed play() stopped the video on the
@@ -1446,7 +1448,7 @@ function moveTakes(p) {
 function vidMove(p, urgent) {
   if (!VID.v || REDUCED) return;
   const takes = moveTakes(p); if (!takes.length) return;
-  if (!urgent && VID.go) return; // a scene is waiting for its move: his own moves wait too
+  if (!urgent && (VID.go || VID.goOn)) return; // a scene is waiting for its move: his own moves wait too
   // the same move again: nothing to do — except for the chain's next event of the same kind while the first one's take
   // is in its last seconds (2026-10-05: two NICE BUYs in a row, the second board came 6.7 s after the first, the 8 s
   // take was still on, nothing was queued and he stood in his rest take beside the second board): its next take follows
@@ -1515,7 +1517,7 @@ function waveHello() {
   return true;
 }
 function vidIdle() {
-  if (!VID.v || REDUCED || VID.go || VID.on && !/^rest/.test(VID.cur)) return false;
+  if (!VID.v || REDUCED || VID.go || VID.goOn || VID.on && !/^rest/.test(VID.cur)) return false;
   const takes = takesOf('idle'); if (!takes.length) return false; // a wave or a stretch (the rest takes play anyway)
   VID.idleN = (VID.idleN ?? Math.floor(Math.random() * takes.length)) + 1; const c = takes[VID.idleN % takes.length];
   if (VID.on) { VID.want = { p: 'idle', c }; prefetchClip(c); return c; } // after the rest take, back in his standing pose (the take's name: truthy)
@@ -1550,7 +1552,7 @@ function waveTake() {
   VID.waveC = c; try { localStorage.setItem('bobai-bt-wave', c); } catch {} return c;
 }
 function vidWave() {
-  const c = !VID.v || REDUCED || VID.go || VID.on && !/^rest/.test(VID.cur) ? null : waveTake(); if (!c) return false;
+  const c = !VID.v || REDUCED || VID.go || VID.goOn || VID.on && !/^rest/.test(VID.cur) ? null : waveTake(); if (!c) return false;
   VID.waveC = null; // the next wave of this visit is another one
   if (VID.on) { VID.want = { p: 'idle', c }; prefetchClip(c); return true; } // at the rest take's end
   VID.want = null; VID.move = 'idle'; vidStart(c); return true;
@@ -1585,7 +1587,12 @@ function withMove(show) {
 }
 function vidEnded() {
   if (SOFT(VID.cur || '')) vidGhost(); // a soft take ends inside the move: its last frame dissolves into what comes next
-  if (VID.want) { const { p, c } = VID.want; VID.want = null; VID.move = p; vidStart(c); const g = VID.go; VID.go = null; if (g) g(); return; }
+  // THE BOARD WITH THE MOVE'S FIRST FRAME (2026-10-11, replay.mjs: THUNDER BUY showed 0.3 s before its clip, over the
+  // last frame of the one before): a take still on its way makes vidStart wait up to 2.5 s, so the board now waits for
+  // the clip's play() — and shows after 3 s whatever happens to it
+  if (VID.want) { const { p, c } = VID.want; VID.want = null; VID.move = p; const g = VID.go; VID.go = null;
+    if (g) { VID.goOn = { c, g }; setTimeout(() => { if (VID.goOn && VID.goOn.g === g) { VID.goOn = null; g(); } }, 3000); }
+    vidStart(c); return; }
   // home again: the standing pose, alive — the next calm rest take (vidRest)
   if (pose !== 'idle') { pose = 'idle'; }
   vidRest();
@@ -2321,7 +2328,7 @@ function actsNow() {
   return ok.length ? ok : L;
 }
 // a clip of a move still playing or waiting to (his calm rest take does not count)
-const ownBusy = () => !!(VID.v && !REDUCED && (VID.go || (VID.want && VID.want.p !== 'idle') || (VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur))));
+const ownBusy = () => !!(VID.v && !REDUCED && (VID.go || VID.goOn || (VID.want && VID.want.p !== 'idle') || (VID.on && VID.cur && !/^(rest|idle)/.test(VID.cur))));
 // one moment of his own, of the kind the even bag hands out: his mood with its move, a joke with its laugh, or what he is
 // doing (a work figure, his hard hat, or a move that fits the market). A joke that cannot laugh right now becomes work.
 function ownMoment(act) {
@@ -3629,7 +3636,7 @@ const QUEUE = []; let sceneUntil = 0, pumpT = 0;
 // given its time, nothing cut short"): a scene's time used to run from the call, but its move first waits for the
 // playing take to end (up to ~8 s) and its board comes with the move — so the next moment could cut in before the last
 // one was even on screen. The stage is busy while a board or an event's move still waits; its time starts when it shows.
-const stageBusy = () => !!VID.go || !!(VID.want && VID.want.p !== 'idle');
+const stageBusy = () => !!VID.go || !!VID.goOn || !!(VID.want && VID.want.p !== 'idle');
 function enqueue(x) { QUEUE.push(x); pumpScenes(); }
 function pumpScenes() {
   clearTimeout(pumpT);
@@ -3853,7 +3860,7 @@ let jokeQueued = false, jokeReadySince = 0, jokeShown = null;
 function jokeReady() {
   if (mode !== 'live' || performance.now() < sceneUntil || QUEUE.length || momentEl.classList.contains('held')) return false;
   if (REDUCED || !VID.v) return true;
-  if (VID.go || (VID.want && VID.want.p !== 'idle') || !HAVE.has('laugh') || !moveTakes('laugh').length) return false;
+  if (VID.go || VID.goOn || (VID.want && VID.want.p !== 'idle') || !HAVE.has('laugh') || !moveTakes('laugh').length) return false;
   // his wave is an action too (2026-09-30, operator: "at the start his first action can be cut off by a joke"): only the
   // calm rest takes give way; the greeting, until its line is said, never
   if (!LIFE.saidHi || performance.now() < (LIFE.greetUntil || 0)) return false;
@@ -4443,7 +4450,7 @@ function cxMarks(cs, span) {
     if (x.t <= t0 || x.t > t1) continue;
     // a swap of BOBAI's own buyback run is that run's ◆ already (a candle shows two marks: it would push others out)
     if (x.kind === 'trade' && x.ours && events.some(y => y.kind === 'run' && Math.abs(y.t - x.t) < 5 * 60e3)) continue;
-    const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbF(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbF(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))}, LP burned`]
+    const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbR(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbR(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))}, LP burned`]
       : x.kind === 'defi' ? ['●', D.defi.c, `DeFi agent ${x.step}`] : x.kind === 'dev' ? ['■', D.creator.c, `dev bot paid out ${bnbF(+x.d.availableBnb)} · ${$amt(+x.d.availableBnb * bnbUsdAt(x.t))} of the creator share`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
       : x.kind === 'trade' ? (x.ours ? ['◆', '#F0B90B', `BOBAI ${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}`] : [x.buy ? '▲' : '▼', x.buy ? BUYC : SELLC, `${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}`]) : null;
     if (!k) continue;
@@ -4534,7 +4541,7 @@ function drawCx(now) {
     if (o.dataset.k !== key) {
       o.dataset.k = key;
       o.innerHTML = `<b>${new Date(c.t - span).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</b> O ${f(c.o)} H ${f(c.h)} L ${f(c.l)} C <i style="color:${chg >= 0 ? BUYC : SELLC}">${f(c.c)} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</i>`
-        + (c.n ? ` · ${c.b}▲ ${c.s}▼${c.n > 1 ? ` · ${bnbF(c.v)}${c.v * c.u > 0 ? ' · ' + $amt(c.v * c.u) : ''} in all` : here.some(m => /^(buy|sell) /.test(m.txt)) ? '' : ` · ${bnbF(c.v)}${c.v * c.u > 0 ? ' · ' + $amt(c.v * c.u) : ''}`}` : ' · no trade') + here.map(m => `<div style="color:${m.c}">${m.g} ${m.txt}</div>`).join('');
+        + (c.n ? ` · ${c.b}▲ ${c.s}▼${c.n > 1 ? ` · ${bnbR(c.v)}${c.v * c.u > 0 ? ' · ' + $amt(c.v * c.u) : ''} in all` : here.some(m => /^(buy|sell) /.test(m.txt)) ? '' : ` · ${bnbR(c.v)}${c.v * c.u > 0 ? ' · ' + $amt(c.v * c.u) : ''}`}` : ' · no trade') + here.map(m => `<div style="color:${m.c}">${m.g} ${m.txt}</div>`).join('');
     }
     o.classList.add('on');
   } else o.classList.remove('on');
@@ -4962,7 +4969,7 @@ function candleTip(h) {
   // it holds more than one listed trade, or on their own when its single trades are older than the page's read (~1 h) —
   // then they ARE that trade's figures for a one-trade candle (2026-09-30: an older candle showed "1 buy" and nothing)
   const px = c.o && c.c ? (c.o + c.c) / 2 : c.c, bob = px > 0 ? c.v / px : 0;
-  const fig = `${bob > 1 ? '≈ ' + cmp(bob) + ' BOBAI · ' : ''}${bnbF(c.v)}${u ? ' · ' + $amt(c.v * u) : ''}`;
+  const fig = `${bob > 1 ? '≈ ' + cmp(bob) + ' BOBAI · ' : ''}${bnbR(c.v)}${u ? ' · ' + $amt(c.v * u) : ''}`;
   const tot = c.v > 0 && (n > 1 && tr.length || !tr.length) ? ` · ${fig}${n > 1 ? ' in all' : ''}` : '';
   const chg = usdCh(c, c) ?? 0;
   return { time: `${fmt(t0)} – ${new Date(t1).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, head: head + tot, chg, rows,
@@ -6044,7 +6051,10 @@ window.__btHwSeason = hwSeason;
   const CLOWN = { gl: null, cv: null, tex: null, v: {}, ready: false, loading: false, cur: null, raf: 0 };
   // 2026-10-10 (operator: "when he climbs up on the desktop his left foot is cut off"): re-shot smaller in the frame
   // (FIG_H 0.52, was 0.62) so the swung shoe and his gloves stay inside the clip — 0.52 / 0.80 = 0.65
-  const CLOWN_AR = 432 / 614, CLOWN_FIG = 0.65; // the clip's width/height; his standing height in it (gen_clown.py FIG_H / LEDGE)
+  // 2026-10-11 (operator: "the big clown jumps big/small"): Veo stretched his legs in the climb — it ended standing at 500
+  // of 614 px while sneak and reach stood at 400 (same face, same shoes). Sneak and reach were re-shot from the climb's
+  // own last frame (gen_clown.py CLOWN_STAND_FROM): all four clips now stand at 497-500 px = 0.81
+  const CLOWN_AR = 432 / 614, CLOWN_FIG = 0.81; // the clip's width/height; his standing height in it (measured)
   const CLIMB_STAND = 5.7; // s into the climb clip: he stands, hands down, his claws not yet up
   function clownInit() {
     if (CLOWN.gl !== null) return !!CLOWN.gl;
@@ -6133,7 +6143,8 @@ window.__btHwSeason = hwSeason;
     // gliding without a step, or standing at the end while the clock had already arrived. Now every frame puts him where
     // the clip's time says, so a stalled clip holds him in place mid-step and a slow one walks slowly. And the re-shot
     // take (FIG_H 0.52) steps until 7.2 s, where it settles into his standing pose (5.5 s cut it mid-step).
-    const SNEAK = 7.2, cv = CLOWN.cv;
+    // 2026-10-11: the sneak re-shot from the climb's last frame steps until 6.0 s (feet still from 6.0 s on, measured)
+    const SNEAK = 6.0, cv = CLOWN.cv;
     const walk = (x, toRight, then) => { cv.style.transform = toRight ? 'scaleX(-1)' : '';
       const v = CLOWN.v.sneak, from = parseFloat((grab.style.transform.match(/-?[\d.]+/) || [0])[0]) || 0; let raf = 0; grab.style.transition = 'none';
       const step = () => { if (!grabT || leaving || CLOWN.cur !== v) return; const k = Math.min(1, (v.currentTime || 0) / SNEAK);

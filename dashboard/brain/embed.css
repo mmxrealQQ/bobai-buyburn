@@ -16,6 +16,8 @@ html.bp-embed h1,html.bp-embed h2{font-family:'Space Grotesk',sans-serif}
 html.bp-embed h1 em,html.bp-embed h2 em{color:#F0B90B}
 html.bp-embed th{color:#F0B90B!important;letter-spacing:.14em}
 html.bp-embed table{font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace}
+/* scrollbar-color inherits: every scroller of the page gets the dark gold bar, not Windows' white default */
+html.bp-embed{scrollbar-color:rgba(240,185,11,.3) transparent}
 html.bp-embed ::-webkit-scrollbar{width:8px;height:8px}
 html.bp-embed ::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:8px}
 /* the page's own block frame: the window is the frame (as in the block windows) */

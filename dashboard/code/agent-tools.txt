@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2831 lines.
+# one fetch. 5 files, 2830 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1908,7 +1908,6 @@ function secureHeaders(h) {
 - See what an answer looks like before paying for it: https://agent.brainonbnb.com/example?service=health_factor (any of the six service ids)
 - Measure any BSC pool: https://brainonbnb.com/api/pool-scan?address=0x... — real cost per trade size (price impact, swap fee and transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% either way, the transfer tax measured from executed trades rather than taken from a label, whether the LP is burned or still withdrawable, and a sell simulated on the router from a fresh address. A token still raising on four.meme (no pool yet) is measured from four.meme's own contract instead: raise progress, price, buy/sell cost per size (field `curve`).
 - Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
-- List an agent you built and keep running on Brain Plaza: https://brainonbnb.com/list — $95 once (USD1, BNB or $BOBAI), a profile page, a daily check and a "Featured (paid)" slot; it never buys rank. Every listing: https://agent.brainonbnb.com/listings
 - Check what our own spending agent is allowed to do (no session key is active since the last one expired; the page reads the ended ones live): https://agent.brainonbnb.com/session — its session key's allowlist, daily cap and expiry, read live from the Altana KeyStore on-chain rather than from anything we assert. The same two view calls are available to you directly.
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
 - MCP endpoint, 23 free tools (the count is pinned against tools/list by a check) — 22 read-only, and `bsc_rug_watch`, which registers a webhook alarm: https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_rug_watch`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.

@@ -69,7 +69,9 @@ for (const j of allJobs) {
   total++;
   const prov = String(j.provider || '').toLowerCase(); const ids = idsOf.get(prov);
   if (!ids) continue;
-  const row = [j.id, j.status, Number(j.budget || 0) / U, String(j.client || '').toLowerCase(), j.submitted_at || 0, j.expired_at || 0];
+  const client = String(j.client || '').toLowerCase();
+  // own = one of our wallets, or the selling address hiring itself: shown, never counted as an outside buyer
+  const row = [j.id, j.status, Number(j.budget || 0) / U, client, j.submitted_at || 0, j.expired_at || 0, OWN_WALLETS.has(client) ? 'ours' : client === prov ? 'self' : ''];
   const who = agentOfJob({ ...j, provider: prov }, ids);
   if (who) { if (!per.has(who.id)) per.set(who.id, { provider: prov, rows: [], how: new Set() }); const p = per.get(who.id); p.rows.push(row); p.how.add(who.how); }
   else { if (!shared.has(prov)) shared.set(prov, []); shared.get(prov).push(row); }
@@ -86,16 +88,29 @@ const summary = (rows) => {
     earned_u: Math.round(paid.reduce((a, r) => a + r[2], 0) * 100) / 100,
     buyers: new Set(rows.filter((r) => r[1] !== 'OPEN').map((r) => r[3])).size,
     // our own test purchases are shown, and never counted as somebody else hiring the agent
-    buyers_outside: new Set(rows.filter((r) => r[1] !== 'OPEN' && !OWN_WALLETS.has(r[3])).map((r) => r[3])).size,
-    paid_out_outside: paid.filter((r) => !OWN_WALLETS.has(r[3])).length,
+    buyers_outside: new Set(rows.filter((r) => r[1] !== 'OPEN' && !r[6]).map((r) => r[3])).size,
+    paid_out_outside: paid.filter((r) => !r[6]).length,
+    // the delivery rate for outside buyers alone: the chart's score reads this one, so hiring yourself buys nothing
+    funded_outside: rows.filter((r) => r[1] !== 'OPEN' && !r[6]).length,
+    delivery_rate_outside_pct: (() => { const f = rows.filter((r) => r[1] !== 'OPEN' && !r[6]); return f.length ? Math.round((f.filter((r) => r[1] === 'COMPLETED' || r[1] === 'SUBMITTED').length / f.length) * 1000) / 10 : null; })(),
     last_delivery: last ? new Date(last * 1000).toISOString().slice(0, 10) : null,
   };
 };
 const trades = (rows) => rows.slice().sort((a, b) => b[0] - a[0]).slice(0, KEEP)
-  .map(([id, status, u, client, sub, exp]) => ({ job: id, status, u: Math.round(u * 1000) / 1000, buyer: client.slice(0, 6) + '…' + client.slice(-4), ...(OWN_WALLETS.has(client) ? { ours: true } : {}), delivered_at: sub ? new Date(sub * 1000).toISOString().slice(0, 16) : null, expires_at: exp ? new Date(exp * 1000).toISOString().slice(0, 16) : null }));
+  .map(([id, status, u, client, sub, exp, own]) => ({ job: id, status, u: Math.round(u * 1000) / 1000, buyer: client.slice(0, 6) + '…' + client.slice(-4), ...(own === 'ours' ? { ours: true } : own === 'self' ? { self: true } : {}), delivered_at: sub ? new Date(sub * 1000).toISOString().slice(0, 16) : null, expires_at: exp ? new Date(exp * 1000).toISOString().slice(0, 16) : null }));
 
 const agents = {};
-for (const [id, p] of per) agents[id] = { provider: p.provider, attributed_by: [...p.how], totals: summary(p.rows), trades: trades(p.rows) };
+// the curve under the chart: per day a job was delivered, how many, how many paid out and what they earned (all history)
+const byDay = (rows) => {
+  const m = new Map();
+  for (const r of rows) {
+    if (!r[4]) continue;
+    const d = new Date(r[4] * 1000).toISOString().slice(0, 10); const x = m.get(d) || [d, 0, 0, 0];
+    x[1]++; if (r[1] === 'COMPLETED') { x[2]++; x[3] = Math.round((x[3] + r[2]) * 1000) / 1000; } m.set(d, x);
+  }
+  return [...m.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+};
+for (const [id, p] of per) agents[id] = { provider: p.provider, attributed_by: [...p.how], totals: summary(p.rows), by_day: byDay(p.rows), trades: trades(p.rows) };
 const providers = {};
 for (const [prov, rows] of shared) {
   providers[prov] = { agents: [...idsOf.get(prov)].sort((a, b) => a - b), totals: summary(rows), trades: trades(rows), note: 'jobs of an address that sells for several agents and does not say which one in the job' };

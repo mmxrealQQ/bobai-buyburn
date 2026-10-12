@@ -1031,7 +1031,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
     return `        <article class="rgc${r.ours ? ' rg-ours' : ''}"${r.tele ? ` data-tele="${esc(r.tele)}"` : ''}>
           <div class="rgc-h">
             <div class="rgc-id">
-              <b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}
+              ${r.agentId ? `<a class="rg-chart" href="/agent/${r.agentId}" title="Its chart: daily pulse, paid work, evidence score"><b>${esc(r.label)}</b></a>` : `<b>${esc(r.label)}</b>`}${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}
               <div class="rg-note">${esc(r.sub)}${r.instances > 1 ? ` &middot; ${r.instances} registry ids, one deployment` : ''}</div>
             </div>
             ${hireable && r.agentId
@@ -1146,6 +1146,24 @@ if (hireConfirm) {
   api.quotes_measured_at = hireConfirm.measured_at || null;
 }
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+// THE PLAZA'S VIEW OF EACH AGENT, for its chart (agent chart phase 2, 2026-10-12): which categories it is filed in and
+// how (declared / on-chain / matched, weak = "possibly related"), whether it carries a Hire button here and what it
+// quoted when last asked. Read by agent.brainonbnb.com/chart/<id>; the same rows the page renders.
+{
+  const plaza = {};
+  for (const { cat, rows, maybe } of categorised) {
+    for (const r of [...rows, ...(maybe || [])]) {
+      if (!r.agentId) continue;
+      const p = plaza[r.agentId] || (plaza[r.agentId] = { categories: [], hire: false, quote: null, ours: !!r.ours });
+      p.categories.push({ id: cat.id, label: cat.label, how: r.hit?.source || null, weak: !!r.hit?.weak, evidence: r.hit?.detail || null });
+      if (canHire(r)) p.hire = true;
+      const q = quoteOf(r.agentId, cat.id);
+      if (q && (q.quotes || !p.quote)) p.quote = { quotes: !!q.quotes, price: q.price || null, reason: q.quotes ? null : (q.reason || null), at: hireConfirm?.measured_at || null };
+    }
+  }
+  fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-plaza-index.json'), JSON.stringify({ what_this_is: 'Brain Plaza\'s view of each agent it lists: categories (and how each was decided), Hire button, last quote.', measured_at: api.measured_at || null, agents: plaza }));
+}
 
 // The input for scripts/erc8004-hire-confirm.mjs: exactly the buttons this page
 // offers, so the negotiation pass can never test a different population than
@@ -2809,7 +2827,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         if(!btns.length){off.push(L);return}
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
-          var nm=art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
           var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
           var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';
           var c=art.cloneNode(true); c.removeAttribute('data-tele');
@@ -2825,7 +2843,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     }).catch(function(){strip.remove()});
   })();
 </script>
-<style>.rg-listed{color:#7fd1a3;border-color:rgba(127,209,163,.35);text-decoration:none}.rg-feat{border:1px solid rgba(240,185,11,.35);border-radius:14px;padding:10px;margin:0 0 14px}</style>
+<style>.rg-chart{color:inherit;text-decoration:none;border-bottom:1px dotted rgba(240,185,11,.45)}.rg-chart:hover{color:var(--gold)}.rg-listed{color:#7fd1a3;border-color:rgba(127,209,163,.35);text-decoration:none}.rg-feat{border:1px solid rgba(240,185,11,.35);border-radius:14px;padding:10px;margin:0 0 14px}</style>
 </body>
 </html>
 `;

@@ -62,8 +62,8 @@ const callAddr = async (sel, id) => {
   const raw = await rpc('eth_call', [{ to: REGISTRY, data: sel + BigInt(id).toString(16).padStart(64, '0') }, 'latest']).catch(() => null);
   return raw && raw.length >= 66 && !/^0x0*$/.test(raw) ? '0x' + raw.slice(-40) : null;
 };
-const ownerOf = (id) => callAddr('0x6352211e', id);        // ownerOf(uint256)
-const agentWalletOf = (id) => callAddr('0x00339509', id);  // getAgentWallet(uint256)
+export const ownerOf = (id) => callAddr('0x6352211e', id);        // ownerOf(uint256)
+export const agentWalletOf = (id) => callAddr('0x00339509', id);  // getAgentWallet(uint256)
 
 // ------------------------------------------------------------- does it answer
 // A2A first (a message/send that comes back with a result), then MCP (an

@@ -2568,10 +2568,10 @@ const BOT_COMMANDS = [
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
-  { command: 'whales',   description: 'The BOBAI whales: holdings, 24 h activity' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
   { command: 'tax',      description: 'Tax live: next buyback charge, last buyback, last 24 h (also /buyback)' },
+  { command: 'whales',   description: 'The BOBAI whales: holdings, 24 h activity' },
   { command: 'worldcup', description: "Worldcup '26 tipgame — final results" },
 ];
 
@@ -2587,7 +2587,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v18-whales';
+const COMMANDS_VERSION = 'v19-whales-abc';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -3017,8 +3017,9 @@ async function handleCommand(msg, env) {
   // Slash-prefixed (work everywhere, but silent-ignore outside internal chat)
   const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalecleanup', '/whalehelp'];
   if (WHALE_SLASH.includes(text)) {
-    // /whales reads in the official group too (operator, 2026-10-12); the admin commands stay internal
-    if (text === '/whales' && String(chatId) === TG_CHAT_ID) return handleWhaleAdmin(rawText, text, chatId, { public: true });
+    // /whales reads everywhere like every public command — the official group and a private chat with the bot
+    // (operator, 2026-10-12: "I tap /whales and nothing comes" — it answered only in the group); the admin commands stay internal
+    if (text === '/whales' && !isInternal) return handleWhaleAdmin(rawText, text, chatId, { public: true });
     if (!isInternal) return;
     return handleWhaleAdmin(rawText, text, chatId);
   }
@@ -3344,11 +3345,11 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
-🐋 /whales — The BOBAI whales: holdings, 24 h activity, who moved
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
 💸 /tax — Tax live: next buyback charge, last buyback, last 24 h
+🐋 /whales — The BOBAI whales: holdings, 24 h activity, who moved
 🏆 /worldcup — Worldcup '26 tipgame, final results
 
 💡 <i>I also post alerts for buys, burns & whale moves!</i>

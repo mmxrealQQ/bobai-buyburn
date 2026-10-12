@@ -1,3 +1,6 @@
+# /list is hidden until the agent chart is finished (operator, 2026-10-12); the API stays
+/list /registry 302
+/list.html /registry 302
 /agents /defi 301
 /liquidity /defi 301
 /defi-agent /defi 301

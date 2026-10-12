@@ -96,11 +96,11 @@ async function answers(id, reg) {
   return { ok: !!(out.a2a?.ok || out.mcp?.ok), ...out };
 }
 
-export async function checkAgent(idRaw) {
+export async function checkAgent(idRaw, opts = {}) {
   const id = String(idRaw || '').trim();
   if (!/^\d{1,9}$/.test(id)) return { ok: false, id, reasons: ['give the agent\'s ERC-8004 id on BNB Smart Chain (a number)'] };
   const reasons = [];
-  if (OURS.has(id)) reasons.push('this is one of Brain On BNB\'s own agents');
+  if (OURS.has(id) && !opts.house) reasons.push('this is one of Brain On BNB\'s own agents');
   const [owner, agentWallet, reg] = await Promise.all([ownerOf(id), agentWalletOf(id), registrationOf(Number(id)).catch(() => null)]);
   if (!owner) reasons.push(`#${id} is not registered on the ERC-8004 identity registry on BNB Smart Chain`);
   if (owner && !reg) reasons.push('its registration names no https:// endpoint we can call');
@@ -204,6 +204,28 @@ export async function submitListing(body, env) {
     ...(chk.ok ? {} : { note: 'paid and listed; the badge shows once the agent answers our daily check' }) });
 }
 
+// ------------------------------------------------------------ our own agent
+// THE HOUSE LISTING (operator, 2026-10-12: "list only ours" — the first listing is our own DeFi agent; the price stays).
+// Our own agents are refused on the paid path; this one, behind HIT_SECRET, lists one of them WITHOUT a payment and
+// says so everywhere (house: true): the profile, the Plaza badge and the announcement name it as ours, not as paid.
+export async function houseListing(env, idRaw) {
+  const id = String(idRaw || '').trim();
+  if (!OURS.has(id)) return json(400, { error: 'the house listing is for our own agents only; everyone else pays' });
+  const chk = await checkAgent(id, { house: true });
+  if (!chk.ok) return json(422, { error: 'it does not pass the check', reasons: chk.reasons });
+  const prev = await readListing(env, id);
+  const rec = {
+    id, name: chk.name, description: chk.description, image: chk.image, endpoints: chk.endpoints, owner: chk.owner, signer: null, contact: null,
+    house: true, paid: { currency: 'house', label: 'our own agent, not paid' },
+    since: prev?.since || new Date().toISOString().slice(0, 10), status: 'verified', announced: !!prev?.announced,
+    checks: [...(prev?.checks || []), { at: new Date().toISOString(), ok: true, a2a: !!chk.answers?.a2a?.ok, mcp: !!chk.answers?.mcp?.ok }].slice(-30),
+  };
+  await env.AGENT.put(`listing:${id}`, JSON.stringify(rec));
+  const ids = JSON.parse((await env.AGENT.get('listings')) || '[]');
+  if (!ids.includes(id)) { ids.push(id); await env.AGENT.put('listings', JSON.stringify(ids)); }
+  return json(200, { ok: true, listed: id, house: true, profile: `https://agent.brainonbnb.com/listed/${id}` });
+}
+
 // --------------------------------------------------------------- reading
 export async function readListing(env, id) { return JSON.parse((await env.AGENT.get(`listing:${String(id)}`)) || 'null'); }
 export async function readListings(env) {
@@ -243,7 +265,8 @@ const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<':
 export function profileHtml(r) {
   const checks = (r.checks || []).slice(-14);
   const dots = checks.map((c) => `<i class="${c.ok ? 'y' : 'n'}" title="${h(c.at.slice(0, 10))}: ${c.ok ? 'answered' : 'no answer'}"></i>`).join('');
-  const badge = r.status === 'verified' ? '<span class="b ok">✓ verified &amp; maintained</span>' : '<span class="b no">paused — did not answer our last checks</span>';
+  const badge = (r.status === 'verified' ? '<span class="b ok">✓ verified &amp; maintained</span>' : '<span class="b no">paused — did not answer our last checks</span>')
+    + (r.house ? ' <span class="b" style="color:var(--gold);background:rgba(240,185,11,.1)">Brain On BNB&rsquo;s own agent · not a paid listing</span>' : '');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${h(r.name || 'Agent #' + r.id)} · Brain Plaza</title><meta name="description" content="${h((r.description || '').slice(0, 160))}">
 <style>:root{color-scheme:dark;--bg:#0b090a;--card:#151214;--ink:#f2ece2;--mut:#a59c8f;--gold:#F0B90B;--ok:#4cc38a;--no:#ff7a6e;--line:rgba(240,185,11,.22)}

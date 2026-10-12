@@ -2641,6 +2641,7 @@ export function renderListingAnnouncement(L) {
   const desc = L.description ? esc(String(L.description).slice(0, 220)) + (String(L.description).length > 220 ? '…' : '') : '';
   return [`🏛 <b>New on Brain Plaza</b>`, ``, `<b>${esc(L.name || 'Agent #' + L.id)}</b> · ERC-8004 #${esc(L.id)}`, desc, ``,
     L.badge ? `✅ Verified &amp; maintained: it answered our check, and we check it every day.` : `⏸ Listed; the badge shows once it answers our daily check.`,
+    L.house ? `🧠 Our own agent, the first on the list — not a paid listing. The same daily check applies.` : ``,
     ``, `🔗 <a href="${esc(L.profile)}">Its page</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a> · <a href="https://brainonbnb.com/list">List yours</a>`]
     .filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n');
 }

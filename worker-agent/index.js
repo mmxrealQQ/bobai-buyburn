@@ -98,7 +98,7 @@ import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
-import { checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
+import { houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -1909,7 +1909,7 @@ export default {
     // The broker. Ask what you need done, get agents that expose something
     // matching — open, no key, so another agent can use it mid-task.
     if (path === '/find') {
-      const r = await handleFind(url);
+      const r = await handleFind(url, env);
       return thankJson(request, r.body, r.status);
     }
     // The DeFi agent's free look at anybody's PancakeSwap V3 position:
@@ -1976,6 +1976,10 @@ export default {
     if (path === '/listing/verify' && request.method === 'POST') { const r = await verifySigner(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
     if (path === '/listing/submit' && request.method === 'POST') { const r = await submitListing(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
     if (path === '/listings') return json({ price_usd: LISTING_USD, pays_to: PAYEE, currencies: ['usd1', 'bnb', 'bobai'], listings: await readListings(env) }, 200);
+    if (path === '/listing/house' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const r = await houseListing(env, (await request.json().catch(() => ({}))).agent); return json(r.body, r.status);
+    }
     if (path === '/listing/announced' && request.method === 'POST') {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);

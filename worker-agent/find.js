@@ -132,7 +132,7 @@ export function score(agent, ts, w = null) {
 // What the census records per agent under `speaks` (scripts/erc8004-publish.mjs).
 const PROTOCOLS = ['mcp', 'a2a', 'x402'];
 
-export async function handleFind(url) {
+export async function handleFind(url, env = null) {
   const q = url.searchParams.get('q') || '';
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get('limit')) || 10));
   const needs = (url.searchParams.get('speaks') || '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean);
@@ -206,6 +206,14 @@ export async function handleFind(url) {
     .slice(0, limit);
   const more = pool.filter((a) => (ts.length ? score(a, ts, weights) > 0 : true)).length - scored.length;
 
+  // LISTED ON BRAIN PLAZA (2026-10-12): a listed agent carries its badge and profile in every answer, so another agent
+  // sees it too — never a better place: the order above is already set and nothing below reads it
+  const listedIds = env?.AGENT ? JSON.parse((await env.AGENT.get('listings').catch(() => null)) || '[]').map(String) : [];
+  const listedRec = new Map();
+  for (const id of listedIds.filter((id) => scored.some(({ a }) => String(a.id) === id))) {
+    const r = JSON.parse((await env.AGENT.get(`listing:${id}`).catch(() => null)) || 'null');
+    if (r && r.status !== 'removed') listedRec.set(id, { verified_and_maintained: r.status === 'verified', since: r.since, ...(r.house ? { ours: true } : {}), profile: `https://agent.brainonbnb.com/listed/${id}` });
+  }
   return {
     status: 200,
     body: {
@@ -232,6 +240,7 @@ export async function handleFind(url) {
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
         ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
         match: Math.round(s * 10) / 10,
+        ...(listedRec.has(String(a.id)) ? { listed: listedRec.get(String(a.id)) } : {}),
         // The next step, per result (2026-09-18): a hit that stops at a score
         // leaves the caller to guess the URL pattern the dispatcher already emits.
         next: {

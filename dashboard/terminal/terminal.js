@@ -1172,11 +1172,11 @@ function freshJoke() {
   const pool = mine.length && Math.random() < 0.45 ? mine : all.filter(j => !JOKE_RECENT.includes(j)), j = pick(pool.length ? pool : all);
   JOKE_RECENT.push(j); if (JOKE_RECENT.length > 10) JOKE_RECENT.shift(); return j;
 }
-function tellJoke(ms, queued = false) {
+function tellJoke(ms, queued = false, asked = false) {
   // A JOKE IS SAID, NOT LOGGED (operator, 2026-10-10 evening: "A bear wandered into my pool" does not belong in the
   // brain.log — the log keeps what the bots and the ecosystem do; a joke, asked for or his own, is the bubble alone)
   if (REDUCED || !VID.v) { const j = freshJoke(); speak(j, ms); return true; }
-  if (VID.go || VID.goOn || VID.want && VID.want.p !== 'idle' || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) && !(queued && !/^idle/.test(VID.cur)) || performance.now() < (LIFE.greetUntil || 0)) return false;
+  if (VID.go || VID.goOn || VID.want && VID.want.p !== 'idle' && !(asked && VID.want.own) || !HAVE.has('laugh') || !moveTakes('laugh').length || VID.on && VID.cur && !/^rest/.test(VID.cur) && !(queued && !/^idle/.test(VID.cur)) || performance.now() < (LIFE.greetUntil || 0)) return false;
   const j = freshJoke(); setPose(moveForLine(j, 'laugh'), 6, true); speak(j, ms); return true; // urgent: never varied() into another move — a joke laughs, unless it names a move (2026-10-01)
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
@@ -1284,6 +1284,9 @@ function vidInit() {
             e._last = meta.mediaTime >= e.duration - 0.05;
             if (!sp._go && meta.mediaTime >= e.duration - lead() && spareReady()) {
               sp._go = true; sp._shown = false; sp._t0 = performance.now(); if (sp.currentTime > 0.05) sp.currentTime = 0;
+              // (2026-10-12 tried: the hidden early start at a quarter speed, set to full at the hand-over, so the first frames
+              // are not skipped — trans.mjs: freezes at 21 of 27 switches (median 150 ms, live 5/28, 66 ms) and the takes still
+              // began at 0.125 s. Taken back; the early start stays as it was.)
               sp.play().catch(() => { sp._go = false; });
             }
             if (e._last && sp._go && sp._shown) hand();
@@ -1467,7 +1470,7 @@ function vidMove(p, urgent) {
   const left = (VID.v.duration || 8) - VID.v.currentTime;
   // anything playing is waited out to its last frame — his standing pose — even for the chain's own events; what he
   // says is held back with it (holdSay/flushSay), so bubble and move still come together
-  VID.want = { p, c }; prefetchClip(c); holdSay(); void left;
+  VID.want = { p, c, own: !urgent }; prefetchClip(c); holdSay(); void left; // own: a move of his own (jokeReady may replace it)
 }
 // EXACT POSE ONLY (2026-09-28, operator: "the transitions must happen exactly when BOBAI is in exactly the same
 // start/end pose"; "always one flow, a change of motif not — or almost not — visible to the human eye"). Measured
@@ -1477,6 +1480,7 @@ function vidMove(p, urgent) {
 window.__btVideo = () => VID.v; // trans.mjs: the video element on screen (not in the DOM), to time every presented frame
 window.__btVideos = () => [VID.v, VID.spare].filter(Boolean); // both elements (they swap at every preloaded switch)
 window.__btVid = () => VID.v ? [VID.cur, +VID.v.currentTime.toFixed(2), +VID.v.playbackRate.toFixed(2), +(VID.v.duration || 0).toFixed(2)] : null; // for checks from outside (read-only)
+window.__btWant = () => VID.want ? [VID.want.p, !!VID.want.own] : null; // the move waiting its turn, and whether it is his own (qa/jokeown.mjs, read-only)
 function vidGhost(dur = 0.35) {
   const { cv, ghost } = VID; if (!ghost || !VID.on) return;
   ghost.width = cv.width; ghost.height = cv.height; ghost.getContext('2d').drawImage(cv, 0, 0);
@@ -3868,7 +3872,9 @@ let jokeQueued = false, jokeReadySince = 0, jokeShown = null;
 function jokeReady(queued = false) {
   if (mode !== 'live' || performance.now() < sceneUntil || QUEUE.length || momentEl.classList.contains('held')) return false;
   if (REDUCED || !VID.v) return true;
-  if (VID.go || VID.goOn || (VID.want && VID.want.p !== 'idle') || !HAVE.has('laugh') || !moveTakes('laugh').length) return false;
+  // a move of his OWN only waiting its turn gives way to the visitor's joke (2026-10-12, flowlag.mjs phone: tapped while
+  // his coffee was queued, the joke came 9.8 s later); the chain's moves never do
+  if (VID.go || VID.goOn || (VID.want && VID.want.p !== 'idle' && !VID.want.own) || !HAVE.has('laugh') || !moveTakes('laugh').length) return false;
   // his wave is an action too (2026-09-30, operator: "at the start his first action can be cut off by a joke"): only the
   // calm rest takes give way; the greeting, until its line is said, never
   if (!LIFE.saidHi || performance.now() < (LIFE.greetUntil || 0)) return false;
@@ -3895,7 +3901,7 @@ function jokeTap(queued = false) {
   LIFE.touchAt = performance.now();
   if (!jokeReady(queued)) { jokeQueued = true; paintJoke(); return; }
   jokeQueued = false;
-  if (tellJoke(6500, queued)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }
+  if (tellJoke(6500, queued, true)) { LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); jokeBtn.classList.remove('hit'); void jokeBtn.offsetWidth; jokeBtn.classList.add('hit'); }
   else jokeQueued = true; // no clip could start after all: it waits for the next window
   paintJoke();
 }

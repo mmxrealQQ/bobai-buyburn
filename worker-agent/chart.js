@@ -61,7 +61,7 @@ export async function agentChart(env, idRaw) {
   const inCensus = !!a;
   if (!a) { const reg = await registrationOf(Number(id)).catch(() => null); a = reg ? { id: Number(id), name: reg.name, description: reg.description, image: reg.image, endpoints: reg.endpoints, speaks: [], declared_services: reg.services } : { id: Number(id) }; }
   // the census keeps the first ~250 characters of a description; the registration on the chain has all of it
-  else if (String(a.description || '').length >= 240) { const reg = await registrationOf(Number(id)).catch(() => null); if (reg?.description) a = { ...a, description: reg.description }; }
+  else if (String(a.description || '').length >= 240) { const reg = await registrationOf(Number(id)).catch(() => null); if (reg?.description && reg.description.length > String(a.description).length) a = { ...a, description: reg.description }; else a = { ...a, description: String(a.description).replace(/\s+\S*$/, '') + '…' }; }
   const jobs = jobsAll?.agents?.[id] || null;
   const shared = jobs?.shared_provider ? jobsAll.providers?.[jobs.shared_provider] || null : null;
   const pz = plaza?.agents?.[id] || null;

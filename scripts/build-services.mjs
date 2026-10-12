@@ -153,7 +153,7 @@ const bodyOf = (needs) => JSON.stringify({ params: Object.fromEntries(Object.ent
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
-          <span class="sv-price" title="${esc(d.price)} through the escrow">$0.10</span>
+          <span class="sv-price" title="${esc(String(d.price).replace('USD1', '$U'))} through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
         </div>
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
         <p class="sv-what">${esc(d.what)}</p>

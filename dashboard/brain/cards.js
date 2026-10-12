@@ -318,6 +318,42 @@
   window.__card05 = { goals: () => goals05(), proof: () => { proof05(); return $$('#w06 .rm li').map((li) => [li.textContent.trim().slice(0, 40), li.querySelector('.pf')?.textContent || '']); } };
 
   // 07 QUESTIONS: one question at a time, turning like a card
+  // 07 MORE (operator, 2026-10-12: "the code lives" + "for agents: copy"): when the site was last rebuilt and the date
+  // of the public source it carries (build.json, written by every deploy), and what a developer or an agent needs to
+  // start — each with a copy button. The card's foot says how fresh the build is.
+  let build07 = null;
+  const age = (t) => { const m = Math.max(0, (Date.now() - t) / 60e3); return m < 60 ? `${Math.max(1, Math.round(m))} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+  const day07 = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const readBuild = () => fetch('/build.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => { build07 = j; line07(); more07(); }).catch(() => {});
+  setTimeout(readBuild, 3000); setInterval(() => { if (!document.hidden) readBuild(); }, 10 * 60e3);
+  function line07() {
+    const l = $('[data-open="w08"] .bw-l'); if (!l || !build07?.site_deployed_at) return;
+    l.textContent = `rebuilt ${age(Date.parse(build07.site_deployed_at))}${build07.source_mirror ? ` · source ${day07(Date.parse(build07.source_mirror.date))}` : ''}`; l.classList.add('code-live');
+  }
+  setInterval(() => { if (!document.hidden) line07(); }, 60e3);
+  const copyRow = (label, val, note) => `<div class="cx07-r"><span><b>${label}</b><small>${note}</small></span><code>${val}</code><button type="button" class="cx07-c" data-copy="${val}">Copy</button></div>`;
+  function more07() {
+    const body = $('#w08 .bw-body'); if (!body) return;
+    let box = $('#w08 .cx07');
+    if (!box) {
+      box = document.createElement('div'); box.className = 'cx02 cx07'; box.dataset.nousd = '1'; body.insertAdjacentElement('afterbegin', box);
+      box.addEventListener('click', (e) => { const b = e.target.closest('[data-copy]'); if (!b) return; const v = b.dataset.copy;
+        const done = () => { b.textContent = 'Copied ✓'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1600); };
+        (navigator.clipboard?.writeText(v) || Promise.reject()).then(done, () => { const t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); }); });
+    }
+    const b = build07, src = b?.source_mirror;
+    box.innerHTML = `<h4>The code lives</h4>`
+      + `<p class="cx02-s">${b?.site_deployed_at ? `This site was rebuilt <b style="color:#f3efe6">${age(Date.parse(b.site_deployed_at))}</b>. ` : ''}${src ? `Its public source, mirrored ${day07(Date.parse(src.date))} (commit <code>${src.commit}</code>), clones from here — every line of what runs on this page:` : 'Its public source clones from here:'}</p>`
+      + copyRow('Clone the source', 'git clone https://brainonbnb.com/source.git', 'the whole repository, our own mirror')
+      + `<h4 style="margin-top:16px">For agents</h4><p class="cx02-s">What an agent or its developer needs to start, free and read-only:</p>`
+      + copyRow('MCP endpoint', 'https://brainonbnb.com/mcp', 'tools over MCP, no key')
+      + copyRow('Skill doc', 'https://brainonbnb.com/skill.md', 'what each tool does, how to call it')
+      + copyRow('Agent card', 'https://brainonbnb.com/.well-known/agent-card.json', 'A2A, ERC-8004 #49467')
+      + copyRow('llms.txt', 'https://brainonbnb.com/llms.txt', 'the site, for a model to read');
+  }
+  { const w = document.getElementById('w08'); if (w) new MutationObserver(() => { if (!w.hidden) more07(); }).observe(w, { attributes: true, attributeFilter: ['hidden'] }); }
+  window.__card07 = { build: () => build07 };
+
   let qi = 0, q07 = -1;
   // 06's QUESTION OPENS ITS ANSWER (operator, 2026-10-12): a tap on the card opens the window at the question the card
   // shows right then, unfolded; and the window has a search over every question and answer (all words must be there)

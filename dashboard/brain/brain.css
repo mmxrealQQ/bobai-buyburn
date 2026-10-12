@@ -463,6 +463,15 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 .faq-search input:focus{outline:none;border-color:var(--gold,#f0b90b)}
 .faq-n{font-size:12.5px;color:var(--muted,#a0a2c0)}
 details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(240,185,11,.25);transition:box-shadow .4s}
+/* 07 (2026-10-12): the code lives, and what an agent needs, each with a copy button */
+[data-open="w08"] .bw-l.code-live{color:#9cf5c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx07 code{font:500 12px ui-monospace,Consolas,monospace;color:#f3efe6}
+.cx07-r{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid rgba(255,255,255,.06)}
+.cx07-r span b{display:block;font-size:13px}.cx07-r span small{display:block;font-size:11px;color:var(--muted,#a0a2c0)}
+.cx07-r code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.05);border-radius:8px;padding:6px 8px}
+.cx07-c{border:1px solid rgba(240,185,11,.4);background:none;color:var(--gold,#f0b90b);border-radius:999px;padding:6px 12px;font:600 12px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.cx07-c.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+@media (max-width:559px){.cx07-r{grid-template-columns:minmax(0,1fr) auto}.cx07-r code{grid-column:1/-1;grid-row:2}}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

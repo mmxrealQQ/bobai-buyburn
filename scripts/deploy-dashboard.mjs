@@ -161,6 +161,13 @@ function main() {
   const count = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((s, e) => s + (e.isDirectory() ? count(path.join(d, e.name)) : 1), 0);
   if (count(SRC) !== count(OUT)) problems.push(`the build holds ${count(OUT)} files, dashboard/ ${count(SRC)}`);
   for (const must of ['_worker.js', '_routes.json', '_headers', '_redirects', 'index.html']) if (!fs.existsSync(path.join(OUT, must))) problems.push(`${must} is missing from the build`);
+  // THE CODE LIVES (2026-10-12, card 07 "More"): when this build went out, and the commit and date of the public source
+  // mirror it carries (dashboard/source.git) — written into the build only, after the count above, never into dashboard/
+  {
+    const m = spawnSync('git', ['--git-dir=' + path.join(SRC, 'source.git'), 'log', '-1', '--format=%h %cI'], { encoding: 'utf8' });
+    const [commit, date] = (m.stdout || '').trim().split(' ');
+    fs.writeFileSync(path.join(OUT, 'build.json'), JSON.stringify({ site_deployed_at: new Date().toISOString(), source_mirror: commit ? { commit, date, clone: 'git clone https://brainonbnb.com/source.git' } : null }) + '\n');
+  }
 
   console.log(`built .dashboard-build: ${pages} pages without their comments (brotli ${before} -> ${after} B, −${((1 - after / before) * 100).toFixed(1)}%), ${linked} files linked${copied ? `, ${copied} copied` : ''}`);
   if (problems.length) {

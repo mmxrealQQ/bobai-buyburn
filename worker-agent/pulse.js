@@ -82,13 +82,21 @@ export async function runPulseTick(env, n = PULSE_PER_TICK) {
   let cur = Number((await env.AGENT.get('pulse:cursor')) || 0) % list.length;
   const batch = []; for (let i = 0; i < Math.min(n, list.length); i++) batch.push(list[(cur + i) % list.length]);
   const res = await Promise.all(batch.map(async (a) => [a, await pulseOne(a)]));
+  // THE SCREENER'S ROW (2026-10-12): one compact summary of every agent, kept up to date here, so a table of ~950 agents
+  // reads one key instead of ~950: [uptime 7d, uptime 30d, days measured 30d, median ms 30d, last ok, last day, last 14 days as "1/0/-"]
+  const sum = JSON.parse((await env.AGENT.get('pulse:summary')) || '{}');
   for (const [a, p] of res) {
     const key = `pulse:${a.id}`;
     const s = JSON.parse((await env.AGENT.get(key)) || '[]').filter((x) => x[0] !== today);
     s.push([today, p.ok, p.ms, p.via]);
-    await env.AGENT.put(key, JSON.stringify(s.slice(-KEEP_DAYS)));
+    const kept = s.slice(-KEEP_DAYS);
+    await env.AGENT.put(key, JSON.stringify(kept));
     await noteAgentState(env, a.id, !!p.ok, 'daily pulse').catch(() => null); // agent-watch.js: an alarm on a change
+    const s7 = summarize(kept, 7), s30 = summarize(kept, 30), byDay = new Map(kept.map((x) => [x[0], x[1]]));
+    const spark = Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5).toISOString().slice(0, 10); return byDay.has(d) ? (byDay.get(d) ? '1' : '0') : '-'; }).join('');
+    sum[a.id] = [s7.uptime_pct, s30.uptime_pct, s30.days_measured, s30.median_ms, p.ok ? 1 : 0, today, spark];
   }
+  await env.AGENT.put('pulse:summary', JSON.stringify(sum));
   await env.AGENT.put('pulse:cursor', String((cur + batch.length) % list.length));
   return { asked: res.map(([a, p]) => [a.id, p.ok, p.ms, p.via]) };
 }
@@ -110,4 +118,22 @@ export async function readPulse(env, id) {
     method: 'Once a day, spread over the day: an MCP initialize if the agent speaks MCP, else a GET of its agent card, else its first endpoint. No task, no payment. ok = a real answer (an MCP result, a card with a name or skills, or any non-5xx response for a plain endpoint).',
     since: series[0]?.[0] || null,
   };
+}
+
+// The summary rebuilt from every series on record (once, after the summary was introduced; safe to repeat).
+export async function rebuildPulseSummary(env) {
+  const sum = {}; let cursor;
+  do {
+    const page = await env.AGENT.list({ prefix: 'pulse:', cursor });
+    for (const k of page.keys) {
+      const id = k.name.slice(6); if (!/^\d+$/.test(id)) continue;
+      const kept = JSON.parse((await env.AGENT.get(k.name)) || '[]'); if (!kept.length) continue;
+      const s7 = summarize(kept, 7), s30 = summarize(kept, 30), byDay = new Map(kept.map((x) => [x[0], x[1]])), last = kept[kept.length - 1];
+      const spark = Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5).toISOString().slice(0, 10); return byDay.has(d) ? (byDay.get(d) ? '1' : '0') : '-'; }).join('');
+      sum[id] = [s7.uptime_pct, s30.uptime_pct, s30.days_measured, s30.median_ms, last[1] ? 1 : 0, last[0], spark];
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  await env.AGENT.put('pulse:summary', JSON.stringify(sum));
+  return { agents: Object.keys(sum).length };
 }

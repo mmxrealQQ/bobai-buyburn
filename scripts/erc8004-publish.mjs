@@ -1734,6 +1734,10 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' scanned ' + dayOf(api.measured_at) : 'probe pending'}</div></div>
     </div>
 
+    <a class="rg-box rg-screener" href="/screener" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;border-color:rgba(240,185,11,.45)">
+      <span><b style="font-family:'Space Grotesk',sans-serif;font-size:19px">Screener</b> <span class="rg-note" style="margin-left:6px">every agent in one table &mdash; evidence score, daily pulse, paid work for outside buyers, price. Sort, search, filter; each row opens its chart.</span></span>
+      <span style="color:var(--gold);font-weight:700;white-space:nowrap">Open the screener &rarr;</span>
+    </a>
     <div class="rg-box rg-start">
       <h2>Hire one, or just ask</h2>
       <p class="rg-sub">Three ways in. Nothing here signs anything for you.</p>

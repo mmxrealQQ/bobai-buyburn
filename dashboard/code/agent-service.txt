@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 52 files, 18027 lines.
+# one fetch. 53 files, 18197 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3393,6 +3393,63 @@ export function transferredIn(logs, token, from, to) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/agent-watch.js
+==============================================================================
+
+// AGENT WATCH — an alarm when an agent you rely on goes down, and when it is back (agent chart phase 4, 2026-10-12).
+//
+// Rug Watch tells a holder when a token turns against them; this tells whoever depends on an agent when it stops
+// answering. Free, for any agent on BNB Chain, webhook only (as Rug Watch): POST /agent-watch {agent, callback} and
+// the callback receives {agent, state: "down"|"up", at, chart} on every change.
+//   - every agent: from the daily pulse (pulse.js calls noteAgentState after each measurement)
+//   - a LISTED agent: also every hour (runListedLive), so the alarm and its profile follow within the hour
+// A change is only a change against the state we last recorded, so one bad minute after a good day is one alarm,
+// not one per check, and nothing is sent for an agent that was down when the watch was made.
+
+const MAX_PER_AGENT = 25;
+const MAX_TOTAL_PER_CALLBACK = 20;
+
+export async function addAgentWatch(env, body) {
+  const id = String(body?.agent ?? '').replace(/[^0-9]/g, '');
+  const cb = String(body?.callback || '').trim();
+  if (!id) return { status: 400, body: { error: 'agent: the ERC-8004 id on BNB Smart Chain' } };
+  let u; try { u = new URL(cb); } catch { return { status: 400, body: { error: 'callback: an https:// URL that accepts a POST' } }; }
+  if (u.protocol !== 'https:' || /^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname)) return { status: 400, body: { error: 'callback must be a public https:// URL' } };
+  const key = `agentwatch:${id}`;
+  const list = JSON.parse((await env.AGENT.get(key)) || '[]');
+  if (list.some((w) => w.cb === cb)) return { status: 200, body: { ok: true, agent: Number(id), already: true } };
+  if (list.length >= MAX_PER_AGENT) return { status: 429, body: { error: `this agent has ${MAX_PER_AGENT} watches already` } };
+  const per = JSON.parse((await env.AGENT.get(`agentwatchcb:${cb}`)) || '[]');
+  if (per.length >= MAX_TOTAL_PER_CALLBACK) return { status: 429, body: { error: `this callback watches ${MAX_TOTAL_PER_CALLBACK} agents already` } };
+  list.push({ cb, since: new Date().toISOString() }); per.push(id);
+  await env.AGENT.put(key, JSON.stringify(list)); await env.AGENT.put(`agentwatchcb:${cb}`, JSON.stringify(per));
+  const ids = JSON.parse((await env.AGENT.get('agentwatch:ids')) || '[]'); if (!ids.includes(id)) { ids.push(id); await env.AGENT.put('agentwatch:ids', JSON.stringify(ids)); }
+  return { status: 200, body: { ok: true, agent: Number(id), callback: cb, sends: '{agent, state: "down"|"up", at, chart} on every change', from: 'the daily pulse; a listed agent every hour', remove: 'DELETE /agent-watch with the same body' } };
+}
+
+export async function removeAgentWatch(env, body) {
+  const id = String(body?.agent ?? '').replace(/[^0-9]/g, ''), cb = String(body?.callback || '').trim();
+  const key = `agentwatch:${id}`; const list = JSON.parse((await env.AGENT.get(key)) || '[]').filter((w) => w.cb !== cb);
+  await env.AGENT.put(key, JSON.stringify(list));
+  const per = JSON.parse((await env.AGENT.get(`agentwatchcb:${cb}`)) || '[]').filter((x) => x !== id);
+  await env.AGENT.put(`agentwatchcb:${cb}`, JSON.stringify(per));
+  return { status: 200, body: { ok: true, removed: true } };
+}
+
+// Record an agent's state; on a change, tell its watchers. `ok` is the latest measurement.
+export async function noteAgentState(env, id, ok, source) {
+  const key = `agentstate:${id}`; const prev = JSON.parse((await env.AGENT.get(key)) || 'null');
+  const state = ok ? 'up' : 'down', at = new Date().toISOString();
+  if (prev && prev.state === state) return null;
+  await env.AGENT.put(key, JSON.stringify({ state, at, source }));
+  if (!prev) return null; // the first record is a baseline, not a change
+  const list = JSON.parse((await env.AGENT.get(`agentwatch:${id}`)) || '[]');
+  const payload = { agent: Number(id), state, at, was: prev.state, since: prev.at, source, chart: `https://brainonbnb.com/agent/${id}`, from: 'Brain Plaza agent watch' };
+  await Promise.all(list.map((w) => fetch(w.cb, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'BrainPlaza-AgentWatch/1.0' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(8000) }).catch(() => null)));
+  return { changed: true, state, notified: list.length };
+}
+
+==============================================================================
 === FILE: worker-agent/canary.js
 ==============================================================================
 
@@ -4301,7 +4358,7 @@ export async function agentChart(env, idRaw) {
   const inCensus = !!a;
   if (!a) { const reg = await registrationOf(Number(id)).catch(() => null); a = reg ? { id: Number(id), name: reg.name, description: reg.description, image: reg.image, endpoints: reg.endpoints, speaks: [], declared_services: reg.services } : { id: Number(id) }; }
   // the census keeps the first ~250 characters of a description; the registration on the chain has all of it
-  else if (String(a.description || '').length >= 240) { const reg = await registrationOf(Number(id)).catch(() => null); if (reg?.description) a = { ...a, description: reg.description }; }
+  else if (String(a.description || '').length >= 240) { const reg = await registrationOf(Number(id)).catch(() => null); if (reg?.description && reg.description.length > String(a.description).length) a = { ...a, description: reg.description }; else a = { ...a, description: String(a.description).replace(/\s+\S*$/, '') + '…' }; }
   const jobs = jobsAll?.agents?.[id] || null;
   const shared = jobs?.shared_provider ? jobsAll.providers?.[jobs.shared_provider] || null : null;
   const pz = plaza?.agents?.[id] || null;
@@ -4319,6 +4376,9 @@ export async function agentChart(env, idRaw) {
     jobs: jobs ? { provider: jobs.provider, attributed_by: jobs.attributed_by, totals: jobs.totals, by_day: jobs.by_day || [], trades: jobs.trades } : null,
     shared_provider: shared ? { address: jobs.shared_provider, agents: shared.agents, totals: shared.totals, note: shared.note } : null,
     ratings, raters: r?.raters || 0,
+    // its state as our last check found it, and how to be told when it changes (agent-watch.js)
+    state: JSON.parse((await env.AGENT.get(`agentstate:${id}`)) || 'null'),
+    watch: { how: 'POST https://agent.brainonbnb.com/agent-watch {"agent":"' + id + '","callback":"https://your.server/hook"}', sends: '{agent, state: "down"|"up", at, was, since, chart} on every change', checked: listed ? 'every hour (listed) and once a day' : 'once a day' },
     evidence: evidenceScore({ pulse, jobs, quote: pz?.quote }),
     sources: {
       registration: 'ERC-8004 identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (BNB Smart Chain)',
@@ -4327,6 +4387,60 @@ export async function agentChart(env, idRaw) {
     },
     measured_at: new Date().toISOString(),
   } };
+}
+
+// WHO IS THE MOST RELIABLE ONE (agent chart phase 3, 2026-10-12): the agents Brain Plaza files under a category, ordered
+// by the same evidence score as their charts. For machines first — "the most reliable health-factor agent on BNB Chain"
+// is one call — and the same answer a person gets by opening the charts one by one. Only firm filings count ("possibly
+// related" stays out); a listing changes nothing here.
+export async function agentRank(env, categoryRaw, limitRaw) {
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const c = String(categoryRaw || '').trim().toLowerCase(); const category = ALIAS[c] || c;
+  const limit = Math.min(25, Math.max(1, Number(limitRaw) || 10));
+  const [jobsAll, plaza] = await Promise.all([cached(`${SITE}/api-agent-jobs.json`, 15 * 60e3), cached(`${SITE}/api-plaza-index.json`, 15 * 60e3)]);
+  const cats = new Set(Object.values(plaza.agents || {}).flatMap((p) => p.categories.map((x) => x.id)));
+  if (!cats.has(category)) return { status: 400, body: { error: `unknown category "${c}"`, categories: [...cats] } };
+  const ids = Object.entries(plaza.agents).filter(([, p]) => p.categories.some((x) => x.id === category && !x.weak)).map(([id]) => id);
+  const rows = await Promise.all(ids.map(async (id) => {
+    const p = plaza.agents[id]; const pulse = await readPulse(env, id); const jobs = jobsAll.agents?.[id] || null;
+    const ev = evidenceScore({ pulse, jobs, quote: p.quote }); const t = jobs?.totals;
+    const listing = await readListing(env, id).catch(() => null);
+    return { id: Number(id), score: ev.score, parts: Object.fromEntries(ev.parts.map((x) => [x.part, x.points])),
+      uptime_30d_pct: pulse.last_30d.uptime_pct, days_measured: pulse.last_30d.days_measured, median_ms: pulse.last_30d.median_ms,
+      outside_jobs_delivered_pct: t?.delivery_rate_outside_pct ?? null, outside_buyers: t?.buyers_outside || 0,
+      quote: p.quote?.quotes ? p.quote.price : null, hire: p.hire, ours: !!p.ours,
+      listed: listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified' } : null,
+      chart: `${SITE}/agent/${id}`, data: `https://agent.brainonbnb.com/chart/${id}` };
+  }));
+  rows.sort((a, b) => b.score - a.score || b.outside_buyers - a.outside_buyers || a.id - b.id);
+  return { status: 200, body: { category, ranked_by: 'evidence score (40 uptime 30d · 30 outside delivery rate · 20 outside buyers · 10 names a price) — the same as each agent\'s chart; a listing never changes it', agents: rows.slice(0, limit), of: rows.length, measured_at: new Date().toISOString() } };
+}
+
+// THE SCREENER (2026-10-12: "as good as DexScreener, just for AI agents"): every agent of the census in one table — the
+// same evidence score as its chart, its pulse summary, its paid work, its Plaza filing, whether it is listed. One KV key
+// for the pulse (pulse:summary), three cached files, the listings; built at most every five minutes per isolate.
+let screenerCache = { at: 0, body: null };
+export async function screenerData(env) {
+  if (screenerCache.body && Date.now() - screenerCache.at < 5 * 60e3) return screenerCache.body;
+  const [index, jobsAll, plaza, sumRaw, listIds] = await Promise.all([
+    cached(`${SITE}/api-agents.json`, 30 * 60e3), cached(`${SITE}/api-agent-jobs.json`, 15 * 60e3), cached(`${SITE}/api-plaza-index.json`, 15 * 60e3),
+    env.AGENT.get('pulse:summary'), env.AGENT.get('listings'),
+  ]);
+  const sum = JSON.parse(sumRaw || '{}');
+  const listed = new Map();
+  for (const id of JSON.parse(listIds || '[]')) { const l = await readListing(env, id).catch(() => null); if (l && l.status !== 'removed') listed.set(String(id), l); }
+  const fields = ['id', 'name', 'score', 'uptime_7d', 'uptime_30d', 'days', 'median_ms', 'up_now', 'spark14', 'outside_jobs', 'outside_buyers', 'outside_delivery_pct', 'earned_u', 'quote', 'hire', 'categories', 'speaks', 'listed', 'ours'];
+  const rows = (index.agents || []).map((a) => {
+    const id = String(a.id), s = sum[id] || null, jobs = jobsAll.agents?.[id] || null, t = jobs?.totals || null, p = plaza.agents?.[id] || null, l = listed.get(id);
+    const pulse = { last_30d: { days_measured: s ? s[2] : 0, uptime_pct: s ? s[1] : null } };
+    const ev = evidenceScore({ pulse, jobs, quote: p?.quote });
+    return [a.id, String(a.name || '').slice(0, 70), ev.score, s ? s[0] : null, s ? s[1] : null, s ? s[2] : 0, s ? s[3] : null, s ? s[4] : null, s ? s[6] : '--------------',
+      t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? t.earned_u : 0,
+      p?.quote?.quotes ? p.quote.price : null, p?.hire ? 1 : 0, p ? p.categories.filter((x) => !x.weak).map((x) => x.id) : [], a.speaks || [],
+      l ? (l.status === 'verified' ? 'verified' : 'paused') : null, p?.ours ? 1 : 0];
+  });
+  const body = { what_this_is: 'Brain Plaza screener: every AI agent on BNB Chain that answered our last full census, measured — the evidence score of its chart, its daily pulse, its paid escrow work for outside buyers, its last quote, its Plaza category, its listing.', fields, rows, agents: rows.length, measured_at: new Date().toISOString(), pulse_started: '2026-10-12', score: 'the same as /chart/<id>: 40 uptime 30d (3 days needed), 30 outside delivery rate, 20 outside buyers, 10 names a price' };
+  screenerCache = { at: Date.now(), body }; return body;
 }
 
 ==============================================================================
@@ -7008,9 +7122,10 @@ import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
-import { runPulseTick, readPulse } from './pulse.js';
-import { agentChart } from './chart.js';
-import { houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
+import { runPulseTick, readPulse, rebuildPulseSummary } from './pulse.js';
+import { agentChart, agentRank, screenerData } from './chart.js';
+import { addAgentWatch, removeAgentWatch } from './agent-watch.js';
+import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -8896,6 +9011,17 @@ export default {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);
     }
+    if (path === '/agent-watch') {
+      if (request.method === 'POST') { const r = await addAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
+      if (request.method === 'DELETE') { const r = await removeAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
+      return json({ what: 'An alarm when an agent you rely on goes down, and when it is back. Free, any agent on BNB Chain, webhook only.', usage: 'POST /agent-watch {"agent":"302257","callback":"https://your.server/hook"} — the callback receives {agent, state: "down"|"up", at, was, since, chart} on every change; DELETE with the same body to stop.', checked: 'every agent once a day (the pulse); a listed agent every hour' }, 200);
+    }
+    if (path === '/screener') return new Response(JSON.stringify(await screenerData(env)), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }); // compact: ~950 rows
+    if (path === '/pulse/rebuild-summary' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await rebuildPulseSummary(env), 200);
+    }
+    if (path === '/chart/rank') { const r = await agentRank(env, url.searchParams.get('category'), url.searchParams.get('limit')); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=300' }); }
     if (path.startsWith('/chart/')) { const r = await agentChart(env, path.slice(7)); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=120' }); }
     if (path.startsWith('/pulse/')) {
       const id = path.slice(7).replace(/[^0-9]/g, '');
@@ -10064,6 +10190,8 @@ ${pageTail}`;
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
     // THE PULSE (pulse.js, agent chart phase 1): the next agents of the census index, each once a day, kept 90 days
     ctx.waitUntil(runPulseTick(env).catch(() => {}));
+    // Listed agents every hour (agent-watch alarms within the hour), on the tick at minute 0
+    if (new Date(event.scheduledTime || Date.now()).getUTCMinutes() < 5) ctx.waitUntil(runListedLive(env).catch(() => {}));
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
@@ -10353,6 +10481,7 @@ import { recoverMessageAddress } from 'viem';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { RPCS } from '../shared/lp-agent.js';
+import { noteAgentState } from './agent-watch.js';
 
 export const LISTING_USD = 95;
 export const PAYEE = '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c'; // the operator's wallet (operator, 2026-10-12)
@@ -10609,6 +10738,23 @@ ${r.description ? `<div class="c"><p style="margin:0">${h(r.description)}</p></d
 <dt>On-chain</dt><dd><a href="https://8004scan.io/agents/bsc/${h(r.id)}">8004scan</a> · <a href="https://bscscan.com/token/${REGISTRY}?a=${h(r.id)}">registry</a></dd></dl></div>
 <p class="m">A listing is paid once and shows this page, the badge and a "Featured (paid)" slot at the top of its category on Brain Plaza. It never buys a place in the list below: that order is the evidence — who answers, who quotes, who has been paid. <a href="https://brainonbnb.com/list">List your agent</a></p>
 </main></body></html>`;
+}
+
+// THE LISTED ONES, EVERY HOUR (agent chart phase 4): a listed agent is asked once an hour (A2A message/send or MCP
+// initialize, as at listing), its profile shows the result, and a change from up to down or back alerts its watchers
+// within the hour. The badge itself still follows the daily rule (three silent days).
+export async function runListedLive(env) {
+  const ids = JSON.parse((await env.AGENT.get('listings')) || '[]'); const out = [];
+  for (const id of ids) {
+    const r = await readListing(env, id); if (!r || r.status === 'removed') continue;
+    const reg = await registrationOf(Number(id)).catch(() => null);
+    const ans = reg ? await answers(id, reg).catch(() => ({ ok: false })) : { ok: false };
+    r.live = { ok: !!ans.ok, at: new Date().toISOString() };
+    await env.AGENT.put(`listing:${id}`, JSON.stringify(r));
+    await noteAgentState(env, id, !!ans.ok, 'hourly check (listed)').catch(() => null);
+    out.push([id, !!ans.ok]);
+  }
+  return { checked: out };
 }
 
 ==============================================================================
@@ -12863,6 +13009,8 @@ export async function answerTask(task, rpcs) {
 // 90 days; `pulse:cursor` = where the round stands. GET /pulse/<id> serves one
 // agent's series with its 7- and 30-day uptime and median response time.
 
+import { noteAgentState } from './agent-watch.js';
+
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 export const PULSE_PER_TICK = 11;   // 96 ticks a day x 11 = 1,056 >= the ~950 in the index
 const KEEP_DAYS = 90;
@@ -12926,12 +13074,21 @@ export async function runPulseTick(env, n = PULSE_PER_TICK) {
   let cur = Number((await env.AGENT.get('pulse:cursor')) || 0) % list.length;
   const batch = []; for (let i = 0; i < Math.min(n, list.length); i++) batch.push(list[(cur + i) % list.length]);
   const res = await Promise.all(batch.map(async (a) => [a, await pulseOne(a)]));
+  // THE SCREENER'S ROW (2026-10-12): one compact summary of every agent, kept up to date here, so a table of ~950 agents
+  // reads one key instead of ~950: [uptime 7d, uptime 30d, days measured 30d, median ms 30d, last ok, last day, last 14 days as "1/0/-"]
+  const sum = JSON.parse((await env.AGENT.get('pulse:summary')) || '{}');
   for (const [a, p] of res) {
     const key = `pulse:${a.id}`;
     const s = JSON.parse((await env.AGENT.get(key)) || '[]').filter((x) => x[0] !== today);
     s.push([today, p.ok, p.ms, p.via]);
-    await env.AGENT.put(key, JSON.stringify(s.slice(-KEEP_DAYS)));
+    const kept = s.slice(-KEEP_DAYS);
+    await env.AGENT.put(key, JSON.stringify(kept));
+    await noteAgentState(env, a.id, !!p.ok, 'daily pulse').catch(() => null); // agent-watch.js: an alarm on a change
+    const s7 = summarize(kept, 7), s30 = summarize(kept, 30), byDay = new Map(kept.map((x) => [x[0], x[1]]));
+    const spark = Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5).toISOString().slice(0, 10); return byDay.has(d) ? (byDay.get(d) ? '1' : '0') : '-'; }).join('');
+    sum[a.id] = [s7.uptime_pct, s30.uptime_pct, s30.days_measured, s30.median_ms, p.ok ? 1 : 0, today, spark];
   }
+  await env.AGENT.put('pulse:summary', JSON.stringify(sum));
   await env.AGENT.put('pulse:cursor', String((cur + batch.length) % list.length));
   return { asked: res.map(([a, p]) => [a.id, p.ok, p.ms, p.via]) };
 }
@@ -12953,6 +13110,24 @@ export async function readPulse(env, id) {
     method: 'Once a day, spread over the day: an MCP initialize if the agent speaks MCP, else a GET of its agent card, else its first endpoint. No task, no payment. ok = a real answer (an MCP result, a card with a name or skills, or any non-5xx response for a plain endpoint).',
     since: series[0]?.[0] || null,
   };
+}
+
+// The summary rebuilt from every series on record (once, after the summary was introduced; safe to repeat).
+export async function rebuildPulseSummary(env) {
+  const sum = {}; let cursor;
+  do {
+    const page = await env.AGENT.list({ prefix: 'pulse:', cursor });
+    for (const k of page.keys) {
+      const id = k.name.slice(6); if (!/^\d+$/.test(id)) continue;
+      const kept = JSON.parse((await env.AGENT.get(k.name)) || '[]'); if (!kept.length) continue;
+      const s7 = summarize(kept, 7), s30 = summarize(kept, 30), byDay = new Map(kept.map((x) => [x[0], x[1]])), last = kept[kept.length - 1];
+      const spark = Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5).toISOString().slice(0, 10); return byDay.has(d) ? (byDay.get(d) ? '1' : '0') : '-'; }).join('');
+      sum[id] = [s7.uptime_pct, s30.uptime_pct, s30.days_measured, s30.median_ms, last[1] ? 1 : 0, last[0], spark];
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  await env.AGENT.put('pulse:summary', JSON.stringify(sum));
+  return { agents: Object.keys(sum).length };
 }
 
 ==============================================================================

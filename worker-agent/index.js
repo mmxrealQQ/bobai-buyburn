@@ -98,8 +98,8 @@ import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
-import { runPulseTick, readPulse } from './pulse.js';
-import { agentChart, agentRank } from './chart.js';
+import { runPulseTick, readPulse, rebuildPulseSummary } from './pulse.js';
+import { agentChart, agentRank, screenerData } from './chart.js';
 import { addAgentWatch, removeAgentWatch } from './agent-watch.js';
 import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
@@ -1991,6 +1991,11 @@ export default {
       if (request.method === 'POST') { const r = await addAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
       if (request.method === 'DELETE') { const r = await removeAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
       return json({ what: 'An alarm when an agent you rely on goes down, and when it is back. Free, any agent on BNB Chain, webhook only.', usage: 'POST /agent-watch {"agent":"302257","callback":"https://your.server/hook"} — the callback receives {agent, state: "down"|"up", at, was, since, chart} on every change; DELETE with the same body to stop.', checked: 'every agent once a day (the pulse); a listed agent every hour' }, 200);
+    }
+    if (path === '/screener') return new Response(JSON.stringify(await screenerData(env)), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }); // compact: ~950 rows
+    if (path === '/pulse/rebuild-summary' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await rebuildPulseSummary(env), 200);
     }
     if (path === '/chart/rank') { const r = await agentRank(env, url.searchParams.get('category'), url.searchParams.get('limit')); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=300' }); }
     if (path.startsWith('/chart/')) { const r = await agentChart(env, path.slice(7)); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=120' }); }

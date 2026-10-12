@@ -4,7 +4,7 @@
 // freely inside its own folder — its tests, results and tables are its own pages, in the same window.
 (() => {
   if (window.parent === window) return;
-  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent)(\/|$|\?)/;
+  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener)(\/|$|\?)/;
   const APPS = /^\/(brainscreener|game|worldcup)(\/|$)/;
   const home = location.pathname.split('/')[1];
   document.addEventListener('click', (e) => {

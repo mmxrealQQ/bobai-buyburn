@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2830 lines.
+# one fetch. 5 files, 2857 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -567,6 +567,8 @@ function howToBuy() {
 // Brain Plaza were added, and llms.txt sent every agent to it first).
 const MEASURE_REST = {
   find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
+  bnb_agent_chart: 'https://agent.brainonbnb.com/chart/<agent id>',
+  bnb_agents_by_evidence: 'https://agent.brainonbnb.com/chart/rank?category=health-factor',
   bsc_rug_watch: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x…","callback":"https://…"}',
   bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
   bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
@@ -784,6 +786,10 @@ const MCP_TOOLS = [
   // actually moved. Optionally filtered to one provider address, because that
   // is the shape of the real question — "should I hire this one".
   { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow actually released — per provider. A registration is self-reported; a funded job is somebody else\'s money. Pass an address to get one provider\'s balance, or nothing for the whole kernel. A dated snapshot of the last full read, not a live call: measured_at says when.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional provider address (0x…). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
+  // THE AGENT CHART (Brain Plaza, 2026-10-12): one agent measured, and a category ordered by the same evidence. The
+  // question an agent actually has before it hires one: is it up, does it deliver for strangers, does it name a price.
+  { name: 'bnb_agent_chart', description: 'Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime and response time from a daily pulse, every job it was paid for on the ERC-8183 escrow (own test purchases never count as outside buyers), its delivery rate, whether it named a price when asked, other raters’ ERC-8004 measurements, and an evidence score (0-100) that shows its parts. Use it before hiring an agent.', inputSchema: { type: 'object', properties: { agent_id: { type: 'string', description: 'The agent’s ERC-8004 id on BNB Smart Chain, e.g. 302257' } }, required: ['agent_id'], additionalProperties: false } },
+  { name: 'bnb_agents_by_evidence', description: 'Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: 30-day uptime from our daily pulse, delivery rate for outside buyers on the ERC-8183 escrow, how many outside buyers paid, whether it names a price. Categories: rebalancing, grid-trading, yield-optimization, health-factor. A paid listing never changes the order.', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'rebalancing | grid-trading | yield-optimization | health-factor' }, limit: { type: 'number', description: 'How many, 1-25 (default 10)' } }, required: ['category'], additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
@@ -905,6 +911,23 @@ async function runTool(rawName, args, caller = {}) {
       // will not change it", for a callback the caller only had to fix.
       if (!r.ok) throw Object.assign(new Error(`${j.error || 'Refused.'} Terms: GET https://agent.brainonbnb.com/rug-watch.`),
         { relayed: true, status: r.status, ...(typeof j.code === 'string' ? { code: j.code } : {}) });
+      return j;
+    }
+    case 'bnb_agent_chart': {
+      const id = String(args?.agent_id ?? '').replace(/[^0-9]/g, '');
+      if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 302257.');
+      const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(20000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(j?.error || 'The agent chart is unavailable right now');
+      // the series and the trades stay on the page and the raw endpoint; the answer carries the verdict and its parts
+      const { series, ...pulse } = j.pulse || {};
+      return { ...j, pulse, jobs: j.jobs ? { ...j.jobs, trades: (j.jobs.trades || []).filter((t) => t.status !== 'OPEN').slice(0, 10), by_day: undefined } : null, chart: `https://brainonbnb.com/agent/${id}` };
+    }
+    case 'bnb_agents_by_evidence': {
+      const c = encodeURIComponent(String(args?.category || '').slice(0, 40)), l = Math.min(25, Math.max(1, Number(args?.limit) || 10));
+      const r = await fetch(`https://agent.brainonbnb.com/chart/rank?category=${c}&limit=${l}`, { signal: AbortSignal.timeout(25000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(j?.error ? `${j.error}${j.categories ? ' — categories: ' + j.categories.join(', ') : ''}` : 'The ranking is unavailable right now');
       return j;
     }
     case 'find_agents_on_bnb_chain': {
@@ -1910,7 +1933,7 @@ function secureHeaders(h) {
 - Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
 - Check what our own spending agent is allowed to do (no session key is active since the last one expired; the page reads the ended ones live): https://agent.brainonbnb.com/session — its session key's allowlist, daily cap and expiry, read live from the Altana KeyStore on-chain rather than from anything we assert. The same two view calls are available to you directly.
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
-- MCP endpoint, 23 free tools (the count is pinned against tools/list by a check) — 22 read-only, and `bsc_rug_watch`, which registers a webhook alarm: https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_rug_watch`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
+- MCP endpoint, 25 free tools (the count is pinned against tools/list by a check) — 24 read-only, and `bsc_rug_watch`, which registers a webhook alarm: https://brainonbnb.com/mcp — `bsc_token_preflight`, `bsc_rug_watch`, `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_chart`, `bnb_agents_by_evidence`, `bnb_agent_census`, plus the $BOBAI tools below.
 - Choose the PRICE RANGE for a PancakeSwap V3 position: https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000 — the decision concentrated liquidity actually forces, and the one every interface answers with a preset. Not modelled and not forecast: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of the size you give is replayed through the swaps that really happened and asked, at each one, whether it was in range and what share of the liquidity standing there it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price crossed its edge. Impermanent loss is not in it and is worst exactly where the fees are best.
 - BEFORE ANY TRADE on BNB Smart Chain, one call at your size: https://brainonbnb.com/api/preflight?address=0x...&usd=250 (MCP: `bsc_token_preflight`) — stop[] names what ends an automated trade (the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip), caution[] names what to weigh, each with its figure and the line it was measured against (a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn; contract flags). Then the figures: best PancakeSwap route at this size, what you pay and receive, the slippage in bps the size really needs, per side, from the measured tax (tax + price impact + 0.5% + 200 bps; a fee-on-transfer token reverts below its tax + impact), the round trip with the measured transfer tax applied, the 1% depth both ways, LP burned. A short answer, built from the pool scan and the route check below, which stay available for every figure behind it. A token still on its four.meme curve is answered from four.meme's contract. It does not say "safe" and returns no score.
 - Before swapping on PancakeSwap: https://brainonbnb.com/api/best-route?address=0x...&usd=250 — two questions an agent has to answer before it signs. Which of the up-to-five pools the pair lives in actually returns the most AT THIS SIZE, quoted by the venue rather than ranked by depth; and what comes back if the proceeds are sold straight back, with the transfer tax measured from executed trades applied to the amounts carried between the legs, because the tax is taken outside the pool where no quoter sees it. Returns the best route, what every other route would have cost, the round trip with and without the tax, and the slippage the size really needs. Not a safety certificate and it does not use the word.
@@ -1946,6 +1969,10 @@ The registry says who exists. The escrow says who was hired. Every job in the ER
 
 - The employment balance per provider, as JSON: https://brainonbnb.com/api-jobs.json
 - As an MCP tool: `bnb_agent_employment` at https://brainonbnb.com/mcp — call it with a provider address for one balance, or with no arguments for the whole kernel.
+- One agent measured — its daily pulse (uptime, response time), its escrow jobs put on the right agent (own test purchases never count), its delivery rate for outside buyers, its last quote and an evidence score (0-100) that shows its parts: `bnb_agent_chart`, or https://agent.brainonbnb.com/chart/<id>, drawn at https://brainonbnb.com/agent/<id>
+- Every agent in one table (evidence score, daily pulse, paid work for outside buyers, price), to sort and filter: https://brainonbnb.com/screener — data https://agent.brainonbnb.com/screener
+- The most reliable agents for one job, ordered by that evidence (a paid listing never changes the order): `bnb_agents_by_evidence` with category rebalancing | grid-trading | yield-optimization | health-factor, or https://agent.brainonbnb.com/chart/rank?category=health-factor
+- An alarm when an agent you rely on goes down, and when it is back (free, any agent, webhook only): POST https://agent.brainonbnb.com/agent-watch {"agent":"<id>","callback":"https://…"} — checked once a day for every agent, every hour for a listed one
 
 `SUBMITTED` and `COMPLETED` are separate states in the kernel and are never added together here: the first means a deliverable exists, the second means the money moved. Any figure that merges them overstates delivery by roughly a factor of two on this chain.
 

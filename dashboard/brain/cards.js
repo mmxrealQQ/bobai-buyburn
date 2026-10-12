@@ -318,12 +318,36 @@
   window.__card05 = { goals: () => goals05(), proof: () => { proof05(); return $$('#w06 .rm li').map((li) => [li.textContent.trim().slice(0, 40), li.querySelector('.pf')?.textContent || '']); } };
 
   // 07 QUESTIONS: one question at a time, turning like a card
-  let qi = 0;
+  let qi = 0, q07 = -1;
+  // 06's QUESTION OPENS ITS ANSWER (operator, 2026-10-12): a tap on the card opens the window at the question the card
+  // shows right then, unfolded; and the window has a search over every question and answer (all words must be there)
+  const faqs = () => $$('#w07 details.faq-item');
+  function openQ(k) {
+    const d = faqs()[k]; if (!d) return;
+    faqs().forEach((x) => { if (x !== d) x.open = false; }); d.open = true; d.classList.add('faq-hit');
+    setTimeout(() => d.classList.remove('faq-hit'), 2600); setTimeout(() => d.scrollIntoView({ block: 'start', behavior: 'smooth' }), 400);
+  }
+  function search07() {
+    const list = $('#w07 .faq-list'); if (!list || $('#w07 .faq-search')) return;
+    const box = document.createElement('div'); box.className = 'faq-search';
+    box.innerHTML = '<input type="search" placeholder="Search the answers: tax, contract, burn…" aria-label="Search the answers"><span class="faq-n" aria-live="polite"></span>';
+    list.insertAdjacentElement('beforebegin', box);
+    const inp = box.querySelector('input'), n = box.querySelector('.faq-n');
+    inp.addEventListener('input', () => {
+      const words = inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean); let c = 0;
+      faqs().forEach((d) => { const t = d.textContent.toLowerCase(), hit = words.every((w) => t.includes(w)); d.hidden = !hit; d.open = words.length > 0 && hit; if (hit) c++; });
+      n.textContent = words.length ? (c ? `${c} answer${c === 1 ? '' : 's'}` : 'No answer has these words. Ask BOBAI in the terminal.') : '';
+    });
+  }
+  let want07 = -1;
+  document.addEventListener('click', (e) => { if (e.target.closest('button[data-open="w07"]')) want07 = q07; }, true);
+  { const w = document.getElementById('w07'); if (w) new MutationObserver(() => { if (w.hidden) return; search07(); if (want07 >= 0) { const k = want07; want07 = -1; openQ(k); } }).observe(w, { attributes: true, attributeFilter: ['hidden'] }); }
+  window.__card06 = { q: () => q07, open: (k) => openQ(k) };
   function draw07() {
     const el = viz('07'); if (!el) return;
     const qs = $$('#w07 summary').map((s) => s.textContent.replace(/[^\p{L}\p{N}?!.,'’$&()% -]+$/u, '').trim()).filter(Boolean); if (!qs.length) return;
     const v = $('[data-open="w07"] .bw-v'); if (v) v.textContent = qs.length + ' answers';
-    el.innerHTML = `<div class="cv-q">“${qs[qi++ % qs.length]}”</div>`;
+    el.innerHTML = `<div class="cv-q">“${qs[(q07 = qi++ % qs.length)]}”</div>`;
     // as many lines as the picture holds, the rest an ellipsis (2026-10-12: on 1024x768 and 1366x768 the question was cut
     // in the middle of a line); no line fits, no question
     const q = el.firstChild, lh = parseFloat(getComputedStyle(q).lineHeight) || 17, n = Math.floor((el.clientHeight + 1) / lh);

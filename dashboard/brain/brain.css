@@ -457,6 +457,12 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 #w06 .rm li .pf b{color:#f3efe6;font-weight:600}
 #w06 .rm li .pf b.bad{color:#ff4d6d}
 [data-open="w06"] .bw-l.goal-live{color:#ffd28a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 06 (2026-10-12): the window's search, and the answer the card opened */
+.faq-search{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px}
+.faq-search input{flex:1 1 240px;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:inherit;padding:10px 13px;font:inherit}
+.faq-search input:focus{outline:none;border-color:var(--gold,#f0b90b)}
+.faq-n{font-size:12.5px;color:var(--muted,#a0a2c0)}
+details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(240,185,11,.25);transition:box-shadow .4s}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

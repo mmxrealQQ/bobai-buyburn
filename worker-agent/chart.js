@@ -88,3 +88,30 @@ export async function agentChart(env, idRaw) {
     measured_at: new Date().toISOString(),
   } };
 }
+
+// WHO IS THE MOST RELIABLE ONE (agent chart phase 3, 2026-10-12): the agents Brain Plaza files under a category, ordered
+// by the same evidence score as their charts. For machines first — "the most reliable health-factor agent on BNB Chain"
+// is one call — and the same answer a person gets by opening the charts one by one. Only firm filings count ("possibly
+// related" stays out); a listing changes nothing here.
+export async function agentRank(env, categoryRaw, limitRaw) {
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const c = String(categoryRaw || '').trim().toLowerCase(); const category = ALIAS[c] || c;
+  const limit = Math.min(25, Math.max(1, Number(limitRaw) || 10));
+  const [jobsAll, plaza] = await Promise.all([cached(`${SITE}/api-agent-jobs.json`, 15 * 60e3), cached(`${SITE}/api-plaza-index.json`, 15 * 60e3)]);
+  const cats = new Set(Object.values(plaza.agents || {}).flatMap((p) => p.categories.map((x) => x.id)));
+  if (!cats.has(category)) return { status: 400, body: { error: `unknown category "${c}"`, categories: [...cats] } };
+  const ids = Object.entries(plaza.agents).filter(([, p]) => p.categories.some((x) => x.id === category && !x.weak)).map(([id]) => id);
+  const rows = await Promise.all(ids.map(async (id) => {
+    const p = plaza.agents[id]; const pulse = await readPulse(env, id); const jobs = jobsAll.agents?.[id] || null;
+    const ev = evidenceScore({ pulse, jobs, quote: p.quote }); const t = jobs?.totals;
+    const listing = await readListing(env, id).catch(() => null);
+    return { id: Number(id), score: ev.score, parts: Object.fromEntries(ev.parts.map((x) => [x.part, x.points])),
+      uptime_30d_pct: pulse.last_30d.uptime_pct, days_measured: pulse.last_30d.days_measured, median_ms: pulse.last_30d.median_ms,
+      outside_jobs_delivered_pct: t?.delivery_rate_outside_pct ?? null, outside_buyers: t?.buyers_outside || 0,
+      quote: p.quote?.quotes ? p.quote.price : null, hire: p.hire, ours: !!p.ours,
+      listed: listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified' } : null,
+      chart: `${SITE}/agent/${id}`, data: `https://agent.brainonbnb.com/chart/${id}` };
+  }));
+  rows.sort((a, b) => b.score - a.score || b.outside_buyers - a.outside_buyers || a.id - b.id);
+  return { status: 200, body: { category, ranked_by: 'evidence score (40 uptime 30d · 30 outside delivery rate · 20 outside buyers · 10 names a price) — the same as each agent\'s chart; a listing never changes it', agents: rows.slice(0, limit), of: rows.length, measured_at: new Date().toISOString() } };
+}

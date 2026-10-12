@@ -99,7 +99,7 @@ import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from '.
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
 import { runPulseTick, readPulse } from './pulse.js';
-import { agentChart } from './chart.js';
+import { agentChart, agentRank } from './chart.js';
 import { houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -1986,6 +1986,7 @@ export default {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);
     }
+    if (path === '/chart/rank') { const r = await agentRank(env, url.searchParams.get('category'), url.searchParams.get('limit')); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=300' }); }
     if (path.startsWith('/chart/')) { const r = await agentChart(env, path.slice(7)); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=120' }); }
     if (path.startsWith('/pulse/')) {
       const id = path.slice(7).replace(/[^0-9]/g, '');

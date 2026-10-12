@@ -551,6 +551,8 @@ function howToBuy() {
 // Brain Plaza were added, and llms.txt sent every agent to it first).
 const MEASURE_REST = {
   find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
+  bnb_agent_chart: 'https://agent.brainonbnb.com/chart/<agent id>',
+  bnb_agents_by_evidence: 'https://agent.brainonbnb.com/chart/rank?category=health-factor',
   bsc_rug_watch: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x…","callback":"https://…"}',
   bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
   bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
@@ -768,6 +770,10 @@ const MCP_TOOLS = [
   // actually moved. Optionally filtered to one provider address, because that
   // is the shape of the real question — "should I hire this one".
   { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow actually released — per provider. A registration is self-reported; a funded job is somebody else\'s money. Pass an address to get one provider\'s balance, or nothing for the whole kernel. A dated snapshot of the last full read, not a live call: measured_at says when.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional provider address (0x…). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
+  // THE AGENT CHART (Brain Plaza, 2026-10-12): one agent measured, and a category ordered by the same evidence. The
+  // question an agent actually has before it hires one: is it up, does it deliver for strangers, does it name a price.
+  { name: 'bnb_agent_chart', description: 'Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime and response time from a daily pulse, every job it was paid for on the ERC-8183 escrow (own test purchases never count as outside buyers), its delivery rate, whether it named a price when asked, other raters’ ERC-8004 measurements, and an evidence score (0-100) that shows its parts. Use it before hiring an agent.', inputSchema: { type: 'object', properties: { agent_id: { type: 'string', description: 'The agent’s ERC-8004 id on BNB Smart Chain, e.g. 302257' } }, required: ['agent_id'], additionalProperties: false } },
+  { name: 'bnb_agents_by_evidence', description: 'Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: 30-day uptime from our daily pulse, delivery rate for outside buyers on the ERC-8183 escrow, how many outside buyers paid, whether it names a price. Categories: rebalancing, grid-trading, yield-optimization, health-factor. A paid listing never changes the order.', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'rebalancing | grid-trading | yield-optimization | health-factor' }, limit: { type: 'number', description: 'How many, 1-25 (default 10)' } }, required: ['category'], additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
@@ -889,6 +895,23 @@ async function runTool(rawName, args, caller = {}) {
       // will not change it", for a callback the caller only had to fix.
       if (!r.ok) throw Object.assign(new Error(`${j.error || 'Refused.'} Terms: GET https://agent.brainonbnb.com/rug-watch.`),
         { relayed: true, status: r.status, ...(typeof j.code === 'string' ? { code: j.code } : {}) });
+      return j;
+    }
+    case 'bnb_agent_chart': {
+      const id = String(args?.agent_id ?? '').replace(/[^0-9]/g, '');
+      if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 302257.');
+      const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(20000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(j?.error || 'The agent chart is unavailable right now');
+      // the series and the trades stay on the page and the raw endpoint; the answer carries the verdict and its parts
+      const { series, ...pulse } = j.pulse || {};
+      return { ...j, pulse, jobs: j.jobs ? { ...j.jobs, trades: (j.jobs.trades || []).filter((t) => t.status !== 'OPEN').slice(0, 10), by_day: undefined } : null, chart: `https://brainonbnb.com/agent/${id}` };
+    }
+    case 'bnb_agents_by_evidence': {
+      const c = encodeURIComponent(String(args?.category || '').slice(0, 40)), l = Math.min(25, Math.max(1, Number(args?.limit) || 10));
+      const r = await fetch(`https://agent.brainonbnb.com/chart/rank?category=${c}&limit=${l}`, { signal: AbortSignal.timeout(25000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(j?.error ? `${j.error}${j.categories ? ' — categories: ' + j.categories.join(', ') : ''}` : 'The ranking is unavailable right now');
       return j;
     }
     case 'find_agents_on_bnb_chain': {

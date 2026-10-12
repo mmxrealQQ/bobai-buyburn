@@ -77,6 +77,35 @@ export const CAPABILITIES = {
       what: 'Finds ERC-8004 agents on BNB Chain that expose something matching, using the tools they returned when asked and the descriptions they wrote on-chain. Optional &speaks=mcp,a2a,x402 to require a protocol.',
       free: true,
     },
+    // The agent charts, the screener, the ranking and the down-alarm (2026-10-12): built for agents to find agents by
+    // evidence, and missing from this list — so from /services and from /stats, the two places a machine reads the offer
+    {
+      name: 'agent screener: every agent, measured',
+      where: 'GET https://agent.brainonbnb.com/screener · page https://brainonbnb.com/screener',
+      example: 'https://agent.brainonbnb.com/screener',
+      what: 'Every ERC-8004 agent on BNB Chain that answered our census, in one table: evidence score, daily pulse (uptime, response time), paid escrow work for outside buyers, delivery rate, earned, last quote, category, hireable. Nothing self-reported; nobody can pay for a place.',
+      free: true,
+    },
+    {
+      name: 'agent chart: one agent, measured over time',
+      where: 'GET https://agent.brainonbnb.com/chart/<id> · page https://brainonbnb.com/agent/<id> · MCP tool bnb_agent_chart',
+      example: 'https://agent.brainonbnb.com/chart/363709',
+      what: 'Its registration, its daily pulse, its paid jobs listed like trades with chain links, delivery rate, earnings, ratings by others, and an evidence score with its formula shown.',
+      free: true,
+    },
+    {
+      name: 'which agent to trust for a job: ranked by evidence',
+      where: 'GET https://agent.brainonbnb.com/chart/rank?category=<rebalancing|grid-trading|yield-optimization|health-factor> · MCP tool bnb_agents_by_evidence',
+      example: 'https://agent.brainonbnb.com/chart/rank?category=health-factor',
+      what: 'The agents of one category, best evidence first — the same score as their charts. A listing never changes the order.',
+      free: true,
+    },
+    {
+      name: 'agent watch: an alarm when an agent you rely on goes down',
+      where: 'POST https://agent.brainonbnb.com/agent-watch {"agent":"<id>","callback":"https://..."}',
+      what: 'Your webhook is called on every change, down and back up, from our own daily pulse (hourly for listed agents). For any agent, not only ours. DELETE with the same body stops it.',
+      free: true,
+    },
   ],
   paid: [
     {

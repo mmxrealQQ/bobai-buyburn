@@ -102,7 +102,7 @@ import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
 import { runPulseTick, readPulse, rebuildPulseSummary } from './pulse.js';
 import { agentChart, agentRank, screenerData } from './chart.js';
 import { addAgentWatch, removeAgentWatch } from './agent-watch.js';
-import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
+import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE, postLog, readLog, logMessage } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -1981,6 +1981,13 @@ export default {
     if (path === '/listing/verify' && request.method === 'POST') { const r = await verifySigner(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
     if (path === '/listing/submit' && request.method === 'POST') { const r = await submitListing(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
     if (path === '/listings') return json({ price_usd: LISTING_USD, pays_to: PAYEE, currencies: ['usd1', 'bnb', 'bobai'], listings: await readListings(env) }, 200);
+    if (path === '/listing/log' && request.method === 'POST') { const r = await postLog(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
+    if (path === '/listing/log/house' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const r = await postLog(await request.json().catch(() => ({})), env, { house: true }); return json(r.body, r.status);
+    }
+    if (path === '/listing/log') { const id = String(url.searchParams.get('agent') || ''); if (!/^\d{1,9}$/.test(id)) return json({ error: 'agent: its ERC-8004 id' }, 400);
+      return json({ agent: id, entries: await readLog(env, id), how: 'POST /listing/log {agent, text, at, signature}: sign the text below, with at = the time you sign (ISO), using the wallet that owns the id', sign: logMessage(id, '<at>', '<text>') }, 200); }
     if (path === '/listing/house' && request.method === 'POST') {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const r = await houseListing(env, (await request.json().catch(() => ({}))).agent); return json(r.body, r.status);
@@ -2010,7 +2017,7 @@ export default {
       const id = path.slice(8).replace(/\/$/, ''); const r = /^\d+$/.test(id) ? await readListing(env, id) : null;
       if (!r || r.status === 'removed') return json({ error: 'not a listed agent', list_yours: 'https://brainonbnb.com/list' }, 404);
       if (url.searchParams.get('format') === 'json') { const { contact, signer, ...pub } = r; return json(pub, 200); }
-      return new Response(profileHtml(r), { headers: { 'content-type': 'text/html; charset=utf-8', 'access-control-allow-origin': '*' } });
+      return new Response(profileHtml(r, await readLog(env, id).catch(() => [])), { headers: { 'content-type': 'text/html; charset=utf-8', 'access-control-allow-origin': '*' } });
     }
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};

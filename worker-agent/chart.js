@@ -14,7 +14,7 @@
 // A part with no evidence yet scores 0 and says "not measured yet" — the score never guesses upward.
 
 import { readPulse } from './pulse.js';
-import { readListing, ownerOf, agentWalletOf } from './listing.js';
+import { readListing, ownerOf, agentWalletOf, readLog } from './listing.js';
 import { registrationOf } from './hire.js';
 
 const SITE = 'https://brainonbnb.com';
@@ -67,7 +67,8 @@ export async function agentChart(env, idRaw) {
   const pz = plaza?.agents?.[id] || null;
   const r = (rep?.agents || []).find((x) => String(x.id) === id) || null;
   const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client }))).slice(0, 12) : [];
-  const listed = listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified', since: listing.since, ...(listing.house ? { ours: true } : {}), profile: `https://agent.brainonbnb.com/listed/${id}` } : null;
+  const blog = listing && listing.status !== 'removed' ? await readLog(env, id).catch(() => []) : [];
+  const listed = listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified', since: listing.since, ...(listing.house ? { ours: true } : {}), verified_builder: !!listing.signer && listing.builder_ok !== false && listing.status === 'verified', builder_log: blog.slice(-5).reverse(), profile: `https://agent.brainonbnb.com/listed/${id}` } : null;
   return { status: 200, body: {
     id: Number(id), name: a.name || null, description: a.description || null, image: a.image || null,
     owner, agent_wallet: agentWallet, in_census: inCensus,
@@ -140,7 +141,7 @@ export async function screenerData(env) {
     return [a.id, String(a.name || '').slice(0, 70), ev.score, s ? s[0] : null, s ? s[1] : null, s ? s[2] : 0, s ? s[3] : null, s ? s[4] : null, s ? s[6] : '--------------',
       t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? t.earned_u : 0,
       p?.quote?.quotes ? p.quote.price : null, p?.hire ? 1 : 0, p ? p.categories.filter((x) => !x.weak).map((x) => x.id) : [], a.speaks || [],
-      l ? (l.status === 'verified' ? 'verified' : 'paused') : null, p?.ours || l?.house ? 1 : 0]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
+      l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
   });
   const body = { what_this_is: 'Brain Plaza screener: every AI agent on BNB Chain that answered our last full census, measured — the evidence score of its chart, its daily pulse, its paid escrow work for outside buyers, its last quote, its Plaza category, its listing.', fields, rows, agents: rows.length, measured_at: new Date().toISOString(), pulse_started: '2026-10-12', score: 'the same as /chart/<id>: 40 uptime 30d (3 days needed), 30 outside delivery rate, 20 outside buyers, 10 names a price' };
   screenerCache = { at: Date.now(), body }; return body;

@@ -119,7 +119,10 @@
     var chips=(c.speaks||[]).map(function(s){return '<span class="chip">'+esc(s.toUpperCase())+'</span>'}).join('')
       +(pz?pz.categories.filter(function(x){return !x.weak}).map(function(x){return '<span class="chip y" title="'+esc(x.evidence||'')+'">'+esc(x.label)+'</span>'}).join(''):'')
       +(c.listed?'<span class="chip g">'+(c.listed.ours?'ours · '+(c.listed.verified_and_maintained?'✓ maintained':'paused'):(c.listed.verified_and_maintained?'✓ verified &amp; maintained':'listed · paused'))+'</span>':'')
+      +(c.listed&&c.listed.verified_builder?'<span class="chip g" title="the wallet that listed it still owns the id, and it answers our daily check">✓ verified builder</span>':'')
       +(pz&&pz.ours&&!(c.listed&&c.listed.ours)?'<span class="chip">Brain On BNB</span>':'');
+    // THE BUILDER LOG (2026-10-12): what the builder posted, signed by the wallet that owns the agent
+    var blog=c.listed&&c.listed.builder_log&&c.listed.builder_log.length?'<div class="card"><h2>Builder log <small>signed by the wallet that owns the agent</small></h2>'+c.listed.builder_log.map(function(e){return '<div style="padding:6px 0;border-top:1px solid rgba(240,185,11,.12)"><b>'+esc(String(e.at).slice(0,10))+'</b> '+esc(e.text)+' <span class="dim" style="font-size:12px">· '+(e.by==='brainonbnb'?'Brain On BNB':'signed by '+esc(String(e.by).slice(0,6)+'…'+String(e.by).slice(-4)))+'</span></div>'}).join('')+'<p class="dim" style="font-size:12.5px;margin:6px 0 0">Signed by the wallet that owns the agent. <a href="'+esc(c.listed.profile)+'">Its listing</a></p></div>':'';
     var parts=c.evidence.parts.map(function(x){return '<div class="pt"><b>'+esc(x.part)+'</b><b>'+x.points+' / '+x.max+'</b><div class="bar"><i style="width:'+(x.points/x.max*100)+'%"></i></div><span>'+esc(x.basis)+'</span></div>'}).join('');
     var tiles=[
       [p30&&p30.uptime_pct!=null?p30.uptime_pct+'%':'—','uptime, 30 days'+(p30?' · '+p30.days_measured+' measured':'')],
@@ -148,6 +151,7 @@
       +'<div class="card"><h2>Pulse <small>once a day: does it answer, how fast · '+(c.pulse.since?'since '+esc(c.pulse.since):'measuring from today')+'</small></h2>'+pulseChart(c.pulse.series)+'<p class="muted">'+esc(c.pulse.method)+'</p></div>'
       +'<div class="card"><h2>Paid work <small>every job on the ERC-8183 escrow put on this agent'+(c.jobs&&c.jobs.attributed_by.length?' · '+esc(c.jobs.attributed_by.join(', ')):'')+'</small></h2>'+workChart(c.jobs?c.jobs.by_day:[])
         +(t?'<p class="muted">'+t.funded+' funded · '+t.paid_out+' paid out · '+t.delivered_waiting+' delivered, waiting out the dispute window · '+t.funded_not_delivered+' funded, not delivered · '+t.expired+' expired · delivery rate '+(t.delivery_rate_pct==null?'—':t.delivery_rate_pct+'%')+' (outside buyers: '+(t.delivery_rate_outside_pct==null?'—':t.delivery_rate_outside_pct+'%')+')</p>':'')+shared+'</div>'
+      +blog
       +'<div class="card"><h2>Trades <small>the latest jobs; own test purchases marked, never counted as outside buyers</small></h2>'+trades+'</div>'
       +'<div class="two"><div class="card"><h2>What others measured <small>ERC-8004 ReputationRegistry · '+c.raters+' rater'+(c.raters===1?'':'s')+'</small></h2>'+ratings+'</div>'
       +'<div class="card"><h2>Where it answers</h2><dl class="kv">'+doors+'<dt>Owner</dt><dd><code>'+esc(c.owner)+'</code></dd>'+(c.agent_wallet&&c.agent_wallet!==c.owner?'<dt>agentWallet</dt><dd><code>'+esc(c.agent_wallet)+'</code></dd>':'')+'</dl>'

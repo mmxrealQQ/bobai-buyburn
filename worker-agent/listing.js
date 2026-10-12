@@ -229,13 +229,47 @@ export async function houseListing(env, idRaw) {
 }
 
 // --------------------------------------------------------------- reading
+// ------------------------------------------------------------ builder log
+// THE BUILDER LOG (operator, 2026-10-12: "a $95 listing must show the dev means it — that he builds and uses his agent
+// for real"): a listed agent's builder posts short updates, each signed by the wallet that owns the id (or its
+// agentWallet), with the time he signed (within 10 minutes, so an old signature cannot be sent again). Up to 280
+// characters, one a minute, the last 30 kept; shown on the profile, the chart and the screener. Our own agents post
+// through HIT_SECRET (by: "brainonbnb").
+const logLine = (id, at, text) => `Brain Plaza builder log\nAgent #${id} on BNB Smart Chain\n${at}\n${text}`;
+export const logMessage = logLine;
+export async function readLog(env, id) { return JSON.parse((await env.AGENT.get(`listinglog:${String(id)}`)) || '[]'); }
+export async function postLog(body, env, opts = {}) {
+  const id = String(body?.agent || '').trim(), text = String(body?.text || '').replace(/\s+/g, ' ').trim(), at = String(body?.at || '');
+  if (!/^\d{1,9}$/.test(id)) return json(400, { error: 'agent: its ERC-8004 id on BNB Smart Chain' });
+  const r = await readListing(env, id); if (!r || r.status === 'removed') return json(404, { error: `#${id} is not listed on Brain Plaza` });
+  if (text.length < 3 || text.length > 280) return json(400, { error: 'text: 3 to 280 characters' });
+  let by;
+  if (opts.house) { if (!r.house) return json(400, { error: 'the house log is for our own agents only' }); by = 'brainonbnb'; }
+  else {
+    const t = Date.parse(at); if (!t || Math.abs(Date.now() - t) > 10 * 60e3) return json(400, { error: 'at: the ISO time you signed, within 10 minutes of now', sign: logLine(id, new Date().toISOString(), text) });
+    if (!/^0x[0-9a-fA-F]{130}$/.test(String(body?.signature || ''))) return json(400, { error: 'signature missing or malformed (65 bytes, 0x…)', sign: logLine(id, at, text) });
+    let who; try { who = lc(await recoverMessageAddress({ message: logLine(id, at, text), signature: body.signature })); } catch { return json(400, { error: 'the signature could not be read' }); }
+    const [owner, aw] = await Promise.all([ownerOf(id), agentWalletOf(id)]);
+    if (who !== lc(owner) && who !== lc(aw)) return json(403, { error: `signed by ${who}, which neither owns #${id} (${owner}) nor is its agentWallet (${aw || 'none'})` });
+    by = who;
+  }
+  const log = await readLog(env, id);
+  if (log.length && Date.now() - Date.parse(log[log.length - 1].at) < 60e3) return json(429, { error: 'one update a minute' });
+  log.push({ at: new Date().toISOString(), text, by }); await env.AGENT.put(`listinglog:${id}`, JSON.stringify(log.slice(-30)));
+  return json(200, { ok: true, agent: id, entries: Math.min(log.length, 30), profile: `https://agent.brainonbnb.com/listed/${id}` });
+}
+
 export async function readListing(env, id) { return JSON.parse((await env.AGENT.get(`listing:${String(id)}`)) || 'null'); }
 export async function readListings(env) {
   const ids = JSON.parse((await env.AGENT.get('listings')) || '[]');
   const all = await Promise.all(ids.map((id) => readListing(env, id)));
-  return all.filter((r) => r && r.status !== 'removed').map(({ checks, contact, signer, ...r }) => ({
+  const logs = await Promise.all(all.map((r) => (r ? readLog(env, r.id).catch(() => []) : [])));
+  return all.map((r, k) => [r, logs[k]]).filter(([r]) => r && r.status !== 'removed').map(([{ checks, contact, signer, ...r }, log]) => ({
     ...r, badge: r.status === 'verified', last_check: checks?.[checks.length - 1] || null, days_checked: checks?.length || 0,
     days_answered: (checks || []).filter((c) => c.ok).length, profile: `https://agent.brainonbnb.com/listed/${r.id}`,
+    // VERIFIED BUILDER: the wallet that signed the listing still owns the id (or is its agentWallet) and the agent answers
+    verified_builder: !!signer && r.builder_ok !== false && r.status === 'verified', builder: signer || null,
+    last_log: log.length ? log[log.length - 1] : null, log_entries: log.length,
   }));
 }
 export async function markAnnounced(env, id) {
@@ -254,6 +288,7 @@ export async function runListingMonitor(env) {
     const chk = await checkAgent(id).catch(() => ({ ok: false, answers: {} }));
     // OURS / registration changes are not this check's business; whether it answers is
     const ok = !!chk.answers?.ok;
+    if (r.signer) { const [own, aw] = await Promise.all([ownerOf(id), agentWalletOf(id)]).catch(() => [null, null]); if (own) r.builder_ok = r.signer === lc(own) || r.signer === lc(aw); }
     r.checks = [...(r.checks || []), { at: new Date().toISOString(), ok, a2a: !!chk.answers?.a2a?.ok, mcp: !!chk.answers?.mcp?.ok }].slice(-30);
     const tail = r.checks.slice(-PAUSE_AFTER);
     r.status = ok ? 'verified' : tail.length >= PAUSE_AFTER && tail.every((c) => !c.ok) ? 'paused' : r.status;
@@ -264,11 +299,12 @@ export async function runListingMonitor(env) {
 
 // ----------------------------------------------------------- profile page
 const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-export function profileHtml(r) {
+export function profileHtml(r, log = []) {
   const checks = (r.checks || []).slice(-14);
   const dots = checks.map((c) => `<i class="${c.ok ? 'y' : 'n'}" title="${h(c.at.slice(0, 10))}: ${c.ok ? 'answered' : 'no answer'}"></i>`).join('');
   const badge = (r.status === 'verified' ? '<span class="b ok">✓ verified &amp; maintained</span>' : '<span class="b no">paused — did not answer our last checks</span>')
-    + (r.house ? ' <span class="b" style="color:var(--gold);background:rgba(240,185,11,.1)">Brain On BNB&rsquo;s own agent · not a paid listing</span>' : '');
+    + (r.house ? ' <span class="b" style="color:var(--gold);background:rgba(240,185,11,.1)">Brain On BNB&rsquo;s own agent · not a paid listing</span>' : '')
+    + (r.signer && r.builder_ok !== false && r.status === 'verified' ? ' <span class="b ok" title="the wallet that listed it still owns the id, and it answers">✓ verified builder</span>' : '');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${h(r.name || 'Agent #' + r.id)} · Brain Plaza</title><meta name="description" content="${h((r.description || '').slice(0, 160))}">
 <style>:root{color-scheme:dark;--bg:#0b090a;--card:#151214;--ink:#f2ece2;--mut:#a59c8f;--gold:#F0B90B;--ok:#4cc38a;--no:#ff7a6e;--line:rgba(240,185,11,.22)}
@@ -277,11 +313,22 @@ a{color:var(--gold)}.k{font:600 12px ui-monospace,Consolas,monospace;letter-spac
 h1{font:700 clamp(26px,5vw,38px)/1.1 'Space Grotesk',system-ui,sans-serif;margin:6px 0 0}.top{display:flex;gap:16px;align-items:center}.top img{width:72px;height:72px;border-radius:16px;object-fit:cover;border:1px solid var(--line)}
 .b{display:inline-block;font:600 12.5px ui-monospace,Consolas,monospace;padding:6px 10px;border-radius:999px}.ok{color:var(--ok);background:rgba(76,195,138,.12)}.no{color:var(--no);background:rgba(255,122,110,.12)}
 .c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:8px;min-width:0}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0}dt{color:var(--mut)}dd{margin:0;overflow-wrap:anywhere}
-.dots{display:flex;gap:4px;flex-wrap:wrap}.dots i{width:14px;height:14px;border-radius:4px;display:block}.dots .y{background:var(--ok)}.dots .n{background:var(--no)}.m{color:var(--mut);font-size:13.5px}</style></head><body><main>
+.lg{padding:6px 0;border-top:1px solid rgba(240,185,11,.12)}.dots{display:flex;gap:4px;flex-wrap:wrap}.dots i{width:14px;height:14px;border-radius:4px;display:block}.dots .y{background:var(--ok)}.dots .n{background:var(--no)}.m{color:var(--mut);font-size:13.5px}</style></head><body><main>
 <a class="k" href="https://brainonbnb.com/registry">← Brain Plaza</a>
 <div class="top">${r.image ? `<img src="${h(r.image)}" alt="">` : ''}<div><span class="k">Listed agent · ERC-8004 #${h(r.id)}</span><h1>${h(r.name || 'Agent #' + r.id)}</h1></div></div>
 <div>${badge}</div>
 ${r.description ? `<div class="c"><p style="margin:0">${h(r.description)}</p></div>` : ''}
+<div class="c"><span class="k">Builder log</span>${log.length ? log.slice(-10).reverse().map((e) => `<div class="lg"><b>${h(e.at.slice(0, 10))}</b> ${h(e.text)}<span class="m"> · ${e.by === 'brainonbnb' ? 'Brain On BNB' : 'signed by ' + h(e.by.slice(0, 6) + '…' + e.by.slice(-4))}</span></div>`).join('') : '<span class="m">No update posted yet.</span>'}
+${r.house ? '' : `<details><summary class="m" style="cursor:pointer">Post an update — the wallet that owns #${h(r.id)} signs it</summary>
+<textarea id="lgt" maxlength="280" rows="3" style="width:100%;margin-top:8px;background:#0f0d0e;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit" placeholder="What changed? e.g. v1.3: faster quotes, new MCP tool"></textarea>
+<button id="lgb" type="button" style="margin-top:6px;background:var(--gold);color:#0b090a;border:0;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer">Sign and post</button> <span class="m" id="lgs"></span>
+<script>(function(){var b=document.getElementById('lgb'),s=document.getElementById('lgs');b.onclick=async function(){try{var t=document.getElementById('lgt').value.replace(/\\s+/g,' ').trim();if(t.length<3){s.textContent='Write 3 to 280 characters.';return}
+if(!window.ethereum){s.textContent='Open this page in a wallet browser (or with a wallet extension).';return}
+var a=(await ethereum.request({method:'eth_requestAccounts'}))[0],at=new Date().toISOString(),msg='Brain Plaza builder log\\nAgent #${h(r.id)} on BNB Smart Chain\\n'+at+'\\n'+t;
+s.textContent='Sign in your wallet…';var sig=await ethereum.request({method:'personal_sign',params:[msg,a]});
+var res=await fetch('/listing/log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent:'${h(r.id)}',text:t,at:at,signature:sig})}),j=await res.json();
+s.textContent=j.ok?'Posted. Reloading…':(j.error||'Refused.');if(j.ok)setTimeout(function(){location.reload()},900)}catch(e){s.textContent=(e&&e.message)||'Cancelled.'}}})();</script></details>`}
+<span class="m">Signed by the wallet that owns the agent, so only its builder can write here. An agent that keeps answering stays maintained; this is where its builder shows what he builds.</span></div>
 <div class="c"><span class="k">Our daily check, last ${checks.length} day${checks.length === 1 ? '' : 's'}</span><div class="dots">${dots}</div>
 <span class="m">Every day we call it once — an A2A message or an MCP initialize. Green: it answered. Three red days in a row take the badge off until it answers again.</span></div>
 <div class="c"><dl><dt>Listed since</dt><dd>${h(r.since)}</dd><dt>Owner</dt><dd><a href="https://bscscan.com/address/${h(r.owner)}">${h(r.owner)}</a></dd>

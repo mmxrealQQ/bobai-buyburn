@@ -54,7 +54,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
-import { lpPositionPlan } from './lp-service.js';
+import { lpPositionPlan, lpPositionFacts } from './lp-service.js';
 import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 
 // WHAT THE JOB MUST LOOK LIKE, SAID IN THE QUOTE (2026-10-06). The delivery refuses a job evaluated by anyone but the
@@ -202,6 +202,22 @@ export async function readJob(jobId) {
 // whose Permit2 payment cannot be presented twice — had no way to use what he
 // had paid for. Returns the sentence to show, or null when the work can start.
 // Pure; pinned by scripts/payment-ledger-check.mjs.
+// NEVER SELL A PLAN THAT CANNOT BE MADE (2026-10-12). The position plan is
+// made for one position against WBNB; asked for a CAKE/USDT position, the
+// agent quoted 0.10 $U and would have delivered "plans only WBNB pairs". When
+// the task names a position or a wallet, it is read before the quote: not
+// one position, or not against WBNB, is declined with the reason. A read
+// that fails does not block the quote (delivery reads again and says why).
+async function cannotPlan(serviceId, params = {}) {
+  if (serviceId !== 'lp_position_plan' || missingInput(serviceId, params)) return null;
+  try {
+    const { facts } = await lpPositionFacts(params);
+    if (facts.positions !== 1) return facts.verdict || `That wallet holds ${facts.positions} PancakeSwap V3 positions; name the one to plan by its id.`;
+    if (!facts.against_wbnb) return `Position #${facts.position} is not against WBNB. The DeFi agent plans only WBNB pairs — the free look at https://brainonbnb.com/defi still reads it.`;
+  } catch { /* unreadable now: delivery reads it again */ }
+  return null;
+}
+
 export function missingInput(serviceId, params = {}) {
   const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
   const p = params || {};
@@ -511,6 +527,8 @@ export async function handleA2A(request, env, opts = {}) {
     if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan') {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
     }
+    const cannot = await cannotPlan(service.id, extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {}));
+    if (cannot) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${cannot} Nothing was quoted.` }));
     const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
@@ -560,6 +578,8 @@ export async function handleA2A(request, env, opts = {}) {
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
       }));
     }
+    const cannot = await cannotPlan(service.id, extractParams(wanted, data.params || {}));
+    if (cannot) return rpcOk(id, flatMessage({ accepted: false, reason: `${cannot} Nothing was quoted.` }));
     const req = jobRequirements(await quoteWindow());
     return rpcOk(id, flatMessage({
       // Flat dialect: a provider address and a price, which is everything a

@@ -221,8 +221,9 @@ function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))retu
 // by keeps it alone. PX is filled by chain().
 const PX={BNB:0,BOBAI:0,BOB:0};
 const AMT_RX=/(^|[^\w.$≈])([+\-−]?\d[\d,]*(?:\.\d+)?)(\s?[KMB])?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/g,AMT_HAS=/\d[\d,]*(?:\.\d+)?\s?[KMB]?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/;
-const usdTx=u=>u>0&&u<0.01?' ≈<$0.01':' ≈$'+nf(u,u<10?2:0);
-function usdOf(s){const k=s.dataset.k,p=PX[k];return p>0?usdTx(+s.dataset.v*p):''}
+// A LOSS STAYS A LOSS (2026-10-12: "−0.1159 BNB ≈$86" on /defi read like a gain): the amount's sign goes with its dollars
+const usdTx=(u,neg)=>u>0&&u<0.01?' ≈'+(neg?'−':'')+'<$0.01':' ≈'+(neg?'−':'')+'$'+nf(u,u<10?2:0);
+function usdOf(s){const k=s.dataset.k,p=PX[k];return p>0?usdTx(+s.dataset.v*p,s.dataset.neg==='1'):''}
 function usdIn(root){
   if(!(PX.BNB>0)||!root)return;if(root.nodeType===3)root=root.parentNode;if(!root||root.nodeType!==1||root.closest('#bt'))return;
   // a link is left alone, except a card link that holds a whole text block (the ecosystem cards)
@@ -235,9 +236,9 @@ function usdIn(root){
       const near=at<0?'':row.slice(Math.max(0,at-30),at)+row.slice(at+txt.length,at+txt.length+45);
       if(/\$\s?\d|≈\s?<?\$/.test(near))continue;
       const k=m[4].replace('$',''),mul={K:1e3,M:1e6,B:1e9}[(m[3]||'').trim()]||1,v=Math.abs(parseFloat(m[2].replace(/[,−+-]/g,'')))*mul;
-      if(v>0&&PX[k]>0){cut=[e,k,v];break}}
+      if(v>0&&PX[k]>0){cut=[e,k,v,/^[−-]/.test(m[2])];break}}
     if(!cut)continue;
-    const after=t.splitText(cut[0]),s=document.createElement('span');s.className='usdv';s.dataset.k=cut[1];s.dataset.v=cut[2];s.style.opacity='.72';
+    const after=t.splitText(cut[0]),s=document.createElement('span');s.className='usdv';s.dataset.k=cut[1];s.dataset.v=cut[2];if(cut[3])s.dataset.neg='1';s.style.opacity='.72';
     s.textContent=usdOf(s);p.insertBefore(s,after);if(AMT_HAS.test(after.data))usdIn(p);
   }
 }
@@ -1180,7 +1181,7 @@ function fillLpPortfolio(){
   const day = (iso, year) => { const s = String(iso || ''); const dd = Number(s.slice(8, 10)), mm = Number(s.slice(5, 7)); return dd && mm ? dd + ' ' + MON[mm - 1] + (year ? ' ' + s.slice(0, 4) : '') : s.slice(0, 10); };
   const dir = x => n(x) > 0 ? 'up' : n(x) < 0 ? 'down' : '';
   const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
-  const tile = (k, v, s, cls) => '<div class="pf-tile ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+  const tile = (k, v, s, cls) => '<div class="pf-tile ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v" data-nousd>' + v + '</div><div class="s">' + s + '</div></div>';
   const src = (k, v, cls) => '<div class="' + (cls || '') + '"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
@@ -1201,7 +1202,7 @@ function fillLpPortfolio(){
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
       + '</div>'
       // Not a term of the sum above (2026-09-24, D7): a comparison beside it.
-      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : '') + Number(p.vs_holding.vs_holding_pct).toFixed(1) + '%)' : '') + '</div>' : '');
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '');
     const counts = [];
     if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
     if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));

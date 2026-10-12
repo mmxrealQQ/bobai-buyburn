@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7195 lines.
+# one fetch. 6 files, 7168 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3436,6 +3436,14 @@ export async function scan(input, env) {
         text-transform:uppercase;color:var(--muted);opacity:.75}
     }
 
+    .sc-share{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 14px;padding:10px 14px;border:1px solid rgba(240,185,11,.35);border-radius:14px;background:rgba(240,185,11,.05)}
+    .sc-share span{min-width:0;overflow-wrap:anywhere;font-size:.86rem}.sc-share b{color:var(--gold)}
+    .sc-share code{font-size:.8rem;color:var(--muted)}
+    .sc-share button{border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold);border-radius:999px;padding:7px 14px;font:600 .82rem Inter,sans-serif;cursor:pointer;white-space:nowrap}
+    .sc-share button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+    .sc-wip{max-width:640px;margin:0 auto 14px;font-size:.82rem;color:var(--muted);text-align:center;line-height:1.5}
+    .sc-wip b{color:var(--gold)}
+    .sc-wip a{color:var(--gold)}
     .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
 
     /* The "still being built" notice. Deliberately NOT a native dialog: those
@@ -3464,61 +3472,8 @@ export async function scan(input, env) {
 </head>
 <body>
 
-<!-- Shown on every visit, before anything else is read. It is markup rather
-     than something the module draws, so it appears even if the script fails to
-     load — a page that cannot run its own code is exactly when this notice
-     matters most. -->
-<div class="mw" id="wip-modal" role="dialog" aria-modal="true" aria-labelledby="wip-t" aria-describedby="wip-d">
-  <div class="mb">
-    <h2 id="wip-t">This tool is still being built</h2>
-    <p id="wip-d">The Pool Scanner is a work in progress, built for the pleasure of building it. Nothing it
-    shows is guaranteed &mdash; not the figures, not the labels, not the contract properties &mdash; and none of
-    it is a judgement on any token. Treat it as a starting point for your own checks on BscScan and the pool
-    contract, never as advice. The longer version is at the bottom of the page, and it stays there.</p>
-    <button type="button" id="wip-ok">Got it</button>
-  </div>
-</div>
-<script>
-  // Plain script, not the module: this has to work even where `type=module`
-  // does not. Esc and a click on the backdrop close it as well as the button,
-  // because a notice nobody can dismiss is worse than no notice.
-  (function(){
-    var m=document.getElementById('wip-modal'),b=document.getElementById('wip-ok');
-    if(!m||!b)return;
-    // ONCE PER BROWSER (2026-10-09): shown on every visit it stood between a returning visitor and the field each
-    // time, while the homepage calls the scanner Live. The first visit still reads it; the long version stays below.
-    try{if(localStorage.getItem('bobai-scan-wip')==='1'){m.hidden=true;return;}}catch(e){}
-    // A SHARED RESULT FIRST (2026-10-10): a link with ?token= opens straight on its scan — the notice stood over the
-    // result the sender wanted them to see; it is still shown on a plain first visit
-    try{if(new URLSearchParams(location.search).get('token')){m.hidden=true;return;}}catch(e){}
-    var prev=document.body.style.overflow;
-    document.body.style.overflow='hidden';
-    function close(){
-      m.hidden=true;
-      try{localStorage.setItem('bobai-scan-wip','1');}catch(e){}
-      document.body.style.overflow=prev;
-      document.removeEventListener('keydown',key);
-      // Focus the field so you can type straight away — but never let that
-      // focus move the page. The field sits below the headline, so a plain
-      // focus() scrolled the visitor past the top of the page the instant they
-      // dismissed this notice, and they never saw what the page opens with.
-      // scrollTo afterwards regardless, so even a browser that ignores
-      // preventScroll still lands at the top.
-      var i=document.getElementById('sc-in');
-      if(i){try{i.focus({preventScroll:true})}catch(e){try{i.focus()}catch(e2){}}}
-      try{window.scrollTo(0,0)}catch(e){}
-    }
-    function key(e){
-      if(e.key==='Escape'){close();return}
-      // Nothing behind this may be reached with the keyboard while it is open.
-      if(e.key==='Tab'){e.preventDefault();b.focus()}
-    }
-    document.addEventListener('keydown',key);
-    b.addEventListener('click',close);
-    m.addEventListener('click',function(e){if(e.target===m)close()});
-    try{b.focus({preventScroll:true})}catch(e){b.focus()}
-  })();
-</script>
+<!-- THE "STILL BEING BUILT" NOTICE IS A LINE, NOT A WALL (operator, 2026-10-12): the dialog stood over the whole page on a
+     first visit, in front of the most used tool; the same words now sit above the field, and the long version stays below. -->
 
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
@@ -3542,6 +3497,7 @@ export async function scan(input, env) {
     <div class="sc-hero">
       <h1>What would buying this token <em>really</em> cost?</h1>
       <p class="sc-lead">Paste any BNB Chain token. You get the real cost of a trade at your size, the hidden tax measured from trades that actually happened, and whether the liquidity can be pulled out. Free, no wallet, nothing is sent from your account.</p>
+      <p class="sc-wip"><b>Still being built.</b> Every figure is our own reading of public chain data, never advice and never a judgement on a token. <a href="#sc-note">Read the note</a></p>
       <div class="sc-form">
         <div class="sc-field">
           <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
@@ -3601,9 +3557,9 @@ export async function scan(input, env) {
       <button type="button" id="sc-again-btn">Scan another token</button>
     </div>
 
-    <!-- Never hidden, by anything. The opening dialog says this once, before
+    <!-- Never hidden, by anything. The line above the field says it briefly, before
          anyone has seen a figure; this says it where the figures are. -->
-    <div class="sc-note">
+    <div class="sc-note" id="sc-note">
       <h2>Please read this next to any number above</h2>
       <p>We built this because reading a pool properly is genuinely interesting, and we are
          still building it. Every figure here is <b>our own reading</b> of public chain data.
@@ -3630,7 +3586,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=73" type="module"></script>
+<script src="scanner.js?v=74" type="module"></script>
 </body>
 </html>
 
@@ -4560,6 +4516,22 @@ function flagsCard(gp,gpOk,sim){
   return c;
 }
 
+// ---- share this check (operator, 2026-10-12: "check before you ape", to pass on) ---------------------------------
+// One link that opens straight on this token's scan (?token= skips nothing and asks the chain again when opened), with
+// a copy button at the top of the result
+function shareBar(token,symb){
+  const o=$('sc-out');if(!o||o.querySelector('.sc-share'))return;
+  const url='https://brainonbnb.com/scanner?token='+token;
+  const d=document.createElement('div');d.className='sc-share';
+  const t=document.createElement('span');t.innerHTML='<b>Share this check</b> ';
+  const c=document.createElement('code');c.textContent=url.replace('https://','');t.appendChild(c);
+  const b=document.createElement('button');b.type='button';b.textContent='Copy link';
+  b.addEventListener('click',()=>{const done=()=>{b.textContent='Copied ✓';b.classList.add('ok');setTimeout(()=>{b.textContent='Copy link';b.classList.remove('ok')},1600)};
+    (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(done,()=>{const x=document.createElement('textarea');x.value=url;document.body.appendChild(x);x.select();try{document.execCommand('copy');done()}catch(e){}x.remove()})});
+  d.append(t,b);o.prepend(d);
+  if(symb)d.title='Anyone who opens it sees '+symb+' scanned again, live';
+}
+
 // ---- main render -----------------------------------------------------------
 function render(d){
   const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
@@ -5315,6 +5287,7 @@ async function scanOnce(input){
       supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders,
       custody,activity,age,flow});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
+    shareBar(token,symb);
     remember(token,symb);
   }catch(e){
     fail('Something went wrong reading this token.',

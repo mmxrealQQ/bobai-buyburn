@@ -65,7 +65,7 @@
       if (!ph || !(p > 0)) { out.innerHTML = '<p class="cx01-n">Reading the price and the split…</p>'; return; }
       const tradeUsd = unit === 'usd' ? a : a * p;
       const rows = PARTS.map(([k, col, name, bobai]) => { const pc = parseFloat(ph[k]) || 0; if (!pc) return ''; const u = tradeUsd * pc / 100;
-        return `<div class="cx01-r${bobai ? ' hi' : ''}"><i style="background:${col}"></i><span>${name}</span><b>${pc}%</b><em>${usd(u)}${bobai ? ` <small>≈ ${cmp(u / p)} $BOBAI</small>` : ''}</em></div>`; }).join('');
+        return `<div class="cx01-r${bobai ? ' hi' : ''}"><i style="background:${col}"></i><span>${name}</span><b>${pc}%</b><em>${usd(u)}${bobai ? ` <small>${cmp(u / p)} $BOBAI ≈$${u.toFixed(2)}</small>` : ''}</em></div>`; }).join('');
       const tax = PARTS.reduce((t, [k]) => t + (parseFloat(ph[k]) || 0), 0);
       out.innerHTML = `<div class="cx01-t">A ${usd(tradeUsd)} trade${unit === 'bobai' ? ` (${cmp(a)} $BOBAI)` : ''} pays ${usd(tradeUsd * tax / 100)} tax (${+tax.toFixed(2)}%):</div>` + rows;
     };
@@ -121,10 +121,12 @@
       if (!Array.isArray(b) || !Array.isArray(l)) { if (!split7) box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">The bot’s logs could not be read just now.</p>'; return; }
       const from = Date.now() - 7 * 86400e3, B = b.filter((e) => Date.parse(e.time) >= from), L = l.filter((e) => Date.parse(e.time) >= from);
       const sum = (A, k) => A.reduce((t, e) => t + (+e[k] || 0), 0), last = (A, k) => [...A].reverse().find((e) => e[k])?.[k];
+      // every token amount with its dollars at today's price (operator rule, 2026-10-10)
+      const C = NUMS().chain || {}, at$ = (x, pr) => pr > 0 ? ` ≈$${cmp(x * pr)}` : '';
       split7 = { runs: B.length, adds: L.length, parts: [
-        ['#35e07a', '$BOBAI bought and burned', sum(B, 'bobaiBurnBnb'), `${cmp(sum(B, 'bobaiBurned'))} $BOBAI to the dead address`, last(B, 'bobaiBurnTx')],
-        ['#ff6b6b', '$BOB bought and burned', sum(B, 'bobBurnBnb'), `${cmp(sum(B, 'bobBurned'))} $BOB to the dead address`, last(B, 'bobBurnTx')],
-        ['#f0b90b', 'liquidity added, LP burned', sum(L, 'bnb'), `${cmp(sum(L, 'bobaiBought'))} $BOBAI paired, ${sum(L, 'lpBurned').toFixed(2)} LP burned`, last(L, 'lpBurnTx')],
+        ['#35e07a', '$BOBAI bought and burned', sum(B, 'bobaiBurnBnb'), `${cmp(sum(B, 'bobaiBurned'))} $BOBAI${at$(sum(B, 'bobaiBurned'), C.priceUsd)} to the dead address`, last(B, 'bobaiBurnTx')],
+        ['#ff6b6b', '$BOB bought and burned', sum(B, 'bobBurnBnb'), `${cmp(sum(B, 'bobBurned'))} $BOB${at$(sum(B, 'bobBurned'), C.bobUsdPrice)} to the dead address`, last(B, 'bobBurnTx')],
+        ['#f0b90b', 'liquidity added, LP burned', sum(L, 'bnb'), `${cmp(sum(L, 'bobaiBought'))} $BOBAI${at$(sum(L, 'bobaiBought'), C.priceUsd)} paired, ${sum(L, 'lpBurned').toFixed(2)} LP burned`, last(L, 'lpBurnTx')],
         ['#60a5fa', 'to the DeFi agent', sum(B, 'lpAgentBnb'), 'its working capital', last(B, 'lpAgentTx')],
         ['#f472b6', 'to the Giggle pot', sum(B, 'giggleBnb'), 'the Giggle Academy pot', last(B, 'giggleTx')],
         ['#a0a2c0', 'to the creator', sum(B, 'creatorBnb'), 'the creator’s share', last(B, 'creatorTx')],
@@ -132,11 +134,11 @@
       split7At = Date.now();
     }
     const bnbP = NUMS().chain?.bnbUsd || 0, tot = split7.parts.reduce((t, p) => t + p[2], 0);
-    const usd = (x) => bnbP > 0 ? ` <small>≈$${(x * bnbP).toFixed(x * bnbP >= 100 ? 0 : 2)}</small>` : '';
+    const usd = (x) => bnbP > 0 ? ` ≈$${(x * bnbP).toFixed(x * bnbP >= 100 ? 0 : 2)}` : '';
     const n = next02();
     box.innerHTML = `<h4>Where it went · last 7 days</h4><p class="cx02-s">${split7.runs} split run${split7.runs === 1 ? '' : 's'} and ${split7.adds} liquidity add${split7.adds === 1 ? '' : 's'} by the bot, ${tot.toFixed(4)} BNB${usd(tot)} in all — from its own logs; each line links its last transaction.</p>`
       + split7.parts.map(([col, name, bnb, what, tx]) => `<div class="cx01-r cx02-r"><i style="background:${col}"></i><span>${name}<small>${what}</small></span><b>${tot ? (bnb / tot * 100).toFixed(0) + '%' : ''}</b><em>${bnb.toFixed(4)} BNB${usd(bnb)}${tx ? ` <a href="https://bscscan.com/tx/${tx}" target="_blank" rel="noopener" title="its last transaction on BscScan">tx ↗</a>` : ''}</em></div>`).join('')
-      + (n ? `<p class="cx01-n">Next split: ${n.ready ? `$${n.usd.toFixed(2)} in BNB is ready; the bot splits it ${n.mins == null ? 'on its next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}.` : `$${n.usd.toFixed(2)} of tax is charging in the token, ${n.pct.toFixed(1)}% of the ${cmp(NUMS().chain.minDispatch)} $BOBAI at which it is sent on.`} Dollars at today’s BNB price.</p>` : '');
+      + (n ? `<p class="cx01-n">Next split: ${n.ready ? `$${n.usd.toFixed(2)} in BNB is ready; the bot splits it ${n.mins == null ? 'on its next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}.` : `$${n.usd.toFixed(2)} of tax is charging in the token, ${n.pct.toFixed(1)}% of the ${cmp(NUMS().chain.minDispatch)} $BOBAI ≈$${cmp(NUMS().chain.minDispatch * NUMS().chain.priceUsd)} at which it is sent on.`} Dollars at today’s BNB price.</p>` : '');
   }
   new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   new MutationObserver(() => { const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }).observe(document.getElementById('w03') || document.body, { attributes: true, attributeFilter: ['hidden'] });
@@ -189,7 +191,7 @@
     const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
     box.innerHTML = `<h4>Check it yourself</h4>`
       + (c?.bobaiDead ? `<p class="cx02-s">At the dead address right now: <b style="color:#f3efe6">${c.bobaiDead.toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</b>${p > 0 ? ` ≈$${cmp(c.bobaiDead * p)}` : ''} — read from BNB Chain ${Math.max(1, Math.round((Date.now() - (c.at || Date.now())) / 1000))} s ago. <a href="${dead}" target="_blank" rel="noopener">See it on BscScan ↗</a></p>` : '<p class="cx02-s">Reading the dead address…</p>')
-      + (L.length ? `<p class="cx02-s" style="margin-top:6px">The bot’s last ${L.length} burns — open any of them:</p>` + L.map((e) => `<div class="cx01-r cx02-r"><i style="background:#ff7a3d"></i><span>${when(Date.parse(e.time))}<small>bought with ${(+e.bobaiBurnBnb || 0).toFixed(4)} BNB</small></span><b></b><em>${cmp(+e.bobaiBurned)} $BOBAI${p > 0 ? `<small>≈$${(+e.bobaiBurned * p).toFixed(2)} today</small>` : ''} <a href="https://bscscan.com/tx/${e.bobaiBurnTx}" target="_blank" rel="noopener">tx ↗</a></em></div>`).join('') : '');
+      + (L.length ? `<p class="cx02-s" style="margin-top:6px">The bot’s last ${L.length} burns — open any of them:</p>` + L.map((e) => `<div class="cx01-r cx02-r"><i style="background:#ff7a3d"></i><span>${when(Date.parse(e.time))}<small>bought with ${(+e.bobaiBurnBnb || 0).toFixed(4)} BNB${c?.bnbUsd > 0 ? ` ≈$${((+e.bobaiBurnBnb || 0) * c.bnbUsd).toFixed(2)}` : ''}</small></span><b></b><em>${cmp(+e.bobaiBurned)} $BOBAI${p > 0 ? ` ≈$${(+e.bobaiBurned * p).toFixed(2)}` : ''} <a href="https://bscscan.com/tx/${e.bobaiBurnTx}" target="_blank" rel="noopener">tx ↗</a></em></div>`).join('') : '');
   }
   window.__card03.proof = () => proof03();
 

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4635 lines.
+# one fetch. 7 files, 4679 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2236,10 +2236,13 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' scanned ' + dayOf(api.measured_at) : 'probe pending'}</div></div>
     </div>
 
-    <a class="rg-box rg-screener" href="/screener" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;border-color:rgba(240,185,11,.45)">
-      <span><b style="font-family:'Space Grotesk',sans-serif;font-size:19px">Screener</b> <span class="rg-note" style="margin-left:6px">every agent in one table &mdash; evidence score, daily pulse, paid work for outside buyers, price. Sort, search, filter; each row opens its chart.</span></span>
-      <span style="color:var(--gold);font-weight:700;white-space:nowrap">Open the screener &rarr;</span>
-    </a>
+    <div class="rg-box rg-screener" style="border-color:rgba(240,185,11,.45)">
+      <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between">
+        <span><b style="font-family:'Space Grotesk',sans-serif;font-size:19px">Screener</b> <span class="rg-note" style="margin-left:6px">every agent measured &mdash; nobody can pay for a place in it</span></span>
+        <a href="/screener" style="color:var(--gold);font-weight:700;white-space:nowrap;text-decoration:none">Open the full screener &rarr;</a>
+      </div>
+      <div class="rg-tops" id="rg-tops"><p class="rg-note">Reading the screener&hellip;</p></div>
+    </div>
     <div class="rg-box rg-start">
       <h2>Hire one, or just ask</h2>
       <p class="rg-sub">Three ways in. Nothing here signs anything for you.</p>
@@ -3329,11 +3332,16 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var off=[];
       (j.listings||[]).forEach(function(L){
         var btns=[].slice.call(document.querySelectorAll('.rg-hirebtn[data-hire="'+String(L.id).replace(/[^0-9]/g,'')+'"]'));
-        var badge='<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Listed on Brain Plaza; our daily check last found it '+(L.badge?'answering':'silent')+(L.house?'; our own agent, not a paid listing':'')+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a>';
-        if(!btns.length){off.push(L);return}
+        // OURS (operator, 2026-10-12: "all our agents get the badge — 'ours' + 'maintained'"): our own agents carry the badge
+        // on their row, say first that they are ours, and never take the "Featured (paid)" slot — nobody paid for it
+        var badge=L.house
+          ?'<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Brain On BNB&rsquo;s own agent (not a paid listing); our daily check last found it '+(L.badge?'answering':'silent')+'">ours &middot; '+(L.badge?'&#10003; maintained':'paused')+'</a>'
+          :'<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Listed on Brain Plaza; our daily check last found it '+(L.badge?'answering':'silent')+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+'</a>';
+        if(!btns.length){if(!L.house)off.push(L);return}
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          if(L.house)return; // ours: the badge only, no featured copy
           var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
           var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';
           var c=art.cloneNode(true); c.removeAttribute('data-tele');
@@ -3343,12 +3351,48 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       });
       var fl=document.getElementById('rg-feat-list');
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
-      if(!(j.listings||[]).length){strip.remove();return}
+      if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip
       strip.hidden=false;
       fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
     }).catch(function(){strip.remove()});
   })();
 </script>
+<script>
+  // THE SCREENER'S HEAD ON THE PLAZA (operator, 2026-10-12: "the screener much more present", first: "its head at the
+  // top of the Plaza"): the same four boards as /screener, from the same data; a row opens the agent's chart
+  (function(){
+    var box=document.getElementById('rg-tops'); if(!box)return;
+    var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+    var nm=function(a){var n=String(a.name||('Agent #'+a.id));var p='Brain on BNB — ';return n.indexOf(p)===0?n.slice(p.length):n};
+    var num=function(v){return v==null?-1:v};
+    fetch('https://agent.brainonbnb.com/screener').then(function(r){return r.json()}).then(function(j){
+      var F=j.fields,all=j.rows.map(function(r){var o={};F.forEach(function(f,i){o[f]=r[i]});return o});
+      var pick=function(f,s){return all.filter(f).sort(s).slice(0,5)};
+      var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+esc(nm(a))+'<small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
+      var B=[
+        ['Top by evidence','#f0b90b',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
+        ['Most paid work','#4cc38a',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')}],
+        ['Earned the most','#7fd1ff',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return '$'+Number(a.earned_u).toFixed(2)+'<small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
+        ['Down at their last check','#ff7a6e',pick(function(a){return a.days>0&&a.up_now===0},function(x,y){return num(y.uptime_30d)-num(x.uptime_30d)}),function(){return '<span style="color:#ff7a6e">down</span>'},function(a){return a.uptime_30d===0?'no answer yet · '+a.days+'d':'up '+a.uptime_30d+'% · '+a.days+'d'}]
+      ];
+      box.innerHTML=B.map(function(b){return '<div class="rg-top4" style="--c:'+b[1]+'"><h3><i></i>'+b[0]+'</h3>'+(b[2].length?b[2].map(function(a,i){return row(a,i,b[3](a),b[4](a))}).join(''):'<p class="rg-note">Nobody right now.</p>')+'</div>'}).join('');
+    }).catch(function(){box.innerHTML='<p class="rg-note">The screener could not be read just now. <a href="/screener">Open it</a>.</p>'});
+  })();
+</script>
+<style>
+  .rg-tops{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:12px}
+  .rg-top4{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 10px 4px;background:rgba(255,255,255,.02);min-width:0}
+  .rg-top4 h3{margin:0 0 4px;font:700 14px 'Space Grotesk',sans-serif;display:flex;align-items:center;gap:7px}
+  .rg-top4 h3 i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);flex:none}
+  .rg-tr{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 4px;border-top:1px solid rgba(255,255,255,.06);color:inherit;text-decoration:none;border-radius:8px}
+  .rg-tr:hover{background:rgba(240,185,11,.06)}
+  .rg-tn{font:600 11px ui-monospace,Consolas,monospace;color:var(--muted,#a0a2c0)}
+  .rg-tt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 13px Inter,sans-serif}
+  .rg-tt small{display:block;font:500 11px Inter,sans-serif;color:var(--muted,#a0a2c0);overflow:hidden;text-overflow:ellipsis}
+  .rg-tm{font:700 14px 'Space Grotesk',sans-serif;color:var(--c);text-align:right;font-variant-numeric:tabular-nums}
+  .rg-tm small{display:block;font:500 10.5px Inter,sans-serif;color:var(--muted,#a0a2c0)}
+  @media (max-width:559px){.rg-top4 .rg-tr:nth-of-type(n+4){display:none}} /* a phone: three a board, the rest one tap away */
+</style>
 <style>.rg-chart{color:inherit;text-decoration:none;border-bottom:1px dotted rgba(240,185,11,.45)}.rg-chart:hover{color:var(--gold)}.rg-listed{color:#7fd1a3;border-color:rgba(127,209,163,.35);text-decoration:none}.rg-feat{border:1px solid rgba(240,185,11,.35);border-radius:14px;padding:10px;margin:0 0 14px}</style>
 </body>
 </html>

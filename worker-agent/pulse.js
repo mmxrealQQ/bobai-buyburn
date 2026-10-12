@@ -17,6 +17,7 @@
 // 90 days; `pulse:cursor` = where the round stands. GET /pulse/<id> serves one
 // agent's series with its 7- and 30-day uptime and median response time.
 
+import { netFetch } from './self-fetch.js';
 import { noteAgentState } from './agent-watch.js';
 
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
@@ -27,7 +28,7 @@ const TIMEOUT_MS = 12000;
 let idx = { at: 0, list: null };
 async function agents() {
   if (!idx.list || Date.now() - idx.at > 6 * 3600e3) {
-    const r = await fetch(AGENTS_URL, { signal: AbortSignal.timeout(10000) });
+    const r = await netFetch(AGENTS_URL, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) throw new Error('index ' + r.status);
     const j = await r.json();
     idx = { at: Date.now(), list: (j.agents || j).map((a) => ({ id: a.id, endpoints: a.endpoints || [], speaks: a.speaks || [], card: a.agent_card || null,
@@ -53,7 +54,7 @@ export async function pulseOne(a) {
   try {
     const m = mcpUrl(a);
     if (m) {
-      const r = await fetch(m, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      const r = await netFetch(m, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'brain-plaza-pulse', version: '1.0' } } }) });
       const t = await r.text();
       if (r.ok && /"result"/.test(t)) return done(true, 'mcp', r.status);
@@ -61,12 +62,12 @@ export async function pulseOne(a) {
     }
     const c = cardUrl(a);
     if (c) {
-      const r = await fetch(c, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: 'application/json' } });
+      const r = await netFetch(c, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: 'application/json' } });
       const j = r.ok ? await r.json().catch(() => null) : null;
       return done(!!(j && (j.name || j.skills || j.url)), 'card', r.status);
     }
     if (a.endpoints[0]) {
-      const r = await fetch(a.endpoints[0], { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const r = await netFetch(a.endpoints[0], { signal: AbortSignal.timeout(TIMEOUT_MS) });
       return done(r.status < 500, 'http', r.status);
     }
     return done(false, 'none', 0);

@@ -25,6 +25,7 @@
 // The receiving wallet's private key is NOT here and must never be. Verifying a
 // payment is a read; the worker never moves funds.
 
+import { bindSelf } from './self-fetch.js';
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -1501,6 +1502,7 @@ async function lpWidthVerdict(env) {
 
 export default {
   async fetch(request, env, ctx) {
+    bindSelf(env);
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
     // Names a step of the paid path for /stats/detail (bumpDetail). Our own
@@ -3151,6 +3153,7 @@ ${pageTail}`;
   },
 
   async scheduled(event, env, ctx) {
+    bindSelf(env);
     // The rug watch runs on its own cron (RUG_CRON, 2026-10-09) and nothing else does: every active watch is
     // one preflight, and on the shared tick they competed with the census and the LP replay for the
     // invocation's budget. runRugWatches holds a KV lock and stops starting watches after ~9 min of wall time.

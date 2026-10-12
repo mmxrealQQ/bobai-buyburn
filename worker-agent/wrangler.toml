@@ -38,3 +38,9 @@ ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
 # picks a different pool, the record stops applying (it is keyed by pool) and
 # this var is what gets changed.
 LP_WATCH_POOL = "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56"
+
+# ITSELF (2026-10-12, self-fetch.js): a Worker cannot fetch its own custom domain (522), so calls to our own agents'
+# endpoints on agent.brainonbnb.com go through this binding to the same worker
+[[services]]
+binding = "SELF"
+service = "bobai-agent"

@@ -118,8 +118,8 @@
     var t=c.jobs&&c.jobs.totals,p30=c.pulse&&c.pulse.last_30d,pz=c.plaza,q=pz&&pz.quote,initial=esc(String(c.name||'#').trim().charAt(0).toUpperCase());
     var chips=(c.speaks||[]).map(function(s){return '<span class="chip">'+esc(s.toUpperCase())+'</span>'}).join('')
       +(pz?pz.categories.filter(function(x){return !x.weak}).map(function(x){return '<span class="chip y" title="'+esc(x.evidence||'')+'">'+esc(x.label)+'</span>'}).join(''):'')
-      +(c.listed?'<span class="chip g">'+(c.listed.verified_and_maintained?'✓ verified &amp; maintained':'listed · paused')+(c.listed.ours?' · ours':'')+'</span>':'')
-      +(pz&&pz.ours?'<span class="chip">Brain On BNB</span>':'');
+      +(c.listed?'<span class="chip g">'+(c.listed.ours?'ours · '+(c.listed.verified_and_maintained?'✓ maintained':'paused'):(c.listed.verified_and_maintained?'✓ verified &amp; maintained':'listed · paused'))+'</span>':'')
+      +(pz&&pz.ours&&!(c.listed&&c.listed.ours)?'<span class="chip">Brain On BNB</span>':'');
     var parts=c.evidence.parts.map(function(x){return '<div class="pt"><b>'+esc(x.part)+'</b><b>'+x.points+' / '+x.max+'</b><div class="bar"><i style="width:'+(x.points/x.max*100)+'%"></i></div><span>'+esc(x.basis)+'</span></div>'}).join('');
     var tiles=[
       [p30&&p30.uptime_pct!=null?p30.uptime_pct+'%':'—','uptime, 30 days'+(p30?' · '+p30.days_measured+' measured':'')],

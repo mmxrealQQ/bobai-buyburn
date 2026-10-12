@@ -2827,11 +2827,16 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var off=[];
       (j.listings||[]).forEach(function(L){
         var btns=[].slice.call(document.querySelectorAll('.rg-hirebtn[data-hire="'+String(L.id).replace(/[^0-9]/g,'')+'"]'));
-        var badge='<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Listed on Brain Plaza; our daily check last found it '+(L.badge?'answering':'silent')+(L.house?'; our own agent, not a paid listing':'')+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a>';
-        if(!btns.length){off.push(L);return}
+        // OURS (operator, 2026-10-12: "all our agents get the badge — 'ours' + 'maintained'"): our own agents carry the badge
+        // on their row, say first that they are ours, and never take the "Featured (paid)" slot — nobody paid for it
+        var badge=L.house
+          ?'<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Brain On BNB&rsquo;s own agent (not a paid listing); our daily check last found it '+(L.badge?'answering':'silent')+'">ours &middot; '+(L.badge?'&#10003; maintained':'paused')+'</a>'
+          :'<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Listed on Brain Plaza; our daily check last found it '+(L.badge?'answering':'silent')+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+'</a>';
+        if(!btns.length){if(!L.house)off.push(L);return}
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          if(L.house)return; // ours: the badge only, no featured copy
           var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
           var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';
           var c=art.cloneNode(true); c.removeAttribute('data-tele');
@@ -2841,7 +2846,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       });
       var fl=document.getElementById('rg-feat-list');
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
-      if(!(j.listings||[]).length){strip.remove();return}
+      if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip
       strip.hidden=false;
       fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
     }).catch(function(){strip.remove()});

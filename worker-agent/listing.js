@@ -27,6 +27,7 @@
 // A daily check (runListingMonitor) asks every listed agent once; three failed
 // days in a row take the badge off ("paused") until it answers again.
 
+import { netFetch } from './self-fetch.js';
 import { recoverMessageAddress } from 'viem';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
@@ -51,7 +52,7 @@ async function rpc(method, params) {
   let last;
   for (const url of RPCS) {
     try {
-      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(8000) });
+      const r = await netFetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(8000) });
       const j = await r.json();
       if (j.error) throw new Error(j.error.message || 'rpc error');
       return j.result;
@@ -75,7 +76,7 @@ async function answers(id, reg) {
   try {
     const r = await resolveA2aEndpoint(String(id));
     if (r?.endpoint) {
-      const res = await fetch(r.endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(15000),
+      const res = await netFetch(r.endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(15000),
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: crypto.randomUUID(), kind: 'message', parts: [{ kind: 'text', text: 'What can you do?' }] } } }) });
       const j = await res.json().catch(() => null);
       out.a2a = { endpoint: r.endpoint, ok: !!(j && j.result), status: res.status };
@@ -86,7 +87,7 @@ async function answers(id, reg) {
       || (reg?.endpoints || []).find((e) => /\/mcp(\/|$|\?)/i.test(e));
     if (mcp) {
       try {
-        const res = await fetch(mcp, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, signal: AbortSignal.timeout(15000),
+        const res = await netFetch(mcp, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, signal: AbortSignal.timeout(15000),
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'brain-plaza-listing', version: '1.0' } } }) });
         const t = await res.text();
         const m = t.match(/\{[\s\S]*\}/); const j = m ? JSON.parse(m[0]) : null;
@@ -218,7 +219,7 @@ export async function houseListing(env, idRaw) {
   const rec = {
     id, name: chk.name, description: chk.description, image: chk.image, endpoints: chk.endpoints, owner: chk.owner, signer: null, contact: null,
     house: true, paid: { currency: 'house', label: 'our own agent, not paid' },
-    since: prev?.since || new Date().toISOString().slice(0, 10), status: 'verified', announced: !!prev?.announced,
+    since: prev?.since || new Date().toISOString().slice(0, 10), status: 'verified', announced: true, // ours: never announced as a new listing (operator, 2026-10-12: "all our agents get the badge" — a badge, not a launch post)
     checks: [...(prev?.checks || []), { at: new Date().toISOString(), ok: true, a2a: !!chk.answers?.a2a?.ok, mcp: !!chk.answers?.mcp?.ok }].slice(-30),
   };
   await env.AGENT.put(`listing:${id}`, JSON.stringify(rec));

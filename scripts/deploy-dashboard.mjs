@@ -93,6 +93,13 @@ export function checkPage(name, before, after) {
   if (after.length < before.length * 0.8) problems.push(`${name}: the page shrank by ${((1 - after.length / before.length) * 100).toFixed(0)}% — more than comments weigh`);
   const text = (bare) => bare.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
   if (text(a.bare) !== text(b.bare)) problems.push(`${name}: the text a reader sees changed`);
+  // EVERY INLINE SCRIPT PARSES (2026-10-12: an apostrophe in a title, "Brain On BNB's", ended a single-quoted string and
+  // took /screener down for three minutes): a classic inline script that does not compile stops the deploy
+  for (const m of after.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+    const attrs = m[1] || '';
+    if (/\ssrc=/i.test(attrs) || (/\stype=/i.test(attrs) && !/\stype=["']?(text\/javascript|application\/javascript)["']?/i.test(attrs))) continue;
+    try { new Function(m[2]); } catch (e) { problems.push(`${name}: an inline script does not parse (${e.message})`); }
+  }
   return problems;
 }
 

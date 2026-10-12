@@ -1,0 +1,115 @@
+// The paid work under every agent's chart (Brain Plaza agent chart, phase 1, 2026-10-12).
+//
+// Reads the escrow census (data/erc8183/jobs.jsonl, every job on the ERC-8183
+// kernel) and writes dashboard/api-agent-jobs.json: per agent id, its jobs as
+// "trades" (the latest 60) and its totals — jobs, funded, delivered, paid out,
+// earned, distinct buyers.
+//
+// WHICH AGENT A JOB BELONGS TO. The kernel knows a provider ADDRESS, not an
+// agent, and one address often sells for several agents (our six share one;
+// Mandate's relay names the agent in the job). So a job is put on an agent by,
+// in order: (1) the job's own description naming "#<id>" of an agent that sells
+// from that address; (2) for our own address, the service id in the signed job
+// (grid_plan -> the grid planner, …); (3) otherwise the address's jobs are the
+// agent's only when the address sells for that one agent alone, and are shown
+// as "shared by N agents" when it does not. The 2026-10-12 lesson: Mandate
+// counted three outside hires for our DeFi agent that were grid plans.
+//
+// Run after `node scripts/erc8183-job-scan.mjs` (and --owners when the census grew):
+//   node scripts/agent-jobs-export.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+import { OWN_WALLETS } from '../worker-agent/own-wallets.js';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const JOBS = path.join(ROOT, 'data', 'erc8183', 'jobs.jsonl');
+const OWNERS = path.join(ROOT, 'data', 'erc8183', 'owners.json');
+const OWN = path.join(ROOT, 'data', 'own-agents.json');
+const OUT = path.join(ROOT, 'dashboard', 'api-agent-jobs.json');
+const KEEP = 60;
+const U = 1e18;
+
+// our six: provider and the service each one sells (worker-agent/sell.js AGENT_SERVICE)
+const OUR_SERVICE = { lp_position_plan: 363709, health_factor: 302257, grid_plan: 302258, yield_plan: 304493, rebalance_plan: 304494, lp_tier_plan: 310460 };
+
+const owners = JSON.parse(fs.readFileSync(OWNERS, 'utf8')).owners || {};
+const own = JSON.parse(fs.readFileSync(OWN, 'utf8')).agents || {};
+const idsOf = new Map(); // provider -> Set(agent ids)
+for (const [addr, list] of Object.entries(owners)) idsOf.set(addr.toLowerCase(), new Set(list.map((a) => Number(a.id))));
+const ourProvider = Object.values(own).map((a) => String(a.owner || '').toLowerCase()).find(Boolean);
+if (ourProvider) { const s = idsOf.get(ourProvider) || new Set(); Object.values(OUR_SERVICE).forEach((id) => s.add(id)); idsOf.set(ourProvider, s); }
+
+const agentOfJob = (j, ids) => {
+  const named = [...String(j.desc || '').matchAll(/#(\d{1,7})\b/g)].map((m) => Number(m[1])).find((id) => ids.has(id));
+  if (named) return { id: named, how: 'named in the job' };
+  if (j.provider === ourProvider) { const svc = String(j.desc || '').match(/"service"\s*:\s*"([a-z_]+)"|service[ =:]+([a-z_]+)/); const s = svc && (svc[1] || svc[2]); if (s && OUR_SERVICE[s]) return { id: OUR_SERVICE[s], how: 'its service in the job' }; }
+  if (ids.size === 1) return { id: [...ids][0], how: 'the address sells for this agent alone' };
+  return null;
+};
+
+// THE FULL TEXT OF A CUT DESCRIPTION. The census keeps the first 240 characters of a job's description, and a job
+// funded the BNB-SDK way carries its signed envelope first and the task (with the service) after it — so the jobs of
+// an address that sells for several agents are read whole once, from our own /job reader, and kept in a cache.
+const CACHE = path.join(ROOT, 'data', 'erc8183', 'desc-cache.json');
+const cache = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
+const allJobs = fs.readFileSync(JOBS, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+const needFull = allJobs.filter((j) => { const ids = idsOf.get(String(j.provider || '').toLowerCase()); return ids && ids.size > 1 && String(j.desc || '').length >= 240 && !cache[j.id]; });
+for (let i = 0; i < needFull.length; i += 4) {
+  await Promise.all(needFull.slice(i, i + 4).map(async (j) => {
+    try { const r = await fetch(`https://agent.brainonbnb.com/job?id=${j.id}`, { signal: AbortSignal.timeout(20000) }); const x = await r.json(); if (x?.description) cache[j.id] = x.description; } catch { /* next run */ }
+  }));
+}
+if (needFull.length) fs.writeFileSync(CACHE, JSON.stringify(cache));
+for (const j of allJobs) if (cache[j.id]) j.desc = cache[j.id];
+
+const per = new Map(); // agent id -> { jobs:[], shared:[] }
+const shared = new Map(); // provider -> jobs that could not be put on one agent
+let total = 0;
+for (const j of allJobs) {
+  total++;
+  const prov = String(j.provider || '').toLowerCase(); const ids = idsOf.get(prov);
+  if (!ids) continue;
+  const row = [j.id, j.status, Number(j.budget || 0) / U, String(j.client || '').toLowerCase(), j.submitted_at || 0, j.expired_at || 0];
+  const who = agentOfJob({ ...j, provider: prov }, ids);
+  if (who) { if (!per.has(who.id)) per.set(who.id, { provider: prov, rows: [], how: new Set() }); const p = per.get(who.id); p.rows.push(row); p.how.add(who.how); }
+  else { if (!shared.has(prov)) shared.set(prov, []); shared.get(prov).push(row); }
+}
+
+const summary = (rows) => {
+  const by = (s) => rows.filter((r) => r[1] === s).length;
+  const funded = rows.filter((r) => r[1] !== 'OPEN').length;
+  const paid = rows.filter((r) => r[1] === 'COMPLETED');
+  const last = rows.reduce((m, r) => Math.max(m, r[4]), 0);
+  return {
+    jobs: rows.length, funded, paid_out: paid.length, delivered_waiting: by('SUBMITTED'), funded_not_delivered: by('FUNDED'), expired: by('EXPIRED'), rejected: by('REJECTED'), never_funded: by('OPEN'),
+    delivery_rate_pct: funded ? Math.round(((paid.length + by('SUBMITTED')) / funded) * 1000) / 10 : null,
+    earned_u: Math.round(paid.reduce((a, r) => a + r[2], 0) * 100) / 100,
+    buyers: new Set(rows.filter((r) => r[1] !== 'OPEN').map((r) => r[3])).size,
+    // our own test purchases are shown, and never counted as somebody else hiring the agent
+    buyers_outside: new Set(rows.filter((r) => r[1] !== 'OPEN' && !OWN_WALLETS.has(r[3])).map((r) => r[3])).size,
+    paid_out_outside: paid.filter((r) => !OWN_WALLETS.has(r[3])).length,
+    last_delivery: last ? new Date(last * 1000).toISOString().slice(0, 10) : null,
+  };
+};
+const trades = (rows) => rows.slice().sort((a, b) => b[0] - a[0]).slice(0, KEEP)
+  .map(([id, status, u, client, sub, exp]) => ({ job: id, status, u: Math.round(u * 1000) / 1000, buyer: client.slice(0, 6) + '…' + client.slice(-4), ...(OWN_WALLETS.has(client) ? { ours: true } : {}), delivered_at: sub ? new Date(sub * 1000).toISOString().slice(0, 16) : null, expires_at: exp ? new Date(exp * 1000).toISOString().slice(0, 16) : null }));
+
+const agents = {};
+for (const [id, p] of per) agents[id] = { provider: p.provider, attributed_by: [...p.how], totals: summary(p.rows), trades: trades(p.rows) };
+const providers = {};
+for (const [prov, rows] of shared) {
+  providers[prov] = { agents: [...idsOf.get(prov)].sort((a, b) => a - b), totals: summary(rows), trades: trades(rows), note: 'jobs of an address that sells for several agents and does not say which one in the job' };
+  for (const id of idsOf.get(prov)) if (!agents[id]) agents[id] = { provider: prov, attributed_by: [], totals: null, trades: [], shared_provider: prov };
+  else agents[id].shared_provider = prov;
+}
+
+const out = {
+  what_this_is: 'Paid work per agent on the ERC-8183 escrow kernel on BNB Smart Chain, from a full read of every job — the trades under each agent\'s chart on Brain Plaza.',
+  kernel: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6', unit: '$U (United Stables)',
+  measured_at: JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'erc8183', 'scan-state.json'), 'utf8')).updatedAt || null,
+  jobs_read: total, agents_with_work: Object.values(agents).filter((a) => a.totals?.funded).length,
+  method: 'A job is put on an agent when the job names its id, when our own job carries its service, or when its provider address sells for that agent alone; otherwise it stays with the address as shared. delivery_rate = (paid out + delivered, waiting out the dispute window) / funded.',
+  agents, providers,
+};
+fs.writeFileSync(OUT, JSON.stringify(out));
+console.log(`wrote ${path.relative(ROOT, OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${Object.keys(agents).length} agents, ${out.agents_with_work} with funded work, ${Object.keys(providers).length} shared providers, ${total} jobs read`);

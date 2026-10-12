@@ -98,6 +98,7 @@ import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
+import { runPulseTick, readPulse } from './pulse.js';
 import { houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -1984,6 +1985,11 @@ export default {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);
     }
+    if (path.startsWith('/pulse/')) {
+      const id = path.slice(7).replace(/[^0-9]/g, '');
+      if (!id) return json({ error: 'GET /pulse/<ERC-8004 id>' }, 400);
+      return json(await readPulse(env, id), 200);
+    }
     if (path.startsWith('/listed/')) {
       const id = path.slice(8).replace(/\/$/, ''); const r = /^\d+$/.test(id) ? await readListing(env, id) : null;
       if (!r || r.status === 'removed') return json({ error: 'not a listed agent', list_yours: 'https://brainonbnb.com/list' }, 404);
@@ -3144,6 +3150,8 @@ ${pageTail}`;
     // the invocation's operation budget (job 56905 was delivered 2 min into
     // the top-of-hour tick, 2026-10-04).
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+    // THE PULSE (pulse.js, agent chart phase 1): the next agents of the census index, each once a day, kept 90 days
+    ctx.waitUntil(runPulseTick(env).catch(() => {}));
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));

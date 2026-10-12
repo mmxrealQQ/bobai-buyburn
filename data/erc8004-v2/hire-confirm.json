@@ -1,6 +1,6 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-12T04:13:38.505Z",
+  "measured_at": "2026-10-12T04:24:11.798Z",
   "asked": 58,
   "quoted": 27,
   "agents": [
@@ -12,7 +12,8 @@
       "quotes": true,
       "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/rebalancer/",
-      "reason": null
+      "reason": null,
+      "example_task": "{\"holdings\":{\"BTC\":1,\"ETH\":10},\"targets\":{\"BTC\":0.5,\"ETH\":0.5},\"prices\":{\"BTC\":60000,\"ETH\":2000},\"driftThresholdPct\":1}"
     },
     {
       "id": 265375,
@@ -222,7 +223,8 @@
       "quotes": true,
       "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/gridtrader/",
-      "reason": null
+      "reason": null,
+      "example_task": "{\"price\":691.65,\"budgetUsd\":1000,\"levels\":5,\"spanPct\":2,\"walls\":{\"677.8\":3,\"705.5\":2}}"
     },
     {
       "id": 303779,
@@ -342,7 +344,8 @@
       "quotes": true,
       "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/yieldopt/",
-      "reason": null
+      "reason": null,
+      "example_task": "{\"pools\":{\"pcs-wbnb-usdt\":{\"apyPct\":12.5,\"tvlUsd\":50000000,\"riskScore\":2},\"venus-usdt\":{\"apyPct\":6.1,\"tvlUsd\":200000000,\"riskScore\":1},\"new-farm\":{\"apyPct\":80,\"tvlUsd\":400000,\"riskScore\":5}},\"capitalUsd\":10000,\"maxPerPoolPct\":40}"
     },
     {
       "id": 265876,
@@ -522,7 +525,8 @@
       "quotes": true,
       "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/healthmon/",
-      "reason": null
+      "reason": null,
+      "example_task": "{\"collateral\":{\"ETH\":{\"amount\":10,\"liqThreshold\":0.8}},\"debt\":{\"USDT\":10000},\"prices\":{\"ETH\":2000,\"USDT\":1}}"
     },
     {
       "id": 341565,

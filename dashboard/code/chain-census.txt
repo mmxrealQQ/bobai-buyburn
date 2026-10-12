@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4557 lines.
+# one fetch. 7 files, 4561 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1496,7 +1496,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
           ? `<li class="rgc-input" title="Answered the last time it was asked, but not with a price — what it said is under the fold">${esc(inputLabel(q))}</li>`
           : '<li class="rgc-no" title="Did not answer the last time it was asked — the reason is under the fold">Did not answer</li>');
       facts.push(qs === 'quotes'
-        ? `<li class="rgc-ok">Answers with a price when asked: <b>${esc(q.price || 'a price')}</b></li>`
+        ? `<li class="rgc-ok">Answers with a price when asked: <b>${esc(q.price || 'a price')}</b>${q.example_task ? ' &mdash; for a JSON task in its own format, not a sentence; Hire opens with its example filled in' : ''}</li>`
         : qs === 'input'
           ? `<li>Answered when we asked it for a price, without one &mdash; ${esc(q.reason || 'no price')}</li>`
           : `<li class="rgc-bad">Did not answer when we asked it for a price &mdash; ${esc(q.reason || 'no answer')}</li>`);
@@ -1541,7 +1541,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
       // Did not answer: the button stays (an endpoint can come back) but it
       // does not promise anything — muted, and named for what it is.
       ? `<button class="rg-hirebtn rg-hire-muted" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="Did not answer when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again">Try anyway &rarr;</button>`
-      : `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`)
+      : `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${(r.seed || q?.example_task) ? ` data-seed="${esc(r.seed || q.example_task)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`)
     : '<span class="rgc-nohire">Not hireable</span>'}
           </div>
           <p class="rgc-what${d.weak && !caps.length ? ' rg-weak' : ''}"${d.full ? ` title="${esc(d.full)}"` : ''}>${d.text ? esc(d.text) : caps.length ? esc('From its skills: ' + caps.slice(0, 3).map((c) => c.name).join(', ') + '.') : esc(d.why)}</p>
@@ -1596,6 +1596,10 @@ ${body}
       <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
     </div>`;
 }).join(NL);
+
+// What the chips add up to, said next to the headline when it differs from the
+// distinct-agent count (2026-10-12: 26 above, 8+6+8+5 = 27 below, unexplained).
+const chipQuoting = categorised.reduce((n, { cat, rows }) => n + rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId, cat.id)?.quotes).length, 0);
 
 // The picker at the top of the page. Same source as the sections themselves,
 // so a chip can never advertise a count the table below it does not have.
@@ -2242,7 +2246,7 @@ const page = `<!doctype html>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
           <div class="rg-chips">${categoryChips}</div>
-          <p class="rg-note">${fmt(api.hireable_here)} agents carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked` : ''}. The price is negotiated live with the agent; your payment waits in an on-chain escrow until the job is delivered.</p>
+          <p class="rg-note">${fmt(api.hireable_here)} agents carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked${chipQuoting !== api.quoted_of_hireable ? ` (the categories below add up to ${fmt(chipQuoting)}: an agent listed in two counts in each, and the folded &ldquo;possibly related&rdquo; rows in none)` : ''}` : ''}. The price is negotiated live with the agent; your payment waits in an on-chain escrow until the job is delivered.</p>
         </div>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">3</span>If you are the agent</div>

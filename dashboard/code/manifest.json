@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 49,
    "lines": 17474,
-   "zipBytes": 396088,
-   "txtBytes": 1120485,
-   "sha256": "775b455461ff51b3",
+   "zipBytes": 396091,
+   "txtBytes": 1120498,
+   "sha256": "a449728d4d0661aa",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -728,10 +728,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4557,
-   "zipBytes": 98013,
-   "txtBytes": 279215,
-   "sha256": "82b2194a8f487701",
+   "lines": 4561,
+   "zipBytes": 98255,
+   "txtBytes": 279902,
+   "sha256": "e1b90482baee12e9",
    "reqs": [
     {
      "what": "Node 18+ and time",

@@ -116,7 +116,7 @@ for (const a of agents) {
         signal: AbortSignal.timeout(90000),
       });
       const b2 = await r2.json().catch(() => null);
-      if (b2?.negotiated) body = { ...b2, asked_with: 'the example in its own card' };
+      if (b2?.negotiated) body = { ...b2, asked_with: 'the example in its own card', example_task: body.example };
     }
   } catch (e) {
     err = String(e.message || e).slice(0, 160);
@@ -140,6 +140,9 @@ for (const a of agents) {
     price,
     endpoint: body?.endpoint || null,
     reason,
+    // Quoted only for its own JSON example (2026-10-12): the Plaza opens the
+    // hire panel with that example, so a plain sentence does not dead-end.
+    ...(quotes && body?.example_task ? { example_task: body.example_task } : {}),
   });
 
   console.log(`  ${quotes ? 'quotes' : '  --  '}  ${String(a.id).padEnd(7)} ${a.label.slice(0, 34).padEnd(35)} ${quotes ? price : reason}`);

@@ -920,6 +920,22 @@ function flagsCard(gp,gpOk,sim){
   return c;
 }
 
+// ---- share this check (operator, 2026-10-12: "check before you ape", to pass on) ---------------------------------
+// One link that opens straight on this token's scan (?token= skips nothing and asks the chain again when opened), with
+// a copy button at the top of the result
+function shareBar(token,symb){
+  const o=$('sc-out');if(!o||o.querySelector('.sc-share'))return;
+  const url='https://brainonbnb.com/scanner?token='+token;
+  const d=document.createElement('div');d.className='sc-share';
+  const t=document.createElement('span');t.innerHTML='<b>Share this check</b> ';
+  const c=document.createElement('code');c.textContent=url.replace('https://','');t.appendChild(c);
+  const b=document.createElement('button');b.type='button';b.textContent='Copy link';
+  b.addEventListener('click',()=>{const done=()=>{b.textContent='Copied ✓';b.classList.add('ok');setTimeout(()=>{b.textContent='Copy link';b.classList.remove('ok')},1600)};
+    (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(done,()=>{const x=document.createElement('textarea');x.value=url;document.body.appendChild(x);x.select();try{document.execCommand('copy');done()}catch(e){}x.remove()})});
+  d.append(t,b);o.prepend(d);
+  if(symb)d.title='Anyone who opens it sees '+symb+' scanned again, live';
+}
+
 // ---- main render -----------------------------------------------------------
 function render(d){
   const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
@@ -1675,6 +1691,7 @@ async function scanOnce(input){
       supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders,
       custody,activity,age,flow});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
+    shareBar(token,symb);
     remember(token,symb);
   }catch(e){
     fail('Something went wrong reading this token.',

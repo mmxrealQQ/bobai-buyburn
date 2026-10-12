@@ -1671,12 +1671,16 @@ function faceTick(now) {
 // BUBBLE AND MOVE TOGETHER (2026-09-28): a line said while his move still waits for the clip before it to come home
 // is held back and typed the moment the move starts (flushSay); a line typed just before the move was queued is
 // taken back and held the same way (holdSay)
-let LASTSAY = null, HELD = null;
+let LASTSAY = null, HELD = null; const SAY_GRACE = 80; // ms between asking for a line and showing it (holdSay)
 // THE GREETING'S TIMING, FOR CHECKS (2026-10-02: 2 of 12 flow runs showed the greeting line ~1.6 s after the wave): what held
 // the line, what let it go and when the wave really started — flow.mjs prints it when its greeting rule fails
 const trace = (...a) => { const T = window.__btTrace = window.__btTrace || []; if (T.length < 80) T.push([Math.round(performance.now()), ...a]); };
 function holdSay() {
-  if (!LASTSAY || performance.now() - LASTSAY.at > 400) return;
+  // only while nothing of it shows yet (2026-10-12, operator: "tapped TELL ME A JOKE, he first fired two bubbles"):
+  // with 400 ms a line already typing ("No t…") was taken back and typed again whole 8 s later with its move — a
+  // bubble that flashes, goes and comes back. speak() now shows a line SAY_GRACE ms after it is asked for, so a move
+  // queued in the same moment still holds it unseen; a line already on screen finishes, its move plays after it.
+  if (!LASTSAY || performance.now() - LASTSAY.at > SAY_GRACE) return;
   HELD = LASTSAY; LASTSAY = null; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + HELD.ms;
 }
 function flushSay() { if (HELD) { const h = HELD; HELD = null; trace('flush', VID.cur); speak(h.text, h.ms); } }
@@ -1689,15 +1693,21 @@ function speak(text, ms = 5200) {
   // only swapped its text in when the move came)
   if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
   LASTSAY = { text, ms, at: performance.now() }; trace('say', text.slice(0, 24), VID.cur);
-  const id = ++typing; bubble.textContent = ''; bubble.classList.remove('on', 'tight'); void bubble.offsetWidth; bubble.classList.add('on');
-  LIFE.sayUntil = performance.now() + ms;
-  if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
-  FACE.talkUntil = performance.now() + Math.min(3200, text.length * 22 + 500); // he says it while it types
-  // typed by the clock, 22 ms a letter: on a slow device the timer fires late, and one letter per tick left a long line
-  // unfinished when its time was up (2026-10-06, a hello line broke off at "We build this to")
-  const t0 = performance.now(); let i = 0;
-  const step = () => { if (id !== typing) return; i = Math.min(text.length, Math.max(i + 1, Math.floor((performance.now() - t0) / 22))); bubble.textContent = text.slice(0, i); if (i < text.length) setTimeout(step, REDUCED ? 0 : 22); };
-  step();
+  const id = ++typing; bubble.textContent = ''; bubble.classList.remove('on', 'tight');
+  const grace = REDUCED ? 0 : SAY_GRACE;
+  LIFE.sayUntil = performance.now() + grace + ms;
+  const show = () => {
+    if (id !== typing) return; // held for a move in the meantime (holdSay): nothing of it was seen
+    void bubble.offsetWidth; bubble.classList.add('on');
+    if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
+    FACE.talkUntil = performance.now() + Math.min(3200, text.length * 22 + 500); // he says it while it types
+    // typed by the clock, 22 ms a letter: on a slow device the timer fires late, and one letter per tick left a long line
+    // unfinished when its time was up (2026-10-06, a hello line broke off at "We build this to")
+    const t0 = performance.now(); let i = 0;
+    const step = () => { if (id !== typing) return; i = Math.min(text.length, Math.max(i + 1, Math.floor((performance.now() - t0) / 22))); bubble.textContent = text.slice(0, i); if (i < text.length) setTimeout(step, REDUCED ? 0 : 22); };
+    step();
+  };
+  if (grace) setTimeout(show, grace); else show();
 }
 function placeBubble() {
   if (!bubble.classList.contains('on')) return;

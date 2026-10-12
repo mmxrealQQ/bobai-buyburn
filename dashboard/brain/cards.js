@@ -47,30 +47,6 @@
     v.forEach((x, i) => { const bh = x ? Math.max(2, x / mx * (h - 2)) : 1; g.fillStyle = x ? (i === 13 ? '#ffd28a' : '#ff7a3d') : 'rgba(255,255,255,.1)'; if (x) { g.shadowColor = '#ff7a3d'; g.shadowBlur = 6; } g.fillRect(i * bw + 1.5, h - bh, bw - 3, bh); g.shadowBlur = 0; });
   }
 
-  // THE ROOM A CARD KEEPS FOR ITS LINKS is measured, not guessed (2026-10-12: on a phone the links of 01 and 03 wrapped
-  // to a second row and covered the line above them): the button's foot is the link row's height plus a margin, in
-  // every layout, again on every resize.
-  const roomForLinks = () => $$('.bw-cell.has-links:not(.one-link)').forEach((c) => {
-    const l = c.querySelector('.bw-links'), b = c.querySelector('button.bw-card'); if (!l || !b) return;
-    b.style.paddingBottom = Math.ceil(l.getBoundingClientRect().height + 18) + 'px';
-  });
-  roomForLinks(); addEventListener('resize', roomForLinks); if (document.fonts) document.fonts.ready.then(roomForLinks);
-
-  // 04's DOORS, LIVE (2026-10-12): a line under each door from the source it opens — the Plaza's census, the DeFi
-  // agent's range, the NFT drop. Asked 7 s after load (the terminal's start comes first, measured 11.10.); a door whose
-  // source does not answer keeps the line it was built with.
-  const door = (k, txt) => { const a = $(`.bw-ln[data-k="${k}"] small`); if (a && txt) a.textContent = txt; };
-  setTimeout(() => {
-    fetch('/api-registry.json').then((r) => r.json()).then((j) => {
-      if (j?.reachability?.reachable) door('plaza', `${Number(j.reachability.reachable).toLocaleString('en-US')} answer`);
-      if (j?.hireable_here) door('screener', `${j.hireable_here} hireable`);
-    }).catch(() => {});
-    fetch('https://agent.brainonbnb.com/lp/portfolio').then((r) => r.json()).then((j) => {
-      const p = j?.pool; if (p && typeof p.in_range === 'boolean') door('defi', `${p.in_range ? 'in range' : 'out of range'} ±${p.width_pct}%`);
-    }).catch(() => {});
-    fetch('/api/nft-drop').then((r) => r.json()).then((j) => { if (j?.total?.minted != null) door('nft', `${j.total.minted} minted`); }).catch(() => {});
-  }, 7000);
-
   // 04 ECOSYSTEM: the apps inside, as their own icons
   function draw04() {
     const el = viz('04'); if (!el || el.dataset.done) return;
@@ -78,7 +54,9 @@
     // with their names (2026-09-28): eight bare 26 px icons left the biggest card half empty and said nothing
     const SHORT = { 'NFT Buy Drops': 'NFT Drops', 'Pool Scanner': 'Scanner', 'Agent Services': 'Services', 'Burn & Add Liq': 'Burn & Liq', "Worldcup '26": 'Worldcup' };
     const nm = (c) => { const t = (c.querySelector('h3')?.textContent || '').trim(); const d = document.createElement('i'); d.textContent = SHORT[t] || t; return d.innerHTML; };
-    el.innerHTML = `<div class="cv-icons">${cards.slice(0, 8).map((c) => `<span class="cv-app">${c.querySelector('svg')?.outerHTML || c.querySelector('img')?.outerHTML || ''}<em>${nm(c)}</em></span>`).join('')}</div>`;
+    // a logo opens its own page window (data-open="page:…", handled by brain.js); a page off this site has no door
+    const door = (c) => { const u = new URL(c.getAttribute('href') || '', location.origin); return u.origin === location.origin ? ` data-open="page:${u.pathname}${u.search}" title="Open ${nm(c)}"` : ''; };
+    el.innerHTML = `<div class="cv-icons">${cards.slice(0, 8).map((c) => `<span class="cv-app"${door(c)}>${c.querySelector('svg')?.outerHTML || c.querySelector('img')?.outerHTML || ''}<em>${nm(c)}</em></span>`).join('')}</div>`;
     const v = $('[data-open="w04"] .bw-v'); if (v) v.textContent = cards.length + ' apps & tools';
     el.dataset.done = 1;
   }

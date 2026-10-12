@@ -387,46 +387,11 @@ body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
 @media (max-width:559px){#w06 .rmg{grid-template-columns:1fr}}
 .bw-more{padding:4px 16px 18px}
 #w06 .rmg{padding:0 16px 16px}
-
-/* ---- links on the card (2026-10-12): the card's frame takes the button's place in every layout; the links sit at its
-   foot, beside the button (never inside it), so a link goes to its page and the rest of the card opens the window ---- */
-.bw-cell{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;min-width:0} /* min-width:0: a row of links never widens a grid column (phone: the page ran past the screen) */
-.bp-side .bw-cell.is-eco{flex:1.5}
-.bp-side .bw-cell.is-mini{flex:.36}
-.bw-cell>button.bw-card{flex:1}
-.bw-cell.has-links>button.bw-card{padding-bottom:44px}
-.bw-cell.is-eco.has-links>button.bw-card{padding-bottom:118px}
-/* in 04 the links ARE the apps: the icon picture above them goes (it doubled them and ran into the title) */
-.is-eco>button.bw-card .bw-viz{display:none}
-.bw-links{position:absolute;left:12px;right:12px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:2;pointer-events:none}
-.bw-ln{pointer-events:auto;font:600 11.5px/1 'Space Grotesk',system-ui,sans-serif;color:var(--bp-text);text-decoration:none;padding:6px 9px;border-radius:999px;
-  border:1px solid color-mix(in srgb,var(--c) 40%,transparent);background:rgba(10,8,9,.72);white-space:nowrap;transition:border-color .2s,color .2s,background .2s}
-.bw-ln:hover,.bw-ln:focus-visible{color:#0b090a;background:var(--c);border-color:var(--c);outline:none}
-.is-eco .bw-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
-.is-eco .bw-ln{text-align:center;overflow:hidden;text-overflow:ellipsis}
-@media (max-aspect-ratio:3/4),(max-width:559px){
-  .bw-cell.has-links>button.bw-card{padding-bottom:40px}
-  .bw-cell.is-eco{grid-column:1/-1}
-  .bw-cell.is-eco.has-links>button.bw-card{padding-bottom:118px}
-  .bw-ln{padding:6px 8px;font-size:11px}
-}
-
-/* one link: at the top, beside the open mark — a short card (05, 06 at 1024x768) had it on top of its figure */
-.bw-cell.one-link>button.bw-card{padding-bottom:12px}
-.bw-cell.one-link .bw-links{top:9px;bottom:auto;left:auto;right:40px}
-/* 04's doors carry a live line under the name */
-.is-eco .bw-ln{display:flex;flex-direction:column;gap:2px;border-radius:11px;padding:6px 5px;line-height:1.1;font-size:11px}
-.is-eco .bw-ln small{font:500 10.5px/1.2 Inter,system-ui,sans-serif;color:var(--bp-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.is-eco .bw-ln:hover small,.is-eco .bw-ln:focus-visible small{color:#0b090a}
-.bw-cell.is-eco.has-links>button.bw-card{padding-bottom:100px} /* two rows of three doors */
-/* the doors say what 04 holds: its count and label went, and the card no longer squeezes 05 and 06 below it */
-.is-eco>button.bw-card .bw-v,.is-eco>button.bw-card .bw-l{display:none}
-.bw-links{min-width:0}
-.is-eco .bw-ln{min-width:0}
-/* the card's own share of its column now sits on its frame, and the button always fills the frame (2026-10-12: the old
-   per-button flex .75 / .36 made the button fill only 75% / 36% of its frame and cut 05, 06 and 07 at the bottom) */
-.bp-side .bw-cell>button.bw-card{flex:1 1 auto}
-.bp-side .bw-cell:has(>button[data-open="w06"]),.bp-side .bw-cell:has(>button[data-open="w07"]){flex:.75}
+/* 04's LOGOS ARE DOORS (operator, 2026-10-12: "04 stays as it was; a click on a logo goes straight to that pop-up"): each
+   app in the card opens its own page window; a click anywhere else on the card opens the ecosystem window as always */
+.cv-app[data-open]{cursor:pointer;border-radius:10px;transition:background .15s,transform .15s}
+.cv-app[data-open]:hover,.cv-app[data-open]:focus-visible{background:rgba(240,185,11,.12);transform:translateY(-1px);outline:none}
+.cv-app[data-open]:hover em,.cv-app[data-open]:focus-visible em{color:var(--gold2,#ffd28a)}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

@@ -1839,10 +1839,12 @@ export default {
     if (request.method === 'GET' && (url.searchParams.get('embed') === '1' || request.headers.get('sec-fetch-dest') === 'iframe')) {
       const r = await env.ASSETS.fetch(request);
       if ((r.headers.get('content-type') || '').includes('text/html')) {
+        // embed.js/.css carry a ?v= BUMPED ON EVERY CHANGE (2026-10-12: the zone keeps browser copies 4 h, an old embed.js
+        // without /screener made "Open the screener" in the Plaza window do nothing)
         const app = /^\/(brainscreener|game|worldcup)(\/|$)/.test(url.pathname);
         const t = new HTMLRewriter()
           .on('html', { element(e) { e.setAttribute('class', ((e.getAttribute('class') || '') + (app ? ' bp-app' : ' bp-embed')).trim()); } })
-          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css">') + '<script src="/brain/embed.js" defer></script>', { html: true }); } })
+          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1012">') + '<script src="/brain/embed.js?v=1012" defer></script>', { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }

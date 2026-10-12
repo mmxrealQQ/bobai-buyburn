@@ -412,6 +412,33 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 .cx01-r em small{display:block;font-weight:500;font-size:11px;color:#35e07a}
 .cx01-r.hi span{color:#35e07a;font-weight:600}
 .cx01-n{margin:8px 0 0;font-size:11.5px;color:var(--muted,#a0a2c0)}
+/* 02 LIVE (2026-10-12): the next split charging under the ring; the window's 7-day account */
+.cv-2{display:flex;flex-direction:column;gap:7px;width:100%}
+.cv-next{display:grid;gap:3px}
+.cv-next-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.cv-next-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f0b90b,#ffd28a);transition:width .6s}
+.cv-next span{font:600 9px var(--bp-mono);color:var(--bp-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-next.ready .cv-next-bar i{background:linear-gradient(90deg,#35e07a,#9cf5c0);animation:cvReady 1.6s ease-in-out infinite}
+.cv-next.ready span{color:#9cf5c0}
+@keyframes cvReady{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.cv-next.ready .cv-next-bar i{animation:none}}
+.cx02{margin:0 0 18px;border:1px solid rgba(240,185,11,.3);border-radius:14px;padding:14px;background:rgba(240,185,11,.04)}
+.cx02 h4{margin:0 0 4px;font:700 16px 'Space Grotesk',sans-serif;color:var(--gold,#f0b90b)}
+.cx02-s{margin:0 0 8px;font-size:12.5px;color:var(--muted,#a0a2c0)}
+.cx02-r span small{display:block;font-size:11px;color:var(--muted,#a0a2c0);font-weight:400}
+.cx02-r em small{display:block;font-weight:500;font-size:11px;color:var(--muted,#a0a2c0)}
+.cx02-r em a{font-size:11px;color:var(--gold,#f0b90b);text-decoration:none;margin-left:4px}
+/* the question clamps to the lines its picture holds (cards.js draw07); 02's legend packs tighter on a short desktop so
+   the ring and all its parts fit (2026-10-12: 1280x720 cut "BOBAI burn" and the split line) */
+.cv-q{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-height:820px) and (min-width:1000px){
+  .bp-side .cv-ring svg{width:44px;height:44px}
+  .bp-side .cv-ring ul{gap:0;font-size:8.5px;line-height:1.15}
+  .bp-side .cv-ring li{white-space:nowrap}
+  .bp-side .cv-2{gap:5px}
+}
+/* below 740 px the next split shows in 02's window only: ring, parts and figure first */
+@media (max-height:740px) and (min-width:1000px){.bp-side .cv-next{display:none}}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

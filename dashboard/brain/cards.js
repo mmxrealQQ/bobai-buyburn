@@ -84,9 +84,62 @@
     const el = viz('02'), ph = typeof window.__bobaiPhase === 'function' && window.__bobaiPhase(); if (!el || !ph) return;
     const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
     const R = 17, C = 2 * Math.PI * R; let off = 0;
-    el.innerHTML = `<div class="cv-ring"><svg viewBox="0 0 44 44"><circle r="${R}" cx="22" cy="22" class="bg"/>${parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="22" cy="22" stroke="${c}" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`; off += len; return s; }).join('')}<text x="22" y="25.5">3%</text></svg>`
-      + `<ul>${parts.slice(0, 4).map(([v, c, l]) => `<li><i style="background:${c}"></i>${l}<b>${v}%</b></li>`).join('')}${parts.length > 4 ? `<li><i style="background:linear-gradient(90deg,${parts.slice(4).map((p) => p[1]).join(',')})"></i>${parts.slice(4).map((p) => p[2]).join(' · ')}<b>${+parts.slice(4).reduce((a, p) => a + p[0], 0).toFixed(2)}%</b></li>` : ''}</ul></div>`; /* all six slices of the ring (2026-10-10: the legend summed to 1.9 % under a 3 % ring) */
+    el.innerHTML = `<div class="cv-2"><div class="cv-ring"><svg viewBox="0 0 44 44"><circle r="${R}" cx="22" cy="22" class="bg"/>${parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="22" cy="22" stroke="${c}" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`; off += len; return s; }).join('')}<text x="22" y="25.5">3%</text></svg>`
+      + `<ul>${parts.slice(0, 4).map(([v, c, l]) => `<li><i style="background:${c}"></i>${l}<b>${v}%</b></li>`).join('')}${parts.length > 4 ? `<li><i style="background:linear-gradient(90deg,${parts.slice(4).map((p) => p[1]).join(',')})"></i>${parts.slice(4).map((p) => p[2]).join(' · ')}<b>${+parts.slice(4).reduce((a, p) => a + p[0], 0).toFixed(2)}%</b></li>` : ''}</ul></div>${next02Html()}</div>`; /* all six slices of the ring (2026-10-10: the legend summed to 1.9 % under a 3 % ring) */
   }
+
+  // 02 LIVE (operator, 2026-10-12: "next split live" + "where it went, 7 days"). THE NEXT SPLIT, as it charges: the token
+  // holds its 3% as $BOBAI until minDispatch(), then sends it on as BNB to the buyback wallet; the bot splits what is
+  // there above its gas reserve on its next 10-minute run (the same sum and reserve as the terminal and Classic, app.js).
+  // The bot's last run is its own heartbeat (logs.brainonbnb.com/health).
+  let botLast = 0;
+  const readBot = () => fetch('https://logs.brainonbnb.com/health', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const t = Date.parse(j?.buyback); if (t) botLast = t; }).catch(() => {});
+  setTimeout(readBot, 2500); setInterval(() => { if (!document.hidden) readBot(); }, 60e3);
+  function next02() {
+    const c = NUMS().chain; if (!c || !(c.priceUsd > 0) || !(c.minDispatch > 0)) return null;
+    const sBnb = c.walletBnb > 0.004 ? c.walletBnb - 0.003 : 0, usd = c.queuedBobai * c.priceUsd + sBnb * (c.bnbUsd || 0);
+    const pct = Math.min(100, c.queuedBobai / c.minDispatch * 100);
+    const mins = botLast ? Math.max(0, Math.ceil((botLast + 600e3 - Date.now()) / 60e3)) : null;
+    return { usd, pct, ready: sBnb > 0, sBnb, mins };
+  }
+  function next02Html() {
+    const n = next02(); if (!n) return '';
+    const $u = '$' + n.usd.toFixed(n.usd >= 1000 ? 0 : 2);
+    const txt = n.ready ? `${$u} ready · split ${n.mins == null ? 'at the bot’s next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}` : `${$u} charging · ${n.pct < 10 ? n.pct.toFixed(1) : n.pct.toFixed(0)}% to the next split`;
+    return `<div class="cv-next${n.ready ? ' ready' : ''}" title="The token sends its tax on at ${cmp(NUMS().chain.minDispatch)} $BOBAI; the bot splits the BNB every 10 min"><div class="cv-next-bar"><i style="width:${n.ready ? 100 : n.pct.toFixed(1)}%"></i></div><span>${txt}</span></div>`;
+  }
+
+  // WHERE IT WENT, 7 DAYS (02's window): every part the bot sent, summed from its own logs — the split runs
+  // (logs/burns.json) and the liquidity adds (logs/bobai-liq-log.json) — with the last transaction of each part
+  let split7 = null, split7At = 0;
+  async function where02() {
+    const body = $('#w02 .bw-body'); if (!body) return;
+    let box = $('#w02 .cx02');
+    if (!box) { box = document.createElement('div'); box.className = 'cx02'; box.dataset.nousd = '1'; body.insertAdjacentElement('afterbegin', box); }
+    if (!split7 || Date.now() - split7At > 5 * 60e3) {
+      const [b, l] = await Promise.all([fetch('/logs/burns.json').then((r) => r.json()).catch(() => null), fetch('/logs/bobai-liq-log.json').then((r) => r.json()).catch(() => null)]);
+      if (!Array.isArray(b) || !Array.isArray(l)) { if (!split7) box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">The bot’s logs could not be read just now.</p>'; return; }
+      const from = Date.now() - 7 * 86400e3, B = b.filter((e) => Date.parse(e.time) >= from), L = l.filter((e) => Date.parse(e.time) >= from);
+      const sum = (A, k) => A.reduce((t, e) => t + (+e[k] || 0), 0), last = (A, k) => [...A].reverse().find((e) => e[k])?.[k];
+      split7 = { runs: B.length, adds: L.length, parts: [
+        ['#35e07a', '$BOBAI bought and burned', sum(B, 'bobaiBurnBnb'), `${cmp(sum(B, 'bobaiBurned'))} $BOBAI to the dead address`, last(B, 'bobaiBurnTx')],
+        ['#ff6b6b', '$BOB bought and burned', sum(B, 'bobBurnBnb'), `${cmp(sum(B, 'bobBurned'))} $BOB to the dead address`, last(B, 'bobBurnTx')],
+        ['#f0b90b', 'liquidity added, LP burned', sum(L, 'bnb'), `${cmp(sum(L, 'bobaiBought'))} $BOBAI paired, ${sum(L, 'lpBurned').toFixed(2)} LP burned`, last(L, 'lpBurnTx')],
+        ['#60a5fa', 'to the DeFi agent', sum(B, 'lpAgentBnb'), 'its working capital', last(B, 'lpAgentTx')],
+        ['#f472b6', 'to the Giggle pot', sum(B, 'giggleBnb'), 'the Giggle Academy pot', last(B, 'giggleTx')],
+        ['#a0a2c0', 'to the creator', sum(B, 'creatorBnb'), 'the creator’s share', last(B, 'creatorTx')],
+      ] };
+      split7At = Date.now();
+    }
+    const bnbP = NUMS().chain?.bnbUsd || 0, tot = split7.parts.reduce((t, p) => t + p[2], 0);
+    const usd = (x) => bnbP > 0 ? ` <small>≈$${(x * bnbP).toFixed(x * bnbP >= 100 ? 0 : 2)}</small>` : '';
+    const n = next02();
+    box.innerHTML = `<h4>Where it went · last 7 days</h4><p class="cx02-s">${split7.runs} split run${split7.runs === 1 ? '' : 's'} and ${split7.adds} liquidity add${split7.adds === 1 ? '' : 's'} by the bot, ${tot.toFixed(4)} BNB${usd(tot)} in all — from its own logs; each line links its last transaction.</p>`
+      + split7.parts.map(([col, name, bnb, what, tx]) => `<div class="cx01-r cx02-r"><i style="background:${col}"></i><span>${name}<small>${what}</small></span><b>${tot ? (bnb / tot * 100).toFixed(0) + '%' : ''}</b><em>${bnb.toFixed(4)} BNB${usd(bnb)}${tx ? ` <a href="https://bscscan.com/tx/${tx}" target="_blank" rel="noopener" title="its last transaction on BscScan">tx ↗</a>` : ''}</em></div>`).join('')
+      + (n ? `<p class="cx01-n">Next split: ${n.ready ? `$${n.usd.toFixed(2)} in BNB is ready; the bot splits it ${n.mins == null ? 'on its next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}.` : `$${n.usd.toFixed(2)} of tax is charging in the token, ${n.pct.toFixed(1)}% of the ${cmp(NUMS().chain.minDispatch)} $BOBAI at which it is sent on.`} Dollars at today’s BNB price.</p>` : '');
+  }
+  new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
+  window.__card02 = { next: () => next02(), where: () => split7 };
 
   // 03 PROOF: BOBAI burned per day, 14 days (the burn log the homepage already read; read here when it has not)
   // app.js reads the same 107 KB log; the card waits up to 10 s for its copy before asking itself (2026-09-30: a slow phone
@@ -134,6 +187,10 @@
     const qs = $$('#w07 summary').map((s) => s.textContent.replace(/[^\p{L}\p{N}?!.,'’$&()% -]+$/u, '').trim()).filter(Boolean); if (!qs.length) return;
     const v = $('[data-open="w07"] .bw-v'); if (v) v.textContent = qs.length + ' answers';
     el.innerHTML = `<div class="cv-q">“${qs[qi++ % qs.length]}”</div>`;
+    // as many lines as the picture holds, the rest an ellipsis (2026-10-12: on 1024x768 and 1366x768 the question was cut
+    // in the middle of a line); no line fits, no question
+    const q = el.firstChild, lh = parseFloat(getComputedStyle(q).lineHeight) || 17, n = Math.floor((el.clientHeight + 1) / lh);
+    q.style.webkitLineClamp = q.style.lineClamp = String(Math.max(1, n)); q.style.display = n < 1 ? 'none' : '';
   }
 
   // the figures under the pictures, each one the terminal does not already show (operator: "nothing twice")
@@ -144,7 +201,7 @@
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }
-  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); }
+  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
   // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both

@@ -1691,7 +1691,17 @@ function speak(text, ms = 5200) {
   ms = Math.max(ms, text.length * 22 + 2600) + 500; // time to read it once it is typed (2026-10-09: a context in front made lines longer than their time); +0.5 s for every bubble (operator, same day)
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
-  if (VID.want && VID.want.p !== 'idle' && !REDUCED) { trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms }; typing++; bubble.classList.remove('on'); LIFE.sayUntil = performance.now() + 3500 + ms; return; }
+  // A LINE ON SCREEN IS NOT CUT (2026-10-12: TELL ME A JOKE tapped while he had just begun a line — "2 ho", "T" — cut it
+  // after a letter or two, and the joke came 8 s later with its laugh): the line showing keeps its time and finishes;
+  // only a bubble that is empty or done is closed for the wait.
+  if (VID.want && VID.want.p !== 'idle' && !REDUCED) {
+    trace('held-for-move', VID.want.p, text.slice(0, 24)); HELD = { text, ms };
+    const now = performance.now(), showing = bubble.classList.contains('on') && now < LIFE.sayUntil, ownEnd = LIFE.sayUntil;
+    if (!showing) { typing++; bubble.classList.remove('on'); }
+    else { const tid = typing; setTimeout(() => { if (typing === tid) bubble.classList.remove('on'); }, ownEnd - now); } // closes at its own end, not stretched over the wait
+    LIFE.sayUntil = now + 3500 + ms; // nobody else speaks into the wait (the held line would be replaced)
+    return;
+  }
   LASTSAY = { text, ms, at: performance.now() }; trace('say', text.slice(0, 24), VID.cur);
   const id = ++typing; bubble.textContent = ''; bubble.classList.remove('on', 'tight');
   const grace = REDUCED ? 0 : SAY_GRACE;

@@ -1073,6 +1073,7 @@ window.__btWork = () => WORK.slice(1).map(w => { try { return w[1](); } catch (e
 window.__btShows = [];
 window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRETCH }); // checks: a wave with its community line, a stretch with its own
 window.__btCircles = () => Object.fromEntries(['burnA','burnB','liq','defi','giggle','creator','src','core','buyback','dev','lp','agent','nft'].map(k => [k, circleLine(k)])); // checks: what each circle says now
+window.__btVol24 = () => { const from = Date.now() - 86400e3; return { usd: CH.rows.filter(r => r.t >= from).reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP || 0), 0), first: CH.rows.length ? CH.rows[0].t : null, src: CH.src }; }; // the day's traded dollars from his own chart ledger (the Brainmap's "Volume" goal, 2026-10-12): first = how far back the ledger reaches
 window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the terminal read from the chain, for the Brain page's windows (03 PROOF)
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts

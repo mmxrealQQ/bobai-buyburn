@@ -208,6 +208,9 @@
     const ask = () => apps.forEach((a, k) => {
       const c = cards[k]; if (!c) return; const path = new URL(c.getAttribute('href') || '', location.origin).pathname, src = LIVE04[path];
       const desc = (c.querySelector('p')?.textContent || '').trim().replace(/\s+/g, ' ');
+      // AN APP THAT HAS ENDED SAYS SO (2026-10-12, operator: the World Cup tip game is over — its card had a green "live"
+      // dot): the window's own status tag decides; a finished one gets a grey dot and the sentence that says it ended
+      if (c.querySelector('.ec-st') && !c.querySelector('.ec-st.live')) { const st = c.querySelector('.ec-st').textContent.trim(); a.dataset.live = 'done'; const plain = desc.replace(/\s*≈\$\d(?:[\d,.]*\d)?[KMB]?/g, ''); /* app.js puts ≈$ after every $BOBAI amount on the page */ a.dataset.fact = `${st.toLowerCase()} · ${(plain.split(/(?<=\.)\s+/).find((x) => /\b(ran|ended|archive)\b/i.test(x)) || plain).trim()}`; a.title = `${a.textContent.trim()} — ${st.toLowerCase()}, an archive`; return; }
       a.dataset.fact = desc; a.dataset.live = a.dataset.live || 'wait';
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 9000);
       (src ? fetch(src[0], { signal: ctl.signal, cache: 'no-store' }).then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => { const f = src[1](j); if (!f) throw 0; a.dataset.fact = f; })
@@ -251,6 +254,68 @@
     if (l && next) l.textContent = `${ph.filter((p) => !p.classList.contains('rmn')).length} of ${ph.length} phases live`; /* shipped or running, as the window says */
     el.dataset.done = 1;
   }
+
+  // 05 BRAINMAP WITH ITS PROOF (operator, 2026-10-12: "99% of roadmap goals are empty promises and marketing"): every
+  // tick in the window carries the thing that proves it — a contract read, a transaction, a heartbeat, a page — and every
+  // open goal its live figure. What cannot be proven says so. The card's foot turns through the three open goals.
+  const CA = '0x245c386dcfed896f5c346107596141e5edcbffff', PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', POT = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+  const tx = (h, t) => h ? `<a href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener">${t} ↗</a>` : '';
+  const ext = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t} ↗</a>`;
+  const dt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  let owner05 = null, stats05 = null, bot05 = 0, goal05 = 0;
+  const read05 = () => {
+    fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data: '0x8da5cb5b' }, 'latest'] }) })
+      .then((r) => r.json()).then((j) => { if (typeof j?.result === 'string') owner05 = { v: '0x' + j.result.slice(-40), at: Date.now() }; }).catch(() => {});
+    fetch('https://agent.brainonbnb.com/stats').then((r) => r.json()).then((j) => { stats05 = j; }).catch(() => {});
+    fetch('https://logs.brainonbnb.com/health', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const t = Date.parse(j?.buyback); if (t) bot05 = t; }).catch(() => {});
+  };
+  const goals05 = () => {
+    const N = NUMS(), out = {}, bnbP = N.chain?.bnbUsd;
+    const v = typeof window.__btVol24 === 'function' && window.__btVol24();
+    if (v && v.first && v.first <= Date.now() - 86400e3 + 60e3) out.vol = `$${v.usd >= 1000 ? cmp(v.usd) : v.usd.toFixed(0)} traded on the chain in the last 24 h`;
+    const days = stats05?.asked?.by_day; if (days) { const from = new Date(Date.now() - 7 * 86400e3).toISOString().slice(0, 10); let n = 0, m = 0; for (const [d, k] of Object.entries(days)) if (d > from) for (const [kk, c] of Object.entries(k)) { if (kk === 'watch_checks') continue; n += c; if (kk === 'mcp') m += c; } out.agents = `${cmp(n)} calls to our agent server in 7 days, ${cmp(m)} of them MCP`; }
+    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.ceil((N.gg.end - Date.now()) / 86400e3)); out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(N.gg.bnb * bnbP)}` : ''} · ${d} d to the kids`; }
+    return out;
+  };
+  function line05() {
+    const l = $('[data-open="w06"] .bw-l'); if (!l) return; if (!l.dataset.base) l.dataset.base = l.textContent;
+    const g = Object.values(goals05()); if (!g.length) return;
+    l.textContent = g[goal05++ % g.length]; l.classList.add('goal-live');
+  }
+  function proof05() {
+    const lis = $$('#w06 .rm li'); if (!lis.length) return;
+    const N = NUMS(), B = N.burns || burnsOwn, L = N.liq, g = goals05();
+    const lastRun = Array.isArray(B) ? [...B].reverse().find((e) => e.bobaiBurnTx) : null, firstBob = Array.isArray(B) ? B.find((e) => e.burnTx || e.bobBurnTx) : null;
+    const lastLiq = Array.isArray(L) ? [...L].reverse().find((e) => e.lpBurnTx) : null;
+    const RULES = [
+      [/pitch decks/, () => `the proof we can give: every line of code is public — <a href="/library">The Library</a>; who wrote it cannot be read from a chain`],
+      [/Four\.Meme/, () => `${ext(`https://four.meme/token/${CA}`, 'the launch on Four.Meme')} · ${ext(`https://bscscan.com/token/${PAIR}`, 'the PancakeSwap pool')}`],
+      [/owner renounced/, () => `${owner05 ? `owner() = ${owner05.v === '0x' + '0'.repeat(40) ? '<b>0x000…000</b> (nobody)' : `<b class="bad">${owner05.v}</b>`}, read from the contract ${Math.max(1, Math.round((Date.now() - owner05.at) / 1000))} s ago` : 'reading owner() from the contract…'} · LP at the dead address: <b>${N.lpLocked || '…'}</b> ${ext(`https://bscscan.com/token/${PAIR}#balances`, 'holders')}`],
+      [/\$BOB.*day one|from day one/, () => firstBob ? `the first $BOB burn, ${dt(Date.parse(firstBob.time))}: ${tx(firstBob.burnTx || firstBob.bobBurnTx, 'transaction')}` : ''],
+      [/Every trade is a breath/, () => lastRun ? `the last split, ${dt(Date.parse(lastRun.time))}: ${tx(lastRun.bobaiBurnTx, '$BOBAI burn')} · ${tx(lastRun.bobBurnTx, '$BOB burn')} · ${tx(lastRun.lpAgentTx, 'DeFi')} · ${tx(lastRun.giggleTx, 'Giggle')}` : ''],
+      [/every 10 minutes/, () => bot05 ? `its heartbeat: last check ${Math.max(1, Math.round((Date.now() - bot05) / 60e3))} min ago — ${ext('https://logs.brainonbnb.com/health', 'read it')}` : ''],
+      [/into the fire/, () => lastLiq ? `the last LP burn, ${dt(Date.parse(lastLiq.time))}: ${tx(lastLiq.lpBurnTx, 'transaction')} · ${N.bb3?.count ?? '…'} adds since Sep 19` : ''],
+      [/Giggle Academy/, () => N.gg?.bnb != null ? `the pot holds ${N.gg.bnb.toFixed(3)} BNB from ${N.gg.count} payments — ${ext(`https://bscscan.com/address/${POT}`, 'the pot on BscScan')}` : ''],
+      [/Brain Terminal/, () => `live on this page, reading BNB Chain right now`],
+      [/before you ape/, () => `<a href="/scanner">open the scanner</a>`],
+      [/Brain Plaza/, () => `<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>`],
+      [/DeFi agent/, () => `<a href="/defi">its position, gains and losses</a>`],
+      [/rug watch/, () => `<a href="/services">how an agent sets one</a>`],
+      [/^Volume/, () => g.vol ? `<b>${g.vol}</b>` : 'the 24-hour figure shows once the terminal has read a full day'],
+      [/More agents/, () => g.agents ? `<b>${g.agents}</b>` : ''],
+      [/Nov 20/, () => g.pot ? `<b>${g.pot}</b>` : ''],
+      [/No price dates/, () => `a promise, not a proof: this map names no price and no date`],
+    ];
+    lis.forEach((li) => {
+      const txt = li.textContent.replace(/^[✓○]\s*/, '').trim(), r = RULES.find(([re]) => re.test(txt)); if (!r) return;
+      let pf = li.querySelector('.pf'); if (!pf) { pf = document.createElement('small'); pf.className = 'pf'; li.querySelector('span:last-child')?.appendChild(pf); }
+      const h = r[1](); if (h) pf.innerHTML = h;
+    });
+  }
+  setTimeout(read05, 4000); setInterval(() => { if (!document.hidden) read05(); }, 5 * 60e3);
+  setInterval(() => { if (!document.hidden) line05(); }, 6000);
+  new MutationObserver(() => { const w = $('#w06'); if (w && !w.hidden) { proof05(); setTimeout(proof05, 1500); } }).observe(document.getElementById('w06') || document.body, { attributes: true, attributeFilter: ['hidden'] });
+  window.__card05 = { goals: () => goals05(), proof: () => { proof05(); return $$('#w06 .rm li').map((li) => [li.textContent.trim().slice(0, 40), li.querySelector('.pf')?.textContent || '']); } };
 
   // 07 QUESTIONS: one question at a time, turning like a card
   let qi = 0;

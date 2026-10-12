@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4561 lines.
+# one fetch. 7 files, 4576 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2912,6 +2912,21 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       b.addEventListener('click',function(){open(b);});
     });
     document.getElementById('rg-hire-x').addEventListener('click',function(){d.close();});
+    // A LINK THAT OPENS A HIRE (2026-10-12): /registry?hire=<id>&task=<words>
+    // opens that agent's panel with the task filled in — /defi sends a visitor
+    // here after the free look at their position, so the plan they buy is an
+    // escrowed job of the DeFi agent and not a bare transfer. Only an agent with
+    // a Hire button on this page opens; the task is text, shown, never sent
+    // before the visitor presses Get a quote.
+    (function(){
+      var q=new URLSearchParams(location.search),hid=(q.get('hire')||'').replace(/[^0-9]/g,'');
+      if(!hid)return;
+      var b=document.querySelector('.rg-hirebtn[data-hire="'+hid+'"]');
+      if(!b)return;
+      var t=(q.get('task')||'').slice(0,300);
+      b.scrollIntoView({block:'center'});open(b);
+      if(t){elTask.value=t;seeded='';}
+    })();
 
     // --- the quote -------------------------------------------------------
     elQuote.addEventListener('click',function(){

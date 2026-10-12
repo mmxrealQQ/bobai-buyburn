@@ -1322,7 +1322,16 @@ function fillLpYours(){
         const direct = (t.accepts || []).find(a => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && !(a.extra.symbol === 'BOBAI'));
         const bobai = (t.accepts || []).find(a => a.extra && a.extra.symbol === 'BOBAI');
         if(!direct) throw new Error(t.error || 'no terms');
-        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">For the plan: send the fee, then paste the transaction hash</div>' +
+        // THE HIRE FIRST (2026-10-12): the plan bought as an ERC-8183 job of
+        // the DeFi agent (#363709) — escrowed, delivered on-chain, and counted
+        // as a hire of this agent by the marketplaces; a bare transfer below
+        // buys the same answer but hires nobody. The Plaza's panel opens with
+        // this position as the task.
+        const hireHref = '/registry?hire=363709&task=' + encodeURIComponent(taskFor(v)) + '#cat-rebalancing';
+        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">The plan: hire the DeFi agent, 0.10 $U</div>' +
+          '<div>Whether a re-set is due and in which width, what collecting pays, what your spare BNB would add — the agent that runs our own position, on yours. Paid into the on-chain ERC-8183 escrow from your wallet; the escrow pays the agent only once the plan is delivered.</div>' +
+          '<div class="lp-ask"><a class="mkt-go" href="' + hireHref + '" target="_top">Hire the DeFi agent &rarr;</a></div></div>' +
+          '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Or pay per answer: send the fee, then paste the transaction hash</div>' +
           '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
           '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
           '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +

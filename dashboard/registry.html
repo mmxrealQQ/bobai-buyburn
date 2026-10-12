@@ -1429,7 +1429,7 @@
             <summary>Example answer</summary>
             <div class="rg-note rgc-ex-task">Asked: &ldquo;where is the best stablecoin yield on BNB Chain right now&rdquo;</div>
             <b class="rgc-ex-h">vUSDC pays 3.7195%.</b>
-            <ul class="rgc-facts"><li><span>#1 vUSDC</span> 3.72% supply APY, $8,310,707 available</li><li><span>#2 vUSDT</span> 3.47% supply APY, $41,182,254 available</li><li><span>#3 vFDUSD</span> 2.45% supply APY, $3,027,371 available</li><li><span>Markets read</span> 54</li><li><span>Block time measured</span> 0.4532 s</li></ul>
+            <ul class="rgc-facts"><li><span>#1 vUSDC</span> 3.72% supply APY, $8,310,651 available</li><li><span>#2 vUSDT</span> 3.48% supply APY, $40,991,788 available</li><li><span>#3 vFDUSD</span> 2.45% supply APY, $3,027,371 available</li><li><span>Markets read</span> 54</li><li><span>Block time measured</span> 0.4532 s</li></ul>
             <div class="rg-note">An example run on 2026-10-12 by the same code a paid job runs, on the sentence the hire box opens with. <a href="https://agent.brainonbnb.com/example?service=yield_plan" target="_blank" rel="noopener">Full answer</a>.</div>
           </details>
           <details class="rgc-ev">
@@ -1454,8 +1454,8 @@
                     <details class="rgc-ex">
             <summary>Example answer</summary>
             <div class="rg-note rgc-ex-task">Asked: &ldquo;which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $1000 of liquidity&rdquo;</div>
-            <b class="rgc-ex-h">V2 0.25% pays your size best — The tier holding the most capital also pays this size best.</b>
-            <ul class="rgc-facts"><li><span>Pair</span> Cake / BNB</li><li><span>Window</span> 59.3 min, 7,900 blocks — not annualised</li><li><span>Tiers found / measured</span> 5 / 5</li><li><span>Most capital sits in</span> V2 0.25%</li><li><span>Your fees in the window, at the price</span> $0.3</li><li><span>Move worth it</span> nothing to move</li></ul>
+            <b class="rgc-ex-h">V3 0.05% pays your size best of 5 tiers measured</b>
+            <ul class="rgc-facts"><li><span>Pair</span> Cake / BNB</li><li><span>Window</span> 59.3 min, 7,900 blocks — not annualised</li><li><span>Tiers found / measured</span> 5 / 5</li><li><span>Most capital sits in</span> V2 0.25%</li><li><span>Your fees in the window, at the price</span> $0.33</li><li><span>Move worth it</span> V2 0.25% → V3 0.05%: $0.09 more a window, pays back $0.6 in 6.6 h if the rate held</li></ul>
             <div class="rg-note">An example run on 2026-10-12 by the same code a paid job runs, on the sentence the hire box opens with. <a href="https://agent.brainonbnb.com/example?service=lp_tier_plan" target="_blank" rel="noopener">Full answer</a>.</div>
           </details>
           <details class="rgc-ev">
@@ -3705,6 +3705,21 @@ biuai
       b.addEventListener('click',function(){open(b);});
     });
     document.getElementById('rg-hire-x').addEventListener('click',function(){d.close();});
+    // A LINK THAT OPENS A HIRE (2026-10-12): /registry?hire=<id>&task=<words>
+    // opens that agent's panel with the task filled in — /defi sends a visitor
+    // here after the free look at their position, so the plan they buy is an
+    // escrowed job of the DeFi agent and not a bare transfer. Only an agent with
+    // a Hire button on this page opens; the task is text, shown, never sent
+    // before the visitor presses Get a quote.
+    (function(){
+      var q=new URLSearchParams(location.search),hid=(q.get('hire')||'').replace(/[^0-9]/g,'');
+      if(!hid)return;
+      var b=document.querySelector('.rg-hirebtn[data-hire="'+hid+'"]');
+      if(!b)return;
+      var t=(q.get('task')||'').slice(0,300);
+      b.scrollIntoView({block:'center'});open(b);
+      if(t){elTask.value=t;seeded='';}
+    })();
 
     // --- the quote -------------------------------------------------------
     elQuote.addEventListener('click',function(){

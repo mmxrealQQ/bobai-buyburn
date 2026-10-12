@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1325 lines.
+# one fetch. 10 files, 1371 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -301,6 +301,19 @@ footer a:hover{color:var(--gold)}
 .lbx-close{position:absolute;top:18px;right:18px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:50%;color:var(--text);cursor:pointer;font-size:18px;transition:all .2s}
 .lbx-close:hover{background:var(--gold);color:#000;border-color:var(--gold)}
 .motif-card img,.coll-card img{cursor:zoom-in}
+  /* find your NFTs, drawn here (2026-10-12) */
+  .find-out{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-width:760px;margin:12px auto 0}
+  .find-out:empty{display:none}
+  .find-card{display:grid;gap:4px;text-decoration:none;color:inherit;border:1px solid rgba(240,185,11,.25);border-radius:12px;padding:6px;background:rgba(255,255,255,.03)}
+  .find-card img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px}
+  .find-card b{font-size:13px}.find-card small{font-size:11px;color:var(--muted,#a0a2c0)}
+  .find-card:hover{border-color:var(--gold,#f0b90b)}
+  .find-msg a{color:var(--gold,#f0b90b)}
+  /* the scanner link in the steps read dark blue on the dark page */
+  ol a,li a{color:var(--gold,#f0b90b)}
+  .for-agents{max-width:760px;margin:14px auto 0;font-size:13px;color:var(--muted,#a0a2c0);text-align:center;line-height:1.7}
+  .for-agents b{color:var(--gold,#f0b90b)}.for-agents code{font-size:12px;color:#f3efe6;overflow-wrap:anywhere}
+  .for-agents button{margin-left:6px;border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold,#f0b90b);border-radius:999px;padding:3px 10px;font:600 11.5px Inter,sans-serif;cursor:pointer}
 </style>
 </head>
 <body>
@@ -339,7 +352,9 @@ footer a:hover{color:var(--gold)}
       <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier.</li>
     </ol>
     <a class="earn-btn" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $100+ on PancakeSwap &rarr;</a>
-    <form class="find" id="find-form" autocomplete="off"><label for="find-addr">Find your NFTs</label><input id="find-addr" placeholder="0x… your wallet" spellcheck="false" inputmode="text"><button type="submit">Show on BscScan</button><span class="find-msg" id="find-msg" role="status"></span></form>
+    <form class="find" id="find-form" autocomplete="off"><label for="find-addr">Find your NFTs</label><input id="find-addr" placeholder="0x… your wallet" spellcheck="false" inputmode="text"><button type="submit">Show my NFTs</button><span class="find-msg" id="find-msg" role="status"></span></form>
+    <div class="find-out" id="find-out"></div>
+    <p class="for-agents" data-nousd><b>For agents:</b> the drop as JSON — tiers, rarities, caps, the last mint and how an agent earns one — at <code>https://brainonbnb.com/api/nft-drop</code> <button type="button" id="fa-copy">Copy</button></p>
     <div class="mkt">
       <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.webp?v=3" alt="" loading="lazy" decoding="async">Element</a>
       <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="" loading="lazy" decoding="async">NFTScan</a>
@@ -651,13 +666,44 @@ document.addEventListener('keydown', e => {
 });
 document.querySelectorAll('.hero-motifs .motif-card').forEach(c => { c.setAttribute('role', 'button'); c.tabIndex = 0; });
 document.querySelectorAll('.motif-meta .e, .tier-cell .e').forEach(e => e.setAttribute('aria-hidden', 'true'));
-// find your NFTs: BscScan's own view of this collection for a wallet (the drop list here keeps the last 100)
-document.getElementById('find-form').addEventListener('submit', e => {
+// FIND YOUR NFTS, HERE (2026-10-12): the contract is asked who owns every token minted so far (ownerOf, batched on a
+// public BNB Chain node — the current owner, so a card passed on shows with its new holder), and each one the wallet
+// holds is drawn with its tier and rarity from its own tokenURI. BscScan's view stays one link away.
+const NFT_CA = '0xd56226b3b8297a57f4361fca28aa43babdc9789d', NFT_RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io'];
+document.getElementById('fa-copy').addEventListener('click', e => { const b = e.currentTarget, v = 'https://brainonbnb.com/api/nft-drop';
+  (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => { b.textContent = 'Copied ✓'; setTimeout(() => { b.textContent = 'Copy'; }, 1600); }, () => {}); });
+document.getElementById('find-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const a = document.getElementById('find-addr').value.trim(), m = document.getElementById('find-msg');
+  const a = document.getElementById('find-addr').value.trim(), m = document.getElementById('find-msg'), out = document.getElementById('find-out');
   if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { m.textContent = 'That is not a wallet address (0x and 40 characters).'; return; }
-  m.textContent = '';
-  window.open('https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d?a=' + a, '_blank', 'noopener');
+  const scan = 'https://bscscan.com/token/' + NFT_CA + '?a=' + a;
+  // a newer search wins: an older one still reading never paints over it
+  const run = (window.__findRun = (window.__findRun || 0) + 1), stale = () => run !== window.__findRun;
+  m.textContent = 'Asking the contract who holds each card…'; out.innerHTML = '';
+  try {
+    const st = await (await fetch('/api/nft/state')).json(), n = Number(st.minted && st.minted.total != null ? st.minted.total : Array.isArray(st.minted) ? st.minted.reduce((x, y) => x + y, 0) : st.minted) || 0;
+    const ids = Array.from({ length: n }, (_, i) => i + 1), mine = [];
+    // twenty a batch, one node after another if one refuses (a batch of sixty hit the public node's rate limit)
+    let missed = 0;
+    for (let i = 0; i < ids.length; i += 20) {
+      const batch = ids.slice(i, i + 20).map(id => ({ jsonrpc: '2.0', id, method: 'eth_call', params: [{ to: NFT_CA, data: '0x6352211e' + id.toString(16).padStart(64, '0') }, 'latest'] }));
+      let res = null;
+      for (const u of NFT_RPCS) { try { const r = await (await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(batch) })).json(); if (Array.isArray(r) && r.every(x => x.result)) { res = r; break; } } catch (x) {} }
+      if (stale()) return;
+      if (!res) { missed += batch.length; continue; }
+      for (const r of res) if (('0x' + r.result.slice(-40)).toLowerCase() === a.toLowerCase()) mine.push(r.id);
+      await new Promise(r => setTimeout(r, 150));
+    }
+    if (stale()) return;
+    if (missed) { m.innerHTML = 'The chain did not answer for ' + missed + ' of the ' + n + ' cards just now; try again. <a href="' + scan + '" target="_blank" rel="noopener">BscScan&rsquo;s view &#x2197;</a>'; return; }
+    if (!mine.length) { m.innerHTML = 'This wallet holds none of the ' + n + ' cards minted so far. <a href="' + scan + '" target="_blank" rel="noopener">BscScan&rsquo;s view &#x2197;</a>'; return; }
+    m.innerHTML = 'This wallet holds <b>' + mine.length + '</b> of the ' + n + ' cards, read from the contract just now. <a href="' + scan + '" target="_blank" rel="noopener">BscScan&rsquo;s view &#x2197;</a>';
+    const metas = await Promise.all(mine.sort((x, y) => y - x).map(id => fetch('https://bobai-nft-meta.bobbuildonbnb.workers.dev/meta/' + id + '.json').then(r => r.json()).catch(() => null)));
+    if (stale()) return;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    out.innerHTML = mine.map((id, k) => { const md = metas[k] || {}, at = t => ((md.attributes || []).find(x => x.trait_type === t) || {}).value || '';
+      return '<a class="find-card" href="https://bscscan.com/nft/' + NFT_CA + '/' + id + '" target="_blank" rel="noopener">' + (md.image ? '<img src="' + esc(md.image) + '" alt="" loading="lazy">' : '') + '<b>#' + id + '</b><small>' + esc(at('Buy Tier')) + (at('Rarity') ? ' · ' + esc(at('Rarity')) : '') + '</small></a>'; }).join('');
+  } catch (err) { if (stale()) return; m.innerHTML = 'The chain did not answer just now. <a href="' + scan + '" target="_blank" rel="noopener">BscScan&rsquo;s view &#x2197;</a>'; }
 });
 </script>
 </div>

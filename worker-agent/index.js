@@ -248,7 +248,7 @@ export async function etagJson(request, obj) {
   const body = JSON.stringify(obj, null, 2);
   const d = new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(body)));
   const tag = 'W/"' + [...d].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32) + '"';
-  const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache', ETag: tag, 'Access-Control-Expose-Headers': 'ETag' };
+  const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache', ETag: tag, 'Access-Control-Expose-Headers': 'ETag' };
   const asked = (request.headers.get('if-none-match') || '').split(',').map((t) => t.trim());
   if (asked.includes(tag) || asked.includes(tag.slice(2))) return new Response(null, { status: 304, headers });
   return new Response(body, { status: 200, headers });
@@ -257,7 +257,7 @@ const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store',
       ...extra,
@@ -1950,7 +1950,7 @@ export default {
       }
       const r = await handleDispatch(url, body, env);
       ctx.waitUntil(bump(env, 'dispatch'));
-      if (ck && r.status === 200) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(r.body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
+      if (ck && r.status === 200) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(r.body), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
       return thankJson(request, r.body, r.status);
     }
 
@@ -2001,7 +2001,7 @@ export default {
       if (request.method === 'DELETE') { const r = await removeAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
       return json({ what: 'An alarm when an agent you rely on goes down, and when it is back. Free, any agent on BNB Chain, webhook only.', usage: 'POST /agent-watch {"agent":"302257","callback":"https://your.server/hook"} — the callback receives {agent, state: "down"|"up", at, was, since, chart} on every change; DELETE with the same body to stop.', checked: 'every agent once a day (the pulse); a listed agent every hour' }, 200);
     }
-    if (path === '/screener') return new Response(JSON.stringify(await screenerData(env)), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }); // compact: ~950 rows
+    if (path === '/screener') return new Response(JSON.stringify(await screenerData(env)), { headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }); // compact: ~950 rows
     if (path === '/pulse/rebuild-summary' && request.method === 'POST') {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       return json(await rebuildPulseSummary(env), 200);

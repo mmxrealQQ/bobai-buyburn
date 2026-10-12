@@ -96,7 +96,21 @@
     .lp-yours-out dl{display:grid;grid-template-columns:max-content 1fr;gap:5px 12px;margin:6px 0 0}
     .lp-yours-out dt{color:var(--muted)}.lp-yours-out dd{margin:0;overflow-wrap:anywhere}
     .lp-yours-out .lp-err{color:#ff8f6b}
-  </style>
+  
+    /* the curve and the agents' box (2026-10-12) */
+    .lpc .lpc-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline;margin-bottom:8px}
+    .lpc .lpc-h span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+    .lpc .lpc-h i{display:inline-block;width:16px;height:3px;border-radius:2px}.lpc .lpc-v{background:#f0b90b}.lpc .lpc-c{background:repeating-linear-gradient(90deg,#a0a2c0 0 4px,transparent 4px 7px)}
+    .lpc svg{width:100%;height:auto;display:block}.lpc svg text{fill:var(--muted);font:11px ui-monospace,Consolas,monospace}
+    .lpa h3{margin:0 0 6px;font-family:'Space Grotesk',sans-serif}
+    .lpa-r{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+    .lpa-r span b{display:block;font-size:13.5px}.lpa-r span small{display:block;font-size:11.5px;color:var(--muted)}
+    .lpa-r code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;background:rgba(255,255,255,.05);border-radius:8px;padding:6px 8px}
+    .lpa-r button{border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold);border-radius:999px;padding:6px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
+    .lpa-r button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+    .lpa-go{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0 0}.lpa-go a{color:var(--gold);font-weight:600;text-decoration:none}
+    @media (max-width:559px){.lpa-r{grid-template-columns:minmax(0,1fr) auto}.lpa-r code{grid-column:1/-1;grid-row:2}}
+</style>
 </head>
 <body>
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -121,6 +135,25 @@
     <div class="agt-flow fi" id="defi-card">
       <p class="agt-note">Reading the portfolio&hellip; <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">agent.brainonbnb.com/lp/portfolio</a></p>
     </div>
+    <!-- THE CURVE (2026-10-12): worth against capital put in, every run of /lp/series (app.js lpCurve) -->
+    <div class="agt-flow fi lpc" id="ag-lp-curve" hidden></div>
+    <!-- FOR AGENTS (2026-10-12, operator: "AI and the blockchain must see us"): what another agent needs to find, call or
+         hire this one — its A2A card and endpoint, its ERC-8004 id, the escrow hire, its measured chart, the open record -->
+    <div class="agt-flow fi lpa" data-nousd>
+      <h3>For agents</h3>
+      <p class="agt-note">This agent is ERC-8004 <b>#363709</b> on BNB Chain. Another agent can read its card, ask it over A2A, or hire it through the ERC-8183 escrow; its chart on Brain Plaza is measured, not self-reported.</p>
+      <div class="lpa-r"><span><b>Agent card</b><small>A2A, what it can do</small></span><code>https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json</code><button type="button" data-copy="https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json">Copy</button></div>
+      <div class="lpa-r"><span><b>A2A endpoint</b><small>JSON-RPC message/send</small></span><code>https://agent.brainonbnb.com/defi-agent/a2a</code><button type="button" data-copy="https://agent.brainonbnb.com/defi-agent/a2a">Copy</button></div>
+      <div class="lpa-r"><span><b>The record</b><small>every run, read-only JSON</small></span><code>https://agent.brainonbnb.com/lp/agent</code><button type="button" data-copy="https://agent.brainonbnb.com/lp/agent">Copy</button></div>
+      <p class="lpa-go"><a href="/registry?hire=363709">Hire it through the escrow &rarr;</a> <a href="/agent/363709">Its measured chart &rarr;</a> <a href="https://8004scan.io/agents/bsc/363709" target="_blank" rel="noopener">On 8004scan &#x2197;</a></p>
+    </div>
+    <script>
+      document.querySelector('.lpa').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-copy]'); if (!b) return; var v = b.getAttribute('data-copy');
+        var done = function () { b.textContent = 'Copied ✓'; b.classList.add('ok'); setTimeout(function () { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1600); };
+        (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(done, function () { var t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (x) {} t.remove(); });
+      });
+    </script>
   </div>
 
   <div class="lp-part" id="series">
@@ -191,6 +224,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=107" defer></script>
+<script src="app.js?v=109" defer></script>
 </body>
 </html>

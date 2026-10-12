@@ -1225,6 +1225,32 @@ function fillLpPortfolio(){
 }
 if(document.getElementById('defi-card')) fillLpPortfolio();
 
+// THE CURVE (2026-10-12, operator: "how it runs at a glance, honest in the red too"): what had gone in by each run
+// (capital, a step at every deposit) and what the position was worth — the band between them green above, red below.
+// Every point is a run of /lp/series; nothing is smoothed.
+function lpCurve(pts){
+  const box = document.getElementById('ag-lp-curve'); if(!box) return;
+  const P = pts.filter(p => p.capital_bnb > 0 && p.value_bnb > 0).map(p => ({ t: Date.parse(p.at), c: +p.capital_bnb, v: +p.value_bnb }));
+  if(P.length < 2){ box.hidden = true; return; }
+  box.hidden = false; // shown first: a hidden box has no width to draw to
+  // drawn at the width it is shown (a 720-wide drawing shrunk onto a phone made its labels 5 px)
+  const W = Math.max(300, Math.min(1000, (box.clientWidth || 720) - 40)), H = W < 500 ? 170 : 200, L = 40, R = 10, T = 12, B = 26, t0 = P[0].t, t1 = P[P.length - 1].t, mx = Math.max(...P.map(p => Math.max(p.c, p.v))) * 1.06;
+  const x = t => L + (t - t0) / Math.max(1, t1 - t0) * (W - L - R), y = v => T + (1 - v / mx) * (H - T - B);
+  const line = k => P.map((p, i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p[k]).toFixed(1)).join(' ');
+  // the band, piece by piece, green where worth >= capital, red where below
+  let band = '';
+  for(let i = 1; i < P.length; i++){ const a = P[i - 1], b = P[i], up = (a.v + b.v) >= (a.c + b.c);
+    band += '<path d="M' + x(a.t).toFixed(1) + ' ' + y(a.v).toFixed(1) + ' L' + x(b.t).toFixed(1) + ' ' + y(b.v).toFixed(1) + ' L' + x(b.t).toFixed(1) + ' ' + y(b.c).toFixed(1) + ' L' + x(a.t).toFixed(1) + ' ' + y(a.c).toFixed(1) + 'Z" fill="' + (up ? 'rgba(53,224,122,.22)' : 'rgba(255,77,109,.22)') + '"/>'; }
+  const ticks = [0, .5, 1].map(f => { const v = mx * f; return '<text x="' + (L - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end">' + v.toFixed(1) + '</text><line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="rgba(255,255,255,.06)"/>'; }).join('');
+  const d = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const last = P[P.length - 1], pc = (last.v / last.c - 1) * 100;
+  box.innerHTML = '<div class="lpc-h"><b>Worth vs put in, every run since ' + d(t0) + '</b><span><i class="lpc-v"></i>worth <i class="lpc-c"></i>put in (steps at each deposit)</span></div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Position worth against capital put in, ' + P.length + ' runs; now ' + last.v.toFixed(3) + ' of ' + last.c.toFixed(3) + ' BNB">'
+    + ticks + band + '<path d="' + line('c') + '" fill="none" stroke="#a0a2c0" stroke-width="1.6" stroke-dasharray="4 3"/><path d="' + line('v') + '" fill="none" stroke="#f0b90b" stroke-width="2"/>'
+    + '<text x="' + L + '" y="' + (H - 6) + '">' + d(t0) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + d(t1) + '</text></svg>'
+    + '<p class="agt-note">At the last run (' + new Date(last.t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC) the position alone was worth <b>' + last.v.toFixed(4) + ' BNB</b> of <b>' + last.c.toFixed(4) + ' BNB</b> put in: <b style="color:' + (pc >= 0 ? '#35e07a' : '#ff4d6d') + '">' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%</b>. The portfolio above is the same money now, and it also counts the $BOBAI bought from fees and the fees owed, so its result differs.</p>';
+  box.hidden = false;
+}
 // The series: one row per run of the DeFi agent, from /lp/series. The
 // summary line answers the question first; the table is the evidence.
 function fillLpSeries(){
@@ -1242,6 +1268,7 @@ function fillLpSeries(){
       // a failed fetch is not an empty series (2026-10-05): only a real answer with no points says "no run yet"
       if(!d){ sum.innerHTML = 'The series did not answer just now. The record: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.'; return; }
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
+      lpCurve(pts);
       // One line, not the portfolio again: the portfolio above already says
       // what went in and what came out. The table is the evidence.
       sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "position vs capital" is the position alone against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain. The Result above adds what the position produced beside itself (the $BOBAI bought from fees, fees still owed) and takes off the gas, so the two differ.';

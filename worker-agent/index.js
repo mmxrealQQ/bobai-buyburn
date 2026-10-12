@@ -100,7 +100,8 @@ import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from '.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
 import { runPulseTick, readPulse } from './pulse.js';
 import { agentChart, agentRank } from './chart.js';
-import { houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
+import { addAgentWatch, removeAgentWatch } from './agent-watch.js';
+import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -1986,6 +1987,11 @@ export default {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);
     }
+    if (path === '/agent-watch') {
+      if (request.method === 'POST') { const r = await addAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
+      if (request.method === 'DELETE') { const r = await removeAgentWatch(env, await request.json().catch(() => ({}))); return json(r.body, r.status); }
+      return json({ what: 'An alarm when an agent you rely on goes down, and when it is back. Free, any agent on BNB Chain, webhook only.', usage: 'POST /agent-watch {"agent":"302257","callback":"https://your.server/hook"} — the callback receives {agent, state: "down"|"up", at, was, since, chart} on every change; DELETE with the same body to stop.', checked: 'every agent once a day (the pulse); a listed agent every hour' }, 200);
+    }
     if (path === '/chart/rank') { const r = await agentRank(env, url.searchParams.get('category'), url.searchParams.get('limit')); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=300' }); }
     if (path.startsWith('/chart/')) { const r = await agentChart(env, path.slice(7)); return json(r.body, r.status, { 'Cache-Control': 'public, max-age=120' }); }
     if (path.startsWith('/pulse/')) {
@@ -3155,6 +3161,8 @@ ${pageTail}`;
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
     // THE PULSE (pulse.js, agent chart phase 1): the next agents of the census index, each once a day, kept 90 days
     ctx.waitUntil(runPulseTick(env).catch(() => {}));
+    // Listed agents every hour (agent-watch alarms within the hour), on the tick at minute 0
+    if (new Date(event.scheduledTime || Date.now()).getUTCMinutes() < 5) ctx.waitUntil(runListedLive(env).catch(() => {}));
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));

@@ -31,6 +31,7 @@ import { recoverMessageAddress } from 'viem';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { RPCS } from '../shared/lp-agent.js';
+import { noteAgentState } from './agent-watch.js';
 
 export const LISTING_USD = 95;
 export const PAYEE = '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c'; // the operator's wallet (operator, 2026-10-12)
@@ -287,4 +288,21 @@ ${r.description ? `<div class="c"><p style="margin:0">${h(r.description)}</p></d
 <dt>On-chain</dt><dd><a href="https://8004scan.io/agents/bsc/${h(r.id)}">8004scan</a> · <a href="https://bscscan.com/token/${REGISTRY}?a=${h(r.id)}">registry</a></dd></dl></div>
 <p class="m">A listing is paid once and shows this page, the badge and a "Featured (paid)" slot at the top of its category on Brain Plaza. It never buys a place in the list below: that order is the evidence — who answers, who quotes, who has been paid. <a href="https://brainonbnb.com/list">List your agent</a></p>
 </main></body></html>`;
+}
+
+// THE LISTED ONES, EVERY HOUR (agent chart phase 4): a listed agent is asked once an hour (A2A message/send or MCP
+// initialize, as at listing), its profile shows the result, and a change from up to down or back alerts its watchers
+// within the hour. The badge itself still follows the daily rule (three silent days).
+export async function runListedLive(env) {
+  const ids = JSON.parse((await env.AGENT.get('listings')) || '[]'); const out = [];
+  for (const id of ids) {
+    const r = await readListing(env, id); if (!r || r.status === 'removed') continue;
+    const reg = await registrationOf(Number(id)).catch(() => null);
+    const ans = reg ? await answers(id, reg).catch(() => ({ ok: false })) : { ok: false };
+    r.live = { ok: !!ans.ok, at: new Date().toISOString() };
+    await env.AGENT.put(`listing:${id}`, JSON.stringify(r));
+    await noteAgentState(env, id, !!ans.ok, 'hourly check (listed)').catch(() => null);
+    out.push([id, !!ans.ok]);
+  }
+  return { checked: out };
 }

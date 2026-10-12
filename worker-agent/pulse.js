@@ -17,6 +17,8 @@
 // 90 days; `pulse:cursor` = where the round stands. GET /pulse/<id> serves one
 // agent's series with its 7- and 30-day uptime and median response time.
 
+import { noteAgentState } from './agent-watch.js';
+
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 export const PULSE_PER_TICK = 11;   // 96 ticks a day x 11 = 1,056 >= the ~950 in the index
 const KEEP_DAYS = 90;
@@ -85,6 +87,7 @@ export async function runPulseTick(env, n = PULSE_PER_TICK) {
     const s = JSON.parse((await env.AGENT.get(key)) || '[]').filter((x) => x[0] !== today);
     s.push([today, p.ok, p.ms, p.via]);
     await env.AGENT.put(key, JSON.stringify(s.slice(-KEEP_DAYS)));
+    await noteAgentState(env, a.id, !!p.ok, 'daily pulse').catch(() => null); // agent-watch.js: an alarm on a change
   }
   await env.AGENT.put('pulse:cursor', String((cur + batch.length) % list.length));
   return { asked: res.map(([a, p]) => [a.id, p.ok, p.ms, p.via]) };

@@ -79,6 +79,9 @@ export async function agentChart(env, idRaw) {
     jobs: jobs ? { provider: jobs.provider, attributed_by: jobs.attributed_by, totals: jobs.totals, by_day: jobs.by_day || [], trades: jobs.trades } : null,
     shared_provider: shared ? { address: jobs.shared_provider, agents: shared.agents, totals: shared.totals, note: shared.note } : null,
     ratings, raters: r?.raters || 0,
+    // its state as our last check found it, and how to be told when it changes (agent-watch.js)
+    state: JSON.parse((await env.AGENT.get(`agentstate:${id}`)) || 'null'),
+    watch: { how: 'POST https://agent.brainonbnb.com/agent-watch {"agent":"' + id + '","callback":"https://your.server/hook"}', sends: '{agent, state: "down"|"up", at, was, since, chart} on every change', checked: listed ? 'every hour (listed) and once a day' : 'once a day' },
     evidence: evidenceScore({ pulse, jobs, quote: pz?.quote }),
     sources: {
       registration: 'ERC-8004 identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (BNB Smart Chain)',

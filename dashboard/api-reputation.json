@@ -3,22 +3,22 @@
   "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
   "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-09-27T05:07:58.216Z",
+  "measured_at": "2026-10-12T04:11:41.426Z",
   "population": {
-    "asked": 909,
+    "asked": 948,
     "source": "every agent that answered in the last scan, plus everything hireable here"
   },
   "rated": {
-    "agents": 366,
-    "attestations": 20819,
-    "distinct_raters": 70,
-    "unreadable": 0
+    "agents": 373,
+    "attestations": 20777,
+    "distinct_raters": 76,
+    "unreadable": 1
   },
   "raters": [
     {
       "address": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "attestations": 1294,
-      "agents": 138,
+      "attestations": 1282,
+      "agents": 137,
       "tags": [
         "personality",
         "knowledge",
@@ -30,8 +30,8 @@
     },
     {
       "address": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "attestations": 1166,
-      "agents": 143,
+      "attestations": 1160,
+      "agents": 142,
       "tags": [
         "personality",
         "knowledge",
@@ -43,8 +43,8 @@
     },
     {
       "address": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "attestations": 1133,
-      "agents": 133,
+      "attestations": 1121,
+      "agents": 132,
       "tags": [
         "personality",
         "knowledge",
@@ -69,8 +69,8 @@
     },
     {
       "address": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "attestations": 1101,
-      "agents": 141,
+      "attestations": 1095,
+      "agents": 140,
       "tags": [
         "personality",
         "knowledge",
@@ -82,8 +82,8 @@
     },
     {
       "address": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "attestations": 1089,
-      "agents": 140,
+      "attestations": 1083,
+      "agents": 139,
       "tags": [
         "timeline",
         "knowledge",
@@ -95,8 +95,8 @@
     },
     {
       "address": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-      "attestations": 1087,
-      "agents": 136,
+      "attestations": 1081,
+      "agents": 135,
       "tags": [
         "personality",
         "knowledge",
@@ -108,8 +108,8 @@
     },
     {
       "address": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "attestations": 1071,
-      "agents": 136,
+      "attestations": 1065,
+      "agents": 135,
       "tags": [
         "personality",
         "stance",
@@ -121,8 +121,8 @@
     },
     {
       "address": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-      "attestations": 1065,
-      "agents": 141,
+      "attestations": 1059,
+      "agents": 140,
       "tags": [
         "personality",
         "stance",
@@ -134,8 +134,8 @@
     },
     {
       "address": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-      "attestations": 1059,
-      "agents": 132,
+      "attestations": 1044,
+      "agents": 131,
       "tags": [
         "personality",
         "knowledge",
@@ -147,8 +147,8 @@
     },
     {
       "address": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "attestations": 1046,
-      "agents": 138,
+      "attestations": 1040,
+      "agents": 137,
       "tags": [
         "personality",
         "knowledge",
@@ -173,8 +173,8 @@
     },
     {
       "address": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-      "attestations": 1024,
-      "agents": 132,
+      "attestations": 1018,
+      "agents": 131,
       "tags": [
         "personality",
         "knowledge",
@@ -212,8 +212,8 @@
     },
     {
       "address": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "attestations": 858,
-      "agents": 120,
+      "attestations": 852,
+      "agents": 119,
       "tags": [
         "personality",
         "knowledge",
@@ -224,22 +224,9 @@
       ]
     },
     {
-      "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "attestations": 842,
-      "agents": 117,
-      "tags": [
-        "personality",
-        "timeline",
-        "knowledge",
-        "stance",
-        "style",
-        "relationship"
-      ]
-    },
-    {
       "address": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-      "attestations": 835,
-      "agents": 121,
+      "attestations": 829,
+      "agents": 120,
       "tags": [
         "timeline",
         "knowledge",
@@ -247,6 +234,19 @@
         "personality",
         "stance",
         "style"
+      ]
+    },
+    {
+      "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "attestations": 824,
+      "agents": 116,
+      "tags": [
+        "personality",
+        "timeline",
+        "knowledge",
+        "stance",
+        "style",
+        "relationship"
       ]
     },
     {
@@ -406,6 +406,14 @@
       ]
     },
     {
+      "address": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+      "attestations": 47,
+      "agents": 2,
+      "tags": [
+        "signal-accuracy"
+      ]
+    },
+    {
       "address": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
       "attestations": 45,
       "agents": 37,
@@ -453,6 +461,22 @@
       ]
     },
     {
+      "address": "0xD1911E8cC7f1cA2f0b080Db89962EA1c069641f4",
+      "attestations": 12,
+      "agents": 1,
+      "tags": [
+        "erc8183-delivery"
+      ]
+    },
+    {
+      "address": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "attestations": 9,
+      "agents": 6,
+      "tags": [
+        "starred"
+      ]
+    },
+    {
       "address": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
       "attestations": 6,
       "agents": 5,
@@ -486,6 +510,14 @@
     },
     {
       "address": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "attestations": 4,
+      "agents": 4,
+      "tags": [
+        "starred"
+      ]
+    },
+    {
+      "address": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
       "attestations": 4,
       "agents": 4,
       "tags": [
@@ -624,6 +656,14 @@
       ]
     },
     {
+      "address": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+      "attestations": 2,
+      "agents": 2,
+      "tags": [
+        "starred"
+      ]
+    },
+    {
       "address": "0x15C06E9FFaF31475B14BcAE407edE0f4517279d1",
       "attestations": 1,
       "agents": 1,
@@ -733,6 +773,14 @@
       "agents": 1,
       "tags": [
         "rebalancing"
+      ]
+    },
+    {
+      "address": "0x1049E94c5Bc186f0495C5c04EAe80FD0eaFCBcD8",
+      "attestations": 1,
+      "agents": 1,
+      "tags": [
+        "ballast-guard"
       ]
     }
   ],
@@ -52807,614 +52855,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 44707,
-      "name": "@fls_otc · Ensoul",
-      "raters": 14,
-      "latest": {
-        "timeline": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 18
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          }
-        ],
-        "relationship": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 15
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 17
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          }
-        ],
-        "knowledge": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 14
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          }
-        ],
-        "style": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 14
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 16
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          }
-        ],
-        "personality": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 13
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          }
-        ],
-        "stance": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 13
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 15
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 6454,
       "name": "@_forab · Ensoul",
       "raters": 19,
@@ -96510,6 +95950,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 365555,
+      "name": "Elitr On-chain Flow Analyst",
+      "raters": 1,
+      "latest": {
+        "signal-accuracy": [
+          {
+            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+            "value": 63,
+            "unit": "",
+            "window": null,
+            "index": 31
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 30871,
       "name": "@cindycreation · Ensoul",
       "raters": 7,
@@ -105188,6 +104645,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 365554,
+      "name": "Elitr News Analyst",
+      "raters": 1,
+      "latest": {
+        "signal-accuracy": [
+          {
+            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+            "value": 13,
+            "unit": "",
+            "window": null,
+            "index": 16
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 2875,
       "name": "@gonchar · Ensoul",
       "raters": 9,
@@ -105728,6 +105202,23 @@
             "unit": "",
             "window": "fragment",
             "index": 6
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 369195,
+      "name": "4lpha bStock Desk",
+      "raters": 1,
+      "latest": {
+        "erc8183-delivery": [
+          {
+            "client": "0xD1911E8cC7f1cA2f0b080Db89962EA1c069641f4",
+            "value": 100,
+            "unit": "",
+            "window": "stock_report",
+            "index": 12
           }
         ]
       },
@@ -106524,68 +106015,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 61497,
-      "name": "@verifytest2 · Ensoul",
-      "raters": 1,
-      "latest": {
-        "timeline": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 72,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          }
-        ],
-        "personality": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 74,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          }
-        ],
-        "knowledge": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 68,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          }
-        ],
-        "stance": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          }
-        ],
-        "style": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 65,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          }
-        ],
-        "relationship": [
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 71,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 61503,
       "name": "@verifytest3 · Ensoul",
       "raters": 1,
@@ -106639,6 +106068,68 @@
           {
             "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
             "value": 78,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 61497,
+      "name": "@verifytest2 · Ensoul",
+      "raters": 1,
+      "latest": {
+        "timeline": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 72,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          }
+        ],
+        "personality": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 74,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          }
+        ],
+        "knowledge": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 68,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          }
+        ],
+        "stance": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          }
+        ],
+        "style": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 65,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          }
+        ],
+        "relationship": [
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 71,
             "unit": "",
             "window": "fragment",
             "index": 6
@@ -106726,6 +106217,96 @@
         ]
       },
       "rated_by_this_marketplace": true
+    },
+    {
+      "id": 341553,
+      "name": "Bound",
+      "raters": 5,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 341554,
+      "name": "Lattice",
+      "raters": 5,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 80,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
     },
     {
       "id": 2538,
@@ -107004,6 +106585,96 @@
             "unit": "ms",
             "window": "9d",
             "index": 5
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 341556,
+      "name": "Keel",
+      "raters": 5,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 80,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 60,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 341555,
+      "name": "Sluicegate",
+      "raters": 5,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
           }
         ]
       },
@@ -107555,130 +107226,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 341553,
-      "name": "Bound",
-      "raters": 3,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:rebalancing",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:rebalancing",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 100,
-            "unit": "",
-            "window": "marque:rebalancing",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 341556,
-      "name": "Keel",
-      "raters": 3,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 60,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 341554,
-      "name": "Lattice",
-      "raters": 3,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 80,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 341555,
-      "name": "Sluicegate",
-      "raters": 3,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 1,
       "name": "ClawNews",
       "raters": 1,
@@ -107817,8 +107364,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 151859,
-      "name": "RadiantWarden",
+      "id": 151847,
+      "name": "Stable (Testing)",
       "raters": 1,
       "latest": {
         "reachable": [
@@ -107843,8 +107390,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 151847,
-      "name": "Stable (Testing)",
+      "id": 151859,
+      "name": "RadiantWarden",
       "raters": 1,
       "latest": {
         "reachable": [
@@ -107921,23 +107468,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 172459,
-      "name": "Bit Monk",
-      "raters": 1,
-      "latest": {
-        "uptime": [
-          {
-            "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
-            "value": 100,
-            "unit": "%",
-            "window": "7d",
-            "index": 2
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 198999,
       "name": "bubbleai",
       "raters": 1,
@@ -107958,6 +107488,57 @@
             "unit": "",
             "window": "hallmark",
             "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 172459,
+      "name": "Bit Monk",
+      "raters": 1,
+      "latest": {
+        "uptime": [
+          {
+            "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
+            "value": 100,
+            "unit": "%",
+            "window": "7d",
+            "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 341557,
+      "name": "Redcell",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:security",
+            "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 14,
+      "name": "BTCAI",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
           }
         ]
       },
@@ -107998,42 +107579,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 14,
-      "name": "BTCAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 16,
-      "name": "AGENTAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 18,
-      "name": "TIMEAI",
+      "id": 17,
+      "name": "BIGAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108066,8 +107613,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 17,
-      "name": "BIGAI",
+      "id": 18,
+      "name": "TIMEAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108083,8 +107630,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 22,
-      "name": "DAAI",
+      "id": 16,
+      "name": "AGENTAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108102,6 +107649,23 @@
     {
       "id": 90,
       "name": "oai",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 22,
+      "name": "DAAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108253,6 +107817,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 111,
+      "name": "NexuMind",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 124,
       "name": "ANAAI",
       "raters": 1,
@@ -108270,8 +107851,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 111,
-      "name": "NexuMind",
+      "id": 126,
+      "name": "SCANAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108321,8 +107902,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 126,
-      "name": "SCANAI",
+      "id": 129,
+      "name": "AGENTSAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108372,59 +107953,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 129,
-      "name": "AGENTSAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 131,
       "name": "AgentLISA",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 252,
-      "name": "UUUAI4",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 253,
-      "name": "UUUAI3",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108457,8 +107987,42 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 252,
+      "name": "UUUAI4",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 254,
       "name": "Ninja",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 253,
+      "name": "UUUAI3",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108722,6 +108286,74 @@
             "value": 100,
             "unit": "",
             "window": "mandatemarkets",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 358786,
+      "name": "Tidemark",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 365842,
+      "name": "Agentic Portfolio Agent 1 by 4LPHA",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+            "value": 100,
+            "unit": "",
+            "window": null,
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 368122,
+      "name": "Ballast Risk Desk",
+      "raters": 1,
+      "latest": {
+        "ballast-guard": [
+          {
+            "client": "0x1049E94c5Bc186f0495C5c04EAe80FD0eaFCBcD8",
+            "value": 100,
+            "unit": "",
+            "window": "window",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 368707,
+      "name": "Agentic DCA Agent 2 by 4LPHA",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+            "value": 100,
+            "unit": "",
+            "window": null,
             "index": 1
           }
         ]

@@ -191,6 +191,12 @@
       "ours": false
     },
     {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -199,12 +205,6 @@
     {
       "id": 269226,
       "label": "Yield Allocator",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 358786,
-      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },

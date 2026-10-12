@@ -665,8 +665,10 @@ const OUR_RATER = String((() => {
 const isOurs = (client) => !!OUR_RATER && String(client).toLowerCase() === OUR_RATER;
 // One rendered measurement, with the rater attached. Two parties measuring the
 // same agent is the whole reason to read this registry, so both are printed.
-const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? (/^\d+\s*(m|min|h|d|w|mo|y)\w*$/i.test(String(v.window).trim()) ? ` over ${esc(v.window)}` : ` (${esc(v.window)})`) : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : ''}`;
-const METRIC_LABEL = { uptime: 'uptime', responseTime: 'response', liveness: 'liveness' };
+const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[String(tag).toLowerCase()] || tag)}${v.window ? (/^\d+\s*(m|min|h|d|w|mo|y)\w*$/i.test(String(v.window).trim()) ? ` over ${esc(v.window)}` : ` (${esc(v.window)})`) : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : v.client ? ` <span class="rg-repby">(by ${esc(String(v.client).slice(0, 6))}…${esc(String(v.client).slice(-4))})</span>` : ''}`;
+// Keys lower-case: tags arrive as "responseTime" and "responsetime" (2026-10-12: a
+// row printed "236ms response over 7d · 6000ms responsetime").
+const METRIC_LABEL = { uptime: 'uptime', responsetime: 'response', latency: 'latency', liveness: 'liveness' };
 const OPERATIONAL_TAGS = new Set(['uptime', 'responsetime', 'latency', 'liveness']);
 
 // WHAT GOES ON A ROW, AND WHAT DOES NOT.
@@ -1013,7 +1015,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
         chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}${e.funded_buyers ? ` &middot; ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
-        facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`);
+        facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
         facts.push('<li>Never been hired through the escrow</li>');
@@ -1784,7 +1786,7 @@ ${categorySections}
         <div class="rg-card"><div class="rg-n">${fmt(deployments.singles)}</div><div class="rg-l">hosts with one id</div><div class="rg-s">the honest long tail</div></div>
       </div>
 
-      ${deployments.biggestFleet && deployments.biggestFleet.topN > 1 ? `<p class="rg-note" style="margin:14px 0 0">The largest single fleet: <b>${fmt(deployments.biggestFleet.topN)} registry ids on ${esc(deployments.biggestFleet.host)}</b>, under ${fmt(deployments.biggestFleet.names)} different names, every one exposing the same five tools. Counted as ${fmt(deployments.biggestFleet.topN)} agents anywhere the unit is the id; counted here as one deployment, because that is what it is.</p>` : ''}
+      ${deployments.biggestFleet && deployments.biggestFleet.topN > 1 ? `<p class="rg-note" style="margin:14px 0 0">The largest fleet with one tool list: <b>${fmt(deployments.biggestFleet.topN)}${deployments.biggestFleet.ids > deployments.biggestFleet.topN ? ` of the ${fmt(deployments.biggestFleet.ids)}` : ''} registry ids on ${esc(deployments.biggestFleet.host)}</b>, under ${fmt(deployments.biggestFleet.names)} different names, every one exposing the same tools character for character. Counted as ${fmt(deployments.biggestFleet.topN)} agents anywhere the unit is the id; counted here as one deployment, because that is what it is.</p>` : ''}
 
       <div class="rg-tablebox" style="margin-top:16px"><div class="rg-scroll"><table class="rg"><thead><tr><th>Deployment</th><th>Registry ids</th><th>Names</th><th>What they have in common</th></tr></thead><tbody>
 ${deployments.rows.slice(0, 40).map((d) => `        <tr>

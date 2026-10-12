@@ -41,12 +41,20 @@ const viaMarque = hires.filter((h) => h.marque).length;
 const agentsHired = new Set([...hires.map((h) => h.agent?.agentId), ...(mdq.agentsHired || []).map((a) => a.agentId)].filter(Boolean));
 line(agentsHired.size >= 3, 'hire: 3 different agents', `${agentsHired.size} (${[...agentsHired].join(', ')})`);
 line(viaMarque >= 1 && (mdq.here?.hires || 0) >= 1, 'hire: on 2 marketplaces', `Marque ${viaMarque} own-flow, Mandate ${mdq.here?.hires || 0}`);
-const qual = (await get(`https://www.mandatemarkets.com/api/v1/qualify/${DEFI}`))?.data;
-for (const c of qual?.checks || []) line(c.state === 'pass', `build (Mandate's mirror of BNB's six): ${c.id}`, c.detail.slice(0, 150));
+// Mandate reads the chain after the first call and answers "Reading …" until
+// it is done (2026-10-12: executes/fits printed OPEN on every first run), so
+// ask again for up to a minute before taking its verdict.
+const stillReading = (q) => !q || q.reading || (q.checks || []).some((c) => c.state === 'unknown' && /…$/.test(c.detail || ''));
+let qual = (await get(`https://www.mandatemarkets.com/api/v1/qualify/${DEFI}`))?.data;
+for (let i = 0; i < 6 && stillReading(qual); i++) {
+  await new Promise((r) => setTimeout(r, 10000));
+  qual = (await get(`https://www.mandatemarkets.com/api/v1/qualify/${DEFI}`))?.data || qual;
+}
+for (const c of qual?.checks || []) line(c.state === 'pass', `build (Mandate's mirror of BNB's six): ${c.id}`, c.detail.slice(0, 150) + (c.state === 'unknown' ? ' (Mandate could not read it — its side, not a fail)' : ''));
 if (qual && !(qual.wallets || []).map((w) => w.toLowerCase()).includes(CAMPAIGN.toLowerCase())) todo.push(`Mandate still reads #${DEFI}'s wallets as ${qual.wallets.join(', ')} — refresh: curl -X POST ${'https://www.mandatemarkets.com/api/v1/list'} -d '{"tokenId":"${DEFI}"}'`);
 const hiredCheck = qual?.checks?.find((c) => c.id === 'hired');
 if (hiredCheck && hiredCheck.state !== 'pass') todo.push('3 completed hires of #363709 from outside wallets (not funded by us) — the operator decides how to ask; no TG post (4.10.)');
-line(false, 'registration form submitted', 'not machine-checkable — confirm with the operator once: https://forms.gle/jzTajVNZEgukeoYT9');
+line(true, 'registration form submitted', 'by the operator on 2026-10-09 (Google showed the thank-you page) — not machine-checkable');
 
 head('Marketplace listings of our agents');
 const mdRungs = {};

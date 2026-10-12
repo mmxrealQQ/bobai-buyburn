@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 49 files, 17460 lines.
+# one fetch. 49 files, 17474 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5388,7 +5388,12 @@ export async function handleFind(url) {
   // by the agent, written into its registration, or matched by us — because a
   // filter that hides the difference is a filter that turns a keyword into a
   // credential.
-  const wantCategory = (url.searchParams.get('category') || '').trim().toLowerCase() || null;
+  // Our own cards and registrations say "health-factor-monitoring" (and the
+  // track's spellings vary), so those name the same category (2026-10-12: an
+  // agent copying the category from our card was told it does not exist).
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', 'yield-optimisation': 'yield-optimization', yield: 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const rawCategory = (url.searchParams.get('category') || '').trim().toLowerCase().replace(/[\s_]+/g, '-') || null;
+  const wantCategory = rawCategory ? (ALIAS[rawCategory] || rawCategory) : null;
   if (wantCategory && !CATEGORY_IDS.includes(wantCategory)) {
     return { status: 400, body: {
       error: `unknown category "${wantCategory}"`,
@@ -8432,7 +8437,7 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain on BNB — DeFi Agent',
-        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and when the price leaves the range it re-sets it one-sided beside the price without a swap, in the width that ended the most ahead against simply holding when every width was replayed over the last week. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with one swap back to the range’s mix — wide, because every re-set locks in what the range lost against holding, and on the recorded prices ±20% came out ahead of narrower ranges and of simply holding. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
         url: `${SELF_ORIGIN}/defi-agent/a2a`,
         preferredTransport: 'JSONRPC',
         version: '1.0.0',
@@ -9095,10 +9100,10 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the one that ended the most ahead against holding over the last week in that replay, fees included — what the liquidity earned plus where it ended against a wallet that held the minted amounts, the line the card judges the agent by; the width in use is kept unless another leads it by a tenth of its own score. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; ${env.LP_RESET_MODE === 'centred' && Number(env.LP_WIDTH_PCT) > 0 ? `the widths are then replayed over every recorded price the way the agent lives them since 2026-10-07: a range the price has left is re-set centred on the price with one swap back to the range's mix, after the agent's own wait, charged its measured cost and what the old range had lost against holding. <b>Every re-set mints ±${h(env.LP_WIDTH_PCT)}%</b>, a fixed width chosen on the recorded prices because each re-set locks that loss in; the pick below is what the replay would choose on its own, kept for comparison. Nothing here is a forecast.` : `the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the one that ended the most ahead against holding over the last week in that replay, fees included — what the liquidity earned plus where it ended against a wallet that held the minted amounts, the line the card judges the agent by; the width in use is kept unless another leads it by a tenth of its own score. Nothing here is a forecast.`}</p>
 <h2>The pick</h2>
 <div class="card"><dl>
-<dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} one-sided re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
+<dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} ${env.LP_RESET_MODE === 'centred' ? 'centred' : 'one-sided'} re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
 <dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs 120 h of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, v.reset_cost && Number(v.reset_cost.usd) > 0 && Number(v.reset_cost.usd) < 0.01 ? 4 : 2))} per $50 — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
 <dt>Re-sets so far</dt><dd>${v.resets && v.resets.resets ? `${h(v.resets.resets)} on record: <b>${h(f(v.resets.lost_to_price_bnb, 5))} BNB</b> lost to the price against holding by the trades of the centred re-sets (a one-sided re-set, since 2026-09-16, trades nothing and realises nothing)${v.resets.rows[0] && v.resets.rows[0].lost_to_price_usd != null ? ` (≈ $${h(f(v.resets.rows.reduce((a, r) => a + (r.lost_to_price_usd || 0), 0), 2))})` : ''}, ${h(f(v.resets.execution_bnb, 5))} BNB of execution (gas, swap fee${v.resets.impact_measured ? ', impact measured on ' + h(v.resets.impact_measured) : ', impact not yet measured'}) — the table below` : 'none on record yet'}</dd>
@@ -14464,6 +14469,7 @@ export const AGENT_SERVICE = {
 // asked; the honest reply names the agent that does it. Open or matching
 // wording still gets this agent's quote.
 const SLUG_OF = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
+const ownSentence = (s) => `I am ${s.name} on BNB Chain. ${String(s.deliverables).match(/^.*?\.(?=\s|$)/)?.[0] || s.deliverables} Hireable over ERC-8183 for ${s.price_display} with a signed quote (skill negotiate-erc8183-job), or per answer over x402 at https://agent.brainonbnb.com/answer?service=${s.id}.`;
 function misdirected(forced, wanted, data) {
   const guessed = pickService(wanted, data?.service);
   if (!forced || !guessed || guessed.id === forced) return null;
@@ -14503,7 +14509,11 @@ export async function handleA2A(request, env, opts = {}) {
     }
     if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|what can you do|in one sentence/i.test(text)) {
       const sentence = forced === 'lp_position_plan'
-        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
+        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, whether a re-set is due, the new range centred on the price and the token amounts to mint it — the same code that runs our own CAKE/BNB position every day (a wide ±20% range, re-set centred with one swap once the price has stayed outside), hireable over ERC-8183 for 0.10 $U.'
+        // Each agent introduces itself (2026-10-12): all five answered with the
+        // shared catalogue line, so a marketplace asking "what do you do"
+        // could not tell the Venus monitor from the grid planner.
+        : forced ? ownSentence(SERVICES[forced])
         : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
     }
@@ -14546,12 +14556,16 @@ export async function handleA2A(request, env, opts = {}) {
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
+    // On an agent's own endpoint its own service leads (2026-10-12): a "hello"
+    // to the grid planner answered with a list headed "hireable services".
+    const own = forced ? SERVICES[forced] : null;
     return rpcOk(id, flatMessage({
-      agent: 'Brain on BNB — hireable services',
+      agent: own ? `Brain on BNB — ${own.name}` : 'Brain on BNB — hireable services',
+      ...(own ? { this_agent: ownSentence(own), service: own } : {}),
       provider,
       currency: 'U',
       payment: 'ERC-8183 escrow on BNB Chain, kernel ' + ERC8183.commerce,
-      services: Object.values(SERVICES),
+      services: own ? [own, ...Object.values(SERVICES).filter((s) => s !== own)] : Object.values(SERVICES),
       can_sign: !!account,
       how: 'Send skill:"negotiate" with terms.deliverables describing what you need. You get a quote naming this provider address and a price. Fund a job in the kernel against that address, then send skill:"notify_funded" with job_id.',
     }));

@@ -141,7 +141,12 @@ export async function handleFind(url) {
   // by the agent, written into its registration, or matched by us — because a
   // filter that hides the difference is a filter that turns a keyword into a
   // credential.
-  const wantCategory = (url.searchParams.get('category') || '').trim().toLowerCase() || null;
+  // Our own cards and registrations say "health-factor-monitoring" (and the
+  // track's spellings vary), so those name the same category (2026-10-12: an
+  // agent copying the category from our card was told it does not exist).
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', 'yield-optimisation': 'yield-optimization', yield: 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const rawCategory = (url.searchParams.get('category') || '').trim().toLowerCase().replace(/[\s_]+/g, '-') || null;
+  const wantCategory = rawCategory ? (ALIAS[rawCategory] || rawCategory) : null;
   if (wantCategory && !CATEGORY_IDS.includes(wantCategory)) {
     return { status: 400, body: {
       error: `unknown category "${wantCategory}"`,

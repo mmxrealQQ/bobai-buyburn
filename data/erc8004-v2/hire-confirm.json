@@ -1,6 +1,6 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-10T14:20:01.983Z",
+  "measured_at": "2026-10-12T04:13:38.505Z",
   "asked": 58,
   "quoted": 27,
   "agents": [
@@ -315,6 +315,16 @@
       "reason": null
     },
     {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://marque.trade/agents/tidemark/a2a",
+      "reason": null
+    },
+    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -332,16 +342,6 @@
       "quotes": true,
       "price": "0.5 $U",
       "endpoint": "https://agents.chainhelix.io/yieldopt/",
-      "reason": null
-    },
-    {
-      "id": 358786,
-      "label": "Tidemark",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://marque.trade/agents/tidemark/a2a",
       "reason": null
     },
     {

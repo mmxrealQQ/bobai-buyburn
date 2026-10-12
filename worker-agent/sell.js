@@ -438,6 +438,7 @@ export const AGENT_SERVICE = {
 // asked; the honest reply names the agent that does it. Open or matching
 // wording still gets this agent's quote.
 const SLUG_OF = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
+const ownSentence = (s) => `I sell one thing on BNB Chain: ${s.name}. ${String(s.deliverables).match(/^.*?\.(?=\s|$)/)?.[0] || s.deliverables} Hireable over ERC-8183 for ${s.price_display} with a signed quote (skill negotiate-erc8183-job), or per answer over x402 at https://agent.brainonbnb.com/answer?service=${s.id}.`;
 function misdirected(forced, wanted, data) {
   const guessed = pickService(wanted, data?.service);
   if (!forced || !guessed || guessed.id === forced) return null;
@@ -477,7 +478,11 @@ export async function handleA2A(request, env, opts = {}) {
     }
     if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|what can you do|in one sentence/i.test(text)) {
       const sentence = forced === 'lp_position_plan'
-        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, the proposed new ticks and the token amounts to mint them — the same code that runs our own CAKE/BNB position every day, hireable over ERC-8183 for 0.10 $U.'
+        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, whether a re-set is due, the new range centred on the price and the token amounts to mint it — the same code that runs our own CAKE/BNB position every day (a wide ±20% range, re-set centred with one swap once the price has stayed outside), hireable over ERC-8183 for 0.10 $U.'
+        // Each agent introduces itself (2026-10-12): all five answered with the
+        // shared catalogue line, so a marketplace asking "what do you do"
+        // could not tell the Venus monitor from the grid planner.
+        : forced ? ownSentence(SERVICES[forced])
         : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
     }
@@ -520,12 +525,16 @@ export async function handleA2A(request, env, opts = {}) {
 
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
+    // On an agent's own endpoint its own service leads (2026-10-12): a "hello"
+    // to the grid planner answered with a list headed "hireable services".
+    const own = forced ? SERVICES[forced] : null;
     return rpcOk(id, flatMessage({
-      agent: 'Brain on BNB — hireable services',
+      agent: own ? `Brain on BNB — ${own.name}` : 'Brain on BNB — hireable services',
+      ...(own ? { this_agent: ownSentence(own), service: own } : {}),
       provider,
       currency: 'U',
       payment: 'ERC-8183 escrow on BNB Chain, kernel ' + ERC8183.commerce,
-      services: Object.values(SERVICES),
+      services: own ? [own, ...Object.values(SERVICES).filter((s) => s !== own)] : Object.values(SERVICES),
       can_sign: !!account,
       how: 'Send skill:"negotiate" with terms.deliverables describing what you need. You get a quote naming this provider address and a price. Fund a job in the kernel against that address, then send skill:"notify_funded" with job_id.',
     }));

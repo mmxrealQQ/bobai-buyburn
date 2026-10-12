@@ -139,6 +139,7 @@
       + (n ? `<p class="cx01-n">Next split: ${n.ready ? `$${n.usd.toFixed(2)} in BNB is ready; the bot splits it ${n.mins == null ? 'on its next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}.` : `$${n.usd.toFixed(2)} of tax is charging in the token, ${n.pct.toFixed(1)}% of the ${cmp(NUMS().chain.minDispatch)} $BOBAI at which it is sent on.`} Dollars at today’s BNB price.</p>` : '');
   }
   new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
+  new MutationObserver(() => { const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }).observe(document.getElementById('w03') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   window.__card02 = { next: () => next02(), where: () => split7 };
 
   // 03 PROOF: BOBAI burned per day, 14 days (the burn log the homepage already read; read here when it has not)
@@ -147,11 +148,50 @@
   let burnsOwn = null, burnsAsked = false, burnsTimer = 0; const burnsT0 = performance.now();
   function draw03() {
     const el = viz('03'), b = NUMS().burns || burnsOwn; if (!el) return; if (!Array.isArray(b)) { if (!burnsAsked && performance.now() < burnsT0 + 10e3) { clearTimeout(burnsTimer); burnsTimer = setTimeout(draw03, 800); return; } if (!burnsAsked) { burnsAsked = true; fetch('/logs/burns.json').then((r) => r.json()).then((j) => { burnsOwn = j; draw03(); }).catch(() => {}); } return; }
-    const day = (t) => Math.floor(t / 86400e3), today = day(Date.now()), v = new Array(14).fill(0);
-    for (const e of b) { const i = 13 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 14) v[i] += +e.bobaiBurned || 0; }
+    const day = (t) => Math.floor(t / 86400e3), today = day(Date.now()), v = new Array(14).fill(0), runs = new Array(14).fill(0);
+    for (const e of b) { const i = 13 - (today - day(Date.parse(e.time))); if (i >= 0 && i < 14 && +e.bobaiBurned > 0) { v[i] += +e.bobaiBurned; runs[i]++; } }
+    days03 = { v, runs, today };
     const c = canvasIn(el, Math.max(40, Math.min(130, el.clientHeight - 6))); if (!c) return; const { g, w, h } = c, mx = Math.max(...v) || 1, bw = w / 14; // as tall as the card allows
-    v.forEach((x, i) => { const bh = x ? Math.max(2, x / mx * (h - 2)) : 1; g.fillStyle = x ? (i === 13 ? '#ffd28a' : '#ff7a3d') : 'rgba(255,255,255,.1)'; if (x) { g.shadowColor = '#ff7a3d'; g.shadowBlur = 6; } g.fillRect(i * bw + 1.5, h - bh, bw - 3, bh); g.shadowBlur = 0; });
+    v.forEach((x, i) => { const bh = x ? Math.max(2, x / mx * (h - 2)) : 1, on = i === sel03; g.fillStyle = on ? '#fff3d6' : x ? (i === 13 ? '#ffd28a' : '#ff7a3d') : 'rgba(255,255,255,.1)'; if (x) { g.shadowColor = on ? '#ffd28a' : '#ff7a3d'; g.shadowBlur = on ? 12 : 6; } g.fillRect(i * bw + 1.5, h - bh, bw - 3, bh); g.shadowBlur = 0; });
+    if (!el.dataset.tap) { el.dataset.tap = 1; tap03(el); }
   }
+  // 03's BARS TELL THEIR DAY (operator, 2026-10-12: "bars to tap"): hover on a desktop, a tap on a phone — that day's
+  // burned $BOBAI, in how many runs, in dollars at the pool's price now; a tap on a bar does not open the window (a tap
+  // anywhere else on the card still does). The card's line comes back 6 s after the last look.
+  let days03 = null, sel03 = -1, sel03T = 0;
+  function show03(i) {
+    const l = $('[data-open="w03"] .bw-l'); if (!l || !days03) return;
+    if (!l.dataset.base) l.dataset.base = l.textContent;
+    clearTimeout(sel03T);
+    if (i < 0) { sel03 = -1; l.textContent = l.dataset.base; l.classList.remove('bar-day'); draw03(); return; }
+    sel03 = i; const x = days03.v[i], n = days03.runs[i], p = NUMS().chain?.priceUsd;
+    const d = new Date((days03.today - (13 - i)) * 86400e3).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    l.textContent = x ? `${i === 13 ? 'Today' : d}: ${cmp(x)} $BOBAI burned${p > 0 ? ` ≈$${cmp(x * p)}` : ''} · ${n} run${n === 1 ? '' : 's'}` : `${i === 13 ? 'Today' : d}: no burn by the bot`;
+    l.classList.add('bar-day'); draw03(); sel03T = setTimeout(() => show03(-1), 6000);
+  }
+  function tap03(el) {
+    const at = (e) => { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(13, Math.floor((e.clientX - r.left) / r.width * 14))); };
+    el.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') { const i = at(e); if (i !== sel03) show03(i); } });
+    el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { clearTimeout(sel03T); sel03T = setTimeout(() => show03(-1), 600); } });
+    el.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); show03(at(e)); });
+  }
+  window.__card03 = { show: (i) => show03(i), days: () => days03 };
+
+  // 03's WINDOW: CHECK IT YOURSELF (operator, 2026-10-12): the dead address's $BOBAI as the chain says it right now (the
+  // page's own 30-second read), and the bot's last burns, each with its transaction — believe nobody, look it up
+  function proof03() {
+    const body = $('#w03 .bw-body'); if (!body) return;
+    let box = $('#w03 .cx03');
+    if (!box) { box = document.createElement('div'); box.className = 'cx02 cx03'; box.dataset.nousd = '1'; body.insertAdjacentElement('afterbegin', box); }
+    const c = NUMS().chain, b = NUMS().burns || burnsOwn, p = c?.priceUsd;
+    const L = Array.isArray(b) ? b.filter((e) => +e.bobaiBurned > 0 && e.bobaiBurnTx).slice(-10).reverse() : [];
+    const dead = 'https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0x000000000000000000000000000000000000dEaD';
+    const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
+    box.innerHTML = `<h4>Check it yourself</h4>`
+      + (c?.bobaiDead ? `<p class="cx02-s">At the dead address right now: <b style="color:#f3efe6">${c.bobaiDead.toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</b>${p > 0 ? ` ≈$${cmp(c.bobaiDead * p)}` : ''} — read from BNB Chain ${Math.max(1, Math.round((Date.now() - (c.at || Date.now())) / 1000))} s ago. <a href="${dead}" target="_blank" rel="noopener">See it on BscScan ↗</a></p>` : '<p class="cx02-s">Reading the dead address…</p>')
+      + (L.length ? `<p class="cx02-s" style="margin-top:6px">The bot’s last ${L.length} burns — open any of them:</p>` + L.map((e) => `<div class="cx01-r cx02-r"><i style="background:#ff7a3d"></i><span>${when(Date.parse(e.time))}<small>bought with ${(+e.bobaiBurnBnb || 0).toFixed(4)} BNB</small></span><b></b><em>${cmp(+e.bobaiBurned)} $BOBAI${p > 0 ? `<small>≈$${(+e.bobaiBurned * p).toFixed(2)} today</small>` : ''} <a href="https://bscscan.com/tx/${e.bobaiBurnTx}" target="_blank" rel="noopener">tx ↗</a></em></div>`).join('') : '');
+  }
+  window.__card03.proof = () => proof03();
 
   // 04 ECOSYSTEM: the apps inside, as their own icons
   function draw04() {
@@ -201,7 +241,7 @@
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }
-  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }
+  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
   // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both

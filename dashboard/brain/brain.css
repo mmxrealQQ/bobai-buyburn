@@ -439,6 +439,10 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 }
 /* below 740 px the next split shows in 02's window only: ring, parts and figure first */
 @media (max-height:740px) and (min-width:1000px){.bp-side .cv-next{display:none}}
+/* 03 (2026-10-12): the bars answer a look; the window's "check it yourself" */
+[data-open="w03"] .bw-viz canvas{cursor:crosshair}
+[data-open="w03"] .bw-l.bar-day{color:#ffd28a}
+.cx03 a{color:var(--gold,#f0b90b);text-decoration:none}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

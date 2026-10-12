@@ -1817,7 +1817,7 @@ const liveRows = operators
         <div class="rg-head">${logo}<div class="rg-nm"><b>${esc(o.name) || '<i>unnamed</i>'}</b>${tags}</div></div>
         ${desc}${caps}
       </td>
-      <td class="rg-ep"><a href="${esc((o.endpoints || [])[0] || '')}" target="_blank" rel="noopener nofollow">${esc(((o.endpoints || [])[0] || '').replace(/^https?:\/\//i, '').replace(/\/$/, '').slice(0, 46))}</a></td>
+      <td class="rg-ep"><code title="${esc((o.endpoints || [])[0] || '')}">${esc(((o.endpoints || [])[0] || '').replace(/^https?:\/\//i, '').replace(/\/$/, '').slice(0, 46))}</code>${(o.ids || [])[0] ? ` <a href="https://8004scan.io/agents/bsc/${esc(String(o.ids[0]))}" target="_blank" rel="noopener nofollow">8004scan</a>` : ''}</td>
     </tr>`;
   }).join('');
 

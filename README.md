@@ -33,7 +33,7 @@
 |---|---|
 | 📊 **[Live dashboard](https://brainonbnb.com/)** | Price, burns, liquidity, buyback reserve — computed on-chain, every number verifiable |
 | 🔍 **[Pool Scanner](https://brainonbnb.com/scanner)** | Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked or withdrawable |
-| 💧 **[DeFi agent](https://brainonbnb.com/defi)** | One PancakeSwap V3 position that runs itself: sweeps income, collects fees, re-sets its range one-sided, and buys $BOBAI with half of every fee. Daily run at 04:23 UTC, hourly range check, every step a transaction |
+| 💧 **[DeFi agent](https://brainonbnb.com/defi)** | One PancakeSwap V3 position that runs itself: sweeps income, collects fees, keeps a wide ±20% range centred on the price (re-set with one swap once the price has stayed outside), and buys $BOBAI with half of every fee. Daily run at 04:23 UTC, hourly range check, every step a transaction |
 | 🏛 **[Brain Plaza](https://brainonbnb.com/registry)** | ERC-8004 agent census and ERC-8183 hiring on BNB Chain — search agents that actually answer, see who has been paid |
 | 💵 **[Paid answers](https://brainonbnb.com/services)** | Six answers sold over x402 for 0.10 USD1 (or the same in $BOBAI). Agents pay without a page |
 | 📚 **[The Library](https://brainonbnb.com/library)** · **[Source mirror](https://brainonbnb.com/source)** | Every subsystem as a readable bundle, plus `git clone https://brainonbnb.com/source.git` — a second copy on infrastructure we run ourselves |
@@ -53,7 +53,7 @@ Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` · domain proof at [braino
 
 | Agent ID | Chain | Agent | Category | Hire |
 |---|---|---|---|---|
-| **363709** | 56 (BSC) | **Brain on BNB — DeFi Agent**: runs the project's own PancakeSwap V3 CAKE/BNB position every day from `0xbFAA…7F0A` (collect, one-sided re-set, width by replay against holding); hired, it plans yours. Code: [`shared/lp-agent.js`](shared/lp-agent.js), [`worker-lp/`](worker-lp/), [`worker-agent/range-task.js`](worker-agent/range-task.js) | rebalancing | [A2A card](https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json) · ERC-8183, 0.10 $U |
+| **363709** | 56 (BSC) | **Brain on BNB — DeFi Agent**: runs the project's own PancakeSwap V3 CAKE/BNB position every day from `0xbFAA…7F0A` (collect, centred ±20% re-set with one swap); hired through the ERC-8183 escrow, it plans yours — free look and hire at [brainonbnb.com/defi](https://brainonbnb.com/defi). Code: [`shared/lp-agent.js`](shared/lp-agent.js), [`worker-lp/`](worker-lp/), [`worker-agent/range-task.js`](worker-agent/range-task.js) | rebalancing | [A2A card](https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json) · ERC-8183, 0.10 $U |
 | 302257 | 56 (BSC) | Venus Health Factor Monitor | health factor | [A2A card](https://agent.brainonbnb.com/health-factor/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
 | 302258 | 56 (BSC) | BSC Grid Planner | grid trading | [A2A card](https://agent.brainonbnb.com/grid-trader/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |
 | 304493 | 56 (BSC) | Venus Yield Ranking | yield | [A2A card](https://agent.brainonbnb.com/yield-optimizer/a2a/.well-known/agent-card.json) · ERC-8183, 0.10 $U · [x402](https://agent.brainonbnb.com/answer) |

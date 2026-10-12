@@ -335,7 +335,7 @@ footer a:hover{color:var(--gold)}
     <a class="live-pill trust-pill" href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d#code" target="_blank" rel="noopener">Ownership renounced &middot; supply hard-capped</a>
     <ol class="earn" aria-label="How to earn one">
       <li><b>Buy $BOBAI on PancakeSwap</b> with a little more than $100 of BNB &mdash; wallet or aggregator fees come off first, and only what reaches the pool counts.</li>
-      <li><b>Set slippage to 15% or more.</b> $BOBAI has a 3% tax; a lower setting can make the swap fail.</li>
+      <li><b>Set slippage to about 6% for a ~$100 buy</b> (more for larger ones). $BOBAI has a 3% tax; slippage covers the tax, the price impact of your trade and a small buffer. The <a href="/scanner">scanner</a> gives the exact figure for your size.</li>
       <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier.</li>
     </ol>
     <a class="earn-btn" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $100+ on PancakeSwap &rarr;</a>

@@ -2789,6 +2789,40 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     });
   })();
 </script>
+<script>
+  // LISTED AGENTS (operator, 2026-10-12: "a DexScreener for agents"). Read live from agent.brainonbnb.com/listings:
+  // a listed agent gets its badge on its own row (while our daily check finds it answering) and a copy of its card in a
+  // "Featured (paid)" slot at the top of each category it is in. The list order below is the evidence and stays as
+  // generated: a listing never moves a row. Listed agents not (yet) on this page show in one strip above the categories.
+  (function(){
+    var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+    var first=document.querySelector('.rg-box[id^="cat-"]'); if(!first)return;
+    var strip=document.createElement('div'); strip.className='rg-box rg-featured'; strip.id='featured';
+    strip.innerHTML='<h2>Featured (paid)</h2><p class="rg-sub">Agents their builders keep running, listed once for $95. A listing buys this slot and a badge, never a place in the lists below. <a href="/list">List your agent &rarr;</a></p><div class="rgc-list" id="rg-feat-list"></div>';
+    first.parentNode.insertBefore(strip, first);
+    fetch('https://agent.brainonbnb.com/listings',{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
+      var off=[];
+      (j.listings||[]).forEach(function(L){
+        var btns=[].slice.call(document.querySelectorAll('.rg-hirebtn[data-hire="'+String(L.id).replace(/[^0-9]/g,'')+'"]'));
+        var badge='<a class="rg-t rg-listed" href="'+esc(L.profile)+'" title="Listed on Brain Plaza; our daily check last found it '+(L.badge?'answering':'silent')+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+'</a>';
+        if(!btns.length){off.push(L);return}
+        btns.forEach(function(b){
+          var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
+          var nm=art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
+          var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';
+          var c=art.cloneNode(true); c.removeAttribute('data-tele');
+          [].slice.call(c.querySelectorAll('.rg-hirebtn')).forEach(function(cb){cb.addEventListener('click',function(e){e.preventDefault();b.click()})});
+          f.appendChild(c); list.parentNode.insertBefore(f,list);
+        });
+      });
+      var fl=document.getElementById('rg-feat-list');
+      if(!(j.listings||[]).length){fl.innerHTML='<p class="rg-note">No listed agents yet. Yours could be the first.</p>';return}
+      fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
+    }).catch(function(){var fl=document.getElementById('rg-feat-list');if(fl)fl.innerHTML='<p class="rg-note">The listings could not be read just now.</p>'});
+  })();
+</script>
+<style>.rg-listed{color:#7fd1a3;border-color:rgba(127,209,163,.35);text-decoration:none}.rg-feat{border:1px solid rgba(240,185,11,.35);border-radius:14px;padding:10px;margin:0 0 14px}</style>
 </body>
 </html>
 `;

@@ -917,7 +917,7 @@ async function cardEndpoint(origin) {
 
 // One agent's registration document from the chain — tokenURI(id), inline
 // (data:...;base64) or https — reduced to the endpoints the resolver reads.
-async function registrationOf(id) {
+export async function registrationOf(id) {
   const raw = await rpcCall(ERC8183.registry, '0xc87b56dd' + BigInt(id).toString(16).padStart(64, '0')).catch(() => null);
   if (!raw || raw.length < 130) return null;
   let uri;
@@ -939,7 +939,8 @@ async function registrationOf(id) {
     }
   } catch { return null; }
   const endpoints = (doc?.services || doc?.endpoints || []).map((x) => x?.endpoint).filter((e) => typeof e === 'string' && /^https:\/\//.test(e));
-  return endpoints.length ? { id, endpoints, services: (doc?.services || []).filter((x) => x && typeof x.endpoint === 'string') } : null;
+  // name, description and image ride along for the listing's profile page (listing.js, 2026-10-12)
+  return endpoints.length ? { id, endpoints, services: (doc?.services || []).filter((x) => x && typeof x.endpoint === 'string'), name: typeof doc?.name === 'string' ? doc.name : null, description: typeof doc?.description === 'string' ? doc.description : null, image: typeof doc?.image === 'string' ? doc.image : null } : null;
 }
 
 // THE x402 OFFER OF AN AGENT that does not negotiate an escrow job
@@ -973,7 +974,7 @@ export async function x402Offer(id) {
 // Returns { endpoint, skill } — the skill being whatever the seller's own card
 // calls its handshake, or null when the card declares none and the caller
 // should fall back to the conventional name.
-async function resolveA2aEndpoint(target) {
+export async function resolveA2aEndpoint(target) {
   let origin = null;
   if (/^https?:\/\//i.test(target)) {
     // An explicit endpoint is honoured as given — a caller that knows the path

@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5537 lines.
+# one fetch. 12 files, 5568 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3254,10 +3254,10 @@ const BOT_COMMANDS = [
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
-  { command: 'whales',   description: 'The BOBAI whales: holdings, 24 h activity' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
   { command: 'tax',      description: 'Tax live: next buyback charge, last buyback, last 24 h (also /buyback)' },
+  { command: 'whales',   description: 'The BOBAI whales: holdings, 24 h activity' },
   { command: 'worldcup', description: "Worldcup '26 tipgame — final results" },
 ];
 
@@ -3273,7 +3273,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v18-whales';
+const COMMANDS_VERSION = 'v19-whales-abc';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -3315,6 +3315,33 @@ async function ensureCommandsRegistered(env) {
     console.log('[COMMANDS] Registered', COMMANDS_VERSION);
   } else {
     console.error('[COMMANDS] Failed:', JSON.stringify({ res1, res2 }));
+  }
+}
+
+// ==================== BRAIN PLAZA LISTINGS ====================
+// Reads agent.brainonbnb.com/listings every tenth minute; a listing it has not announced (KV listing_announced) and that
+// is at most 7 days old is posted once to the group. The ids are remembered before the post is checked, so a listing is
+// never announced twice even when Telegram refuses one (the internal log says so).
+export function renderListingAnnouncement(L) {
+  const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const desc = L.description ? esc(String(L.description).slice(0, 220)) + (String(L.description).length > 220 ? '…' : '') : '';
+  return [`🏛 <b>New on Brain Plaza</b>`, ``, `<b>${esc(L.name || 'Agent #' + L.id)}</b> · ERC-8004 #${esc(L.id)}`, desc, ``,
+    L.badge ? `✅ Verified &amp; maintained: it answered our check, and we check it every day.` : `⏸ Listed; the badge shows once it answers our daily check.`,
+    ``, `🔗 <a href="${esc(L.profile)}">Its page</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a> · <a href="https://brainonbnb.com/list">List yours</a>`]
+    .filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n');
+}
+async function announceListings(env) {
+  const r = await fetch('https://agent.brainonbnb.com/listings', { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) return;
+  const list = (await r.json())?.listings || [];
+  const done = new Set(JSON.parse((await env.KV.get('listing_announced')) || '[]'));
+  const fresh = list.filter((L) => !done.has(String(L.id)) && Date.now() - Date.parse(L.since) < 7 * 86400e3);
+  if (!fresh.length) return;
+  for (const L of fresh) done.add(String(L.id));
+  await env.KV.put('listing_announced', JSON.stringify([...done]));
+  for (const L of fresh) {
+    const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text: renderListingAnnouncement(L), parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
+    if (!sent?.ok) console.error('[LISTING ANNOUNCE] Telegram refused #' + L.id, JSON.stringify(sent));
   }
 }
 
@@ -3703,8 +3730,9 @@ async function handleCommand(msg, env) {
   // Slash-prefixed (work everywhere, but silent-ignore outside internal chat)
   const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalecleanup', '/whalehelp'];
   if (WHALE_SLASH.includes(text)) {
-    // /whales reads in the official group too (operator, 2026-10-12); the admin commands stay internal
-    if (text === '/whales' && String(chatId) === TG_CHAT_ID) return handleWhaleAdmin(rawText, text, chatId, { public: true });
+    // /whales reads everywhere like every public command — the official group and a private chat with the bot
+    // (operator, 2026-10-12: "I tap /whales and nothing comes" — it answered only in the group); the admin commands stay internal
+    if (text === '/whales' && !isInternal) return handleWhaleAdmin(rawText, text, chatId, { public: true });
     if (!isInternal) return;
     return handleWhaleAdmin(rawText, text, chatId);
   }
@@ -4030,11 +4058,11 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
-🐋 /whales — The BOBAI whales: holdings, 24 h activity, who moved
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
 💸 /tax — Tax live: next buyback charge, last buyback, last 24 h
+🐋 /whales — The BOBAI whales: holdings, 24 h activity, who moved
 🏆 /worldcup — Worldcup '26 tipgame, final results
 
 💡 <i>I also post alerts for buys, burns & whale moves!</i>
@@ -4937,6 +4965,9 @@ export default {
       // failure is logged, never fatal: the alerts below do not depend on it.
       try { await recordSwapBucket(env); }
       catch (e) { console.error('[LEDGER ERROR]', e.message || e); }
+      // A NEW AGENT ON BRAIN PLAZA, ANNOUNCED ONCE (operator, 2026-10-12: the listing includes an announcement)
+      try { await announceListings(env); }
+      catch (e) { console.error('[LISTING ANNOUNCE ERROR]', e.message || e); }
     }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===

@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5537,
-   "zipBytes": 94655,
-   "txtBytes": 281552,
-   "sha256": "99ffe49baa075c15",
+   "lines": 5568,
+   "zipBytes": 95479,
+   "txtBytes": 284002,
+   "sha256": "bdcf7e1208c55175",
    "reqs": [
     {
      "what": "A bot token",
@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1325,
-   "zipBytes": 28108,
-   "txtBytes": 74019,
-   "sha256": "046a367632314586",
+   "zipBytes": 28176,
+   "txtBytes": 74164,
+   "sha256": "77d69bbb29bc3c0c",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2830,
-   "zipBytes": 82335,
-   "txtBytes": 236289,
-   "sha256": "7adab9c0d8bd67d5",
+   "lines": 2831,
+   "zipBytes": 82463,
+   "txtBytes": 236635,
+   "sha256": "3bfa99f539491a37",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -633,11 +633,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 49,
-   "lines": 17494,
-   "zipBytes": 396479,
-   "txtBytes": 1122089,
-   "sha256": "79ce3978db38f254",
+   "files": 50,
+   "lines": 17780,
+   "zipBytes": 404855,
+   "txtBytes": 1144734,
+   "sha256": "48273360035d8dfc",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -694,6 +694,7 @@
     "worker-agent/index.js",
     "worker-agent/job-watch.js",
     "worker-agent/ledger.js",
+    "worker-agent/listing.js",
     "worker-agent/lp-pools.js",
     "worker-agent/lp-portfolio.js",
     "worker-agent/lp-service.js",
@@ -728,10 +729,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4576,
-   "zipBytes": 98580,
-   "txtBytes": 280834,
-   "sha256": "5a6e6acbd8f6af7a",
+   "lines": 4610,
+   "zipBytes": 99839,
+   "txtBytes": 284651,
+   "sha256": "93fedb7e35465daf",
    "reqs": [
     {
      "what": "Node 18+ and time",

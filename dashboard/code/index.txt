@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5537 lines
+12 files, 5568 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 2830 lines
+5 files, 2831 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-49 files, 17494 lines
+50 files, 17780 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots
@@ -314,7 +314,7 @@ txt: https://brainonbnb.com/code/agent-service.txt
 The Census — reading a whole registry
 -------------------------------------
 Every agent id on BNB Chain, and every job they were ever paid for.
-7 files, 4576 lines
+7 files, 4610 lines
 needs:
   - Node 18+ and time
       ours: about three hours for the registry, twenty minutes for the jobs

@@ -2632,6 +2632,33 @@ async function ensureCommandsRegistered(env) {
   }
 }
 
+// ==================== BRAIN PLAZA LISTINGS ====================
+// Reads agent.brainonbnb.com/listings every tenth minute; a listing it has not announced (KV listing_announced) and that
+// is at most 7 days old is posted once to the group. The ids are remembered before the post is checked, so a listing is
+// never announced twice even when Telegram refuses one (the internal log says so).
+export function renderListingAnnouncement(L) {
+  const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const desc = L.description ? esc(String(L.description).slice(0, 220)) + (String(L.description).length > 220 ? '…' : '') : '';
+  return [`🏛 <b>New on Brain Plaza</b>`, ``, `<b>${esc(L.name || 'Agent #' + L.id)}</b> · ERC-8004 #${esc(L.id)}`, desc, ``,
+    L.badge ? `✅ Verified &amp; maintained: it answered our check, and we check it every day.` : `⏸ Listed; the badge shows once it answers our daily check.`,
+    ``, `🔗 <a href="${esc(L.profile)}">Its page</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a> · <a href="https://brainonbnb.com/list">List yours</a>`]
+    .filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n');
+}
+async function announceListings(env) {
+  const r = await fetch('https://agent.brainonbnb.com/listings', { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) return;
+  const list = (await r.json())?.listings || [];
+  const done = new Set(JSON.parse((await env.KV.get('listing_announced')) || '[]'));
+  const fresh = list.filter((L) => !done.has(String(L.id)) && Date.now() - Date.parse(L.since) < 7 * 86400e3);
+  if (!fresh.length) return;
+  for (const L of fresh) done.add(String(L.id));
+  await env.KV.put('listing_announced', JSON.stringify([...done]));
+  for (const L of fresh) {
+    const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text: renderListingAnnouncement(L), parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
+    if (!sent?.ok) console.error('[LISTING ANNOUNCE] Telegram refused #' + L.id, JSON.stringify(sent));
+  }
+}
+
 // ==================== GIGGLE ACADEMY POT (/giggle) ====================
 
 // The pot's windows — the same instants the buyback worker switches on
@@ -4252,6 +4279,9 @@ export default {
       // failure is logged, never fatal: the alerts below do not depend on it.
       try { await recordSwapBucket(env); }
       catch (e) { console.error('[LEDGER ERROR]', e.message || e); }
+      // A NEW AGENT ON BRAIN PLAZA, ANNOUNCED ONCE (operator, 2026-10-12: the listing includes an announcement)
+      try { await announceListings(env); }
+      catch (e) { console.error('[LISTING ANNOUNCE ERROR]', e.message || e); }
     }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===

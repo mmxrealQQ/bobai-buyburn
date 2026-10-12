@@ -98,6 +98,7 @@ import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
+import { checkAgent, quoteListing, verifySigner, submitListing, readListings, readListing, markAnnounced, runListingMonitor, profileHtml, LISTING_USD, PAYEE } from './listing.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -1969,6 +1970,22 @@ export default {
       } });
       return json(nr.body, nr.status);
     }
+    // BRAIN PLAZA LISTINGS (listing.js, operator 2026-10-12: $95 once, paid straight to his wallet, never buys rank)
+    if (path === '/listing/check') return json(await checkAgent(url.searchParams.get('agent')), 200);
+    if (path === '/listing/quote' && request.method === 'POST') { const r = await quoteListing(await request.json().catch(() => ({})), env, { bnbUsd, bobaiForUsd }); return json(r.body, r.status); }
+    if (path === '/listing/verify' && request.method === 'POST') { const r = await verifySigner(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
+    if (path === '/listing/submit' && request.method === 'POST') { const r = await submitListing(await request.json().catch(() => ({})), env); return json(r.body, r.status); }
+    if (path === '/listings') return json({ price_usd: LISTING_USD, pays_to: PAYEE, currencies: ['usd1', 'bnb', 'bobai'], listings: await readListings(env) }, 200);
+    if (path === '/listing/announced' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({})); return json({ ok: await markAnnounced(env, String(b.id || '')) }, 200);
+    }
+    if (path.startsWith('/listed/')) {
+      const id = path.slice(8).replace(/\/$/, ''); const r = /^\d+$/.test(id) ? await readListing(env, id) : null;
+      if (!r || r.status === 'removed') return json({ error: 'not a listed agent', list_yours: 'https://brainonbnb.com/list' }, 404);
+      if (url.searchParams.get('format') === 'json') { const { contact, signer, ...pub } = r; return json(pub, 200); }
+      return new Response(profileHtml(r), { headers: { 'content-type': 'text/html; charset=utf-8', 'access-control-allow-origin': '*' } });
+    }
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
       // Our own agents live on this worker, and a Worker cannot fetch its own
@@ -3123,6 +3140,8 @@ ${pageTail}`;
     // the invocation's operation budget (job 56905 was delivered 2 min into
     // the top-of-hour tick, 2026-10-04).
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+    // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
+    if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));

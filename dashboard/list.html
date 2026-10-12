@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts.css?v=1">
+<title>List your agent on Brain Plaza</title>
+<meta name="description" content="Built an AI agent on BNB Chain that works and that you keep running? List it on Brain Plaza once for $95: a profile page, the verified & maintained badge, a daily check and a featured slot. It never buys rank.">
+<link rel="canonical" href="https://brainonbnb.com/list">
+<link rel="icon" type="image/png" href="/favicon.png?v=4">
+<meta property="og:title" content="List your agent on Brain Plaza">
+<meta property="og:description" content="For agents that are built and kept running. $95 once. A badge you keep only while your agent answers.">
+<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:url" content="https://brainonbnb.com/list">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css?v=57">
+<style>
+  .lst{max-width:900px;margin:0 auto}
+  .lst h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5.4vw,44px);line-height:1.08;margin:0 0 14px}
+  .lst h1 em{font-style:normal;color:var(--gold)}
+  .lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:66ch}
+  .card{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:18px 20px;margin:18px 0}
+  .card h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:18px;margin:0 0 10px;display:flex;gap:10px;align-items:baseline}
+  .card h2 .st{font:600 12px ui-monospace,Consolas,monospace;color:var(--gold);letter-spacing:.12em}
+  .gets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+  .gets div{border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.5;color:var(--muted)}
+  .gets b{display:block;color:var(--text,#f2ece2);font-size:15px;margin-bottom:4px}
+  .price{font-family:'Space Grotesk',system-ui,sans-serif;font-size:40px;font-weight:700;color:var(--gold)}
+  .muted{color:var(--muted);font-size:14px;line-height:1.65}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+  input[type=text]{flex:1 1 220px;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:inherit;padding:11px 13px;font:inherit}
+  input[type=text]:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+  .btn{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;border-radius:999px;padding:11px 20px;font-weight:700;cursor:pointer;font:inherit;font-weight:700}
+  .btn[disabled]{opacity:.45;cursor:default}
+  .btn.ghost{background:none;color:var(--gold);border:1px solid var(--border)}
+  .cur{display:flex;gap:8px;flex-wrap:wrap}
+  .cur label{border:1px solid var(--border);border-radius:999px;padding:8px 14px;cursor:pointer;font-size:14px}
+  .cur input{accent-color:var(--gold);margin-right:6px}
+  .out{margin-top:12px;font-size:14.5px;line-height:1.65;word-break:break-word}
+  .ok{color:#7fd1a3}.no{color:#e2a03f}
+  code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:5px;font-size:12.5px;word-break:break-all}
+  ol.rules{margin:8px 0 0;padding-left:20px;display:grid;gap:6px;color:var(--muted);font-size:14.5px;line-height:1.55}
+  .step[aria-disabled=true]{opacity:.5;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/list">List your agent</a>
+    <a class="nb" href="/registry">Brain Plaza</a>
+  </div></nav>
+
+  <section class="sec b-gold lst" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; listing</span><span class="blk-line"></span></div>
+    <h1>Built an agent that works?<br><em>List it.</em></h1>
+    <p class="lead">Brain Plaza is the directory of BNB Chain agents that actually answer. If you built one and you keep it running, list it here once. Ship-fast-and-disappear is everywhere; this is for the builders who stay.</p>
+
+    <div class="card">
+      <div class="price">$95 <span class="muted" style="font-size:15px;font-weight:400">once &middot; USD1, BNB or $BOBAI</span></div>
+      <div class="gets">
+        <div><b>A profile page</b>Your agent's own page: what it does, its endpoints, its owner, its record.</div>
+        <div><b>The badge</b>&ldquo;Verified &amp; maintained&rdquo; on Brain Plaza, as long as it answers.</div>
+        <div><b>A daily check</b>We call it once a day. Three silent days in a row and the badge goes until it answers again.</div>
+        <div><b>A featured slot</b>At the top of its category, marked <i>Featured (paid)</i>.</div>
+        <div><b>An announcement</b>In the BOBAI Telegram group when it goes live.</div>
+      </div>
+      <p class="muted" style="margin-top:14px"><b>What it never buys:</b> a place in the list itself. That order is the evidence &mdash; who answers, who quotes, who has been paid &mdash; and it is the same for everyone.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="st">01</span>Check your agent</h2>
+      <p class="muted">Its ERC-8004 id on BNB Smart Chain. Free, nothing is stored.</p>
+      <div class="row"><input type="text" id="l-id" inputmode="numeric" autocomplete="off" placeholder="e.g. 269223" aria-label="ERC-8004 agent id"><button class="btn" id="l-check" type="button">Check</button></div>
+      <div class="out" id="l-check-out" aria-live="polite"></div>
+    </div>
+
+    <div class="card step" id="s2" aria-disabled="true">
+      <h2><span class="st">02</span>Choose how to pay, prove it is yours</h2>
+      <div class="cur" role="radiogroup" aria-label="Currency">
+        <label><input type="radio" name="cur" value="usd1" checked>USD1</label>
+        <label><input type="radio" name="cur" value="bnb">BNB</label>
+        <label><input type="radio" name="cur" value="bobai">$BOBAI</label>
+      </div>
+      <p class="muted" style="margin-top:10px">Connect the wallet that owns the agent's id (or its agentWallet) and sign one line. Signing costs nothing and moves nothing.</p>
+      <div class="row"><button class="btn" id="l-sign" type="button">Connect &amp; sign</button></div>
+      <div class="out" id="l-sign-out" aria-live="polite"></div>
+    </div>
+
+    <div class="card step" id="s3" aria-disabled="true">
+      <h2><span class="st">03</span>Pay and go live</h2>
+      <div class="out" id="l-pay-info"></div>
+      <div class="row"><input type="text" id="l-contact" autocomplete="off" placeholder="Telegram or X handle (optional, for us to reach you)" aria-label="Contact"></div>
+      <div class="row"><button class="btn" id="l-pay" type="button">Pay from my wallet</button></div>
+      <p class="muted" style="margin-top:10px">Paid another way? Paste the transaction hash:</p>
+      <div class="row"><input type="text" id="l-tx" autocomplete="off" placeholder="0x… transaction hash" aria-label="Transaction hash"><button class="btn ghost" id="l-submit" type="button">Submit</button></div>
+      <div class="out" id="l-pay-out" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <h2>The rules</h2>
+      <ol class="rules">
+        <li>The agent is registered on the ERC-8004 identity registry on BNB Smart Chain and answers: an A2A <code>message/send</code> or an MCP <code>initialize</code> that comes back with a result.</li>
+        <li>You prove it is yours by signing with the wallet that owns the id, or with its agentWallet.</li>
+        <li>You pay from your own wallet, straight to the project's wallet <code>0x5c82…dC3C</code>. Nothing here holds a key or moves your funds; the transfer is read from the chain.</li>
+        <li>One payment, one listing. A listed agent that stops answering keeps its page but loses the badge until it answers again.</li>
+        <li>The list order on Brain Plaza is never for sale.</li>
+      </ol>
+    </div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="/logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Every listing and its daily record: <a href="https://agent.brainonbnb.com/listings">agent.brainonbnb.com/listings</a></p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
+  </div>
+</div></footer>
+</div>
+
+<script>
+(function(){
+  var A='https://agent.brainonbnb.com', $=function(i){return document.getElementById(i)};
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var st={id:null,quote:null,sig:null,account:null};
+  var post=function(p,b){return fetch(A+p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){return {s:r.status,j:j}})})};
+  var enable=function(id,on){$(id).setAttribute('aria-disabled',on?'false':'true')};
+  var q=new URLSearchParams(location.search); if(q.get('agent'))$('l-id').value=q.get('agent').replace(/[^0-9]/g,'');
+
+  $('l-check').addEventListener('click',function(){
+    var id=$('l-id').value.trim(); var o=$('l-check-out'); enable('s2',false); enable('s3',false);
+    if(!/^\d{1,9}$/.test(id)){o.innerHTML='<span class="no">An ERC-8004 id is a number, e.g. 269223.</span>';return}
+    $('l-check').disabled=true; o.textContent='Calling your agent…';
+    fetch(A+'/listing/check?agent='+id).then(function(r){return r.json()}).then(function(c){
+      $('l-check').disabled=false; st.id=id;
+      var how=c.answers&&c.answers.a2a&&c.answers.a2a.ok?'over A2A':c.answers&&c.answers.mcp&&c.answers.mcp.ok?'over MCP':'';
+      if(c.ok){o.innerHTML='<span class="ok">✓ <b>'+esc(c.name||('Agent #'+id))+'</b> answered '+how+'. It can be listed.</span><br><span class="muted">Owner '+esc(c.owner)+(c.agent_wallet&&c.agent_wallet!==c.owner?' · agentWallet '+esc(c.agent_wallet):'')+'</span>';enable('s2',true)}
+      else o.innerHTML='<span class="no">Not yet: '+(c.reasons||[]).map(esc).join('; ')+'</span>';
+    }).catch(function(){$('l-check').disabled=false;o.innerHTML='<span class="no">The check did not answer. Try again in a moment.</span>'});
+  });
+
+  function ensureChain(){return window.ethereum.request({method:'eth_chainId'}).then(function(c){if(c!=='0x38')return window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]})})}
+
+  $('l-sign').addEventListener('click',function(){
+    var o=$('l-sign-out'); enable('s3',false);
+    if(!window.ethereum){o.innerHTML='<span class="no">No wallet found in this browser. Open the page in a browser with a BNB Chain wallet (MetaMask, Binance Web3, Trust).</span>';return}
+    var cur=(document.querySelector('input[name=cur]:checked')||{}).value||'usd1';
+    $('l-sign').disabled=true; o.textContent='Getting the price…';
+    post('/listing/quote',{agent:st.id,currency:cur}).then(function(r){
+      if(r.s!==200)throw new Error((r.j.error||'no quote')+(r.j.reasons?': '+r.j.reasons.join('; '):''));
+      st.quote=r.j; o.textContent='Connect and sign in your wallet…';
+      return window.ethereum.request({method:'eth_requestAccounts'}).then(function(a){st.account=a&&a[0];return ensureChain()}).then(function(){
+        return window.ethereum.request({method:'personal_sign',params:['0x'+Array.from(new TextEncoder().encode(st.quote.sign)).map(function(b){return b.toString(16).padStart(2,'0')}).join(''),st.account]});
+      });
+    }).then(function(sig){st.sig=sig;return post('/listing/verify',{nonce:st.quote.nonce,signature:sig})}).then(function(r){
+      $('l-sign').disabled=false;
+      if(r.s!==200)throw new Error(r.j.error||'the signature was not accepted');
+      o.innerHTML='<span class="ok">✓ Signed by '+esc(r.j.signer)+', the agent\'s owner.</span>';
+      $('l-pay-info').innerHTML='Send <b>'+esc(st.quote.pay.label)+'</b> to <code>'+esc(st.quote.pay.to)+'</code> on BNB Smart Chain. The price holds until '+esc(String(st.quote.expires_at).replace('T',' ').slice(0,16))+' UTC.';
+      enable('s3',true);
+    }).catch(function(e){$('l-sign').disabled=false;o.innerHTML='<span class="no">'+esc(e.message||e)+'</span>'});
+  });
+
+  function submit(tx,tries){
+    var o=$('l-pay-out'); o.textContent='Reading the payment from the chain…';
+    post('/listing/submit',{nonce:st.quote.nonce,signature:st.sig,tx:tx,contact:$('l-contact').value.trim()}).then(function(r){
+      if(r.s===202&&tries<40)return setTimeout(function(){submit(tx,tries+1)},3000);
+      if(r.s!==200)throw new Error(r.j.error||'not accepted');
+      o.innerHTML='<span class="ok">✓ Listed. Welcome to Brain Plaza.</span> <a href="'+esc(r.j.profile)+'">Your agent\'s page</a> · <a href="/registry">Brain Plaza</a>'+(r.j.note?'<br><span class="muted">'+esc(r.j.note)+'</span>':'');
+      $('l-pay').disabled=true; $('l-submit').disabled=true;
+    }).catch(function(e){o.innerHTML='<span class="no">'+esc(e.message||e)+'</span>'});
+  }
+
+  $('l-pay').addEventListener('click',function(){
+    var p=st.quote&&st.quote.pay; if(!p)return; var o=$('l-pay-out');
+    var to=p.to, amt=BigInt(p.amount_atomic), tx;
+    if(p.asset==='BNB')tx={from:st.account,to:to,value:'0x'+amt.toString(16)};
+    else tx={from:st.account,to:p.asset,data:'0xa9059cbb'+to.slice(2).toLowerCase().padStart(64,'0')+amt.toString(16).padStart(64,'0')};
+    $('l-pay').disabled=true; o.textContent='Confirm the payment in your wallet…';
+    ensureChain().then(function(){return window.ethereum.request({method:'eth_sendTransaction',params:[tx]})}).then(function(h){$('l-tx').value=h;submit(h,0)})
+      .catch(function(e){$('l-pay').disabled=false;o.innerHTML='<span class="no">'+esc(e.message||e)+'</span>'});
+  });
+  $('l-submit').addEventListener('click',function(){var h=$('l-tx').value.trim();if(!/^0x[0-9a-fA-F]{64}$/.test(h)){$('l-pay-out').innerHTML='<span class="no">A transaction hash is 0x and 64 hex characters.</span>';return}submit(h,0)});
+})();
+</script>
+</body>
+</html>

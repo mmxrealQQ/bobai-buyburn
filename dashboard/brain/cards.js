@@ -17,12 +17,65 @@
   };
 
   // 01 THE TOKEN: the supply, burned against circulating
-  function draw01() {
-    const el = viz('01'), c = NUMS().chain; if (!el || !c || !c.bobaiDead) return;
-    const dead = c.bobaiDead, pct = dead / 1e9 * 100;
+  // LIVE (operator, 2026-10-12: "the windows more interactive and intelligent", 01 = "live burn in the card"): the dead
+  // address is read from the chain every 30 s (app.js); when it holds more than the card shows, the figures count up to
+  // it and the line under them says how much just went. Otherwise the line names the bot's last burn (logs/burns.json).
+  let shown01 = 0, just01 = 0, just01At = 0, anim01 = 0;
+  const ago = (t) => { const m = Math.max(0, (Date.now() - t) / 60e3); return m < 60 ? `${Math.max(1, Math.round(m))} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+  function paint01(el, dead) {
+    const pct = dead / 1e9 * 100;
     // classes, not inline styles (2026-09-28): on a tall screen brain.css lets the bar and its figures grow with the card
     el.innerHTML = `<div class="cv-sup"><div class="cv-sup-bar"><i style="width:${pct}%"></i><i></i></div><div class="cv-sup-k"><span>🔥 burned</span><span>circulating</span></div><div class="cv-sup-v"><span>${cmp(dead)}${usdOf(dead)}</span><span>${cmp(1e9 - dead)}${usdOf(1e9 - dead)}</span></div></div>`;
     const v = $('[data-open="w01"] .bw-v'); if (v) v.textContent = pct.toFixed(2) + '%';
+  }
+  function line01() {
+    const l = $('[data-open="w01"] .bw-l'); if (!l) return;
+    const fresh = Date.now() - just01At < 90e3, btn = l.closest('button'); if (btn) btn.classList.toggle('just-burned', fresh);
+    if (fresh) { l.textContent = `🔥 +${cmp(just01)} $BOBAI just burned`; return; }
+    const b = NUMS().burns || burnsOwn, last = Array.isArray(b) ? [...b].reverse().find((e) => +e.bobaiBurned > 0) : null;
+    l.textContent = last ? `burned · last +${cmp(+last.bobaiBurned)}, ${ago(Date.parse(last.time))}` : 'of the supply burned for good';
+  }
+  function draw01() {
+    const el = viz('01'), c = NUMS().chain; if (!el || !c || !c.bobaiDead) return;
+    const dead = c.bobaiDead;
+    if (shown01 && dead > shown01 + 0.5 && !anim01) {
+      const from = shown01, t0 = performance.now(); just01 = dead - from; just01At = Date.now(); line01();
+      const step = (t) => { const k = Math.min(1, (t - t0) / 1600), e = 1 - Math.pow(1 - k, 3); paint01(el, from + (dead - from) * e); if (k < 1) anim01 = requestAnimationFrame(step); else anim01 = 0; };
+      anim01 = requestAnimationFrame(step); shown01 = dead; setTimeout(line01, 90.5e3); return;
+    }
+    if (!anim01) paint01(el, dead);
+    shown01 = dead; line01();
+  }
+  // a test hook (qa/live01.mjs): what the card does when the chain read shows more burned
+  window.__card01 = { draw: () => draw01(), state: () => ({ shown01, just01, just01At }) };
+
+  // 01's WINDOW: WHAT WOULD MY TRADE DO? (operator, 2026-10-12, "a calculator in the window"): an amount in $ or $BOBAI,
+  // split by the phase in force (app.js __bobaiPhase, the same table the window shows) at the pool's own price. Nothing
+  // more is claimed: the tax leaves the contract as BNB and the burns buy with it at the pool.
+  function calc01() {
+    const flow = $('#w01 .tax-flow'); if (!flow || $('#w01 .cx01')) return;
+    const box = document.createElement('div'); box.className = 'cx01'; box.dataset.nousd = '1'; // its dollars are its own (app.js would add a second ≈$ to every $BOBAI amount)
+    box.innerHTML = '<h4>What would my trade do?</h4><div class="cx01-in"><label>Trade <input type="number" min="0" step="any" inputmode="decimal" value="100" aria-label="Trade amount"></label><div class="cx01-u" role="group" aria-label="Unit"><button type="button" data-u="usd" aria-pressed="true">$</button><button type="button" data-u="bobai" aria-pressed="false">$BOBAI</button></div></div><div class="cx01-out" aria-live="polite"></div><p class="cx01-n">At the pool&rsquo;s price right now, before the split&rsquo;s own swap costs. The 3% leaves the token contract as BNB; the bot splits it every 10 min.</p>';
+    flow.insertAdjacentElement('afterend', box);
+    const inp = box.querySelector('input'), out = box.querySelector('.cx01-out'); let unit = 'usd';
+    const PARTS = [['bobaiPct', '#35e07a', '$BOBAI burned for good', 1], ['bobPct', '#ff6b6b', '$BOB burned'], ['liqPct', '#f0b90b', 'liquidity added, LP burned'], ['lpPct', '#60a5fa', 'to the DeFi agent'], ['gigglePct', '#f472b6', 'to the Giggle pot'], ['creatorPct', '#a0a2c0', 'to the creator']];
+    const usd = (x) => '$' + (x >= 100 ? x.toLocaleString('en-US', { maximumFractionDigits: 0 }) : x.toFixed(x >= 0.01 || !x ? 2 : 4));
+    const run = () => {
+      const ph = typeof window.__bobaiPhase === 'function' && window.__bobaiPhase(), p = NUMS().chain?.priceUsd, a = Math.max(0, parseFloat(inp.value) || 0);
+      if (!ph || !(p > 0)) { out.innerHTML = '<p class="cx01-n">Reading the price and the split…</p>'; return; }
+      const tradeUsd = unit === 'usd' ? a : a * p;
+      const rows = PARTS.map(([k, col, name, bobai]) => { const pc = parseFloat(ph[k]) || 0; if (!pc) return ''; const u = tradeUsd * pc / 100;
+        return `<div class="cx01-r${bobai ? ' hi' : ''}"><i style="background:${col}"></i><span>${name}</span><b>${pc}%</b><em>${usd(u)}${bobai ? ` <small>≈ ${cmp(u / p)} $BOBAI</small>` : ''}</em></div>`; }).join('');
+      const tax = PARTS.reduce((t, [k]) => t + (parseFloat(ph[k]) || 0), 0);
+      out.innerHTML = `<div class="cx01-t">A ${usd(tradeUsd)} trade${unit === 'bobai' ? ` (${cmp(a)} $BOBAI)` : ''} pays ${usd(tradeUsd * tax / 100)} tax (${+tax.toFixed(2)}%):</div>` + rows;
+    };
+    inp.addEventListener('input', run);
+    box.querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => {
+      unit = b.dataset.u; box.querySelectorAll('[data-u]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      const p = NUMS().chain?.priceUsd; if (p > 0) { const a = parseFloat(inp.value) || 0; inp.value = unit === 'bobai' ? Math.round(a / p) : +(a * p).toFixed(2); }
+      run();
+    }));
+    run(); setInterval(() => { const w = $('#w01'); if (w && !w.hidden) run(); }, 30e3);
   }
 
   // 02 TOKENOMICS: the 3% as a ring, the split in force (the homepage's own phase table)
@@ -91,7 +144,7 @@
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }
-  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); }
+  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
   // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both

@@ -392,6 +392,26 @@ body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
 .cv-app[data-open]{cursor:pointer;border-radius:10px;transition:background .15s,transform .15s}
 .cv-app[data-open]:hover,.cv-app[data-open]:focus-visible{background:rgba(240,185,11,.12);transform:translateY(-1px);outline:none}
 .cv-app[data-open]:hover em,.cv-app[data-open]:focus-visible em{color:var(--gold2,#ffd28a)}
+/* 01 LIVE (2026-10-12): the card glows for 90 s after a burn it saw; the window's trade calculator */
+button.bw-card.just-burned{box-shadow:0 0 0 1px rgba(255,122,61,.55),0 0 26px rgba(255,122,61,.28)}
+button.bw-card.just-burned .bw-l{color:#ffb46b}
+.cx01{margin:18px 0 6px;border:1px solid rgba(240,185,11,.3);border-radius:14px;padding:14px;background:rgba(240,185,11,.04)}
+.cx01 h4{margin:0 0 10px;font:700 16px 'Space Grotesk',sans-serif;color:var(--gold,#f0b90b)}
+.cx01-in{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cx01-in label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted,#a0a2c0)}
+.cx01-in input{width:140px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:10px;color:inherit;padding:8px 10px;font:600 15px 'Space Grotesk',sans-serif}
+.cx01-u{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.cx01-u button{background:none;border:0;color:var(--muted,#a0a2c0);padding:7px 12px;font:600 12.5px Inter,sans-serif;cursor:pointer}
+.cx01-u button[aria-pressed=true]{background:var(--gold,#f0b90b);color:#0b090a}
+.cx01-out{margin-top:10px;display:grid;gap:4px}
+.cx01-t{font-size:13.5px;margin-bottom:4px}
+.cx01-r{display:grid;grid-template-columns:10px minmax(0,1fr) 46px auto;gap:8px;align-items:center;font-size:13px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.06)}
+.cx01-r i{width:9px;height:9px;border-radius:50%}
+.cx01-r b{font:600 12px ui-monospace,monospace;color:var(--muted,#a0a2c0);text-align:right}
+.cx01-r em{font-style:normal;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.cx01-r em small{display:block;font-weight:500;font-size:11px;color:#35e07a}
+.cx01-r.hi span{color:#35e07a;font-weight:600}
+.cx01-n{margin:8px 0 0;font-size:11.5px;color:var(--muted,#a0a2c0)}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

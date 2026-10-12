@@ -1848,7 +1848,7 @@ function labelClusters(clusters) {
   return labels;
 }
 
-async function handleWhaleAdmin(rawText, cmd, chatId) {
+async function handleWhaleAdmin(rawText, cmd, chatId, opts = {}) {
   const env = WHALE_ENV; // captured at scheduled/fetch entry
   if (!env) return;
 
@@ -2018,7 +2018,7 @@ ${summary24h}
 ${sections.join('\n\n')}
 
 <i>#n = place among all holders (LP and burn not counted) · % = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 🐋 10M+ · 🐬 5-10M · 💀 below 5M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
-ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code></i>`;
+${opts.public ? `ℹ️ Whale alerts from $${WHALE_PUBLIC_USD} and a daily recap at 06:00 UTC, here in the group` : 'ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code>'}</i>`;
     }
   }
 
@@ -2192,6 +2192,8 @@ async function postDailyWhaleRecap(env) {
       chat_id: TG_INTERNAL_CHAT_ID,
       text, parse_mode: 'HTML', disable_web_page_preview: true,
     });
+    // the same recap in the official group (operator, 2026-10-12); the internal send decides "posted"
+    await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => {});
     return r?.ok === true;
   } catch (e) {
     console.error('[WHALE DAILY ERROR]', e.message || e);
@@ -2360,16 +2362,24 @@ ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
   return lines.join('\n');
 }
 
+// THE OFFICIAL GROUP SEES THE WHALES TOO (operator, 2026-10-12: "alerts and the daily whale recap in the internal AND
+// the official group; /whales in the official bot"). Internal keeps every alert from the $5 quiet line; the group gets
+// the ones of $50 and more (operator's choice) — a move without a USD value stays internal.
+export const WHALE_PUBLIC_USD = 50;
+export const whaleAlertIsPublic = (data) => Number(data?.usdValue) >= WHALE_PUBLIC_USD;
 async function postWhaleAlert(data) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const text = renderWhaleAlert(data);
-  return text ? await tgSend(text) : false;
+  if (!text) return false;
+  const ok = await tgSend(text);
+  if (whaleAlertIsPublic(data)) await tgSend(text, TG_CHAT_ID);
+  return ok;
 }
 
-async function tgSend(text) {
+async function tgSend(text, chatId = TG_INTERNAL_CHAT_ID) {
   try {
     const r = await tg('sendMessage', {
-      chat_id: TG_INTERNAL_CHAT_ID,
+      chat_id: chatId,
       text,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
@@ -2558,6 +2568,7 @@ const BOT_COMMANDS = [
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
+  { command: 'whales',   description: 'The BOBAI whales: holdings, 24 h activity' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
   { command: 'tax',      description: 'Tax live: next buyback charge, last buyback, last 24 h (also /buyback)' },
@@ -2576,7 +2587,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v17-tax';
+const COMMANDS_VERSION = 'v18-whales';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -3006,6 +3017,8 @@ async function handleCommand(msg, env) {
   // Slash-prefixed (work everywhere, but silent-ignore outside internal chat)
   const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalecleanup', '/whalehelp'];
   if (WHALE_SLASH.includes(text)) {
+    // /whales reads in the official group too (operator, 2026-10-12); the admin commands stay internal
+    if (text === '/whales' && String(chatId) === TG_CHAT_ID) return handleWhaleAdmin(rawText, text, chatId, { public: true });
     if (!isInternal) return;
     return handleWhaleAdmin(rawText, text, chatId);
   }
@@ -3331,13 +3344,14 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
+🐋 /whales — The BOBAI whales: holdings, 24 h activity, who moved
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
 💸 /tax — Tax live: next buyback charge, last buyback, last 24 h
 🏆 /worldcup — Worldcup '26 tipgame, final results
 
-💡 <i>I also post alerts for buys & burns!</i>
+💡 <i>I also post alerts for buys, burns & whale moves!</i>
 
 🌍 <a href="https://brainonbnb.com">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
       break;

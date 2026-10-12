@@ -443,6 +443,12 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 [data-open="w03"] .bw-viz canvas{cursor:crosshair}
 [data-open="w03"] .bw-l.bar-day{color:#ffd28a}
 .cx03 a{color:var(--gold,#f0b90b);text-decoration:none}
+/* 04 (2026-10-12): a live dot on each logo, the hovered app's fact in the card's foot */
+.cv-app{position:relative}
+.cv-app[data-live]::after{content:'';position:absolute;left:-2px;top:-2px;width:7px;height:7px;border-radius:50%;background:#6b6577;box-shadow:0 0 0 2px #0b090a}
+.cv-app[data-live=up]::after{background:#35e07a;box-shadow:0 0 0 2px #0b090a,0 0 6px #35e07a}
+.cv-app[data-live=down]::after{background:#ff4d6d;box-shadow:0 0 0 2px #0b090a,0 0 6px #ff4d6d}
+[data-open="w04"] .bw-l.app-fact{color:#ffd28a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* a SHORT desktop (2026-10-12, 1024x768 + 1280x720: the side cards' last line ran out of 05/06 and 03): each picture
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}

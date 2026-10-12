@@ -193,6 +193,38 @@
   }
   window.__card03.proof = () => proof03();
 
+  // 04's LOGOS LIVE (operator, 2026-10-12: "a live dot per logo" + "a live fact on hover"): each app asked once on
+  // load and every 5 min — its own live source where it has one (the Plaza's census, the DeFi agent's position, the
+  // NFT drop, the agent server's count), else the page the logo opens. Green: it answered just now; red: it did not.
+  // On a desktop a look at a logo puts one line in the card's foot: that live figure, or the app's own description.
+  const LIVE04 = {
+    '/registry': ['/api-registry.json', (j) => j?.reachability?.reachable ? `${Number(j.reachability.reachable).toLocaleString('en-US')} agents answer our census` : null],
+    '/defi': ['https://agent.brainonbnb.com/lp/portfolio', (j) => j?.pool && typeof j.pool.in_range === 'boolean' ? `CAKE/BNB ${j.pool.in_range ? 'in range' : 'out of range'} · ±${j.pool.width_pct}%` : null],
+    '/nft/': ['/api/nft-drop', (j) => j?.total?.minted != null ? `${j.total.minted.toLocaleString('en-US')} of ${j.total.cap.toLocaleString('en-US')} minted` : null],
+    '/services': ['https://agent.brainonbnb.com/stats', (j) => j?.asked?.total ? `${cmp(j.asked.total)} calls by agents answered` : null],
+  };
+  function live04(el, cards) {
+    const apps = $$('.cv-app', el);
+    const ask = () => apps.forEach((a, k) => {
+      const c = cards[k]; if (!c) return; const path = new URL(c.getAttribute('href') || '', location.origin).pathname, src = LIVE04[path];
+      const desc = (c.querySelector('p')?.textContent || '').trim().replace(/\s+/g, ' ');
+      a.dataset.fact = desc; a.dataset.live = a.dataset.live || 'wait';
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 9000);
+      (src ? fetch(src[0], { signal: ctl.signal, cache: 'no-store' }).then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => { const f = src[1](j); if (!f) throw 0; a.dataset.fact = f; })
+        : fetch(path, { method: 'HEAD', signal: ctl.signal, cache: 'no-store' }).then((r) => { if (!r.ok) throw r.status; }))
+        .then(() => { a.dataset.live = 'up'; a.title = `${a.textContent.trim()} — answering now`; }, () => { a.dataset.live = 'down'; a.title = `${a.textContent.trim()} — did not answer just now`; })
+        .finally(() => clearTimeout(t));
+    });
+    setTimeout(ask, 3500); setInterval(() => { if (!document.hidden) ask(); }, 5 * 60e3);
+    const l = $('[data-open="w04"] .bw-l'); let back = 0;
+    apps.forEach((a) => {
+      a.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse' || !l) return; clearTimeout(back); if (!l.dataset.base) l.dataset.base = l.textContent;
+        l.textContent = `${a.textContent.trim()} · ${a.dataset.fact || ''}`; l.classList.add('app-fact'); });
+      a.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse' || !l) return; back = setTimeout(() => { l.textContent = l.dataset.base; l.classList.remove('app-fact'); }, 400); });
+    });
+  }
+  window.__card04 = { state: () => $$('[data-open="w04"] .cv-app').map((a) => ({ n: a.textContent.trim(), live: a.dataset.live, fact: a.dataset.fact })) };
+
   // 04 ECOSYSTEM: the apps inside, as their own icons
   function draw04() {
     const el = viz('04'); if (!el || el.dataset.done) return;
@@ -204,7 +236,7 @@
     const door = (c) => { const u = new URL(c.getAttribute('href') || '', location.origin); return u.origin === location.origin ? ` data-open="page:${u.pathname}${u.search}" title="Open ${nm(c)}"` : ''; };
     el.innerHTML = `<div class="cv-icons">${cards.slice(0, 8).map((c) => `<span class="cv-app"${door(c)}>${c.querySelector('svg')?.outerHTML || c.querySelector('img')?.outerHTML || ''}<em>${nm(c)}</em></span>`).join('')}</div>`;
     const v = $('[data-open="w04"] .bw-v'); if (v) v.textContent = cards.length + ' apps & tools';
-    el.dataset.done = 1;
+    el.dataset.done = 1; live04(el, cards);
   }
 
 

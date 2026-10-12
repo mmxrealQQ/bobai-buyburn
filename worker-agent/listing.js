@@ -328,7 +328,7 @@ var a=(await ethereum.request({method:'eth_requestAccounts'}))[0],at=new Date().
 s.textContent='Sign in your wallet…';var sig=await ethereum.request({method:'personal_sign',params:[msg,a]});
 var res=await fetch('/listing/log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent:'${h(r.id)}',text:t,at:at,signature:sig})}),j=await res.json();
 s.textContent=j.ok?'Posted. Reloading…':(j.error||'Refused.');if(j.ok)setTimeout(function(){location.reload()},900)}catch(e){s.textContent=(e&&e.message)||'Cancelled.'}}})();</script></details>`}
-<span class="m">Signed by the wallet that owns the agent, so only its builder can write here. An agent that keeps answering stays maintained; this is where its builder shows what he builds.</span></div>
+<span class="m">${r.house ? 'Our own agent: Brain On BNB posts its log. ' : 'Signed by the wallet that owns the agent, so only its builder can write here. '}An agent that keeps answering stays maintained; this is where its builder shows what he builds.</span></div>
 <div class="c"><span class="k">Our daily check, last ${checks.length} day${checks.length === 1 ? '' : 's'}</span><div class="dots">${dots}</div>
 <span class="m">Every day we call it once — an A2A message or an MCP initialize. Green: it answered. Three red days in a row take the badge off until it answers again.</span></div>
 <div class="c"><dl><dt>Listed since</dt><dd>${h(r.since)}</dd><dt>Owner</dt><dd><a href="https://bscscan.com/address/${h(r.owner)}">${h(r.owner)}</a></dd>

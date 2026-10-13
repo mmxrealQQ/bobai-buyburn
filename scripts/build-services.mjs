@@ -274,6 +274,8 @@ function page() {
   /* auto-fit rather than a fixed count: the same rule has to hold a five-card
      row on a laptop and one column on a phone without a second breakpoint. */
   .sv-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+/* the last page card (the source) across the row instead of alone in its first cell (2026-10-13: 7 cards = 3 + 3 + 1) */
+#sv-pages .sv-grid > :last-child:nth-child(odd){grid-column:1/-1}
   .sv-card,.sv-buy{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:16px 18px;min-width:0}
   .sv-card h3,.sv-buy h3{font-size:.95rem;margin:0 0 6px;font-weight:600}
   .sv-card h3 a{color:var(--text);text-decoration:none}

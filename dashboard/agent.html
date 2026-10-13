@@ -94,13 +94,20 @@
   // 90 days of the pulse: a bar a day, height = response time (log), green up, red down, faint = not measured
   // the window grows with the pulse (2026-10-13): from the day measuring began (12 Oct), at least 14 days and at most 90
   // — a 90-day axis with one bar at its end read as "nothing here"
-  function pulseChart(series){
+  // the days before this agent's pulse began are one quiet zone that says so (2026-10-13: thirteen empty dashes read as
+  // thirteen days of silence); a day missing AFTER it began keeps its own dash
+  function pulseChart(series,began){
     var since=Math.floor((Date.now()-Date.parse('2026-10-12T00:00:00Z'))/864e5)+1;
     var W=1000,H=150,P=24,days=Math.max(14,Math.min(90,since)),map={};series.forEach(function(s){map[s.day]=s});
     var ms=series.filter(function(s){return s.ok&&s.ms!=null}).map(function(s){return s.ms}),mx=Math.max(1000,ms.length?Math.max.apply(null,ms):1000);
     var bw=(W-P*2)/days,out='',lab='';
+    var first=series.reduce(function(m,s){return !m||s.day<m?s.day:m},null),start=String(began||first||new Date().toISOString()).slice(0,10);
+    var pre=0;for(var k=0;k<days;k++){if(new Date(Date.now()-(days-1-k)*864e5).toISOString().slice(0,10)<start)pre++;else break}
+    if(pre>0){var zw=pre*bw;out+='<rect x="'+P+'" y="'+P+'" width="'+(zw-2)+'" height="'+(H-P*2)+'" rx="6" fill="rgba(255,255,255,.025)" stroke="rgba(255,255,255,.07)" stroke-dasharray="4 4"><title>before '+start+': not measured yet</title></rect>'
+      +(zw>220?'<text x="'+(P+zw/2)+'" y="'+(H/2+4)+'" text-anchor="middle" fill="rgba(255,255,255,.38)">not measured yet — its pulse began '+start.slice(5)+'</text>':'');}
     for(var i=0;i<days;i++){
       var d=new Date(Date.now()-(days-1-i)*864e5).toISOString().slice(0,10),s=map[d],x=P+i*bw;
+      if(i<pre){if(i%Math.max(1,Math.round(days/6))===0)lab+='<text x="'+x+'" y="'+(H-6)+'">'+d.slice(5)+'</text>';continue}
       if(!s){out+='<rect x="'+(x+1)+'" y="'+(H-P-3)+'" width="'+(bw-2)+'" height="3" fill="rgba(255,255,255,.08)"><title>'+d+': not measured</title></rect>';}
       else{var inner=s.ok&&s.ms==null,h=s.ok?(inner?(H-P*2)/2:Math.max(6,(Math.log(1+s.ms)/Math.log(1+mx))*(H-P*2))):H-P*2;out+='<rect x="'+(x+1)+'" y="'+(H-P-h)+'" width="'+(bw-2)+'" height="'+h+'" rx="1.5" fill="'+(s.ok?'#4cc38a':'#ff7a6e')+'" opacity="'+(s.ok?.9:.75)+'"><title>'+d+': '+(s.ok?(inner?'answered (asked inside our own server, so no comparable time)':'answered in '+fmtMs(s.ms)+' ('+s.via+')'):'no answer')+'</title></rect>';}
       if(i%Math.max(1,Math.round(days/6))===0)lab+='<text x="'+x+'" y="'+(H-6)+'">'+d.slice(5)+'</text>';
@@ -154,7 +161,7 @@
       +'<div class="tiles">'+tiles+'</div>'
       +'<div class="card"><h2>Alarm <small>'+(c.state?'last check: <b style="color:'+(c.state.state==='up'?'#7fd1a3':'#ff7a6e')+'">'+esc(c.state.state)+'</b> since '+esc(String(c.state.at).replace('T',' ').slice(0,16))+' UTC':'not checked yet')+'</small></h2>'
         +'<p class="muted">Rely on this agent? Be told when it stops answering, and when it is back. Free, by webhook, checked '+esc(c.watch.checked)+':</p><p><code>'+esc(c.watch.how)+'</code></p><p class="muted">Your server receives '+esc(c.watch.sends)+'.</p></div>'
-      +'<div class="card"><h2>Pulse <small>once a day: does it answer, how fast · '+(c.pulse.since?'since '+esc(c.pulse.since):'measuring from today')+'</small></h2>'+pulseChart(c.pulse.series)+'<p class="muted">'+esc(c.pulse.method)+'</p></div>'
+      +'<div class="card"><h2>Pulse <small>once a day: does it answer, how fast · '+(c.pulse.since?'since '+esc(c.pulse.since):'measuring from today')+'</small></h2>'+pulseChart(c.pulse.series,c.pulse.since)+'<p class="muted">'+esc(c.pulse.method)+'</p></div>'
       +'<div class="card"><h2>Paid work <small>every job on the ERC-8183 escrow put on this agent'+(c.jobs&&c.jobs.attributed_by.length?' · '+esc(c.jobs.attributed_by.join(', ')):'')+'</small></h2>'+workChart(c.jobs?c.jobs.by_day:[])
         +(t?'<p class="muted">'+t.funded+' funded · '+t.paid_out+' paid out · '+t.delivered_waiting+' delivered, not released yet · '+t.funded_not_delivered+' funded, not delivered · '+t.expired+' expired · delivery rate '+(t.delivery_rate_pct==null?'—':t.delivery_rate_pct+'%')+' (outside buyers: '+(t.delivery_rate_outside_pct==null?'—':t.delivery_rate_outside_pct+'%')+')</p>':'')+shared+'</div>'
       +blog

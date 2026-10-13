@@ -2764,7 +2764,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             remember(t,ab.agent);
           } else if(Array.isArray(d.hireable) && d.hireable.length){
             o.innerHTML='<div class="rg-who">Nobody answered this for free &mdash; these agents sell it</div>'+
-              d.hireable.slice(0,4).map(function(h){return hireLine(h.id,h.agent,t)}).join('')+oursLine(d._ours,t)+
+              d.hireable.filter(function(h){return !(d._ours&&String(h.id)===String(d._ours.id)&&document.querySelector('.rg-hirebtn[data-hire="'+String(h.id)+'"]'))}).slice(0,4).map(function(h){return hireLine(h.id,h.agent,t)}).join('')+oursLine(d._ours,t)+
               '<pre>'+esc(d.reason||'')+'</pre>';
           } else {
             o.innerHTML='<div class="rg-who">'+(d._ours?'No free answer &mdash; but one of ours sells this':'Not dispatched')+'</div><pre>'+esc(d.reason||'No agent answered.')+

@@ -536,7 +536,8 @@ async function bobaiForUsd(usd) {
   // The first draft slacked both and told the payer to send the slacked
   // amount, which after the tax would have arrived short and been refused.
   const tokens = Math.ceil(usd / usdPerBobai);
-  return { atomic: BigInt(Math.floor(tokens * 0.9 * 1e18)), tokens, usd_per_bobai: usdPerBobai };
+  // in integers (2026-10-13): tokens * 0.9 * 1e18 in floating point read 360900000000000065536 for 360.9 $BOBAI
+  return { atomic: BigInt(tokens) * 9n * 10n ** 17n, tokens, usd_per_bobai: usdPerBobai };
 }
 
 

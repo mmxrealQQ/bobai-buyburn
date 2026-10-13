@@ -328,7 +328,7 @@ function page() {
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow, or 0.10 USD1 / USDC when you pay per answer &mdash; ten cents either way.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow, or 0.10 USD1 / USDC &mdash; or ten cents&rsquo; worth of $BOBAI &mdash; when you pay per answer. Ten cents every way.</p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">

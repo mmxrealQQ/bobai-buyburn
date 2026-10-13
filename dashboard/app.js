@@ -1203,7 +1203,10 @@ function fillLpPortfolio(){
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
       + '</div>'
       // Not a term of the sum above (2026-09-24, D7): a comparison beside it.
-      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '');
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '')
+      // the same line for the range standing now (2026-10-13): the total above carries every range since 3 Sep
+      + (p.since_range && p.since_range.vs_holding_bnb != null ? (() => { const r = p.since_range, mv = Number(r.price_move_pct);
+        return '<div class="pf-eq">This range alone' + (r.width_pct ? ' (±' + esc(r.width_pct) + '%' : ' (') + ', since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days, ' + esc(p.other_token || 'the other side') + ' ' + (mv > 0 ? '+' : mv < 0 ? '−' : '') + Math.abs(mv).toFixed(1) + '% against BNB): fees <b>' + signed(r.fees_bnb) + '</b>, price <b>' + signed(r.price_bnb) + '</b> — against holding <b>' + signed(r.vs_holding_bnb) + '</b>' + (r.vs_holding_pct != null ? ' (' + (r.vs_holding_pct > 0 ? '+' : r.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(r.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>'; })() : '');
     const counts = [];
     if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
     if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));

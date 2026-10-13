@@ -5,7 +5,7 @@
 //   node scripts/lp-portfolio.mjs --self-test   pin the model's rules on synthetic records, both ways
 //
 // It reads. It signs nothing, holds no key and moves nothing.
-import { lpPortfolio, lastDay, stepWords, holdingBenchmark, changeText } from '../worker-agent/lp-portfolio.js';
+import { lpPortfolio, lastDay, stepWords, holdingBenchmark, sinceRange, changeText } from '../worker-agent/lp-portfolio.js';
 import fs from 'node:fs';
 import { CANDIDATES } from '../worker-agent/lp-pools.js';
 
@@ -86,6 +86,19 @@ if (process.argv.includes('--self-test')) {
   is('no ticks, no value or no capital: no line', holdingBenchmark([], { valueNow: 1, tickNow: 0 }) === null && holdingBenchmark(pts, { valueNow: 0, tickNow: 0 }) === null && holdingBenchmark(pts, { valueNow: 1, tickNow: null }) === null);
   is('the model carries the line under pnl when the series has ticks', (() => { const s2 = { ...series, points: [{ at: at(8), position: '7397034', in_range: true, wallet_bnb: 0.003, tick: -57800, capital_bnb: 0.2872 }] }; const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, tick: -57800 } } } }; const x = lpPortfolio(r2, s2, { now: NOW }); return x.pnl.vs_holding && x.pnl.vs_holding.holding_bnb > 0 && typeof x.pnl.vs_holding.vs_holding_bnb === 'number'; })());
   is('… and null when it has none', m.pnl.vs_holding === null);
+  // SINCE THIS RANGE (2026-10-13): minted at price 1 with 1 BNB in play; price now 1.1; 0.5 BNB arrived at price 1.05;
+  // 0.004 BNB of fees accrued (0.001 of them left as $BOBAI). Holding: 1*(0.5+0.5*1.1) + 0.5*(0.5+0.5*1.1/1.05) = 1.05 + 0.5119 = 1.5619.
+  {
+    const R = [{ at: at(60), position: '9', tick: tk(1), value_bnb: 1, owed_bnb: 0, fees_total_bnb: 0.05, bobai_spent_total_bnb: 0.02, capital_bnb: 2 },
+      { at: at(40), position: '9', tick: tk(1.05), value_bnb: 1.52, owed_bnb: 0.001, fees_total_bnb: 0.05, bobai_spent_total_bnb: 0.02, capital_bnb: 2.5 },
+      { at: at(20), position: '9', tick: tk(1.1), value_bnb: 1.55, owed_bnb: 0.002, kept_waiting_bnb: 0.001, fees_total_bnb: 0.052, bobai_spent_total_bnb: 0.021, capital_bnb: 2.5 }];
+    const sr = sinceRange([{ at: at(70), position: '8', tick: tk(0.8), value_bnb: 1, capital_bnb: 2 }, ...R], { position: '9' });
+    const hold = 1 * (0.5 + 0.5 * 1.1) + 0.5 * (0.5 + 0.5 * 1.1 / 1.05), lpSide = 1.55 + 0.002 + 0.001 + 0.001;
+    is('since this range: only the points of the standing position, the move from its mint', sr && sr.position === '9' && Math.abs(sr.price_move_pct - 10) < 0.15);
+    is('since this range: holding = what was in play at the mint plus each arrival, at their own prices', sr && Math.abs(sr.vs_holding_bnb - (lpSide - hold)) < 2e-4);
+    is('since this range: the fees are what accrued since the mint (collected + owed), and fees + price = vs holding', sr && Math.abs(sr.fees_bnb - 0.004) < 1e-9 && Math.abs(sr.fees_bnb + sr.price_bnb - sr.vs_holding_bnb) < 2e-5);
+    is('since this range: one point (just minted) or no position is no line', sinceRange(R.slice(0, 1), { position: '9' }) === null && sinceRange(R, { position: null }) === null);
+  }
   is('without a series there is no model', lpPortfolio(rec, null) === null);
   console.log(`\n${n - bad}/${n} checks behave in both directions`);
   process.exitCode = bad ? 1 : 0;

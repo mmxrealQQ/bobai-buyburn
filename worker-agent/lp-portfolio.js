@@ -98,6 +98,32 @@ export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, b
   };
 }
 
+// SINCE THIS RANGE (operator, 2026-10-13: "build the line"). The line against holding runs since 3 Sep and carries
+// every range the agent ever had — most of its loss came from the ±10% weeks (CAKE −18% against BNB, 27 Sep–7 Oct).
+// This is the same comparison for the position standing now alone: what was in play when it was minted (its worth, the
+// fees it owed, the kept fees waiting) held half as BNB and half as the other side at that run's price, plus each later
+// arrival of capital at its own run's price — against the position now, its fees owed and waiting, and the fees that
+// left it as $BOBAI since. Gas inside the period is left out and said so. Points of one position, oldest first. Pure; pinned.
+export function sinceRange(points, { position, wbnbIs0 = false } = {}) {
+  const pts = (points || []).filter((p) => p && position != null && String(p.position) === String(position) && p.tick != null && Number(p.value_bnb) > 0);
+  if (pts.length < 2) return null;
+  const priceAt = (tick) => { const raw = Math.pow(1.0001, Number(tick)); return wbnbIs0 ? 1 / raw : raw; };
+  const a = pts[0], b = pts[pts.length - 1], pNow = priceAt(b.tick);
+  const inPlay = (p) => n(p.value_bnb) + n(p.owed_bnb) + n(p.kept_waiting_bnb);
+  const start = inPlay(a);
+  let holding = start * (0.5 + 0.5 * (pNow / priceAt(a.tick))), arrived = 0, prevCap = n(a.capital_bnb);
+  for (const p of pts.slice(1)) { const d = n(p.capital_bnb) - prevCap; if (d > 1e-9) { arrived += d; holding += d * (0.5 + 0.5 * (pNow / priceAt(p.tick))); } prevCap = Math.max(prevCap, n(p.capital_bnb)); }
+  const lp = inPlay(b) + (n(b.bobai_spent_total_bnb) - n(a.bobai_spent_total_bnb));
+  const fees = (n(b.fees_total_bnb) + n(b.owed_bnb)) - (n(a.fees_total_bnb) + n(a.owed_bnb));
+  const vs = lp - holding, base = start + arrived;
+  return {
+    position: String(position), since: a.at, to: b.at, days: Math.round(((Date.parse(b.at) - Date.parse(a.at)) / 864e5) * 10) / 10,
+    price_move_pct: Math.round((pNow / priceAt(a.tick) - 1) * 1000) / 10,
+    fees_bnb: r5(fees), price_bnb: r5(vs - fees), vs_holding_bnb: r5(vs), vs_holding_pct: base > 0 ? Math.round((vs / base) * 10000) / 100 : null,
+    basis: 'what was in play at the mint and each later arrival, held half as BNB and half as the other side at its run\'s price, against the position now with its fees owed and waiting and the fees that left it as $BOBAI; gas inside the period left out',
+  };
+}
+
 // The return in words, ONE wording for every surface (2026-09-19): the card
 // said '-1.2% since 3 Sep' and the page '-1.2% on the capital' of the same
 // figure — one named the period, the other the base, neither both. It is the
@@ -249,6 +275,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // The line the whole thing is judged by: the position, with everything
       // it produced, against a wallet that simply held (holdingBenchmark).
       vs_holding: vsHold,
+      // the same line for the range standing now alone (sinceRange), with its width
+      since_range: (() => { const s = sinceRange(pts, { position, wbnbIs0 }); return s ? { ...s, width_pct: widthPct } : null; })(),
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       // The share of time, from the ten-minute tape; the run counts beside it lean high (D3).
       time_in_range_pct: sum.time_in_range ? sum.time_in_range.in_range_pct : null,

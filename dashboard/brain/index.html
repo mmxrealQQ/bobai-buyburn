@@ -235,7 +235,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1791897714481">
+<link rel="stylesheet" href="brain/brain.css?v=1791898310926">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1791819179">
@@ -511,7 +511,7 @@
         <div class="lqm">
           <div class="lqv ld" id="lq-hard">--</div>
           <div class="lql">Hard BNB Backing</div>
-          <div class="lqs">The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
+          <div class="lqs" data-nousd>The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
         </div>
       </div>
       <div class="lqi">
@@ -1329,7 +1329,7 @@
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1791819179')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1791897714482" defer></script>
-<script src="brain/cards.js?v=1791897714482" defer></script>
-<script src="brain/hero.js?v=1791897714482" defer></script>
+<script src="brain/brain.js?v=1791898310926" defer></script>
+<script src="brain/cards.js?v=1791898310926" defer></script>
+<script src="brain/hero.js?v=1791898310926" defer></script>
 </body></html>

@@ -522,6 +522,15 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
 // agent's sweep learns the token. Said on the 402, not implied.
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+// THE INPUT AS AN AGENT NATURALLY SENDS IT (2026-10-13): the documented body is {"params":{…}}, but {"token":"0x…"}
+// on its own came back "grid_plan needs `token`" with the token right there. Fields beside task/inputs/params count
+// too; params and inputs still win where both name one.
+function bareFields(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  const { task, inputs, params, ...rest } = body;
+  return Object.fromEntries(Object.entries(rest).filter(([, v]) => v == null || ['string', 'number', 'boolean'].includes(typeof v)));
+}
+
 async function bobaiForUsd(usd) {
   const [res, t0, price] = await Promise.all([call(BOBAI_PAIR, SEL.getReserves), call(BOBAI_PAIR, SEL.token0), bnbUsd()]);
   const b = res.slice(2);
@@ -1193,13 +1202,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);

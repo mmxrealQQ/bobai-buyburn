@@ -1475,7 +1475,8 @@ const page = `<!doctype html>
   .rgc.rg-ours{border-color:rgba(var(--accs,240,185,11),.35);background:rgba(var(--accs,240,185,11),.05)}
   .rgc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
   .rgc-id{min-width:0;flex:1 1 auto}
-.rgc-logo{width:38px;height:38px;border-radius:10px;object-fit:cover;flex:none;background:#0d1117;border:1px solid rgba(255,255,255,.08)}  .rgc-id > b{font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
+.rgc-logo{float:left;margin:1px 10px 2px 0;width:38px;height:38px;border-radius:10px;object-fit:cover;background:#0d1117;border:1px solid rgba(255,255,255,.08)}
+.rgc-id:has(> .rgc-logo){display:flow-root}  .rgc-id > b{font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
   .rgc .rg-note{overflow-wrap:anywhere}
   .rgc-what{font-size:.79rem;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}
   .rgc-what.rg-weak{opacity:.75;font-style:italic}
@@ -2844,7 +2845,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
           // THE LOGO (operator, 2026-10-13: "like marque.trade"): a verified listing shows its registration image; before the
           // featured copy is cloned, so the copy carries it too. A logo that does not load removes itself.
-          var lg=logo(L); var hd=art.querySelector('.rgc-h'); if(lg&&hd&&!hd.querySelector('.rgc-logo'))hd.insertAdjacentHTML('afterbegin',lg);
+          // inside the name block, floated: a long name flows beside it instead of wrapping under it (2026-10-13, 1280 px)
+          var lg=logo(L); var hd=art.querySelector('.rgc-id'); if(lg&&hd&&!hd.querySelector('.rgc-logo'))hd.insertAdjacentHTML('afterbegin',lg);
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
           if(L.house){var o=art.querySelector('.rg-x4');if(o)o.remove();} // the badge says "ours" already (2026-10-13: it showed twice)
           if(L.house)return; // ours: the badge only, no featured copy
@@ -2861,7 +2863,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
       if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip
       strip.hidden=false;
-      fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h">'+logo(L)+'<div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
+      fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id">'+logo(L)+'<b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
     }).catch(function(){strip.remove()});
   })();
 </script>

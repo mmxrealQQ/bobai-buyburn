@@ -383,6 +383,11 @@
     .tf .p{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700}
     .tf .d{font-size:.68rem;color:var(--muted);margin-top:2px}
     .ta{color:rgba(240,185,11,.18);font-size:1.1rem}
+    /* the six shares side by side, no arrows (2026-10-13): they are paid out in parallel, and arrows read as one flowing into the next */
+    .tax-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:820px;margin:0 auto}
+    .tax-flow .ta{display:none!important}
+    .tax-flow .tf{min-width:0}
+    @media(max-width:560px){.tax-flow{grid-template-columns:1fr 1fr;gap:8px}.tax-flow .tf{padding:14px 10px}}
     .ts-inline{font-size:.9em;color:var(--muted);opacity:.7;font-style:italic}
     .ts-inline.active{color:var(--gold);opacity:1;font-style:normal}
     .tax-schedule{margin-top:28px;border-top:1px solid var(--border);padding-top:20px}
@@ -1054,7 +1059,8 @@
     }
     @media(max-width:600px){
       .sg{grid-template-columns:repeat(2,1fr)}
-      .tg4,.fl{grid-template-columns:1fr}
+      /* two by two on a phone (2026-10-13): one under the other, the four steps took four screens */
+      .tg4,.fl{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fs-art{height:118px}.fs h4,.fs p{padding:0 10px}.fs p{font-size:.72rem;line-height:1.5}
       .sec{padding:48px 16px}
       .tax-flow{flex-direction:column}
       .ta{transform:rotate(90deg)}

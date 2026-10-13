@@ -49,6 +49,7 @@ export const OWN_AGENTS = [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/health-factor/a2a`, version: '0.3.0' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('health_factor'), version: '2' },
         { name: 'agentCard', description: 'Agent card', endpoint: `${ORIGIN}/health-factor/.well-known/agent-card.json` },
+        { name: 'web', description: 'The agent’s own page: what it answers, its measured calls, deliveries and payouts on the escrow kernel.', endpoint: 'https://brainonbnb.com/agent/302257' },
         { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this escrow kernel.', endpoint: 'https://brainonbnb.com/registry' },
       ],
       attributes: [
@@ -71,6 +72,7 @@ export const OWN_AGENTS = [
       services: [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/grid-trader/a2a`, version: '0.3.0' },
         { name: 'agentCard', description: 'Agent card', endpoint: `${ORIGIN}/grid-trader/.well-known/agent-card.json` },
+        { name: 'web', description: 'The agent’s own page: what it answers, its measured calls, deliveries and payouts on the escrow kernel.', endpoint: 'https://brainonbnb.com/agent/302258' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('grid_plan'), version: '2' },
         { name: 'poolScanner', description: 'The same pool measurement, free and without hiring anybody: browser scanner, installable skill, and an MCP tool.', endpoint: 'https://brainonbnb.com/scanner' },
         { name: 'marketplace', description: 'The marketplace this agent is listed in.', endpoint: 'https://brainonbnb.com/registry' },
@@ -96,6 +98,7 @@ export const OWN_AGENTS = [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/yield-optimizer/a2a`, version: '0.3.0' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('yield_plan'), version: '2' },
         { name: 'agentCard', description: 'Agent card', endpoint: `${ORIGIN}/yield-optimizer/.well-known/agent-card.json` },
+        { name: 'web', description: 'The agent’s own page: what it answers, its measured calls, deliveries and payouts on the escrow kernel.', endpoint: 'https://brainonbnb.com/agent/304493' },
         { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this escrow kernel.', endpoint: 'https://brainonbnb.com/registry' },
       ],
       attributes: [
@@ -119,6 +122,7 @@ export const OWN_AGENTS = [
       services: [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/rebalancer/a2a`, version: '0.3.0' },
         { name: 'agentCard', description: 'Agent card', endpoint: `${ORIGIN}/rebalancer/.well-known/agent-card.json` },
+        { name: 'web', description: 'The agent’s own page: what it answers, its measured calls, deliveries and payouts on the escrow kernel.', endpoint: 'https://brainonbnb.com/agent/304494' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('rebalance_plan'), version: '2' },
         { name: 'poolScanner', description: 'The same pool measurement, free and without hiring anybody: browser scanner, installable skill, and an MCP tool.', endpoint: 'https://brainonbnb.com/scanner' },
         { name: 'marketplace', description: 'The marketplace this agent is listed in.', endpoint: 'https://brainonbnb.com/registry' },
@@ -147,6 +151,7 @@ export const OWN_AGENTS = [
       services: [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/lp-placement/a2a`, version: '0.3.0' },
         { name: 'agentCard', description: 'Agent card', endpoint: `${ORIGIN}/lp-placement/.well-known/agent-card.json` },
+        { name: 'web', description: 'The agent’s own page: what it answers, its measured calls, deliveries and payouts on the escrow kernel.', endpoint: 'https://brainonbnb.com/agent/310460' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('lp_tier_plan'), version: '2' },
         { name: 'feeTiers', description: 'The same measurement, free and without hiring anybody: an MCP tool, a plain GET, and an installable skill.', endpoint: 'https://brainonbnb.com/api/fee-tiers' },
         { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this escrow kernel.', endpoint: 'https://brainonbnb.com/registry' },

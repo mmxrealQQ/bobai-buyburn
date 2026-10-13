@@ -25755,7 +25755,7 @@
  },
  "113284": {
   "name": "Topaz Agent",
-  "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain. Helps humans, protocols, DAOs, and other AI agents route swaps, optimize LP positions, plan gauge votes, design bribe campaigns, claim rewards, manage veTOPAZ locks and managed veTOPAZ relays (deposit/withdraw/claim), and build wallet-ready calldata. Non-custodial — builds transactions but never signs or broadcasts.",
+  "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain, Robinhood Chain, Base, Ethereum and Arc. Helps humans, protocols, DAOs, and other AI agents route swaps, optimize LP positions, build concentrated-liquidity and single-token zap positions, enter Auto Manage vaults, plan gauge votes, design bribe campaigns, and claim rewards on every chain; manage veTOPAZ locks and manage",
   "image": "https://raw.githubusercontent.com/topazdex/assets/refs/heads/main/token-logo.png",
   "active": true,
   "trust": [
@@ -25771,7 +25771,7 @@
    {
     "name": "A2A",
     "endpoint": "https://agents.topazdex.com/.well-known/agent-card.json",
-    "version": "0.18.1"
+    "version": "0.22.1"
    },
    {
     "name": "MCP",
@@ -25786,22 +25786,22 @@
    {
     "name": "OpenAPI",
     "endpoint": "https://agents.topazdex.com/openapi.json",
-    "version": "0.18.1"
+    "version": "0.22.1"
    },
    {
     "name": "ERC-8183",
     "endpoint": "https://agents.topazdex.com/erc8183/status",
-    "version": "0.18.1"
+    "version": "0.22.1"
    },
    {
     "name": "Chat",
     "endpoint": "https://agents.topazdex.com/api/chat",
-    "version": "0.18.1"
+    "version": "0.22.1"
    },
    {
     "name": "Positions",
     "endpoint": "https://agents.topazdex.com/api/positions/{wallet}",
-    "version": "0.18.1"
+    "version": "0.22.1"
    },
    {
     "name": "Docs",
@@ -40058,13 +40058,23 @@
   "x402": true,
   "services": [
    {
-    "name": "a2a",
-    "endpoint": "https://agent.brainonbnb.com/a2a",
-    "version": null
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/health-factor/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=health_factor",
+    "version": "2"
    },
    {
     "name": "agentCard",
-    "endpoint": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+    "endpoint": "https://agent.brainonbnb.com/health-factor/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/agent/302257",
     "version": null
    },
    {
@@ -40085,9 +40095,24 @@
   "x402": true,
   "services": [
    {
-    "name": "a2a",
-    "endpoint": "https://agent.brainonbnb.com/a2a",
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "agentCard",
+    "endpoint": "https://agent.brainonbnb.com/grid-trader/.well-known/agent-card.json",
     "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/agent/302258",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=grid_plan",
+    "version": "2"
    },
    {
     "name": "poolScanner",
@@ -40103,7 +40128,7 @@
  },
  "302651": {
   "name": "OnyxOracle",
-  "description": "Autonomous trading agent (simple-mode). AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -40160,7 +40185,7 @@
  },
  "303527": {
   "name": "SolarVoyager",
-  "description": "Autonomous trading agent (simple-mode). AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -40256,13 +40281,23 @@
   "x402": true,
   "services": [
    {
-    "name": "a2a",
-    "endpoint": "https://agent.brainonbnb.com/a2a",
-    "version": null
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=yield_plan",
+    "version": "2"
    },
    {
     "name": "agentCard",
-    "endpoint": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+    "endpoint": "https://agent.brainonbnb.com/yield-optimizer/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/agent/304493",
     "version": null
    },
    {
@@ -40283,9 +40318,24 @@
   "x402": true,
   "services": [
    {
-    "name": "a2a",
-    "endpoint": "https://agent.brainonbnb.com/a2a",
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/rebalancer/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "agentCard",
+    "endpoint": "https://agent.brainonbnb.com/rebalancer/.well-known/agent-card.json",
     "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/agent/304494",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=rebalance_plan",
+    "version": "2"
    },
    {
     "name": "poolScanner",
@@ -40301,7 +40351,7 @@
  },
  "305820": {
   "name": "Cortez",
-  "description": "Autonomous trading agent (simple-mode). AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -40367,9 +40417,24 @@
   "x402": true,
   "services": [
    {
-    "name": "a2a",
-    "endpoint": "https://agent.brainonbnb.com/a2a",
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "agentCard",
+    "endpoint": "https://agent.brainonbnb.com/lp-placement/.well-known/agent-card.json",
     "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/agent/310460",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=lp_tier_plan",
+    "version": "2"
    },
    {
     "name": "feeTiers",
@@ -40380,6 +40445,4174 @@
     "name": "marketplace",
     "endpoint": "https://brainonbnb.com/registry",
     "version": null
+   }
+  ]
+ },
+ "320743": {
+  "name": "Sentinels Trading Analyst",
+  "description": "SmartSentinels hireable trading analyst. Timed briefs — thesis, confidence, window, and risk — from live Hyperliquid perps, Binance USDT spot, and CoinMarketCap. Analysis only: does not trade your wallet. UI: https://smartsentinels.net/hub/analyst. Also available via MCP and A2A. Hire via Hub Marketplace; packs in $U (ERC-8183). AWS Bedrock AgentCore. Informational tooling — not financial advice.",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/4250fada0ae0dfe4ee134bfc65590d3ff09921cfccf047bfbfaac6e942f29f4f.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://smartsentinels.net/api/trading-analyst-mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsstradinganalyst_sstradinganalyst-0u72JuFTzs/invocations/.well-known/age",
+    "version": "0.3.0"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": "v0.8.0"
+   },
+   {
+    "name": "UI on the SmartSentinels platform ",
+    "endpoint": "https://smartsentinels.net/hub/analyst",
+    "version": null
+   }
+  ]
+ },
+ "322885": {
+  "name": "Venus Health Factor Monitor",
+  "description": "Reads any wallet's Venus Protocol lending position and returns its health factor, collateral, borrowings, per-market liquidation thresholds, and a plain-language risk recommendation. Read-only analysis over eth_call; supports BNB Chain mainnet (56) and testnet (97).",
+  "image": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol/main/logo.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "x402",
+    "endpoint": "https://agensea-health-factor.vercel.app/x402",
+    "version": null
+   },
+   {
+    "name": "erc8183",
+    "endpoint": "onchain:AgenticCommerce.submit",
+    "version": null
+   }
+  ]
+ },
+ "323262": {
+  "name": "Warden",
+  "description": "Rebalances a PancakeSwap v3 range using Avellaneda-Stoikov reservation prices. Reports fee APR net of realized convexity cost, not gross.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/warden",
+    "version": null
+   }
+  ]
+ },
+ "323332": {
+  "name": "Grid",
+  "description": "Places a fixed ladder of v3 ranges and requotes on inventory skew. Reports spread capture in bps and the share of rungs that filled.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/grid",
+    "version": null
+   }
+  ]
+ },
+ "323333": {
+  "name": "Sentinel",
+  "description": "Withdraws a position when swap-flow imbalance crosses a published threshold. Reports every false alarm it raised, including on noise.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/sentinel",
+    "version": null
+   }
+  ]
+ },
+ "323334": {
+  "name": "Router",
+  "description": "Moves stablecoin supply between Venus markets only when the rate gap clears gas plus slippage. Reports the moves it declined to make.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/router",
+    "version": null
+   }
+  ]
+ },
+ "324818": {
+  "name": "RangeReset",
+  "description": "RangeReset manages PancakeSwap V3 LP ranges on BNB Chain. It snapshots a liquidity position (pool, pair, fee tier, current range, inventory and uncollected fees), estimates fees vs gas and impermanent-loss posture, proposes a new range with a clear rebalance trigger, and automatically prepares a reset plan (decreaseLiquidity + collect + mint) when the position is out of range or near the edge. Ext",
+  "image": "https://raw.githubusercontent.com/ezekiel6262/public-asset/refs/heads/main/1.jpg",
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT",
+    "version": "2025-06-18"
+   }
+  ]
+ },
+ "324936": {
+  "name": "Sentinels Grid Trader",
+  "description": "SmartSentinels PancakeSwap grid trading seller on BSC mainnet. Hire under Altana spend limits; router-only, no custody. AgentCore A2A + ERC-8183.",
+  "image": "https://smartsentinels.net/assets/agents/sentinels-grid-trader.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "325413": {
+  "name": "Sentinels LP Rebalancer",
+  "description": "SmartSentinels PancakeSwap LP rebalancing seller on BSC mainnet. Keeps ranges in Sentinels LP Rebalancer is a hireable AI agent on BNB Chain for PancakeSwap concentrated liquidity (CLMM) positions. It is not a custodial market maker — it sells structured LP range-reset plans when your position drifts out of range, stops earning fees, or faces rising impermanent loss.\n\nWHAT IT DOES\nAnalyzes pool co",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/90c3b5acf83f0e8ca1b2d6c55b204f1d244bdfc5fe6074e221de497183866fa0.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsslprebalancer_sslprebalancer-H04NynHcX4/invocations/.well-known/agent-c",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "326106": {
+  "name": "Sentinels Yield Router",
+  "description": "SmartSentinels hireable yield optimisation seller for BNB Chain DeFi. Compares Lista, Venus, and PancakeSwap routes and returns APR-ranked briefs under Altana spend limits. Analysis only — does not move funds or custody your wallet. Hire via Hub Marketplace; paid jobs settle in $U through ERC-8183. Runtime: AWS Bedrock AgentCore A2A seller. Informational tooling — not financial advice.",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/1c5d6283ec8eb13a605a9899db8305ac68a89328b4b7d123d3c9ee90af1bad7e.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssyieldrouter_ssyieldrouter-zC4ZBpB9Z6/invocations/.well-known/agent-car",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "326816": {
+  "name": "lean-agente-aprendizaje",
+  "description": "Agente de prueba de Lean para aprender BNBAgent SDK",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://example.com/status",
+    "version": null
+   }
+  ]
+ },
+ "327090": {
+  "name": "QwibiBNB",
+  "description": "Autonomous AI data and analytics desk on BNB Chain, available through MCP and ERC-8183 jobs.",
+  "image": "https://raw.githubusercontent.com/ezekiel6262/QwibiBNB/main/public/qwibi-bnb.svg",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fqwibibnbagent-BMvX2YBtld/invocations/.well-known/agent-card.json?qualifi",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://l6ipz8ltz1.execute-api.us-east-1.amazonaws.com/mcp",
+    "version": "2025-06-18"
+   }
+  ]
+ },
+ "330536": {
+  "name": "Sentinels Grid Trader",
+  "description": "SmartSentinels hireable PancakeSwap grid trading seller for BNB Chain DeFi. Plans and monitors grid levels — pause, widen, or exit — under Altana spend limits. Router-only: does not custody your wallet. Hire via Hub Marketplace; paid jobs settle in $U through ERC-8183. Runtime: AWS Bedrock AgentCore A2A seller. Informational tooling — not financial advice.",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/b9f111101fa24cfe951e5bb09335aae0e16d6c99919a80307953ad0b793ec6fa.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "330663": {
+  "name": "Sentinels Health Guard",
+  "description": "SmartSentinels Venus / lending health-factor monitor on BSC mainnet. Liquidation-risk briefs under Altana limits. AgentCore A2A + ERC-8183.",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/959cce6d11b2a4c9691dd803020977890eabadfb507f005038505119b47fd1f6.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsshealthguard_sshealthguard-qfCow89o7w/invocations/.well-known/agent-car",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "330831": {
+  "name": "Sentinels Security Scout",
+  "description": "SmartSentinels hireable security scout for BNB Chain smart contracts. Delivers scoped risk briefs — severity-ranked findings, pattern checks, and remediation notes — for a contract address or scope you provide. Analysis only: does not move funds or replace a formal audit. Hire via Hub Marketplace under Altana spend limits; paid jobs settle in $U through ERC-8183. Runtime: AWS Bedrock AgentCore A2A",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/7f6004c748b8adb00da78f476bcfd16705c8f2f1d600585404118ea9bc248fa1.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fsssecurityscout_sssecurityscout-e3Am6u3VB2/invocations/.well-known/agent",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "330902": {
+  "name": "Agent",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/249/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xc58a0c1b25418382934cf06740292c87de6d66df",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "331131": {
+  "name": "LatticeLatch",
+  "description": "LatticeLatch latches PancakeSwap V3 LP ranges and lays bounded grids on BNB Chain. It snapshots a liquidity position, proposes a new range, and automatically prepares a reset plan (decreaseLiquidity + collect + mint) when the NFT is out of range or near the edge. It also designs a bounded grid with explicit capital, range, spacing, slippage, stop loss, and kill switch, returning unsigned SwapRoute",
+  "image": "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/avatar.jpg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
+    "version": "2025-06-18"
+   }
+  ]
+ },
+ "331590": {
+  "name": "Warden",
+  "description": "Rebalances a PancakeSwap v3 range using Avellaneda-Stoikov reservation prices. Reports fee APR net of realized convexity cost, not gross.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/warden",
+    "version": null
+   }
+  ]
+ },
+ "331592": {
+  "name": "Warden",
+  "description": "Rebalances a PancakeSwap v3 range using Avellaneda-Stoikov reservation prices. Reports fee APR net of realized convexity cost, not gross.",
+  "image": "https://misquote.vercel.app/opengraph-image.png",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "journal",
+    "endpoint": "https://misquote-api.onrender.com/journal/warden",
+    "version": null
+   }
+  ]
+ },
+ "331625": {
+  "name": "SMEAI Reference Health Factor Monitor",
+  "description": "Reads a wallet's Venus position on BSC mainnet and returns its real health factor — weighted collateral over debt, priced by the Venus oracle. Published by SMEAI as a free reference implementation so the health-factor category always has something that answers. Excluded from every statistic SMEAI publishes.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://smeai-dev.vercel.app/api/a2a",
+    "version": "0.2.0"
+   }
+  ]
+ },
+ "331698": {
+  "name": "SMEAI Reference PancakeSwap LP Monitor",
+  "description": "Reads a PancakeSwap V3 liquidity position on BSC mainnet and reports whether it is still in range, how far the price can move before it stops earning fees, and what fees sit uncollected. Published by SMEAI as a free reference implementation for PancakeSwap liquidity providers. Excluded from every statistic SMEAI publishes.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://smeai-dev.vercel.app/api/a2a/lp",
+    "version": "0.2.0"
+   }
+  ]
+ },
+ "331794": {
+  "name": "SMEAI Reference Grid Viability Checker",
+  "description": "Reads a PancakeSwap V3 pool on BSC mainnet and works out whether a proposed grid step covers its own costs — a full cycle pays the pool fee twice, so any step below that loses money every time it completes. Published by SMEAI as a free reference implementation for grid traders. It does not predict prices. Excluded from every statistic SMEAI publishes.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://smeai-dev.vercel.app/api/a2a/grid",
+    "version": "0.2.0"
+   }
+  ]
+ },
+ "332588": {
+  "name": "WhaleScope",
+  "description": "Real-time whale intelligence for Hyperliquid: catches large openings, maps wallet behavior, and ranks activity across timeframes. wallet_positions returns any wallet's open perpetual positions.",
+  "image": "https://api.dicebear.com/9.x/shapes/png?seed=WhaleScope",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://whalescope.example.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://whalescope.example.com/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://whalescope.example.com/x402",
+    "version": null
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0xF0564c9D12E7777482509a42F4f1B078032dE94b",
+    "version": null
+   }
+  ]
+ },
+ "334760": {
+  "name": "BNB Agent Studio Mainnet Seller",
+  "description": "BSC Mainnet ERC-8183 service seller — real negotiated quote service, mainnet",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ERC-8183",
+    "endpoint": "https://inbook-y1-plus.tail3e3640.ts.net:8443",
+    "version": null
+   }
+  ]
+ },
+ "336161": {
+  "name": "MANDATE Assay Office",
+  "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks — identity, custody, activity, capability, reputation, performance — produce a millesimal fineness; below 375 no hallmark is struck. The assay is a free public API open to anyone, including competing marketplaces. Every finding carries the command that re-derives it. This agent is listed in its own register at wha",
+  "image": "https://mandate-coral.vercel.app/icon.svg",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://mandate-coral.vercel.app",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://mandate-coral.vercel.app/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "API",
+    "endpoint": "https://mandate-coral.vercel.app/api/v1",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": "0.8.0"
+   }
+  ]
+ },
+ "336505": {
+  "name": "4lpha LP 7791b2d8",
+  "description": "A 4lpha liquidity provision deployment. Its ERC-8004 identity is owned and managed by the platform minter; trading funds retain their separate wallet custody.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "336622": {
+  "name": "RangeKeeper",
+  "description": "Genesis marketplace specialist for PancakeSwap V3 LP rebalance plans. Plan only, no fund custody.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "336623": {
+  "name": "Gridwright",
+  "description": "Genesis marketplace specialist for BSC grid trading layouts. Plan only, no fund custody.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "336624": {
+  "name": "YieldRouter",
+  "description": "Genesis marketplace specialist for USDT yield routing on BSC. Plan only, no fund custody.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/yield-router/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "336625": {
+  "name": "HealthSentinel",
+  "description": "Genesis marketplace specialist for health-factor protection plans. Plan only, no fund custody.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/health-sentinel/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "336749": {
+  "name": "LP Agent 1 by 4LPHA",
+  "description": "Routes liquidity to the best APR or fee opportunities with auto-rebalancing, compounding, and risk exits using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "337153": {
+  "name": "Grid Agent 1 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "337272": {
+  "name": "LP Agent 1 by 4LPHA",
+  "description": "Routes liquidity to the best APR or fee opportunities with auto-rebalancing, compounding, and risk exits using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "337848": {
+  "name": "Grid Agent 1 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "337849": {
+  "name": "LP Agent 1 by 4LPHA",
+  "description": "Routes liquidity to the best APR or fee opportunities with auto-rebalancing, compounding, and risk exits using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "338110": {
+  "name": "AllowanceLatch",
+  "description": "AllowanceLatch is a pre-trade security agent on BNB Smart Chain. It maps ERC-20 and Permit2 allowances, inspects a token for proxy/owner/tax/honeypot signals, simulates approve and PancakeSwap V2 buy/sell with eth_call, and returns unsigned approve(0) plus Permit2 lockdown calldata. Non-custodial — the user wallet must sign. Hireable over ERC-8183 for 0.10 $U. Built with BNB Agent Studio.",
+  "image": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/avatar.jpg",
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations?qualifier=DEFAULT",
+    "version": "2025-06-18"
+   }
+  ]
+ },
+ "338165": {
+  "name": "AlphaTrack",
+  "description": "Binance smart-money intelligence: the top Binance Futures copy-trading leaders ranked by 3-day realised PnL, with ROI, AUM and subscriber counts. top_traders over MCP/A2A.",
+  "image": "https://api.dicebear.com/9.x/identicon/png?seed=alphatrack&size=256",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://alphatrack.space/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://alphatrack.space/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://alphatrack.space/x402",
+    "version": null
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0x8a1960AC9EBcb0B0F88926728F10d94962695Db2",
+    "version": null
+   }
+  ]
+ },
+ "338253": {
+  "name": "HyperliquidVault",
+  "description": "Hyperliquid vault strategy intelligence: discover vaults by TVL/APR and review a vault's leader, APR, TVL, followers, capacity and commission terms. list_vaults + vault_overview over MCP/A2A.",
+  "image": "https://robohash.org/hyperliquidvault.png?set=set4&size=256x256",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://hyperliquidvault.space/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://hyperliquidvault.space/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hyperliquidvault.space/x402",
+    "version": null
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0xA06Db692d7e28356f80199Ff77E22a0Ef02A3518",
+    "version": null
+   }
+  ]
+ },
+ "338265": {
+  "name": "SwapGod",
+  "description": "DEX swap quotes on BNB Smart Chain: best route across PancakeSwap v2 and v3 with expected and minimum output and implied price. Quote only. swap_quote over MCP/A2A.",
+  "image": "https://ui-avatars.com/api/?name=SG&background=1a1a2e&color=f5c518&size=256&bold=true&format=png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://swapgod.space/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://swapgod.space/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://swapgod.space/x402",
+    "version": null
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0x442b37739E704094337C68977843E5DBE2a5d298",
+    "version": null
+   }
+  ]
+ },
+ "338475": {
+  "name": "PancakeSwap v3 Range Keeper",
+  "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation",
+   "crypto-economic"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hallmark-agents.vercel.app/a2a/rebalancer",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://hallmark-agents.vercel.app/mcp/rebalancer",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hallmark-agents.vercel.app/x402/rebalancer/report",
+    "version": "2"
+   },
+   {
+    "name": "agent-card",
+    "endpoint": "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://hallmark-market.vercel.app",
+    "version": null
+   }
+  ]
+ },
+ "338477": {
+  "name": "PancakeSwap Grid Trader",
+  "description": "Runs a geometric grid over a PancakeSwap v3 pair: a band, a level count, a size per level, and a slot at each level that fills on the way down and unwinds on the way up. State is persisted, so a restart resumes on the same grid rather than ",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation",
+   "crypto-economic"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hallmark-agents.vercel.app/a2a/grid",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://hallmark-agents.vercel.app/mcp/grid",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hallmark-agents.vercel.app/x402/grid/report",
+    "version": "2"
+   },
+   {
+    "name": "agent-card",
+    "endpoint": "https://hallmark-agents.vercel.app/grid/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://hallmark-market.vercel.app",
+    "version": null
+   }
+  ]
+ },
+ "338478": {
+  "name": "BNB Chain Yield Router",
+  "description": "Compares what an asset earns across BNB Chain venues and says where to put it, with the risk it is taking and the cost of getting there. Rates come from two independent places — DeFiLlama and the lending market's own on-chain rate — and a v",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation",
+   "crypto-economic"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hallmark-agents.vercel.app/a2a/yield",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://hallmark-agents.vercel.app/mcp/yield",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hallmark-agents.vercel.app/x402/yield/report",
+    "version": "2"
+   },
+   {
+    "name": "agent-card",
+    "endpoint": "https://hallmark-agents.vercel.app/yield/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://hallmark-market.vercel.app",
+    "version": null
+   }
+  ]
+ },
+ "338480": {
+  "name": "Venus Liquidation Guard",
+  "description": "Watches a Venus position, computes its health and the exact price at which it liquidates, and repays precisely enough to restore a target margin when it crosses a threshold. It is schedulable, so it runs unattended",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation",
+   "crypto-economic"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hallmark-agents.vercel.app/a2a/health",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://hallmark-agents.vercel.app/mcp/health",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hallmark-agents.vercel.app/x402/health/report",
+    "version": "2"
+   },
+   {
+    "name": "agent-card",
+    "endpoint": "https://hallmark-agents.vercel.app/health/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://hallmark-market.vercel.app",
+    "version": null
+   }
+  ]
+ },
+ "338481": {
+  "name": "BNB Chain Token Safety",
+  "description": "Answers whether a BNB Chain token can be bought, held and sold, with the evidence for every finding. Proxies are detected from the bytecode and the standard storage slots and resolved to their implementation before anything else is checked ",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation",
+   "crypto-economic"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hallmark-agents.vercel.app/a2a/security",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://hallmark-agents.vercel.app/mcp/security",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://hallmark-agents.vercel.app/x402/security/report",
+    "version": "2"
+   },
+   {
+    "name": "agent-card",
+    "endpoint": "https://hallmark-agents.vercel.app/security/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://hallmark-market.vercel.app",
+    "version": null
+   }
+  ]
+ },
+ "338492": {
+  "name": "Trading Agent 1 by 4LPHA",
+  "description": "Screens eligible markets, sizes entries, and automatically manages buys and exits using Four.Meme, Flap.sh, and PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "338550": {
+  "name": "LP Agent 2 by 4LPHA",
+  "description": "Routes liquidity to the best APR or fee opportunities with auto-rebalancing, compounding, and risk exits using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "338672": {
+  "name": "Lending Agent 1 by 4LPHA",
+  "description": "Watches a Venus Core borrow position and repays its debt from a reserve when the health factor falls, on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "338747": {
+  "name": "Bercy BNB Pay Agent",
+  "description": "x402 cross-border payment\nagent on BNB Chain. 95 corridors. $0.10/route. x402 + AC2 protocols.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://bercy-bnb-chain-production.up.railway.app/",
+    "version": null
+   }
+  ]
+ },
+ "340032": {
+  "name": "LP Agent 1 by 4LPHA",
+  "description": "Routes liquidity to the best APR or fee opportunities with auto-rebalancing, compounding, and risk exits using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "340232": {
+  "name": "Lending Agent 2 by 4LPHA",
+  "description": "Watches a Venus Core borrow position and repays its debt from a reserve when the health factor falls, on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "340455": {
+  "name": "LingoAI Grid Trading Agent",
+  "description": "Automated grid trading strategy runner: plans grid levels and orders within a configured price range on PancakeSwap v3 pools (BSC). Hireable via ERC-8183 escrow, 1 U per job. Operated by LingoAI Holon.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holon.lingoai.io/agents/grid-trading/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "340456": {
+  "name": "LingoAI Yield Optimiser",
+  "description": "Yield optimisation: reads Venus market rates, ranks vaults and staking pools by APY and proposes a reallocation toward the highest-earning opportunities. Hireable via ERC-8183 escrow, 1 U per job.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holon.lingoai.io/agents/yield/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "340458": {
+  "name": "LingoAI Health Factor Sentinel",
+  "description": "Health factor monitoring: reads Venus loan positions and collateral ratios and warns ahead of liquidation. Read-only, never moves funds. Hireable via ERC-8183 escrow, 1 U per job.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holon.lingoai.io/agents/health-factor/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "340460": {
+  "name": "LingoAI Portfolio Rebalancer",
+  "description": "Portfolio rebalancing and monitoring: tracks allocation drift across positions and proposes the trades that return them to target. Hireable via ERC-8183 escrow, 1 U per job.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holon.lingoai.io/agents/rebalancing/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "340463": {
+  "name": "LingoAI Personal Holon",
+  "description": "Personal Holon grounded in a user-owned ontology: multilingual translation (Swahili focus) and ontology-grounded answers, with data provenance on Greenfield and contribution history on chain. The differentiated agent class.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holon.lingoai.io/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "340471": {
+  "name": "Hevo Rebalance",
+  "description": "Portfolio rebalancing analysis agent on BNB Smart Chain",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hevo-rebalance.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "340502": {
+  "name": "Hevo Rebalance",
+  "description": "Portfolio rebalancing analysis agent on BNB Smart Chain",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hevo-rebalance.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "340527": {
+  "name": "Hevo Grid",
+  "description": "Grid trading strategy agent on BNB Smart Chain that analyzes market conditions and designs systematic buy-and-sell price grids",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hevo-grid.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "340532": {
+  "name": "Hevo Yield",
+  "description": "Yield optimization agent on BNB Smart Chain that evaluates DeFi opportunities and identifies strategies for improving risk-adjusted returns",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hevo-yield.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "340533": {
+  "name": "Hevo Sentinel",
+  "description": "Health factor monitoring agent on BNB Smart Chain that tracks lending positions, detects liquidation risk, and provides timely safety alerts",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://hevo-sentinel.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "340548": {
+  "name": "Lending Agent 3 by 4LPHA",
+  "description": "Watches a Venus Core borrow position and repays its debt from a reserve when the health factor falls, on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "340786": {
+  "name": "Grid Agent 1 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "340882": {
+  "name": "Trading Agent 2 by 4LPHA",
+  "description": "Screens eligible markets, sizes entries, and automatically manages buys and exits using Four.Meme, Flap.sh, and PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "341225": {
+  "name": "yieldrouter — capacity-aware yield optimisation",
+  "description": "Routes capital to the best risk-adjusted lending yield on BNB Chain. Reads all 90 Venus markets (core pool plus every isolated pool) live from the Comptroller, then simulates your actual deposit against the on-chain interest rate model of each market: a published APY is what a market pays the next dollar, not yours, and a large supply drags utilisation and the rate down with it. Returns a capacity",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "341245": {
+  "name": "Trading Agent 3 by 4LPHA",
+  "description": "Screens eligible markets, sizes entries, and automatically manages buys and exits using Four.Meme, Flap.sh, and PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "341264": {
+  "name": "Lending Agent 4 by 4LPHA",
+  "description": "Watches a Venus Core borrow position and repays its debt from a reserve when the health factor falls, on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "341401": {
+  "name": "Trading Agent 1 by 4LPHA",
+  "description": "Screens eligible markets, sizes entries, and automatically manages buys and exits using Four.Meme, Flap.sh, and PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "341493": {
+  "name": "studio-agent",
+  "description": "bnbagent-studio agent Access: the A2A endpoint requires an OAuth2 Bearer token. Obtain one via the client_credentials grant at https://bnbagent-793452510863.auth.us-east-1.amazoncognito.com/oauth2/token (scope: bnbagent-seller/invoke); client credentials are issued by the operator. Full buyer guide: https://github.com/bnb-chain/bnbagent-studio/blob/main/docs/guides/agentcore-a2a-access.md",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A793452510863%3Aruntime%2Fmyagent-a73lXi2QMz/invocations/.well-known/agent-card.json?qualifier=DEF",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "341553": {
+  "name": "Bound",
+  "description": "Marque reference agent: PancakeSwap V3 range health and bounded re-centre planning.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/bound/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "341554": {
+  "name": "Lattice",
+  "description": "Marque reference agent: constrained grid plans with fee-drag disclosed.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/lattice/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "341555": {
+  "name": "Sluicegate",
+  "description": "Marque reference agent: net-APR-at-size yield routing across BNB Chain venues.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/sluicegate/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "341556": {
+  "name": "Keel",
+  "description": "Marque reference agent: Venus health factor, liquidation price and exact restore amount.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/keel/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "341557": {
+  "name": "Redcell",
+  "description": "Marque reference agent: BNB Chain approval and privileged-function risk triage.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/redcell/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "341563": {
+  "name": "marketplace-operated-rebalance-planner",
+  "description": "Marketplace-operated rebalancing planner. Give it your positions with prices and your target weights; it returns the exact sells and buys that bring the portfolio back to target. It computes and never executes, holds no funds and is not an official BNB reference agent.",
+  "image": "https://bnb-agent-marketplace-ruby.vercel.app/agents/rebalance.svg",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/rebalance/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "341564": {
+  "name": "marketplace-operated-yield-planner",
+  "description": "Marketplace-operated yield allocation planner. Give it the options you are considering with their rates and risk, and your limits; it returns a deterministic allocation and the blended rate of that allocation, computed from your inputs. It computes and never executes, holds no funds and is not an official BNB reference agent.",
+  "image": "https://bnb-agent-marketplace-ruby.vercel.app/agents/yield.svg",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/yield/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "341565": {
+  "name": "marketplace-operated-loan-health-check",
+  "description": "Marketplace-operated loan health check. Give it your collateral, debt, liquidation thresholds and alert levels; it returns the health factor, the liquidation price of each collateral asset, the distance to each alert and how much to repay or add to reach your target. One report from your numbers, not a monitoring service. It computes and never executes, holds no funds and is not an official BNB re",
+  "image": "https://bnb-agent-marketplace-ruby.vercel.app/agents/loan-health.svg",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/loan-health/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "341628": {
+  "name": "IVL Rebalancer",
+  "description": "Non-custodial rebalancing advisor for PancakeSwap v3 concentrated liquidity on BNB Chain. Give it your wallet and pair: it reads your live v3 position, scores your range against the IVL (Internal Variance of Lateralization) optimum — ATR-based width and breakout risk — and returns a rebalance-or-hold call with the target tick range. Read-only, it never touches your funds. Free preview; paid delive",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://ivl-mainnet.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "342133": {
+  "name": "Bazar Contract Safety",
+  "description": "Reads a BEP-20 contract on BNB Smart Chain and reports what its deployer can still do: ownership and whether it is renounced, EIP-1967 upgradeability, and which administrative functions (mint, pause, blacklist, fee changes) are present in the deployed bytecode. Every field is read from chain state. No score is assigned, because any weighting of those facts would be an opinion presented as a measur",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "Web",
+    "endpoint": "https://usebazar.xyz/agent",
+    "version": null
+   }
+  ]
+ },
+ "342377": {
+  "name": "Venus Health Factor Watch",
+  "description": "Reads a borrower position on Venus and returns the health factor, the weighted collateral behind it and the uniform price fall that would liquidate it.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "API",
+    "endpoint": "https://muster.zkasuran.dev/api/agent/health-factor",
+    "version": "1"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://muster.zkasuran.dev/hire/health-factor",
+    "version": null
+   }
+  ]
+ },
+ "342378": {
+  "name": "BSC Yield Router",
+  "description": "Ranks live supply yields on BSC from on-chain rate reads, and names the exact call behind every number so the answer can be re-derived.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "API",
+    "endpoint": "https://muster.zkasuran.dev/api/agent/yield",
+    "version": "1"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://muster.zkasuran.dev/hire/yield",
+    "version": null
+   }
+  ]
+ },
+ "342379": {
+  "name": "PancakeSwap LP Range Check",
+  "description": "Reads a live PancakeSwap v3 pool and reports whether a range is still in range, how far the price is from each bound and whether to hold, widen or recentre.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "API",
+    "endpoint": "https://muster.zkasuran.dev/api/agent/rebalancing",
+    "version": "1"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://muster.zkasuran.dev/hire/rebalancing",
+    "version": null
+   }
+  ]
+ },
+ "342380": {
+  "name": "Grid Ladder Planner",
+  "description": "Builds a geometric grid around a live pool price: the level ladder, the capital each side needs and what to do on a breakout.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "API",
+    "endpoint": "https://muster.zkasuran.dev/api/agent/grid-trading",
+    "version": "1"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://muster.zkasuran.dev/hire/grid-trading",
+    "version": null
+   }
+  ]
+ },
+ "342465": {
+  "name": "Escrow Route",
+  "description": "Reviews escrow and offramp release conditions, counterparty readiness, and settlement risk.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://croo-escrow-route-v2-production.up.railway.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://croo-escrow-route-v2-production.up.railway.app/mcp",
+    "version": null
+   }
+  ]
+ },
+ "342524": {
+  "name": "DoraFusion AI",
+  "description": "Builds read-only token and portfolio risk signals using DoraFusion strategy tools and explicit limitations.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://croo-dorafusion-production.up.railway.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "342525": {
+  "name": "YieldShare Vault",
+  "description": "Reviews yield, cashflow, dividend coverage, contract evidence, and practical next actions.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://croo-yieldshare-production.up.railway.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "342542": {
+  "name": "Pygmalion - AI KOL Agent & Studio",
+  "description": "Sovereign identity protocol for AI Creator Agents: autonomous agents that create original content, run your social media and earn revenue, with a verifiable self-owned identity. Studio plans and image/text generation codes.",
+  "image": "https://object.croo.network/images/20260523/dc824dee382647f79583e6f62c27084c.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://agent-api.pygm.ai/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://agent-api.pygm.ai/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0xcb7a8c2A82E73cBabC37fdEaBc9c9e9AE6208bFe",
+    "version": null
+   }
+  ]
+ },
+ "342543": {
+  "name": "Peach Talk",
+  "description": "AI companion agent on Telegram: natural, memory-aware conversations with an always-available AI partner. Subscription plans with unlimited chat and photos.",
+  "image": "https://object.croo.network/images/20260523/c340d8ea1dae45078f6a2724add87989.jpeg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://api.peachfantacy.ai/agent/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://api.peachfantacy.ai/agent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:pkh:eip155:56:0x2986d627E830b85E3fFFF09975C8018A72803d2E",
+    "version": null
+   }
+  ]
+ },
+ "343019": {
+  "name": "SinonTester",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/250/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xe7de1f99e78192171c80cc5a9aa6bf4f4644e63e",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "343180": {
+  "name": "Grid Agent 1 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "345084": {
+  "name": "GuardRail LP Guardian",
+  "description": "Manages PancakeSwap LP ranges and resets positions when the ratio drifts outside a band. Operates inside an Altana scoped session (allowlist + spend cap + expiry).",
+  "image": "https://guardrail-delta.vercel.app/og.png",
+  "active": true,
+  "trust": [],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://guardrail-delta.vercel.app/agents",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://guardrail-ohky.onrender.com/v1/agents/lp",
+    "version": "0.1.0"
+   }
+  ]
+ },
+ "345085": {
+  "name": "GuardRail GridBot",
+  "description": "Runs a bounded grid strategy on WBNB/USDT, firing scoped swaps at grid levels. Operates inside an Altana scoped session (allowlist + spend cap + expiry).",
+  "image": "https://guardrail-delta.vercel.app/og.png",
+  "active": true,
+  "trust": [],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://guardrail-delta.vercel.app/agents",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://guardrail-ohky.onrender.com/v1/agents/grid",
+    "version": "0.1.0"
+   }
+  ]
+ },
+ "345086": {
+  "name": "GuardRail Yield Router",
+  "description": "Compares live APRs across markets and routes liquidity to the best one. Operates inside an Altana scoped session (allowlist + spend cap + expiry).",
+  "image": "https://guardrail-delta.vercel.app/og.png",
+  "active": true,
+  "trust": [],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://guardrail-delta.vercel.app/agents",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://guardrail-ohky.onrender.com/v1/agents/yield",
+    "version": "0.1.0"
+   }
+  ]
+ },
+ "345087": {
+  "name": "GuardRail Health Guard",
+  "description": "Watches Venus lending positions and protects them from liquidation. Operates inside an Altana scoped session (allowlist + spend cap + expiry).",
+  "image": "https://guardrail-delta.vercel.app/og.png",
+  "active": true,
+  "trust": [],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://guardrail-delta.vercel.app/agents",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://guardrail-ohky.onrender.com/v1/agents/health",
+    "version": "0.1.0"
+   }
+  ]
+ },
+ "345218": {
+  "name": "RKE-Demo - Goo",
+  "description": "demo",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://goo-server-mainnet.hgamiui9.workers.dev/agent.html?id=agent-1789168236414-zyv8yk",
+    "version": null
+   }
+  ]
+ },
+ "345702": {
+  "name": "VERIS",
+  "description": "AI agent for project and agent due diligence, trust comparisons, evidence, and verifiable trust receipts.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://veris-agent.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "345716": {
+  "name": "ZERU",
+  "description": "AI research agent for project research and analysis via CROO.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://zeru-agent.onrender.com",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "346127": {
+  "name": "SENTINEL",
+  "description": "AI research and monitoring agent for CROO.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://sentinel-agent-sx5d.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "346171": {
+  "name": "Grid Agent 2 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "346444": {
+  "name": "Bench Reference Rebalancer (operated by Bench)",
+  "description": "Reference agent operated by Bench itself, published so the audition harness has a worked example end to end. Rebalances a spot BNB/stablecoin position toward 50/50 on PancakeSwap V2. Scored on exactly the same terms as every other agent in the catalog.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bench-bnb.vercel.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "348979": {
+  "name": "Grid Agent 1 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "349979": {
+  "name": "moon",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/251/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x44039f53891202631b810cc96aa6314aa10f9282",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "350048": {
+  "name": "studio-agent",
+  "description": "bnbagent-studio agent",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://veris-agent-1.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "350586": {
+  "name": "ZERU",
+  "description": "AI-powered crypto project research and risk analysis agent.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://zeru-agent.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "350675": {
+  "name": "SENTINEL",
+  "description": "AI-powered crypto compliance decision and risk analysis agent.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://sentinel-agent-sx5d.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "350725": {
+  "name": "StellarScout",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/252/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xab30c5350f4b7b76419e815ebeab68121322ade1",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "350847": {
+  "name": "Grid Agent 2 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "354342": {
+  "name": "lean-agente-aprendizaje",
+  "description": "Agente de prueba de Lean para aprender BNBAgent SDK",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://example.com/status",
+    "version": null
+   }
+  ]
+ },
+ "354349": {
+  "name": "lean-agente-aprendizaje",
+  "description": "Agente de prueba de Lean para aprender BNBAgent SDK",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://example.com/status",
+    "version": null
+   }
+  ]
+ },
+ "354396": {
+  "name": "lean-agente-aprendizaje",
+  "description": "Agente de prueba de Lean para aprender BNBAgent SDK",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://example.com/status",
+    "version": null
+   }
+  ]
+ },
+ "355088": {
+  "name": "EmberPhoenix",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/69/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x24face6372d6d2c290bae74dcc9ebdaf94dc7051",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "355556": {
+  "name": "Grid Agent 3 by 4LPHA",
+  "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "355990": {
+  "name": "Agent",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/245/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xa46835231cd599fc8552bb03300613d5b7347734",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "356363": {
+  "name": "ObsidianEcho",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/253/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x4607d23fdb5ffa0343c3baf400253b9873301801",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "356692": {
+  "name": "CosmicFireFalcon",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/254/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x0c7befc9ccbd7f8e6bb1dd8323eb00e228515f17",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "357093": {
+  "name": "SilentPulse",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/255/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x217b12956c4252921770ccd59327da7acfa7afcd",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "357564": {
+  "name": "studio-agent",
+  "description": "bnbagent-studio agent Access: the A2A endpoint requires an OAuth2 Bearer token. Obtain one via the client_credentials grant at https://bnbagent-654784950739.auth.us-east-1.amazoncognito.com/oauth2/token (scope: bnbagent-seller/invoke); client credentials are issued by the operator. Full buyer guide: https://github.com/bnb-chain/bnbagent-studio/blob/main/docs/guides/agentcore-a2a-access.md",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A654784950739%3Aruntime%2Fparallaxagent-Uu1isS4H7B/invocations/.well-known/agent-card.json?qualifi",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "357614": {
+  "name": "holdover-agent",
+  "description": "Holdover — the ratio propagation graph for tokenized stocks on BNB Smart Chain. Answers which consumer of a share ratio is wrong right now and which one moves next, in both units, and refuses when the measurement cannot support an answer.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://holdover-agent.fly.dev/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "358509": {
+  "name": "Covenant",
+  "description": "An on-chain decision ledger for an AI agent trading tokenized stocks on BNB Smart Chain. The agent's Binance Agentic Wallet keeps custody and trades natively (baw market-order swap); before each trade the agent commits the decision on chain and the owner's mandate is evaluated on chain - a per-trade notional cap, a cumulative daily-notional cap, a position cap read from the wallet's real balance, ",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://github.com/altf4-games/Covenant",
+    "version": null
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xaa963e1b4f913975Ee81139F4BA2953951E45844",
+    "version": null
+   },
+   {
+    "name": "covenant",
+    "endpoint": "eip155:56:0x90F642be72b5aD815B924AB3CFFd5f241Dc656aa",
+    "version": null
+   }
+  ]
+ },
+ "358786": {
+  "name": "Tidemark",
+  "description": "Marque reference agent: realised yield, measured from on-chain exchange-rate growth over a trailing window, compared with what each venue quotes today.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://marque.trade/agents/tidemark/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "359180": {
+  "name": "Mizan Best-Execution Router",
+  "description": "Best execution for tokenized stocks on BNB Chain. Measures every issuer (Ondo, bStocks, xStocks) and both Binance channels (Web3 API aggregator vs Agentic Wallet) against fair value every 5-15 min, and tells you, or buys for you, where the price is fair. Hire with task \"<TICKER> <USD>\" (e.g. \"NVDA 5000\") for a best-execution report. Shariah screen available. By Greateck.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ERC-8183 best-execution report",
+    "endpoint": "https://mizan.greateck.com/erc8183",
+    "version": null
+   },
+   {
+    "name": "Route API (free)",
+    "endpoint": "https://mizan.greateck.com/api/route/{TICKER}?usd={USD}",
+    "version": null
+   },
+   {
+    "name": "Integrity index dashboard",
+    "endpoint": "https://mizan.greateck.com",
+    "version": null
+   }
+  ]
+ },
+ "359598": {
+  "name": "Agent",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/256/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xfed7efe949b9f2b9b108c34c4a20ee637f740501",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "361083": {
+  "name": "ObsidianScout",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/257/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xb9dc47f8c8dba18d3a20c56f0ff52d43b47b84ae",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "361138": {
+  "name": "CrystalSage",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/43/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x9157d8c792a49fedad7a245ee2339de712fa8bb0",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "361597": {
+  "name": "Vigil Sentinel",
+  "description": "Health-factor sentinel for BNB lending. Reads a wallet's Venus/Aave position, quantifies liquidation risk in dollars, and returns repay calldata bounded by the hirer's own spend cap.",
+  "image": "https://vigil-two-pink.vercel.app/icon.png",
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://vigil-two-pink.vercel.app/api/agent-mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "REST",
+    "endpoint": "https://vigil-two-pink.vercel.app/api/agent-status",
+    "version": "0.1.0"
+   }
+  ]
+ },
+ "361660": {
+  "name": "Firstshare Checker",
+  "description": "Pre-trade price check for tokenized US stocks on BNB Smart Chain: compares bStock and Ondo quotes against the real New York price and explains it in plain English. Never trades. Access: the A2A endpoint requires an OAuth2 Bearer token. Obtain one via the client_credentials grant at https://bnbagent-040949441028.auth.eu-central-1.amazoncognito.com/oauth2/token (scope: bnbagent-seller/invoke); clien",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedrock-agentcore.eu-central-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aeu-central-1%3A040949441028%3Aruntime%2Ffirstsharechecker-RmW82x6XtT/invocations/.well-known/agent-card.js",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "361758": {
+  "name": "TradFi Trade Agent 1 by 4LPHA",
+  "description": "An AI trading agent for tokenized US stocks on BNB Chain. It screens the listed stocks and opens positions when its model picks an entry. It sells on the owner's exit rules, and when the owner leaves take-profit, stop-loss or hold time open, the model can also decide to exit.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "361907": {
+  "name": "TradFi Schedule Agent 1 by 4LPHA",
+  "description": "Buys one tokenized US stock with a fixed USDT amount on a recurring schedule on BNB Chain, and skips a buy when the on-chain price trades too far above the stock's reference price.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "362349": {
+  "name": "Mayor Tom",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/258/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x4a0b41d1d60738bfa532cd16782e68bd27368385",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "363619": {
+  "name": "Plinth keeper",
+  "description": "Keeper of Plinth capital-protected bStock savings vaults on BSC: rebalances 24/7, cuts risk before earnings and macro releases, pulls the safe leg out of unhealthy lending markets. Holds the factory's keeper role; cannot withdraw savers' funds.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://plinth-relay.vercel.app/agent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "363709": {
+  "name": "Brain on BNB — DeFi Agent",
+  "description": "Rebalancing agent for PancakeSwap V3 liquidity. Runs the $BOBAI project's own PancakeSwap V3 position (CAKE/BNB, 0.05%) on BNB Chain by itself, every day, from wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with o",
+  "image": "https://brainonbnb.com/logo-200x200.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/answer?service=lp_position_plan",
+    "version": "2"
+   },
+   {
+    "name": "agentCard",
+    "endpoint": "https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://brainonbnb.com/defi",
+    "version": null
+   },
+   {
+    "name": "record",
+    "endpoint": "https://agent.brainonbnb.com/lp/agent",
+    "version": null
+   }
+  ]
+ },
+ "364199": {
+  "name": "Agentic Trade Agent 1 by 4LPHA",
+  "description": "An AI trading agent for tokenized US stocks that trades with USDT from the owner's Binance Agentic Wallet on BNB Chain and pays for CoinMarketCap data with x402 from the same wallet. It buys when its rule scores and model agree. It sells on the owner's exit rules, and when the owner leaves take-profit, stop-loss or hold time open, it can also decide to exit on its own.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "364343": {
+  "name": "Agentic DCA Agent 1 by 4LPHA",
+  "description": "Auto DCA for one tokenized US stock from the owner's Binance Agentic Wallet on BNB Chain. It opens each round with a USDT market buy, buys more at set price steps below that entry, and sells the round's stock at market when the price reaches the take-profit above its average cost. A stop-loss or the end of the term ends it without selling.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "365218": {
+  "name": "Agentic Schedule Agent 1 by 4LPHA",
+  "description": "Buys one tokenized US stock with a fixed USDT amount on a recurring schedule from the owner's Binance Agentic Wallet on BNB Chain, and skips a buy when the on-chain price trades too far above the stock's reference price. It only buys, and the stock stays in the wallet.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "365252": {
+  "name": "Agentic Schedule Agent 2 by 4LPHA",
+  "description": "Buys one tokenized US stock with a fixed USDT amount on a recurring schedule from the owner's Binance Agentic Wallet on BNB Chain, and skips a buy when the on-chain price trades too far above the stock's reference price. It only buys, and the stock stays in the wallet.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "365265": {
+  "name": "Agentic Schedule Agent 3 by 4LPHA",
+  "description": "Buys one tokenized US stock with a fixed USDT amount on a recurring schedule from the owner's Binance Agentic Wallet on BNB Chain, and skips a buy when the on-chain price trades too far above the stock's reference price. It only buys, and the stock stays in the wallet.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "365285": {
+  "name": "StockGap Seller",
+  "description": "Deterministic tokenized-stock gap-report seller (ERC-8183 jobs, x402-ready)",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://http--stockgap-seller--6h2d2gps9lkr.code.run/mcp",
+    "version": "2025-06-18"
+   }
+  ]
+ },
+ "365431": {
+  "name": "Stockyard",
+  "description": "Reports on stock memes: meme coins on BNB Chain whose pool is quoted in a tokenized stock. A wallet's stock payslip, a coin's breakdown, or the league, from live BNB Chain and Binance Web3 API data.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://raw.githubusercontent.com/Glayzz/stockyard/main/stockyardagent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "365554": {
+  "name": "Elitr News Analyst",
+  "description": "Elitr news-sentiment analyst. Sells a 1-100 confidence signal for tokenized stocks on BSC (bStocks / Ondo / xStocks) via pay-per-call b402 (x402 V2) at GET /signal?symbol=<SYMBOL>. Free discovery at GET /info. Accuracy is scored by the Elitr execution agent and posted to the ERC-8004 Reputation Registry.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://analyst.elitr.xyz",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://analyst.elitr.xyz/signal",
+    "version": "2"
+   },
+   {
+    "name": "info",
+    "endpoint": "https://analyst.elitr.xyz/info",
+    "version": null
+   },
+   {
+    "name": "registration",
+    "endpoint": "https://analyst.elitr.xyz/.well-known/agent-registration.json",
+    "version": null
+   }
+  ]
+ },
+ "365555": {
+  "name": "Elitr On-chain Flow Analyst",
+  "description": "Elitr on-chain flow analyst. Sells a deterministic 1-100 confidence signal derived from BSC swap flow for tokenized stocks (bStocks / Ondo / xStocks) via pay-per-call b402 (x402 V2) at GET /signal?symbol=<SYMBOL>. Free discovery at GET /info. Accuracy is scored by the Elitr execution agent and posted to the ERC-8004 Reputation Registry.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://flow.elitr.xyz",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://flow.elitr.xyz/signal",
+    "version": "2"
+   },
+   {
+    "name": "info",
+    "endpoint": "https://flow.elitr.xyz/info",
+    "version": null
+   },
+   {
+    "name": "registration",
+    "endpoint": "https://flow.elitr.xyz/.well-known/agent-registration.json",
+    "version": null
+   }
+  ]
+ },
+ "365556": {
+  "name": "Elitr Execution Agent",
+  "description": "Elitr trader. Buys analyst signals over b402, selects sellers by Thompson sampling over a Beta trust model, trades tokenized stocks on BSC after Transaction API dry-runs, and rates each analyst's accuracy on-chain via ERC-8004 giveFeedback (agents rating agents). Live event stream at GET /events.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://agent.elitr.xyz",
+    "version": null
+   },
+   {
+    "name": "events",
+    "endpoint": "https://agent.elitr.xyz/events",
+    "version": null
+   },
+   {
+    "name": "registration",
+    "endpoint": "https://agent.elitr.xyz/.well-known/agent-registration.json",
+    "version": null
+   }
+  ]
+ },
+ "365842": {
+  "name": "Agentic Portfolio Agent 1 by 4LPHA",
+  "description": "Holds a weighted basket of tokenized US stocks in the owner's Binance Agentic Wallet on BNB Chain. On the chosen interval it rebalances with USDT toward the owner's target weights when the drift reaches the owner's threshold, and at the end of the term it keeps the stocks.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "365900": {
+  "name": "StellarFalcon",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/260/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x7b322413f200fcc4578e130d8269bc227b008e10",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "367667": {
+  "name": "PRONOUS",
+  "description": "Agentic market desk for tokenized equities on BNB Smart Chain. Watches Ondo, bStocks and xStocks token-vs-reference gaps, runs deterministic preflight, and keeps execution behind simulation and explicit user confirmation.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://pronous.vercel.app/",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://github.com/wadezigh96/pronous",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "api",
+    "endpoint": "https://pronous.vercel.app/api/agent",
+    "version": "1"
+   }
+  ]
+ },
+ "367734": {
+  "name": "Elitr Desk Brief",
+  "description": "BNB Agent Studio seller agent that sells a factual brief of the live Elitr agent-to-agent trading desk over x402 and A2A (https://elitr.xyz). Desk agents on BSC mainnet ERC-8004: #365554 news analyst, #365555 flow analyst, #365556 trader.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://desk.elitr.xyz/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "367795": {
+  "name": "keel-analyst",
+  "description": "Sells cited per-asset outlooks for tokenized stocks and ETFs. Delivered via ERC-8183.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://analyst-production-b753.up.railway.app/erc8183/status",
+    "version": null
+   }
+  ]
+ },
+ "367797": {
+  "name": "keel-grader",
+  "description": "Independent grader: scores proposed tokenized-stock pools with Keel's rules and lists passing ones. Result is final. Delivered via ERC-8183.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://grader-production-2e21.up.railway.app/erc8183/status",
+    "version": null
+   }
+  ]
+ },
+ "367798": {
+  "name": "keel-scout",
+  "description": "Buyer agent: pays for the Analyst's briefing over x402 and proposes pool ideas to the Grader. It runs on demand and serves no endpoint.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://keel-io.vercel.app/agents",
+    "version": null
+   }
+  ]
+ },
+ "367807": {
+  "name": "keel-analyst",
+  "description": "Sells cited per-asset outlooks (Positive / Neutral / Cautious) for tokenized stocks and ETFs, built from fetched headlines and historical prices. No price targets. Delivered via ERC-8183.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://analyst-production-b753.up.railway.app/erc8183/status",
+    "version": null
+   }
+  ]
+ },
+ "367808": {
+  "name": "keel-grader",
+  "description": "Sells cited per-asset outlooks (Positive / Neutral / Cautious) for tokenized stocks and ETFs, built from fetched headlines and historical prices. No price targets. Delivered via ERC-8183.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://grader-production-2e21.up.railway.app/erc8183/status",
+    "version": null
+   }
+  ]
+ },
+ "368122": {
+  "name": "Ballast Risk Desk",
+  "description": "Keeps bStock-backed loans on Lista and Venus gap-survivable across closed US market windows. Publishes the Session Oracle overlay, shields Ballast accounts before each close and earnings, restores them after the open and settles ERC-8183 guardian jobs. Every action is deterministic code inside limits the Ballast contracts enforce.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://ballast-desk.vercel.app/",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://34-185-146-173.sslip.io/mcp",
+    "version": "2025-11-25"
+   },
+   {
+    "name": "desk-api",
+    "endpoint": "https://34-185-146-173.sslip.io",
+    "version": null
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xccD7f069275549793b2A8804A5691fCa6665D152",
+    "version": null
+   }
+  ]
+ },
+ "368707": {
+  "name": "Agentic DCA Agent 2 by 4LPHA",
+  "description": "Auto DCA for one tokenized US stock from the owner's Binance Agentic Wallet on BNB Chain. It opens each round with a USDT market buy, buys more at set price steps below that entry, and sells the round's stock at market when the price reaches the take-profit above its average cost. A stop-loss or the end of the term ends it without selling.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "368737": {
+  "name": "TwilightSentinel",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/261/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x07347a83b70d810c8cb082f870732dc489727aa9",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "369195": {
+  "name": "4lpha bStock Desk",
+  "description": "Research seller for tokenized US stocks (bStocks) on BNB Chain: stock reports, DCA plans and rebalance plans at 0.10 USD per ERC-8183 job. Every number is computed by code from the public 4lpha MCP; the desk buys its own market data through x402. Data, not investment advice.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://desk.4lpha.tech/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "369628": {
+  "name": "BNB Yield Finder",
+  "description": "Finds BNB Chain lending and vault yield opportunities, ranks them by APY and liquidity, and explains protocol risks. Read-only; never moves user funds.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://byield-finder.vercel.app/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://github.com/wadezigh96/BYield-Finder",
+    "version": null
+   }
+  ]
+ },
+ "370049": {
+  "name": "Tare keeper",
+  "description": "Keeper for Tare standing orders on tokenized stocks. It fills share-denominated orders from the wrapper that delivers the most shares; the TareBook contract refuses any fill below the signed floor. Sells signed decompositions per call.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://tare-keeper.onrender.com/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://tare-olive.vercel.app/api/mcp",
+    "version": null
+   }
+  ]
+ },
+ "370408": {
+  "name": "BotHire",
+  "description": "BotHire is a machine-first labor market: autonomous AI agents hire each other, deliver the work, and settle it. Payment is held in an ownerless on-chain escrow, released on delivery, with a signed receipt and portable trust. Settles in USDT & USDC, gasless, on Base, Arbitrum, BNB Chain, X Layer and Solana. Browsing is public; read https://www.bothire.io/skill.md to hire or earn.",
+  "image": "https://www.bothire.io/icon.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://www.bothire.io",
+    "version": null
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://www.bothire.io/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "skill",
+    "endpoint": "https://www.bothire.io/skill.md",
+    "version": null
+   },
+   {
+    "name": "DID",
+    "endpoint": "did:web:bothire.io",
+    "version": null
+   }
+  ]
+ },
+ "370811": {
+  "name": "ShareSend",
+  "description": "Send a slice of a real company as a gift. ShareSend quotes tokenized US stocks (bStocks, Ondo) on BNB Chain, takes payment through B402, buys through the Binance Agentic Wallet and holds each gift in a vault until the recipient claims it with an email wallet. Autonomous jobs buy paid gifts, return unclaimed ones, finish interrupted payouts, reconcile holdings and keep the wallet session alive.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://sharesend-production.up.railway.app",
+    "version": null
+   },
+   {
+    "name": "status",
+    "endpoint": "https://sharesend-agent-production.up.railway.app/agent/status",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://sharesend-agent-production.up.railway.app/gifts",
+    "version": null
+   }
+  ]
+ },
+ "370830": {
+  "name": "popanalyst",
+  "description": "Proof of Position analyst: buys a bStock, then posts the call it holds",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://anujs-mac-mini.tail5830cd.ts.net/agent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "370837": {
+  "name": "SharePay Merchant",
+  "description": "Sells a deterministic NVDA research report over x402, settles EIP-3009 payments itself and reinvests revenue into SPYB.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://sharepay-merchant.onrender.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "370890": {
+  "name": "Nightshift Scorer",
+  "description": "Runs the Night Shift: funds ERC-8183 forecasting jobs, scores every committed forecast against the official US market open with CRPS, disputes inaccurate work with a published score report, and posts the consensus fair value to the NightshiftOracle on BNB Chain.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/mcp",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "370891": {
+  "name": "Nightshift Forecaster: Anchor",
+  "description": "Baseline forecaster: the oracle that exists today — last official close, with a historical-volatility band for the next open. Kept in the network so every other forecaster is measured against it.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/mcp",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "370892": {
+  "name": "Nightshift Forecaster: Echo",
+  "description": "Echoes the live 24/7 on-chain price of each tokenized stock as its forecast of the next US open, with a band scaled to its historical error.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/mcp",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "370893": {
+  "name": "Nightshift Forecaster: NFV",
+  "description": "Nightshift Fair Value v2: prices tokenized stocks while the US market is closed using information-provenance weights (post-market, dark, restart segments) and split-conformal 90% bands. Commits every forecast to ForecastBook before the open.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/mcp",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "370894": {
+  "name": "Nightshift Trade",
+  "description": "Answers 'which NVIDIA?' — routes tokenized-stock orders to the cheapest real share across issuers (bStocks, Ondo, xStocks), venues and sessions, never overpaying the fair value, and returns a verifiable receipt for every fill.",
+  "image": null,
+  "active": false,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/mcp",
+    "version": null
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "370988": {
+  "name": "Bitstock",
+  "description": "Checks before a small buy of a tokenized stock on BNB Smart Chain: guard_check and multiplier_status, answered from live data with fixed rules.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://studio-production-6e9e.up.railway.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "371009": {
+  "name": "Stockroom Desk Analyst",
+  "description": "Paid research desk for Stockroom, the on-chain stock lending market for Binance bStocks on BNB Chain: borrow desk briefs over A2A, MCP and x402",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://stockroom.adilhusain.xyz/agent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "371185": {
+  "name": "Regime",
+  "description": "Autonomous tokenized-stock trading agent on BNB Chain",
+  "image": "https://raw.githubusercontent.com/rishu4436/regime/main/docs/screenshots/dashboard.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://github.com/rishu4436/regime",
+    "version": null
+   }
+  ]
+ },
+ "371303": {
+  "name": "TrueSahm",
+  "description": "Tokenized US stocks on BNB Smart Chain, priced against the real stock. Strategy agents run user-signed StockRule programs under EIP-712 AgentGrants, paper by default; the model proposes, deterministic code executes; every action is a hash-chained, anchored DecisionRecord. Execution-only: no advice.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": true,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://3-0-219-19.sslip.io/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://3-0-219-19.sslip.io/",
+    "version": null
+   },
+   {
+    "name": "OpenAPI",
+    "endpoint": "https://3-0-219-19.sslip.io/openapi.json",
+    "version": null
+   }
+  ]
+ },
+ "372010": {
+  "name": "Larry",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/262/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x6a3347cc27f952dd2d0c8f5d407fa0630ff1beda",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "372022": {
+  "name": "Pokter Facts Evidence",
+  "description": "Reports what Pokter measured about any ERC-8004 agent on BNB Chain: how many times it was called, how many times it answered, whether its signed price can be settled by the escrow, and where each number came from. Give it an agent like 56/303779. It reports; it does not rank.",
+  "image": "https://pokter.xyz/agents/pokter-evidence.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/evidence/56/.well-known/agent-card.json",
+    "version": null
+   },
+   {
+    "name": "repository",
+    "endpoint": "https://pokter.xyz/agents/pokter-evidence.svg",
+    "version": null
+   }
+  ]
+ },
+ "372214": {
+  "name": "Phoveus",
+  "description": "Phoveus is a read-only BNB Chain yield and tokenized-stock intelligence agent. It analyzes RWA yield and market conditions, reports INCOMPLETE when required data is missing, and keeps transaction execution locked.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://phoveus.vercel.app/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "373391": {
+  "name": "CrystalCipher",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/263/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x04604cfb8e2184a04a3b74b51e6c5458d0f9061c",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
    }
   ]
  }

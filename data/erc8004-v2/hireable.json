@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-10T14:00:12.745Z",
+  "measured_at": "2026-10-13T07:36:00.739Z",
   "agents": [
     {
       "id": 269223,
@@ -34,6 +34,12 @@
     {
       "id": 265876,
       "label": "BNB Yield Optimizer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 323262,
+      "label": "Warden",
       "category": "rebalancing",
       "ours": false
     },
@@ -82,6 +88,12 @@
     {
       "id": 342379,
       "label": "PancakeSwap LP Range Check",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 345084,
+      "label": "GuardRail LP Guardian",
       "category": "rebalancing",
       "ours": false
     },
@@ -233,6 +245,12 @@
       "ours": false
     },
     {
+      "id": 372214,
+      "label": "Phoveus",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 341225,
       "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
@@ -277,14 +295,14 @@
       "ours": false
     },
     {
-      "id": 126728,
-      "label": "Pretium",
+      "id": 338253,
+      "label": "HyperliquidVault",
       "category": "yield-optimization",
       "ours": false
     },
     {
-      "id": 338253,
-      "label": "HyperliquidVault",
+      "id": 126728,
+      "label": "Pretium",
       "category": "yield-optimization",
       "ours": false
     },
@@ -339,6 +357,12 @@
     {
       "id": 342377,
       "label": "Venus Health Factor Watch",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 345087,
+      "label": "GuardRail Health Guard",
       "category": "health-factor",
       "ours": false
     },

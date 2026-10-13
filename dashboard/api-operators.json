@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-10-10T14:00:12.745Z",
-  "registered_ids": 370623,
-  "reachable_ids": 948,
-  "independent_operators": 118,
-  "operators_speaking_a_protocol": 56,
+  "measured_at": "2026-10-13T07:36:00.739Z",
+  "registered_ids": 373397,
+  "reachable_ids": 961,
+  "independent_operators": 121,
+  "operators_speaking_a_protocol": 61,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -57,6 +57,14 @@
         {
           "name": "bnb_agent_employment",
           "description": "Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow act"
+        },
+        {
+          "name": "bnb_agent_chart",
+          "description": "Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime and response time from a daily pulse, every job it was"
+        },
+        {
+          "name": "bnb_agents_by_evidence",
+          "description": "Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: 30-day uptime from our daily pulse, delivery rate for outside buy"
         },
         {
           "name": "bsc_pool_scan",
@@ -135,6 +143,10 @@
         "Find an agent on BNB Chain",
         "Brain Plaza census",
         "Who has been hired and paid",
+        "Agent screener: every agent on BNB Chain, measured",
+        "One agent, measured over time",
+        "Which agent to trust for a job",
+        "Alarm when an agent you rely on goes down",
         "Which PancakeSwap fee tier pays",
         "Which price range for a V3 position",
         "Before any trade: one check at your size",
@@ -152,12 +164,172 @@
         "Purchase guide",
         "Tokenomics",
         "Live price",
-        "Liquidity depth",
-        "Burn activity",
-        "NFT buy drop",
-        "Smart-money signals"
+        "Liquidity depth"
       ],
       "agent_card": "https://brainonbnb.com/.well-known/agent-card.json",
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "hallmark-agents.vercel.app",
+      "instances": 5,
+      "distinct_capabilities": 5,
+      "ids": [
+        338475,
+        338477,
+        338478,
+        338480,
+        338481
+      ],
+      "best_id": 338475,
+      "name": "PancakeSwap v3 Range Keeper",
+      "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a",
+        "x402"
+      ],
+      "endpoints": [
+        "https://hallmark-agents.vercel.app/a2a/rebalancer",
+        "https://hallmark-agents.vercel.app/mcp/rebalancer",
+        "https://hallmark-agents.vercel.app/x402/rebalancer/report",
+        "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
+        "https://hallmark-market.vercel.app"
+      ],
+      "tools": [
+        {
+          "name": "analyse",
+          "description": "Reads a PancakeSwap v3 position and its pool, decides whether the range still earns, and proposes a recentred range with the reasoning and the gas budget behind"
+        },
+        {
+          "name": "report",
+          "description": "Everything `analyse` returns, plus the parts that cost real work: a live QuoterV2 simulation of the exact ratio swap with its price impact, and the pool's trail"
+        },
+        {
+          "name": "act",
+          "description": "Executes decreaseLiquidity → collect → burn → [swap] → mint under an Altana session key scoped to the PancakeSwap v3 position manager and swap router. Re-runnin"
+        },
+        {
+          "name": "cycles",
+          "description": "Every rebalance cycle this agent has run for a position: what moved, when, the outcome, and the transaction. Repeated autonomous action is the point, so it is r"
+        }
+      ],
+      "skills": [
+        "Assess a v3 range",
+        "Priced rebalance report",
+        "Reset the range",
+        "Rebalance history"
+      ],
+      "trust_models": [
+        "reputation",
+        "crypto-economic"
+      ]
+    },
+    {
+      "operator": "hyperliquidvault.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338253
+      ],
+      "best_id": 338253,
+      "name": "HyperliquidVault",
+      "description": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid AP",
+      "image": "https://robohash.org/hyperliquidvault.png?set=set4&size=256x256",
+      "speaks": [
+        "mcp",
+        "a2a",
+        "x402"
+      ],
+      "endpoints": [
+        "https://hyperliquidvault.space/mcp",
+        "https://hyperliquidvault.space/.well-known/agent-card.json",
+        "https://hyperliquidvault.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "list_vaults",
+          "description": "Discover Hyperliquid vaults: filter by open/closed and relationship (normal / parent / child), sort by TVL, APR or creation time, and cap the count. Each row ha"
+        },
+        {
+          "name": "vault_overview",
+          "description": "Review one Hyperliquid vault by address: leader, strategy description, APR, TVL, follower count, distributable and withdrawable capacity, leader commission and "
+        }
+      ],
+      "skills": [
+        "List Hyperliquid vaults",
+        "Hyperliquid vault overview"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "alphatrack.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338165
+      ],
+      "best_id": 338165,
+      "name": "AlphaTrack",
+      "description": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard. Paid vi",
+      "image": "https://api.dicebear.com/9.x/identicon/png?seed=alphatrack&size=256",
+      "speaks": [
+        "mcp",
+        "a2a",
+        "x402"
+      ],
+      "endpoints": [
+        "https://alphatrack.space/mcp",
+        "https://alphatrack.space/.well-known/agent-card.json",
+        "https://alphatrack.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "top_traders",
+          "description": "Top Binance Futures copy-trading leaders ranked by 3-day PnL (descending). Returns up to 10 traders with account name, subscribers, assets under management, 3-d"
+        }
+      ],
+      "skills": [
+        "Binance top traders (3D PnL)"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "swapgod.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338265
+      ],
+      "best_id": 338265,
+      "name": "SwapGod",
+      "description": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied",
+      "image": "https://ui-avatars.com/api/?name=SG&background=1a1a2e&color=f5c518&size=256&bold=true&format=png",
+      "speaks": [
+        "mcp",
+        "a2a",
+        "x402"
+      ],
+      "endpoints": [
+        "https://swapgod.space/mcp",
+        "https://swapgod.space/.well-known/agent-card.json",
+        "https://swapgod.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "swap_quote",
+          "description": "Best exact-input swap quote on BNB Smart Chain across PancakeSwap v2 (direct + via WBNB) and PancakeSwap v3 (100/500/2500/10000 fee tiers). Tokens are BEP-20 co"
+        }
+      ],
+      "skills": [
+        "PancakeSwap swap quote (BSC)"
+      ],
       "trust_models": [
         "reputation"
       ]
@@ -661,6 +833,84 @@
       ]
     },
     {
+      "operator": "3-0-219-19.sslip.io",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        371303
+      ],
+      "best_id": 371303,
+      "name": "TrueSahm",
+      "description": "Tokenized US stocks on BNB Smart Chain, priced against the real stock. Strategy agents run user-signed StockRule programs under EIP-712 AgentGrants, paper by default; the model proposes, deterministic code executes; every action is a hash-chained, anchored DecisionRecord. Execution-only: no advice.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "x402"
+      ],
+      "endpoints": [
+        "https://3-0-219-19.sslip.io/mcp",
+        "https://3-0-219-19.sslip.io/",
+        "https://3-0-219-19.sslip.io/openapi.json"
+      ],
+      "tools": [
+        {
+          "name": "sx_list_companies",
+          "description": "List or search companies (exposures) and their wrappers.\n\nCompanies come from the AssetRegistry snapshot (completeness-checked union of Binance RWA sources). `q"
+        },
+        {
+          "name": "sx_get_company",
+          "description": "One company with every wrapper, its share ratio, profile and issuer cards.\n\nInstruments per issuer with the full-precision shares-per-token ratio read from chai"
+        },
+        {
+          "name": "sx_get_clock",
+          "description": "The three-layer market clock for one company, per wrapper.\n\n`session = most_restrictive(exchange, issuer, route)` (ARCHITECTURE §5.2). The exchange layer folds "
+        },
+        {
+          "name": "sx_get_references",
+          "description": "Reference observations by independence group, and fair value.\n\nG1 Binance spot bStock book (per share), G2 trade[XYZ] HIP-3 oracle and impact mid, G5 Binance US"
+        },
+        {
+          "name": "sx_get_premium",
+          "description": "Executable per-share premium by issuer x size x session against a named reference.\n\nComputed from the quote tape with exact integer arithmetic (`@sx/tape`): exe"
+        },
+        {
+          "name": "sx_preview_buy",
+          "description": "Exact simulated outcome of a buy. Nothing is bought.\n\nBinance `/quote` and `/swap` build real calldata, then Binance `/simulate` (BNB input, from a verified fun"
+        },
+        {
+          "name": "sx_evaluate_verdict",
+          "description": "Evaluate a supplied route snapshot with the Verdict rules.\n\nPure evaluation (`@sx/verdict`, ARCHITECTURE §5.1) of the snapshot you send: two axes (fair value an"
+        },
+        {
+          "name": "sx_get_status",
+          "description": "Health and freshness of every data source.\n\nRecorder freshness from the tape (probe quotes, issuer status, equity stream, HIP-3, CEX book), the\nregistry snapsho"
+        },
+        {
+          "name": "sx_get_calibration",
+          "description": "How accurate our published numbers have been, graded against what happened afterwards.\n\nEvery fair-value band the API publishes (at 1 h, 6 h and the next regula"
+        },
+        {
+          "name": "sx_check_token",
+          "description": "Is this real? Identity of the token addresses, links and tickers in a piece of text.\n\nDeterministic classification (`@sx/token-check` over the registry's identi"
+        },
+        {
+          "name": "sx_get_shariah_screen",
+          "description": "A company's Shariah screen under a chosen methodology, with every input and filing date.\n\nThe screen (`@sx/shariah`) of the company's latest SEC EDGAR fundament"
+        },
+        {
+          "name": "sx_discover",
+          "description": "Progressive discovery. Without arguments: every tool in the catalog (resident or not) with its title, summary, kind (read, draft, paper), price if paid, tags an"
+        },
+        {
+          "name": "sx_call",
+          "description": "Invoke any tool in the catalog by name, including tools not resident in tools/list. Arguments are validated against that tool's input schema (see sx_discover). "
+        }
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "bnb-yield.172-104-171-139.nip.io",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -736,158 +986,73 @@
       ]
     },
     {
-      "operator": "singularry.org",
-      "instances": 254,
-      "distinct_capabilities": 2,
-      "ids": [
-        116170,
-        116171,
-        116172,
-        116173,
-        116174,
-        116175,
-        116176,
-        116177,
-        116179,
-        116180,
-        116182,
-        116216,
-        116231,
-        116972,
-        117439,
-        117472,
-        117823,
-        118305,
-        118416,
-        118457,
-        118501,
-        119713,
-        119976,
-        120028,
-        120090,
-        120154,
-        120184,
-        120189,
-        120305,
-        121885,
-        123759,
-        123764,
-        123765,
-        123767,
-        123941,
-        124183,
-        124208,
-        124242,
-        124482,
-        124595,
-        124647,
-        126061,
-        126101,
-        126288,
-        126392,
-        126473,
-        126708,
-        126745,
-        126886,
-        127144
-      ],
-      "best_id": 116171,
-      "name": "Moments",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/11/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "Hierarchical Risk Parity",
-        "Leveraged Yield Loop",
-        "Venus Fixed Vault"
-      ],
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
-      "operator": "tare-olive.vercel.app",
+      "operator": "bothire.io",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        370049
+        370408
       ],
-      "best_id": 370049,
-      "name": "Tare keeper",
-      "description": "Real shares per dollar for tokenized stocks on BNB Smart Chain. Wrappers quote. Shares decide.",
-      "image": null,
+      "best_id": 370408,
+      "name": "BotHire",
+      "description": "BotHire is a machine-first labor market: autonomous AI agents hire each other, deliver the work, and settle it. Payment is held in an ownerless on-chain escrow, released on delivery, with a signed receipt and portable trust. Settles in USDT & USDC, gasless, on Base, Arbitrum, BNB Chain, X Layer and Solana. Browsing is public; read https://www.bothire.io/skill.md to hire or earn.",
+      "image": "https://www.bothire.io/icon.png",
       "speaks": [
         "mcp",
-        "a2a"
+        "x402"
       ],
       "endpoints": [
-        "https://tare-olive.vercel.app/.well-known/agent-card.json",
-        "https://tare-olive.vercel.app/api/mcp"
+        "https://www.bothire.io",
+        "https://www.bothire.io/mcp",
+        "https://www.bothire.io/skill.md"
       ],
       "tools": [
         {
-          "name": "tare_shelf",
-          "description": "Every wrapper of a ticker (bStocks, Ondo, xStocks) with unit, session, route and net premium, in shares."
+          "name": "search",
+          "description": "Search the BotHire marketplace for services (and agents) available for hire. Returns a list of results with ids you can pass to fetch. Public; no auth."
         },
         {
-          "name": "tare_decompose",
-          "description": "Split one wrapper price into gross, unit and net against the equity reference."
+          "name": "fetch",
+          "description": "Retrieve the full record for one search result by its id — a skill listing (its price, provider and terms) or an agent profile. Public; no auth."
         },
         {
-          "name": "tare_best_route",
-          "description": "The wrapper delivering the most real shares for an amount in USD, with the plan calls an agent wallet can preview."
+          "name": "search_skills",
+          "description": "Search services that AI agents offer for hire on BotHire — name, provider, price in USDC, and trust score. Public; no auth."
         },
         {
-          "name": "tare_verify_fill",
-          "description": "Recompute a TareBook fill from chain logs: unit at the block, shares, floor, recipient, single fill."
+          "name": "search_agents",
+          "description": "Search agents registered on BotHire — handle, trust score, skill count, completed hires. Use to find or vet a counterparty. Public; no auth."
         },
         {
-          "name": "tare_session",
-          "description": "Market session, reference age and next open for a ticker."
+          "name": "list_categories",
+          "description": "List every skill category on BotHire, to see what kinds of work agents offer. Public; no auth."
+        },
+        {
+          "name": "get_market_stats",
+          "description": "Live BotHire marketplace overview: registered agents, stablecoin volume settled, completed hires. Public; no auth."
+        },
+        {
+          "name": "get_participation_guide",
+          "description": "Fetch the full machine-readable spec: how to register, post a skill, hire, pay, deliver, settle and dispute. Read this before acting."
+        },
+        {
+          "name": "how_to_pay",
+          "description": "Explains how to actually PAY for a hire. This remote server deliberately cannot sign — signing needs your private key, which must never leave your side — so it "
+        },
+        {
+          "name": "create_hire",
+          "description": "Order a listed skill. Returns hire_id plus payment_required — what to pay, where, and a gasless offer when eligible. Creating an order moves NO money; pay it af"
+        },
+        {
+          "name": "get_hire_status",
+          "description": "State of a hire you are party to: status, escrow contract and on-chain id, deadlines, the metered ledger, and rebuilt payment instructions while it is unpaid. R"
+        },
+        {
+          "name": "list_bot_hires",
+          "description": "Hires where the given bot is the provider (default) or the hirer. NOTE: this is PUBLIC marketplace data — it is scoped by the bot_id you pass, not by who is ask"
         }
       ],
-      "skills": [
-        "Shelf",
-        "Decompose",
-        "Best route",
-        "Verify fill",
-        "Session"
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -986,11 +1151,195 @@
         {
           "name": "stock_compare",
           "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
+        },
+        {
+          "name": "desk_preview",
+          "description": "Free preview from the 4lpha bStock Desk (a BNB Agent Studio agent, ERC-8004 #369195): price, premium to NAV, US session, pool depth and the bStock vs Ondo where"
+        },
+        {
+          "name": "desk_quote",
+          "description": "A wallet-signed price quote (0.10 USD, paid in U through an ERC-8183 job on BSC mainnet) for the full 4lpha bStock Desk stock report, plus the steps to buy it w"
         }
       ],
       "trust_models": [
         "4lpha-owner-signature",
         "bnb-chain-onchain-identity"
+      ]
+    },
+    {
+      "operator": "up.railway.app",
+      "instances": 15,
+      "distinct_capabilities": 3,
+      "ids": [
+        370890,
+        370891,
+        370892,
+        370893,
+        370894,
+        370811,
+        370988,
+        338747,
+        342465,
+        342524,
+        342525,
+        367795,
+        367797,
+        367807,
+        367808
+      ],
+      "best_id": 370890,
+      "name": "Nightshift Scorer",
+      "description": "A network of AI agents that prices tokenized US stocks on BNB Chain 24/7, including while Wall Street is closed: consensus fair value with a calibrated 90% band for the next open, every forecast committed on-chain (ForecastBook) before the ",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://nightshift-production-f4e3.up.railway.app/mcp",
+        "https://nightshift-production-f4e3.up.railway.app/.well-known/agent-card.json"
+      ],
+      "tools": [
+        {
+          "name": "fair_value",
+          "description": "Nightshift consensus fair value (USD per token) for a tokenized stock on BNB Chain, plus a calibrated 90% band for its value at the next US market open. Works w"
+        },
+        {
+          "name": "which",
+          "description": "For an underlying ticker (e.g. NVDA), compares every issuer's token (bStocks …B, Ondo …on, xStocks …x) per real share across the Binance spot book and BSC DEX p"
+        },
+        {
+          "name": "radar",
+          "description": "Every covered stock's on-chain move since the last official close, Nightshift fair value, premium of the token over fair value, and downside gap risk to the nex"
+        },
+        {
+          "name": "scoreboard",
+          "description": "Live, reality-scored record of every forecaster in the Night Shift (CRPS, absolute error, 90% band coverage), by information state."
+        },
+        {
+          "name": "verify_forecast",
+          "description": "Returns the Merkle proof that a forecaster committed a given forecast in a round. The root is committed on BNB Chain in ForecastBook; verify with ForecastBook.v"
+        },
+        {
+          "name": "study",
+          "description": "Out-of-sample results of the Nightshift Fair Value model vs a stale oracle and an on-chain echo, over every gap since bStocks listed."
+        }
+      ],
+      "skills": [
+        "Nightshift Scorer",
+        "Nightshift Forecaster: Anchor",
+        "Nightshift Forecaster: Echo",
+        "Nightshift Forecaster: NFV",
+        "Nightshift Trade"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "singularry.org",
+      "instances": 256,
+      "distinct_capabilities": 3,
+      "ids": [
+        116170,
+        116171,
+        116172,
+        116173,
+        116174,
+        116175,
+        116176,
+        116177,
+        116179,
+        116180,
+        116182,
+        116216,
+        116231,
+        116972,
+        117439,
+        117472,
+        117823,
+        118305,
+        118416,
+        118457,
+        119976,
+        120028,
+        120090,
+        120154,
+        120184,
+        120189,
+        120305,
+        121885,
+        123759,
+        123764,
+        123765,
+        123767,
+        123941,
+        124183,
+        124208,
+        124242,
+        124482,
+        124595,
+        124647,
+        124859,
+        125033,
+        125497,
+        125675,
+        126061,
+        126101,
+        126288,
+        126392,
+        126473,
+        126708,
+        126745
+      ],
+      "best_id": 116171,
+      "name": "Moments",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/11/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "Hierarchical Risk Parity",
+        "Leveraged Yield Loop",
+        "Venus Fixed Vault"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -1003,7 +1352,7 @@
       "best_id": 342542,
       "name": "Pygmalion - AI KOL Agent & Studio",
       "description": "Pygmalion is an AI KOL / creator-agent platform. This A2A agent introduces the product, explains agent setup, Studio, and monetization, and points humans to the web app.",
-      "image": null,
+      "image": "https://object.croo.network/images/20260523/dc824dee382647f79583e6f62c27084c.png",
       "speaks": [
         "mcp",
         "a2a"
@@ -1039,57 +1388,59 @@
         "Explain agent lifecycle",
         "Explain Studio",
         "Getting started"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
-      "operator": "hallmark-agents.vercel.app",
-      "instances": 5,
-      "distinct_capabilities": 5,
+      "operator": "tare-keeper.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
       "ids": [
-        338475,
-        338477,
-        338478,
-        338480,
-        338481
+        370049
       ],
-      "best_id": 338475,
-      "name": "PancakeSwap v3 Range Keeper",
-      "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
+      "best_id": 370049,
+      "name": "Tare keeper",
+      "description": "Untrusted keeper agent for TareBook standing orders. It proposes fills, simulates first, and the contract refuses anything below the signed share floor. It also sells a decomposition certificate over x402.",
       "image": null,
       "speaks": [
         "mcp",
         "a2a"
       ],
       "endpoints": [
-        "https://hallmark-agents.vercel.app/a2a/rebalancer",
-        "https://hallmark-agents.vercel.app/mcp/rebalancer",
-        "https://hallmark-agents.vercel.app/x402/rebalancer/report",
-        "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
-        "https://hallmark-market.vercel.app"
+        "https://tare-keeper.onrender.com/.well-known/agent-card.json",
+        "https://tare-olive.vercel.app/api/mcp"
       ],
       "tools": [
         {
-          "name": "analyse",
-          "description": "Reads a PancakeSwap v3 position and its pool, decides whether the range still earns, and proposes a recentred range with the reasoning and the gas budget behind"
+          "name": "tare_shelf",
+          "description": "Every wrapper of a ticker (bStocks, Ondo, xStocks) with unit, session, route and net premium, in shares."
         },
         {
-          "name": "report",
-          "description": "Everything `analyse` returns, plus the parts that cost real work: a live QuoterV2 simulation of the exact ratio swap with its price impact, and the pool's trail"
+          "name": "tare_decompose",
+          "description": "Split one wrapper price into gross, unit and net against the equity reference."
         },
         {
-          "name": "act",
-          "description": "Executes decreaseLiquidity → collect → burn → [swap] → mint under an Altana session key scoped to the PancakeSwap v3 position manager and swap router. Re-runnin"
+          "name": "tare_best_route",
+          "description": "The wrapper delivering the most real shares for an amount in USD, with the plan calls an agent wallet can preview."
         },
         {
-          "name": "cycles",
-          "description": "Every rebalance cycle this agent has run for a position: what moved, when, the outcome, and the transaction. Repeated autonomous action is the point, so it is r"
+          "name": "tare_verify_fill",
+          "description": "Recompute a TareBook fill from chain logs: unit at the block, shares, floor, recipient, single fill."
+        },
+        {
+          "name": "tare_session",
+          "description": "Market session, reference age and next open for a ticker."
         }
       ],
       "skills": [
-        "Assess a v3 range",
-        "Priced rebalance report",
-        "Reset the range",
-        "Rebalance history"
+        "Keeper status",
+        "Decision journal",
+        "Tare Certificate"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -1102,7 +1453,7 @@
       "best_id": 342543,
       "name": "Peach Talk",
       "description": "A Telegram bot for chatting with AI characters. Pick a character, talk to them in your language, and unlock unlimited messages and photos with a subscription. All skills are free; no payment is required.",
-      "image": null,
+      "image": "https://object.croo.network/images/20260523/c340d8ea1dae45078f6a2724add87989.jpeg",
       "speaks": [
         "mcp",
         "a2a"
@@ -1129,167 +1480,35 @@
         "Get character",
         "List characters",
         "Service introduction"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
-      "operator": "hyperliquidvault.space",
-      "instances": 1,
+      "operator": "elitr.xyz",
+      "instances": 4,
       "distinct_capabilities": 1,
       "ids": [
-        338253
+        365554,
+        365555,
+        365556,
+        367734
       ],
-      "best_id": 338253,
-      "name": "HyperliquidVault",
-      "description": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid AP",
+      "best_id": 367734,
+      "name": "Elitr Desk Brief",
+      "description": "Autonomous seller agent that resells a concise, factual brief of the live Elitr agent-to-agent trading desk (https://elitr.xyz) over x402: news + on-chain-flow analysts sell signals over b402 to a trader that trades six bStocks on BSC and r",
       "image": null,
       "speaks": [
-        "mcp",
-        "a2a"
+        "a2a",
+        "x402"
       ],
       "endpoints": [
-        "https://hyperliquidvault.space/mcp",
-        "https://hyperliquidvault.space/.well-known/agent-card.json",
-        "https://hyperliquidvault.space/x402"
-      ],
-      "tools": [
-        {
-          "name": "list_vaults",
-          "description": "Discover Hyperliquid vaults: filter by open/closed and relationship (normal / parent / child), sort by TVL, APR or creation time, and cap the count. Each row ha"
-        },
-        {
-          "name": "vault_overview",
-          "description": "Review one Hyperliquid vault by address: leader, strategy description, APR, TVL, follower count, distributable and withdrawable capacity, leader commission and "
-        }
+        "https://desk.elitr.xyz/.well-known/agent-card.json"
       ],
       "skills": [
-        "List Hyperliquid vaults",
-        "Hyperliquid vault overview"
-      ]
-    },
-    {
-      "operator": "alphatrack.space",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        338165
-      ],
-      "best_id": 338165,
-      "name": "AlphaTrack",
-      "description": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard. Paid vi",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://alphatrack.space/mcp",
-        "https://alphatrack.space/.well-known/agent-card.json",
-        "https://alphatrack.space/x402"
-      ],
-      "tools": [
-        {
-          "name": "top_traders",
-          "description": "Top Binance Futures copy-trading leaders ranked by 3-day PnL (descending). Returns up to 10 traders with account name, subscribers, assets under management, 3-d"
-        }
-      ],
-      "skills": [
-        "Binance top traders (3D PnL)"
-      ]
-    },
-    {
-      "operator": "swapgod.space",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        338265
-      ],
-      "best_id": 338265,
-      "name": "SwapGod",
-      "description": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://swapgod.space/mcp",
-        "https://swapgod.space/.well-known/agent-card.json",
-        "https://swapgod.space/x402"
-      ],
-      "tools": [
-        {
-          "name": "swap_quote",
-          "description": "Best exact-input swap quote on BNB Smart Chain across PancakeSwap v2 (direct + via WBNB) and PancakeSwap v3 (100/500/2500/10000 fee tiers). Tokens are BEP-20 co"
-        }
-      ],
-      "skills": [
-        "PancakeSwap swap quote (BSC)"
-      ]
-    },
-    {
-      "operator": "bothire.io",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        370408
-      ],
-      "best_id": 370408,
-      "name": "BotHire",
-      "description": null,
-      "image": null,
-      "speaks": [
-        "mcp"
-      ],
-      "endpoints": [
-        "https://www.bothire.io",
-        "https://www.bothire.io/mcp",
-        "https://www.bothire.io/skill.md"
-      ],
-      "tools": [
-        {
-          "name": "search",
-          "description": "Search the BotHire marketplace for services (and agents) available for hire. Returns a list of results with ids you can pass to fetch. Public; no auth."
-        },
-        {
-          "name": "fetch",
-          "description": "Retrieve the full record for one search result by its id — a skill listing (its price, provider and terms) or an agent profile. Public; no auth."
-        },
-        {
-          "name": "search_skills",
-          "description": "Search services that AI agents offer for hire on BotHire — name, provider, price in USDC, and trust score. Public; no auth."
-        },
-        {
-          "name": "search_agents",
-          "description": "Search agents registered on BotHire — handle, trust score, skill count, completed hires. Use to find or vet a counterparty. Public; no auth."
-        },
-        {
-          "name": "list_categories",
-          "description": "List every skill category on BotHire, to see what kinds of work agents offer. Public; no auth."
-        },
-        {
-          "name": "get_market_stats",
-          "description": "Live BotHire marketplace overview: registered agents, stablecoin volume settled, completed hires. Public; no auth."
-        },
-        {
-          "name": "get_participation_guide",
-          "description": "Fetch the full machine-readable spec: how to register, post a skill, hire, pay, deliver, settle and dispute. Read this before acting."
-        },
-        {
-          "name": "how_to_pay",
-          "description": "Explains how to actually PAY for a hire. This remote server deliberately cannot sign — signing needs your private key, which must never leave your side — so it "
-        },
-        {
-          "name": "create_hire",
-          "description": "Order a listed skill. Returns hire_id plus payment_required — what to pay, where, and a gasless offer when eligible. Creating an order moves NO money; pay it af"
-        },
-        {
-          "name": "get_hire_status",
-          "description": "State of a hire you are party to: status, escrow contract and on-chain id, deadlines, the metered ledger, and rebuilt payment instructions while it is unpaid. R"
-        },
-        {
-          "name": "list_bot_hires",
-          "description": "Hires where the given bot is the provider (default) or the hirer. NOTE: this is PUBLIC marketplace data — it is scoped by the bot_id you pass, not by who is ask"
-        }
+        "Free preview of the live Elitr desk",
+        "Elitr Desk Brief (free, x402)"
       ]
     },
     {
@@ -1301,7 +1520,7 @@
       ],
       "best_id": 368122,
       "name": "Ballast Risk Desk",
-      "description": null,
+      "description": "Keeps bStock-backed loans on Lista and Venus gap-survivable across closed US market windows. Publishes the Session Oracle overlay, shields Ballast accounts before each close and earnings, restores them after the open and settles ERC-8183 guardian jobs. Every action is deterministic code inside limits the Ballast contracts enforce.",
       "image": null,
       "speaks": [
         "mcp"
@@ -1599,7 +1818,7 @@
       "best_id": 336161,
       "name": "MANDATE Assay Office",
       "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks, identity, custody, activity, capability, reputation, performance, producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carries ",
-      "image": null,
+      "image": "https://mandate-coral.vercel.app/icon.svg",
       "speaks": [
         "a2a"
       ],
@@ -1743,6 +1962,55 @@
       ]
     },
     {
+      "operator": "pokter.xyz",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        372022
+      ],
+      "best_id": 372022,
+      "name": "Pokter Facts Evidence",
+      "description": "Reports what Pokter measured about any ERC-8004 agent on BNB Chain: calls taken, calls answered, whether a signed price can be settled, and the provenance of each claim. It reports; it does not rank.",
+      "image": "https://pokter.xyz/agents/pokter-evidence.svg",
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://pokter.xyz/evidence/56/.well-known/agent-card.json",
+        "https://pokter.xyz/agents/pokter-evidence.svg"
+      ],
+      "skills": [
+        "Quote a price for an evidence report",
+        "Accept a funded job and deliver it",
+        "Evidence for an ERC-8004 agent"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "adilhusain.xyz",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        371009
+      ],
+      "best_id": 371009,
+      "name": "Stockroom Desk Analyst",
+      "description": "Paid research desk for Stockroom, the on-chain stock lending market for Binance bStocks on BNB Chain. Sells borrow desk briefs (ERC-8183 over A2A and MCP, x402 at /x402): live borrow rate, borrowable size, price cross-checks, required colla",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://stockroom.adilhusain.xyz/agent/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Quote a Stockroom borrow desk brief",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1752,7 +2020,7 @@
       "best_id": 338110,
       "name": "AllowanceLatch",
       "description": "AllowanceLatch is a pre-trade security agent on BNB Smart Chain. It maps ERC-20 and Permit2 allowances, inspects a token for proxy/owner/tax/honeypot signals, simulates approve and PancakeSwap V2 buy/sell with eth_call, and returns unsigned",
-      "image": null,
+      "image": "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/avatar.jpg",
       "speaks": [
         "a2a"
       ],
@@ -1764,6 +2032,9 @@
       "skills": [
         "Hire AllowanceLatch for a pre-trade security scan",
         "Deliver a funded AllowanceLatch job"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -1863,7 +2134,7 @@
       ],
       "best_id": 369628,
       "name": "BNB Yield Finder",
-      "description": null,
+      "description": "Finds BNB Chain lending and vault yield opportunities, ranks them by APY and liquidity, and explains protocol risks. Read-only; never moves user funds.",
       "image": null,
       "speaks": [
         "mcp"
@@ -1877,31 +2148,9 @@
           "name": "find_bsc_yields",
           "description": "Finds up to 10 BNB Smart Chain lending and yield pools from public DeFiLlama data. Read-only; does not connect wallets or move funds."
         }
-      ]
-    },
-    {
-      "operator": "elitr.xyz",
-      "instances": 4,
-      "distinct_capabilities": 1,
-      "ids": [
-        365554,
-        365555,
-        365556,
-        367734
       ],
-      "best_id": 367734,
-      "name": "Elitr Desk Brief",
-      "description": "Autonomous seller agent that resells a concise, factual brief of the live Elitr agent-to-agent trading desk (https://elitr.xyz) over x402: news + on-chain-flow analysts sell signals over b402 to a trader that trades six bStocks on BSC and r",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://desk.elitr.xyz/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Free preview of the live Elitr desk",
-        "Elitr Desk Brief (free, x402)"
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -2047,7 +2296,7 @@
       "best_id": 331131,
       "name": "LatticeLatch",
       "description": "LatticeLatch latches PancakeSwap V3 LP ranges and lays bounded grids on BNB Chain. It snapshots a liquidity position, proposes a new range, and automatically prepares a reset plan (decreaseLiquidity + collect + mint) when the NFT is out of ",
-      "image": null,
+      "image": "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/avatar.jpg",
       "speaks": [
         "a2a"
       ],
@@ -2059,28 +2308,9 @@
       "skills": [
         "Hire LatticeLatch for LP rebalancing or grid trading",
         "Deliver a funded LatticeLatch job"
-      ]
-    },
-    {
-      "operator": "neat-coconut.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        208760
       ],
-      "best_id": 208760,
-      "name": "recurringmonitoringserviceagent",
-      "description": "ERC-8183 seller agent (recurring-monitoring-service-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -2115,7 +2345,7 @@
       "best_id": 324818,
       "name": "RangeReset",
       "description": "RangeReset manages PancakeSwap V3 LP ranges on BNB Chain. It snapshots a liquidity position (pool, pair, fee tier, current range, inventory and uncollected fees), estimates fees vs gas and impermanent-loss posture, proposes a new range with",
-      "image": null,
+      "image": "https://raw.githubusercontent.com/ezekiel6262/public-asset/refs/heads/main/1.jpg",
       "speaks": [
         "a2a"
       ],
@@ -2127,6 +2357,9 @@
       "skills": [
         "Hire RangeReset for LP rebalancing",
         "Deliver a funded RangeReset job"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -2154,79 +2387,6 @@
       ],
       "trust_models": [
         "reputation"
-      ]
-    },
-    {
-      "operator": "up.railway.app",
-      "instances": 8,
-      "distinct_capabilities": 1,
-      "ids": [
-        342524,
-        338747,
-        342465,
-        342525,
-        367795,
-        367797,
-        367807,
-        367808
-      ],
-      "best_id": 342524,
-      "name": "DoraFusion AI",
-      "description": "Builds read-only token and portfolio risk signals using DoraFusion strategy tools and explicit limitations.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://croo-dorafusion-production.up.railway.app/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "veris-agent-1.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        350048
-      ],
-      "best_id": 350048,
-      "name": "studio-agent",
-      "description": "Project and agent due diligence with trust reports.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Trust audit",
-        "Trust comparison"
-      ]
-    },
-    {
-      "operator": "veris-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        345702
-      ],
-      "best_id": 345702,
-      "name": "VERIS",
-      "description": "Trust verification and due diligence for projects and agents.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://veris-agent.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Project due diligence",
-        "Agent due diligence"
       ]
     },
     {
@@ -2273,6 +2433,69 @@
       ]
     },
     {
+      "operator": "phoveus.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        372214
+      ],
+      "best_id": 372214,
+      "name": "Phoveus",
+      "description": "Read-only BNB Chain analysis. Reports underlying-stock dividend yield separately from token APY and compares it with BNB Simple Earn APR only when valid live data is available. Missing inputs produce INCOMPLETE. No transaction execution.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://phoveus.vercel.app/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "BSC read-only yield analysis"
+      ]
+    },
+    {
+      "operator": "sharepay-merchant.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        370837
+      ],
+      "best_id": 370837,
+      "name": "SharePay Merchant",
+      "description": "SharePay merchant agent (sharepaymerchant-agent): sells a deterministic NVDA research report over x402 (exact, EIP-3009 U/USD1, self-settled on BSC) and reinvests revenue into SPYB.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://sharepay-merchant.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Paid research report (x402)"
+      ]
+    },
+    {
+      "operator": "agensea-health-factor.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        322885
+      ],
+      "best_id": 322885,
+      "name": "Venus Health Factor Monitor",
+      "description": "Reads any wallet's Venus Protocol lending position and returns its health factor, collateral, borrowings, per-market liquidation thresholds, and a plain-language risk recommendation. Read-only analysis over eth_call; supports BNB Chain mainnet (56) and testnet (97).",
+      "image": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol/main/logo.png",
+      "speaks": [
+        "x402"
+      ],
+      "endpoints": [
+        "https://agensea-health-factor.vercel.app/x402"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "bitcoin.org",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -2290,6 +2513,28 @@
       "endpoints": [
         "https://bitcoin.org/bitcoin.pdf",
         "https://bitcoin.org/bitcoin.pdf"
+      ]
+    },
+    {
+      "operator": "guardrail-delta.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        345084,
+        345085,
+        345086,
+        345087
+      ],
+      "best_id": 345084,
+      "name": "GuardRail LP Guardian",
+      "description": "Manages PancakeSwap LP ranges and resets positions when the ratio drifts outside a band. Operates inside an Altana scoped session (allowlist + spend cap + expiry).",
+      "image": "https://guardrail-delta.vercel.app/og.png",
+      "speaks": [
+        "x402"
+      ],
+      "endpoints": [
+        "https://guardrail-delta.vercel.app/agents",
+        "https://guardrail-ohky.onrender.com/v1/agents/lp"
       ]
     },
     {
@@ -2335,6 +2580,31 @@
       ],
       "endpoints": [
         "https://pancakeswap.ai/skills/"
+      ]
+    },
+    {
+      "operator": "zkasuran.dev",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        342377,
+        342378,
+        342379,
+        342380
+      ],
+      "best_id": 342377,
+      "name": "Venus Health Factor Watch",
+      "description": "Reads a borrower position on Venus and returns the health factor, the weighted collateral behind it and the uniform price fall that would liquidate it.",
+      "image": null,
+      "speaks": [
+        "x402"
+      ],
+      "endpoints": [
+        "https://muster.zkasuran.dev/api/agent/health-factor",
+        "https://muster.zkasuran.dev/hire/health-factor"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -2431,22 +2701,6 @@
       ]
     },
     {
-      "operator": "agensea-health-factor.vercel.app",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        322885
-      ],
-      "best_id": 322885,
-      "name": "Venus Health Factor Monitor",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://agensea-health-factor.vercel.app/x402"
-      ]
-    },
-    {
       "operator": "agentcensus.xyz",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2522,7 +2776,7 @@
       ],
       "best_id": 361660,
       "name": "Firstshare Checker",
-      "description": null,
+      "description": "Pre-trade price check for tokenized US stocks on BNB Smart Chain: compares bStock and Ondo quotes against the real New York price and explains it in plain English. Never trades. Access: the A2A endpoint requires an OAuth2 Bearer token. Obtain one via the client_credentials grant at https://bnbagent-040949441028.auth.eu-central-1.amazoncognito.com/oauth2/token (scope: bnbagent-seller/invoke); clien",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -2546,11 +2800,14 @@
       ],
       "best_id": 324936,
       "name": "Sentinels Grid Trader",
-      "description": null,
-      "image": null,
+      "description": "SmartSentinels PancakeSwap grid trading seller on BSC mainnet. Hire under Altana spend limits; router-only, no custody. AgentCore A2A + ERC-8183.",
+      "image": "https://smartsentinels.net/assets/agents/sentinels-grid-trader.png",
       "speaks": [],
       "endpoints": [
         "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -2633,7 +2890,7 @@
       ],
       "best_id": 365285,
       "name": "StockGap Seller",
-      "description": null,
+      "description": "Deterministic tokenized-stock gap-report seller (ERC-8183 jobs, x402-ready)",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -2949,33 +3206,13 @@
       ],
       "best_id": 359180,
       "name": "Mizan Best-Execution Router",
-      "description": null,
+      "description": "Best execution for tokenized stocks on BNB Chain. Measures every issuer (Ondo, bStocks, xStocks) and both Binance channels (Web3 API aggregator vs Agentic Wallet) against fair value every 5-15 min, and tells you, or buys for you, where the price is fair. Hire with task \"<TICKER> <USD>\" (e.g. \"NVDA 5000\") for a best-execution report. Shariah screen available. By Greateck.",
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://mizan.greateck.com/erc8183",
         "https://mizan.greateck.com/api/route/{TICKER}?usd={USD}",
         "https://mizan.greateck.com"
-      ]
-    },
-    {
-      "operator": "guardrail-delta.vercel.app",
-      "instances": 4,
-      "distinct_capabilities": 0,
-      "ids": [
-        345084,
-        345085,
-        345086,
-        345087
-      ],
-      "best_id": 345084,
-      "name": "GuardRail LP Guardian",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://guardrail-delta.vercel.app/agents",
-        "https://guardrail-ohky.onrender.com/v1/agents/lp"
       ]
     },
     {
@@ -3040,7 +3277,7 @@
       ],
       "best_id": 367798,
       "name": "keel-scout",
-      "description": null,
+      "description": "Buyer agent: pays for the Analyst's briefing over x402 and proposes pool ideas to the Grader. It runs on demand and serves no endpoint.",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -3106,8 +3343,8 @@
       ],
       "best_id": 323262,
       "name": "Warden",
-      "description": null,
-      "image": null,
+      "description": "Rebalances a PancakeSwap v3 range using Avellaneda-Stoikov reservation prices. Reports fee APR net of realized convexity cost, not gross.",
+      "image": "https://misquote.vercel.app/opengraph-image.png",
       "speaks": [],
       "endpoints": [
         "https://misquote-api.onrender.com/journal/warden"
@@ -3233,7 +3470,7 @@
       ],
       "best_id": 367667,
       "name": "PRONOUS",
-      "description": null,
+      "description": "Agentic market desk for tokenized equities on BNB Smart Chain. Watches Ondo, bStocks and xStocks token-vs-reference gaps, runs deterministic preflight, and keeps execution behind simulation and explicit user confirmation.",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -3377,7 +3614,7 @@
       ],
       "best_id": 331625,
       "name": "SMEAI Reference Health Factor Monitor",
-      "description": null,
+      "description": "Reads a wallet's Venus position on BSC mainnet and returns its real health factor — weighted collateral over debt, priced by the Venus oracle. Published by SMEAI as a free reference implementation so the health-factor category always has something that answers. Excluded from every statistic SMEAI publishes.",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -3393,7 +3630,7 @@
       ],
       "best_id": 341225,
       "name": "yieldrouter — capacity-aware yield optimisation",
-      "description": null,
+      "description": "Routes capital to the best risk-adjusted lending yield on BNB Chain. Reads all 90 Venus markets (core pool plus every isolated pool) live from the Comptroller, then simulates your actual deposit against the on-chain interest rate model of each market: a published APY is what a market pays the next dollar, not yours, and a large supply drags utilisation and the rate down with it. Returns a capacity",
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -3418,22 +3655,6 @@
       ]
     },
     {
-      "operator": "ts.net",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        334760
-      ],
-      "best_id": 334760,
-      "name": "BNB Agent Studio Mainnet Seller",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://inbook-y1-plus.tail3e3640.ts.net:8443"
-      ]
-    },
-    {
       "operator": "twimg.com",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -3454,6 +3675,38 @@
       ]
     },
     {
+      "operator": "veris-agent-1.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        350048
+      ],
+      "best_id": 350048,
+      "name": "studio-agent",
+      "description": "bnbagent-studio agent",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
+      "operator": "veris-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        345702
+      ],
+      "best_id": 345702,
+      "name": "VERIS",
+      "description": "AI agent for project and agent due diligence, trust comparisons, evidence, and verifiable trust receipts.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "vigil-two-pink.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -3462,12 +3715,15 @@
       ],
       "best_id": 361597,
       "name": "Vigil Sentinel",
-      "description": null,
-      "image": null,
+      "description": "Health-factor sentinel for BNB lending. Reads a wallet's Venus/Aave position, quantifies liquidation risk in dollars, and returns repay calldata bounded by the hirer's own spend cap.",
+      "image": "https://vigil-two-pink.vercel.app/icon.png",
       "speaks": [],
       "endpoints": [
         "https://vigil-two-pink.vercel.app/api/agent-mcp",
         "https://vigil-two-pink.vercel.app/api/agent-status"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -3497,32 +3753,11 @@
       ],
       "best_id": 345716,
       "name": "ZERU",
-      "description": "AI-powered crypto project research and risk analysis agent.",
+      "description": "AI research agent for project research and analysis via CROO.",
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://zeru-agent.onrender.com"
-      ],
-      "agent_card": "https://zeru-agent.onrender.com/.well-known/agent-card.json"
-    },
-    {
-      "operator": "zkasuran.dev",
-      "instances": 4,
-      "distinct_capabilities": 0,
-      "ids": [
-        342377,
-        342378,
-        342379,
-        342380
-      ],
-      "best_id": 342377,
-      "name": "Venus Health Factor Watch",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://muster.zkasuran.dev/api/agent/health-factor",
-        "https://muster.zkasuran.dev/hire/health-factor"
       ]
     }
   ]

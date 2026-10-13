@@ -1,7 +1,7 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-12T04:24:11.798Z",
-  "asked": 58,
+  "measured_at": "2026-10-13T07:39:09.883Z",
+  "asked": 62,
   "quoted": 27,
   "agents": [
     {
@@ -136,6 +136,16 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 323262,
+      "label": "Warden",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://misquote-api.onrender.com/a2a",
+      "reason": "answered {\"detail\":\"Not Found\"} rather than a JSON-RPC reply"
+    },
+    {
       "id": 342379,
       "label": "PancakeSwap LP Range Check",
       "category": "rebalancing",
@@ -143,6 +153,16 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
+      "id": 345084,
+      "label": "GuardRail LP Guardian",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://guardrail-delta.vercel.app/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
@@ -428,6 +448,16 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 372214,
+      "label": "Phoveus",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://phoveus.vercel.app/api/a2a",
+      "reason": "seller answered, but its reply carries no price"
+    },
+    {
       "id": 304493,
       "label": "Brain on BNB — Venus Yield Ranking",
       "category": "yield-optimization",
@@ -458,16 +488,6 @@
       "reason": "seller answered, but its reply carries no price"
     },
     {
-      "id": 126728,
-      "label": "Pretium",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://mcp.pretium.africa/mcp",
-      "reason": "Method not found"
-    },
-    {
       "id": 338253,
       "label": "HyperliquidVault",
       "category": "yield-optimization",
@@ -476,6 +496,16 @@
       "price": null,
       "endpoint": "https://hyperliquidvault.space/a2a",
       "reason": "unknown skill \"negotiate\""
+    },
+    {
+      "id": 126728,
+      "label": "Pretium",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://mcp.pretium.africa/mcp",
+      "reason": "Method not found"
     },
     {
       "id": 336622,
@@ -566,6 +596,16 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://muster.zkasuran.dev/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
+      "id": 345087,
+      "label": "GuardRail Health Guard",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://guardrail-delta.vercel.app/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {

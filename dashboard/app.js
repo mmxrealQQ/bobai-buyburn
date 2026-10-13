@@ -1186,6 +1186,7 @@ function fillLpPortfolio(){
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
     const h = m.holdings, p = m.pnl, d = m.day || {};
+    if (n(m.put_in.usd) > 0 && n(m.put_in.bnb) > 0) { window.__pfBnbUsd = n(m.put_in.usd) / n(m.put_in.bnb); setTimeout(lpCurveUsd, 0); }
     const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
     const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : m.pool.at_edge ? '⏸ <b>waiting at the edge</b> <span class="m">(just re-set, earns from the first tick inside)</span>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
     const width = m.pool.width_pct == null ? '' : m.pool.side ? esc(+(2 * m.pool.width_pct).toFixed(2)) + '% wide, ' + m.pool.side + ' the price' : '±' + esc(m.pool.width_pct) + '%';
@@ -1252,6 +1253,12 @@ function lpRange(){
 // THE CURVE (2026-10-12, operator: "how it runs at a glance, honest in the red too"): what had gone in by each run
 // (capital, a step at every deposit) and what the position was worth — the band between them green above, red below.
 // Every point is a run of /lp/series; nothing is smoothed.
+// THE CURVE'S DOLLARS AT THE LAST RUN'S BNB PRICE, the one the portfolio tiles above use (2026-10-13: the page showed
+// 2.2267 BNB as $1,653 in the tiles and as $1,660 under the curve, the second at the live price). Filled when both are in.
+function lpCurveUsd(){
+  const px = window.__pfBnbUsd; if (!(px > 0)) return;
+  document.querySelectorAll('.cv-usd[data-bnb]').forEach(el => { el.textContent = ' ≈$' + Math.round(+el.dataset.bnb * px).toLocaleString('en-US'); });
+}
 function lpCurve(pts){
   const box = document.getElementById('ag-lp-curve'); if(!box) return;
   const P = pts.filter(p => p.capital_bnb > 0 && p.value_bnb > 0).map(p => ({ t: Date.parse(p.at), c: +p.capital_bnb, v: +p.value_bnb }));
@@ -1272,7 +1279,7 @@ function lpCurve(pts){
     + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Position worth against capital put in, ' + P.length + ' runs; now ' + last.v.toFixed(3) + ' of ' + last.c.toFixed(3) + ' BNB">'
     + ticks + band + '<path d="' + line('c') + '" fill="none" stroke="#a0a2c0" stroke-width="1.6" stroke-dasharray="4 3"/><path d="' + line('v') + '" fill="none" stroke="#f0b90b" stroke-width="2"/>'
     + '<text x="' + L + '" y="' + (H - 6) + '">' + d(t0) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + d(t1) + '</text></svg>'
-    + '<p class="agt-note">At the last run (' + new Date(last.t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC) the position alone was worth <b>' + last.v.toFixed(4) + ' BNB</b> of <b>' + last.c.toFixed(4) + ' BNB</b> put in: <b style="color:' + (pc >= 0 ? '#35e07a' : '#ff4d6d') + '">' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%</b>. The portfolio above is the same money now, and it also counts the $BOBAI bought from fees and the fees owed, so its result differs.</p>';
+    + '<p class="agt-note" data-nousd>At the last run (' + new Date(last.t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC) the position alone was worth <b>' + last.v.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.v + '"></span> of <b>' + last.c.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.c + '"></span> put in: <b style="color:' + (pc >= 0 ? '#35e07a' : '#ff4d6d') + '">' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%</b>. The portfolio above is the same money now, and it also counts the $BOBAI bought from fees and the fees owed, so its result differs.</p>';
   box.hidden = false;
 }
 // The series: one row per run of the DeFi agent, from /lp/series. The
@@ -1292,7 +1299,7 @@ function fillLpSeries(){
       // a failed fetch is not an empty series (2026-10-05): only a real answer with no points says "no run yet"
       if(!d){ sum.innerHTML = 'The series did not answer just now. The record: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.'; return; }
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
-      lpCurve(pts);
+      lpCurve(pts); lpCurveUsd();
       // One line, not the portfolio again: the portfolio above already says
       // what went in and what came out. The table is the evidence.
       sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "position vs capital" is the position alone against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain. The Result above adds what the position produced beside itself (the $BOBAI bought from fees, fees still owed) and takes off the gas, so the two differ.';

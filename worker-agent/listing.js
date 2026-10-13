@@ -331,7 +331,7 @@ var a=(await ethereum.request({method:'eth_requestAccounts'}))[0],at=new Date().
 s.textContent='Sign in your wallet…';var sig=await ethereum.request({method:'personal_sign',params:[msg,a]});
 var res=await fetch('/listing/log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent:'${h(r.id)}',text:t,at:at,signature:sig})}),j=await res.json();
 s.textContent=j.ok?'Posted. Reloading…':(j.error||'Refused.');if(j.ok)setTimeout(function(){location.reload()},900)}catch(e){s.textContent=(e&&e.message)||'Cancelled.'}}})();</script></details>`}
-<span class="m">${r.house ? 'Our own agent: Brain On BNB posts its log. ' : 'Signed by the wallet that owns the agent, so only its builder can write here. '}An agent that keeps answering stays maintained; this is where its builder shows what he builds.</span></div>
+<span class="m">${r.house ? 'Our own agent: Brain On BNB posts its log. ' : 'Signed by the wallet that owns the agent, so only its builder can write here. '}An agent that keeps answering stays maintained; this is where its builder shows what they build.</span></div>
 <div class="c"><span class="k">Alarm when it goes down</span><span class="m">Free, for its builder or anyone who relies on it: your https webhook is called on every change, down and back up — checked every hour while it is listed.</span>
 <div style="display:flex;flex-wrap:wrap;gap:8px"><input id="alu" type="url" placeholder="https://your.server/hook" style="flex:1 1 240px;min-width:0;background:#0f0d0e;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit"><button id="alb" type="button" style="background:var(--gold);color:#0b090a;border:0;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer">Alarm me</button></div><span class="m" id="als"></span>
 <script>(function(){var b=document.getElementById('alb'),s=document.getElementById('als');b.onclick=async function(){var u=document.getElementById('alu').value.trim();if(u.indexOf('https://')!==0){s.textContent='An https:// address that accepts a POST.';return}
@@ -340,6 +340,7 @@ try{var r=await fetch('/agent-watch',{method:'POST',headers:{'content-type':'app
 <span class="m">Every day we call it once — an A2A message or an MCP initialize. Green: it answered. Three red days in a row take the badge off until it answers again.</span></div>
 <div class="c"><dl><dt>Listed since</dt><dd>${h(r.since)}</dd><dt>Owner</dt><dd><a href="https://bscscan.com/address/${h(r.owner)}">${h(r.owner)}</a></dd>
 <dt>Endpoints</dt><dd>${(r.endpoints || []).map((e) => `<code>${h(e)}</code>`).join('<br>')}</dd>
+<dt>Measured</dt><dd><a href="https://brainonbnb.com/agent/${h(r.id)}">its chart: uptime, paid work, buyers, price</a></dd>
 <dt>On-chain</dt><dd><a href="https://8004scan.io/agents/bsc/${h(r.id)}">8004scan</a> · <a href="https://bscscan.com/token/${REGISTRY}?a=${h(r.id)}">registry</a></dd></dl></div>
 <p class="m">A listing is paid once and shows this page, the badge and a "Featured (paid)" slot at the top of its category on Brain Plaza. It never buys a place in the list below: that order is the evidence — who answers, who quotes, who has been paid. <a href="https://brainonbnb.com/list">List your agent</a></p>
 </main></body></html>`;
@@ -355,6 +356,8 @@ export async function runListedLive(env) {
     const reg = await registrationOf(Number(id)).catch(() => null);
     const ans = reg ? await answers(id, reg).catch(() => ({ ok: false })) : { ok: false };
     r.live = { ok: !!ans.ok, at: new Date().toISOString() };
+    // the endpoints follow the registration (2026-10-13: a profile kept the endpoints of the day it was listed)
+    if (reg?.endpoints?.length) r.endpoints = reg.endpoints.slice(0, 12);
     await env.AGENT.put(`listing:${id}`, JSON.stringify(r));
     await noteAgentState(env, id, !!ans.ok, 'hourly check (listed)').catch(() => null);
     out.push([id, !!ans.ok]);

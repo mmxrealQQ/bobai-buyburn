@@ -56,7 +56,11 @@
        the result tile above them (2026-09-12). */
     .pf-eq{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 8px 2px}
     .pf-src{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    @media(max-width:700px){.pf-src{grid-template-columns:1fr;gap:8px}}
+    /* four parts (market, range, fees, gas since 2026-10-09): two by two, not three and one left alone on a row; and air
+       before the comparison line under them (2026-10-13) */
+    .pf-src:has(> div:nth-child(4)){grid-template-columns:repeat(2,1fr)}
+    .pf-src + .pf-eq{margin-top:14px}
+    @media(max-width:700px){.pf-src,.pf-src:has(> div:nth-child(4)){grid-template-columns:1fr;gap:8px}}
     .pf-src>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 14px;border:1px dashed var(--border);border-radius:10px;font-size:.84rem;min-width:0}
     .pf-src .k{color:var(--muted);white-space:nowrap}
     .pf-src .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}

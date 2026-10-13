@@ -2839,6 +2839,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          if(L.house){var o=art.querySelector('.rg-x4');if(o)o.remove();} // the badge says "ours" already (2026-10-13: it showed twice)
           if(L.house)return; // ours: the badge only, no featured copy
           var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
           var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';
@@ -2847,6 +2848,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           f.appendChild(c); list.parentNode.insertBefore(f,list);
         });
       });
+      // one "ours" per card, whatever its layout: the badge says it, the old chip goes (2026-10-13)
+      [].slice.call(document.querySelectorAll('article')).forEach(function(a){var l=a.querySelector('.rg-listed');if(l&&/ours/.test(l.textContent))[].slice.call(a.querySelectorAll('.rg-x4')).forEach(function(x){x.remove()})});
       var fl=document.getElementById('rg-feat-list');
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
       if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip

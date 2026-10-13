@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4679 lines.
+# one fetch. 7 files, 4680 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3341,6 +3341,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
+          if(L.house){var o=art.querySelector('.rg-x4');if(o)o.remove();} // the badge says "ours" already (2026-10-13: it showed twice)
           if(L.house)return; // ours: the badge only, no featured copy
           var box=art.closest('.rg-box'); var list=box&&box.querySelector('.rgc-list'); if(!box||!list||box.querySelector('.rg-feat'))return;
           var f=document.createElement('div'); f.className='rg-feat'; f.innerHTML='<p class="rg-note" style="margin:0 0 6px;color:var(--gold)">Featured (paid)</p>';

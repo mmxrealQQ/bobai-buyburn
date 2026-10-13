@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5569,
-   "zipBytes": 95528,
-   "txtBytes": 284120,
-   "sha256": "ffaa999d81740b7e",
+   "lines": 5572,
+   "zipBytes": 95645,
+   "txtBytes": 284414,
+   "sha256": "f154fa4429627ee4",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2859,
-   "zipBytes": 83709,
-   "txtBytes": 240897,
-   "sha256": "8b6fd33fb020f262",
+   "lines": 2903,
+   "zipBytes": 85655,
+   "txtBytes": 246902,
+   "sha256": "5a7aac6f6f379f4c",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -734,10 +734,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4679,
-   "zipBytes": 102161,
-   "txtBytes": 292019,
-   "sha256": "553811c1bf916f1a",
+   "lines": 4680,
+   "zipBytes": 102206,
+   "txtBytes": 292156,
+   "sha256": "b2ef9f4922855b03",
    "reqs": [
     {
      "what": "Node 18+ and time",

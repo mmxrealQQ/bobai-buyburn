@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4680 lines.
+# one fetch. 7 files, 4682 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3350,6 +3350,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           f.appendChild(c); list.parentNode.insertBefore(f,list);
         });
       });
+      // one "ours" per card, whatever its layout: the badge says it, the old chip goes (2026-10-13)
+      [].slice.call(document.querySelectorAll('article')).forEach(function(a){var l=a.querySelector('.rg-listed');if(l&&/ours/.test(l.textContent))[].slice.call(a.querySelectorAll('.rg-x4')).forEach(function(x){x.remove()})});
       var fl=document.getElementById('rg-feat-list');
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
       if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip

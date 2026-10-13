@@ -164,6 +164,13 @@ const needsList = (needs) => {
 // The request body a buyer sends, from the fields under "needs" (2026-10-09 review: no card showed one). A field
 // described as an alternative ("or …") is left out; an address-like field shows 0x…
 const bodyOf = (needs) => JSON.stringify({ params: Object.fromEntries(Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v))).map(([k, v]) => [k, /0x|address|wallet/i.test(String(v)) ? '0x…' : '…'])) });
+// THE CARD TAKES THE ANSWER'S INPUT ITSELF (2026-10-13, operator: "the pay-per-answer POST line is huge — better a field
+// where you can type it right away"): one field per thing the service needs; the button opens the Plaza's hire flow
+// (wallet, quote, escrow — the path that already works) with the request written out from the fields.
+const fieldsOf = (needs) => Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v))).map(([k, v]) => k === 'holdings'
+  ? `          <label class="sv-f"><span>${esc(k)}</span><textarea name="${esc(k)}" rows="3" placeholder="one holding a line: token address, then its dollars&#10;0x0E09…cE82 600&#10;0xbb4C…095c 400"></textarea></label>`
+  : `          <label class="sv-f"><span>${esc(k)}</span><input name="${esc(k)}" autocomplete="off" spellcheck="false" placeholder="${esc(String(v).replace(/,? optional.*$/i, '').slice(0, 70))}${/optional/i.test(String(v)) ? ' (optional)' : ''}"></label>`).join('\n');
+
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
@@ -172,10 +179,13 @@ const delivery = (d) => `      <article class="sv-buy">
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
         <p class="sv-what">${esc(d.what)}</p>
         <p class="sv-needs-h">What it needs from you</p>
-${needsList(d.needs)}
-        <p class="sv-cost">Pay per answer: <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p>
+        <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
+${fieldsOf(d.needs)}
+          <div class="sv-form-go"><button type="submit">Hire for $0.10 &rarr;</button><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a></div>
+          <p class="sv-form-msg" role="status"></p>
+        </form>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
-        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener" aria-label="See a real ${esc(d.name)} answer (JSON)">see a real answer (JSON) &rarr;</a></p>
       </article>`;
 
 const capRow = (c) => {
@@ -237,6 +247,23 @@ function page() {
   .sv-lead b{color:var(--text);font-weight:600}
   .sv-sec{margin-top:44px}
   .sv-sec > h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.35rem;margin:0 0 6px}
+  .sv-jump{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+  .sv-jump a{border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:7px 13px;font:600 .8rem Inter,sans-serif;color:var(--gold,#f0b90b);text-decoration:none;background:rgba(240,185,11,.05)}
+  .sv-jump a:hover{background:var(--gold,#f0b90b);color:#0b090a}
+  .sv-sec{scroll-margin-top:84px}
+  .sv-plain{margin:14px 0 0;padding:12px 15px;border:1px solid rgba(240,185,11,.3);border-radius:14px;background:rgba(240,185,11,.05);font-size:.88rem;line-height:1.6;color:var(--text,#ece8e4)}
+  .sv-plain b{color:var(--gold,#f0b90b)}
+  .sv-form{display:grid;gap:8px;margin:12px 0 4px}
+  .sv-f{display:grid;gap:3px}
+  .sv-f span{font:600 .72rem ui-monospace,Consolas,monospace;color:var(--muted)}
+  .sv-f input,.sv-f textarea{width:100%;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:inherit;padding:9px 11px;font:500 .86rem Inter,sans-serif}
+  .sv-f input:focus,.sv-f textarea:focus{outline:none;border-color:var(--gold,#f0b90b)}
+  .sv-form-go{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:2px}
+  .sv-form-go button{background:var(--gold,#f0b90b);color:#0b090a;border:0;border-radius:999px;padding:9px 16px;font:700 .86rem Inter,sans-serif;cursor:pointer}
+  .sv-form-go a{color:var(--gold,#f0b90b);font-size:.82rem}
+  .sv-form-msg{margin:0;font-size:.8rem;color:#ff7a6e;min-height:0}
+  .sv-dev{margin-top:6px}.sv-dev summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
+  .sv-dev code{word-break:break-all}
   .sv-sec > p.sv-sub{color:var(--muted);font-size:.86rem;line-height:1.6;max-width:70ch;margin:0 0 18px}
   /* auto-fit rather than a fixed count: the same rule has to hold a five-card
      row on a laptop and one column on a phone without a second breakpoint. */
@@ -317,9 +344,11 @@ function page() {
       <div class="sv-num"><b id="sv-asked">${ASKED_FLOOR ? ASKED_FLOOR.toLocaleString('en-US') : '&ndash;'}</b><span>requests answered for other agents</span></div>
       <div class="sv-num"><b>${DELIVERIES.length}</b><span>things you can hire us to deliver</span></div>
     </div>
+    <!-- A WAY THROUGH A LONG PAGE (2026-10-13: 14,000 px on a phone): one row of jumps to its parts -->
+    <div class="sv-jump" role="navigation" aria-label="On this page"><a href="#sv-pages">Open a page</a><a href="#sv-hire">Hire us</a><a href="#sv-agent">For your agent</a><a href="#sv-g-free">Free tools</a><a href="#sv-g-paid">What costs money</a><a href="#sv-not">What we will not do</a></div>
   </header>
 
-  <section class="sv-sec">
+  <section class="sv-sec" id="sv-pages">
     <h2>Open a page</h2>
     <p class="sv-sub">Nothing to install, nothing to connect. Each of these answers one question and shows its working.</p>
     <div class="sv-grid">
@@ -327,12 +356,13 @@ ${PAGES.map(card).join('\n')}
     </div>
   </section>
 
-  <section class="sv-sec">
+  <section class="sv-sec" id="sv-hire">
     <h2>Hire us to deliver it</h2>
     <p class="sv-sub">${N_DELIVERIES_CAP} answers we produce on request, each priced the same and each one a measurement rather than an opinion. They exist because a page you have to read is not the same as an answer delivered to your agent while you are asleep.</p>
     <div class="sv-grid">
 ${DELIVERIES.map(delivery).join('\n')}
     </div>
+    <p class="sv-plain"><b>Or just ask.</b> Each of these agents takes a question in plain words over A2A (<code>message/send</code> at its endpoint): it says what it understood, what is still missing, and hands back the request filled in — so another agent never has to read this page to hire one.</p>
     <div class="sv-how"><b>How paying works, and what protects you.</b>
       <ol class="sv-steps">
         <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send.</li>
@@ -342,10 +372,10 @@ ${DELIVERIES.map(delivery).join('\n')}
     <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></div>
   </section>
 
-  <section class="sv-sec">
+  <section class="sv-sec" id="sv-agent">
     <h2>Point your own agent at us</h2>
     <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and the half a machine can pay for. <span id="sv-paid"></span></p>
-${GROUPS.filter(([k]) => (CAPABILITIES[k] || []).length).map(([k, title, sub]) => `    <h3 class="sv-needs-h" style="margin:18px 0 4px;font-size:.85rem">${esc(title)}</h3>
+${GROUPS.filter(([k]) => (CAPABILITIES[k] || []).length).map(([k, title, sub]) => `    <h3 class="sv-needs-h" id="sv-g-${k}" style="margin:18px 0 4px;font-size:.85rem;scroll-margin-top:84px">${esc(title)}</h3>
     <p class="sv-sub" style="margin-bottom:10px">${esc(sub)}</p>
     <ul class="sv-caps">
 ${CAPABILITIES[k].map(capRow).join('\n')}
@@ -362,7 +392,7 @@ ${CAPABILITIES[k].map(capRow).join('\n')}
     </ul>
   </section>
 
-  <section class="sv-sec">
+  <section class="sv-sec" id="sv-not">
     <h2>What we will not do</h2>
     <p class="sv-sub">Worth as much as the list above, and shorter.</p>
     <ul class="sv-not">
@@ -430,6 +460,31 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
       }
     }).catch(function(){});
 })();
+</script>
+<script>
+  // the cards' fields into the Plaza's hire flow (2026-10-13): required ones checked, the request written out as a
+  // sentence the agent reads (understand.js), then /registry?hire=<agent>&task=<…> — wallet, quote and escrow there
+  document.querySelectorAll('.sv-form').forEach(function (f) {
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = f.querySelector('.sv-form-msg'), parts = [], bad = null;
+      f.querySelectorAll('input,textarea').forEach(function (el) {
+        var v = el.value.trim(), opt = /optional/.test(el.placeholder || ''), k = el.name;
+        if (!v) { if (!opt && !bad) bad = k + ' is needed'; return; }
+        if ((k === 'address' || k === 'token') && !/^0x[0-9a-fA-F]{40}$/.test(v)) { if (!bad) bad = k + ' must be an address (0x and 40 characters)'; return; }
+        if (k === 'holdings') {
+          var rows = v.split(/\\n+/).map(function (l) { var m = l.match(/(0x[0-9a-fA-F]{40})\\D+([\\d.,]+)/); return m ? '$' + m[2].replace(/,/g, '') + ' (' + m[1] + ')' : null; });
+          if (!rows.length || rows.some(function (r) { return !r; })) { if (!bad) bad = 'holdings: one line each, a token address then its dollars'; return; }
+          parts.push('I hold ' + rows.join(' and ')); return;
+        }
+        parts.push(k === 'capitalUsd' || k === 'amountUsd' ? '$' + v.replace(/^\\$/, '') : k === 'levels' ? v + ' levels' : k === 'bandPct' ? 'band ' + v + '%' : k === 'position' ? 'position ' + v : k + ' ' + v);
+      });
+      if (bad) { msg.textContent = bad + '.'; return; }
+      msg.textContent = '';
+      var task = f.dataset.name + ': ' + (parts.join(', ') || 'as described');
+      location.href = '/registry?hire=' + encodeURIComponent(f.dataset.agent) + '&task=' + encodeURIComponent(task.slice(0, 300));
+    });
+  });
 </script>
 </body>
 </html>

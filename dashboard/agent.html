@@ -28,6 +28,8 @@
   .card h2 small{font:500 12px Inter,sans-serif;color:var(--muted)}
   .score{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;min-width:300px}
   @media(max-width:760px){.score{min-width:0}}
+  /* a phone: the ring above its four parts, each part the full width (2026-10-13: they were squeezed beside the ring) */
+  @media(max-width:520px){.score{grid-template-columns:1fr;justify-items:center}.score>div:last-child{width:100%}}
   .ring{width:118px;height:118px}
   .parts{display:grid;gap:7px;font-size:13px}
   .pt{display:grid;grid-template-columns:1fr auto;gap:2px 10px}
@@ -129,7 +131,8 @@
     var parts=c.evidence.parts.map(function(x){return '<div class="pt"><b>'+esc(x.part)+'</b><b>'+x.points+' / '+x.max+'</b><div class="bar"><i style="width:'+(x.points/x.max*100)+'%"></i></div><span>'+esc(x.basis)+'</span></div>'}).join('');
     var tiles=[
       [p30&&p30.uptime_pct!=null?p30.uptime_pct+'%':'—','uptime, 30 days'+(p30?' · '+p30.days_measured+' measured':'')],
-      [fmtMs(p30&&p30.median_ms),'median response'],
+      // no '—' alone (2026-10-13): our own agents are asked inside our server, which gives no comparable time; say so
+      (p30&&p30.median_ms!=null)?[fmtMs(p30.median_ms),'median response']:[((pz&&pz.ours)||(c.listed&&c.listed.ours))?'inside':'—',((pz&&pz.ours)||(c.listed&&c.listed.ours))?'response asked inside our own server: no comparable time':'median response, not measured yet'],
       [t?String(t.paid_out_outside):'0','paid jobs for outside buyers'],
       [t?String(t.buyers_outside):'0','outside buyers'],
       [t?t.earned_u+' $U':'0 $U','earned through the escrow'],

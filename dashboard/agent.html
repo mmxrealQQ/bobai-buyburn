@@ -135,7 +135,7 @@
       (p30&&p30.median_ms!=null)?[fmtMs(p30.median_ms),'median response']:[((pz&&pz.ours)||(c.listed&&c.listed.ours))?'inside':'—',((pz&&pz.ours)||(c.listed&&c.listed.ours))?'response asked inside our own server: no comparable time':'median response, not measured yet'],
       [t?String(t.paid_out_outside):'0','paid jobs for outside buyers'],
       [t?String(t.buyers_outside):'0','outside buyers'],
-      [t?t.earned_u+' $U':'0 $U','earned through the escrow'],
+      [t?(t.earned_u_outside!=null?t.earned_u_outside:t.earned_u)+' $U':'0 $U','earned from outside buyers'+(t&&t.earned_u_outside!=null&&t.earned_u>t.earned_u_outside?' (+'+Math.round((t.earned_u-t.earned_u_outside)*100)/100+' own test purchases)':'')],
       [q?(q.quotes?esc(q.price):'no quote'):'—','price when last asked']
     ].map(function(x){return '<div class="tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('');
     // a job nobody funded is a request, not a trade: counted in the totals, left out of the list

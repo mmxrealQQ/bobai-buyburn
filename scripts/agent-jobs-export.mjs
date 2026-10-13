@@ -86,6 +86,9 @@ const summary = (rows) => {
     jobs: rows.length, funded, paid_out: paid.length, delivered_waiting: by('SUBMITTED'), funded_not_delivered: by('FUNDED'), expired: by('EXPIRED'), rejected: by('REJECTED'), never_funded: by('OPEN'),
     delivery_rate_pct: funded ? Math.round(((paid.length + by('SUBMITTED')) / funded) * 1000) / 10 : null,
     earned_u: Math.round(paid.reduce((a, r) => a + r[2], 0) * 100) / 100,
+    // what outside buyers paid it (2026-10-13: the chart's "earned" and the screener's "Earned the most" — whose
+    // subtitle says outside buyers — counted the owner's own test purchases as income)
+    earned_u_outside: Math.round(paid.filter((r) => !r[6]).reduce((a, r) => a + r[2], 0) * 100) / 100,
     buyers: new Set(rows.filter((r) => r[1] !== 'OPEN').map((r) => r[3])).size,
     // our own test purchases are shown, and never counted as somebody else hiring the agent
     buyers_outside: new Set(rows.filter((r) => r[1] !== 'OPEN' && !r[6]).map((r) => r[3])).size,

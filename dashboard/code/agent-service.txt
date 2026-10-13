@@ -4391,7 +4391,7 @@ async function settleOpen(j) {
     if (s === 'COMPLETED') {
       T.paid_out = (T.paid_out || 0) + 1;
       T.earned_u = Math.round(((T.earned_u || 0) + (t.u || 0)) * 100) / 100;
-      if (!t.ours && !t.self) T.paid_out_outside = (T.paid_out_outside || 0) + 1;
+      if (!t.ours && !t.self) { T.paid_out_outside = (T.paid_out_outside || 0) + 1; T.earned_u_outside = Math.round(((T.earned_u_outside || 0) + (t.u || 0)) * 100) / 100; }
       const day = (tr.delivered_at || '').slice(0, 10), d = out.by_day.find((x) => x[0] === day);
       if (d) { d[2]++; d[3] = Math.round((d[3] + (t.u || 0)) * 1000) / 1000; }
     } else T[key[s]] = (T[key[s]] || 0) + 1;
@@ -4504,7 +4504,7 @@ export async function screenerData(env) {
     const pulse = { last_30d: { days_measured: s ? s[2] : 0, uptime_pct: s ? s[1] : null } };
     const ev = evidenceScore({ pulse, jobs, quote: p?.quote });
     return [a.id, String(a.name || '').slice(0, 70), ev.score, s ? s[0] : null, s ? s[1] : null, s ? s[2] : 0, s ? s[3] : null, s ? s[4] : null, s ? s[6] : '--------------',
-      t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? t.earned_u : 0,
+      t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? (t.earned_u_outside ?? t.earned_u) : 0, // earned_u = from outside buyers (the board says so); older files without the field fall back
       p?.quote?.quotes ? p.quote.price : null, p?.hire ? 1 : 0, p ? p.categories.filter((x) => !x.weak).map((x) => x.id) : [], a.speaks || [],
       l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0, logoOf(l, a)]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
   });

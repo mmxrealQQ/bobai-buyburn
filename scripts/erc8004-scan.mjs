@@ -33,6 +33,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { censusDirArg } from './lib/census-dir.mjs';
+import { HTTP_RE, REAL_TLD_RE } from './lib/census-endpoints.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // The output directory is selectable so a re-scan with a changed classifier can
@@ -142,12 +143,10 @@ function decodeString(hex) {
   } catch { return null; }
 }
 
-const HTTP_RE = /^https?:\/\/[^\s"']+$/i;
 // A hostname whose TLD is not a real one cannot resolve, so it is separated
 // from endpoints that merely happen to be down right now. The registry has
 // entries pointing at things like "https://hypercollector.agent" — that is not
 // an outage, it is an address that was never going to work.
-const REAL_TLD_RE = /\.(com|org|net|io|ai|xyz|app|dev|co|me|fun|finance|tech|cloud|so|gg|sh|to|it|de|fr|uk|eu|us|jp|kr|cn|in|ru|br|es|nl|se|no|fi|pl|ch|at|be|dk|cz|pt|gr|tr|za|au|nz|ca|mx|ar|cl|id|my|sg|th|vn|ph|hk|tw|ae|sa|il|info|biz|online|site|store|space|website|live|life|world|network|systems|digital|studio|agency|solutions|team|group|club|link|click|page|wiki|blog|news|press|art|design|money|market|exchange|capital|fund|trade|bot|chat|inc|ltd|llc)(:\d+)?(\/|$)/i;
 
 // A registration can carry its document in the token URI, or it can point at
 // one. Both are ordinary ERC-721 practice and the first version of this scan

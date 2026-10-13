@@ -8,7 +8,7 @@
       "tx": "0xe237457d3c1f3457bf1dba9f5e558d0c774f029da1c718e02aad0b9d1aaf0ba9",
       "block": 117989307,
       "registered_at": "2026-08-25T11:09:13.039Z",
-      "updated_at": "2026-10-05T09:08:48.956Z"
+      "updated_at": "2026-10-13T06:55:02.867Z"
     },
     "grid-trader": {
       "id": 302258,
@@ -18,7 +18,7 @@
       "tx": "0xc992983dd069d51f8a0c670e1da6f0ae40d4700355ca6b472d806c3572298545",
       "block": 117989311,
       "registered_at": "2026-08-25T11:09:14.586Z",
-      "updated_at": "2026-10-05T09:08:50.075Z"
+      "updated_at": "2026-10-13T06:55:04.972Z"
     },
     "yield-optimizer": {
       "id": 304493,
@@ -28,7 +28,7 @@
       "tx": "0x1f1c449227d5433d2ad0a6081b010425ab59f45bf9d7a8eae15d352f90a58492",
       "block": 118146201,
       "registered_at": "2026-08-26T06:46:49.211Z",
-      "updated_at": "2026-10-05T09:08:51.838Z"
+      "updated_at": "2026-10-13T06:55:06.583Z"
     },
     "rebalancer": {
       "id": 304494,
@@ -38,7 +38,7 @@
       "tx": "0x372f29467ba738e982f1bae6e71e35d5f2f672bff843a4577b4df6e51c6f49fb",
       "block": 118146212,
       "registered_at": "2026-08-26T06:46:53.577Z",
-      "updated_at": "2026-10-05T09:08:53.605Z"
+      "updated_at": "2026-10-13T06:55:07.548Z"
     },
     "lp-placement": {
       "id": 310460,
@@ -49,7 +49,7 @@
       "block": 118521128,
       "registered_at": "2026-08-28T05:39:45.780Z",
       "recategorised_at": "2026-08-31",
-      "updated_at": "2026-10-05T09:08:55.337Z"
+      "updated_at": "2026-10-13T06:55:09.170Z"
     },
     "defi-agent": {
       "id": 363709,

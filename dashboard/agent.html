@@ -109,11 +109,11 @@
   function workChart(byDay){
     if(!byDay.length)return '<p class="muted">No escrow job of this agent has been delivered yet.</p>';
     var W=1000,H=170,P=28,t0=Date.parse(byDay[0][0]),t1=Math.max(Date.now(),t0+864e5),cum=0,pts=[],bars='';
-    var tot=byDay.reduce(function(a,d){return a+d[2]},0)||1,mxd=Math.max.apply(null,byDay.map(function(d){return d[1]}));
+    var paid=byDay.reduce(function(a,d){return a+d[2]},0),tot=paid||1,mxd=Math.max.apply(null,byDay.map(function(d){return d[1]}));
     var X=function(t){return P+(t-t0)/(t1-t0)*(W-P*2)};
     byDay.forEach(function(d){var t=Date.parse(d[0]),x=X(t);cum+=d[2];pts.push([x,H-P-(cum/tot)*(H-P*2)]);var h=(d[1]/mxd)*(H-P*2)*.45;bars+='<rect x="'+(x-3)+'" y="'+(H-P-h)+'" width="6" height="'+h+'" fill="rgba(240,185,11,.35)"><title>'+d[0]+': '+d[1]+' delivered, '+d[2]+' paid out, '+d[3]+' $U</title></rect>'});
     var path='M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1)}).join(' L');
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Paid work over time">'+bars+'<path d="'+path+'" fill="none" stroke="#F0B90B" stroke-width="2.5"/><circle cx="'+pts[pts.length-1][0]+'" cy="'+pts[pts.length-1][1]+'" r="4.5" fill="#F0B90B"/><text x="'+P+'" y="'+(H-6)+'">'+esc(byDay[0][0])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end">today</text><text x="'+(W-P)+'" y="16" text-anchor="end">'+Math.round(tot)+' paid out in all</text></svg>';
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Paid work over time">'+bars+'<path d="'+path+'" fill="none" stroke="#F0B90B" stroke-width="2.5"/><circle cx="'+pts[pts.length-1][0]+'" cy="'+pts[pts.length-1][1]+'" r="4.5" fill="#F0B90B"/><text x="'+P+'" y="'+(H-6)+'">'+esc(byDay[0][0])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end">today</text><text x="'+(W-P)+'" y="16" text-anchor="end">'+(paid?Math.round(paid)+' paid out in all':'none paid out yet')+'</text></svg>';
   }
 
   function render(c){
@@ -140,7 +140,7 @@
     var trades=c.jobs&&c.jobs.trades.length?'<div class="wrapx"><table><thead><tr><th>Job</th><th>Status</th><th>$U</th><th>Buyer</th><th>Delivered</th></tr></thead><tbody>'+c.jobs.trades.slice(0,30).map(function(r){return '<tr><td><a href="'+A+'/job?id='+r.job+'">#'+r.job+'</a></td><td><span class="st '+esc(r.status)+'">'+esc(r.status.toLowerCase())+'</span></td><td>'+r.u+'</td><td><code>'+esc(r.buyer)+'</code>'+(r.ours?' <span class="chip">ours</span>':r.self?' <span class="chip">itself</span>':'')+'</td><td>'+esc(r.delivered_at?r.delivered_at.replace('T',' '):'—')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="muted">No escrow job on record for this agent.</p>';
     var shared=c.shared_provider?'<p class="muted" style="margin-top:8px">Its address also sells for '+(c.shared_provider.agents.length-1)+' other agent'+(c.shared_provider.agents.length===2?'':'s')+'; '+c.shared_provider.totals.jobs+' job'+(c.shared_provider.totals.jobs===1?'':'s')+' of that address do not say which agent they were for and are not counted here.</p>':'';
     var ratings=c.ratings.length?'<dl class="kv">'+c.ratings.map(function(r){return '<dt>'+esc(r.tag)+'</dt><dd>'+esc(r.value)+esc(r.unit)+(r.window?' · '+esc(r.window):'')+' <span class="muted">by '+esc(String(r.rater).slice(0,6))+'…'+esc(String(r.rater).slice(-4))+'</span></dd>'}).join('')+'</dl>':'<p class="muted">Nobody has written a rating for it on the ERC-8004 ReputationRegistry.</p>';
-    var doors=(c.services.length?c.services:(c.endpoints||[]).map(function(e){return {name:'endpoint',endpoint:e}})).map(function(s){return '<dt>'+esc(s.name)+'</dt><dd><code>'+esc(s.endpoint)+'</code></dd>'}).join('');
+    var doors=(c.services.length?c.services:(c.endpoints||[]).map(function(e){return {name:'endpoint',endpoint:e}})).filter(function(s){return !/^https:\/\/brainonbnb\.com\/agent\/\d+\/?$/.test(s.endpoint)||s.endpoint.replace(/\/$/,'').split('/').pop()!==String(c.id)}).map(function(s){return '<dt>'+esc(s.name)+'</dt><dd><code>'+esc(s.endpoint)+'</code></dd>'}).join('');
     var hire=pz&&pz.hire?'<a class="btn" href="/registry?hire='+c.id+'#cat-'+esc(pz.categories[0]&&pz.categories[0].id||'')+'">Hire'+(q&&q.quotes?' · '+esc(q.price):'')+' &rarr;</a>':'';
     root.innerHTML=
       '<div class="hd"><div class="who">'+'<div class="av">'+(c.image?'<img src="'+esc(c.image)+'" alt="" style="width:100%;height:100%;border-radius:17px;object-fit:cover" onerror="this.remove()">':'')+(c.image?'':initial)+'</div>'

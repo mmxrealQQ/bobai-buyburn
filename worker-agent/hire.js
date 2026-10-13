@@ -654,6 +654,8 @@ const rpcCall = async (to, data) => {
   }
   throw last || new Error('all RPC endpoints failed');
 };
+// one job as the kernel holds it now (the agent chart re-reads the open ones, 2026-10-13)
+export const readJobNow = async (jobId) => decodeJob(await rpcCall(ERC8183.commerce, SEL.getJob + BigInt(jobId).toString(16).padStart(64, '0')));
 
 export async function handleHire(url, body, env, opts = {}) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 400);

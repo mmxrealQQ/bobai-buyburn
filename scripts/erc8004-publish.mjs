@@ -12,6 +12,7 @@
 // count itself down to 299,783 in front of the reader.
 //
 //   node scripts/erc8004-scan.mjs          --dir erc8004-v2   # resumes; never delete
+//   node scripts/erc8004-enrich.mjs        --dir erc8004-v2   # re-reads every listed id; corrects records an agent changed since (setAgentURI)
 //   node scripts/erc8004-probe.mjs         --dir erc8004-v2
 //   node scripts/erc8004-a2a-confirm.mjs   --dir erc8004-v2
 //   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # also writes hireable.json

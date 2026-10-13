@@ -15,7 +15,7 @@
 
 import { readPulse } from './pulse.js';
 import { readListing, ownerOf, agentWalletOf, readLog } from './listing.js';
-import { registrationOf } from './hire.js';
+import { registrationOf, readJobNow } from './hire.js';
 
 const SITE = 'https://brainonbnb.com';
 const cache = new Map(); // url -> { at, data }
@@ -46,6 +46,35 @@ export function evidenceScore({ pulse, jobs, quote }) {
   return { score: Math.round(parts.reduce((a, p) => a + p.points, 0)), max: 100, parts };
 }
 
+// THE JOB INDEX IS WRITTEN BY A SCAN, the chain moves on between scans: a job delivered and waiting its review window
+// is paid out a week later, and the chart said 'delivered, not released yet' for a job the kernel had settled the day
+// before (2026-10-13, #56905). So the open jobs among the latest trades are read again now, and the totals and the
+// curve follow what the kernel says. Up to 8 reads; a failed read leaves the indexed state.
+async function settleOpen(j) {
+  if (!j?.trades?.length || !j.totals) return j;
+  const open = j.trades.filter((t) => t.status === 'SUBMITTED' || t.status === 'FUNDED').slice(0, 8);
+  if (!open.length) return j;
+  const now = await Promise.all(open.map((t) => readJobNow(t.job).catch(() => null)));
+  const out = { ...j, totals: { ...j.totals }, by_day: (j.by_day || []).map((d) => d.slice()), trades: j.trades.map((t) => ({ ...t })) };
+  const T = out.totals, key = { SUBMITTED: 'delivered_waiting', FUNDED: 'funded_not_delivered', EXPIRED: 'expired', REJECTED: 'rejected' };
+  open.forEach((t, i) => {
+    const s = now[i]?.status;
+    if (!s || s === t.status || !(s in key || s === 'COMPLETED')) return;
+    const tr = out.trades.find((x) => x.job === t.job);
+    if (key[t.status] && T[key[t.status]] > 0) T[key[t.status]]--;
+    if (s === 'COMPLETED') {
+      T.paid_out = (T.paid_out || 0) + 1;
+      T.earned_u = Math.round(((T.earned_u || 0) + (t.u || 0)) * 100) / 100;
+      if (!t.ours && !t.self) T.paid_out_outside = (T.paid_out_outside || 0) + 1;
+      const day = (tr.delivered_at || '').slice(0, 10), d = out.by_day.find((x) => x[0] === day);
+      if (d) { d[2]++; d[3] = Math.round((d[3] + (t.u || 0)) * 1000) / 1000; }
+    } else T[key[s]] = (T[key[s]] || 0) + 1;
+    if (s === 'SUBMITTED' && now[i].submitted_at && !tr.delivered_at) tr.delivered_at = new Date(now[i].submitted_at * 1000).toISOString().slice(0, 16);
+    tr.status = s;
+  });
+  return out;
+}
+
 export async function agentChart(env, idRaw) {
   const id = String(idRaw || '').replace(/[^0-9]/g, '');
   if (!id) return { status: 400, body: { error: 'GET /chart/<ERC-8004 id on BNB Smart Chain>' } };
@@ -60,9 +89,16 @@ export async function agentChart(env, idRaw) {
   let a = (index?.agents || []).find((x) => String(x.id) === id) || null;
   const inCensus = !!a;
   if (!a) { const reg = await registrationOf(Number(id)).catch(() => null); a = reg ? { id: Number(id), name: reg.name, description: reg.description, image: reg.image, endpoints: reg.endpoints, speaks: [], declared_services: reg.services } : { id: Number(id) }; }
-  // the census keeps the first ~250 characters of a description; the registration on the chain has all of it
-  else if (String(a.description || '').length >= 240) { const reg = await registrationOf(Number(id)).catch(() => null); if (reg?.description && reg.description.length > String(a.description).length) a = { ...a, description: reg.description }; else a = { ...a, description: String(a.description).replace(/\s+\S*$/, '') + '…' }; }
-  const jobs = jobsAll?.agents?.[id] || null;
+  // the census reads an id once and keeps the first ~250 characters of its description; the registration on the chain
+  // is read now, so a setAgentURI after the scan (new endpoints, a web page, a new name) shows here the same day
+  // (2026-10-13: five agents still showed the shared /a2a they had left a week before)
+  else {
+    const reg = await registrationOf(Number(id)).catch(() => null);
+    if (reg) a = { ...a, name: reg.name || a.name, image: reg.image || a.image, endpoints: reg.endpoints, declared_services: reg.services };
+    if (reg?.description && reg.description.length >= String(a.description || '').length) a = { ...a, description: reg.description };
+    else if (String(a.description || '').length >= 240) a = { ...a, description: String(a.description).replace(/\s+\S*$/, '') + '…' };
+  }
+  const jobs = await settleOpen(jobsAll?.agents?.[id] || null);
   const shared = jobs?.shared_provider ? jobsAll.providers?.[jobs.shared_provider] || null : null;
   const pz = plaza?.agents?.[id] || null;
   const r = (rep?.agents || []).find((x) => String(x.id) === id) || null;

@@ -22,6 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { censusDirArg } from './lib/census-dir.mjs';
+import { HTTP_RE, REAL_TLD_RE } from './lib/census-endpoints.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', censusDirArg());
@@ -103,13 +104,14 @@ const ids = [...new Set(
 
 console.log(`enriching ${ids.length.toLocaleString('en-US')} registrations`);
 
-const registrations = {};
+const registrations = {}, fresh = {};
 for (let i = 0; i < ids.length; i += BATCH) {
   const chunk = ids.slice(i, i + BATCH);
   const res = await callBatch(chunk);
   for (let n = 0; n < chunk.length; n++) {
     const meta = parse(res[n]);
     if (!meta) continue;
+    fresh[chunk[n]] = meta;
     const services = Array.isArray(meta.services) ? meta.services : [];
     registrations[chunk[n]] = {
       name: typeof meta.name === 'string' ? meta.name.slice(0, 90) : null,
@@ -133,6 +135,42 @@ for (let i = 0; i < ids.length; i += BATCH) {
 }
 
 fs.writeFileSync(OUT, JSON.stringify(registrations, null, 1) + '\n');
+
+// THE SCAN READS AN ID ONCE; an agent that changes its registration later (setAgentURI) kept its old endpoints in the
+// directory for good — the probe, the job scan and the published census all read them from the hits file (2026-10-13:
+// five agents still sat at the shared /a2a they had left a week before). This pass has just read every one of them
+// fresh, so their records are corrected here with the scan's own rules, one line per id. An id the nodes refused
+// keeps its record: a refusal says nothing about the agent.
+{
+  const lines = fs.readFileSync(HITS, 'utf8').split('\n').filter(Boolean);
+  const seenIds = new Set(), out = [];
+  let changed = 0;
+  for (const line of lines) {
+    let rec; try { rec = JSON.parse(line); } catch { out.push(line); continue; }
+    if (seenIds.has(rec.id)) continue;
+    seenIds.add(rec.id);
+    const meta = fresh[rec.id];
+    if (!meta) { out.push(line); continue; }
+    const services = Array.isArray(meta.services) ? meta.services : [];
+    const http = services.map((x) => x && typeof x.endpoint === 'string' ? x.endpoint : null).filter((e) => e && HTTP_RE.test(e));
+    if (!http.length) { out.push(line); continue; }
+    const next = {
+      id: rec.id, name: typeof meta.name === 'string' ? meta.name.slice(0, 80) : null, active: meta.active === true,
+      endpoints: http.slice(0, 6),
+      mcp: services.some((x) => x && /mcp/i.test(String(x.name || ''))),
+      a2a: services.some((x) => x && /a2a/i.test(String(x.name || ''))),
+      x402: !!meta.x402Support || services.some((x) => x && /x402/i.test(String(x.name || ''))),
+      plausible: http.some((e) => REAL_TLD_RE.test(e.replace(/^https?:\/\//i, ''))),
+      trust: Array.isArray(meta.supportedTrust) ? meta.supportedTrust : [],
+    };
+    const s = JSON.stringify(next);
+    if (s !== line) changed++;
+    out.push(s);
+  }
+  fs.writeFileSync(HITS + '.tmp', out.join('\n') + '\n');
+  fs.renameSync(HITS + '.tmp', HITS);
+  console.log(`  directory records corrected from the fresh read: ${changed} (${out.length} agents, one line each)`);
+}
 const withDesc = Object.values(registrations).filter((r) => r.description).length;
 const withImg = Object.values(registrations).filter((r) => r.image).length;
 const withTrust = Object.values(registrations).filter((r) => r.trust.length).length;

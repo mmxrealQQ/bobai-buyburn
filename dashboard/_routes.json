@@ -7,6 +7,7 @@
     "/.well-known/agent-card.json",
     "/.well-known/agent-registration.json",
     "/skill.md",
+    "/sitemap.xml",
     "/.well-known/skills/index.json",
     "/.well-known/agent-skills/index.json",
     "/.well-known/x402",

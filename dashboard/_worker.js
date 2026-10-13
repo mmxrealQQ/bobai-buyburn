@@ -1689,6 +1689,25 @@ export default {
       }
     }
 
+    // THE SITEMAP KEEPS ITSELF (2026-10-13, operator: "not corrected by hand — it should be automatic"): the measured
+    // agent charts (score above zero, a day of pulse, or ours) are written into the static file's marked block from the
+    // live screener on every request (cached an hour); the screener down, the static block as last written stays.
+    if (url.pathname === '/sitemap.xml' && request.method === 'GET') {
+      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents');
+      const hit = await cache.match(key); if (hit) return hit;
+      const base = await env.ASSETS.fetch(new Request(url.origin + '/sitemap.xml', request));
+      let xml = await base.text();
+      try {
+        const j = await (await fetch('https://agent.brainonbnb.com/screener', { signal: AbortSignal.timeout(8000) })).json();
+        const F = j.fields, day = new Date().toISOString().slice(0, 10);
+        const ids = j.rows.map((r) => Object.fromEntries(F.map((f, i) => [f, r[i]]))).filter((a) => a.score > 0 || a.days > 0 || a.ours).sort((a, b) => b.score - a.score || a.id - b.id).map((a) => a.id);
+        const S = '<!-- agent charts: scripts/sitemap-agents.mjs -->', E = '<!-- /agent charts -->', i = xml.indexOf(S), k = xml.indexOf(E);
+        if (ids.length && i >= 0 && k > i) xml = xml.slice(0, i) + S + '\n' + ids.map((id) => `  <url>\n    <loc>https://brainonbnb.com/agent/${id}</loc>\n    <lastmod>${day}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.6</priority>\n  </url>`).join('\n') + '\n  ' + xml.slice(k);
+      } catch { /* the static block stands */ }
+      const res = new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' } });
+      await cache.put(key, res.clone()).catch(() => {});
+      return res;
+    }
     if (url.pathname === '/skill.md') {
       return new Response(skillMd(), {
         headers: { 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },

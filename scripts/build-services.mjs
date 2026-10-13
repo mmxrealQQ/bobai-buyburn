@@ -171,13 +171,18 @@ const fieldsOf = (needs) => Object.entries(needs || {}).filter(([, v]) => !/^or[
   ? `          <label class="sv-f"><span>${esc(k)}</span><textarea name="${esc(k)}" rows="3" placeholder="one holding a line: token address, then its dollars&#10;0x0E09…cE82 600&#10;0xbb4C…095c 400"></textarea></label>`
   : `          <label class="sv-f"><span>${esc(k)}</span><input name="${esc(k)}" autocomplete="off" spellcheck="false" placeholder="${esc(String(v).replace(/,? optional.*$/i, '').slice(0, 70))}${/optional/i.test(String(v)) ? ' (optional)' : ''}"></label>`).join('\n');
 
+// THE FIRST SENTENCE ON THE CARD, THE REST ONE TAP AWAY (2026-10-13): six cards of the same price stood from 12 to 40
+// lines high, the fee-tier one a page long, and the field and the button sat far below. The whole text stays on the page.
+const leadOf = (t) => { const m = String(t || '').match(/^([\s\S]{60,280}?[.!?])\s+([\s\S]{80,})$/) || String(t || '').match(/^([\s\S]{60,280}?:)\s+([\s\S]{80,})$/); return m ? [m[1], m[2]] : [String(t || ''), '']; };
+
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
           <span class="sv-price" title="${esc(String(d.price).replace('USD1', '$U'))} through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
         </div>
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
-        <p class="sv-what">${esc(d.what)}</p>
+        <p class="sv-what">${esc(leadOf(d.what)[0])}</p>${leadOf(d.what)[1] ? `
+        <details class="sv-more"><summary>How it works</summary><p class="sv-what">${esc(leadOf(d.what)[1])}</p></details>` : ''}
         <p class="sv-needs-h">What it needs from you</p>
         <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
 ${fieldsOf(d.needs)}
@@ -262,6 +267,7 @@ function page() {
   .sv-form-go button{background:var(--gold,#f0b90b);color:#0b090a;border:0;border-radius:999px;padding:9px 16px;font:700 .86rem Inter,sans-serif;cursor:pointer}
   .sv-form-go a{color:var(--gold,#f0b90b);font-size:.82rem}
   .sv-form-msg{margin:0;font-size:.8rem;color:#ff7a6e;min-height:0}
+  .sv-more{margin:-2px 0 8px}.sv-more summary{cursor:pointer;font-size:.8rem;color:var(--gold,#f0b90b);list-style:none}.sv-more summary::before{content:'+ '}.sv-more[open] summary::before{content:'− '}
   .sv-dev{margin-top:6px}.sv-dev summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
   .sv-dev code{word-break:break-all}
   .sv-sec > p.sv-sub{color:var(--muted);font-size:.86rem;line-height:1.6;max-width:70ch;margin:0 0 18px}

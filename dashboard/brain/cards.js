@@ -76,6 +76,22 @@
       run();
     }));
     run(); setInterval(() => { const w = $('#w01'); if (w && !w.hidden) run(); }, 30e3);
+    verify01(box);
+  }
+  // 01's WINDOW: THE CONTRACT, READ JUST NOW (2026-10-13): what the page says about the token — nobody owns it, the tax
+  // is 3% — asked from the contract itself the moment the window opens: owner() and feeRate() (basis points)
+  function verify01(after) {
+    if ($('#w01 .cx01v')) return;
+    const box = document.createElement('div'); box.className = 'cx02 cx01v'; box.dataset.nousd = '1'; after.insertAdjacentElement('afterend', box);
+    const CA = '0x245c386dcfed896f5c346107596141e5edcbffff', read = (data) => fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result);
+    const draw = () => Promise.all([read('0x8da5cb5b'), read('0x978bbdb9')]).then(([o, f]) => {
+      const owner = o ? '0x' + o.slice(-40) : null, nobody = owner === '0x' + '0'.repeat(40), bps = f ? parseInt(f, 16) : null;
+      const row = (ok, what, got) => `<div class="cx01-r"><i style="background:${ok ? '#35e07a' : '#ff4d6d'}"></i><span>${what}</span><b>${ok ? '✓' : '✗'}</b><em>${got}</em></div>`;
+      box.innerHTML = `<h4>Checked on the contract just now</h4><p class="cx02-s">Not our word: these two answers come from the $BOBAI contract on BNB Chain the moment this window opened. <a href="https://bscscan.com/token/${CA}#readContract" target="_blank" rel="noopener">Read it yourself on BscScan ↗</a></p>`
+        + (owner ? row(nobody, 'Nobody owns it — owner() is the zero address', nobody ? '0x000…000' : owner.slice(0, 8) + '…') : '<p class="cx01-n">owner() did not answer just now.</p>')
+        + (bps != null ? row(bps === 300, 'The tax is fixed at 3% — feeRate() in basis points', `${bps} = ${(bps / 100).toFixed(2)}%`) : '<p class="cx01-n">feeRate() did not answer just now.</p>');
+    }).catch(() => { box.innerHTML = '<h4>Checked on the contract just now</h4><p class="cx01-n">The chain did not answer just now.</p>'; });
+    draw(); new MutationObserver(() => { const w = $('#w01'); if (w && !w.hidden) draw(); }).observe(document.getElementById('w01'), { attributes: true, attributeFilter: ['hidden'] });
   }
 
   // 02 TOKENOMICS: the 3% as a ring, the split in force (the homepage's own phase table)
@@ -365,7 +381,18 @@
     faqs().forEach((x) => { if (x !== d) x.open = false; }); d.open = true; d.classList.add('faq-hit');
     setTimeout(() => d.classList.remove('faq-hit'), 2600); setTimeout(() => d.scrollIntoView({ block: 'start', behavior: 'smooth' }), 400);
   }
+  // every contract address in an answer gets a copy button (2026-10-13): the answer to "what is the official address"
+  // is the one people copy, and a typo there costs money
+  function copyCa07() {
+    $$('#w07 .faq-body code').forEach((c) => {
+      const v = c.textContent.trim(); if (!/^0x[0-9a-fA-F]{40}$/.test(v) || c.nextElementSibling?.classList.contains('faq-copy')) return;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'faq-copy'; b.textContent = 'Copy';
+      b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => { b.textContent = 'Copied ✓'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1600); }, () => {}); });
+      c.insertAdjacentElement('afterend', b);
+    });
+  }
   function search07() {
+    copyCa07();
     const list = $('#w07 .faq-list'); if (!list || $('#w07 .faq-search')) return;
     const box = document.createElement('div'); box.className = 'faq-search';
     box.innerHTML = '<input type="search" placeholder="Search the answers: tax, contract, burn…" aria-label="Search the answers"><span class="faq-n" aria-live="polite"></span>';

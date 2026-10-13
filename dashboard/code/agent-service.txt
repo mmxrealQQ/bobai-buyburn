@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 54 files, 18311 lines.
+# one fetch. 54 files, 18318 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -10522,7 +10522,7 @@ import { recoverMessageAddress } from 'viem';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { RPCS } from '../shared/lp-agent.js';
-import { noteAgentState } from './agent-watch.js';
+import { noteAgentState, addAgentWatch } from './agent-watch.js';
 
 export const LISTING_USD = 95;
 export const PAYEE = '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c'; // the operator's wallet (operator, 2026-10-12)
@@ -10692,7 +10692,10 @@ export async function submitListing(body, env) {
   const ids = JSON.parse((await env.AGENT.get('listings')) || '[]');
   if (!ids.includes(quote.id)) { ids.push(quote.id); await env.AGENT.put('listings', JSON.stringify(ids)); }
   await env.AGENT.delete(`listquote:${nonce}`).catch(() => {});
-  return json(200, { ok: true, listed: quote.id, status: rec.status, profile: `https://agent.brainonbnb.com/listed/${quote.id}`, plaza: 'https://brainonbnb.com/registry',
+  // THE BUILDER'S ALARM (2026-10-13): a webhook given at listing is the agent watch for this agent, set at once — the
+  // builder hears of the first silent hour, long before three silent days pause the badge. A bad URL never fails a paid listing.
+  const alarm = body?.alarm ? await addAgentWatch(env, { agent: quote.id, callback: body.alarm }).catch((e) => ({ status: 500, body: { error: String(e.message || e) } })) : null;
+  return json(200, { ok: true, listed: quote.id, status: rec.status, ...(alarm ? { alarm: alarm.status === 200 ? 'set: your webhook hears every down and up' : 'not set: ' + (alarm.body?.error || 'refused') } : {}), profile: `https://agent.brainonbnb.com/listed/${quote.id}`, plaza: 'https://brainonbnb.com/registry',
     ...(chk.ok ? {} : { note: 'paid and listed; the badge shows once the agent answers our daily check' }) });
 }
 
@@ -10819,6 +10822,10 @@ s.textContent='Sign in your wallet…';var sig=await ethereum.request({method:'p
 var res=await fetch('/listing/log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent:'${h(r.id)}',text:t,at:at,signature:sig})}),j=await res.json();
 s.textContent=j.ok?'Posted. Reloading…':(j.error||'Refused.');if(j.ok)setTimeout(function(){location.reload()},900)}catch(e){s.textContent=(e&&e.message)||'Cancelled.'}}})();</script></details>`}
 <span class="m">${r.house ? 'Our own agent: Brain On BNB posts its log. ' : 'Signed by the wallet that owns the agent, so only its builder can write here. '}An agent that keeps answering stays maintained; this is where its builder shows what he builds.</span></div>
+<div class="c"><span class="k">Alarm when it goes down</span><span class="m">Free, for its builder or anyone who relies on it: your https webhook is called on every change, down and back up — checked every hour while it is listed.</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><input id="alu" type="url" placeholder="https://your.server/hook" style="flex:1 1 240px;min-width:0;background:#0f0d0e;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit"><button id="alb" type="button" style="background:var(--gold);color:#0b090a;border:0;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer">Alarm me</button></div><span class="m" id="als"></span>
+<script>(function(){var b=document.getElementById('alb'),s=document.getElementById('als');b.onclick=async function(){var u=document.getElementById('alu').value.trim();if(u.indexOf('https://')!==0){s.textContent='An https:// address that accepts a POST.';return}
+try{var r=await fetch('/agent-watch',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent:'${h(r.id)}',callback:u})}),j=await r.json();s.textContent=j.ok?'Set. Your webhook hears every down and up of #${h(r.id)}.':(j.error||'Refused.')}catch(e){s.textContent='Could not reach the server just now.'}}})();</script></div>
 <div class="c"><span class="k">Our daily check, last ${checks.length} day${checks.length === 1 ? '' : 's'}</span><div class="dots">${dots}</div>
 <span class="m">Every day we call it once — an A2A message or an MCP initialize. Green: it answered. Three red days in a row take the badge off until it answers again.</span></div>
 <div class="c"><dl><dt>Listed since</dt><dd>${h(r.since)}</dd><dt>Owner</dt><dd><a href="https://bscscan.com/address/${h(r.owner)}">${h(r.owner)}</a></dd>

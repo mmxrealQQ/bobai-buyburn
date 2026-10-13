@@ -21,6 +21,7 @@
 // itself observes: we report what is there, not what it is worth.
 
 import { cappedText } from './net.js';
+import { netFetch } from './self-fetch.js';
 import { recordSession } from './sessions.js';
 import { PROOF_IDS } from '../shared/agent-registrations.js';
 import { STOP as FIND_STOP } from './find.js';
@@ -197,6 +198,7 @@ export function addressesInTask(task) {
 }
 
 const ADDRESS_LIKE = /address|token|pool|pair|contract|wallet|account|holder/;
+const PERSON_LIKE = /wallet|account|holder|owner|user/;
 
 // The arguments a tool gets: only what the task literally contains. Every
 // required parameter must be fillable from the task or the tool is not
@@ -225,7 +227,11 @@ const isNum = (type) => type === 'number' || type === 'integer';
 export function argsFromTask(schema, task) {
   const req = Array.isArray(schema?.required) ? schema.required : [];
   const props = schema?.properties || {};
-  const { addrs } = addressesInTask(task);
+  const { addrs, symbols_read_as } = addressesInTask(task);
+  // A SYMBOL IS A TOKEN, NEVER SOMEBODY'S WALLET (2026-10-13): "best yield for USDT" handed USDT's contract to a tool
+  // as `wallet` and answered "no agent is running on this wallet". An address read from a symbol fills token-like
+  // parameters only; a pasted address still fills either, the sentence decides what it is.
+  const notPerson = (n) => !(symbols_read_as && PERSON_LIKE.test(n));
   const usd = usdInTask(task);
   let ai = 0;
   const out = {};
@@ -234,7 +240,7 @@ export function argsFromTask(schema, task) {
     const type = String(p.type || 'string');
     const n = name.toLowerCase();
     if (ADDRESS_LIKE.test(n) && type === 'string') {
-      if (ai >= addrs.length) return null;
+      if (ai >= addrs.length || !notPerson(n)) return null;
       out[name] = addrs[ai++];
     } else if (/chain|network/.test(n)) {
       out[name] = isNum(type) ? 56 : 'bsc';
@@ -259,7 +265,7 @@ export function argsFromTask(schema, task) {
     for (const name of Object.keys(props)) {
       if (name in out || req.includes(name) || QUOTE_LIKE.test(name.toLowerCase())) continue;
       const p = props[name] || {};
-      if (ADDRESS_LIKE.test(name.toLowerCase()) && String(p.type || 'string') === 'string') out[name] = addrs[Math.min(ai, addrs.length - 1)];
+      if (ADDRESS_LIKE.test(name.toLowerCase()) && notPerson(name.toLowerCase()) && String(p.type || 'string') === 'string') out[name] = addrs[Math.min(ai, addrs.length - 1)];
     }
   }
   // The size goes only beside something the task already filled: a dollar
@@ -361,7 +367,7 @@ export function isReadOnly(tool) {
 }
 
 const rpcCall = async (endpoint, method, params, timeoutMs = 12000) => {
-  const r = await fetch(endpoint, {
+  const r = await netFetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
@@ -411,9 +417,14 @@ const CARD_PATHS = ['/.well-known/agent.json', '/.well-known/agent-card.json'];
 async function a2aCard(endpoint) {
   let origin;
   try { origin = new URL(endpoint).origin; } catch { return null; }
-  for (const p of CARD_PATHS) {
+  // An agent mounted under a path keeps its card under that path (2026-10-13: our six live at /<slug>/a2a with
+  // /<slug>/.well-known/agent-card.json, and the origin's card names another agent); it is tried first. A call to
+  // our own host goes through the worker's SELF binding — a plain fetch of it comes back 522.
+  const base = String(endpoint).replace(/\/+$/, '');
+  const tries = [...new Set([...(base !== origin ? CARD_PATHS.map((p) => base + p) : []), ...CARD_PATHS.map((p) => origin + p)])];
+  for (const at of tries) {
     try {
-      const r = await fetch(origin + p, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      const r = await netFetch(at, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) continue;
       const j = await r.json();
       if (isCallableCard(j)) return { card: j, origin, url: j.url };
@@ -453,14 +464,18 @@ const skillIsReadOnly = (sk) => isReadOnly({
 
 // Whether a card is a shopfront rather than a service: its skills are the
 // ERC-8183 selling handshake and nothing else.
-const SELLING_SKILLS = new Set(['negotiate', 'notify_funded', 'deliver', 'start', 'list']);
+const SELLING_SKILLS = new Set(['negotiate', 'notify_funded', 'deliver', 'start', 'list', 'negotiate-erc8183-job', 'erc8183-job-status']);
+// A SKILL WITH A PRICE ON IT IS SOLD, NOT ASKED (2026-10-13): a card that prices a skill (`price`, `escrow: true`) says
+// the work is paid; asking it for free got "unknown skill" back and the asker nothing. Such a seller is offered as
+// hireable, with its pay-per-answer link when the card names one.
+const isSold = (sk) => SELLING_SKILLS.has(String(sk?.id || sk?.name || '').toLowerCase()) || sk?.escrow === true || (typeof sk?.price === 'string' && sk.price.length > 0);
 const sellsOnly = (card) => (card.skills || []).length > 0
-  && (card.skills || []).every((sk) => SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase()));
+  && (card.skills || []).every(isSold);
 
 // A2A JSON-RPC. One shape, because that is the one every agent on this chain
 // actually implements — message/send with a data part.
 async function a2aCall(url, data, timeoutMs = 15000) {
-  const r = await fetch(url, {
+  const r = await netFetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -516,6 +531,8 @@ export const scoreTool = (tool, terms) => {
 // carry under another name; add one only with both patterns.
 const ASKED_FIELDS = [
   { name: 'health factor', asks: /\bhealth[\s_-]*factors?\b/i, answered: /health[\s_-]*factor|healthfactor|"hf"\s*:/i, inName: /health_?factor/ },
+  // 2026-10-13: "which Venus market pays the best supply yield for USDT" came back as a circulating supply
+  { name: 'yield', asks: /\b(yields?|apy|apr)\b/i, answered: /apy|apr|yield|supply_?rate|interest_?rate/i, inName: /yield|apy|apr/ },
 ];
 export const askedFields = (task) => ASKED_FIELDS.filter((f) => f.asks.test(String(task || '')));
 export function answersField(content, task) {
@@ -535,6 +552,10 @@ const takesUsd = (t) => Object.entries(t?.inputSchema?.properties || {})
 export const rankTool = (tool, terms, task) => {
   const s = scoreTool(tool, terms);
   if (!s) return 0;
+  // ONE WORD IS NOT A MATCH FOR A QUESTION OF MANY (2026-10-13): "which Venus market pays the best supply yield for USDT"
+  // was answered by a circulating-supply tool on the one word "supply" and marked dispatched. With three terms or
+  // more, a tool has to meet the question on two of them.
+  if (terms.length >= 3 && terms.filter((t) => scoreTool(tool, [t])).length < 2) return 0;
   const name = String(tool?.name || '').toLowerCase();
   return s
     + (usdInTask(task) != null && takesUsd(tool) ? 3 : 0)
@@ -617,7 +638,9 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // larger of the two protocols, ignored by the thing whose whole job is to
   // reach agents. Which protocol an agent speaks is decided per candidate
   // below, from what it actually advertises.
-  findUrl.searchParams.set('limit', '12');
+  // 25 (find's own cap), not 12 (2026-10-13): one operator's many registrations share one server and filled ten of twelve places;
+  // the list is cut to one place per endpoint below, so it has to be long enough to leave six after that
+  findUrl.searchParams.set('limit', '25');
   const { handleFind } = await import('./find.js');
   const found = await handleFind(findUrl);
   // Our own registration is in the index like everybody else's, and for a real
@@ -634,7 +657,10 @@ export async function handleDispatch(url, body, env, opts = {}) {
     .filter((a) => (a.speaks || []).some((p) => p === 'mcp' || p === 'a2a') || (a.endpoints || []).some((e) => /\/mcp(\/|$)/i.test(e)))
     .filter((a) => !opts.excludeOperator || !(a.endpoints || []).some((e) => {
       try { return new URL(e).hostname.replace(/^www\./, '') === opts.excludeOperator; } catch { return false; }
-    }));
+    }))
+    // ONE PLACE PER ENDPOINT (2026-10-13): four registrations of one operator share one MCP server, and "best yield for
+    // USDT" asked that same server four times while the six places ran out — the same tool, the same answer, four times.
+    .filter((a, i, all) => { const k = String((a.endpoints || [])[0] || '').toLowerCase().replace(/\/+$/, ''); return all.findIndex((b) => String((b.endpoints || [])[0] || '').toLowerCase().replace(/\/+$/, '') === k) === i; });
 
   if (!candidates.length) {
     return { status: 200, body: {
@@ -709,7 +735,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
   const surfaces = await Promise.all(pool.map(async (agent) => {
     if (a2aOnly(agent)) {
       const found = await a2aCard((agent.endpoints || [])[0]).catch(() => null);
-      const skills = (found?.card?.skills || []).filter((sk) => skillIsReadOnly(sk) && !SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase()));
+      const skills = (found?.card?.skills || []).filter((sk) => skillIsReadOnly(sk) && !isSold(sk));
       return { found, best: Math.max(0, ...skills.map((sk) => rankTool({ name: sk.id || sk.name, description: sk.description }, terms, task))) };
     }
     const endpoint = mcpEndpointOf(agent);
@@ -739,6 +765,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
         hireable.push({
           agent: agent.name, id: agent.id, operator: operatorOf(agent), endpoint: url,
           sells: (card.skills || []).map((sk) => sk.id || sk.name).slice(0, 6),
+          ...((card.skills || []).find((sk) => typeof sk.x402 === 'string') ? { pay_per_answer: (card.skills || []).find((sk) => typeof sk.x402 === 'string').x402 } : {}),
           why: 'This agent exposes only the ERC-8183 selling handshake, so there is nothing to ask it for free.',
           hire: `https://agent.brainonbnb.com/hire?agent=${agent.id}&task=${encodeURIComponent(task)}`,
         });
@@ -750,7 +777,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       // (2026-09-18): `negotiate` reads as read-only and outscored the rest on
       // a card that mixed it with one real skill, so a stranger got a price
       // quote back as if it were the answer, and the log counted it as one.
-      const selling = (sk) => SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase());
+      const selling = isSold;
       const safe = (card.skills || []).filter((sk) => skillIsReadOnly(sk) && !selling(sk));
       const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk) || selling(sk)).map((sk) => sk.id || sk.name);
       const ranked = safe.map((sk) => ({ sk, s: rankTool({ name: sk.id || sk.name, description: sk.description }, terms, task) }))

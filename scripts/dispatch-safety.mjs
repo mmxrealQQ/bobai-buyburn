@@ -125,6 +125,10 @@ if (args.includes('--self-test')) {
   const a4 = argsFromTask(optSchema, 'health factor of 0xd319e1F8e987cf78333cEA853F455366640929cF');
   if (!a4 || a4.account !== '0xd319e1F8e987cf78333cEA853F455366640929cF' || 'depth' in a4) fails.push('an optional account parameter was not filled from the address in the task');
   if (argsFromTask(optSchema, 'health factor of my position') !== null) fails.push('an optional account parameter was filled with nothing to fill it from');
+  // A symbol is a token, never somebody's wallet (2026-10-13: "best yield for USDT" passed USDT's contract as `wallet`).
+  if (argsFromTask({ required: ['wallet'], properties: { wallet: { type: 'string' } } }, 'best yield for USDT on BNB chain') !== null) fails.push('a token read from a symbol filled a required wallet parameter');
+  if (argsFromTask(optSchema, 'health factor for USDT') !== null) fails.push('a token read from a symbol filled an optional account parameter');
+  if (argsFromTask(addrSchema, 'measure the CAKE pool') === null) fails.push('a symbol no longer fills a token parameter');
   // The answer must be about what was asked.
   const asked = ['0xd319e1F8e987cf78333cEA853F455366640929cF'];
   if (answersAsked('{"account":"0xa09991fc5D8637bb4245737C3ebF26E24D653962","debt":0}', asked)) fails.push('an answer about a different account passed as the answer');
@@ -220,6 +224,12 @@ if (args.includes('--self-test')) {
     const t2n = 'is 0x245c386dcfed896f5c346107596141e5edcbffff safe to buy';
     if (rankTool(ours2, taskTerms(t2n), t2n) !== scoreTool(ours2, taskTerms(t2n))) fails.push('a task with no dollar size still ranked a size-taking tool up');
     if (rankTool({ name: 'xyz_usd', description: 'nothing', inputSchema: { properties: { usd: { type: 'number' } } } }, tt2, t2) !== 0) fails.push('a dollar figure alone ranked a tool that matched no word of the task');
+    // One word is not a match for a question of many (2026-10-13: a yield question answered by a circulating-supply tool).
+    const ty = 'which Venus market pays the best supply yield for USDT on BNB Chain';
+    if (rankTool({ name: 'bobai_circulating_supply', description: 'The circulating supply of BOBAI.' }, taskTerms(ty), ty) !== 0) fails.push('a tool meeting a six-term question on one word ("supply") still ranked');
+    if (!(rankTool({ name: 'venus_supply_yield', description: 'Supply APY of every Venus market.' }, taskTerms(ty), ty) > 0)) fails.push('a tool meeting the question on several words no longer ranked');
+    if (answersField({ symbol: 'BOBAI', circulatingSupply: '881277560' }, ty)) fails.push('a circulating supply passed as the answer to a yield question');
+    if (!answersField({ markets: [{ symbol: 'USDT', supplyApy: 3.1 }] }, ty)) fails.push('an answer with supply APYs was not taken as answering a yield question');
   }
   //    An answer too long to pass on is shortened by its shape, never cut
   //    inside a string: 28,809 characters cut at 12,000 reached the Plaza

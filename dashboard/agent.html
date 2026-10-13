@@ -157,7 +157,9 @@
         +'<div style="min-width:0"><span class="kk">Agent chart · ERC-8004 #'+c.id+' · BNB Smart Chain</span><h1>'+esc(c.name||('Agent #'+c.id))+'</h1><div class="chips">'+chips+'</div></div></div>'
         +'<div class="card score">'+ring(c.evidence.score)+'<div><div class="kk" style="margin-bottom:6px">Evidence score</div><div class="parts">'+parts+'</div></div></div></div>'
       +(c.description?'<p class="muted" style="max-width:85ch;margin:0">'+esc(c.description)+'</p>':'')
-      +'<div class="act">'+hire+'<a class="btn gh" href="'+A+'/chart/'+c.id+'">Raw data (JSON)</a><a class="btn gh" href="https://bscscan.com/address/'+esc(c.owner)+'">Owner on BscScan</a><a class="btn gh" href="https://8004scan.io/agents/bsc/'+c.id+'">8004scan</a></div>'
+      +'<div class="act">'+hire+'<a class="btn gh" href="'+A+'/chart/'+c.id+'">Raw data (JSON)</a><a class="btn gh" href="https://bscscan.com/address/'+esc(c.owner)+'">Owner on BscScan</a><a class="btn gh" href="https://8004scan.io/agents/bsc/'+c.id+'">8004scan</a>'
+      // the link carries this agent's card (2026-10-13): one click to post it, neutral words
+      +'<a class="btn gh" target="_blank" rel="noopener" href="https://x.com/intent/post?text='+encodeURIComponent(String(c.name||('Agent #'+c.id)).replace(/^Brain on BNB\s*[—-]\s*/i,'')+' on BNB Chain, measured: uptime, paid work, evidence')+'&amp;url='+encodeURIComponent('https://brainonbnb.com/agent/'+c.id)+'">Post on X</a></div>'
       +'<div class="tiles">'+tiles+'</div>'
       +'<div class="card"><h2>Alarm <small>'+(c.state?'last check: <b style="color:'+(c.state.state==='up'?'#7fd1a3':'#ff7a6e')+'">'+esc(c.state.state)+'</b> since '+esc(String(c.state.at).replace('T',' ').slice(0,16))+' UTC':'not checked yet')+'</small></h2>'
         +'<p class="muted">Rely on this agent? Be told when it stops answering, and when it is back. Free, by webhook, checked '+esc(c.watch.checked)+':</p><p><code>'+esc(c.watch.how)+'</code></p><p class="muted">Your server receives '+esc(c.watch.sends)+'.</p></div>'

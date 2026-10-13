@@ -2974,6 +2974,8 @@ export function formatDefiCard(m, { title = 'DeFi Agent', range = null } = {}) {
       `🧾 Fees: ${signed(p.from_fees_bnb)}`,
       `⛽ Gas: ${n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB'}`,
       ...(p.vs_holding && p.vs_holding.vs_holding_bnb != null ? [`⚖️ Vs. holding 50/50: ${signed(p.vs_holding.vs_holding_bnb)}`] : []),
+      // the range standing now alone (2026-10-13), the same model line the page shows under the total
+      ...(p.since_range && p.since_range.vs_holding_bnb != null ? [`🎯 This range alone${p.since_range.width_pct ? ` (±${p.since_range.width_pct}%` : ' ('}, since ${day(p.since_range.since)}): ${signed(p.since_range.vs_holding_bnb)}${m.bnb_usd ? ' · ' + usd(n(p.since_range.vs_holding_bnb) * n(m.bnb_usd)) : ''} vs holding · fees ${signed(p.since_range.fees_bnb)}`] : []),
     ],
     [
       `🥞 ${pool}`,

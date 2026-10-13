@@ -932,7 +932,13 @@ function shareBar(token,symb){
   const b=document.createElement('button');b.type='button';b.textContent='Copy link';
   b.addEventListener('click',()=>{const done=()=>{b.textContent='Copied ✓';b.classList.add('ok');setTimeout(()=>{b.textContent='Copy link';b.classList.remove('ok')},1600)};
     (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(done,()=>{const x=document.createElement('textarea');x.value=url;document.body.appendChild(x);x.select();try{document.execCommand('copy');done()}catch(e){}x.remove()})});
-  d.append(t,b);o.prepend(d);
+  // POST IT (2026-10-13): the link now carries its own card (this token's check as the picture, /og/scan/<token>.png),
+  // so X and Telegram get one click each. Neutral words, as on the card: what a trade costs, never a view on the token.
+  const say=(symb?symb+': ':'')+'what would buying it really cost? Measured on BNB Chain';
+  const share=(label,href)=>{const a=document.createElement('a');a.className='sc-sh';a.textContent=label;a.href=href;a.target='_blank';a.rel='noopener';return a};
+  const acts=document.createElement('span');acts.className='sc-acts';
+  acts.append(b,share('Post on X','https://x.com/intent/post?text='+encodeURIComponent(say)+'&url='+encodeURIComponent(url)),share('Telegram','https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(say)));
+  d.append(t,acts);o.prepend(d);
   if(symb)d.title='Anyone who opens it sees '+symb+' scanned again, live';
 }
 

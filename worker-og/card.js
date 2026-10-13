@@ -47,7 +47,7 @@ export function card(pf, { address = '' } = {}) {
   const sellable = ok && pf.exit ? pf.exit.sellable : null;
   const tiles = [
     ['Can you sell it?', sellable === true ? 'Yes' : sellable === false ? 'No' : '—', sellable === true ? GREEN : sellable === false ? RED : MUTED, 'a sell simulated just now'],
-    ['Round trip at ' + usd(size), ok && pf.exit ? pct(pf.exit.round_trip_cost_pct) : '—', TEXT, 'fees + impact + tax'],
+    ['Round trip at ' + usd(size), ok && pf.exit ? pct(pf.exit.round_trip_cost_pct) : '—', TEXT, 'best route: fees, impact, tax'],
     ['Tax buy / sell', ok && pf.tax && pf.tax.buy_pct != null ? pct(pf.tax.buy_pct, 1) + ' / ' + pct(pf.tax.sell_pct, 1) : '—', TEXT, ok && pf.tax && /measured/.test(pf.tax.source || '') ? 'measured from real trades' : 'as read'],
     ['Moves the price 1%', ok && pf.depth ? usd(pf.depth.one_percent_sell_usd ?? pf.depth.one_percent_buy_usd) : '—', TEXT, 'sell size, deepest pool'],
   ];

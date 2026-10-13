@@ -751,6 +751,14 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const mImg = await fetch(SITE + '/m/now.png').catch(() => null);
   const mBytes = mImg?.ok ? (await mImg.arrayBuffer()).byteLength : 0;
   ok('Site', 'the share card image is drawn', !!mImg?.ok && /image\/png/.test(mImg.headers.get('content-type') || '') && mBytes > 50000, mImg ? `${mImg.status} · ${Math.round(mBytes / 1024)} KB` : 'no answer');
+  // SCAN CARDS (2026-10-13): a scan link names /og/scan/<token>.png, drawn by bobai-og from /api/preflight. When the card
+  // worker fails the site falls back to the banner (a redirect), so a real PNG here means the card itself is drawn.
+  const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
+  const sPage = await fetch(`${SITE}/scanner?token=${CAKE}`, { headers: { 'user-agent': 'Twitterbot/1.0' } }).then((r) => (r.ok ? r.text() : '')).catch(() => '');
+  ok('Site', 'a scan link names its own card', sPage.includes(`og:image" content="https://brainonbnb.com/og/scan/${CAKE}.png`));
+  const sImg = await fetch(`${SITE}/og/scan/${CAKE}.png`, { redirect: 'manual' }).catch(() => null);
+  const sBytes = sImg?.status === 200 ? (await sImg.arrayBuffer()).byteLength : 0;
+  ok('Site', 'the scan card is drawn (not the banner fallback)', sImg?.status === 200 && /image\/png/.test(sImg.headers.get('content-type') || '') && sBytes > 50000, sImg ? `${sImg.status} · ${Math.round(sBytes / 1024)} KB` : 'no answer');
 }
 
 return results;

@@ -418,7 +418,8 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 .cv-next-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
 .cv-next-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f0b90b,#ffd28a);transition:width .6s}
 .cv-next span{font:600 9px var(--bp-mono);color:var(--bp-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cv-next.ready .cv-next-bar i{background:linear-gradient(90deg,#35e07a,#9cf5c0);animation:cvReady 1.6s ease-in-out infinite}
+/* a phone: the line wraps instead of losing its end ('$72.86 charging · 73% to the ne…', 2026-10-13) */
+@media (max-width:700px){.cv-next span{white-space:normal;line-height:1.3}}.cv-next.ready .cv-next-bar i{background:linear-gradient(90deg,#35e07a,#9cf5c0);animation:cvReady 1.6s ease-in-out infinite}
 .cv-next.ready span{color:#9cf5c0}
 @keyframes cvReady{50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){.cv-next.ready .cv-next-bar i{animation:none}}
@@ -460,6 +461,8 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 #w06 .rm li .pf b{color:#f3efe6;font-weight:600}
 #w06 .rm li .pf b.bad{color:#ff4d6d}
 [data-open="w06"] .bw-l.goal-live{color:#ffd28a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* a phone: three lines at most instead of one cut short ('Giggle pot 0.591 BNB …', 2026-10-13); after the rule above, so it wins */
+@media (max-width:700px){[data-open="w06"] .bw-l.goal-live{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.3}}
 /* 06 (2026-10-12): the window's search, and the answer the card opened */
 .faq-search{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px}
 .faq-search input{flex:1 1 240px;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:inherit;padding:10px 13px;font:inherit}

@@ -2018,7 +2018,7 @@ ${summary24h}
 ${sections.join('\n\n')}
 
 <i>#n = place among all holders (LP and burn not counted) · % = share of total supply · 🟢 active (24h) · 💤 dormant (12d = balance unchanged 12+ days) · 🐋 10M+ · 🐬 5-10M · 💀 below 5M, one line per group · 🔗 linked cluster · 🏦 a contract holding BOBAI (never a pool)
-${opts.public ? `ℹ️ Whale alerts from $${WHALE_PUBLIC_USD} and a daily recap at 06:00 UTC, here in the group` : 'ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code>'}</i>`;
+${opts.public ? `ℹ️ Every whale alert the internal group gets, and a daily recap at 06:00 UTC, here in the group` : 'ℹ️ <code>/whales24h</code> for the daily breakdown · <code>/whalehelp</code>'}</i>`;
     }
   }
 
@@ -2365,8 +2365,11 @@ ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
 // THE OFFICIAL GROUP SEES THE WHALES TOO (operator, 2026-10-12: "alerts and the daily whale recap in the internal AND
 // the official group; /whales in the official bot"). Internal keeps every alert from the $5 quiet line; the group gets
 // the ones of $50 and more (operator's choice) — a move without a USD value stays internal.
-export const WHALE_PUBLIC_USD = 50;
-export const whaleAlertIsPublic = (data) => Number(data?.usdValue) >= WHALE_PUBLIC_USD;
+// EXACTLY AS INTERNAL (operator, 2026-10-13: a $12.70 whale buy showed in the internal group only — "exactly the same
+// as internal"): every whale alert the internal group gets, the official group gets too, word for word. The $5 quiet
+// line and the folding of small repeated moves still decide what is posted at all, for both.
+export const WHALE_PUBLIC_USD = 0;
+export const whaleAlertIsPublic = () => true;
 async function postWhaleAlert(data) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const text = renderWhaleAlert(data);

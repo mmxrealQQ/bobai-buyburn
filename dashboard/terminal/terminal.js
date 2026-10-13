@@ -2083,7 +2083,9 @@ const WORK = [
     return vary('w-nft', [`${nf(m)} of ${nf(cap)} Buy Drop NFTs are out. A buy of $100 or more earns one, automatically.`, `My NFT drops: ${nf(m)} of ${nf(cap)} so far. Earned, not sold.`,
       `${nf(cap - m)} NFTs still waiting for their buyer. Every $100 buy unlocks one.`, `${nf(m)} NFTs dropped to buyers so far, ${nf(cap - m)} to go.`, `The NFT collection grows with every $100 buy: ${nf(m)} of ${nf(cap)}.`]); }],
   ['liq', () => { const wk = S.liq.filter(l => Date.parse(l.time) >= Date.now() - 7 * 86400e3), b = wk.reduce((a, l) => a + (+l.bnb || 0), 0); if (!(b > 0)) return null;
-    const u = S.bnbP > 0 ? ` (≈$${nf(b * S.bnbP)})` : '';
+    // bnbF carries the dollars itself since 2026-10-10; this line added them a second time ('0.0902 BNB (≈$67) (≈$67)',
+    // operator 2026-10-13). u stays empty so the five variants keep their shape; qa/dollars.mjs pins it.
+    const u = '';
     return vary('w-liq', [`This week I added ${bnbF(b)}${u} to my pool and burned the LP. Deeper every week.`, `${bnbF(b)}${u} of new liquidity this week, locked forever.`,
       `My pool got ${bnbF(b)}${u} deeper this week. Nobody can pull it.`, `Liquidity this week: ${bnbF(b)}${u}, every LP token burned.`, `${wk.length} liquidity add${wk.length === 1 ? '' : 's'} this week, ${bnbF(b)}${u} in all. Smoother trades for everyone.`]); }],
   // THE NEXT MARK (2026-10-09, "as intelligent as possible"): how far the burned share is from its next half percent,

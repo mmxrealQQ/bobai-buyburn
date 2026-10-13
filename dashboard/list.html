@@ -96,6 +96,7 @@
       <h2><span class="st">03</span>Pay and go live</h2>
       <div class="out" id="l-pay-info"></div>
       <div class="row"><input type="text" id="l-contact" autocomplete="off" placeholder="Telegram or X handle (optional, for us to reach you)" aria-label="Contact"></div>
+      <div class="row"><input type="url" id="l-alarm" autocomplete="off" placeholder="Alarm webhook, https:// (optional): told the moment your agent stops answering" aria-label="Alarm webhook"></div>
       <div class="row"><button class="btn" id="l-pay" type="button">Pay from my wallet</button></div>
       <p class="muted" style="margin-top:10px">Paid another way? Paste the transaction hash:</p>
       <div class="row"><input type="text" id="l-tx" autocomplete="off" placeholder="0x… transaction hash" aria-label="Transaction hash"><button class="btn ghost" id="l-submit" type="button">Submit</button></div>
@@ -168,7 +169,7 @@
 
   function submit(tx,tries){
     var o=$('l-pay-out'); o.textContent='Reading the payment from the chain…';
-    post('/listing/submit',{nonce:st.quote.nonce,signature:st.sig,tx:tx,contact:$('l-contact').value.trim()}).then(function(r){
+    post('/listing/submit',{nonce:st.quote.nonce,signature:st.sig,tx:tx,contact:$('l-contact').value.trim(),alarm:$('l-alarm').value.trim()||undefined}).then(function(r){
       if(r.s===202&&tries<40)return setTimeout(function(){submit(tx,tries+1)},3000);
       if(r.s!==200)throw new Error(r.j.error||'not accepted');
       o.innerHTML='<span class="ok">✓ Listed. Welcome to Brain Plaza.</span> <a href="'+esc(r.j.profile)+'">Your agent\'s page</a> · <a href="/registry">Brain Plaza</a>'+(r.j.note?'<br><span class="muted">'+esc(r.j.note)+'</span>':'');

@@ -56,12 +56,14 @@
     .arch-row .amt small{display:block;opacity:.65;font-size:12px;white-space:normal}
     .arch-row > *{min-width:0}
     .arch-row .pl{color:var(--muted,#9aa)}
+    .arch-row.arch-none .amt{grid-column:1/-1;text-align:left;white-space:normal;margin-top:-4px}
+    .arch-row.arch-none .amt small{opacity:.55}
     .arch-row a{color:var(--gold)}
     .arch-sum{margin-top:10px;font-size:13px;opacity:.8}
     .arch-login{margin:0 0 8px;text-align:left}
     .arch-login > summary{cursor:pointer;color:var(--muted,#9aa);font-size:14px;padding:8px 0;text-align:center}
     .arch-login[open] > summary{margin-bottom:12px}
-    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) minmax(0,auto)} .arch-row .amt{max-width:62vw} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} }
+    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) minmax(0,auto)} .arch-row .amt{max-width:62vw} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} .arch-row.arch-none .amt{order:4;max-width:none} }
     .cd-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
 
     /* Live Prize Pool — dezent über Countdown */
@@ -384,7 +386,9 @@
       const right = amt > 0
         ? fmtBobai(amt) + ' BOBAI' + (usd > 0 ? '<small>≈ ' + fmtUsd(usd) + ' at payout</small>' : '') + (link && paid ? '<small><a href="https://bscscan.com/tx/' + esc(r.tx_hash) + '" target="_blank" rel="noopener">transaction ↗</a></small>' : paid ? '<small>✓ paid</small>' : '')
         : '<small>26× cap not reached — its share went to the others</small>';
-      return '<div class="arch-row"><div class="who">' + flag(r.country_code) + esc(r.username || '—') + '</div><div class="pl">' + esc(placeOf(r)) + '</div><div class="amt">' + right + '</div></div>';
+      // an unpaid place (cap not reached) puts its note on a line of its own (2026-10-12: as a third column it squeezed the
+      // place to one word a line and the name to a sliver of its flag)
+      return '<div class="arch-row' + (amt > 0 ? '' : ' arch-none') + '"><div class="who">' + flag(r.country_code) + esc(r.username || '—') + '</div><div class="pl">' + esc(placeOf(r)) + '</div><div class="amt">' + right + '</div></div>';
     }
     async function rest(path, extra){
       const cfg = window.WC_CONFIG;

@@ -48,6 +48,29 @@
   .more{justify-self:center}
   .btn{background:none;color:var(--gold);border:1px solid var(--border);border-radius:999px;padding:9px 18px;font-weight:700;cursor:pointer;font:inherit}
   .muted{color:var(--muted);font-size:13px;line-height:1.6}
+  /* A PHONE GETS CARDS (2026-10-13): the 12-column table scrolled sideways on a phone; each row becomes a card with
+     every figure labelled, the same order and the same data */
+  @media (max-width:640px){
+    .tw{overflow:visible;border:0;background:none}
+    .tw table{min-width:0;display:block}
+    .tw thead{display:none}
+    .tw tbody{display:grid;gap:10px}
+    .tw tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:10px 12px}
+    .tw tbody td{border:0;padding:0;text-align:left;white-space:normal;font-size:13px;min-width:0}
+    .tw tbody td:nth-child(1){display:none}
+    .tw tbody td:nth-child(2),.tw tbody td:nth-child(12){grid-column:1/-1}
+    .tw tbody td:nth-child(4){grid-column:span 2}
+    .tw tbody td[colspan]{grid-column:1/-1}
+    .tw tbody td:nth-child(n+3)::before{display:block;font:600 9.5px ui-monospace,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+    .tw tbody td:nth-child(3)::before{content:'Evidence'}.tw tbody td:nth-child(4)::before{content:'Pulse 14d'}
+    .tw tbody td:nth-child(5)::before{content:'Uptime 30d'}.tw tbody td:nth-child(6)::before{content:'Response'}
+    .tw tbody td:nth-child(7)::before{content:'Paid jobs'}.tw tbody td:nth-child(8)::before{content:'Buyers'}
+    .tw tbody td:nth-child(9)::before{content:'Delivered'}.tw tbody td:nth-child(10)::before{content:'Earned'}
+    .tw tbody td:nth-child(11)::before{content:'Price'}.tw tbody td:nth-child(12)::before{content:'Speaks'}
+    .tw tbody td[colspan]::before{content:none}
+    .ag{max-width:none}
+    .sp i{width:5px}
+  }
   /* THE HEAD, LIKE A TOKEN SCREENER (operator, 2026-10-12: "more present, sells better" -> "a head like DexScreener"): four
      boards above the table, each from one measured column; nothing here can be bought or said about oneself */
   .trust{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;border:1px solid rgba(240,185,11,.35);border-radius:14px;padding:10px 14px;background:linear-gradient(90deg,rgba(240,185,11,.08),transparent 70%)}

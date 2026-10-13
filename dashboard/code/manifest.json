@@ -410,10 +410,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11278,
-   "zipBytes": 187528,
-   "txtBytes": 602129,
-   "sha256": "da7dc501473ef45b",
+   "lines": 11282,
+   "zipBytes": 187673,
+   "txtBytes": 602558,
+   "sha256": "e04a7803cd6bb4e4",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 54,
-   "lines": 18305,
-   "zipBytes": 420705,
-   "txtBytes": 1189520,
-   "sha256": "8c3aa6c3e612ba8d",
+   "lines": 18311,
+   "zipBytes": 421002,
+   "txtBytes": 1190183,
+   "sha256": "89c44c459599034a",
    "reqs": [
     {
      "what": "A wallet to be paid into",

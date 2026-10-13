@@ -11,3 +11,5 @@ export function netFetch(input, init) {
   try { if (SELF && new URL(url).host === OWN_HOST) return SELF.fetch(new Request(url, init)); } catch {}
   return fetch(input, init);
 }
+// whether a URL is answered inside this worker: a time measured that way is no response time (pulse.js leaves it out)
+export const isOwn = (url) => { try { return new URL(url).host === OWN_HOST; } catch { return false; } };

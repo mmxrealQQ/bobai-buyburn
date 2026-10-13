@@ -17,7 +17,7 @@
 // 90 days; `pulse:cursor` = where the round stands. GET /pulse/<id> serves one
 // agent's series with its 7- and 30-day uptime and median response time.
 
-import { netFetch } from './self-fetch.js';
+import { netFetch, isOwn } from './self-fetch.js';
 import { noteAgentState } from './agent-watch.js';
 
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
@@ -50,11 +50,15 @@ const cardUrl = (a) => (typeof a.card === 'string' ? a.card : a.card?.url) || [s
 // One look at one agent: the protocol it speaks, else its card, else its first endpoint at all.
 export async function pulseOne(a) {
   const t0 = Date.now();
-  const done = (ok, via, status) => ({ ok: ok ? 1 : 0, ms: Date.now() - t0, via, status });
+  // OUR OWN AGENTS ARE NOT FASTER (2026-10-13): an endpoint on this worker's own host is answered inside it (SELF
+  // binding), so its time is no response time — whether it answered counts, its milliseconds are left out
+  let internal = false;
+  const go = (u, init) => { if (isOwn(u)) internal = true; return netFetch(u, init); };
+  const done = (ok, via, status) => ({ ok: ok ? 1 : 0, ms: internal ? null : Date.now() - t0, via: internal ? via + '-internal' : via, status });
   try {
     const m = mcpUrl(a);
     if (m) {
-      const r = await netFetch(m, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      const r = await go(m, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'brain-plaza-pulse', version: '1.0' } } }) });
       const t = await r.text();
       if (r.ok && /"result"/.test(t)) return done(true, 'mcp', r.status);
@@ -62,12 +66,12 @@ export async function pulseOne(a) {
     }
     const c = cardUrl(a);
     if (c) {
-      const r = await netFetch(c, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: 'application/json' } });
+      const r = await go(c, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: 'application/json' } });
       const j = r.ok ? await r.json().catch(() => null) : null;
       return done(!!(j && (j.name || j.skills || j.url)), 'card', r.status);
     }
     if (a.endpoints[0]) {
-      const r = await netFetch(a.endpoints[0], { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const r = await go(a.endpoints[0], { signal: AbortSignal.timeout(TIMEOUT_MS) });
       return done(r.status < 500, 'http', r.status);
     }
     return done(false, 'none', 0);
@@ -107,7 +111,7 @@ export function summarize(series, days) {
   const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
   const s = series.filter((x) => x[0] >= cut);
   const ok = s.filter((x) => x[1]);
-  const ms = ok.map((x) => x[2]).sort((a, b) => a - b);
+  const ms = ok.map((x) => x[2]).filter((v) => v != null).sort((a, b) => a - b); // an internal answer has no time
   return { days_measured: s.length, uptime_pct: s.length ? Math.round((ok.length / s.length) * 1000) / 10 : null, median_ms: ms.length ? ms[Math.floor(ms.length / 2)] : null };
 }
 

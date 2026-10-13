@@ -220,7 +220,7 @@ txt: https://brainonbnb.com/code/nft-drop.txt
 Worldcup Tipping Game
 ---------------------
 A full tournament game that paid out on-chain.
-45 files, 11278 lines
+45 files, 11282 lines
 needs:
   - A Postgres with row-level security and auth
       ours: Supabase, free tier, all the way through
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-54 files, 18305 lines
+54 files, 18311 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

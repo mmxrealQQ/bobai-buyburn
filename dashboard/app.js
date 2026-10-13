@@ -1225,6 +1225,30 @@ function fillLpPortfolio(){
 }
 if(document.getElementById('defi-card')) fillLpPortfolio();
 
+// THE RANGE, DRAWN (2026-10-13, operator: "the range shown cleanly, visually"): the position read live from the chain
+// (/lp/look, the free look anybody has) — its lower and upper price, where the price is now, the room to each edge, and
+// what the position holds on each side. Prices are CAKE in BNB (1.0001^tick) and in dollars at the page's BNB price.
+function lpRange(){
+  const box = document.getElementById('ag-lp-range'); if(!box) return;
+  fetch('https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+    if(!j || !j.pool || !Array.isArray(j.pool.ticks)){ box.hidden = true; return; }
+    const [lo, hi] = j.pool.ticks, t = j.pool.tick, px = k => Math.pow(1.0001, k), bnbP = (window.__bobaiNums && window.__bobaiNums.chain && window.__bobaiNums.chain.bnbUsd) || 0;
+    const pLo = px(lo), pHi = px(hi), pNow = px(t), inR = t >= lo && t < hi;
+    // the bar spans the range with a margin either side, so a price outside it still shows where it is
+    const span = hi - lo, a = lo - span * 0.12, b = hi + span * 0.12, at = k => Math.max(0, Math.min(100, (k - a) / (b - a) * 100));
+    const fmt = p => p.toFixed(p < 0.01 ? 6 : 5) + ' BNB' + (bnbP > 0 ? ' <small>≈$' + (p * bnbP).toFixed(2) + '</small>' : '');
+    const h = j.holds || {}, c = +h.token0 || 0, w = +h.token1 || 0, cBnb = c * pNow, tot = cBnb + w, cPct = tot > 0 ? cBnb / tot * 100 : 50;
+    const room = j.room || {};
+    box.innerHTML = '<div class="lpr-h"><b>The range, read from the chain now</b><span class="' + (inR ? 'lpr-in' : 'lpr-out') + '">' + (inR ? 'in range — earning fees' : 'out of range — not earning') + '</span></div>'
+      + '<div class="lpr-bar" data-nousd><i class="lpr-zone" style="left:' + at(lo).toFixed(2) + '%;right:' + (100 - at(hi)).toFixed(2) + '%"></i>'
+      + '<i class="lpr-now ' + (inR ? 'in' : 'out') + '" style="left:' + at(t).toFixed(2) + '%"><em>now</em></i></div>'
+      + '<div class="lpr-ends" data-nousd><span><small>lower</small>' + fmt(pLo) + '</span><span class="mid"><small>CAKE now</small>' + fmt(pNow) + '</span><span><small>upper</small>' + fmt(pHi) + '</span></div>'
+      + (room.to_lower_pct != null ? '<p class="agt-note" data-nousd>Room: <b>' + Number(room.to_lower_pct).toFixed(1) + '%</b> before the price leaves it below, <b>' + Number(room.to_upper_pct).toFixed(1) + '%</b> above. The agent re-sets it centred on the price, ±' + (window.__lpWidth || 20) + '%, once it has stayed outside.</p>' : '')
+      + '<div class="lpr-mix" data-nousd><i style="width:' + cPct.toFixed(1) + '%"></i></div>'
+      + '<div class="lpr-ends" data-nousd><span><small>holds</small>' + c.toFixed(2) + ' CAKE <small>' + cPct.toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (cBnb * bnbP).toFixed(0) : '') + '</small></span><span></span><span><small>and</small>' + w.toFixed(4) + ' BNB <small>' + (100 - cPct).toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (w * bnbP).toFixed(0) : '') + '</small></span></div>';
+    box.hidden = false;
+  });
+}
 // THE CURVE (2026-10-12, operator: "how it runs at a glance, honest in the red too"): what had gone in by each run
 // (capital, a step at every deposit) and what the position was worth — the band between them green above, red below.
 // Every point is a run of /lp/series; nothing is smoothed.
@@ -1298,6 +1322,7 @@ function fillLpSeries(){
     });
 }
 fillLpSeries();
+lpRange(); setInterval(() => { if(!document.hidden) lpRange(); }, 5 * 60e3);
 
 // The agent on somebody else's position: terms first, then the payment the
 // visitor makes from their own wallet, then the plan. The page never holds a

@@ -1,0 +1,12 @@
+name = "bobai-og"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# THE SHARE CARD (operator, 2026-10-13: "the share card"). A scan link posted on X or Telegram showed the site's
+# generic picture; this worker draws one per token from our own pre-trade check (/api/preflight), as a 1200x630 PNG.
+# brainonbnb.com/og/scan/<address>.png is proxied here by dashboard/_worker.js; the PNG is cached an hour at the edge.
+
+rules = [
+  { type = "Data", globs = ["**/*.ttf", "**/*.png"], fallthrough = true },
+  { type = "CompiledWasm", globs = ["**/*.wasm"], fallthrough = true },
+]

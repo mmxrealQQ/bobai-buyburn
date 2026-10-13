@@ -1494,6 +1494,15 @@ export default {
     useKeyedRpcs([env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL]);
     const url = new URL(request.url);
 
+    // THE SHARE CARD (operator, 2026-10-13): a scan link on X or Telegram shows a picture of that token's check, drawn
+    // by worker-og from our own /api/preflight. If the card worker does not answer, the old banner stands in.
+    const ogCard = url.pathname.match(/^\/og\/scan\/(0x[0-9a-fA-F]{40})\.png$/);
+    if (ogCard) {
+      const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/scan/${ogCard[1].toLowerCase()}.png`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
+      if (!r || !r.ok || !(r.headers.get('content-type') || '').startsWith('image/png')) return Response.redirect(url.origin + '/og-banner.png', 302);
+      return new Response(r.body, { status: 200, headers: { 'Content-Type': 'image/png', 'Cache-Control': r.headers.get('cache-control') || 'public, max-age=3600', 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' } });
+    }
+
     // THE BUILDER SHEET (2026-10-07, operator: "on brainonbnb, just not public"): /builder/* only with the
     // username and password in the Pages secret BUILDER_AUTH ("user:password"); without the secret nobody gets in.
     // The files are gitignored (never in the public repo or the source mirror), never cached, never indexed.
@@ -1895,6 +1904,24 @@ export default {
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
 
+
+    // A SCAN LINK NAMES ITS OWN CARD (2026-10-13): /scanner?token=<address> tells X, Telegram and every link preview
+    // to show /og/scan/<address>.png (that token's check) instead of the site banner. The page itself is unchanged.
+    if (request.method === 'GET' && (url.pathname === '/scanner' || url.pathname === '/scanner.html') && /^0x[0-9a-fA-F]{40}$/.test(url.searchParams.get('token') || '')) {
+      const r = await env.ASSETS.fetch(request);
+      if ((r.headers.get('content-type') || '').includes('text/html')) {
+        const tok = url.searchParams.get('token').toLowerCase(), img = `https://brainonbnb.com/og/scan/${tok}.png`, page = `https://brainonbnb.com/scanner?token=${tok}`;
+        const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
+        const t = new HTMLRewriter()
+          .on('meta[property="og:image"]', set(img)).on('meta[name="twitter:image"]', set(img)).on('meta[property="og:url"]', set(page))
+          .on('meta[property="og:title"]', set('What would buying this token really cost? A check on BNB Chain'))
+          .on('meta[name="twitter:title"]', set('What would buying this token really cost? A check on BNB Chain'))
+          .on('head', { element(e) { e.append(`<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BOBAI Pool Scanner: the check of ${tok}">`, { html: true }); } })
+          .transform(r);
+        return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
+      }
+      return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
+    }
 
     // AN /api/ PATH WE DO NOT SERVE IS A 404 (2026-10-04). It fell through to the
     // asset fallback and came back as the whole front page with a 200 — 96,926

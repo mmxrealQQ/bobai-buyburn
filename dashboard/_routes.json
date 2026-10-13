@@ -67,7 +67,8 @@
     "/worldcup",
     "/worldcup/*",
     "/builder",
-    "/builder/*"
+    "/builder/*",
+    "/og/*"
   ],
   "exclude": []
 }

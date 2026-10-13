@@ -135,7 +135,7 @@ const PAGES = [
     href: '/session',
     name: 'Session keys',
     ask: 'Can I let an agent spend, without handing it my wallet?',
-    what: 'A spending session with an allowlist, a cap and an expiry, registered on-chain and revocable in one transaction. Ours are live on mainnet with the transactions to prove each step.',
+    what: 'A spending session with an allowlist, a cap and an expiry, registered on-chain and revocable in one transaction. Ours ran on mainnet, with the transactions to prove each step.',
     cost: 'Free to read; the transactions are yours to send.',
   },
   {

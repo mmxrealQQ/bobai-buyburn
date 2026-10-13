@@ -85,5 +85,49 @@
     el.textContent = ' · in the pot now: ' + b.toFixed(3) + ' BNB' + (u ? ' (≈$' + Math.round(b * u).toLocaleString('en-US') + ')' : '') + ' · ' + d + ' day' + (d === 1 ? '' : 's') + ' to go'; }).catch(() => {});
 })();
 </script>
+<script>
+/* EVERY TICK WITH ITS PROOF, ON THE PAGE TOO (2026-10-13): the front page's Brainmap window shows what proves each
+   line; this page, the one search engines and other AIs find, showed the ticks alone. The same rules, read from the
+   same sources: the contract, the LP pair, the bot's own logs and heartbeat, the agent server. What cannot be proven
+   says so. */
+(() => {
+  const CA = '0x245c386dcfed896f5c346107596141e5edcbffff', PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', POT = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+  const J = (u, o) => fetch(u, o).then((r) => r.json()).catch(() => null);
+  const call = (data) => J('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data }, 'latest'] }) });
+  const tx = (h, t) => h ? '<a href="https://bscscan.com/tx/' + h + '" target="_blank" rel="noopener">' + t + ' ↗</a>' : '';
+  const ext = (u, t) => '<a href="' + u + '" target="_blank" rel="noopener">' + t + ' ↗</a>';
+  const dt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const cmp = (n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+  Promise.all([call('0x8da5cb5b'), J('/api/liquidity'), J('/logs/burns.json'), J('/logs/bobai-liq-log.json'), J('https://logs.brainonbnb.com/health'), J('https://agent.brainonbnb.com/stats')]).then(([own, liq, B, L, hb, st]) => {
+    const owner = own && own.result ? '0x' + own.result.slice(-40) : null, nobody = owner === '0x' + '0'.repeat(40);
+    const lastRun = Array.isArray(B) ? [...B].reverse().find((e) => e.bobaiBurnTx) : null, firstBob = Array.isArray(B) ? B.find((e) => e.burnTx || e.bobBurnTx) : null;
+    const lastLiq = Array.isArray(L) ? [...L].reverse().find((e) => e.lpBurnTx) : null, bot = hb && Date.parse(hb.buyback);
+    let calls = null; if (st && st.asked && st.asked.by_day) { const from = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10); let n = 0; for (const [d, k] of Object.entries(st.asked.by_day)) if (d > from) for (const [kk, c] of Object.entries(k)) if (kk !== 'watch_checks') n += c; calls = n; }
+    const RULES = [
+      [/pitch decks/, () => 'the proof we can give: every line of code is public — <a href="/library">The Library</a>; who wrote it cannot be read from a chain'],
+      [/Four\.Meme/, () => ext('https://four.meme/token/' + CA, 'the launch on Four.Meme') + ' · ' + ext('https://bscscan.com/token/' + PAIR, 'the PancakeSwap pool')],
+      [/owner renounced/, () => (owner ? 'owner() = ' + (nobody ? '<b>0x000…000</b> (nobody)' : '<b>' + owner + '</b>') + ', read from the contract just now' : 'reading owner() from the contract…') + (liq && liq.lp_burned_percent != null ? ' · LP at the dead address: <b>' + liq.lp_burned_percent + '%</b> ' + ext('https://bscscan.com/token/' + PAIR + '#balances', 'holders') : '')],
+      [/day one/, () => firstBob ? 'the first $BOB burn, ' + dt(Date.parse(firstBob.time)) + ': ' + tx(firstBob.burnTx || firstBob.bobBurnTx, 'transaction') : ''],
+      [/Every trade is a breath/, () => lastRun ? 'the last split, ' + dt(Date.parse(lastRun.time)) + ': ' + tx(lastRun.bobaiBurnTx, '$BOBAI burn') + ' · ' + tx(lastRun.bobBurnTx, '$BOB burn') + ' · ' + tx(lastRun.lpAgentTx, 'DeFi') + ' · ' + tx(lastRun.giggleTx, 'Giggle') : ''],
+      [/every 10 minutes/, () => bot ? 'its heartbeat: last check ' + Math.max(1, Math.round((Date.now() - bot) / 60e3)) + ' min ago — ' + ext('https://logs.brainonbnb.com/health', 'read it') : ''],
+      [/into the fire/, () => lastLiq ? 'the last LP burn, ' + dt(Date.parse(lastLiq.time)) + ': ' + tx(lastLiq.lpBurnTx, 'transaction') : ''],
+      [/Giggle Academy/, () => ext('https://bscscan.com/address/' + POT, 'the pot on BscScan')],
+      [/Brain Terminal/, () => '<a href="/">live on the home page</a>, reading BNB Chain'],
+      [/before you ape/, () => '<a href="/scanner">open the scanner</a>'],
+      [/Brain Plaza/, () => '<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>'],
+      [/DeFi agent/, () => '<a href="/defi">its position, gains and losses</a>'],
+      [/rug watch/, () => '<a href="/services">how an agent sets one</a>'],
+      [/^Volume/, () => 'the traded volume of the last 24 hours, counted from the chain, is on <a href="/">the home page</a>'],
+      [/More agents/, () => calls != null ? '<b>' + cmp(calls) + ' calls to our agent server in 7 days</b>' : ''],
+      [/No price dates/, () => 'a promise, not a proof: this map names no price and no date'],
+    ];
+    document.querySelectorAll('.rm li').forEach((li) => {
+      const txt = li.textContent.replace(/^[✓○]\s*/, '').trim(), r = RULES.find(([re]) => re.test(txt)); if (!r) return;
+      const h = r[1](); if (!h) return; const pf = document.createElement('small'); pf.className = 'pf'; pf.innerHTML = h; li.querySelector('span:last-child').appendChild(pf);
+    });
+  });
+})();
+</script>
+<style>.rm li .pf{display:block;margin-top:3px;font:500 12px/1.45 Inter,system-ui,sans-serif;color:var(--muted,#a0a2c0)}.rm li .pf a{color:var(--gold,#f0b90b);text-decoration:none}.rm li .pf a:hover{text-decoration:underline}.rm li .pf b{color:#f3efe6;font-weight:600}</style>
 </body>
 </html>

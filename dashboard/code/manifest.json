@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5572,
-   "zipBytes": 95645,
-   "txtBytes": 284414,
-   "sha256": "f154fa4429627ee4",
+   "lines": 5574,
+   "zipBytes": 95781,
+   "txtBytes": 284895,
+   "sha256": "fad425276fcf40ac",
    "reqs": [
     {
      "what": "A bot token",
@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7174,
-   "zipBytes": 158826,
-   "txtBytes": 476110,
-   "sha256": "4fc807f4d24d14a5",
+   "lines": 7183,
+   "zipBytes": 159247,
+   "txtBytes": 477220,
+   "sha256": "a014ca07a0e128d2",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1371,
-   "zipBytes": 30021,
-   "txtBytes": 79510,
-   "sha256": "d0ec1ed554b7ecc1",
+   "lines": 1373,
+   "zipBytes": 30096,
+   "txtBytes": 79736,
+   "sha256": "feba72ccf16fe4d9",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2903,
-   "zipBytes": 85655,
-   "txtBytes": 246902,
-   "sha256": "5a7aac6f6f379f4c",
+   "lines": 2950,
+   "zipBytes": 86491,
+   "txtBytes": 251035,
+   "sha256": "a307e59eca74c399",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

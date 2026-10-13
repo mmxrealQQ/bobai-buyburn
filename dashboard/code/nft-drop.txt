@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1371 lines.
+# one fetch. 10 files, 1373 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -112,6 +112,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
    page that scrolls sideways is wrong for everything on it. */
 .hero-meta code{font-family:'Space Grotesk',monospace;background:var(--card);border:1px solid var(--border);padding:5px 10px;border-radius:8px;color:var(--gold);font-size:.72rem;letter-spacing:.2px;overflow-wrap:anywhere}
 .hero-meta a{color:var(--gold);text-decoration:none}
+/* the dot between address and BscScan only where both share a line (2026-10-13: on a phone it hung alone at the end) */
+@media(max-width:560px){.hero-meta .hm-dot{display:none}}
 .hero-meta a:hover{text-decoration:underline}
 .mkt{display:flex;justify-content:center;gap:10px;margin-top:18px;flex-wrap:wrap}
 .mkt a{display:flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:.74rem;padding:6px 15px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s,color .25s,box-shadow .25s}
@@ -341,7 +343,7 @@ footer a:hover{color:var(--gold)}
     <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>
-      ·
+      <span class="hm-dot" aria-hidden="true">·</span>
       <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.webp" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain" loading="lazy" decoding="async">BscScan</a>
     </div>
     <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>

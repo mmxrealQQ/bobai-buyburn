@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7174 lines.
+# one fetch. 6 files, 7183 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3440,7 +3440,10 @@ export async function scan(input, env) {
     .sc-share span{min-width:0;overflow-wrap:anywhere;font-size:.86rem}.sc-share b{color:var(--gold)}
     .sc-share code{font-size:.8rem;color:var(--muted)}
     .sc-share button{border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold);border-radius:999px;padding:7px 14px;font:600 .82rem Inter,sans-serif;cursor:pointer;white-space:nowrap}
-    .sc-share button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+    .sc-acts{display:flex;flex-wrap:wrap;gap:8px}
+.sc-share a.sc-sh{border:1px solid rgba(240,185,11,.45);color:var(--gold);border-radius:999px;padding:7px 14px;font:600 .82rem Inter,sans-serif;white-space:nowrap;text-decoration:none}
+.sc-share a.sc-sh:hover,.sc-share button:hover{background:rgba(240,185,11,.1)}
+.sc-share button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
     .sc-wip{max-width:640px;margin:0 auto 14px;font-size:.82rem;color:var(--muted);text-align:center;line-height:1.5}
     .sc-wip b{color:var(--gold)}
     .sc-wip a{color:var(--gold)}
@@ -3586,7 +3589,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=74" type="module"></script>
+<script src="scanner.js?v=75" type="module"></script>
 </body>
 </html>
 
@@ -4528,7 +4531,13 @@ function shareBar(token,symb){
   const b=document.createElement('button');b.type='button';b.textContent='Copy link';
   b.addEventListener('click',()=>{const done=()=>{b.textContent='Copied ✓';b.classList.add('ok');setTimeout(()=>{b.textContent='Copy link';b.classList.remove('ok')},1600)};
     (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(done,()=>{const x=document.createElement('textarea');x.value=url;document.body.appendChild(x);x.select();try{document.execCommand('copy');done()}catch(e){}x.remove()})});
-  d.append(t,b);o.prepend(d);
+  // POST IT (2026-10-13): the link now carries its own card (this token's check as the picture, /og/scan/<token>.png),
+  // so X and Telegram get one click each. Neutral words, as on the card: what a trade costs, never a view on the token.
+  const say=(symb?symb+': ':'')+'what would buying it really cost? Measured on BNB Chain';
+  const share=(label,href)=>{const a=document.createElement('a');a.className='sc-sh';a.textContent=label;a.href=href;a.target='_blank';a.rel='noopener';return a};
+  const acts=document.createElement('span');acts.className='sc-acts';
+  acts.append(b,share('Post on X','https://x.com/intent/post?text='+encodeURIComponent(say)+'&url='+encodeURIComponent(url)),share('Telegram','https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(say)));
+  d.append(t,acts);o.prepend(d);
   if(symb)d.title='Anyone who opens it sees '+symb+' scanned again, live';
 }
 

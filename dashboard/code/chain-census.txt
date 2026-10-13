@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4720 lines.
+# one fetch. 7 files, 4726 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1952,6 +1952,8 @@ const page = `<!doctype html>
      1.85rem Space Grotesk with -1px tracking, same label and caption sizes.
      A page that is nearly the house style reads as a page from somewhere else. */
   .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:26px 0 14px}
+  /* a phone: the four figures two by two (2026-10-13: one under the other they took a whole screen) */
+  @media(max-width:520px){.rg-grid{grid-template-columns:1fr 1fr;gap:8px}.rg-grid .rg-card{padding:12px}.rg-grid .rg-n{font-size:1.45rem}}
   .rg-card{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
   .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.85rem;font-weight:700;
     letter-spacing:-1px;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
@@ -2013,7 +2015,7 @@ const page = `<!doctype html>
   .rgc.rg-ours{border-color:rgba(var(--accs,240,185,11),.35);background:rgba(var(--accs,240,185,11),.05)}
   .rgc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
   .rgc-id{min-width:0;flex:1 1 auto}
-  .rgc-id > b{font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
+.rgc-logo{width:38px;height:38px;border-radius:10px;object-fit:cover;flex:none;background:#0d1117;border:1px solid rgba(255,255,255,.08)}  .rgc-id > b{font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
   .rgc .rg-note{overflow-wrap:anywhere}
   .rgc-what{font-size:.79rem;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}
   .rgc-what.rg-weak{opacity:.75;font-style:italic}
@@ -3363,6 +3365,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   (function(){
     var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
     // high on the page (operator, 2026-10-12: "the agents further up"): right after the numbers, before "Hire one, or just ask"
+    var logo=function(L){var u=String(L.image||'');return L.badge&&u.indexOf('https://')===0&&u.length<300&&!/[ "'<>]/.test(u)?'<img class="rgc-logo" src="'+esc(u)+'" alt="" width="38" height="38" loading="lazy" decoding="async" onerror="this.remove()">':''};
     var first=document.querySelector('.rg-box.rg-start')||document.querySelector('.rg-box[id^="cat-"]'); if(!first)return;
     var strip=document.createElement('div'); strip.className='rg-box rg-featured'; strip.id='featured';
     strip.innerHTML='<h2>Featured (paid)</h2><p class="rg-sub">Agents their builders keep running, listed once for $95. A listing buys this slot and a badge, never a place in the lists below. <a href="/list">List your agent &rarr;</a></p><div class="rgc-list" id="rg-feat-list"></div>';
@@ -3379,6 +3382,9 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         if(!btns.length){if(!L.house)off.push(L);return}
         btns.forEach(function(b){
           var art=b.closest('article'); if(!art||art.dataset.listed)return; art.dataset.listed='1';
+          // THE LOGO (operator, 2026-10-13: "like marque.trade"): a verified listing shows its registration image; before the
+          // featured copy is cloned, so the copy carries it too. A logo that does not load removes itself.
+          var lg=logo(L); var hd=art.querySelector('.rgc-h'); if(lg&&hd&&!hd.querySelector('.rgc-logo'))hd.insertAdjacentHTML('afterbegin',lg);
           var nm=art.querySelector('.rgc-id a.rg-chart')||art.querySelector('.rgc-id b'); if(nm)nm.insertAdjacentHTML('afterend',' '+badge);
           if(L.house){var o=art.querySelector('.rg-x4');if(o)o.remove();} // the badge says "ours" already (2026-10-13: it showed twice)
           if(L.house)return; // ours: the badge only, no featured copy
@@ -3395,7 +3401,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
       if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip
       strip.hidden=false;
-      fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
+      fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h">'+logo(L)+'<div class="rgc-id"><b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
     }).catch(function(){strip.remove()});
   })();
 </script>

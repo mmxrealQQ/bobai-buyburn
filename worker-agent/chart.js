@@ -169,7 +169,10 @@ export async function screenerData(env) {
   const sum = JSON.parse(sumRaw || '{}');
   const listed = new Map();
   for (const id of JSON.parse(listIds || '[]')) { const l = await readListing(env, id).catch(() => null); if (l && l.status !== 'removed') listed.set(String(id), l); }
-  const fields = ['id', 'name', 'score', 'uptime_7d', 'uptime_30d', 'days', 'median_ms', 'up_now', 'spark14', 'outside_jobs', 'outside_buyers', 'outside_delivery_pct', 'earned_u', 'quote', 'hire', 'categories', 'speaks', 'listed', 'ours'];
+  const fields = ['id', 'name', 'score', 'uptime_7d', 'uptime_30d', 'days', 'median_ms', 'up_now', 'spark14', 'outside_jobs', 'outside_buyers', 'outside_delivery_pct', 'earned_u', 'quote', 'hire', 'categories', 'speaks', 'listed', 'ours', 'logo'];
+  // THE LOGO (operator, 2026-10-13: "like marque.trade"): a verified listing shows its registration image instead of the
+  // letter; part of what a listing buys, never a better place. https only, so the page never loads a mixed or odd URL.
+  const logoOf = (l, a) => { const u = l && l.status === 'verified' ? String(l.image || a.image || '') : ''; return /^https:\/\/[^\s"'<>]+$/.test(u) ? u.slice(0, 300) : null; };
   const rows = (index.agents || []).map((a) => {
     const id = String(a.id), s = sum[id] || null, jobs = jobsAll.agents?.[id] || null, t = jobs?.totals || null, p = plaza.agents?.[id] || null, l = listed.get(id);
     const pulse = { last_30d: { days_measured: s ? s[2] : 0, uptime_pct: s ? s[1] : null } };
@@ -177,7 +180,7 @@ export async function screenerData(env) {
     return [a.id, String(a.name || '').slice(0, 70), ev.score, s ? s[0] : null, s ? s[1] : null, s ? s[2] : 0, s ? s[3] : null, s ? s[4] : null, s ? s[6] : '--------------',
       t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? t.earned_u : 0,
       p?.quote?.quotes ? p.quote.price : null, p?.hire ? 1 : 0, p ? p.categories.filter((x) => !x.weak).map((x) => x.id) : [], a.speaks || [],
-      l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
+      l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0, logoOf(l, a)]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
   });
   const body = { what_this_is: 'Brain Plaza screener: every AI agent on BNB Chain that answered our last full census, measured — the evidence score of its chart, its daily pulse, its paid escrow work for outside buyers, its last quote, its Plaza category, its listing.', fields, rows, agents: rows.length, measured_at: new Date().toISOString(), pulse_started: '2026-10-12', score: 'the same as /chart/<id>: 40 uptime 30d (3 days needed), 30 outside delivery rate, 20 outside buyers, 10 names a price' };
   screenerCache = { at: Date.now(), body }; return body;

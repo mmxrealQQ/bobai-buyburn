@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 55 files, 18445 lines.
+# one fetch. 55 files, 18457 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4495,7 +4495,10 @@ export async function screenerData(env) {
   const sum = JSON.parse(sumRaw || '{}');
   const listed = new Map();
   for (const id of JSON.parse(listIds || '[]')) { const l = await readListing(env, id).catch(() => null); if (l && l.status !== 'removed') listed.set(String(id), l); }
-  const fields = ['id', 'name', 'score', 'uptime_7d', 'uptime_30d', 'days', 'median_ms', 'up_now', 'spark14', 'outside_jobs', 'outside_buyers', 'outside_delivery_pct', 'earned_u', 'quote', 'hire', 'categories', 'speaks', 'listed', 'ours'];
+  const fields = ['id', 'name', 'score', 'uptime_7d', 'uptime_30d', 'days', 'median_ms', 'up_now', 'spark14', 'outside_jobs', 'outside_buyers', 'outside_delivery_pct', 'earned_u', 'quote', 'hire', 'categories', 'speaks', 'listed', 'ours', 'logo'];
+  // THE LOGO (operator, 2026-10-13: "like marque.trade"): a verified listing shows its registration image instead of the
+  // letter; part of what a listing buys, never a better place. https only, so the page never loads a mixed or odd URL.
+  const logoOf = (l, a) => { const u = l && l.status === 'verified' ? String(l.image || a.image || '') : ''; return /^https:\/\/[^\s"'<>]+$/.test(u) ? u.slice(0, 300) : null; };
   const rows = (index.agents || []).map((a) => {
     const id = String(a.id), s = sum[id] || null, jobs = jobsAll.agents?.[id] || null, t = jobs?.totals || null, p = plaza.agents?.[id] || null, l = listed.get(id);
     const pulse = { last_30d: { days_measured: s ? s[2] : 0, uptime_pct: s ? s[1] : null } };
@@ -4503,7 +4506,7 @@ export async function screenerData(env) {
     return [a.id, String(a.name || '').slice(0, 70), ev.score, s ? s[0] : null, s ? s[1] : null, s ? s[2] : 0, s ? s[3] : null, s ? s[4] : null, s ? s[6] : '--------------',
       t ? t.paid_out_outside : 0, t ? t.buyers_outside : 0, t ? t.delivery_rate_outside_pct : null, t ? t.earned_u : 0,
       p?.quote?.quotes ? p.quote.price : null, p?.hire ? 1 : 0, p ? p.categories.filter((x) => !x.weak).map((x) => x.id) : [], a.speaks || [],
-      l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
+      l ? (l.status === 'verified' ? (l.signer && l.builder_ok !== false ? 'builder' : 'verified') : 'paused') : null, p?.ours || l?.house ? 1 : 0, logoOf(l, a)]; // ours: on the Plaza, or listed as ours (#49467 has no Plaza row)
   });
   const body = { what_this_is: 'Brain Plaza screener: every AI agent on BNB Chain that answered our last full census, measured — the evidence score of its chart, its daily pulse, its paid escrow work for outside buyers, its last quote, its Plaza category, its listing.', fields, rows, agents: rows.length, measured_at: new Date().toISOString(), pulse_started: '2026-10-12', score: 'the same as /chart/<id>: 40 uptime 30d (3 days needed), 30 outside delivery rate, 20 outside buyers, 10 names a price' };
   screenerCache = { at: Date.now(), body }; return body;
@@ -7641,6 +7644,15 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
 // agent's sweep learns the token. Said on the 402, not implied.
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+// THE INPUT AS AN AGENT NATURALLY SENDS IT (2026-10-13): the documented body is {"params":{…}}, but {"token":"0x…"}
+// on its own came back "grid_plan needs `token`" with the token right there. Fields beside task/inputs/params count
+// too; params and inputs still win where both name one.
+function bareFields(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  const { task, inputs, params, ...rest } = body;
+  return Object.fromEntries(Object.entries(rest).filter(([, v]) => v == null || ['string', 'number', 'boolean'].includes(typeof v)));
+}
+
 async function bobaiForUsd(usd) {
   const [res, t0, price] = await Promise.all([call(BOBAI_PAIR, SEL.getReserves), call(BOBAI_PAIR, SEL.token0), bnbUsd()]);
   const b = res.slice(2);
@@ -8312,13 +8324,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);

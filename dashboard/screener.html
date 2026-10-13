@@ -37,6 +37,7 @@
   tbody tr{cursor:pointer}tbody tr:hover{background:rgba(240,185,11,.05)}
   .ag{display:flex;gap:10px;align-items:center;min-width:220px;max-width:320px}
   .ini{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font:700 13px 'Space Grotesk',sans-serif;color:var(--gold);background:rgba(240,185,11,.12)}
+  .ini.lg{background:#0d1117;overflow:hidden}.ini.lg img{width:100%;height:100%;object-fit:cover;display:block}
   .ag a.nm{color:inherit;text-decoration:none;font:600 13.5px Inter,sans-serif;letter-spacing:0;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
   .ag a.nm:hover{color:var(--gold)}
   .ag small{color:var(--muted);display:block;font-size:11.5px}
@@ -142,6 +143,8 @@
 (function(){
   var A='https://agent.brainonbnb.com',esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
   var all=[],F=[],shown=100,sortK='score',sortD=-1,cat='',flags={},q='';
+  // a verified listing shows its logo (a.logo, https only, set by the worker); a logo that fails to load falls back to the letter
+  var av=function(a,ini,tag){return a.logo?'<'+tag+' class="ini lg"><img src="'+esc(a.logo)+'" alt="" width="30" height="30" loading="lazy" decoding="async" data-l="'+ini+'" onerror="var p=this.parentNode;p.className=&quot;ini&quot;;p.textContent=this.dataset.l"></'+tag+'>':'<'+tag+' class="ini">'+ini+'</'+tag+'>'};
   var num=function(v){return v==null?-1:typeof v==='string'?parseFloat(v)||0:v};
   fetch(A+'/screener').then(function(r){return r.json()}).then(function(j){
     F=j.fields; all=j.rows.map(function(r){var o={};F.forEach(function(f,i){o[f]=r[i]});return o});
@@ -155,7 +158,7 @@
   function tops(){
     var ini=function(a){return esc((String(a.name||'#').replace(/^Brain on BNB\s*[—-]\s*/i,'').match(/[A-Za-z0-9]/)||['#'])[0].toUpperCase())};
     var nm=function(a){return esc(String(a.name||('Agent #'+a.id)).replace(/^Brain on BNB\s*[—-]\s*/i,''))};
-    var row=function(a,i,m,sub){return '<a class="r" href="/agent/'+a.id+'"><span class="n">'+(i+1)+'</span><span class="ini">'+ini(a)+'</span><span class="t">'+nm(a)+'<small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="m">'+m+'</span></a>'};
+    var row=function(a,i,m,sub){return '<a class="r" href="/agent/'+a.id+'"><span class="n">'+(i+1)+'</span>'+av(a,ini(a),'span')+'<span class="t">'+nm(a)+'<small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="m">'+m+'</span></a>'};
     var pick=function(f,s){return all.filter(f).sort(s).slice(0,5)};
     var B=[
       ['Top by evidence','#f0b90b','the score of its chart: uptime, outside work, delivery, price',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return (a.uptime_30d!=null&&a.days>=3?a.uptime_30d+'% up · ':'')+a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
@@ -185,7 +188,7 @@
     });
     var body=list.slice(0,shown).map(function(a,i){
       var ini=esc((a.name||'#').trim().charAt(0).toUpperCase()||'#');
-      return '<tr data-id="'+a.id+'"><td class="tl dim">'+(i+1)+'</td><td class="tl"><div class="ag"><div class="ini">'+ini+'</div><div style="min-width:0"><a class="nm" href="/agent/'+a.id+'">'+esc(a.name||('Agent #'+a.id))+'</a><small>#'+a.id+(a.ours&&a.listed?'<span class="tg v" title="Brain On BNB&rsquo;s own agent, not a paid listing; the badge stays while our daily check finds it answering">ours · '+(a.listed==='verified'?'✓ maintained':'paused')+'</span>':a.listed?'<span class="tg v"'+(a.listed==='builder'?' title="the wallet that listed it still owns the id, and it answers our daily check"':'')+'>'+(a.listed==='builder'?'✓ verified builder':a.listed==='verified'?'✓ listed':'listed · paused')+'</span>':'')+(a.ours&&!a.listed?'<span class="tg o">Brain On BNB</span>':'')+'</small></div></div></td>'
+      return '<tr data-id="'+a.id+'"><td class="tl dim">'+(i+1)+'</td><td class="tl"><div class="ag">'+av(a,ini,'div')+'<div style="min-width:0"><a class="nm" href="/agent/'+a.id+'">'+esc(a.name||('Agent #'+a.id))+'</a><small>#'+a.id+(a.ours&&a.listed?'<span class="tg v" title="Brain On BNB&rsquo;s own agent, not a paid listing; the badge stays while our daily check finds it answering">ours · '+(a.listed==='verified'?'✓ maintained':'paused')+'</span>':a.listed?'<span class="tg v"'+(a.listed==='builder'?' title="the wallet that listed it still owns the id, and it answers our daily check"':'')+'>'+(a.listed==='builder'?'✓ verified builder':a.listed==='verified'?'✓ listed':'listed · paused')+'</span>':'')+(a.ours&&!a.listed?'<span class="tg o">Brain On BNB</span>':'')+'</small></div></div></td>'
         +'<td><span class="sb"><i><b style="width:'+a.score+'%"></b></i>'+a.score+'</span></td><td class="tl">'+spark(a.spark14)+'</td>'
         +'<td>'+(a.uptime_30d==null?'<span class="dim">—</span>':a.uptime_30d+'%')+'</td><td>'+(a.median_ms==null?'<span class="dim">—</span>':a.median_ms<1000?a.median_ms+' ms':(a.median_ms/1000).toFixed(1)+' s')+'</td>'
         +'<td>'+(a.outside_jobs||'<span class="dim">0</span>')+'</td><td>'+(a.outside_buyers||'<span class="dim">0</span>')+'</td><td>'+(a.outside_delivery_pct==null?'<span class="dim">—</span>':a.outside_delivery_pct+'%')+'</td>'

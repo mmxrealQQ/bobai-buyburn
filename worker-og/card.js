@@ -97,3 +97,67 @@ ${tileSvg}
 <path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 }
+
+// THE AGENT CARD (2026-10-13): an agent chart link (brainonbnb.com/agent/<id>) shows that agent's measured figures —
+// the chart's own evidence score, uptime, paid work for outside buyers, what outside buyers paid it. The agent's picture
+// only for a verified listing (as on the Plaza and the screener: part of what a listing buys); otherwise its letter.
+// `c` is /chart/<id>; `face` is a data: URI of its listed image or null.
+export function agentCard(c, { face = null } = {}) {
+  const ok = c && c.id != null;
+  const raw = ok ? String(c.name || 'Agent #' + c.id) : 'Every AI agent on BNB Chain';
+  const name = cut(raw.replace(/^Brain on BNB\s*[—-]\s*/i, ''), 34);
+  const letter = esc(((raw.replace(/^Brain on BNB\s*[—-]\s*/i, '').match(/[A-Za-z0-9]/) || ['#'])[0]).toUpperCase());
+  const cat = ok && c.plaza && c.plaza.categories && c.plaza.categories.find((x) => !x.weak);
+  const sub = ok ? cut(`#${c.id}${cat ? ' · ' + cat.label : ''} · ERC-8004 on BNB Chain`, 70) : 'measured, never self-reported';
+  const L = ok && c.listed;
+  // the check mark is drawn (our subset fonts have no ✓ glyph)
+  const badge = L ? (L.ours ? 'ours · maintained' : L.verified_builder ? 'verified builder' : L.verified_and_maintained ? 'verified & maintained' : 'listed · paused') : '';
+  const tick = !!L && (L.ours || L.verified_builder || L.verified_and_maintained);
+  const ev = ok && c.evidence ? c.evidence : null, score = ev ? Math.round(ev.score) : null;
+  const l30 = ok && c.pulse && c.pulse.last_30d ? c.pulse.last_30d : null, days = l30 ? num(l30.days_measured) || 0 : 0;
+  const t = ok && c.jobs && c.jobs.totals ? c.jobs.totals : null;
+  const earned = t ? (t.earned_u_outside != null ? t.earned_u_outside : t.earned_u) : null;
+  const tiles = [
+    ['Evidence score', score == null ? '—' : String(score), score == null ? MUTED : score >= 50 ? GREEN : score >= 25 ? AMBER : TEXT, 'of 100, its parts on the chart'],
+    ['Uptime, 30 days', l30 && l30.uptime_pct != null && days > 0 ? pct(l30.uptime_pct, 1) : '—', TEXT, days > 0 ? `${days} day${days === 1 ? '' : 's'} measured by our pulse` : 'our pulse starts measuring'],
+    ['Paid jobs, outside', t ? String(t.paid_out_outside || 0) : '0', TEXT, t ? `${t.buyers_outside || 0} outside buyer${t.buyers_outside === 1 ? '' : 's'}` : 'none on the escrow yet'],
+    ['Earned from outside', earned != null ? (Math.round(earned * 100) / 100) + ' $U' : '0 $U', TEXT, t && t.delivery_rate_outside_pct != null ? `${pct(t.delivery_rate_outside_pct, 1)} delivered` : 'paid out on-chain'],
+  ];
+  const TW = 255, TG = 20, TX = 60, TY = 372, TH = 160;
+  const tileSvg = tiles.map(([label, value, color, s], i) => {
+    const x = TX + i * (TW + TG);
+    return `<g><rect x="${x}" y="${TY}" width="${TW}" height="${TH}" rx="18" fill="#17171f" stroke="#2a2a36"/>`
+      + `<text x="${x + 22}" y="${TY + 40}" font-family="Inter" font-weight="600" font-size="19" fill="${MUTED}">${esc(label)}</text>`
+      + `<text x="${x + 22}" y="${TY + 102}" font-family="Space Grotesk" font-weight="700" font-size="${String(value).length > 8 ? 40 : 50}" fill="${color}">${esc(value)}</text>`
+      + `<text x="${x + 22}" y="${TY + 136}" font-family="Inter" font-weight="400" font-size="15" fill="${MUTED}">${esc(cut(s, 30))}</text></g>`;
+  }).join('');
+  const when = ok && c.measured_at ? new Date(c.measured_at) : null;
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const stamp = when && !isNaN(when) ? `${when.getUTCDate()} ${MON[when.getUTCMonth()]} ${when.getUTCFullYear()}` : '';
+  const AV = 112, AX = 60, AY = 140;
+  const avatar = face
+    ? `<clipPath id="face"><rect x="${AX}" y="${AY}" width="${AV}" height="${AV}" rx="26"/></clipPath><image x="${AX}" y="${AY}" width="${AV}" height="${AV}" preserveAspectRatio="xMidYMid slice" clip-path="url(#face)" xlink:href="${face}"/><rect x="${AX}" y="${AY}" width="${AV}" height="${AV}" rx="26" fill="none" stroke="#2a2a36" stroke-width="2"/>`
+    : `<rect x="${AX}" y="${AY}" width="${AV}" height="${AV}" rx="26" fill="${GOLD}" fill-opacity="0.13" stroke="${GOLD}" stroke-opacity="0.35"/><text x="${AX + AV / 2}" y="${AY + AV / 2 + 20}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="56" fill="${GOLD}">${letter}</text>`;
+  const NX = AX + AV + 28;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>
+  <radialGradient id="glow" cx="0.08" cy="0" r="0.9"><stop offset="0" stop-color="${GOLD}" stop-opacity="0.22"/><stop offset="0.6" stop-color="${GOLD}" stop-opacity="0.03"/><stop offset="1" stop-color="${GOLD}" stop-opacity="0"/></radialGradient>
+  <clipPath id="logo"><circle cx="88" cy="70" r="30"/></clipPath>
+</defs>
+<rect width="${W}" height="${H}" fill="#0b0b10"/>
+<rect width="${W}" height="${H}" fill="url(#glow)"/>
+<rect x="16" y="16" width="${W - 32}" height="${H - 32}" rx="28" fill="none" stroke="${GOLD}" stroke-opacity="0.35" stroke-width="2"/>
+<image x="58" y="40" width="60" height="60" clip-path="url(#logo)" xlink:href="LOGO_DATA_URI"/>
+<text x="134" y="66" font-family="Space Grotesk" font-weight="700" font-size="22" letter-spacing="3" fill="${GOLD}">BRAIN PLAZA · AGENT CHART</text>
+<text x="134" y="93" font-family="Inter" font-weight="400" font-size="18" fill="${MUTED}">Every AI agent on BNB Chain, measured. Nobody can pay for a place.</text>
+<text x="${W - 60}" y="72" text-anchor="end" font-family="Inter" font-weight="600" font-size="21" fill="${GOLD}">brainonbnb.com</text>
+${avatar}
+<text x="${NX}" y="${AY + 58}" font-family="Space Grotesk" font-weight="700" font-size="${name.length > 22 ? 46 : 58}" fill="${TEXT}">${esc(name)}</text>
+<text x="${NX}" y="${AY + 96}" font-family="Inter" font-weight="400" font-size="20" fill="${MUTED}">${esc(sub)}</text>
+${badge ? `<rect x="60" y="292" width="${Math.min(W - 120, 44 + (tick ? 28 : 0) + badge.length * 10.5)}" height="44" rx="22" fill="${GREEN}" fill-opacity="0.1" stroke="${GREEN}" stroke-opacity="0.5"/>${tick ? `<path d="M83 314 l6 6 l12 -13" stroke="#7fd1a3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}<text x="${tick ? 110 : 82}" y="321" font-family="Inter" font-weight="600" font-size="19" fill="#7fd1a3">${esc(badge)}</text>` : `<text x="60" y="321" font-family="Inter" font-weight="400" font-size="19" fill="${MUTED}">From its registration, our daily pulse and every job on the ERC-8183 escrow.</text>`}
+${tileSvg}
+<text x="60" y="586" font-family="Inter" font-weight="400" font-size="16" fill="${MUTED}">${esc(`Measured, never self-reported${stamp ? ' · ' + stamp : ''} · a reading, not advice`)}</text>
+<text x="${W - 84}" y="586" text-anchor="end" font-family="Inter" font-weight="600" font-size="17" fill="${GOLD}">See its chart</text>
+<path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+}

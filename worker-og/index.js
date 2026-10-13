@@ -8,7 +8,7 @@ import grotesk from './fonts/grotesk-700.ttf';
 import inter400 from './fonts/inter-400.ttf';
 import inter600 from './fonts/inter-600.ttf';
 import logo from './logo.png';
-import { card } from './card.js';
+import { card, agentCard } from './card.js';
 
 let ready = null;
 const fonts = [new Uint8Array(grotesk), new Uint8Array(inter400), new Uint8Array(inter600)];
@@ -26,6 +26,28 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/health') return new Response('ok');
+    // THE AGENT CARD (2026-10-13): /agent/<id>.png from the agent's chart; its listed picture only for a verified listing
+    const ag = url.pathname.match(/^\/(?:og\/)?agent\/(\d{1,9})\.png$/);
+    if (ag) {
+      const id = String(Number(ag[1]));
+      const key = new Request(`https://og.brainonbnb.com/agent/${id}.png`);
+      const hit = await caches.default.match(key);
+      if (hit) return hit;
+      let c = null, face = null;
+      try { const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(15000) }); if (r.ok) { const j = await r.json(); if (j && j.id != null) c = j; } } catch { /* the plain card */ }
+      const L = c && c.listed, img = c && String(c.image || '');
+      if (L && (L.ours || L.verified_builder || L.verified_and_maintained) && /^https:\/\/[^\s"'<>]+$/.test(img)) {
+        try {
+          const r = await fetch(img, { signal: AbortSignal.timeout(5000) }), ct = (r.headers.get('content-type') || '').split(';')[0];
+          const buf = r.ok && /^image\/(png|jpeg)$/.test(ct) ? await r.arrayBuffer() : null;
+          if (buf && buf.byteLength < 1.5e6) face = `data:${ct};base64,` + b64(buf);
+        } catch { /* the letter */ }
+      }
+      const png = await render(agentCard(c, { face }));
+      const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': `public, max-age=${c ? 3600 : 300}`, 'access-control-allow-origin': '*' } });
+      ctx.waitUntil(caches.default.put(key, res.clone()));
+      return res;
+    }
     const m = url.pathname.match(/^\/(?:og\/)?scan\/(0x[0-9a-fA-F]{40})\.png$/);
     if (!m) return new Response('not found', { status: 404 });
     const address = m[1].toLowerCase();

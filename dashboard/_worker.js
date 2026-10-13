@@ -1496,9 +1496,10 @@ export default {
 
     // THE SHARE CARD (operator, 2026-10-13): a scan link on X or Telegram shows a picture of that token's check, drawn
     // by worker-og from our own /api/preflight. If the card worker does not answer, the old banner stands in.
-    const ogCard = url.pathname.match(/^\/og\/scan\/(0x[0-9a-fA-F]{40})\.png$/);
+    // The same for an agent chart (2026-10-13): /og/agent/<id>.png, that agent's measured figures.
+    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9})\.png$/);
     if (ogCard) {
-      const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/scan/${ogCard[1].toLowerCase()}.png`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
+      const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/${ogCard[1].toLowerCase()}.png`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
       if (!r || !r.ok || !(r.headers.get('content-type') || '').startsWith('image/png')) return Response.redirect(url.origin + '/og-banner.png', 302);
       return new Response(r.body, { status: 200, headers: { 'Content-Type': 'image/png', 'Cache-Control': r.headers.get('cache-control') || 'public, max-age=3600', 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' } });
     }
@@ -1917,6 +1918,21 @@ export default {
           .on('meta[property="og:title"]', set('What would buying this token really cost? A check on BNB Chain'))
           .on('meta[name="twitter:title"]', set('What would buying this token really cost? A check on BNB Chain'))
           .on('head', { element(e) { e.append(`<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BOBAI Pool Scanner: the check of ${tok}">`, { html: true }); } })
+          .transform(r);
+        return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
+      }
+      return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
+    }
+
+    // AN AGENT CHART LINK NAMES ITS OWN CARD (2026-10-13): /agent/<id> on X or Telegram shows that agent's figures.
+    const agentPage = request.method === 'GET' && url.pathname.match(/^\/agent\/(\d{1,9})\/?$/);
+    if (agentPage) {
+      const r = await env.ASSETS.fetch(request);
+      if ((r.headers.get('content-type') || '').includes('text/html')) {
+        const id = String(Number(agentPage[1])), img = `https://brainonbnb.com/og/agent/${id}.png`;
+        const t = new HTMLRewriter()
+          .on('meta[property="og:image"]', { element(e) { e.setAttribute('content', img); } })
+          .on('head', { element(e) { e.append(`<meta property="og:title" content="Agent #${id} on BNB Chain, measured · Brain Plaza"><meta property="og:description" content="Uptime from a daily pulse, paid escrow jobs for outside buyers, delivery rate and an evidence score with its formula. Nothing self-reported."><meta property="og:url" content="https://brainonbnb.com/agent/${id}"><meta property="og:type" content="website"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${img}"><meta name="twitter:title" content="Agent #${id} on BNB Chain, measured · Brain Plaza">`, { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }

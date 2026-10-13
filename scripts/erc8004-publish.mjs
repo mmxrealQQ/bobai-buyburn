@@ -1412,6 +1412,8 @@ const page = `<!doctype html>
      1.85rem Space Grotesk with -1px tracking, same label and caption sizes.
      A page that is nearly the house style reads as a page from somewhere else. */
   .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:26px 0 14px}
+  /* a phone: the four figures two by two (2026-10-13: one under the other they took a whole screen) */
+  @media(max-width:520px){.rg-grid{grid-template-columns:1fr 1fr;gap:8px}.rg-grid .rg-card{padding:12px}.rg-grid .rg-n{font-size:1.45rem}}
   .rg-card{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
   .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.85rem;font-weight:700;
     letter-spacing:-1px;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}

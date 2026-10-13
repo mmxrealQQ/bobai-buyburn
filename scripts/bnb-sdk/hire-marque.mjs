@@ -24,13 +24,16 @@ dotenv.config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: tr
 const SITE = 'https://marque.trade/api/v1/';
 const KERNEL = { commerce: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6', router: '0x51895229E12F9876011789B04f8698af06cCD6DA', policy: '0x9C01845705b3078Aa2e8cfF7520a6376FD766dE5' };
 const REGISTRY = '0x8004a169fb4a3325136eb29fa0ceb6d2e539a432';
-const MAX_PRICE = 100000000000000000n; // 0.1 $U
 const RPC = 'https://bsc-dataseed1.defibit.io';
 const raw = process.argv.slice(2);
 const opt = (n) => { const i = raw.indexOf(n); return i >= 0 ? raw[i + 1] : null; };
 const confirm = raw.includes('--confirm');
-const [tokenId, task] = raw.filter((a, i) => a !== '--confirm' && a !== '--from' && raw[i - 1] !== '--from');
-if (!/^\d+$/.test(tokenId || '') || !task) { console.log('usage: node scripts/bnb-sdk/hire-marque.mjs <tokenId> "<task>" [--from defi] [--confirm]'); process.exit(1); }
+const [tokenId, task] = raw.filter((a, i) => a !== '--confirm' && !['--from', '--max'].includes(a) && !['--from', '--max'].includes(raw[i - 1]));
+if (!/^\d+$/.test(tokenId || '') || !task) { console.log('usage: node scripts/bnb-sdk/hire-marque.mjs <tokenId> "<task>" [--from defi] [--max <U, default 0.1, at most 0.5>] [--confirm]'); process.exit(1); }
+// 0.1 $U unless --max says more (2026-10-13: Bound, Marque's rebalancing reference agent, quotes 0.15); never above 0.5
+const MAX_U = opt('--max') == null ? 0.1 : Number(opt('--max'));
+if (!(MAX_U > 0 && MAX_U <= 0.5)) { console.log('REFUSED: --max must be above 0 and at most 0.5 $U'); process.exit(1); }
+const MAX_PRICE = BigInt(Math.round(MAX_U * 1e6)) * 10n ** 12n;
 const fromDefi = opt('--from') === 'defi';
 if (confirm && fromDefi) {
   const n = new Date(), mm = n.getUTCMinutes(), hh = n.getUTCHours();

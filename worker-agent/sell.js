@@ -78,6 +78,7 @@ const quoteWindow = async () => readDisputeWindow(async (to, data) => {
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
+import { understoodReply } from './understand.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -501,6 +502,12 @@ export async function handleA2A(request, env, opts = {}) {
         : forced ? ownSentence(SERVICES[forced])
         : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
+    }
+    // any other question on an agent's own endpoint: what it understood, what is missing, the filled-in request
+    // (understand.js, 2026-10-13 — it used to answer every question with its self-description and the whole catalogue)
+    if (forced && SERVICES[forced]) {
+      const r = understoodReply({ service: SERVICES[forced], text, missing: missingInput, agentUrl: `https://agent.brainonbnb.com/${opts.agent}/a2a` });
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: r.sentence }, { kind: 'data', data: r.data }] });
     }
   }
 

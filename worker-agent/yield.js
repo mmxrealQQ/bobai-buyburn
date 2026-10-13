@@ -50,7 +50,22 @@ const YSEL = {
   getCash: '0x3b1d21a2',
   totalBorrows: '0x47bd3718',
   supplyCaps: '0x02c3bcbb',
+  totalReserves: '0x8f840ddd',
+  reserveFactorMantissa: '0x173b9904',
 };
+
+// THE SECOND DERIVATION, FROM THE CHAIN (operator, 2026-10-13: "directly from the chain" — Venus's API refuses our
+// Workers with 403 for weeks, so the cross-check that needed it never ran). A Venus market's supply rate is not a free
+// number: its rate model pays suppliers the borrow rate times utilisation, less the reserve factor —
+// supply = borrow x borrows / (cash + borrows - reserves) x (1 - reserveFactor). Five more reads per market, recomputed
+// here in integers the way the contract does; when that does not land on the supplyRatePerBlock the market states, the
+// read or the market is off and the row says so. Measured 2026-10-13: 54 of 55 exact, one 1 wei/block apart (rounding).
+export function derivedSupplyRate(borrowRate, cash, borrows, reserves, reserveFactor) {
+  const E18 = 10n ** 18n, den = cash + borrows - reserves;
+  if (den <= 0n) return 0n;
+  return ((borrowRate * ((borrows * E18) / den)) / E18) * (E18 - reserveFactor) / E18;
+}
+export const rateAgrees = (stated, derived) => { const d = stated > derived ? stated - derived : derived - stated; return d <= 2n || d * 10000n <= stated; };
 
 const SECONDS_PER_YEAR = 31_536_000;
 
@@ -215,8 +230,9 @@ export async function venusMarkets() {
 
   // Seven reads per market, not eight. The eighth was underlying(), whose
   // result this function never looked at — 52 calls per run spent on nothing,
-  // found while cutting the request count down.
-  const PER_MARKET = 7;
+  // found while cutting the request count down. Nine since 2026-10-13: reserves and reserve factor, for the
+  // second derivation of the supply rate (derivedSupplyRate above).
+  const PER_MARKET = 9;
   const calls = vTokens.flatMap((v) => ([
     { to: v, data: SEL.symbol },
     { to: v, data: YSEL.supplyRatePerBlock },
@@ -225,6 +241,8 @@ export async function venusMarkets() {
     { to: v, data: YSEL.totalBorrows },
     { to: oracle, data: SEL.getUnderlyingPrice + addrArg(v) },
     { to: VENUS.UNITROLLER, data: SEL.markets + addrArg(v) },
+    { to: v, data: YSEL.totalReserves },
+    { to: v, data: YSEL.reserveFactorMantissa },
   ]));
   // Three hundred and sixty-four calls, and a public BSC endpoint rejects a
   // JSON-RPC batch anywhere near that size outright. batchCall insists on a
@@ -286,15 +304,22 @@ export async function venusMarkets() {
     const supplied = liquidityUsd + borrowedUsd;
     const utilisation = supplied > 0 ? borrowedUsd / supplied : 0;
 
+    const reserves = firstWord(res[o + 7]), reserveFactor = firstWord(res[o + 8]);
+    const derived = reserves !== null && reserveFactor !== null ? derivedSupplyRate(borrowRate, cash, borrows, reserves, reserveFactor) : null;
+    const chainOk = derived === null ? null : rateAgrees(supplyRate, derived);
+    let agreement = chainOk === null ? 'unconfirmed — its reserves could not be read, so the rate was not re-derived'
+      : chainOk ? 'agrees with its own rate model, re-derived from the chain'
+        : `DISAGREES with its own rate model: it states ${supplyApy.toFixed(4)}%, borrow rate x utilisation x (1 - reserve factor) gives ${apyFromRate(derived, B).toFixed(4)}%`;
+    if (chainOk === false) disagreements.push({ market: symbol, ours: +supplyApy.toFixed(4), rate_model: +apyFromRate(derived, B).toFixed(4) });
+    // Venus's own API, when it answers, is a third look on top (it has refused our Workers with 403 since early October)
     const theirs = published?.get(v.toLowerCase());
-    let agreement = 'unconfirmed — Venus\'s own API did not answer';
     if (theirs && Number.isFinite(theirs.supplyApy)) {
       const diff = Math.abs(theirs.supplyApy - supplyApy);
       // A tenth of a point. Rates move between their snapshot and our block, so
       // exact equality would be the suspicious result, not the reassuring one.
-      agreement = diff <= 0.1
-        ? 'agrees with Venus'
-        : `DISAGREES with Venus: they publish ${theirs.supplyApy.toFixed(4)}%, we compute ${supplyApy.toFixed(4)}%`;
+      agreement += diff <= 0.1
+        ? '; and with Venus\'s published APY'
+        : `; DISAGREES with Venus's published APY: they publish ${theirs.supplyApy.toFixed(4)}%, we compute ${supplyApy.toFixed(4)}%`;
       if (diff > 0.1) disagreements.push({ market: symbol, ours: +supplyApy.toFixed(4), venus: +theirs.supplyApy.toFixed(4) });
     }
 
@@ -341,7 +366,7 @@ export async function venusMarkets() {
   const dust = new Set(live.filter((m) => m.total_supplied_usd < 10000).map((m) => m.symbol));
   const confirmedLive = live.filter((m) => !/^unconfirmed/.test(m.cross_check)).length;
   const realDisagreements = disagreements.filter((d) => ranked.has(d.market) && !dust.has(d.market));
-  return { clock, markets: live, excluded, disagreements: realDisagreements, oracle, confirmed: confirmedLive };
+  return { clock, markets: live, excluded, disagreements: realDisagreements, oracle, confirmed: confirmedLive, apiAnswered: !!published };
 }
 
 /**
@@ -353,7 +378,7 @@ export async function yieldPlan(input = {}) {
   const fromSymbol = input.from ? String(input.from).toUpperCase() : null;
   const currentApy = input.currentApyPct != null ? Number(input.currentApyPct) : null;
 
-  const { clock, markets, excluded, disagreements, oracle, confirmed } = await venusMarkets();
+  const { clock, markets, excluded, disagreements, oracle, confirmed, apiAnswered } = await venusMarkets();
   if (!markets.length) throw new Error('no Venus market could be read');
 
   // A market with no liquidity left cannot take a deposit out again, which
@@ -382,12 +407,13 @@ export async function yieldPlan(input = {}) {
       // second source did not answer, and "agrees: true" beside "0 of 54" was
       // one source presented as two (2026-09-18). null = not checked.
       agrees: confirmed > 0 ? disagreements.length === 0 : null,
-      second_sourced: `${confirmed} of ${markets.length} live markets are covered by Venus's own published API; the rest are computed from the chain only and say so per row.`,
+      how: 'Each market\'s supply rate is read, then re-derived from five other reads of the same market — borrow rate x borrows / (cash + borrows - reserves) x (1 - reserve factor), the rule Venus\'s rate model pays suppliers by — and the two must meet. Everything from the chain, nothing from a third party.' + (apiAnswered ? ' Venus\'s published APY answered too and is compared on top.' : ` Venus's published APY was not used: their API did not answer${venusPublished.why ? ` (${venusPublished.why})` : ''}.`),
+      second_sourced: `${confirmed} of ${markets.length} live markets re-derived from the chain and agreeing${confirmed < markets.length ? '; the rest say why per row' : ''}.`,
       ...(disagreements.length
-        ? { disagreements, note: 'Our figure and Venus\'s own published APY differ on these markets by more than 0.1 points. Rates move between their snapshot and our block, but a large gap is a reason to read the market directly before acting.' }
+        ? { disagreements, note: 'On these markets the stated rate and its re-derivation (or Venus\'s published APY) differ. Rates move between snapshots, but a gap is a reason to read the market directly before acting.' }
         : { note: confirmed > 0
-          ? 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.'
-          : `Venus's own API did not answer this time${venusPublished.why ? ` (${venusPublished.why})` : ''}, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.` }),
+          ? `Every market whose rate could be re-derived agrees with its own rate model${apiAnswered ? ' and with Venus\'s published APY within 0.1 points' : ''}; the APY then follows from the measured block time, not from a constant.`
+          : 'No market could be re-derived this time, so nothing here is cross-checked: every figure is one read from the chain.' }),
     },
     ...(excluded.length ? { excluded_from_ranking: excluded } : {}),
     oracle,

@@ -93,7 +93,7 @@ export const OWN_AGENTS = [
     slug: 'yield-optimizer',
     doc: common({
       name: 'Brain on BNB — Venus Yield Ranking',
-      description: 'Ranks every Venus core-pool market on BNB Chain by what it actually pays a supplier, computed from the rate per block and a block time measured against the chain — not the 10,512,000-blocks-a-year constant that three-second blocks implied and that most published BSC yield figures still assume. BSC now produces a block every 0.45 s, so that constant understates these rates by about 6.7x. Every figure is cross-checked against Venus\'s own published APY whenever their API answers, each row says whether it was confirmed, and a market where the two disagree is reported as divergent. Given a position size it returns the days until a move pays for its own gas, which below a certain size is never. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full. Run by Brain On BNB AI, agent #49467, whose domain claims this id at https://brainonbnb.com/.well-known/agent-registration.json',
+      description: 'Ranks every Venus core-pool market on BNB Chain by what it actually pays a supplier, computed from the rate per block and a block time measured against the chain — not the 10,512,000-blocks-a-year constant that three-second blocks implied and that most published BSC yield figures still assume. BSC now produces a block every 0.45 s, so that constant understates these rates by about 6.7x. Every rate is cross-checked on the chain: re-derived from the market\'s borrow rate, utilisation and reserve factor (the rule Venus\'s rate model pays by), with Venus\'s published APY compared on top when their API answers; each row says what agreed, and a market where they disagree is reported as divergent. Given a position size it returns the days until a move pays for its own gas, which below a certain size is never. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full. Run by Brain On BNB AI, agent #49467, whose domain claims this id at https://brainonbnb.com/.well-known/agent-registration.json',
       services: [
         { name: 'A2A', description: 'A2A JSON-RPC. skill "negotiate-erc8183-job" returns a signed quote (BNB Agent SDK; the funded job is found on the chain), or skill "negotiate" then "notify_funded" with the job id.', endpoint: `${ORIGIN}/yield-optimizer/a2a`, version: '0.3.0' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('yield_plan'), version: '2' },
@@ -109,7 +109,7 @@ export const OWN_AGENTS = [
         { trait_type: 'Domain proof', value: 'https://brainonbnb.com/.well-known/agent-registration.json' },
         { trait_type: 'Hiring', value: 'ERC-8183 escrow, 0.10 $U per job' },
         { trait_type: 'Payment token', value: '$U 0xcE24439F2D9C6a2289F741120FE202248B666666' },
-        { trait_type: 'Second-sourced', value: 'each rate compared with the published APY of Venus whenever its API answers; every row says if it was confirmed' },
+        { trait_type: 'Second-sourced', value: 'each rate re-derived on the chain from borrow rate, utilisation and reserve factor; Venus published APY compared on top when its API answers; every row says what agreed' },
         { trait_type: 'Does not', value: 'move funds, forecast rates, or assume a block time' },
       ],
     }),

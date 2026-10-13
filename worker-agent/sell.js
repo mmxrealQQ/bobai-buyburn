@@ -117,7 +117,7 @@ export const SERVICES = {
     category: 'yield-optimization',
     price: '100000000000000000',
     price_display: '0.10 $U',
-    deliverables: 'Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus\'s own published APY whenever their API answers — every row and the summary say whether it did, and a divergence is named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.',
+    deliverables: 'Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked on the chain: each market\'s supply rate is re-derived from its borrow rate, utilisation and reserve factor (the rule Venus\'s rate model pays by), and Venus\'s published APY is compared on top when their API answers — every row and the summary say what agreed, and a divergence is named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.',
     needs: { amountUsd: 'position size in USD, optional', from: 'the Venus market held today, optional', currentApyPct: 'what you earn today, optional' },
   },
   rebalance_plan: {

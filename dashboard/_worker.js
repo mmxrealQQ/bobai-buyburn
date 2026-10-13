@@ -1929,10 +1929,14 @@ export default {
     if (agentPage) {
       const r = await env.ASSETS.fetch(request);
       if ((r.headers.get('content-type') || '').includes('text/html')) {
-        const id = String(Number(agentPage[1])), img = `https://brainonbnb.com/og/agent/${id}.png`;
+        const id = String(Number(agentPage[1])), img = `https://brainonbnb.com/og/agent/${id}.png`, title = `Agent #${id} on BNB Chain, measured · Brain Plaza`;
+        // agent.html carries the generic tags (one of each); here they are set for this agent, nothing doubled
+        const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
         const t = new HTMLRewriter()
-          .on('meta[property="og:image"]', { element(e) { e.setAttribute('content', img); } })
-          .on('head', { element(e) { e.append(`<meta property="og:title" content="Agent #${id} on BNB Chain, measured · Brain Plaza"><meta property="og:description" content="Uptime from a daily pulse, paid escrow jobs for outside buyers, delivery rate and an evidence score with its formula. Nothing self-reported."><meta property="og:url" content="https://brainonbnb.com/agent/${id}"><meta property="og:type" content="website"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${img}"><meta name="twitter:title" content="Agent #${id} on BNB Chain, measured · Brain Plaza">`, { html: true }); } })
+          .on('meta[property="og:image"]', set(img)).on('meta[name="twitter:image"]', set(img))
+          .on('meta[property="og:title"]', set(title)).on('meta[name="twitter:title"]', set(title))
+          .on('meta[property="og:url"]', set(`https://brainonbnb.com/agent/${id}`))
+          .on('head', { element(e) { e.append('<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">', { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }

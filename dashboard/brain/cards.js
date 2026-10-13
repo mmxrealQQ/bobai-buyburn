@@ -101,7 +101,7 @@
     const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
     const R = 17, C = 2 * Math.PI * R; let off = 0;
     el.innerHTML = `<div class="cv-2"><div class="cv-ring"><svg viewBox="0 0 44 44"><circle r="${R}" cx="22" cy="22" class="bg"/>${parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="22" cy="22" stroke="${c}" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`; off += len; return s; }).join('')}<text x="22" y="25.5">3%</text></svg>`
-      + `<ul>${parts.slice(0, 4).map(([v, c, l]) => `<li><i style="background:${c}"></i>${l}<b>${v}%</b></li>`).join('')}${parts.length > 4 ? `<li><i style="background:linear-gradient(90deg,${parts.slice(4).map((p) => p[1]).join(',')})"></i>${parts.slice(4).map((p) => p[2]).join(' · ')}<b>${+parts.slice(4).reduce((a, p) => a + p[0], 0).toFixed(2)}%</b></li>` : ''}</ul></div>${next02Html()}</div>`; /* all six slices of the ring (2026-10-10: the legend summed to 1.9 % under a 3 % ring) */
+      + `<ul class="cv-leg${parts.length > 5 ? ' six' : ''}">${parts.map(([v, c, l]) => `<li><i style="background:${c}"></i>${l === 'Giggle' ? 'Giggle pot' : l}<b>${v}%</b></li>`).join('')}</ul></div>${next02Html()}</div>`; /* all six slices of the ring (2026-10-10: the legend summed to 1.9 % under a 3 % ring) */
   }
 
   // 02 LIVE (operator, 2026-10-12: "next split live" + "where it went, 7 days"). THE NEXT SPLIT, as it charges: the token

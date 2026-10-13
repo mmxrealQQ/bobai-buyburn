@@ -437,6 +437,9 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
   .bp-side .cv-ring li{white-space:nowrap}
   .bp-side .cv-2{gap:5px}
 }
+/* six shares, each its own line (2026-10-13: the last two were one line, 'Giggle · creator 1.1%', two shares read as one) */
+.cv-ring ul.cv-leg.six{gap:0;line-height:1.25}
+@media (max-height:820px) and (min-width:1000px){.bp-side .cv-ring ul.cv-leg.six{font-size:8px;line-height:1.1}}
 /* below 740 px the next split shows in 02's window only: ring, parts and figure first */
 @media (max-height:740px) and (min-width:1000px){.bp-side .cv-next{display:none}}
 /* 03 (2026-10-12): the bars answer a look; the window's "check it yourself" */

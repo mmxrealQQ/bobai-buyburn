@@ -542,7 +542,7 @@
     }
   },
   "note": "Every ERC-8183 job this project has made or delivered, watched until it completes. history holds one entry per observed transition, first sighting first. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter.",
-  "checked_at": "2026-10-12T04:32:58.424Z",
+  "checked_at": "2026-10-14T08:04:38.757Z",
   "summary": {
     "jobs": 25,
     "completed": [
@@ -582,6 +582,6 @@
       "56887": "undelivered"
     },
     "first_completed_seen": "2026-09-02T07:21:32.176Z",
-    "checked_at": "2026-10-12T04:32:58.424Z"
+    "checked_at": "2026-10-14T08:04:38.757Z"
   }
 }

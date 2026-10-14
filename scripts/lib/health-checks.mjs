@@ -563,6 +563,13 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   //     dropped off); the agent worker asks Marque to probe every 8 h. Each round must be fresh and every agent answer.
   const mp = watch?.marque_probe, mpAge = mp?.at ? (Date.now() - Date.parse(mp.at)) / 3600e3 : null, mpBad = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok).map(([k]) => '#' + k) : [];
   ok('Agents', 'Marque probes all six agents (listing kept alive)', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpBad.length, mp ? `${mpAge.toFixed(1)} h ago, failing: ${mpBad.join(' ') || 'none'}` : 'no probe round yet');
+  // 3d. Settled by us (2026-10-14, own-jobs.js settleDue): the daily tick settles every job of ours whose dispute
+  //     window is over. One that has lain settleable for more than two days means the settling stopped (or the provider
+  //     may not settle it) — a hire that never counts as completed and $U left in escrow. And the tick itself must run.
+  const own = (await getJ(`${AGENT}/jobs/own`)).body, ownAge = own?.checked_at ? (Date.now() - Date.parse(own.checked_at)) / 3600e3 : null;
+  const stale = (own?.summary?.settleable || []).filter((id) => { const h = own.jobs?.[id]?.history || [], e = h.length ? h[h.length - 1].ends_at : null; return e && Date.now() / 1000 - e > 2 * 86400; });
+  const lastTry = (own?.settled_by_us || []).find((x) => stale.includes(String(x.id)));
+  ok('Agents', 'no job of ours lies settleable for more than two days (the worker settles them)', ownAge != null && ownAge < 26 && !stale.length, ownAge == null ? 'no own-jobs record' : stale.length ? `${stale.join(', ')} still settleable${lastTry ? ` — last try: ${lastTry.why || lastTry.tx}` : ''}` : `tick ${ownAge.toFixed(1)} h ago · ${(own.summary.completed || []).length} completed, ${(own.summary.waiting || []).length} waiting`);
   // 3c. An agent that hires an agent (2026-10-14): every morning the DeFi agent buys a second opinion on its position
   //     from Mandate Range-1 through its Altana leash. One must have been answered in the last 26 h, the newest must not
   //     contradict the agent, and the leash must still hold enough $U for a few more.

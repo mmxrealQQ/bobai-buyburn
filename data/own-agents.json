@@ -4,52 +4,87 @@
       "id": 302257,
       "name": "Brain on BNB — Venus Health Factor Monitor",
       "category": "health-factor-monitoring",
-      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "owner": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "tx": "0xe237457d3c1f3457bf1dba9f5e558d0c774f029da1c718e02aad0b9d1aaf0ba9",
       "block": 117989307,
       "registered_at": "2026-08-25T11:09:13.039Z",
-      "updated_at": "2026-10-13T06:55:02.867Z"
+      "updated_at": "2026-10-13T06:55:02.867Z",
+      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "moved": {
+        "at": "2026-10-14T17:34:00.000Z",
+        "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
+        "transfer_tx": "0x877d01cefac128c03b5e10fa2ac2229a3a9cf6bb18ea40c9b8fb5c2ebca770a3",
+        "set_agent_wallet_tx": "0x0aacc2984117d7bc2f064a4c8a64c085fbd7e77991e1849fd40d0f08b19a4de5"
+      }
     },
     "grid-trader": {
       "id": 302258,
       "name": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
-      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "owner": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "tx": "0xc992983dd069d51f8a0c670e1da6f0ae40d4700355ca6b472d806c3572298545",
       "block": 117989311,
       "registered_at": "2026-08-25T11:09:14.586Z",
-      "updated_at": "2026-10-13T06:55:04.972Z"
+      "updated_at": "2026-10-13T06:55:04.972Z",
+      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "moved": {
+        "at": "2026-10-14T17:34:00.000Z",
+        "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
+        "transfer_tx": "0xefbf06c6e8edb5dc001e2f2ec9ab02a784e4dd6eb1abe49ebad3efacd010d610",
+        "set_agent_wallet_tx": "0xd6b7d1194ebc6ef89d87c03ddb4569a8473a78b723df339ceb0db6eb6d51b9eb"
+      }
     },
     "yield-optimizer": {
       "id": 304493,
       "name": "Brain on BNB — Venus Yield Ranking",
       "category": "yield-optimization",
-      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "owner": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "tx": "0x1f1c449227d5433d2ad0a6081b010425ab59f45bf9d7a8eae15d352f90a58492",
       "block": 118146201,
       "registered_at": "2026-08-26T06:46:49.211Z",
-      "updated_at": "2026-10-13T17:38:17.332Z"
+      "updated_at": "2026-10-13T17:38:17.332Z",
+      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "moved": {
+        "at": "2026-10-14T17:34:00.000Z",
+        "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
+        "transfer_tx": "0xda2b1321bba80fefcaff6ed0c5785135d948d46e041e8d7a28e7d4e6eaf39096",
+        "set_agent_wallet_tx": "0x581583eb38db18cb589758c3674f8115dd17683512f6cfd7e14ed0e1e005510e"
+      }
     },
     "rebalancer": {
       "id": 304494,
       "name": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
-      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "owner": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "tx": "0x372f29467ba738e982f1bae6e71e35d5f2f672bff843a4577b4df6e51c6f49fb",
       "block": 118146212,
       "registered_at": "2026-08-26T06:46:53.577Z",
-      "updated_at": "2026-10-13T06:55:07.548Z"
+      "updated_at": "2026-10-13T06:55:07.548Z",
+      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "moved": {
+        "at": "2026-10-14T17:34:00.000Z",
+        "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
+        "transfer_tx": "0x41cfeda49ca07342d10d5be0b5f99b68e19ba01340d8a9bb577acbd014d18e39",
+        "set_agent_wallet_tx": "0x332efeb378c3b62e9deb0c7b1ca58cfc17ff791b56b16f1c6908c81779d4230b"
+      }
     },
     "lp-placement": {
       "id": 310460,
       "name": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
-      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "owner": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
       "tx": "0x09202a6ab252d345b85724676bfee705d8d8c07cabcff6297b8c183f6e515abd",
       "block": 118521128,
       "registered_at": "2026-08-28T05:39:45.780Z",
       "recategorised_at": "2026-08-31",
-      "updated_at": "2026-10-13T06:55:09.170Z"
+      "updated_at": "2026-10-13T06:55:09.170Z",
+      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "moved": {
+        "at": "2026-10-14T17:34:00.000Z",
+        "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
+        "transfer_tx": "0x81966978f0718f108a14fcdefc916742e6c0152c2873bb46165998c9427e0b3a",
+        "set_agent_wallet_tx": "0x988a65bb976eea8efc22dcb88824aea5c1bca88d96040bb7a46531e955a8c134"
+      }
     },
     "defi-agent": {
       "id": 363709,

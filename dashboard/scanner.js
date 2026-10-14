@@ -979,6 +979,24 @@ function render(d){
 
   // The answer first. Everything after it is why.
   o.appendChild(verdictCard(d,pool,gp,gpOk,tax));
+  // THE CHEAPER WAY IN, IN THE ANSWER (2026-10-14): the cost line is the deepest pool's, and CAKE's read 99.49% kept on a
+  // $500 round trip while PancakeSwap's own quoter returned 99.88% through the V3 0.05% pool — a trader saw that only
+  // after pressing "Quote the routes" at the bottom. Now, when another pool keeps at least a tenth of a percent more at
+  // the same size, the answer says so under the cost line.
+  { const vc=o.lastChild, list=vc&&vc.querySelector('.vd'), rs=(d.rows||[]).slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500)), ref=rs.find(r=>r.buyCost!=null&&r.sellCost!=null);
+    if(list&&ref){
+      const here=(1-ref.buyCost/100)*(1-ref.sellCost/100)*100;
+      fetch('/api/best-route?address='+encodeURIComponent(addr)+'&usd='+encodeURIComponent(ref.usd)).then(r=>r.json()).then(b=>{
+        const rt=b&&b.round_trip;
+        if(!rt||rt.you_keep_pct==null||!b.best_route_pool||b.best_route_pool.toLowerCase()===String(pool.pair).toLowerCase()||rt.you_keep_pct-here<0.1||(b.refuse_to_trade||[]).length)return;
+        const r=el('div','vd-r vd-good'), s=el('span',null,'The cost above is for the deepest pool. At $'+nf(ref.usd)+', buying and selling straight back through '+(b.best_route||'another pool')+' keeps '+pc(rt.you_keep_pct)+' instead of '+pc(here)+' — quoted by PancakeSwap’s own quoter at block '+b.block+'. The swap page’s router usually finds it by itself; check that it did. Pool ');
+        r.appendChild(el('b',null,'A cheaper way in: PancakeSwap '+(b.best_route||'')+'.'));
+        s.appendChild(link(short(b.best_route_pool),'https://bscscan.com/address/'+b.best_route_pool)); r.appendChild(s);
+        const cost=[...list.children].find(x=>/^A \$/.test(x.firstChild&&x.firstChild.textContent||''));
+        list.insertBefore(r,cost?cost.nextSibling:list.firstChild);
+      }).catch(()=>{});
+    }
+  }
 
   // headline stats
   o.appendChild(statRow([

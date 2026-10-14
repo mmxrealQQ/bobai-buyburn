@@ -660,7 +660,7 @@ function info(k) {
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
       ['Liq Boost III adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (Boost III)', nf(boost.lp, 2)],
-      ['All bot adds', nf(S.liq.length)], ['Pool LP locked', lpText()]],
+      ['All bot adds', nf(S.liq.length)], ['Pool LP burned', lpText()]],
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [

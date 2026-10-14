@@ -71,3 +71,20 @@ export function alertsOf(entry) {
   }
   return out.map((m) => ({ ...m, text: `${m.text}\n<a href="${RECORD_URL}">record</a>` }));
 }
+
+// A NODE THAT DID NOT ANSWER IS NOT A FAILED RUN (2026-10-14, operator's go). On 2026-10-13 at 20:40 UTC every public
+// node took too long once: the re-set check and the ladder check of one run failed, nothing was sent, the operator was
+// told "rebalance FAILED" and the next check an hour later was fine. A run whose only errors are a node not answering,
+// that acted nowhere and sent nothing, is run once more a minute later instead — it is then exactly the same run, one
+// minute later. A real error, or a run that sent anything, is told as before and left to the hourly check.
+const NODE_HICCUP = /took too long|timed? ?out|timeout|fetch failed|HTTP request failed|rate.?limit|too many requests|\b429\b|\b50[234]\b|ECONNRESET|socket hang up|network error/i;
+export function nodeHiccupOnly(entry) {
+  if (!entry || entry.dry || entry.acted || entry.retried_after) return false;
+  const parts = [];
+  for (const v of Object.values(entry.steps || {})) for (const p of Array.isArray(v) ? v : [v]) if (p) parts.push(p);
+  const failed = parts.filter((p) => p.error);
+  if (entry.error) failed.push({ error: entry.error });
+  return failed.length > 0
+    && failed.every((p) => NODE_HICCUP.test(String(p.error)))
+    && !parts.some((p) => p.acted || (Array.isArray(p.txs) && p.txs.length));
+}

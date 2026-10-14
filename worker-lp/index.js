@@ -37,7 +37,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
-import { alertsOf } from '../shared/lp-alerts.js';
+import { alertsOf, nodeHiccupOnly } from '../shared/lp-alerts.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch, ladderActive } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -101,10 +101,10 @@ async function readState(env) {
 // a large deposit waits beside a range the price has left (depositForcesReset),
 // and its rebalance step is not recorded otherwise, so the hourly check's
 // own record is not overwritten six times an hour with "no re-set".
-export async function agentTick(env, { dry = false, steps = STEPS, watch = false } = {}) {
+export async function agentTick(env, { dry = false, steps = STEPS, watch = false, retriedAfter = null } = {}) {
   const at = new Date().toISOString();
   const pub = createPublicClient({ chain: bsc, transport: transport() });
-  const entry = { at, dry, ok: true, acted: false, steps: {} };
+  const entry = { at, dry, ok: true, acted: false, steps: {}, ...(retriedAfter ? { retried_after: retriedAfter } : {}) };
 
   const run = async (name, fn) => {
     if (!steps.includes(name)) return;
@@ -433,6 +433,15 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   });
 
   entry.why = whyOf(entry.steps);
+  // A NODE THAT DID NOT ANSWER (2026-10-14, operator's go; shared/lp-alerts.js nodeHiccupOnly): a run that acted nowhere,
+  // sent nothing and failed only on a node timing out is run once more a minute later — the same run, not a second
+  // action — and its record says it was the retry and what the first try met. Anything else is recorded and told as before.
+  if (nodeHiccupOnly(entry)) {
+    const met = Object.entries(entry.steps).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).filter((x) => x && x.error).map((x) => `${k}: ${String(x.error).slice(0, 80)}`));
+    console.log(`[LP] ${at}: only a node did not answer (${met.join(' · ')}) — the same run once more in 60 s`);
+    await new Promise((r) => setTimeout(r, 60000));
+    return agentTick(env, { dry, steps, watch, retriedAfter: { at, met } });
+  }
   return record(env, entry, steps.length < STEPS.length);
 }
 

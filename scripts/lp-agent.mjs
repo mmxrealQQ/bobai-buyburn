@@ -43,7 +43,7 @@ import {
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset, capSeries, SERIES_CAP, increaseIntoPosition } from '../shared/lp-flow.js';
 import { resetLosses } from '../worker-agent/lp-windows.js';
-import { alertsOf } from '../shared/lp-alerts.js';
+import { alertsOf, nodeHiccupOnly } from '../shared/lp-alerts.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -228,6 +228,15 @@ if (SELF) {
     is('routine is not an alert: a look, a collect and a top-up say nothing', alertsOf(quiet).length === 0);
     is('the day the agent stood still is ONE message, not one per refusing step — and it names them', (() => { const m = alertsOf(stood); return m.length === 1 && /rebalance, increase wait for a person/.test(m[0].text) && m[0].quietHours >= 12; })());
     is('a failed step is told with what had already been sent', (() => { const m = alertsOf(broke); return m.length === 1 && /rebalance FAILED/.test(m[0].text) && /2 transaction\(s\) had already gone through/.test(m[0].text); })());
+    // 2026-10-14 (operator's go): a run that only met a node not answering, and sent nothing, is run once more
+    {
+      const T = 'The request took too long to respond.';
+      const hiccup = { at: '2026-10-13T20:40:33Z', ok: false, acted: false, steps: { rebalance: { acted: false, error: T }, ladder: { acted: false, error: T }, increase: { acted: false, why: 'below the floor' } } };
+      is('a run that only met a node timeout and sent nothing is retried', nodeHiccupOnly(hiccup) === true);
+      is('… not once it is the retry itself (one more time, never a loop)', nodeHiccupOnly({ ...hiccup, retried_after: { at: hiccup.at } }) === false);
+      is('… not when any step acted, or a failed step had sent transactions', nodeHiccupOnly({ ...hiccup, acted: true }) === false && nodeHiccupOnly({ ...hiccup, steps: { rebalance: { acted: false, error: T, txs: [{ hash: '0xa' }] } } }) === false && nodeHiccupOnly(broke) === false);
+      is('… not when another error stands beside the timeout, nor a dry run, nor a run without an error', nodeHiccupOnly({ ...hiccup, steps: { ...hiccup.steps, collect: { acted: false, error: 'execution reverted' } } }) === false && nodeHiccupOnly({ ...hiccup, dry: true }) === false && nodeHiccupOnly({ ...hiccup, ok: true, steps: { increase: { acted: false } } }) === false);
+    }
     is('… the same failure has the same key (said once while it repeats), another failure another key', alertsOf(broke)[0].key === alertsOf({ ...broke, at: '2026-09-18T13:00:00Z' })[0].key && alertsOf(broke)[0].key !== alertsOf({ ...broke, steps: { rebalance: { ...broke.steps.rebalance, error: 'another reason' } } })[0].key);
     is('a re-set is told with its direction, the merge and the trade — keyed by the position it made', (() => { const m = alertsOf(up); return m.length === 1 && /re-set UPWARD/.test(m[0].text) && /merged the reserve #7461743/.test(m[0].text) && m[0].key === 'reset:7477750'; })());
     is('a healed record, a record write that failed after a transaction and every ladder act are told', alertsOf({ at: 'x', ok: true, steps: {}, ladder_healed: { from: '1', to: '2', why: 'w' } }).length === 1 && alertsOf({ at: 'x', ok: true, steps: { ladder: { acted: true, new_reserve: '9', bnb_spent: '0.04', kv_error: 'KV put failed' } } }).length === 2);

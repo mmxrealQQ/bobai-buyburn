@@ -452,3 +452,33 @@ obey). The health worker reads the agent every morning: age of its last
 look and run, failed steps, a step waiting for a person, a range left past
 its wait, the ranges the record names against the chain. Pins 296/296,
 135/135, 35/35, surface 194/194.
+
+Refresh 2026-10-14 — what changed since 2026-09-18, so the older sentences
+are read with it. Checks today: health 97/97, agent surface 210/210, every
+promise the site makes resolves (link audit), 23 pages × 2 sizes 276/276.
+- An agent hires an agent. Every morning before it decides anything, the
+  DeFi agent (ERC-8004 #363709) buys a second opinion on its own position
+  from another seller, Mandate's Range-1, through an ERC-8183 escrow job it
+  funds itself from an Altana session leash (four allowed contract calls, 1 $U a day,
+  until 2026-11-13; leash tx 0x3db6fae5…). Jobs 56990 (by hand) and 56991
+  (by the worker, `agrees: true`). It records the opinion and does not let
+  it veto: GET https://agent.brainonbnb.com/second-opinion.
+- The DeFi agent has its own MCP (agent.brainonbnb.com/defi-agent/mcp,
+  named in its on-chain registration, tx 0x0939c1de…): a free look at any
+  PancakeSwap V3 position and the paid plan's terms. Its answers carry
+  in_range and current_tick at the top, the figures a marketplace compares
+  with the chain. Hired over x402 on Mandate, it was paid (tx 0xed2a8168…) and delivered.
+- The Flip, read from the pool: PancakeSwap proposes LPs keep 88% of swap
+  fees; our pool pays its LPs 66% today (slot0.feeProtocol). /defi and the
+  free look show what any position would earn under it.
+- Money rules, all on the agent's own page and record: the position's fees
+  are split in thirds — capital, $BOBAI the agent holds and never sells, and
+  BNB to the operator; what other AIs pay is split when swept — half buys
+  $BOBAI held in the income wallet, half to the operator. Every paid answer
+  and the pool watch cost half in $BOBAI. A run that fails on a node timeout
+  with nothing sent is repeated once after 60 s; jobs of ours whose dispute
+  window has closed are settled by the worker, simulated first.
+- MCP: 26 tools on https://brainonbnb.com/mcp (official registry
+  com.brainonbnb/bobai 1.5.0), the stdio package kept identical to the
+  hosted server by scripts/sync-mcp-stdio.mjs; every tool says when to use
+  it and which sibling to take instead.

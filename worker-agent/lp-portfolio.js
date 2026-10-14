@@ -54,7 +54,7 @@ export function lastDay(rec, now = Date.now()) {
     for (const [name, v] of Object.entries(steps)) {
       for (const s of Array.isArray(v) ? v : [v]) {
         const w = stepWords(name, s);
-        if (w) out.push({ at: h.at, step: name, ...w });
+        if (w) out.push({ at: h.at, step: name, ...w, ...(w.error ? { sent: Array.isArray(s && s.txs) && s.txs.length > 0 } : {}) });
       }
     }
   }
@@ -231,7 +231,10 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
-    errors: day.filter((d) => d.error).length,
+    // FAILED RUNS, NOT FAILED STEPS (2026-10-14): one node timeout at 20:40 failed the re-set check and the ladder check
+    // of the same run and the card read "2 failed"; it is one run, and nothing was sent — said so
+    errors: new Set(day.filter((d) => d.error).map((d) => d.at)).size,
+    errors_sent_nothing: day.some((d) => d.error) && !day.some((d) => d.error && d.sent),
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
   return {

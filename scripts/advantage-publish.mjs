@@ -266,7 +266,8 @@ ${report.tasks.map(taskCard).join('\n')}
       const F = (p) => (p.fees_total_bnb != null ? p.fees_total_bnb : (p.forwarded_total_bnb || 0) + (p.kept_total_bnb || 0)) + (p.owed_bnb || 0);
       const pc = (x) => (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
       const f4 = (x) => (x >= 0 ? '+' : '') + x.toFixed(4), day = (s) => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-      fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).then((j) => {
+      // the result is the one model /defi and the Telegram card render (/lp/portfolio), so no two pages differ (2026-10-14)
+      Promise.all([fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()), fetch('https://agent.brainonbnb.com/lp/portfolio').then((r) => r.json()).catch(() => null)]).then(([j, pf]) => {
         const S = j.summary, pts = j.points.filter((p) => p.position && Array.isArray(p.ticks)), segs = [];
         for (const p of pts) { const s = segs[segs.length - 1]; if (s && s.id === p.position) s.pts.push(p); else segs.push({ id: p.position, pts: [p] }); }
         let n = 0, ahead = 0, short = 0; const rows = [];
@@ -285,7 +286,9 @@ ${report.tasks.map(taskCard).join('\n')}
           '<div><b>' + day(S.since) + ' – now</b><span>time window · ' + S.days_covered + ' days, ' + S.points + ' runs</span></div>'
           + '<div><b>' + S.value_bnb.now.toFixed(3) + ' BNB</b><span>at risk now' + usd(S.value_bnb.now) + ' · one pool, CAKE/BNB 0.05 %</span></div>'
           + '<div><b>' + (S.time_in_range ? S.time_in_range.in_range_pct + '%' : '–') + '</b><span>of the time in range</span></div>'
-          + '<div><b class="' + (S.value_bnb.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (S.value_bnb.change_pct >= 0 ? '+' : '') + S.value_bnb.change_pct + '%</b><span>on the capital · ' + f4(S.profit.from_fees_bnb) + ' BNB fees, ' + f4(S.profit.from_price_bnb) + ' BNB from the price, ' + f4(-S.profit.gas_bnb) + ' BNB gas</span></div>';
+          + (pf && pf.pnl ? '<div><b class="' + (pf.pnl.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.change_pct >= 0 ? '+' : '') + pf.pnl.change_pct + '%</b><span>on the capital, ' + f4(pf.pnl.profit_bnb) + ' BNB · ' + f4(pf.pnl.from_fees_bnb) + ' fees, ' + f4(pf.pnl.from_price_bnb) + ' from the price, ' + f4(-pf.pnl.gas_bnb) + ' gas — the same result as <a href="/defi">/defi</a></span></div>'
+            + (pf.pnl.vs_holding ? '<div><b class="' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? '+' : '') + pf.pnl.vs_holding.vs_holding_pct + '%</b><span>against simply holding 50/50, ' + f4(pf.pnl.vs_holding.vs_holding_bnb) + ' BNB</span></div>' : '')
+            : '<div><b>–</b><span>the result could not be read just now: <a href="/defi">/defi</a></span></div>');
         document.getElementById('tr-win').innerHTML = '<p style="margin:10px 0 14px"><b style="font-size:20px">' + ahead + ' of ' + n + '</b> closed ranges ended ahead of holding (' + (n ? Math.round(100 * ahead / n) : 0) + '%)' + (short ? '; ' + short + ' lived too short to judge' : '') + '.</p>';
         document.getElementById('tr-tbl').innerHTML = '<tr><th>Position</th><th>Lived</th><th>Range</th><th>Fees, BNB</th><th>vs holding</th><th>Net</th><th></th></tr>' + rows.reverse().join('');
       }).catch(() => { document.getElementById('tr-sum').textContent = 'Its record could not be read just now: https://agent.brainonbnb.com/lp/series'; });

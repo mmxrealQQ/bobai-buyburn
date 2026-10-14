@@ -67,6 +67,12 @@ if (process.argv.includes('--self-test')) {
   is('a re-set that bought BOBAI says so', /into \$BOBAI/.test(m.last_24h[0].what));
   is('a quiet day has an empty list', lastDay({ history: [{ at: at(40), acted: true, steps: { increase: { acted: true } } }] }, NOW).length === 0);
   is('a failed step is listed as an error', stepWords('collect', { acted: true, error: 'boom' }).error === true);
+  // 2026-10-14: one node timeout failed two steps of one run, and the card read "2 failed" — it is one run, nothing sent
+  is('failed runs are counted, not failed steps, and a run that sent nothing says so', (() => {
+    const t = 'The request took too long to respond.', run = (txs) => ({ at: at(1), acted: false, steps: { rebalance: { acted: false, error: t, ...(txs ? { txs } : {}) }, ladder: { acted: false, error: t } } });
+    const quiet = lpPortfolio({ ...rec, history: [...rec.history, run(null)] }, series, { now: NOW }).day, sent = lpPortfolio({ ...rec, history: [...rec.history, run(['0xabc'])] }, series, { now: NOW }).day;
+    return quiet.errors === 1 && quiet.errors_sent_nothing === true && sent.errors === 1 && sent.errors_sent_nothing === false;
+  })());
   is('a step that did not act is not listed', stepWords('increase', { acted: false }) === null);
   is('a relocate names the pool it moved to', /USDT\/BNB 0\.01%/.test(stepWords('relocate', { acted: true, new_pool: CANDIDATES[2].pool, new_position: '9' }).what));
   is('a width upgrade names both widths', /±2% → ±1%/.test(stepWords('rebalance', { acted: true, upgraded_from_pct: 2, upgraded_to_pct: 1 }).what));

@@ -1218,7 +1218,7 @@ function fillLpPortfolio(){
     if(d.collects) counts.push(d.collects + ' collect' + (d.collects === 1 ? '' : 's'));
     if(d.sweeps) counts.push(d.sweeps + ' sweep' + (d.sweeps === 1 ? '' : 's'));
     if(d.reserve_moves) counts.push(d.reserve_moves + ' reserve move' + (d.reserve_moves === 1 ? '' : 's'));
-    if(d.errors) counts.push('⚠️ ' + d.errors + ' failed');
+    if(d.errors) counts.push('⚠️ ' + d.errors + ' run' + (d.errors === 1 ? '' : 's') + ' failed' + (d.errors_sent_nothing ? ', nothing was sent' : ''));
     const list = [
       li('🥞', [esc(m.pool.label || 'the pool'), width, range].filter(Boolean).join(' · ')),
       (h.reserve && h.reserve.bnb > 0 ? li('🪜', (h.reserve.side === 'other' ? 'Reserve range, the price fell through it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· waits for the price to come back, then merges</span>' : h.reserve.side === 'both' ? 'Reserve range, the price inside it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· earning beside the main range</span>' : 'Reserve below the price: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· buys on the way down, no trade</span>')) : ''),

@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7042 lines.
+# one fetch. 17 files, 7051 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1443,6 +1443,12 @@ if (process.argv.includes('--self-test')) {
   is('a re-set that bought BOBAI says so', /into \$BOBAI/.test(m.last_24h[0].what));
   is('a quiet day has an empty list', lastDay({ history: [{ at: at(40), acted: true, steps: { increase: { acted: true } } }] }, NOW).length === 0);
   is('a failed step is listed as an error', stepWords('collect', { acted: true, error: 'boom' }).error === true);
+  // 2026-10-14: one node timeout failed two steps of one run, and the card read "2 failed" — it is one run, nothing sent
+  is('failed runs are counted, not failed steps, and a run that sent nothing says so', (() => {
+    const t = 'The request took too long to respond.', run = (txs) => ({ at: at(1), acted: false, steps: { rebalance: { acted: false, error: t, ...(txs ? { txs } : {}) }, ladder: { acted: false, error: t } } });
+    const quiet = lpPortfolio({ ...rec, history: [...rec.history, run(null)] }, series, { now: NOW }).day, sent = lpPortfolio({ ...rec, history: [...rec.history, run(['0xabc'])] }, series, { now: NOW }).day;
+    return quiet.errors === 1 && quiet.errors_sent_nothing === true && sent.errors === 1 && sent.errors_sent_nothing === false;
+  })());
   is('a step that did not act is not listed', stepWords('increase', { acted: false }) === null);
   is('a relocate names the pool it moved to', /USDT\/BNB 0\.01%/.test(stepWords('relocate', { acted: true, new_pool: CANDIDATES[2].pool, new_position: '9' }).what));
   is('a width upgrade names both widths', /±2% → ±1%/.test(stepWords('rebalance', { acted: true, upgraded_from_pct: 2, upgraded_to_pct: 1 }).what));
@@ -5040,7 +5046,7 @@ export function lastDay(rec, now = Date.now()) {
     for (const [name, v] of Object.entries(steps)) {
       for (const s of Array.isArray(v) ? v : [v]) {
         const w = stepWords(name, s);
-        if (w) out.push({ at: h.at, step: name, ...w });
+        if (w) out.push({ at: h.at, step: name, ...w, ...(w.error ? { sent: Array.isArray(s && s.txs) && s.txs.length > 0 } : {}) });
       }
     }
   }
@@ -5217,7 +5223,10 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
-    errors: day.filter((d) => d.error).length,
+    // FAILED RUNS, NOT FAILED STEPS (2026-10-14): one node timeout at 20:40 failed the re-set check and the ladder check
+    // of the same run and the card read "2 failed"; it is one run, and nothing was sent — said so
+    errors: new Set(day.filter((d) => d.error).map((d) => d.at)).size,
+    errors_sent_nothing: day.some((d) => d.error) && !day.some((d) => d.error && d.sent),
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
   return {

@@ -52,5 +52,20 @@ for (const service of ['lp_position_plan', 'health_factor']) {
   console.log(`${shut ? 'PASS' : 'FAIL'} a receipt that is no payment buys no watch: ${f.status} ${String(fb.reason || fb.error || '').slice(0, 90)}`);
   if (!shut) fail++;
 }
-console.log(`x402-noinput: ${6 - fail} PASS, ${fail} FAIL`);
+// MANDATE'S CHECK, REDONE (2026-10-14): it compares "in range" and "current tick" of an answer with its own chain
+// reading. The DeFi agent's free MCP tool must carry both at the top, and the tick must be the pool's slot0 tick.
+{
+  const MCP = BASE.replace(/\/$/, '') + '/defi-agent/mcp';
+  const j = await (await fetch(MCP, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'lp_position_look', arguments: {} } }) })).json().catch(() => ({}));
+  const s = j.result?.structuredContent || {};
+  let chainTick = null;
+  if (s.pool?.address) {
+    const r = await (await fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: s.pool.address, data: '0x3850c7bd' }, 'latest'] }) })).json();
+    const w = BigInt('0x' + r.result.slice(66, 130)); chainTick = Number(BigInt.asIntN(24, w));
+  }
+  const ok = typeof s.in_range === 'boolean' && Number.isInteger(s.current_tick) && chainTick != null && Math.abs(s.current_tick - chainTick) <= 50;
+  console.log(`${ok ? 'PASS' : 'FAIL'} the DeFi agent's free look carries in_range and current_tick at the top, the tick as on chain: ${s.in_range} / ${s.current_tick} vs slot0 ${chainTick}`);
+  if (!ok) fail++;
+}
+console.log(`x402-noinput: ${7 - fail} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

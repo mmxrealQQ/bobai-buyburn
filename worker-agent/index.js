@@ -39,7 +39,7 @@ import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -1247,6 +1247,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     ...(target ? { input: target.target } : {}),
     result,
     summary: summarize(serviceId, result),
+    ...checkedFigures(serviceId, result), // in_range / current_tick at the top for a checker (sell.js)
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
   } };
 }
@@ -2803,7 +2804,9 @@ ${pageTail}`;
           const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
           const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
           try {
-            const look = await lpPositionLook(q, env);
+            const look0 = await lpPositionLook(q, env);
+            // the figures a checker compares with the chain, at the top (as the paid answer since 2026-10-14)
+            const look = look0?.pool ? { current_tick: look0.pool.tick ?? null, tick_lower: look0.pool.ticks?.[0] ?? null, tick_upper: look0.pool.ticks?.[1] ?? null, ...look0 } : look0;
             const out = !pos && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})`, ...look } : look;
             return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
           } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }

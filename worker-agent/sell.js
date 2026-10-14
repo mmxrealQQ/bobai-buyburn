@@ -408,6 +408,15 @@ function exampleLinks(serviceId, service) {
     terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',
   };
 }
+// THE FIGURES A CHECKER COMPARES, AT THE TOP (2026-10-14). Mandate asks every rebalancing agent the same question and
+// compares "in range" and "current tick" with its own reading of the chain; ours sat two levels down
+// (result.plan.in_range, result.plan.pool.tick) and its page said "not data we can read". The paid answer and its
+// free example both carry them at the top level, from this one place.
+export function checkedFigures(serviceId, result) {
+  const plan = result && result.plan;
+  if (serviceId !== 'lp_position_plan' || !plan || !plan.pool) return {};
+  return { position: plan.position ?? null, in_range: plan.in_range ?? null, current_tick: plan.pool.tick ?? null, tick_lower: plan.pool.ticks?.[0] ?? null, tick_upper: plan.pool.ticks?.[1] ?? null };
+}
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const service = SERVICES[serviceId];
   if (!service) return null;
@@ -427,6 +436,7 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
     task,
     produced_at: new Date().toISOString(),
     took_ms: Date.now() - t0,
+    ...checkedFigures(serviceId, result),
     result,
     note: 'Run by the same code a funded job runs, on the sentence the hire box opens with. Not a paid job; the figures are from the moment above.',
   };

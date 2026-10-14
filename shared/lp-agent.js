@@ -97,6 +97,13 @@ export const INCOME_SOURCES = [
     token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
     earns: '$U released from ERC-8183 job escrows',
   },
+  // The same wallet, USDC (2026-10-14, the wallet map): 0.208 USDC lay on the provider and no sweep knew it
+  {
+    key: 'provider-usdc', name: 'agent provider (USDC)', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',
+    wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+    token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
+    earns: 'USDC paid to the provider',
+  },
 ];
 
 export const ABI = {

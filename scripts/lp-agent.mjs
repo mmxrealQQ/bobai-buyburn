@@ -206,6 +206,9 @@ if (SELF) {
   is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
+  // 2026-10-14: the income buys $BOBAI held in its wallet — the flow counts it per source and the sentence names it
+  is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1.6 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
+  is('the sweep buys $BOBAI into the income wallet, never BNB into the DeFi wallet (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const body = src.slice(src.indexOf('export async function executeSweep'), src.indexOf('export async function executeSweep') + 1600); return /swapExactTokensForTokensSupportingFeeOnTransferTokens/.test(body) && /ADDR\.WBNB, ADDR\.BOBAI\], holder/.test(body) && !/ADDR\.LP_WALLET/.test(body); })());
   is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.008) && fl.in.fees.collects === 3);
   is('the fees three re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.0012) && fl.in.fees.resets_with_fees === 3 && near(fl.in.fees.bnb, 0.0092));
   is('a re-set before 2026-09-08 folded all of it in; the ones after sent half on', near(fl.in.fees.folded_kept_bnb, 0.0009) && near(fl.in.fees.forwarded_at_resets_bnb, 0.0003));

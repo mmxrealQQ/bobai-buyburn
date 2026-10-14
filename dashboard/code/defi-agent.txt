@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7108 lines.
+# one fetch. 17 files, 7135 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -222,6 +222,9 @@ if (SELF) {
   is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
+  // 2026-10-14: the income buys $BOBAI held in its wallet — the flow counts it per source and the sentence names it
+  is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1.6 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
+  is('the sweep buys $BOBAI into the income wallet, never BNB into the DeFi wallet (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const body = src.slice(src.indexOf('export async function executeSweep'), src.indexOf('export async function executeSweep') + 1600); return /swapExactTokensForTokensSupportingFeeOnTransferTokens/.test(body) && /ADDR\.WBNB, ADDR\.BOBAI\], holder/.test(body) && !/ADDR\.LP_WALLET/.test(body); })());
   is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.008) && fl.in.fees.collects === 3);
   is('the fees three re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.0012) && fl.in.fees.resets_with_fees === 3 && near(fl.in.fees.bnb, 0.0092));
   is('a re-set before 2026-09-08 folded all of it in; the ones after sent half on', near(fl.in.fees.folded_kept_bnb, 0.0009) && near(fl.in.fees.forwarded_at_resets_bnb, 0.0003));
@@ -1107,6 +1110,7 @@ import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
   planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
+  planSweep, executeSweep, INCOME_SOURCES,
 } from '../shared/lp-agent.js';
 import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
@@ -1373,6 +1377,23 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
   ok('what the run produced is what both were owed, less its gas — the reserve\'s part is in the split', Math.abs(produced + gas - planned) < planned * 0.01 && produced + gas > (planned - r2.bnb_equivalent) * 1.02, `produced ${produced.toFixed(6)} + gas ${gas.toFixed(6)} of ${planned.toFixed(6)} BNB owed (main alone ${(planned - r2.bnb_equivalent).toFixed(6)})`);
   ok('half of it bought $BOBAI, held in the wallet', Number(done.bobai_bnb) > 0 && Math.abs(Number(done.bobai_bnb) - produced / 2) < produced * 0.01 && (await bal(BOBAI, LP)) > bobai0, `${done.bobai_bnb} BNB into $BOBAI, kept ${done.kept_bnb}`);
   ok('no CAKE and no WBNB of it is left loose', (await bal(CAKE, LP)) <= plan.heldOther + 10n ** 12n && (await bal(ADDR.WBNB, LP)) === 0n);
+});
+
+await scenario('EVERY AI PAYMENT BUYS $BOBAI (2026-10-14) — the x402 wallet holds USD1 a buyer paid; the sweep sells it for $BOBAI in one swap and the $BOBAI stays in that wallet; the DeFi wallet gets nothing', 'sweep', async () => {
+  const src = INCOME_SOURCES.find((s) => s.key === 'x402');
+  // a buyer's payment, on the fork: the whale buys 0.05 BNB of USD1 (a payment, not a market move) and sends it to the income wallet
+  await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.05') });
+  await test.setBalance({ address: src.wallet, value: parseEther('0.01') });   // gas, as the wallet holds on the chain
+  const usd0 = await bal(src.token, src.wallet), bobai0 = await bal(BOBAI, src.wallet), lpBnb0 = await pub.getBalance({ address: LP });
+  const plan = await planSweep(pub, src);
+  ok('the plan sweeps the payment and quotes it in $BOBAI', !plan.no && plan.amount > 0n && plan.bobaiOut > 0n, plan.no || `${plan.summary.sweeping} USD1 -> about ${(Number(plan.bobaiOut) / 1e18).toFixed(0)} $BOBAI`);
+  if (plan.no) return;
+  const txs = [], done = await executeSweep(pub, walletOf(src.wallet), src.wallet, plan, () => {}, { txs });
+  const usd1 = await bal(src.token, src.wallet), bobai1 = await bal(BOBAI, src.wallet), lpBnb1 = await pub.getBalance({ address: LP });
+  ok('two transactions: approve, then one swap USD1 -> WBNB -> $BOBAI', txs.length === 2 && /buy \$BOBAI with USD1/.test(txs[1].label), txs.map((t) => t.label).join(' · '));
+  ok('the swept USD1 has left the wallet', usd0 - usd1 === plan.amount, `${Number(usd0 - usd1) / 1e18} of ${Number(plan.amount) / 1e18}`);
+  ok('$BOBAI arrived in the income wallet, at least the floor (quote less the 3% tax less 5%)', bobai1 - bobai0 >= (plan.bobaiOut * 97n * 95n) / 10000n && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI for a quote of ${(Number(plan.bobaiOut) / 1e18).toFixed(2)}`);
+  ok('the DeFi wallet received nothing — its capital and record are untouched', lpBnb1 === lpBnb0, `${formatEther(lpBnb1 - lpBnb0)} BNB`);
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);
@@ -2147,6 +2168,7 @@ export const ABI = {
   ROUTER: parseAbi([
     'function getAmountsOut(uint256,address[]) view returns (uint256[])',
     'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
+    'function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
     'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
     'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable',
   ]),
@@ -2668,15 +2690,17 @@ export async function planSweep(pub, source, feed = null) {
   // Bounded per run: a balance above the cap is swept in daily slices.
   const capRaw = parseEther(String(MAX_SWEEP_USD));
   const amount = balance > capRaw ? capRaw : balance;
-  let bnbOut = 0n, impliedUsd = null;
+  let bnbOut = 0n, impliedUsd = null, bobaiOut = 0n;
   if (amount > 0n) {
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB]]);
     bnbOut = q[1];
+    // what the same amount buys in $BOBAI through WBNB (the sweep buys it since 2026-10-14)
+    bobaiOut = (await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB, ADDR.BOBAI]]))[2];
     impliedUsd = (bn(bnbOut) * bnbUsd) / Number(formatUnits(amount, source.decimals));
   }
   const state = { symbol: source.symbol, balance: Number(formatUnits(balance, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
   return {
-    step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut,
+    step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut, bobaiOut,
     summary: {
       source: source.key, wallet: source.wallet, token: source.symbol,
       balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
@@ -2686,21 +2710,23 @@ export async function planSweep(pub, source, feed = null) {
   };
 }
 
-// Approve exactly the amount, sell it, and have the router pay the BNB
-// straight to the DeFi wallet — one transaction fewer, and the income
-// wallet never holds BNB it could be tempted to keep.
+// EVERY AI PAYMENT BUYS $BOBAI (2026-10-14, operator: "100 % kaufen $BOBAI" — profit and volume for the token first).
+// Until then the income was sold for BNB and became capital of the liquidity position. Now it is sold for $BOBAI in
+// one swap (income token -> WBNB -> $BOBAI) and the $BOBAI stays in the income wallet it was earned in — off the market,
+// never sold, as a $BOBAI payment always did. The DeFi agent's capital and its record are not touched by it.
+// The floor: the route's quote, less the token's 3% transfer tax, less 5% (bobaiBuyFloor, as for the fee share); the
+// dollar guard (refuseSweep) has already refused a route that prices the income off a dollar.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
-  const before = await pub.getBalance({ address: ADDR.LP_WALLET });
+  const holder = plan.source.wallet;
+  const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
-  // 3% floor: both pairs are deep and both tokens are dollars; the guard has
-  // already refused a route that prices them off a dollar.
-  await send(`sell ${plan.source.symbol} for BNB to the DeFi wallet`, {
-    address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
-    args: [plan.amount, (plan.bnbOut * 9700n) / 10000n, [plan.source.token, ADDR.WBNB], ADDR.LP_WALLET, deadline()],
+  await send(`buy $BOBAI with ${plan.source.symbol} and hold it`, {
+    address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
+    args: [plan.amount, bobaiBuyFloor(plan.bobaiOut), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
   });
-  const after = await pub.getBalance({ address: ADDR.LP_WALLET });
-  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), received_bnb: formatEther(after - before), to: ADDR.LP_WALLET };
+  const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
+  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), bobai_bought: formatEther(after > before ? after - before : 0n), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
 }
 
 // --------------------------------------------------------------------------
@@ -3811,9 +3837,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
     for (const s of sweeps) {
       if (!s.acted || s.error) continue;
       const k = s.source || 'income';
-      bySource[k] = bySource[k] || { source: k, token: s.token || null, sold: 0, bnb: 0, runs: 0 };
+      bySource[k] = bySource[k] || { source: k, token: s.token || null, sold: 0, bnb: 0, bobai: 0, runs: 0 };
       bySource[k].sold += n(s.sold);
       bySource[k].bnb += n(s.received_bnb);
+      bySource[k].bobai += n(s.bobai_bought); // since 2026-10-14 the income buys $BOBAI held in its wallet, not BNB for capital
       bySource[k].runs += 1;
     }
     const c = st.collect;
@@ -3940,7 +3967,7 @@ export function flowLines(flow) {
   if (!flow) return null;
   const f = (v) => n(v).toFixed(5);
   const income = flow.in.income.length
-    ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
+    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
   // The basis in the sentence: the re-sets that had fees to take, of all there were.
@@ -6548,7 +6575,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
-        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
+        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have bought $BOBAI with it and held it in the income wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
         out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs })) });
       } catch (e) {

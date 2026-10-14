@@ -65,9 +65,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
     for (const s of sweeps) {
       if (!s.acted || s.error) continue;
       const k = s.source || 'income';
-      bySource[k] = bySource[k] || { source: k, token: s.token || null, sold: 0, bnb: 0, runs: 0 };
+      bySource[k] = bySource[k] || { source: k, token: s.token || null, sold: 0, bnb: 0, bobai: 0, runs: 0 };
       bySource[k].sold += n(s.sold);
       bySource[k].bnb += n(s.received_bnb);
+      bySource[k].bobai += n(s.bobai_bought); // since 2026-10-14 the income buys $BOBAI held in its wallet, not BNB for capital
       bySource[k].runs += 1;
     }
     const c = st.collect;
@@ -194,7 +195,7 @@ export function flowLines(flow) {
   if (!flow) return null;
   const f = (v) => n(v).toFixed(5);
   const income = flow.in.income.length
-    ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
+    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
   // The basis in the sentence: the re-sets that had fees to take, of all there were.

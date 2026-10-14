@@ -146,7 +146,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
-        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
+        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have bought $BOBAI with it and held it in the income wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
         out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs })) });
       } catch (e) {

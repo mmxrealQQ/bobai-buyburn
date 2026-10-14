@@ -131,6 +131,7 @@ export const ABI = {
   ROUTER: parseAbi([
     'function getAmountsOut(uint256,address[]) view returns (uint256[])',
     'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
+    'function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
     'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
     'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable',
   ]),
@@ -652,15 +653,17 @@ export async function planSweep(pub, source, feed = null) {
   // Bounded per run: a balance above the cap is swept in daily slices.
   const capRaw = parseEther(String(MAX_SWEEP_USD));
   const amount = balance > capRaw ? capRaw : balance;
-  let bnbOut = 0n, impliedUsd = null;
+  let bnbOut = 0n, impliedUsd = null, bobaiOut = 0n;
   if (amount > 0n) {
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB]]);
     bnbOut = q[1];
+    // what the same amount buys in $BOBAI through WBNB (the sweep buys it since 2026-10-14)
+    bobaiOut = (await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB, ADDR.BOBAI]]))[2];
     impliedUsd = (bn(bnbOut) * bnbUsd) / Number(formatUnits(amount, source.decimals));
   }
   const state = { symbol: source.symbol, balance: Number(formatUnits(balance, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
   return {
-    step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut,
+    step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut, bobaiOut,
     summary: {
       source: source.key, wallet: source.wallet, token: source.symbol,
       balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
@@ -670,21 +673,23 @@ export async function planSweep(pub, source, feed = null) {
   };
 }
 
-// Approve exactly the amount, sell it, and have the router pay the BNB
-// straight to the DeFi wallet — one transaction fewer, and the income
-// wallet never holds BNB it could be tempted to keep.
+// EVERY AI PAYMENT BUYS $BOBAI (2026-10-14, operator: "100 % kaufen $BOBAI" — profit and volume for the token first).
+// Until then the income was sold for BNB and became capital of the liquidity position. Now it is sold for $BOBAI in
+// one swap (income token -> WBNB -> $BOBAI) and the $BOBAI stays in the income wallet it was earned in — off the market,
+// never sold, as a $BOBAI payment always did. The DeFi agent's capital and its record are not touched by it.
+// The floor: the route's quote, less the token's 3% transfer tax, less 5% (bobaiBuyFloor, as for the fee share); the
+// dollar guard (refuseSweep) has already refused a route that prices the income off a dollar.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
-  const before = await pub.getBalance({ address: ADDR.LP_WALLET });
+  const holder = plan.source.wallet;
+  const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
-  // 3% floor: both pairs are deep and both tokens are dollars; the guard has
-  // already refused a route that prices them off a dollar.
-  await send(`sell ${plan.source.symbol} for BNB to the DeFi wallet`, {
-    address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
-    args: [plan.amount, (plan.bnbOut * 9700n) / 10000n, [plan.source.token, ADDR.WBNB], ADDR.LP_WALLET, deadline()],
+  await send(`buy $BOBAI with ${plan.source.symbol} and hold it`, {
+    address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
+    args: [plan.amount, bobaiBuyFloor(plan.bobaiOut), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
   });
-  const after = await pub.getBalance({ address: ADDR.LP_WALLET });
-  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), received_bnb: formatEther(after - before), to: ADDR.LP_WALLET };
+  const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
+  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), bobai_bought: formatEther(after > before ? after - before : 0n), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
 }
 
 // --------------------------------------------------------------------------

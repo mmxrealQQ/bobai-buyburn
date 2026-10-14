@@ -1254,8 +1254,18 @@ function lpRange(){
       + '<div class="lpr-ends" data-nousd><span><small>lower</small>' + fmt(pLo) + '</span><span class="mid"><small>CAKE now</small>' + fmt(pNow) + '</span><span><small>upper</small>' + fmt(pHi) + '</span></div>'
       + (room.to_lower_pct != null ? '<p class="agt-note" data-nousd>Room: <b>' + Number(room.to_lower_pct).toFixed(1) + '%</b> before the price leaves it below, <b>' + Number(room.to_upper_pct).toFixed(1) + '%</b> above. The agent re-sets it centred on the price, ±' + (window.__lpWidth || 20) + '%, once it has stayed outside.</p>' : '')
       + '<div class="lpr-mix" data-nousd><i style="width:' + cPct.toFixed(1) + '%"></i></div>'
-      + '<div class="lpr-ends" data-nousd><span><small>holds</small>' + c.toFixed(2) + ' CAKE <small>' + cPct.toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (cBnb * bnbP).toFixed(0) : '') + '</small></span><span></span><span><small>and</small>' + w.toFixed(4) + ' BNB <small>' + (100 - cPct).toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (w * bnbP).toFixed(0) : '') + '</small></span></div>';
+      + '<div class="lpr-ends" data-nousd><span><small>holds</small>' + c.toFixed(2) + ' CAKE <small>' + cPct.toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (cBnb * bnbP).toFixed(0) : '') + '</small></span><span></span><span><small>and</small>' + w.toFixed(4) + ' BNB <small>' + (100 - cPct).toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (w * bnbP).toFixed(0) : '') + '</small></span></div>'
+      + '<p class="agt-note" id="lpr-flip" data-nousd hidden></p>';
     box.hidden = false;
+    // THE FLIP ON THIS AGENT'S OWN RECORD (2026-10-14): the share its pool pays LPs today (read from the pool) and what
+    // PancakeSwap's proposal (88%) would have made of the fees it really earned since it started — its own series
+    const fl = j.the_flip, fe = document.getElementById('lpr-flip');
+    if(fl && fe && fl.lp_share_now_pct < 87.9) fetch('https://agent.brainonbnb.com/lp/series', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(s => {
+      const sm = s && s.summary, fees = sm && sm.profit && +sm.profit.from_fees_bnb; if(!(fees > 0)) return;
+      const more = fees * (fl.fees_factor - 1), u = bnbP > 0 ? b => ' <small>≈$' + Math.round(b * bnbP).toLocaleString('en-US') + '</small>' : () => '';
+      fe.innerHTML = '<b>The Flip.</b> This pool pays its LPs <b>' + fl.lp_share_now_pct + '%</b> of the swap fees today, read from the pool. PancakeSwap’s <a href="' + fl.proposal + '" target="_blank" rel="noopener">proposal</a> would make it <b>88%</b>: on this agent’s own record since ' + new Date(sm.since).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ', <b>' + (fees * fl.fees_factor).toFixed(4) + ' BNB</b>' + u(fees * fl.fees_factor) + ' of fees instead of ' + fees.toFixed(4) + ' BNB' + u(fees) + ' — ' + more.toFixed(4) + ' BNB more for the same work. A proposal in discussion, not live; this line follows the pool the day it changes.';
+      fe.hidden = false;
+    });
   });
 }
 // THE CURVE (2026-10-12, operator: "how it runs at a glance, honest in the red too"): what had gone in by each run
@@ -1384,6 +1394,8 @@ function fillLpYours(){
           ['Worth', l.value_bnb != null ? Number(l.value_bnb).toFixed(4) + ' BNB' : 'not priced (not against WBNB)'],
           ['Fees owed', l.fees_owed && l.fees_owed.bnb_equivalent != null ? Number(l.fees_owed.bnb_equivalent).toFixed(6) + ' BNB' + (l.fees_owed.bnb_equivalent >= 0.002 ? ' — collecting pays for its gas' : ' — under the floor, collecting would cost more than it recovers') : 'not priced'],
         ];
+        // The Flip (2026-10-14): what the pool hands its LPs today, read from the pool, and what PancakeSwap's proposal would make it
+        if(l.the_flip) facts.push(['The Flip', 'this pool pays its LPs ' + l.the_flip.lp_share_now_pct + '% of swap fees today; PancakeSwap’s proposal would make it 88% — ' + (l.the_flip.lp_share_now_pct >= 87.9 ? 'already there' : '×' + l.the_flip.fees_factor + ' the fees' + (l.the_flip.fees_owed_under_the_flip_bnb != null ? ' (owed now ' + Number(l.the_flip.fees_owed_now_bnb).toFixed(6) + ' BNB → ' + Number(l.the_flip.fees_owed_under_the_flip_bnb).toFixed(6) + ' BNB)' : '')) + '. A proposal in discussion, not live.']);
         lookHtml = '<div class="lp-terms"><div class="lp-head">The look, free</div><dl>' + facts.map(([k,x]) => '<dt>' + esc(k) + '</dt><dd>' + esc(x) + '</dd>').join('') + '</dl>' +
           '<span class="agt-note">Read from the position manager and the pool at ' + esc(String(l.measured_at || '').replace('T',' ').slice(0,16)) + ' UTC. ' + (l.against_wbnb ? 'The plan below adds what the agent would do about it: whether a re-set is due and in which width, and what your spare BNB would add.' : 'The agent plans only WBNB pairs, so there is no plan to buy for this one.') + '</span></div>';
       })

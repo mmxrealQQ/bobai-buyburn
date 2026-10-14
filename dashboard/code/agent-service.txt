@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 55 files, 18544 lines.
+# one fetch. 55 files, 18560 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -11667,6 +11667,21 @@ export async function lpPositionFacts(params = {}) {
   const owedBnb = wbnbIs0 ? bn(p.owed0) : wbnbIs1 ? bn(p.owed1) : null;
   const owedOther = wbnbIs0 ? bn(p.owed1) : wbnbIs1 ? bn(p.owed0) : null;
   const owedBnbEquiv = owedBnb == null ? null : owedBnb + owedOther * priceOtherInBnb;
+  // THE FLIP (2026-10-14, PancakeSwap's proposal: LPs on v3 and Infinity keep 88% of swap fees, up from 66-68%). What
+  // this pool hands its LPs today is read from the pool itself (slot0.feeProtocol, 1/10,000 per token, low 16 bits
+  // token0, high 16 token1) — so the day the change lands on the chain, this line shows it without a code change.
+  let flip = null;
+  try {
+    const fp = Number((await read(pub, poolInfo.pool, ABI.POOL, 'slot0'))[5]);
+    const kept = Math.max(fp % 65536, Math.floor(fp / 65536)) / 10000, lpShare = 1 - kept;
+    if (lpShare > 0 && lpShare < 1) {
+      const k = 0.88 / lpShare;
+      flip = { lp_share_now_pct: +(lpShare * 100).toFixed(2), lp_share_under_the_flip_pct: 88, fees_factor: +k.toFixed(3),
+        ...(owedBnbEquiv != null ? { fees_owed_now_bnb: +owedBnbEquiv.toFixed(6), fees_owed_under_the_flip_bnb: +(owedBnbEquiv * k).toFixed(6) } : {}),
+        status: lpShare >= 0.879 ? 'this pool already pays its LPs 88% or more' : 'a proposal in discussion (forum, 14 Oct 2026; a Snapshot vote follows, the rollout would run Nov 2026 – Jan 2027), not live: the share now is read from the pool and changes here the day it lands on the chain',
+        proposal: 'https://forum.pancakeswap.finance/t/proposal-discussion-the-flip-liquidity-should-get-paid-more/1658' };
+    }
+  } catch { /* a pool that does not answer slot0 here gets no line, never a guessed one */ }
   const facts = {
     service: 'lp_position_plan',
     positions: 1,
@@ -11680,6 +11695,7 @@ export async function lpPositionFacts(params = {}) {
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
     fees_owed: { token0: bn(p.owed0), token1: bn(p.owed1), bnb_equivalent: owedBnbEquiv == null ? null : +owedBnbEquiv.toFixed(6) },
     against_wbnb: wbnbIs0 || wbnbIs1,
+    ...(flip ? { the_flip: flip } : {}),
     ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range' } : {}),
   };
   return { facts, pub, p, owner, poolInfo, owedBnbEquiv };

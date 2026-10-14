@@ -412,10 +412,18 @@ function exampleLinks(serviceId, service) {
 // compares "in range" and "current tick" with its own reading of the chain; ours sat two levels down
 // (result.plan.in_range, result.plan.pool.tick) and its page said "not data we can read". The paid answer and its
 // free example both carry them at the top level, from this one place.
+// The same for its house agents in the other categories: Guard-1 is compared on "health factor", Yield-1 on "Venus
+// USDT rate" (the supply rate).
 export function checkedFigures(serviceId, result) {
   const plan = result && result.plan;
-  if (serviceId !== 'lp_position_plan' || !plan || !plan.pool) return {};
-  return { position: plan.position ?? null, in_range: plan.in_range ?? null, current_tick: plan.pool.tick ?? null, tick_lower: plan.pool.ticks?.[0] ?? null, tick_upper: plan.pool.ticks?.[1] ?? null };
+  if (serviceId === 'lp_position_plan' && plan && plan.pool) return { position: plan.position ?? null, in_range: plan.in_range ?? null, current_tick: plan.pool.tick ?? null, tick_lower: plan.pool.ticks?.[0] ?? null, tick_upper: plan.pool.ticks?.[1] ?? null };
+  if (serviceId === 'health_factor' && result && result.position) return { health_factor: result.position.health_factor ?? null };
+  if (serviceId === 'yield_plan' && plan && Array.isArray(plan.ranked)) {
+    const rates = {};
+    for (const m of plan.ranked) if (m && m.symbol && Number.isFinite(m.supply_apy_pct)) rates[String(m.symbol).replace(/^v/, '')] = m.supply_apy_pct;
+    return { venus_usdt_rate_pct: rates.USDT ?? null, venus_supply_rates_pct: rates };
+  }
+  return {};
 }
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const service = SERVICES[serviceId];
@@ -749,6 +757,7 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     provider: account.address,
     client: job.client,
     produced_at: new Date().toISOString(),
+    ...checkedFigures(service.id, result),
     result,
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
     verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',

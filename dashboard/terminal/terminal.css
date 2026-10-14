@@ -864,6 +864,10 @@
 /* the stone platform under BOBAI: its foot fades into the mist (on a phone sooner — the buyback ring lies right below) */
 #bt .hw-da img{-webkit-mask-image:linear-gradient(#000 74%,transparent 98%);mask-image:linear-gradient(#000 74%,transparent 98%)}
 #bt .portrait .hw-da img{-webkit-mask-image:linear-gradient(#000 34%,transparent 72%);mask-image:linear-gradient(#000 34%,transparent 72%)}
+/* the buyback ring, drawn in front of the stone with the scene's own colours and strength (terminal.js ringDraw, 2026-10-14) */
+#bt .hw-rg{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none}
+#bt .hw-rg circle,#bt .hw-rg path{fill:none;stroke-width:.12;stroke-opacity:.38}
+#bt .hw-rg .b{stroke:#fff;stroke-opacity:.06}
 /* far lightning, and the face that stands in the sky every third time */
 #bt .hw-fl{position:absolute;inset:0;opacity:0;background:radial-gradient(95% 62% at 42% 0,rgba(205,218,255,.95),transparent 72%)}
 #bt .hw-face{position:absolute;left:50%;top:8%;width:40%;transform:translateX(-50%);opacity:0;filter:saturate(.3) brightness(1.3) blur(.7px)}

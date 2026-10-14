@@ -381,10 +381,10 @@ let MIN_DISPATCH = 400000;
 // 1ce keeps 0.003 BNB for gas and splits only above 0.004 (worker/index.js GAS_RESERVE + MIN_BNB): the reserve is not
 // queued money, and BNB above it is split at the bot's next 10-minute check (audit 2026-09-28)
 const splitBnb = () => S.walletBnb > 0.004 ? S.walletBnb - 0.003 : 0;
-let ringP = -1;
+let ringP = -1, ringVer = 0; // ringVer: the Halloween look draws the ring again over its stone when it changes
 window.__btRing = () => ringFgs.map(m => [m.visible, +(m.geometry.parameters.thetaLength || 0).toFixed(3), m.position.toArray().map(v => +v.toFixed(2)), m.material.opacity]); // for checks from outside (read-only)
 function setRing(p) {
-  if (Math.abs(p - ringP) < 0.002) return; ringP = p; // rebuilt only when the fill moves, not every frame
+  if (Math.abs(p - ringP) < 0.002) return; ringP = p; ringVer++; // rebuilt only when the fill moves, not every frame
   const tot = DEST.reduce((a, d) => a + (d.pct > 0 ? d.pct : 0), 0) || 1; let at = Math.PI / 2;
   DEST.forEach((d, i) => {
     const m = ringFgs[i], len = d.pct > 0 ? Math.max(0, p) * Math.PI * 2 * d.pct / tot : 0;
@@ -5495,6 +5495,7 @@ window.__btHwSeason = hwSeason;
     + '<div class="hw-i hw-mo">' + spr('moon', ['panic']) + '</div>'
     + '<div class="hw-i hw-hc"><img alt="" draggable="false" data-hw="chain_v"></div>'
     + '<div class="hw-i hw-da"><img alt="" draggable="false" data-hw="dais"></div>'
+    + '<svg class="hw-rg" viewBox="-0.7 -0.7 1.4 1.4"></svg>' /* the buyback ring in front of the stone (fly() below) */
     + '<div class="hw-grab"><div class="hw-grabm"><div class="hw-grabi">' + spr('stalker', ['grab']) + '</div></div></div>'
     + WORKERS.map(w => '<div class="hw-bg" style="--c:' + w.c + '"><img alt="" draggable="false" data-hw="ghost"></div>').join('')
     + '<div class="hw-i hw-o" data-k="burnA">' + spr('skull', ['scared']) + '</div>'
@@ -5628,6 +5629,24 @@ window.__btHwSeason = hwSeason;
   function lights(v) {
     for (const d of DEST) { if (!(d.pct > 0)) continue; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; }
     coreOrb.visible = v;
+    ringBg.material.visible = v; for (const m of ringFgs) m.material.visible = v; // the look draws its own ring (rg)
+  }
+  // THE BUYBACK RING IN FRONT OF THE STONE (operator, 2026-10-14: on a phone the stone covered the ring's colours —
+  // "it should be in front of the stone, but the stone must stay exactly as it is"): the scene's ring lies under this
+  // layer, so with the look on it is drawn here instead, over the stone and under the pumpkin, from the same arcs, and
+  // follows the core frame by frame as the scene's ring did
+  const rg = $h('.hw-rg'), rgV = new THREE.Vector3(); let rgVer = -1, rgTf = '';
+  function ringDraw() {
+    const c = toScreen(A.core); rgV.copy(A.core); rgV.x += 0.7 * ringBg.scale.x; const R = Math.abs(toScreen(rgV).x - c.x);
+    const tf = 'translate(' + (c.x - R).toFixed(1) + 'px,' + (c.y - R).toFixed(1) + 'px)', sz = (2 * R).toFixed(1) + 'px';
+    if (tf + sz !== rgTf) { rgTf = tf + sz; rg.style.transform = tf; rg.style.width = rg.style.height = sz; }
+    if (ringVer === rgVer) return; rgVer = ringVer;
+    const pt = a => (0.64 * Math.cos(a)).toFixed(4) + ' ' + (-0.64 * Math.sin(a)).toFixed(4);
+    rg.innerHTML = '<circle r="0.64" class="b"/>' + DEST.map((d, i) => {
+      const m = ringFgs[i], g = m.geometry.parameters, len = -g.thetaLength; if (!m.visible || !(len > 0.0005)) return '';
+      if (len > Math.PI * 2 - 0.001) return '<circle r="0.64" stroke="' + d.c + '"/>';
+      return '<path stroke="' + d.c + '" d="M' + pt(g.thetaStart) + 'A0.64 0.64 0 ' + (len > Math.PI ? 1 : 0) + ' 1 ' + pt(g.thetaStart - len) + '"/>';
+    }).join('');
   }
   // the bots' ghosts ride on the bots' own places, frame by frame (behind the brain they pale, like the bots' names)
   // Small, about the size of the bots' own lights, and there from the first frame the bots are (operator, 2026-10-05:
@@ -5636,6 +5655,7 @@ window.__btHwSeason = hwSeason;
   let flying = false, gsz = 0;
   function fly() {
     if (!on) { flying = false; return; } requestAnimationFrame(fly); if (!winBox().width || !A.figHpx) return;
+    ringDraw();
     const g = Math.round(cl3(A.figHpx * (portrait ? 0.0525 : 0.0575), 11, 20)); /* 25% up again (operator: "a tiny bit larger") */ if (g !== gsz) { gsz = g; el.style.setProperty('--bg', g + 'px'); }
     for (const [i, w] of WORKERS.entries()) { const q = toScreen(w.pos), e = BG[i], tf = 'translate(' + (q.x - gsz / 2).toFixed(1) + 'px,' + (q.y - gsz * 0.62).toFixed(1) + 'px)', op = (introK * (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 0.95 : 0.38)).toFixed(2); if (e._tf !== tf) e.style.transform = e._tf = tf; if (e._op !== op) e.style.opacity = e._op = op; } /* written only when changed */
   }

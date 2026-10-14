@@ -6,6 +6,19 @@
 (() => {
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   let open = null, back = null, chartOn = false, frameNav = 0;
+  // THE × GOES BACK TO WHERE YOU WERE (2026-10-14, operator: "Brain Plaza, open the full screener, pick an agent, × —
+  // and I am at the terminal; the × should always go back to where it was, everywhere"): every view a window replaces
+  // (a card's window, a page, a page's own next page) is kept here; × and Esc step back one view at a time, scrolled
+  // where it was, and only the first view closes. The backdrop and a link home still close at once.
+  let trail = [], stepping = false;
+  const here = () => {
+    if (!open) return null;
+    if (open.id !== 'wpage') return { win: open.id, y: $('.bw-body', open)?.scrollTop || 0 };
+    const f = $('.pg-f', open); let at = f.dataset.at || f.getAttribute('src'), y = 0;
+    try { const l = f.contentWindow.location; if (l.pathname && l.pathname !== 'blank') at = l.pathname + l.search + l.hash; y = f.contentWindow.scrollY || 0; } catch {}
+    return at ? { page: at, title: $('.pg-t', open).textContent, y } : null;
+  };
+  const remember = () => { if (stepping) return; const h = here(); if (h) { trail.push(h); if (trail.length > 30) trail.shift(); } };
   // one history step while anything is open; switching from one window to the next reuses it
   const layer = () => history.state && history.state.bp === 'layer';
   function pushLayer() { if (!layer()) history.pushState({ bp: 'layer' }, ''); }
@@ -17,6 +30,7 @@
   }
   function show(id, keep) {
     const w = document.getElementById(id); if (!w) return;
+    const fresh = !open; if (open && open !== w) remember();
     if (open) hide(true);
     if (!keep) pushLayer();
     back = back || document.activeElement; open = w; w.hidden = false;
@@ -31,6 +45,7 @@
     $$('img[loading="lazy"]', w).forEach((i) => { i.loading = 'eager'; });
     // a window opens at its top, not where it was scrolled to last time
     const b = $('.bw-body', w); if (b) b.scrollTop = 0;
+    if (fresh && !stepping) trail = []; // a window opened from the page itself starts a new trail
     dispatchEvent(new CustomEvent('bp:open', { detail: id }));
   }
   // switching = closing one window for the next: the history step stays, the focus goes back only at the very end
@@ -41,7 +56,18 @@
     setTimeout(() => { if (open !== w) w.hidden = true; }, 220);
   }
   // closed by the × / the backdrop / Esc: close, then give the history step back
-  function close() { if (!open) return; hide(); if (!chartOn) popLayer(); }
+  function close() { if (!open) return; trail = []; hide(); if (!chartOn) popLayer(); }
+  function stepBack() {
+    const v = trail.pop(); if (!v) { close(); return; }
+    stepping = true;
+    try {
+      if (v.win) { show(v.win, true); const b = $('.bw-body', open); if (b) b.scrollTop = v.y; }
+      else { openPage(v.page, v.title); const f = $('#wpage .pg-f'); if (v.y && f) f.addEventListener('load', () => {
+        // a page that fills its list after loading (the screener) is not tall enough yet: try again until it is, 5 s at most
+        let n = 0; const go = () => { try { const cw = f.contentWindow; cw.scrollTo(0, v.y); if (Math.abs(cw.scrollY - v.y) > 4 && ++n < 33) setTimeout(go, 150); } catch {} }; go();
+      }, { once: true }); }
+    } finally { stepping = false; }
+  }
   // STAGE 3: the site's own pages open in the page window, running their own code in the Brain look (?embed=1);
   // the apps (brainScreener, the game, the World Cup tip game) keep their own look and their own navigation inside
   const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener)(\/|$)/;
@@ -50,6 +76,7 @@
     const u = new URL(path, location.origin), key = u.pathname.split('/')[1];
     u.searchParams.set('embed', '1');
     const w = document.getElementById('wpage'), src = u.pathname + u.search + u.hash;
+    if (open === w) { const h = here(); if (!(h && h.page && h.page.split('#')[0] === src.split('#')[0])) remember(); } // from a card's window: show() keeps it
     $('.pg-t', w).textContent = NAMES[key] || title || 'Page';
     w.setAttribute('aria-label', NAMES[key] || title || 'Page'); $('.pg-f', w)?.setAttribute('title', NAMES[key] || title || 'Page'); // a screen reader names the page, not "Page"
     // the header carries the page's own logo, the one on its ecosystem card, instead of an arrow (operator, 2026-09-27);
@@ -70,14 +97,24 @@
     if (open !== w) show('wpage');
   }
   // a load after the first one is the page moving on inside its frame (an app's own links): one more history step
-  function watchFrame(f) { let first = true; f.addEventListener('load', () => { if (first) { first = false; return; } if (f.dataset.replacing) { delete f.dataset.replacing; return; } frameNav++; }); }
+  function watchFrame(f) {
+    let first = true, was = null;
+    const at = () => { try { const l = f.contentWindow.location; return l.pathname + l.search + l.hash; } catch { return null; } };
+    f.addEventListener('load', () => {
+      const now = at();
+      if (first) { first = false; was = now; return; }
+      if (f.dataset.replacing) { delete f.dataset.replacing; was = now; return; }
+      frameNav++; if (was && now !== was && !stepping) { trail.push({ page: was, title: $('.pg-t', document.getElementById('wpage')).textContent, y: 0 }); f.dataset.at = now; }
+      was = now;
+    });
+  }
   { const f = $('#wpage .pg-f'); if (f) watchFrame(f); }
   addEventListener('message', (e) => {
     if (e.origin !== location.origin || !e.data || !e.data.bp) return;
     if (e.data.bp === 'page') openPage(e.data.path, e.data.title);
     else if (e.data.bp === 'home') {
       const t = e.data.hash && document.getElementById(e.data.hash.slice(1)), w = t && t.closest('.bw-win');
-      if (w) { hide(true); setTimeout(() => { show(w.id, true); setTimeout(() => t.scrollIntoView({ block: 'start' }), 60); }, 250); } else close();
+      if (w) { hide(true); setTimeout(() => { show(w.id, true); setTimeout(() => t.scrollIntoView({ block: 'start' }), 60); }, 250); } else if (e.data.esc) stepBack(); else close();
     }
   });
   function openChart() { if (open) hide(); window.__bobaiChart?.(true); document.querySelector('.bp-center')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -91,7 +128,7 @@
     const st = e.state && e.state.bp;
     if (st === 'spent') { history.back(); return; }
     if (st === 'layer') return; // stepped forward onto a layer: nothing to reopen
-    popping = true;
+    popping = true; trail = [];
     if (open) hide();
     if (chartOn) { const x = document.querySelector('#bt .cx-x'); if (x) x.click(); else window.__bobaiChart?.(false); }
     popping = false; frameNav = 0;
@@ -103,7 +140,8 @@
     if (c) { e.preventDefault(); show(c.dataset.open); return; }
     const pl = e.target.closest('a[href]:not(.pg-open)');
     if (pl && !e.metaKey && !e.ctrlKey && !e.shiftKey) { const u = new URL(pl.getAttribute('href'), location.origin); if (u.origin === location.origin && PAGES.test(u.pathname)) { e.preventDefault(); openPage(u.pathname + u.search + u.hash, pl.textContent.trim()); return; } }
-    if (e.target.closest('[data-close-win]') || e.target.classList.contains('bw-win')) { close(); return; }
+    if (e.target.closest('[data-close-win]')) { stepBack(); return; }
+    if (e.target.classList.contains('bw-win')) { close(); return; }
     // an in-page link of the classic page ("#burns") opens the window that holds its target
     const a = e.target.closest('a[href^="#"]');
     if (a && a.getAttribute('href').length > 1) {
@@ -112,7 +150,7 @@
       else e.preventDefault();
     }
   });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.stopImmediatePropagation(); close(); } }, true);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.stopImmediatePropagation(); stepBack(); } }, true);
   // the live figure on each card
   const mirror = () => { for (const v of $$('[data-mirror]')) { const s = document.getElementById(v.dataset.mirror); const t = s && s.textContent.trim(); if (t && t !== '--' && v.textContent !== t) v.textContent = t; } };
   mirror(); setInterval(mirror, 2000);

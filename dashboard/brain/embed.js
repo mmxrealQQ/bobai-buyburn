@@ -19,7 +19,7 @@
     if (PAGES.test(u.pathname)) parent.postMessage({ bp: 'page', path: u.pathname + u.search + u.hash, title: a.textContent.trim().slice(0, 60) }, location.origin);
     else parent.postMessage({ bp: 'home', hash: u.hash }, location.origin);
   }, true);
-  // Esc inside the frame closes the window, as it does outside it
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') parent.postMessage({ bp: 'home' }, location.origin); });
+  // Esc inside the frame does what it does outside it: one step back to where you were (brain.js stepBack)
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') parent.postMessage({ bp: 'home', esc: 1 }, location.origin); });
   parent.postMessage({ bp: 'ready', title: document.title }, location.origin);
 })();

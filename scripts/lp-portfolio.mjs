@@ -105,6 +105,13 @@ if (process.argv.includes('--self-test')) {
     is('since this range: the fees are what accrued since the mint (collected + owed), and fees + price = vs holding', sr && Math.abs(sr.fees_bnb - 0.004) < 1e-9 && Math.abs(sr.fees_bnb + sr.price_bnb - sr.vs_holding_bnb) < 2e-5);
     is('since this range: one point (just minted) or no position is no line', sinceRange(R.slice(0, 1), { position: '9' }) === null && sinceRange(R, { position: null }) === null);
   }
+  // THE OPERATOR'S THIRD (2026-10-14): fees paid out to the operator were produced by the position, so they stand beside it and are not a loss.
+  {
+    const so = { ...series, summary: { ...series.summary, fees_to_operator_bnb: 0.0012 } };
+    const mo = lpPortfolio(rec, so, { now: NOW, bobaiUsd: 0.0002 });
+    const part = mo.worth.beside_parts.find((x) => x.label === 'paid out to the operator');
+    is('the operator\'s third stands beside the position, and is absent when nothing was paid out', part && part.bnb === 0.0012 && Math.abs(mo.worth.beside_bnb - m.worth.beside_bnb - 0.0012) < 1e-4 && !m.worth.beside_parts.some((x) => x.label === 'paid out to the operator'));
+  }
   is('without a series there is no model', lpPortfolio(rec, null) === null);
   console.log(`\n${n - bad}/${n} checks behave in both directions`);
   process.exitCode = bad ? 1 : 0;

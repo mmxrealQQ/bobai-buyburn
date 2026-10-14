@@ -216,7 +216,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the position was left: the newest tick the record saw.
   const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
-  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: n(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) + n(sum.fees_to_operator_bnb), owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
   // WHAT THE AGENT HOLDS BESIDE THE POSITION (2026-09-18). "Worth now" is the
   // position; the result above it also counts what the position produced and
   // no longer holds — $BOBAI bought (at what it cost), fees still owed, kept
@@ -224,6 +224,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // tenth of the result shown beside it. worth + beside − put in − gas = result.
   const besideParts = [
     { label: '$BOBAI held, at cost', bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) },
+    // a third of the fees since 2026-10-14: earned by the position, paid out to the operator as BNB
+    { label: 'paid out to the operator', bnb: r5(sum.fees_to_operator_bnb) },
     { label: 'fees owed by the position', bnb: r5(sum.fees_owed_now_bnb) },
     { label: 'kept fees waiting in the wallet', bnb: r5(sum.fees_kept_waiting_bnb) },
   ].filter((x) => n(x.bnb) > 0);

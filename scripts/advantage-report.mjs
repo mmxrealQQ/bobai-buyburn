@@ -495,7 +495,9 @@ async function priceOfTheX402Watch() {
     // carries the token's EIP-712 domain name, which for USD1 reads "USD Coin"
     // and would mislabel the price. The sentence is the source, the atomic
     // amount the fallback.
-    const said = /Send ([0-9.]+ [A-Za-z0-9$]+)/.exec(j.how || '');
+    // (2026-10-14: the sentence became "Pay 0.50 in USD1 … or send 0.50 USD1 …" and the price fell back to the atomic
+    // form; the 402 also names it in `price` — read that first, then either wording of the sentence)
+    const said = /^([0-9.]+ [A-Za-z0-9$]+)/.exec(j.price || '') || /[Ss]end ([0-9.]+ [A-Za-z0-9$]+)/.exec(j.how || '');
     const price = said ? said[1] : (acc?.maxAmountRequired ? `${Number(acc.maxAmountRequired) / 1e18} (atomic ${acc.maxAmountRequired}, asset ${acc.asset})` : null);
     return { ...m.done(), status: r.status, quoted: r.status === 402 && Boolean(price), price: price ?? null, reason: r.status === 402 ? null : `expected 402, got ${r.status}` };
   } catch (e) {

@@ -26,6 +26,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://brainonbnb.com/set-and-earn</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://brainonbnb.com/token</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>

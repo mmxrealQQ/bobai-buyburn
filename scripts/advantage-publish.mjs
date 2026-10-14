@@ -208,6 +208,15 @@ const html = `<!DOCTYPE html>
   .ev-n a{overflow-wrap:anywhere}
   .caveats li{color:var(--muted);font-size:14px;line-height:1.65;margin-bottom:6px}
   .foot{color:var(--muted);font-size:13.5px;line-height:1.7;margin-top:26px;border-top:1px solid var(--border);padding-top:16px}
+  .tr-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+  .tr-sum div{border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .tr-sum b{display:block;font-size:18px;color:#f3efe6}
+  .tr-sum span{font-size:12px;color:var(--muted)}
+  .tr-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+  .tr-tbl th,.tr-tbl td{padding:5px 6px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  .tr-tbl th:first-child,.tr-tbl td:first-child{text-align:left}
+  .tr-wrap{overflow-x:auto}
+  .tr-up{color:#4ade80}.tr-dn{color:#f87171}.tr-mu{color:var(--muted)}
   .foot code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:5px;font-size:12.5px}
 </style>
 </head>
@@ -239,6 +248,49 @@ const html = `<!DOCTYPE html>
     </div>
 
 ${report.tasks.map(taskCard).join('\n')}
+
+    <h2 style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:20px;margin:30px 0 12px" id="track-record">Track record of the trading agent</h2>
+    <div class="method">
+      <b>The DeFi Agent (#363709)</b> runs a PancakeSwap V3 position on CAKE/BNB with this project's own money and re-sets its range by itself. Its record is read live from its own log (<a href="https://agent.brainonbnb.com/lp/series">/lp/series</a>) and every position is an NFT on BNB Chain, linked below.
+      <div class="tr-sum" id="tr-sum">Reading its record…</div>
+      <b>Win rate, and how it is counted.</b> A range lives from one re-set to the next. It is <i>ahead</i> when the fees it earned are more than it lost against simply holding the two tokens it started with, valued at the price when it closed. Ranges that lived under six hours or moved less than 0.0001 BNB either way are not judged. The arithmetic is in this page's own script; anyone can redo it from the ticks in the log.
+      <div id="tr-win"></div>
+      <b>What it learned.</b> The narrow ranges of September (about ±1 % to ±7 %) and the ±10 % range that sat through CAKE's fall against BNB at the end of September lost more to the price than they earned in fees. Since 7 October it runs ±20 %, the width that came out furthest ahead when every width was replayed over the recorded prices. A loss is shown here the same way a gain would be.
+      <div class="tr-wrap"><table class="tr-tbl" id="tr-tbl"></table></div>
+    </div>
+    <script>
+    (() => {
+      const NPM = '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364';
+      const amt = (t, r) => { const q = (x) => Math.pow(1.0001, x / 2), sa = q(r[0]), sb = q(r[1]), s = Math.min(Math.max(q(t), sa), sb); return [1 / s - 1 / sb, s - sa]; };
+      const val = (a, t) => a[0] * Math.pow(1.0001, t) + a[1];
+      const F = (p) => (p.fees_total_bnb != null ? p.fees_total_bnb : (p.forwarded_total_bnb || 0) + (p.kept_total_bnb || 0)) + (p.owed_bnb || 0);
+      const pc = (x) => (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
+      const f4 = (x) => (x >= 0 ? '+' : '') + x.toFixed(4), day = (s) => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).then((j) => {
+        const S = j.summary, pts = j.points.filter((p) => p.position && Array.isArray(p.ticks)), segs = [];
+        for (const p of pts) { const s = segs[segs.length - 1]; if (s && s.id === p.position) s.pts.push(p); else segs.push({ id: p.position, pts: [p] }); }
+        let n = 0, ahead = 0, short = 0; const rows = [];
+        segs.forEach((s, i) => {
+          const a = s.pts[0], nx = segs[i + 1] && segs[i + 1].pts[0], end = nx || s.pts[s.pts.length - 1];
+          const ratio = val(amt(end.tick, a.ticks), end.tick) / val(amt(a.tick, a.ticks), end.tick);
+          const lpEnd = nx ? s.pts[s.pts.length - 1].value_bnb : end.value_bnb, vsHold = lpEnd - lpEnd / ratio, fees = F(end) - F(a), net = fees + vsHold;
+          const hours = (Date.parse(end.at) - Date.parse(a.at)) / 36e5, judged = !!nx && hours >= 6 && Math.abs(net) >= 1e-4;
+          if (judged) { n++; if (net > 0) ahead++; } else if (nx) short++;
+          const lo = (Math.pow(1.0001, a.ticks[0] - a.tick) - 1) * 100, hi = (Math.pow(1.0001, a.ticks[1] - a.tick) - 1) * 100; // the range around the price it was set at
+          const verdict = !nx ? '<span class="tr-mu">open</span>' : !judged ? '<span class="tr-mu">not judged</span>' : net > 0 ? '<span class="tr-up">ahead</span>' : '<span class="tr-dn">behind</span>';
+          rows.push('<tr><td><a href="https://bscscan.com/token/' + NPM + '?a=' + s.id + '" target="_blank" rel="noopener">#' + s.id + '</a></td><td>' + day(a.at) + ' – ' + day(end.at) + '</td><td>' + pc(lo) + ' / ' + pc(hi) + '</td><td>' + f4(fees) + '</td><td>' + f4(vsHold) + '</td><td>' + f4(net) + '</td><td>' + verdict + '</td></tr>');
+        });
+        const usd = (b) => S.profit && S.profit.bnb_usd ? ' (≈$' + Math.round(b * S.profit.bnb_usd).toLocaleString('en-US') + ')' : '';
+        document.getElementById('tr-sum').innerHTML =
+          '<div><b>' + day(S.since) + ' – now</b><span>time window · ' + S.days_covered + ' days, ' + S.points + ' runs</span></div>'
+          + '<div><b>' + S.value_bnb.now.toFixed(3) + ' BNB</b><span>at risk now' + usd(S.value_bnb.now) + ' · one pool, CAKE/BNB 0.05 %</span></div>'
+          + '<div><b>' + (S.time_in_range ? S.time_in_range.in_range_pct + '%' : '–') + '</b><span>of the time in range</span></div>'
+          + '<div><b class="' + (S.value_bnb.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (S.value_bnb.change_pct >= 0 ? '+' : '') + S.value_bnb.change_pct + '%</b><span>on the capital · ' + f4(S.profit.from_fees_bnb) + ' BNB fees, ' + f4(S.profit.from_price_bnb) + ' BNB from the price, ' + f4(-S.profit.gas_bnb) + ' BNB gas</span></div>';
+        document.getElementById('tr-win').innerHTML = '<p style="margin:10px 0 14px"><b style="font-size:20px">' + ahead + ' of ' + n + '</b> closed ranges ended ahead of holding (' + (n ? Math.round(100 * ahead / n) : 0) + '%)' + (short ? '; ' + short + ' lived too short to judge' : '') + '.</p>';
+        document.getElementById('tr-tbl').innerHTML = '<tr><th>Position</th><th>Lived</th><th>Range</th><th>Fees, BNB</th><th>vs holding</th><th>Net</th><th></th></tr>' + rows.reverse().join('');
+      }).catch(() => { document.getElementById('tr-sum').textContent = 'Its record could not be read just now: https://agent.brainonbnb.com/lp/series'; });
+    })();
+    </script>
 
     <h2 style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:20px;margin:30px 0 12px">What this does and does not show</h2>
     <ul class="caveats">

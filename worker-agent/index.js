@@ -53,6 +53,7 @@ async function readAgentRecord(env) {
   return withArchive(JSON.parse(raw), arch);
 }
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
+import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -2922,6 +2923,20 @@ ${pageTail}`;
 
     // THE RUG WATCH (2026-10-09, rug-watch.js): free, webhook only — GET the terms, POST to register,
     // GET /rug-watch/<id> for the status, DELETE it with x-rug-watch-secret. Free of the payment path above.
+    // AN AGENT THAT HIRES AN AGENT (2026-10-14, second-opinion.js): the public log of every second opinion the DeFi
+    // agent bought from an outside agent through its Altana leash; POST (internal, x-hit-secret) buys one.
+    if (path === '/second-opinion') {
+      if (request.method === 'POST') {
+        if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+        const b = await request.json().catch(() => ({}));
+        let own = b.own && typeof b.own === 'object' ? { position: b.own.position ?? null, in_range: b.own.in_range ?? null, tick: b.own.tick ?? null } : null;
+        // no reading sent (the daily ask): the agent's own free look at its position, the same read anybody gets
+        if (!own || own.position == null) { const l = await lpPositionLook({ address: SUBJECT }, env).catch(() => null); if (l && l.position) own = { position: String(l.position), in_range: !!l.in_range, tick: l.pool ? l.pool.tick : null }; }
+        const r = await secondOpinion(env, { why: String(b.why || 'by hand').slice(0, 60), own, rpc });
+        return json(r);
+      }
+      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
+    }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
     }

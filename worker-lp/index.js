@@ -101,6 +101,16 @@ async function readState(env) {
 // a large deposit waits beside a range the price has left (depositForcesReset),
 // and its rebalance step is not recorded otherwise, so the hourly check's
 // own record is not overwritten six times an hour with "no re-set".
+// The second opinion, asked of the agent worker over its service binding (AGENT_SRV); never throws.
+async function askSecondOpinion(env, why, own = null) {
+  if (!env.AGENT_SRV || !env.AGENT_HIT_SECRET) return { status: 'not asked', reason: 'no AGENT_SRV binding or AGENT_HIT_SECRET on this worker' };
+  try {
+    const r = await env.AGENT_SRV.fetch('https://agent/second-opinion', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': env.AGENT_HIT_SECRET }, body: JSON.stringify({ why, own }), signal: AbortSignal.timeout(60000) });
+    const j = await r.json();
+    return { status: j.status || 'unknown', job: j.job || null, tx: j.tx || null, agrees: j.agrees ?? null, answer: j.answer || null, reason: j.reason || j.error || null };
+  } catch (e) { return { status: 'failed', reason: String(e && e.message || e).slice(0, 120) }; }
+}
+
 export async function agentTick(env, { dry = false, steps = STEPS, watch = false, retriedAfter = null } = {}) {
   const at = new Date().toISOString();
   const pub = createPublicClient({ chain: bsc, transport: transport() });
@@ -342,6 +352,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.oneSided ? ` one-sided, ${plan.ticks.side === 'above_price' ? 'above' : 'below'} the price, no trade` : ''}${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    // THE SECOND OPINION (2026-10-14, operator's choice "an agent that hires an agent"; stage 1: recorded beside the
+    // run, it decides nothing): before money moves, an outside agent is paid to read the position independently
+    // (agent worker /second-opinion: Mandate Range-1 over the ERC-8183 kernel, through the Altana leash). A failed or
+    // slow opinion never stops or delays the re-set beyond its one-minute cap.
+    entry.second_opinion = await askSecondOpinion(env, 'before a re-set', { position: plan.summary.position ?? null, in_range: plan.summary.in_range ?? null, tick: plan.summary.tick ?? null });
     const txs = [];
     try {
       // THE MERGE (2026-09-16). A reserve range that holds the same token as
@@ -570,6 +585,8 @@ export default {
     // only when a large deposit waits beside a range the price has left.
     const watch = event.cron !== DAILY_CRON && event.cron !== HOURLY_CRON;
     const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance', 'ladder', 'increase'];
+    // the daily second opinion (2026-10-14): once a morning, beside the daily run, so the loop is seen every day
+    if (event.cron === DAILY_CRON) ctx.waitUntil(askSecondOpinion(env, 'daily').then((o) => console.log(`[LP] second opinion: ${o.status}${o.job ? ` job ${o.job}` : ''}${o.agrees != null ? `, agrees ${o.agrees}` : ''}`)));
     ctx.waitUntil(agentTick(env, { steps, watch }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
     // The x402 Permit2 queue (A8, 2026-09-24): apart from the agent's run, so
     // nothing in it can stop a re-set, and nothing in a re-set can stop it.

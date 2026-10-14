@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7149 lines.
+# one fetch. 17 files, 7211 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -145,7 +145,11 @@ if (SELF) {
   // default rather than to either extreme.
   const eq = (label, got, want) => check(label, got === want ? null : `got ${got}, wanted ${want}`, false);
   const one = 10n ** 18n;
-  eq(`default keeps ${FEE_SHARE_KEPT_PCT}% of 1 BNB`, splitFees(one).keep, (one * BigInt(FEE_SHARE_KEPT_PCT)) / 100n);
+  eq(`default keeps ${FEE_SHARE_KEPT_PCT}% of 1 BNB`, splitFees(one).keep, (one * BigInt(Math.round(FEE_SHARE_KEPT_PCT * 100))) / 10000n);
+  // 2026-10-14 (operator: "an alle drei gleichmässig"): the default keeps a third, and the profit share it leaves is
+  // halved by profitShare — operator and $BOBAI — so each of the three gets a third, to the hundredth of a percent
+  eq('the default keeps a third (33.34%)', FEE_SHARE_KEPT_PCT, 33.34);
+  check('the profit share is halved between the operator (BNB) and $BOBAI, for the collect, the re-set and the move (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const fn = src.slice(src.indexOf('async function profitShare'), src.indexOf('async function profitShare') + 600); return /toOperator = shareWei \/ 2n/.test(fn) && /to: OPERATOR_WALLET, value: toOperator/.test(fn) && (src.match(/await profitShare\(pub, send, account\.address/g) || []).length === 3 && !/await buyBobaiHold\(pub, send, account\.address/.test(src); })() ? null : 'wrong', false);
   eq('default sends the rest to the buyback', splitFees(one).keep + splitFees(one).buyback, one);
   eq('0% keeps nothing', splitFees(one, 0).keep, 0n);
   eq('0% forwards everything', splitFees(one, 0).buyback, one);
@@ -162,19 +166,19 @@ if (SELF) {
   eq('a negative amount is treated as nothing', splitFees(-1n).buyback, 0n);
 
   console.log('re-set fee share');
-  // Both directions: a share worth sending is sent, a share under the floor
+  // Both directions (the arithmetic at a kept share of 50%, the default until 2026-10-14): a share worth sending is sent, a share under the floor
   // stays as capital (and is counted as kept, so nothing goes missing), a
   // kept share of 100% sends nothing, no fees owed sends nothing.
   const mBnb = 10n ** 15n; // 0.001 BNB
-  eq('half of 0.001 BNB is sent on', resetForward(mBnb).forward, mBnb / 2n);
-  eq('… and the other half is kept', resetForward(mBnb).kept, mBnb / 2n);
+  eq('half of 0.001 BNB is sent on', resetForward(mBnb, 50).forward, mBnb / 2n);
+  eq('… and the other half is kept', resetForward(mBnb, 50).kept, mBnb / 2n);
   eq('the share names the percentage it kept', resetForward(mBnb).pct, FEE_SHARE_KEPT_PCT);
   check('a share worth sending has no reason not to', resetForward(mBnb).why, false);
   const dust = BigInt(Math.round(MIN_RESET_FORWARD_BNB * 1e6)) * 10n ** 12n; // exactly the floor, doubled = 0.0002 folded
-  eq('a buyback share exactly at the floor is sent', resetForward(dust * 2n).forward, dust);
-  eq('a buyback share one wei under the floor stays', resetForward(dust * 2n - 2n).forward, 0n);
-  eq('… and all of it counts as kept', resetForward(dust * 2n - 2n).kept, dust * 2n - 2n);
-  check('the dust share says why it stayed', resetForward(dust * 2n - 2n).why, true);
+  eq('a buyback share exactly at the floor is sent', resetForward(dust * 2n, 50).forward, dust);
+  eq('a buyback share one wei under the floor stays', resetForward(dust * 2n - 2n, 50).forward, 0n);
+  eq('… and all of it counts as kept', resetForward(dust * 2n - 2n, 50).kept, dust * 2n - 2n);
+  check('the dust share says why it stayed', resetForward(dust * 2n - 2n, 50).why, true);
   eq('0% kept sends everything', resetForward(mBnb, 0).forward, mBnb);
   eq('100% kept sends nothing', resetForward(mBnb, 100).forward, 0n);
   check('100% kept says so', resetForward(mBnb, 100).why, true);
@@ -225,6 +229,12 @@ if (SELF) {
   // 2026-10-14: the income buys $BOBAI held in its wallet — the flow counts it per source and the sentence names it
   is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1.6 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
   is('the sweep buys $BOBAI into the income wallet, never BNB into the DeFi wallet (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const body = src.slice(src.indexOf('export async function executeSweep'), src.indexOf('export async function executeSweep') + 2600); return /swapExactTokensForTokensSupportingFeeOnTransferTokens/.test(body) && /ADDR\.WBNB, ADDR\.BOBAI\], holder/.test(body) && !/ADDR\.LP_WALLET/.test(body); })());
+  // 2026-10-14 (operator: the fees "an alle drei gleichmässig"): what a collect or a re-set paid the operator is counted
+  // as paid out, and a re-set's payout is never counted as capital folded in
+  is('the operator\'s third of the fees is counted out, and not as capital at a re-set', (() => { const f4 = moneyFlow({ history: [
+    { at: '2026-10-16T04:23:00Z', steps: { collect: { acted: true, produced_bnb: '0.003', kept_bnb: '0.001', bobai_bnb: '0.001', to_operator_bnb: '0.001', txs: [] } } },
+    { at: '2026-10-17T08:50:00Z', steps: { rebalance: { acted: true, fees_folded_bnb: 0.003, bobai_bnb: 0.001, to_operator_bnb: 0.001, txs: [] } } }] });
+    return f4.out.operator_bnb === 0.002 && f4.in.fees.folded_kept_bnb === 0.001 && f4.out.kept_as_capital_bnb === 0.002; })());
   // 2026-10-14 (operator: "50 % $BOBAI, the rest in stables to c3c"): half of every sweep goes to the operator as paid
   is('a sweep counts the operator\'s half beside the $BOBAI half, and the sentence names both', (() => { const f3 = moneyFlow({ history: [{ at: '2026-10-16T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '0.8', to_operator: '0.8', bobai_bought: '3100', txs: [] }] } }] }); const s = f3.in.income.find((x) => x.source === 'x402'); return s && s.to_operator === 0.8 && s.bobai === 3100 && /3,100 \$BOBAI held and 0.8 USD1 to the operator from 1.6 USD1/.test(flowLines(f3).income || JSON.stringify(flowLines(f3))); })());
   is('half of every sweep goes to the operator wallet 0x5c82…dC3C in the coin it was paid in (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); return /OPERATOR_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C'/.test(src) && /OPERATOR_SHARE_BPS = 5000n/.test(src) && /functionName: 'transfer', args: \[OPERATOR_WALLET, toOperator\]/.test(src); })());
@@ -1382,6 +1392,29 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
   ok('no CAKE and no WBNB of it is left loose', (await bal(CAKE, LP)) <= plan.heldOther + 10n ** 12n && (await bal(ADDR.WBNB, LP)) === 0n);
 });
 
+await scenario('THE FEES IN THIRDS (2026-10-14) — the price trades through the main range until it owes the collect floor; one collect: a third stays as capital, a third buys $BOBAI, a third goes to the operator as BNB', 'thirds', async () => {
+  const ladder = { ...LADDER0 };
+  const lo = Number(pos0.pos[5]), hi = Number(pos0.pos[6]), start = (await readPool(pub, pos0.pos)).tick;
+  let plan = null, trips = 0;
+  for (; trips < 20; trips++) {
+    await pushPriceTo(lo + 60); await pushPriceTo(hi - 60);
+    plan = await planCollect(pub, LP, ladder);
+    if (!plan.no) break;
+  }
+  await pushPriceTo(start);
+  plan = await planCollect(pub, LP, ladder);
+  console.log(`       the whale took the price across the range ${trips + 1} times`);
+  ok('after the volume the range owes the collect floor', !plan.no, plan.no || `owed ${plan.summary.owed.bnb_equivalent} BNB`);
+  if (plan.no) return;
+  const op0 = await pub.getBalance({ address: OPERATOR_WALLET }), bobai0 = await bal(BOBAI, LP), txs = [];
+  const done = await executeCollect(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
+  const produced = Number(done.produced_bnb), third = produced / 3, op1 = await pub.getBalance({ address: OPERATOR_WALLET });
+  ok('the operator received a third of what the run produced, as BNB', Math.abs(Number(done.to_operator_bnb) - third) < produced * 0.01 && Number(formatEther(op1 - op0)) === Number(done.to_operator_bnb), `${done.to_operator_bnb} BNB of ${produced.toFixed(6)} produced; the operator's balance moved ${formatEther(op1 - op0)}`);
+  ok('a third bought $BOBAI, held in the DeFi wallet', Math.abs(Number(done.bobai_bnb) - third) < produced * 0.01 && (await bal(BOBAI, LP)) > bobai0, `${done.bobai_bnb} BNB into $BOBAI`);
+  ok('a third stays as capital', Math.abs(Number(done.kept_bnb) - third) < produced * 0.01, `${done.kept_bnb} BNB kept (${done.kept_pct}%)`);
+  ok('the send to the operator is one plain transfer in the run', txs.filter((t) => /operator's third/.test(t.label)).length === 1, txs.map((t) => t.label.split(' ').slice(0, 4).join(' ')).join(' · '));
+});
+
 await scenario('EVERY AI PAYMENT: HALF BUYS $BOBAI, HALF TO THE OPERATOR (2026-10-14) — the x402 wallet holds USD1 a buyer paid; half goes to the operator as USD1, half buys $BOBAI that stays in that wallet; the DeFi wallet gets nothing', 'sweep', async () => {
   const src = INCOME_SOURCES.find((s) => s.key === 'x402');
   // a buyer's payment, on the fork: the whale buys 0.05 BNB of USD1 (a payment, not a market move) and sends it to the income wallet
@@ -2138,6 +2171,13 @@ export const INCOME_SOURCES = [
     token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
     earns: '$U released from ERC-8183 job escrows',
   },
+  // The same wallet, USDC (2026-10-14, the wallet map): 0.208 USDC lay on the provider and no sweep knew it
+  {
+    key: 'provider-usdc', name: 'agent provider (USDC)', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',
+    wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+    token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
+    earns: 'USDC paid to the provider',
+  },
 ];
 
 export const ABI = {
@@ -2675,8 +2715,8 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   const split = splitFees(forward, keptPct);
   const out = { txs, swap, ...found, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
   if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
-  const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
-  return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };
+  const bought = await profitShare(pub, send, account.address, split.buyback);
+  return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), to_operator_bnb: formatEther(bought.toOperator), operator: OPERATOR_WALLET, held_in: account.address };
 }
 
 // --------------------------------------------------------------------------
@@ -3020,6 +3060,17 @@ async function buyBobaiHold(pub, send, owner, bnbWei) {
   return { spent: bnbWei, units: after > before ? after - before : 0n };
 }
 
+// THE FEES IN THIRDS (2026-10-14, operator: "mach es an alle drei gleichmässig"): of what a range earns, a third stays as
+// capital (LP_FEE_KEEP_PCT = 33.34, splitFees) and the rest — the profit share — is halved here: one half goes to the
+// operator's wallet as BNB (he adds liquidity from there), the other half buys $BOBAI the agent holds. The same function
+// for the collect, the re-set and the move, so the three can never split differently.
+async function profitShare(pub, send, owner, shareWei) {
+  const toOperator = shareWei / 2n, toBobai = shareWei - toOperator;
+  if (toOperator > 0n) await send("send the operator's third of the fees as BNB", { to: OPERATOR_WALLET, value: toOperator });
+  const bought = toBobai > 0n ? await buyBobaiHold(pub, send, owner, toBobai) : { spent: 0n, units: 0n };
+  return { ...bought, toOperator };
+}
+
 // What the position holds at today's price plus the two tokens sitting in
 // the wallet beside it, in BNB. The re-set plan values the same way; the
 // increase records it too since 2026-09-09, because a deposit the watch puts
@@ -3164,7 +3215,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // A wallet that holds less WBNB than the share after the trades (a range
   // that ended all on the other side, with the buy capped) keeps it as
   // capital and says so; the mint takes what is there.
-  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share ? share.why : null;
+  let boughtBobai = 0n, bobaiUnits = 0n, toOperatorWei = 0n, forwardWhy = share ? share.why : null;
   let shareSwap = null;
   if (reserved > 0n) {
     let wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
@@ -3182,8 +3233,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     }
     if (wbnbNow >= reserved) {
       await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
-      const bought = await buyBobaiHold(pub, send, account.address, reserved);
-      boughtBobai = reserved; bobaiUnits = bought.units;
+      const bought = await profitShare(pub, send, account.address, reserved);
+      boughtBobai = bought.spent; bobaiUnits = bought.units; toOperatorWei = bought.toOperator;
     } else {
       forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
@@ -3235,7 +3286,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), ...(shareSwap ? { share_swap: shareSwap } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
-      bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
+      bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), to_operator_bnb: Number(formatEther(toOperatorWei)), fees_kept_pct: share ? share.pct : null,
       ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
     } : {}) };
 }
@@ -3377,13 +3428,13 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
   const entry = await tradeToRange(pub, send, account.address, other, fee, t.perLWbnb, t.perLOther, { reserved, buyLabel: 'enter the new pair: buy its other side', sellLabel: 'sell the excess of the new other side' });
   if (entry) swaps.push(entry);
   // 5. The profit share of the old range's fees becomes $BOBAI, held.
-  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share.why;
+  let boughtBobai = 0n, bobaiUnits = 0n, toOperatorWei = 0n, forwardWhy = share.why;
   if (reserved > 0n) {
     const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
     if (wbnbNow >= reserved) {
       await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
-      const bought = await buyBobaiHold(pub, send, account.address, reserved);
-      boughtBobai = reserved; bobaiUnits = bought.units;
+      const bought = await profitShare(pub, send, account.address, reserved);
+      boughtBobai = bought.spent; bobaiUnits = bought.units; toOperatorWei = bought.toOperator;
     } else {
       forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
@@ -3415,7 +3466,7 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
     new_position: np.tokenId == null ? null : String(np.tokenId), new_pool: plan.to.pool, new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper],
     liquidity_after: np.pos ? String(np.pos[7]) : null,
     fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
-    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share.pct,
+    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), to_operator_bnb: Number(formatEther(toOperatorWei)), fees_kept_pct: share.pct,
     ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
   };
 }
@@ -3834,11 +3885,11 @@ export function isReset(rb) {
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
   const bySource = {};
-  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0;
+  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0, feesToOperator = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
   // Gas the fees are already net of (2026-09-24, D5, the operator's go).
   let gasNetted = 0;
-  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
+  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0, resetToOperator = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
   // Fees a collect kept that no step has put into the position yet: they wait
@@ -3869,6 +3920,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
         // Since 2026-09-09 the share buys BOBAI held in the wallet (c.bobai_bnb);
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
+        feesToOperator += n(c.to_operator_bnb); // since 2026-10-14 a third of the fees goes to the operator as BNB
         bobaiUnits += n(c.bobai_units);
         // A collect measures what it produced as the wallet's balance after
         // its collect, sale and unwrap against before: their gas is already
@@ -3902,6 +3954,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // (fees_forwarded_bnb) and only the rest is folded in.
       if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
       if (n(rb.bobai_bnb ?? rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.bobai_bnb ?? rb.fees_forwarded_bnb);
+      resetToOperator += n(rb.to_operator_bnb);
       bobaiUnits += n(rb.bobai_units);
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
       // A re-set forced by a deposit wraps the waiting BNB into its own mint:
@@ -3941,7 +3994,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
   // The rule is what the last step that split fees named: the last collect,
   // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
   const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;
-  const foldedKept = feesFolded - resetForwarded;
+  const foldedKept = feesFolded - resetForwarded - resetToOperator; // what a re-set sent the operator is not capital either
 
   return {
     since: first,
@@ -3960,6 +4013,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // (before 2026-09-09 this went to the buyback wallet).
       bobai_bnb: r6(feesForwarded + resetForwarded),
       bobai_units: r6(bobaiUnits),
+      // BNB of the fees paid out to the operator (a third since 2026-10-14) — earned by the position, no longer in it
+      operator_bnb: r6(feesToOperator + resetToOperator),
       kept_as_capital_bnb: r6(feesKept + foldedKept),
       capital_arrived_bnb: r6(incomeBnb + feesKept + foldedKept),
       into_position_bnb: r6(intoPosition),
@@ -3970,7 +4025,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
     // no fee figure is already net of — the one a profit takes off.
     gas: { bnb: r6(gas), transactions: txs, netted_in_fees_bnb: r6(gasNetted), to_subtract_bnb: r6(Math.max(0, gas - gasNetted)) },
     waiting,
-    rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct },
+    // the profit share is halved between $BOBAI and the operator since 2026-10-14 (a third each); a record that still
+    // kept half is the rule before it — all of the rest bought $BOBAI then
+    rule: keptPct == null ? null : keptPct >= 49.99 ? { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct, fee_share_operator_pct: 0 } : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: +((100 - keptPct) / 2).toFixed(2), fee_share_operator_pct: +((100 - keptPct) / 2).toFixed(2) },
     paid_for: earned ? { x402_answers: n(earned.count), usd1: n(earned.totalUsd1) } : null,
   };
 }
@@ -4167,7 +4224,8 @@ export const V2_SWAP_FEE_PCT = 0.25;
 // into the position with the next increase. worker-lp reads the live value
 // from LP_FEE_KEEP_PCT in wrangler.toml; this is the default and the one the
 // hand script uses.
-export const FEE_SHARE_KEPT_PCT = 50;
+// 2026-10-14: a third (operator: the fees "an alle drei gleichmässig" — capital, $BOBAI, the operator)
+export const FEE_SHARE_KEPT_PCT = 33.34;
 
 // Split what a collect produced (bigint wei) into the part kept as capital
 // and the part sent to the buyback wallet. A percentage that is not a number
@@ -5275,7 +5333,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the position was left: the newest tick the record saw.
   const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
-  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: n(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) + n(sum.fees_to_operator_bnb), owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
   // WHAT THE AGENT HOLDS BESIDE THE POSITION (2026-09-18). "Worth now" is the
   // position; the result above it also counts what the position produced and
   // no longer holds — $BOBAI bought (at what it cost), fees still owed, kept
@@ -5283,6 +5341,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // tenth of the result shown beside it. worth + beside − put in − gas = result.
   const besideParts = [
     { label: '$BOBAI held, at cost', bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) },
+    // a third of the fees since 2026-10-14: earned by the position, paid out to the operator as BNB
+    { label: 'paid out to the operator', bnb: r5(sum.fees_to_operator_bnb) },
     { label: 'fees owed by the position', bnb: r5(sum.fees_owed_now_bnb) },
     { label: 'kept fees waiting in the wallet', bnb: r5(sum.fees_kept_waiting_bnb) },
   ].filter((x) => n(x.bnb) > 0);
@@ -7105,12 +7165,14 @@ id = "<your-kv-namespace-id>"
 # $BOBAI the agent's wallet holds (since 2026-09-09; the buyback wallet before). "0" was the rule until 2026-09-04 (every fee to the
 # buyback); "50" since, on the operator's word: the position grows out of
 # its own fees, so the buyback's share grows with it. A value that is not
-# 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
+# 0–100 falls back to the default in shared/lp-guards.js (33.34), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
 # LP_RELOCATE is gone (2026-09-11): the agent stays in CAKE/BNB 0.05%,
 # HOME_POOL in shared/lp-guards.js; the relocate step only says so.
-LP_FEE_KEEP_PCT = "50"
+# a third (2026-10-14, operator: "an alle drei gleichmässig"): a third stays as capital, a third buys $BOBAI,
+# a third goes to the operator as BNB (shared/lp-agent.js profitShare)
+LP_FEE_KEEP_PCT = "33.34"
 # LP_LADDER (2026-09-16): "0" plans the buy ladder and records what it would
 # do; "1" mints and grows the reserve range below the price from BNB that
 # arrives while the main range is all of the other side above it. The first

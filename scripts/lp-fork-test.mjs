@@ -303,6 +303,29 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
   ok('no CAKE and no WBNB of it is left loose', (await bal(CAKE, LP)) <= plan.heldOther + 10n ** 12n && (await bal(ADDR.WBNB, LP)) === 0n);
 });
 
+await scenario('THE FEES IN THIRDS (2026-10-14) — the price trades through the main range until it owes the collect floor; one collect: a third stays as capital, a third buys $BOBAI, a third goes to the operator as BNB', 'thirds', async () => {
+  const ladder = { ...LADDER0 };
+  const lo = Number(pos0.pos[5]), hi = Number(pos0.pos[6]), start = (await readPool(pub, pos0.pos)).tick;
+  let plan = null, trips = 0;
+  for (; trips < 20; trips++) {
+    await pushPriceTo(lo + 60); await pushPriceTo(hi - 60);
+    plan = await planCollect(pub, LP, ladder);
+    if (!plan.no) break;
+  }
+  await pushPriceTo(start);
+  plan = await planCollect(pub, LP, ladder);
+  console.log(`       the whale took the price across the range ${trips + 1} times`);
+  ok('after the volume the range owes the collect floor', !plan.no, plan.no || `owed ${plan.summary.owed.bnb_equivalent} BNB`);
+  if (plan.no) return;
+  const op0 = await pub.getBalance({ address: OPERATOR_WALLET }), bobai0 = await bal(BOBAI, LP), txs = [];
+  const done = await executeCollect(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
+  const produced = Number(done.produced_bnb), third = produced / 3, op1 = await pub.getBalance({ address: OPERATOR_WALLET });
+  ok('the operator received a third of what the run produced, as BNB', Math.abs(Number(done.to_operator_bnb) - third) < produced * 0.01 && Number(formatEther(op1 - op0)) === Number(done.to_operator_bnb), `${done.to_operator_bnb} BNB of ${produced.toFixed(6)} produced; the operator's balance moved ${formatEther(op1 - op0)}`);
+  ok('a third bought $BOBAI, held in the DeFi wallet', Math.abs(Number(done.bobai_bnb) - third) < produced * 0.01 && (await bal(BOBAI, LP)) > bobai0, `${done.bobai_bnb} BNB into $BOBAI`);
+  ok('a third stays as capital', Math.abs(Number(done.kept_bnb) - third) < produced * 0.01, `${done.kept_bnb} BNB kept (${done.kept_pct}%)`);
+  ok('the send to the operator is one plain transfer in the run', txs.filter((t) => /operator's third/.test(t.label)).length === 1, txs.map((t) => t.label.split(' ').slice(0, 4).join(' ')).join(' · '));
+});
+
 await scenario('EVERY AI PAYMENT: HALF BUYS $BOBAI, HALF TO THE OPERATOR (2026-10-14) — the x402 wallet holds USD1 a buyer paid; half goes to the operator as USD1, half buys $BOBAI that stays in that wallet; the DeFi wallet gets nothing', 'sweep', async () => {
   const src = INCOME_SOURCES.find((s) => s.key === 'x402');
   // a buyer's payment, on the fork: the whale buys 0.05 BNB of USD1 (a payment, not a market move) and sends it to the income wallet

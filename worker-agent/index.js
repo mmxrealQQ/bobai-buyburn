@@ -94,7 +94,7 @@ export async function keepMarqueListed(env) {
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
-import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
+import { widthClassOf, HOME_POOL, pickWidth, FEE_SHARE_KEPT_PCT } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -763,6 +763,7 @@ async function recordLpSeries(env) {
   const totals = {
     bobai_spent_total_bnb: flow.out.bobai_bnb,
     bobai_units_total: flow.out.bobai_units,
+    operator_total_bnb: flow.out.operator_bnb || 0, // a third of the fees to the operator since 2026-10-14
     forwarded_total_bnb: flow.out.bobai_bnb,
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
@@ -899,6 +900,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // the old key stays one more release for readers of the series.
     fees_into_bobai_bnb: last.bobai_spent_total_bnb ?? last.forwarded_total_bnb,
     bobai_held_units: last.bobai_units_total ?? 0,
+    fees_to_operator_bnb: Number(last.operator_total_bnb) || 0,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
     fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
     // … of which this much still waits in the wallet as BNB, under the increase floor.
@@ -1299,7 +1301,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
   await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'tip'));
   return { status: 200, body: {
-    ok: true, thanks: 'Thank you! Your tip arrived. BOBAI puts it to work: into the DeFi agent\'s pool with the next sweep, and half of what it earns buys $BOBAI.',
+    ok: true, thanks: 'Thank you! Your tip arrived. With the next sweep half of it buys $BOBAI, held off the market, and half is the project\u2019s revenue.',
     paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx, by: 'BOBAI · https://brainonbnb.com',
   } };
 }
@@ -1452,6 +1454,7 @@ async function buildLpSeries(env) {
       const totals = liveFlow ? {
         bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
         bobai_units_total: liveFlow.out.bobai_units,
+        operator_total_bnb: liveFlow.out.operator_bnb || 0,
         forwarded_total_bnb: liveFlow.out.bobai_bnb,
         kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
         fees_total_bnb: liveFlow.in.fees.bnb,
@@ -2419,6 +2422,9 @@ ${pageTail}`;
       // liquidity page and the Telegram report all read this one figure set.
       const earned = await readEarnings(env).catch(() => null);
       const flow = moneyFlow(rec, { earned });
+      // THE RULE IN FORCE, not the one the last collect ran under (2026-10-14: the thirds were live, the page still read
+      // 50/50 from the morning's collect until the next one): the same constant the agent splits with
+      flow.rule = { fee_share_kept_pct: FEE_SHARE_KEPT_PCT, fee_share_bobai_pct: +((100 - FEE_SHARE_KEPT_PCT) / 2).toFixed(2), fee_share_operator_pct: +((100 - FEE_SHARE_KEPT_PCT) / 2).toFixed(2) };
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       // The ladder record beside it (worker-lp, KV lp:ladder): which position
       // is the main range and which the reserve. The hand script reads it
@@ -2547,7 +2553,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
 `)}${pageNav({ href: SITE + '/defi', label: 'Liquidity' }, { href: '/lp/agent', label: 'The DeFi agent — its record' }, BUY)}<h1>The DeFi agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
-<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_bobai_pct)}% buy $BOBAI that the agent holds and never sells, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'half buys $BOBAI that the agent holds and never sells, and half stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
+<p class="lead">On its own, every day: a slice of every $BOBAI trade works in the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings, ${h(flow.rule.fee_share_bobai_pct)}% buy $BOBAI that the agent holds and never sells${flow.rule.fee_share_operator_pct ? ` and ${h(flow.rule.fee_share_operator_pct)}% are paid out to the operator as BNB` : ''}` : 'a third stays as capital, a third buys $BOBAI the agent holds and a third is paid out to the operator'}. What other AIs pay this project is split when it is swept: half buys $BOBAI, half is the operator's revenue. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
 <dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check finds it outside for longer than the measured wait and re-sets it`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${(rb.value_with_reserve_bnb ?? rb.value_bnb) != null ? `, worth ${f(rb.value_with_reserve_bnb ?? rb.value_bnb, 4)} BNB${usd(rb.value_with_reserve_bnb ?? rb.value_bnb)}${rb.reserve ? ' with the reserve range' : ''}` : ''}` : 'none open'}</dd>
@@ -2561,7 +2567,7 @@ ${rsv ? `<dt>Reserve range</dt><dd>PancakeSwap V3 <a href="https://pancakeswap.f
 <div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service has been paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'} since it opened. What of it has reached the income wallet is under Waiting and is swept once it is worth more than the gas; the rest went through the earlier path, which burned it directly.</i>` : ''}</div>
 <div><b>Went out</b><span>${h(fl.went_out)}${flow.out.bobai_bnb > 0 && usd(flow.out.bobai_bnb) ? ` — the BOBAI share${usd(flow.out.bobai_bnb)}${flow.out.bobai_units > 0 ? `, ${h(Math.round(flow.out.bobai_units).toLocaleString('en-US'))} BOBAI held` : ''}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
 <div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${flow.waiting.fees_owed_bnb == null ? 'fees owed by the position not read at the last run' : `${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position`}${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the DeFi wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
-<div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
+<div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold${flow.rule.fee_share_operator_pct ? `, ${h(flow.rule.fee_share_operator_pct)}% is paid out to the operator as BNB` : ''}.` : 'The share of the fees kept as capital is named with the next collect.'} AI income no longer becomes capital since 2026-10-14: half buys $BOBAI held in its wallet, half is paid to the operator. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
 </div></div>
 <h2>The last run, step by step</h2>${fromDaily ? `<p class="note" style="margin:0 0 8px">The newest run, ${h(when(last.at))}, was an hourly range check; it has the rebalance step only. The other steps run once a day and are shown from ${h(dailyWhen)}.</p>` : ''}
 <div class="card">${stepRows.map((r) => `<div class="step" style="margin:0 0 10px"><b>${h(r.name)}<span class="st ${r.err ? 'bad' : r.acted ? 'ok' : 'quiet'}">${r.err ? 'failed' : r.acted ? 'acted' : 'nothing to do'}</span></b><span>${h(r.err || r.why || '')}</span>${r.detail ? `<i>${h(r.detail)}</i>` : ''}</div>`).join('')}
@@ -2687,8 +2693,8 @@ ${pageTail}`;
         money_flow: {
           '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 signed by EIP-3009 and settled by us, or by direct transfer; USDC by standard x402 through Permit2; or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
-          '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
-          '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
+          '3': 'once a day it is split (since 2026-10-14): half is sent to the operator in the coin it was paid in, half is sold for $BOBAI that stays in that wallet and is never sold; until then it was sold for BNB and became capital of the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+          '4': 'the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A runs the project\'s PancakeSwap V3 position with a slice of every $BOBAI trade; the fees it earns are collected and sold for BNB, and since 2026-10-14 split in thirds: a third stays as capital (LP_FEE_KEEP_PCT on worker-lp), a third buys $BOBAI the agent holds and never sells, a third is paid out to the operator as BNB',
           '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
           floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.005 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
           before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',

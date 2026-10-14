@@ -129,7 +129,11 @@ if (SELF) {
   // default rather than to either extreme.
   const eq = (label, got, want) => check(label, got === want ? null : `got ${got}, wanted ${want}`, false);
   const one = 10n ** 18n;
-  eq(`default keeps ${FEE_SHARE_KEPT_PCT}% of 1 BNB`, splitFees(one).keep, (one * BigInt(FEE_SHARE_KEPT_PCT)) / 100n);
+  eq(`default keeps ${FEE_SHARE_KEPT_PCT}% of 1 BNB`, splitFees(one).keep, (one * BigInt(Math.round(FEE_SHARE_KEPT_PCT * 100))) / 10000n);
+  // 2026-10-14 (operator: "an alle drei gleichmässig"): the default keeps a third, and the profit share it leaves is
+  // halved by profitShare — operator and $BOBAI — so each of the three gets a third, to the hundredth of a percent
+  eq('the default keeps a third (33.34%)', FEE_SHARE_KEPT_PCT, 33.34);
+  check('the profit share is halved between the operator (BNB) and $BOBAI, for the collect, the re-set and the move (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const fn = src.slice(src.indexOf('async function profitShare'), src.indexOf('async function profitShare') + 600); return /toOperator = shareWei \/ 2n/.test(fn) && /to: OPERATOR_WALLET, value: toOperator/.test(fn) && (src.match(/await profitShare\(pub, send, account\.address/g) || []).length === 3 && !/await buyBobaiHold\(pub, send, account\.address/.test(src); })() ? null : 'wrong', false);
   eq('default sends the rest to the buyback', splitFees(one).keep + splitFees(one).buyback, one);
   eq('0% keeps nothing', splitFees(one, 0).keep, 0n);
   eq('0% forwards everything', splitFees(one, 0).buyback, one);
@@ -146,19 +150,19 @@ if (SELF) {
   eq('a negative amount is treated as nothing', splitFees(-1n).buyback, 0n);
 
   console.log('re-set fee share');
-  // Both directions: a share worth sending is sent, a share under the floor
+  // Both directions (the arithmetic at a kept share of 50%, the default until 2026-10-14): a share worth sending is sent, a share under the floor
   // stays as capital (and is counted as kept, so nothing goes missing), a
   // kept share of 100% sends nothing, no fees owed sends nothing.
   const mBnb = 10n ** 15n; // 0.001 BNB
-  eq('half of 0.001 BNB is sent on', resetForward(mBnb).forward, mBnb / 2n);
-  eq('… and the other half is kept', resetForward(mBnb).kept, mBnb / 2n);
+  eq('half of 0.001 BNB is sent on', resetForward(mBnb, 50).forward, mBnb / 2n);
+  eq('… and the other half is kept', resetForward(mBnb, 50).kept, mBnb / 2n);
   eq('the share names the percentage it kept', resetForward(mBnb).pct, FEE_SHARE_KEPT_PCT);
   check('a share worth sending has no reason not to', resetForward(mBnb).why, false);
   const dust = BigInt(Math.round(MIN_RESET_FORWARD_BNB * 1e6)) * 10n ** 12n; // exactly the floor, doubled = 0.0002 folded
-  eq('a buyback share exactly at the floor is sent', resetForward(dust * 2n).forward, dust);
-  eq('a buyback share one wei under the floor stays', resetForward(dust * 2n - 2n).forward, 0n);
-  eq('… and all of it counts as kept', resetForward(dust * 2n - 2n).kept, dust * 2n - 2n);
-  check('the dust share says why it stayed', resetForward(dust * 2n - 2n).why, true);
+  eq('a buyback share exactly at the floor is sent', resetForward(dust * 2n, 50).forward, dust);
+  eq('a buyback share one wei under the floor stays', resetForward(dust * 2n - 2n, 50).forward, 0n);
+  eq('… and all of it counts as kept', resetForward(dust * 2n - 2n, 50).kept, dust * 2n - 2n);
+  check('the dust share says why it stayed', resetForward(dust * 2n - 2n, 50).why, true);
   eq('0% kept sends everything', resetForward(mBnb, 0).forward, mBnb);
   eq('100% kept sends nothing', resetForward(mBnb, 100).forward, 0n);
   check('100% kept says so', resetForward(mBnb, 100).why, true);
@@ -209,6 +213,12 @@ if (SELF) {
   // 2026-10-14: the income buys $BOBAI held in its wallet — the flow counts it per source and the sentence names it
   is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1.6 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
   is('the sweep buys $BOBAI into the income wallet, never BNB into the DeFi wallet (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const body = src.slice(src.indexOf('export async function executeSweep'), src.indexOf('export async function executeSweep') + 2600); return /swapExactTokensForTokensSupportingFeeOnTransferTokens/.test(body) && /ADDR\.WBNB, ADDR\.BOBAI\], holder/.test(body) && !/ADDR\.LP_WALLET/.test(body); })());
+  // 2026-10-14 (operator: the fees "an alle drei gleichmässig"): what a collect or a re-set paid the operator is counted
+  // as paid out, and a re-set's payout is never counted as capital folded in
+  is('the operator\'s third of the fees is counted out, and not as capital at a re-set', (() => { const f4 = moneyFlow({ history: [
+    { at: '2026-10-16T04:23:00Z', steps: { collect: { acted: true, produced_bnb: '0.003', kept_bnb: '0.001', bobai_bnb: '0.001', to_operator_bnb: '0.001', txs: [] } } },
+    { at: '2026-10-17T08:50:00Z', steps: { rebalance: { acted: true, fees_folded_bnb: 0.003, bobai_bnb: 0.001, to_operator_bnb: 0.001, txs: [] } } }] });
+    return f4.out.operator_bnb === 0.002 && f4.in.fees.folded_kept_bnb === 0.001 && f4.out.kept_as_capital_bnb === 0.002; })());
   // 2026-10-14 (operator: "50 % $BOBAI, the rest in stables to c3c"): half of every sweep goes to the operator as paid
   is('a sweep counts the operator\'s half beside the $BOBAI half, and the sentence names both', (() => { const f3 = moneyFlow({ history: [{ at: '2026-10-16T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '0.8', to_operator: '0.8', bobai_bought: '3100', txs: [] }] } }] }); const s = f3.in.income.find((x) => x.source === 'x402'); return s && s.to_operator === 0.8 && s.bobai === 3100 && /3,100 \$BOBAI held and 0.8 USD1 to the operator from 1.6 USD1/.test(flowLines(f3).income || JSON.stringify(flowLines(f3))); })());
   is('half of every sweep goes to the operator wallet 0x5c82…dC3C in the coin it was paid in (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); return /OPERATOR_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C'/.test(src) && /OPERATOR_SHARE_BPS = 5000n/.test(src) && /functionName: 'transfer', args: \[OPERATOR_WALLET, toOperator\]/.test(src); })());

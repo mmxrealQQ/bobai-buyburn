@@ -49,11 +49,11 @@ export function isReset(rb) {
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
   const bySource = {};
-  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0;
+  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0, feesToOperator = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
   // Gas the fees are already net of (2026-09-24, D5, the operator's go).
   let gasNetted = 0;
-  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
+  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0, resetToOperator = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
   // Fees a collect kept that no step has put into the position yet: they wait
@@ -84,6 +84,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
         // Since 2026-09-09 the share buys BOBAI held in the wallet (c.bobai_bnb);
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
+        feesToOperator += n(c.to_operator_bnb); // since 2026-10-14 a third of the fees goes to the operator as BNB
         bobaiUnits += n(c.bobai_units);
         // A collect measures what it produced as the wallet's balance after
         // its collect, sale and unwrap against before: their gas is already
@@ -117,6 +118,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // (fees_forwarded_bnb) and only the rest is folded in.
       if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
       if (n(rb.bobai_bnb ?? rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.bobai_bnb ?? rb.fees_forwarded_bnb);
+      resetToOperator += n(rb.to_operator_bnb);
       bobaiUnits += n(rb.bobai_units);
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
       // A re-set forced by a deposit wraps the waiting BNB into its own mint:
@@ -156,7 +158,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
   // The rule is what the last step that split fees named: the last collect,
   // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
   const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;
-  const foldedKept = feesFolded - resetForwarded;
+  const foldedKept = feesFolded - resetForwarded - resetToOperator; // what a re-set sent the operator is not capital either
 
   return {
     since: first,
@@ -175,6 +177,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // (before 2026-09-09 this went to the buyback wallet).
       bobai_bnb: r6(feesForwarded + resetForwarded),
       bobai_units: r6(bobaiUnits),
+      // BNB of the fees paid out to the operator (a third since 2026-10-14) — earned by the position, no longer in it
+      operator_bnb: r6(feesToOperator + resetToOperator),
       kept_as_capital_bnb: r6(feesKept + foldedKept),
       capital_arrived_bnb: r6(incomeBnb + feesKept + foldedKept),
       into_position_bnb: r6(intoPosition),
@@ -185,7 +189,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
     // no fee figure is already net of — the one a profit takes off.
     gas: { bnb: r6(gas), transactions: txs, netted_in_fees_bnb: r6(gasNetted), to_subtract_bnb: r6(Math.max(0, gas - gasNetted)) },
     waiting,
-    rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct },
+    // the profit share is halved between $BOBAI and the operator since 2026-10-14 (a third each); a record that still
+    // kept half is the rule before it — all of the rest bought $BOBAI then
+    rule: keptPct == null ? null : keptPct >= 49.99 ? { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct, fee_share_operator_pct: 0 } : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: +((100 - keptPct) / 2).toFixed(2), fee_share_operator_pct: +((100 - keptPct) / 2).toFixed(2) },
     paid_for: earned ? { x402_answers: n(earned.count), usd1: n(earned.totalUsd1) } : null,
   };
 }

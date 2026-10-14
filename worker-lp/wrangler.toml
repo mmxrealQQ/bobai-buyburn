@@ -49,12 +49,14 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # $BOBAI the agent's wallet holds (since 2026-09-09; the buyback wallet before). "0" was the rule until 2026-09-04 (every fee to the
 # buyback); "50" since, on the operator's word: the position grows out of
 # its own fees, so the buyback's share grows with it. A value that is not
-# 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
+# 0–100 falls back to the default in shared/lp-guards.js (33.34), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
 # LP_RELOCATE is gone (2026-09-11): the agent stays in CAKE/BNB 0.05%,
 # HOME_POOL in shared/lp-guards.js; the relocate step only says so.
-LP_FEE_KEEP_PCT = "50"
+# a third (2026-10-14, operator: "an alle drei gleichmässig"): a third stays as capital, a third buys $BOBAI,
+# a third goes to the operator as BNB (shared/lp-agent.js profitShare)
+LP_FEE_KEEP_PCT = "33.34"
 # LP_LADDER (2026-09-16): "0" plans the buy ladder and records what it would
 # do; "1" mints and grows the reserve range below the price from BNB that
 # arrives while the main range is all of the other side above it. The first

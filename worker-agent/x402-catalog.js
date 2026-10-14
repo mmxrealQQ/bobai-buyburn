@@ -140,9 +140,8 @@ token per caller (25 for holders of 1,000,000 $BOBAI) and costs nothing.
 ## Transparency
 
 \`https://agent.brainonbnb.com/stats\` reports what this service has been asked
-for and what happened to the money. Revenue is sold for BNB into the project's
-own PancakeSwap liquidity position; of the fees that position earns, half
-stays in it as capital and half buys $BOBAI that the agent holds. Every step is
+for and what happened to the money. Revenue is split when it is swept: half
+buys $BOBAI that is held and never sold, half is the operator's revenue. Every step is
 on-chain, and the daily record is at \`https://agent.brainonbnb.com/lp/agent\`.
 
 ## Identity

@@ -114,7 +114,8 @@ export const V2_SWAP_FEE_PCT = 0.25;
 // into the position with the next increase. worker-lp reads the live value
 // from LP_FEE_KEEP_PCT in wrangler.toml; this is the default and the one the
 // hand script uses.
-export const FEE_SHARE_KEPT_PCT = 50;
+// 2026-10-14: a third (operator: the fees "an alle drei gleichmässig" — capital, $BOBAI, the operator)
+export const FEE_SHARE_KEPT_PCT = 33.34;
 
 // Split what a collect produced (bigint wei) into the part kept as capital
 // and the part sent to the buyback wallet. A percentage that is not a number

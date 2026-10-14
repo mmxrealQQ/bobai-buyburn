@@ -3669,7 +3669,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent', range = null } = {}) {
       ...(h.reserve && h.reserve.bnb > 0 ? [h.reserve.side === 'other' ? `🪜 Reserve range, the price fell through it: ${bnb(h.reserve.bnb)} · waits for the price to come back, then merges` : h.reserve.side === 'both' ? `🪜 Reserve range, the price inside it: ${bnb(h.reserve.bnb)} · earning beside the main range` : `🪜 Reserve below the price: ${bnb(h.reserve.bnb)} · buys on the way down, no trade`] : []),
       h.bobai_units > 0
         ? `🧠 <b>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI</b> held${h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : ''} · bought from fees, never sold`
-        : '🧠 No $BOBAI held yet. Half of every fee buys some.',
+        : '🧠 No $BOBAI held yet. A third of every fee buys some.',
     ],
     [
       `🗓 Last 24 h: ${counts.length ? counts.join(', ') : 'quiet'}${d.last ? ` · last ${String(d.last.at).slice(11, 16)} UTC${d.last.error ? ' ⚠️' : ''}` : ''}`,

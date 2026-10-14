@@ -641,8 +641,8 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   const split = splitFees(forward, keptPct);
   const out = { txs, swap, ...found, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
   if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
-  const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
-  return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };
+  const bought = await profitShare(pub, send, account.address, split.buyback);
+  return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), to_operator_bnb: formatEther(bought.toOperator), operator: OPERATOR_WALLET, held_in: account.address };
 }
 
 // --------------------------------------------------------------------------
@@ -986,6 +986,17 @@ async function buyBobaiHold(pub, send, owner, bnbWei) {
   return { spent: bnbWei, units: after > before ? after - before : 0n };
 }
 
+// THE FEES IN THIRDS (2026-10-14, operator: "mach es an alle drei gleichmässig"): of what a range earns, a third stays as
+// capital (LP_FEE_KEEP_PCT = 33.34, splitFees) and the rest — the profit share — is halved here: one half goes to the
+// operator's wallet as BNB (he adds liquidity from there), the other half buys $BOBAI the agent holds. The same function
+// for the collect, the re-set and the move, so the three can never split differently.
+async function profitShare(pub, send, owner, shareWei) {
+  const toOperator = shareWei / 2n, toBobai = shareWei - toOperator;
+  if (toOperator > 0n) await send("send the operator's third of the fees as BNB", { to: OPERATOR_WALLET, value: toOperator });
+  const bought = toBobai > 0n ? await buyBobaiHold(pub, send, owner, toBobai) : { spent: 0n, units: 0n };
+  return { ...bought, toOperator };
+}
+
 // What the position holds at today's price plus the two tokens sitting in
 // the wallet beside it, in BNB. The re-set plan values the same way; the
 // increase records it too since 2026-09-09, because a deposit the watch puts
@@ -1130,7 +1141,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // A wallet that holds less WBNB than the share after the trades (a range
   // that ended all on the other side, with the buy capped) keeps it as
   // capital and says so; the mint takes what is there.
-  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share ? share.why : null;
+  let boughtBobai = 0n, bobaiUnits = 0n, toOperatorWei = 0n, forwardWhy = share ? share.why : null;
   let shareSwap = null;
   if (reserved > 0n) {
     let wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
@@ -1148,8 +1159,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     }
     if (wbnbNow >= reserved) {
       await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
-      const bought = await buyBobaiHold(pub, send, account.address, reserved);
-      boughtBobai = reserved; bobaiUnits = bought.units;
+      const bought = await profitShare(pub, send, account.address, reserved);
+      boughtBobai = bought.spent; bobaiUnits = bought.units; toOperatorWei = bought.toOperator;
     } else {
       forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
@@ -1201,7 +1212,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), ...(shareSwap ? { share_swap: shareSwap } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
-      bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
+      bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), to_operator_bnb: Number(formatEther(toOperatorWei)), fees_kept_pct: share ? share.pct : null,
       ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
     } : {}) };
 }
@@ -1343,13 +1354,13 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
   const entry = await tradeToRange(pub, send, account.address, other, fee, t.perLWbnb, t.perLOther, { reserved, buyLabel: 'enter the new pair: buy its other side', sellLabel: 'sell the excess of the new other side' });
   if (entry) swaps.push(entry);
   // 5. The profit share of the old range's fees becomes $BOBAI, held.
-  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share.why;
+  let boughtBobai = 0n, bobaiUnits = 0n, toOperatorWei = 0n, forwardWhy = share.why;
   if (reserved > 0n) {
     const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
     if (wbnbNow >= reserved) {
       await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
-      const bought = await buyBobaiHold(pub, send, account.address, reserved);
-      boughtBobai = reserved; bobaiUnits = bought.units;
+      const bought = await profitShare(pub, send, account.address, reserved);
+      boughtBobai = bought.spent; bobaiUnits = bought.units; toOperatorWei = bought.toOperator;
     } else {
       forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
@@ -1381,7 +1392,7 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
     new_position: np.tokenId == null ? null : String(np.tokenId), new_pool: plan.to.pool, new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper],
     liquidity_after: np.pos ? String(np.pos[7]) : null,
     fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
-    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share.pct,
+    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), to_operator_bnb: Number(formatEther(toOperatorWei)), fees_kept_pct: share.pct,
     ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
   };
 }

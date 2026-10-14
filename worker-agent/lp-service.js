@@ -126,6 +126,25 @@ async function withLadder(params, env) {
   if (!env || !env.AGENT || params.position != null || params.ladder) return params;
   try { const l = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); return l && l.main != null ? { ...params, ladder: l } : params; } catch { return params; }
 }
+// THE PLAN WHEN NOTHING IS NAMED (2026-10-14). A marketplace's hire button
+// pays and sends no words at all (Mandate's "Hire for $0.10"): the plan was
+// refused (422, nothing charged) and the hire never happened. Now the paying
+// wallet is the input — its one position, or the first of several — and a
+// wallet without one gets the plan for the position this agent runs itself,
+// the same work, said so in the answer.
+export const OWN_LP_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+export async function lpDefaultTarget(payer) {
+  if (/^0x[a-fA-F0-9]{40}$/.test(String(payer || ''))) {
+    payer = payer.toLowerCase(); // checksum or not, as signed
+    const pub = client(), n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [payer]));
+    if (n === 1) return { address: payer, target: `no position was named: this is the plan for the one PancakeSwap V3 position the paying wallet ${payer} holds` };
+    if (n > 1) {
+      const id = String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [payer, 0n]));
+      return { position: id, target: `no position was named: this is the plan for #${id}, the first of the ${n} the paying wallet ${payer} holds — name another with position: <id>` };
+    }
+  }
+  return { address: OWN_LP_WALLET, target: `no position was named and the paying wallet holds none: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET}) — name yours with position: <id> or address: 0x…` };
+}
 export async function lpPositionLook(params = {}, env = null) {
   const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };

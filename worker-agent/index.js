@@ -52,7 +52,7 @@ async function readAgentRecord(env) {
   const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null');
   return withArchive(JSON.parse(raw), arch);
 }
-import { lpPositionLook } from './lp-service.js';
+import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -1202,13 +1202,24 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  let wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  // A hire button that pays and names nothing (2026-10-14, Mandate's "Hire for $0.10"): the paying wallet is the input,
+  // as the escrow path does it since 2026-10-04 (sell.js deliverJob) — the DeFi agent plans for the payer's position or
+  // its own (lpDefaultTarget), the health factor reads the payer's account
+  let target = null;
+  if ((serviceId === 'lp_position_plan' || serviceId === 'health_factor') && missingInput(serviceId, wanted)) {
+    const pp = parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
+    const payer = a.authorization?.from || a.permit2Authorization?.from || null;
+    if (serviceId === 'lp_position_plan') target = await lpDefaultTarget(payer).catch(() => ({ address: OWN_LP_WALLET, target: `no position was named: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET})` }));
+    else if (payer) target = { address: payer, target: `no account was named: this reads the paying wallet ${payer}` };
+    if (target) wanted = { ...wanted, ...(target.position ? { position: target.position } : { address: target.address }) };
+  }
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const params = target ? wanted : extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);
@@ -1227,6 +1238,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
     produced_at: new Date().toISOString(),
+    ...(target ? { input: target.target } : {}),
     result,
     summary: summarize(serviceId, result),
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',

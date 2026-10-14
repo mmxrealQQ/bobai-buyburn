@@ -924,7 +924,8 @@ section('Transparency');
   // — the floors — and where the daily record is, or "automated" is a claim.
   ok('flow names its floors', /floor/i.test(j?.money_flow?.floors || '') && /0\.004 BNB/.test(j?.money_flow?.floors || ''));
   ok('flow points at the daily record', /\/lp\/agent/.test(JSON.stringify(j?.money_flow || {})));
-  ok('flow ends at the buyback wallet, not a second burn', /0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(j?.money_flow?.['4'] || '') && !/burns it/.test(j?.money_flow?.['3'] || ''));
+  // 2026-10-14: the fees go in thirds (capital, $BOBAI held, the operator); they have not gone to the buyback wallet since 2026-09-09
+  ok('flow ends in the thirds — capital, $BOBAI held, the operator — not a second burn', /third/.test(j?.money_flow?.['4'] || '') && /\$BOBAI/.test(j?.money_flow?.['4'] || '') && /operator/.test(j?.money_flow?.['4'] || '') && !/burns it/.test(j?.money_flow?.['3'] || ''));
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
   // Earnings tell a stranger's payment from our own test purchase, and the
   // two add up to the headline — 2026-09-08 the headline alone read our own

@@ -37,7 +37,7 @@ import { createPublicClient, createWalletClient, http, keccak256, toBytes, forma
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 import { CENSUS_DIR } from './lib/census-dir.mjs';
-import { REPUTATION, IDENTITY, REPUTATION_ABI, IDENTITY_ABI, ABI_SOURCE, unitFor } from './lib/erc8004-reputation.mjs';
+import { REPUTATION, IDENTITY, REPUTATION_ABI, IDENTITY_ABI, ABI_SOURCE, unitFor, isOurAgent } from './lib/erc8004-reputation.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const arg = (name, fallback) => {
@@ -110,8 +110,8 @@ if (SELFTEST) {
   const me = process.env.AGENT_PROVIDER_WALLET;
   if (me) {
     for (const [id, expected] of [[302257n, true], [265375n, false]]) {
-      const owned = await publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, id] });
-      if (owned !== expected) problems.push(`isAuthorizedOrOwner(us, ${id}) is ${owned}, expected ${expected}`);
+      const owned = await isOurAgent(publicClient, me, id);
+      if (owned !== expected) problems.push(`isOurAgent(us, ${id}) is ${owned}, expected ${expected}`);
     }
   }
   console.log('\nProvider response self-test');
@@ -171,9 +171,7 @@ async function collect() {
         const r = await fetch(`${ORIGIN}/status?agent=${a.id}`, { signal: AbortSignal.timeout(30000) });
         if (r.ok) status = await r.json();
       } catch { /* recorded as null below, never as a healthy default */ }
-      const owned = await publicClient.readContract({
-        address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, BigInt(a.id)],
-      });
+      const owned = await isOurAgent(publicClient, me, BigInt(a.id));
       const responses = Number(await publicClient.readContract({
         address: REPUTATION, abi: REPUTATION_ABI, functionName: 'getResponseCount',
         args: [BigInt(a.id), client, BigInt(lastIndex), [me]],
@@ -299,9 +297,7 @@ for (const a of doc.agents) {
   const lastIndex = Number(await publicClient.readContract({
     address: REPUTATION, abi: REPUTATION_ABI, functionName: 'getLastIndex', args: [BigInt(a.id), a.rated_by],
   }));
-  const owned = await publicClient.readContract({
-    address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [account.address, BigInt(a.id)],
-  });
+  const owned = await isOurAgent(publicClient, account.address, BigInt(a.id));
   const responses = Number(await publicClient.readContract({
     address: REPUTATION, abi: REPUTATION_ABI, functionName: 'getResponseCount',
     args: [BigInt(a.id), a.rated_by, BigInt(a.responding_to_index), [account.address]],

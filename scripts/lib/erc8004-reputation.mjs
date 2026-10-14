@@ -80,7 +80,22 @@ export const IDENTITY_ABI = [
   { name: 'isAuthorizedOrOwner', type: 'function', stateMutability: 'view',
     inputs: [{ name: 'spender', type: 'address' }, { name: 'agentId', type: 'uint256' }],
     outputs: [{ type: 'bool' }] },
+  { name: 'getAgentWallet', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'agentId', type: 'uint256' }], outputs: [{ type: 'address' }] },
 ];
+
+// IS THIS AGENT OURS, for the wallet that signs (2026-10-14). Until then "ours" was "the registry says we own or
+// operate it". Since 2026-10-14 our six agents are owned by the DeFi wallet 0xbFAA and keep the provider 0x7380 as
+// their agentWallet, so the provider owns none of them — and a rail that asked only isAuthorizedOrOwner would have let
+// the provider rate our own agents, and stopped it answering ratings as them. Ours = owner/operator OR agentWallet.
+export async function isOurAgent(publicClient, me, agentId) {
+  const id = BigInt(agentId);
+  const [authorized, wallet] = await Promise.all([
+    publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, id] }),
+    publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'getAgentWallet', args: [id] }).catch(() => null),
+  ]);
+  return authorized === true || (!!wallet && wallet.toLowerCase() === String(me).toLowerCase());
+}
 
 // TWO KINDS OF CLAIM, AND THEY ARE NOT COMPARABLE.
 //

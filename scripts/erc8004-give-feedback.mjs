@@ -52,8 +52,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 import { CENSUS_DIR } from './lib/census-dir.mjs';
 import {
-  REPUTATION, IDENTITY, REPUTATION_ABI, IDENTITY_ABI, ABI_SOURCE, OPERATIONAL, isOperational, unitFor,
-} from './lib/erc8004-reputation.mjs';
+  REPUTATION, IDENTITY, REPUTATION_ABI, IDENTITY_ABI, ABI_SOURCE, OPERATIONAL, isOperational, unitFor, isOurAgent } from './lib/erc8004-reputation.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const arg = (name, fallback) => {
@@ -175,10 +174,8 @@ if (SELFTEST) {
   const me = process.env.AGENT_PROVIDER_WALLET;
   if (me) {
     for (const [id, expected] of [[302257n, true], [265375n, false]]) {
-      const authorized = await publicClient.readContract({
-        address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, id],
-      });
-      if (authorized !== expected) problems.push(`isAuthorizedOrOwner(us, ${id}) is ${authorized}, expected ${expected}`);
+      const authorized = await isOurAgent(publicClient, me, id);
+      if (authorized !== expected) problems.push(`isOurAgent(us, ${id}) is ${authorized}, expected ${expected}`);
     }
   }
   const bound = await publicClient.readContract({ address: REPUTATION, abi: REPUTATION_ABI, functionName: 'getIdentityRegistry' });
@@ -355,7 +352,7 @@ if (!CONFIRM) {
   let sendable = 0;
   for (const r of doc.agents) {
     const self = me
-      ? await publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, BigInt(r.id)] })
+      ? await isOurAgent(publicClient, me, BigInt(r.id))
       : false;
     const bad = vet(r, { self });
     if (!bad.length) {
@@ -407,9 +404,7 @@ const wallet = createWalletClient({
 const doc = JSON.parse(bytes);
 const queue = [];
 for (const r of doc.agents) {
-  const self = await publicClient.readContract({
-    address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [account.address, BigInt(r.id)],
-  });
+  const self = await isOurAgent(publicClient, account.address, BigInt(r.id));
   const bad = vet(r, { self });
   if (bad.length) { console.log(`  skip ${r.id} — ${bad.join('; ')}`); continue; }
   queue.push(r);

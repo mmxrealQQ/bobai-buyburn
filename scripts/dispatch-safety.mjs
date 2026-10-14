@@ -391,7 +391,10 @@ const MUTATING_IN_NAME = /(^|_)(build|create|send|submit|sign|execute|swap|trade
 const reachable = tools.filter((t) => isReadOnly(t));
 const refused = tools.filter((t) => !isReadOnly(t));
 const byName = refused.filter((t) => MUTATING_IN_NAME.test(t.name));
-const unexplained = refused.filter((t) => !MUTATING_IN_NAME.test(t.name));
+// A tool that declares itself NOT read-only (2026-10-10: bsc_rug_watch registers a watch) is refused by its own
+// word: the router doing what the server asks, not a reader lost for no reason.
+const byDeclaration = refused.filter((t) => !MUTATING_IN_NAME.test(t.name) && t.annotations?.readOnlyHint === false);
+const unexplained = refused.filter((t) => !MUTATING_IN_NAME.test(t.name) && t.annotations?.readOnlyHint !== false);
 const declared = tools.filter((t) => t.annotations?.readOnlyHint === true);
 
 console.log(`\nRouter reach — ${SITE}`);
@@ -400,6 +403,10 @@ console.log(`  ${declared.length} declare readOnlyHint, which is what a stranger
 if (byName.length) {
   console.log(`\n  refused on the verb in their own name — by design, and our naming debt:`);
   for (const t of byName) console.log(`    ${t.name}`);
+}
+if (byDeclaration.length) {
+  console.log(`\n  refused because they declare themselves not read-only — by design:`);
+  for (const t of byDeclaration) console.log(`    ${t.name}`);
 }
 if (unexplained.length) {
   console.log(`\n  refused with nothing in the name to explain it — this is the bug shape:`);

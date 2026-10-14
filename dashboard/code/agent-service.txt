@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 56 files, 18762 lines.
+# one fetch. 56 files, 18772 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8344,7 +8344,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
-  // The same price in $BOBAI, quoted now. If the pair cannot be read the
+  // Half the price in $BOBAI, quoted now. If the pair cannot be read the
   // answer is still for sale in USD1; the $BOBAI door just stays shut.
   // $BOBAI IS THE CHEAPER WAY TO PAY (2026-10-14, operator: profit and volume for $BOBAI first): an answer costs half
   // its USD1 price in $BOBAI, so a buyer — a person or an agent — has a reason to buy the token to pay with it
@@ -8366,7 +8366,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
           // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
           // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
-          description: `${description} — the same price in $BOBAI: send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the full price at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
       ],
@@ -9702,7 +9702,7 @@ ${pageTail}`;
         // in — not the state it found the moment before (2026-09-08: the line
         // read "outside since 04:50" under a re-set that had already happened).
         { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.acted && !rb.error && rb.new_position
-          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn${rb.one_sided ? ` and #${rb.new_position} minted one-sided ${rb.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : `, the missing side bought and #${rb.new_position} minted`}${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.bobai_bnb) > 0 ? `taken: ${f(rb.bobai_bnb, 6)} BNB bought $BOBAI the agent holds, the rest folded into the capital` : Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
+          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn${rb.one_sided ? ` and #${rb.new_position} minted one-sided ${rb.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : `, the missing side bought and #${rb.new_position} minted`}${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.bobai_bnb) > 0 ? `taken: ${f(rb.bobai_bnb, 6)} BNB bought $BOBAI the agent holds${Number(rb.to_operator_bnb) > 0 ? `, ${f(rb.to_operator_bnb, 6)} BNB paid out to the operator` : ''}, the rest folded into the capital` : Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
           : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
           + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Ladder — the reserve range below the price', acted: !!ld.acted, err: ld.error, why: plain(ld.why), detail: rsv ? `reserve #${rsv.position}${Array.isArray(rsv.ticks) ? `, ticks ${rsv.ticks.join(' … ')}` : ''}${rsv.value_bnb != null ? `, worth ${f(rsv.value_bnb, 5)} BNB` : ''}${rsv.side ? `, ${rsv.side === 'wbnb' ? 'all BNB, below the price' : rsv.side === 'other' ? 'the price fell through it — it joins the main range at the next re-set' : 'the price is inside it'}` : ''}` : (ld.why ? 'no reserve range stands' : '') },
@@ -9710,8 +9710,11 @@ ${pageTail}`;
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
         const s = e.steps || {}; const parts = [];
-        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
-        if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
+        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(x.to_operator != null
+          // since 2026-10-14: half to the operator in the coin paid, half bought $BOBAI held in the income wallet
+          ? `swept ${f(Number(x.sold) + Number(x.to_operator), 2)} ${x.token || ''}: half to the operator, half bought ${f(x.bobai_bought, 0)} $BOBAI, held`
+          : `swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
+        if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}${Number(s.collect.to_operator_bnb) > 0 ? `, ${f(s.collect.to_operator_bnb, 5)} BNB paid out to the operator` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         // New BNB in, as the sums count it; an increase that only put the
         // wallet's leftovers back in brought no new BNB and says what it put.
@@ -10068,7 +10071,7 @@ ${pageTail}`;
         if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer — USD1 by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or the same price in $BOBAI, quoted on each 402`,
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer — USD1 by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or half that price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
@@ -10122,6 +10125,8 @@ ${pageTail}`;
         // no reading sent (the daily ask): the agent's own free look at its position, the same read anybody gets
         if (!own || own.position == null) { const l = await lpPositionLook({ address: SUBJECT }, env).catch(() => null); if (l && l.position) own = { position: String(l.position), in_range: !!l.in_range, tick: l.pool ? l.pool.tick : null }; }
         const r = await secondOpinion(env, { why: String(b.why || 'by hand').slice(0, 60), own, rpc });
+        // the job joins our own jobs, so the daily tick settles it after its window (own-jobs.js settleDue)
+        if (r && r.job) ctx.waitUntil(tickOwnJobs(env, rpc, [r.job]).catch(() => {}));
         return json(r);
       }
       return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
@@ -11385,8 +11390,11 @@ export function stepWords(name, s) {
   if (s.error) return { what: `${name}: ${s.error}`, error: true };
   if (!s.acted) return null;
   switch (name) {
-    case 'sweep': return { what: `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
-    case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}` };
+    case 'sweep': return { what: s.to_operator != null
+      // since 2026-10-14 a sweep no longer feeds the position: half to the operator, half buys $BOBAI held where it was earned
+      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held`
+      : `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
+    case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}${n(s.to_operator_bnb) > 0 ? `, ${r5(s.to_operator_bnb)} BNB paid out to the operator` : ''}` };
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
     case 'rebalance': return { what: s.upgraded_to_pct != null
       ? `re-set the range wider/narrower: ±${s.upgraded_from_pct}% → ±${s.upgraded_to_pct}%${s.new_position ? ` (#${s.new_position})` : ''}`
@@ -18194,8 +18202,9 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 - **Pay to**: \`${payTo}\`
 - **Header**: \`PAYMENT-SIGNATURE\` (x402 v2) on every resource; \`/answer\` and \`/tip\` also read \`X-PAYMENT\` (the v1 header)
 
-Three ways to pay the same price into the same wallet, advertised side by side
-in every 402 in this order. A client takes whichever it can execute:
+Three ways to pay the same price into the same wallet, and a fourth at half the
+price in $BOBAI, advertised side by side in every 402 in this order. A client
+takes whichever it can execute:
 
 1. **USD1 by EIP-3009** (accepts[0]), scheme \`exact\`: sign a
    \`TransferWithAuthorization\` to the address above and send the x402 payload
@@ -18209,18 +18218,19 @@ in every 402 in this order. A client takes whichever it can execute:
    \`eip155:56\` to its \`spendControls.allowedAssets\`.
 3. **Direct transfer** (accepts[2]) — send USD1 yourself, then repeat the
    request with the transaction hash in \`PAYMENT-SIGNATURE\`. Needs no
-   facilitator and no signature support, which is why it exists. A per-answer
-   402 also offers the same price in $BOBAI this way, quoted at the moment of
-   the 402.
+   facilitator and no signature support, which is why it exists.
+4. **$BOBAI at half price** (the last entry of a per-answer 402) — a direct
+   transfer of $BOBAI worth half the USD1 price, quoted at the moment of the
+   402, then the transaction hash in \`PAYMENT-SIGNATURE\`. What arrives is
+   held as $BOBAI and never sold.
 
 ## Paid resources
 
 | Endpoint | Description | Price |
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
-${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1 |`).join('\n')}
-
-| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. The money takes the path all our income takes, into the DeFi agent's pool. | you choose |
+${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the

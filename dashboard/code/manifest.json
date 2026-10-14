@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7211,
-   "zipBytes": 187824,
-   "txtBytes": 581844,
-   "sha256": "1ea71a7e8b392139",
+   "lines": 7224,
+   "zipBytes": 188375,
+   "txtBytes": 583786,
+   "sha256": "9db46453a2f77f0c",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2963,
-   "zipBytes": 87425,
-   "txtBytes": 254216,
-   "sha256": "6c434ee2592513b1",
+   "lines": 2973,
+   "zipBytes": 88064,
+   "txtBytes": 256357,
+   "sha256": "c77ab5edd4562c2f",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 56,
-   "lines": 18762,
-   "zipBytes": 437444,
-   "txtBytes": 1234410,
-   "sha256": "8352b4f47a93ef48",
+   "lines": 18772,
+   "zipBytes": 437792,
+   "txtBytes": 1235862,
+   "sha256": "2d024e660a8700a0",
    "reqs": [
     {
      "what": "A wallet to be paid into",

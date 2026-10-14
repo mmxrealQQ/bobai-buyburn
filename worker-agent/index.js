@@ -53,6 +53,8 @@ async function readAgentRecord(env) {
   return withArchive(JSON.parse(raw), arch);
 }
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
+import { healthFactor } from './venus.js';
+import { yieldPlan } from './yield.js';
 import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
@@ -2778,28 +2780,63 @@ ${pageTail}`;
     // get, checked: could not be checked"; agents that pass publish an MCP service in their registration). Two
     // tools: the free look at a position (no input = the position this agent runs itself, so a probe always gets a
     // reading it can check on chain), and the paid plan, whose call names the terms of the x402 sale.
-    if (path === '/defi-agent/mcp') {
+    // EVERY AGENT OF OURS HAS ITS OWN MCP (2026-10-14, the DeFi agent's first): Mandate shows "Tools: publishes no tool
+    // list" for any agent without an MCP server or A2A card skills, and "fits the job" when the tools match its category.
+    // Each lists one free tool of its category (a probe always gets a reading it can check on chain) and its paid
+    // answer, whose call names the x402 terms.
+    const mcpSlug = (path.match(/^\/([a-z-]+)\/mcp$/) || [])[1];
+    if (mcpSlug && AGENT_SERVICE[mcpSlug]) {
+      const serviceId = AGENT_SERVICE[mcpSlug], svc = SERVICES[serviceId];
       const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept', 'Content-Type': 'application/json' };
       const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
       const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
-      const TOOLS = [
-        { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
-        { name: 'lp_position_plan', description: 'Rebalancing, the paid half (0.10 USD1, or half that in $BOBAI): what this agent would decide about the position — whether a re-set is due and in which width, the width that ended furthest ahead of simply holding over the last seven days, replayed over the recorded prices — from the same code that runs its own position. Calling this tool returns the terms; the plan is sold over x402 at https://agent.brainonbnb.com/answer?service=lp_position_plan (or hired through the ERC-8183 escrow for 0.10 $U).', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id' }, address: { type: 'string', description: 'Or the wallet that holds it' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
-      ];
+      const RO = { readOnlyHint: true, openWorldHint: true };
+      const TOKEN = { type: 'string', description: 'A BEP-20 token address on BNB Chain (0x…)' };
+      const FREE = {
+        'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+        'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
+        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from the chain and cross-checked against each market’s own rate model, best first; venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
+        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half lays the grid and its break-even spacing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
+        rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
+        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half places a position in the tier that pays.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
+      }[mcpSlug];
+      const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
+      const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-      if (request.method === 'GET') return new Response(JSON.stringify({ name: 'Brain on BNB — DeFi Agent (#363709)', protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: 'POST JSON-RPC here. lp_position_look is free; lp_position_plan is sold over x402.' }), { headers: cors });
+      const NAME = `${svc.name} — Brain On BNB AI`;
+      if (request.method === 'GET') return new Response(JSON.stringify({ name: NAME, protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: `POST JSON-RPC here. ${FREE.name} is free; ${PAID.name} is sold over x402.` }), { headers: cors });
       let body;
       try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
       if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
       const { id, method, params } = body || {};
       if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
       if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
-      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'Brain on BNB — DeFi Agent (#363709)', version: '1.0.0' } });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.0.0' } });
       if (method === 'ping') return rpcOk(id, {});
-      if (method === 'tools/list') { note('defimcp:tools_list'); return rpcOk(id, { tools: TOOLS }); }
+      if (method === 'tools/list') { note(`agentmcp:${mcpSlug}:tools_list`); return rpcOk(id, { tools: TOOLS }); }
       if (method === 'tools/call') {
         const name = params?.name, a = params?.arguments || {};
-        note(`defimcp:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        note(`agentmcp:${mcpSlug}:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        const answer = (out) => rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) }] });
+        if (name === FREE.name && mcpSlug !== 'defi-agent') {
+          try {
+            if (mcpSlug === 'health-factor') {
+              const acct = String(a.address ?? a.account ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0];
+              if (!acct) return refuse('give the Venus account: address 0x…');
+              const position = await healthFactor(acct);
+              return answer({ health_factor: position.health_factor ?? null, account: acct, position });
+            }
+            if (mcpSlug === 'yield-optimizer') {
+              const plan = await yieldPlan({});
+              return answer({ ...checkedFigures('yield_plan', { plan }), ranked: (plan.ranked || []).map((m) => ({ symbol: m.symbol, supply_apy_pct: m.supply_apy_pct, borrow_apy_pct: m.borrow_apy_pct, utilisation_pct: m.utilisation_pct })), measured_at: plan.measured_at });
+            }
+            const qs = new URLSearchParams(Object.entries(a).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
+            const r = await fetch(`https://brainonbnb.com${FREE.rest}?${qs}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+            const j = await r.json().catch(() => null);
+            return j && r.ok ? answer(j) : refuse(j?.error || `http ${r.status}`);
+          } catch (e) { return refuse(e); }
+        }
         if (name === 'lp_position_look') {
           const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
           const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
@@ -2811,14 +2848,14 @@ ${pageTail}`;
             return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
           } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }
         }
-        if (name === 'lp_position_plan') {
+        if (name === PAID.name) {
           if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
-          const terms = await sellAnswer(env, ctx, payTo, 'lp_position_plan', {}, null);
+          const terms = await sellAnswer(env, ctx, payTo, serviceId, {}, null);
           const t = terms.body || {};
-          const out = { payment_required: true, pay_at: 'https://agent.brainonbnb.com/answer?service=lp_position_plan', price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: 'lp_position_look on this server' };
+          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
-        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has lp_position_look (free) and lp_position_plan (paid).`);
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has ${FREE.name} (free) and ${PAID.name} (paid).`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
     }

@@ -182,6 +182,8 @@ export const OWN_AGENTS = [
       services: [
         { name: 'A2A', description: 'A2A JSON-RPC (message/send). skill "negotiate-erc8183-job" returns a signed quote; anchor it via createJob and fund it.', endpoint: 'https://agent.brainonbnb.com/defi-agent/a2a', version: '0.3.0' },
         { name: 'x402', description: 'Pay per answer, no escrow: POST once for the 402 terms (USD1 by EIP-3009, USDC by Permit2, or USD1/$BOBAI by transfer), pay, POST again with the payment in X-PAYMENT or PAYMENT-SIGNATURE.', endpoint: X402('lp_position_plan'), version: '2' },
+        // 2026-10-14: its own MCP — what Mandate reads for "Tools" and tries free (lp_position_look, checked against the chain)
+        { name: 'MCP', description: 'MCP (streamable HTTP, JSON-RPC): lp_position_look is free — any PancakeSwap V3 position read from the chain; lp_position_plan names the terms of the paid plan.', endpoint: 'https://agent.brainonbnb.com/defi-agent/mcp', version: '2025-06-18' },
         { name: 'agentCard', description: 'This agent\'s A2A card: purpose, category, skills, operating wallet.', endpoint: 'https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json' },
         { name: 'web', description: 'The agent\'s live page: position, decisions, results against holding.', endpoint: 'https://brainonbnb.com/defi' },
         { name: 'record', description: 'The daily run record as JSON: every collect, re-set and deposit with its transactions.', endpoint: 'https://agent.brainonbnb.com/lp/agent' },

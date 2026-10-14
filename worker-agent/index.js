@@ -2772,6 +2772,54 @@ ${pageTail}`;
     // An agent that speaks MCP and wants to buy something has, today, nothing
     // in that catalog it can call natively. The tool below is the same product
     // through the door those agents already have open.
+    // THE DEFI AGENT'S OWN MCP (2026-10-14). Mandate checks that an agent's published tools fit its job and tries
+    // it free, comparing the answer with the chain (its page for #363709: "Tools publishes no tool list", "What you
+    // get, checked: could not be checked"; agents that pass publish an MCP service in their registration). Two
+    // tools: the free look at a position (no input = the position this agent runs itself, so a probe always gets a
+    // reading it can check on chain), and the paid plan, whose call names the terms of the x402 sale.
+    if (path === '/defi-agent/mcp') {
+      const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept', 'Content-Type': 'application/json' };
+      const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
+      const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
+      const TOOLS = [
+        { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+        { name: 'lp_position_plan', description: 'Rebalancing, the paid half (0.10 USD1, or half that in $BOBAI): what this agent would decide about the position — whether a re-set is due and in which width, the width that ended furthest ahead of simply holding over the last seven days, replayed over the recorded prices — from the same code that runs its own position. Calling this tool returns the terms; the plan is sold over x402 at https://agent.brainonbnb.com/answer?service=lp_position_plan (or hired through the ERC-8183 escrow for 0.10 $U).', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id' }, address: { type: 'string', description: 'Or the wallet that holds it' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+      ];
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+      if (request.method === 'GET') return new Response(JSON.stringify({ name: 'Brain on BNB — DeFi Agent (#363709)', protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: 'POST JSON-RPC here. lp_position_look is free; lp_position_plan is sold over x402.' }), { headers: cors });
+      let body;
+      try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
+      if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
+      const { id, method, params } = body || {};
+      if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
+      if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'Brain on BNB — DeFi Agent (#363709)', version: '1.0.0' } });
+      if (method === 'ping') return rpcOk(id, {});
+      if (method === 'tools/list') { note('defimcp:tools_list'); return rpcOk(id, { tools: TOOLS }); }
+      if (method === 'tools/call') {
+        const name = params?.name, a = params?.arguments || {};
+        note(`defimcp:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        if (name === 'lp_position_look') {
+          const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
+          const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
+          try {
+            const look = await lpPositionLook(q, env);
+            const out = !pos && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})`, ...look } : look;
+            return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+          } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }
+        }
+        if (name === 'lp_position_plan') {
+          if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
+          const terms = await sellAnswer(env, ctx, payTo, 'lp_position_plan', {}, null);
+          const t = terms.body || {};
+          const out = { payment_required: true, pay_at: 'https://agent.brainonbnb.com/answer?service=lp_position_plan', price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: 'lp_position_look on this server' };
+          return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        }
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has lp_position_look (free) and lp_position_plan (paid).`);
+      }
+      return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
+    }
+
     if (path === '/mcp') {
       const cors = {
         'Access-Control-Allow-Origin': '*',

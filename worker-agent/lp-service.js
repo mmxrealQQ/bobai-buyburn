@@ -145,13 +145,15 @@ export async function lpDefaultTarget(payer) {
   }
   return { address: OWN_LP_WALLET, target: `no position was named and the paying wallet holds none: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET}) — name yours with position: <id> or address: 0x…` };
 }
+// A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
+const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
 export async function lpPositionLook(params = {}, env = null) {
   const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
   const { facts, poolInfo, owedBnbEquiv } = r;
   const lines = [];
   lines.push(poolInfo.inRange
-    ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
+    ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   if (owedBnbEquiv != null) lines.push(owedBnbEquiv >= 0.002 ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`);
   return {
@@ -190,7 +192,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   const collectPays = owedBnbEquiv != null ? owedBnbEquiv >= 0.002 : null;
   const lines = [];
   lines.push(poolInfo.inRange
-    ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
+    ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
   // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with

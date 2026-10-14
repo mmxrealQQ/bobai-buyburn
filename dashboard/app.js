@@ -1346,6 +1346,7 @@ function fillLpYours(){
   const el = id => document.getElementById(id);
   const inp = el('lp-yours-in'), go = el('lp-yours-go'), out = el('lp-yours-out');
   if(!inp || !go || !out) return;
+  out.addEventListener('click', e => { const b = e.target.closest('.lp-pick'); if(!b || go.disabled) return; inp.value = b.dataset.id; go.click(); });
   const A = 'https://agent.brainonbnb.com';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const paramsFor = v => /^\d+$/.test(v) ? {position: v} : {address: v};
@@ -1372,11 +1373,14 @@ function fillLpYours(){
         // on a position that does not exist sold nothing and confused the
         // visitor (pressed 2026-09-04 with an id that was never minted).
         if(l.error){ lookHtml = '<div class="lp-terms"><span class="lp-err">' + esc(l.error) + '</span></div>'; noPlan = true; return; }
-        if(l.positions !== 1){ lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(l.verdict) + '</div></div>'; noPlan = true; return; }
+        // a wallet with several (2026-10-14): its ids as buttons, one press looks at that one — "name one" with nothing to press was a dead end
+        if(l.positions !== 1){ const ids = Array.isArray(l.position_ids) ? l.position_ids : [];
+          lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(ids.length ? 'This wallet holds ' + l.positions + ' PancakeSwap V3 positions. Which one?' : l.verdict) + '</div>' + (ids.length ? '<div class="lp-ask" style="flex-wrap:wrap;gap:6px">' + ids.map(i => '<button type="button" class="mkt-go lp-pick" data-id="' + esc(i) + '" style="border:0;cursor:pointer">#' + esc(i) + '</button>').join('') + '</div>' : '') + '</div>'; noPlan = true; return; }
         if(!l.against_wbnb) noPlan = true;
         const facts = [
           ['Position', '#' + l.position + (l.pool ? ' · ' + l.pool.fee_tier_pct + '% pool' : '')],
-          ['Range', l.in_range ? 'in range — ' + l.room.to_lower_pct + '% of room below the price, ' + l.room.to_upper_pct + '% above' : 'out of range — earning nothing until the price returns or the range is re-set'],
+          // a full-range position's edges are the tick limits: '1.5e+62% above' (2026-10-14) — said as what it is
+          ['Range', l.in_range ? 'in range — ' + (l.room.to_lower_pct >= 99.99 ? 'no lower limit' : l.room.to_lower_pct + '% of room below the price') + ', ' + (l.room.to_upper_pct > 10000 ? 'no upper limit (full range)' : l.room.to_upper_pct + '% above') : 'out of range — earning nothing until the price returns or the range is re-set'],
           ['Worth', l.value_bnb != null ? Number(l.value_bnb).toFixed(4) + ' BNB' : 'not priced (not against WBNB)'],
           ['Fees owed', l.fees_owed && l.fees_owed.bnb_equivalent != null ? Number(l.fees_owed.bnb_equivalent).toFixed(6) + ' BNB' + (l.fees_owed.bnb_equivalent >= 0.002 ? ' — collecting pays for its gas' : ' — under the floor, collecting would cost more than it recovers') : 'not priced'],
         ];

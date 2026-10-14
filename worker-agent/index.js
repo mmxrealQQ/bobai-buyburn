@@ -96,7 +96,7 @@ import { handleSessionRevoke, readRevocations, annotateRoles } from './session-r
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
 import { widthClassOf, HOME_POOL, pickWidth, FEE_SHARE_KEPT_PCT } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
-import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
+import { tickOwnJobs, readOwnJobs, readSettled } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 // The free rug watch (2026-10-09): a token re-read every 15 minutes, a signed webhook when it turns dangerous.
 import { handleRugWatch, runRugWatches, RUG_CRON } from './rug-watch.js';
@@ -2583,8 +2583,8 @@ ${pageTail}`;
     if (path === '/jobs/own') {
       const rec = await readOwnJobs(env);
       if (!rec) return json({ error: 'no own-jobs tick has run yet', cadence: 'daily' }, 503);
-      return json({ ...rec, cadence: 'daily',
-        note: 'Every job this project has made or delivered on the ERC-8183 kernel, classified with the same rule as scripts/erc8183-job-watch.mjs. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter. history holds one entry per observed transition.' });
+      return json({ ...rec, cadence: 'daily', settled_by_us: await readSettled(env),
+        note: 'Every job this project has made or delivered on the ERC-8183 kernel, classified with the same rule as scripts/erc8183-job-watch.mjs. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter — since 2026-10-14 this worker does it for every job of ours whose window is over (settled_by_us: simulated first, sent only when it goes through). history holds one entry per observed transition.' });
     }
 
     if (path === '/census') {

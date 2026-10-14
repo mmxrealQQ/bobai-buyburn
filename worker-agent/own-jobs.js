@@ -14,6 +14,41 @@
 // person's call, and the script prints it for them.
 import { decodeJob, readDisputeWindow, ERC8183 } from './hire.js';
 import { classify, recordTransition, summarise } from '../shared/own-jobs.js';
+import { createWalletClient, createPublicClient, http, fallback } from 'viem';
+import { bsc } from 'viem/chains';
+import { providerAccount } from './submit.js';
+
+// SETTLED BY US, NOT LEFT TO CHANCE (2026-10-14, operator's go). A job's escrow releases only when somebody calls
+// router.settle(jobId) after the dispute window, and nearly nobody does (27,230 jobs on the kernel sit SUBMITTED). A
+// stranger who hires one of our agents and never settles leaves the job SUBMITTED for ever: the hire never counts as
+// completed (Set and Earn wants completed hires) and the $U never reaches the provider. So every job this worker has
+// made or delivered whose window is over is settled from the provider wallet — simulated first, sent only when the
+// simulation goes through, at most five a day, 0.1 gwei. A job the provider may not settle fails the simulation and
+// nothing is sent. Every attempt is written to jobs:settled (GET /jobs/own shows it).
+const SETTLE_KEY = 'jobs:settled';
+const settleData = (id) => '0x39c2ebb9' + BigInt(id).toString(16).padStart(64, '0') + (64).toString(16).padStart(64, '0') + '0'.padStart(64, '0');
+const RPC_LIST = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+export async function settleDue(env, rows, { max = 5 } = {}) {
+  const account = providerAccount(env);
+  const due = rows.filter((r) => r.state === 'settleable').slice(0, max);
+  if (!account || !due.length) return [];
+  const transport = fallback(RPC_LIST.map((u) => http(u, { timeout: 20000 })));
+  const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+  const out = [];
+  for (const r of due) {
+    const data = settleData(r.id), at = new Date().toISOString();
+    try { await pub.call({ account, to: ERC8183.router, data }); }
+    catch (e) { out.push({ id: r.id, at, settled: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 120)}` }); continue; }
+    try {
+      const hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: 100000000n });
+      const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+      out.push({ id: r.id, at, settled: rc.status === 'success', tx: hash });
+    } catch (e) { out.push({ id: r.id, at, settled: false, why: String(e.shortMessage || e.message).slice(0, 160) }); }
+  }
+  try { const prev = JSON.parse((await env.AGENT.get(SETTLE_KEY)) || '[]'); await env.AGENT.put(SETTLE_KEY, JSON.stringify([...out, ...prev].slice(0, 100))); } catch { /* the record is a log, the settle stands either way */ }
+  return out;
+}
+export async function readSettled(env) { try { return JSON.parse((await env.AGENT.get(SETTLE_KEY)) || '[]'); } catch { return []; } }
 
 export const KV_KEY = 'jobs:own';
 const JOB_CALL = (id) => '0xbf22c457' + BigInt(id).toString(16).padStart(64, '0');
@@ -67,5 +102,7 @@ export async function tickOwnJobs(env, rpc, ids = []) {
   const next = { jobs: record, checked_at: at, dispute_window_sec: windowSec, summary: summarise(record, at) };
   if (changes || !prev.checked_at) await env.AGENT.put(KV_KEY, JSON.stringify(next));
   else await env.AGENT.put(KV_KEY, JSON.stringify({ ...prev, checked_at: at, summary: summarise(record, at) }));
-  return { ok: true, jobs: all.length, transitions: changes, rows };
+  // settle what is due (a settled job is read as COMPLETED on the next tick)
+  const settled = await settleDue(env, rows).catch((e) => [{ settled: false, why: String(e && e.message || e).slice(0, 120) }]);
+  return { ok: true, jobs: all.length, transitions: changes, rows, settled };
 }

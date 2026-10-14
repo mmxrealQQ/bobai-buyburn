@@ -112,7 +112,7 @@ export const CAPABILITIES = {
       name: 'pool watch',
       where: 'POST https://agent.brainonbnb.com/watch',
       what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold (paid, depth only; the free rug watch covers rug signals)`,
-      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC`,
+      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC, or half that in $BOBAI at the 402’s quote`,
       why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
     },
     {

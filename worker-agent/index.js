@@ -1025,7 +1025,7 @@ async function readEarnings(env) {
 const WATCH_TOOL = {
   name: 'bsc_pool_watch',
   description:
-    'PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and '
+    'PAID (0.50 USD1, or half that in $BOBAI; 30 days). Watch one BNB Smart Chain liquidity pool around the clock and '
     + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
     + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
     + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
@@ -1050,7 +1050,7 @@ const WATCH_TOOL = {
       payment: {
         type: 'string',
         description:
-          'The transaction hash of your USD1 transfer, or a base64 x402 payload. Omit it on the '
+          'The transaction hash of your USD1 (or half-price $BOBAI) transfer, or a base64 x402 payload. Omit it on the '
           + 'first call to be told what to pay and where.',
       },
     },
@@ -1307,6 +1307,9 @@ async function tipRoute(env, ctx, payTo, q, proof) {
 }
 
 async function purchaseWatch(env, ctx, payTo, spec, proof) {
+  // Half the price in $BOBAI here too (2026-10-14), as for every answer: a direct transfer, quoted now; without a
+  // readable pair the watch is still for sale in USD1 and USDC.
+  const bobai = await bobaiForUsd(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).catch(() => null);
   if (!proof) {
     // The 402 itself. accepts[] is an array because a second scheme
     // (eip3009, once a facilitator is in place) will sit beside this one
@@ -1336,6 +1339,11 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
+        ...(bobai ? [{
+          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+        }] : []),
       ],
     };
     return {
@@ -1350,8 +1358,9 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // USDC, the other two in USD1 — a client that budgets off a one-asset
         // sentence holds the wrong token for the other route. In accepts[]
         // order since 2026-10-05 (payWays). This POST reads PAYMENT-SIGNATURE only.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet`,
-        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE' })}.`,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(WATCH_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}.`,
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(WATCH_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -1366,9 +1375,10 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   const pay = await chargeX402(env, {
     payTo, price: WATCH_PRICE_USD1, description: `Pool watch for ${WATCH_DAYS} days`,
     resource: 'https://agent.brainonbnb.com/watch', proof, sold: 'watch',
+    alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null,
   });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const tx = pay.tx, check = { paid: pay.paid, from: pay.from };
+  const tx = pay.tx, check = { paid: pay.paid, from: pay.from, asset: pay.asset || 'USD1' };
 
   // The watch is the goods: created, the payment is delivered and final; a
   // creation that throws leaves the buyer a credit on the same hash.
@@ -1401,7 +1411,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
     read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
-    paid: `${fmtUsd1(check.paid)} USD1`,
+    paid: `${fmtUsd1(check.paid)} ${check.asset}`,
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible
     // thing to receive by accident.

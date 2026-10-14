@@ -36,5 +36,21 @@ for (const service of ['lp_position_plan', 'health_factor']) {
   console.log(`${said ? 'PASS' : 'FAIL'} the 402 entry and the index say half price: ${String(bob.description || '').split(' — ').slice(2).join(' — ').slice(0, 90) || 'no $BOBAI entry'}`);
   if (!said) fail++;
 }
-console.log(`x402-noinput: ${4 - fail} PASS, ${fail} FAIL`);
+// THE POOL WATCH TOO (2026-10-14): its 402 offers half its USD1 price in $BOBAI (0.25 USD worth), as a direct transfer
+{
+  const r = await fetch(`${BASE}/watch`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', depthBelowUsd: 1000 }) });
+  const t = await r.json().catch(() => ({}));
+  const bob = (t.accepts || []).find((a) => /^0x245c/i.test(a.asset || '')) || {};
+  const usd = t.in_bobai ? t.in_bobai.tokens * t.in_bobai.usd_per_bobai : null;
+  const ok = r.status === 402 && usd != null && usd >= 0.245 && usd <= 0.26 && /half price in \$BOBAI/.test(bob.description || '');
+  console.log(`${ok ? 'PASS' : 'FAIL'} the pool watch costs half in $BOBAI: ${t.in_bobai ? `${t.in_bobai.tokens} $BOBAI ≈ $${usd.toFixed(4)}` : `no $BOBAI price on the 402 (${r.status})`}`);
+  if (!ok) fail++;
+  // and a hash that pays nothing still buys nothing (the $BOBAI door must not open the watch for free)
+  const f = await fetch(`${BASE}/watch`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', depthBelowUsd: 1000 }) });
+  const fb = await f.json().catch(() => ({}));
+  const shut = f.status !== 200 && !fb.watch;
+  console.log(`${shut ? 'PASS' : 'FAIL'} a receipt that is no payment buys no watch: ${f.status} ${String(fb.reason || fb.error || '').slice(0, 90)}`);
+  if (!shut) fail++;
+}
+console.log(`x402-noinput: ${6 - fail} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

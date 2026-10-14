@@ -584,6 +584,11 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const dp = await fetch(SITE + '/defi', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'health', parts: [{ kind: 'text', text: 'what can you do' }] } } }), signal: AbortSignal.timeout(30000) }).catch(() => null);
   const dpj = dp ? await dp.json().catch(() => null) : null;
   ok('Agents', 'brainonbnb.com/defi answers an A2A call (Marque tests #363709 there)', dp?.status === 200 && !!dpj?.result, dp ? `${dp.status}${dpj?.result ? ' json-rpc result' : ''}` : 'no answer');
+  // Mandate fills "Tools" from #363709's MCP (on chain since 2026-10-14) and compares "in range" / "current tick" of a
+  // free call with the chain: the MCP must list its tools and its free look must carry both figures at the top.
+  const dm = await getJ(`${AGENT}/defi-agent/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'lp_position_look', arguments: {} } }) });
+  const dms = dm.body?.result?.structuredContent;
+  ok('Agents', "the DeFi agent's MCP answers a free look with in_range and current_tick (Mandate checks them)", typeof dms?.in_range === 'boolean' && Number.isInteger(dms?.current_tick), dms ? `in range ${dms.in_range}, tick ${dms.current_tick}` : `http ${dm.status}`);
   // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
   const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
   ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));

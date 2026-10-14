@@ -34,7 +34,7 @@ import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
   planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
-  planSweep, executeSweep, INCOME_SOURCES,
+  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET,
 } from '../shared/lp-agent.js';
 import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
@@ -303,20 +303,21 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
   ok('no CAKE and no WBNB of it is left loose', (await bal(CAKE, LP)) <= plan.heldOther + 10n ** 12n && (await bal(ADDR.WBNB, LP)) === 0n);
 });
 
-await scenario('EVERY AI PAYMENT BUYS $BOBAI (2026-10-14) — the x402 wallet holds USD1 a buyer paid; the sweep sells it for $BOBAI in one swap and the $BOBAI stays in that wallet; the DeFi wallet gets nothing', 'sweep', async () => {
+await scenario('EVERY AI PAYMENT: HALF BUYS $BOBAI, HALF TO THE OPERATOR (2026-10-14) — the x402 wallet holds USD1 a buyer paid; half goes to the operator as USD1, half buys $BOBAI that stays in that wallet; the DeFi wallet gets nothing', 'sweep', async () => {
   const src = INCOME_SOURCES.find((s) => s.key === 'x402');
   // a buyer's payment, on the fork: the whale buys 0.05 BNB of USD1 (a payment, not a market move) and sends it to the income wallet
   await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.05') });
   await test.setBalance({ address: src.wallet, value: parseEther('0.01') });   // gas, as the wallet holds on the chain
-  const usd0 = await bal(src.token, src.wallet), bobai0 = await bal(BOBAI, src.wallet), lpBnb0 = await pub.getBalance({ address: LP });
+  const usd0 = await bal(src.token, src.wallet), bobai0 = await bal(BOBAI, src.wallet), lpBnb0 = await pub.getBalance({ address: LP }), op0 = await bal(src.token, OPERATOR_WALLET);
   const plan = await planSweep(pub, src);
   ok('the plan sweeps the payment and quotes it in $BOBAI', !plan.no && plan.amount > 0n && plan.bobaiOut > 0n, plan.no || `${plan.summary.sweeping} USD1 -> about ${(Number(plan.bobaiOut) / 1e18).toFixed(0)} $BOBAI`);
   if (plan.no) return;
   const txs = [], done = await executeSweep(pub, walletOf(src.wallet), src.wallet, plan, () => {}, { txs });
-  const usd1 = await bal(src.token, src.wallet), bobai1 = await bal(BOBAI, src.wallet), lpBnb1 = await pub.getBalance({ address: LP });
-  ok('two transactions: approve, then one swap USD1 -> WBNB -> $BOBAI', txs.length === 2 && /buy \$BOBAI with USD1/.test(txs[1].label), txs.map((t) => t.label).join(' · '));
+  const usd1 = await bal(src.token, src.wallet), bobai1 = await bal(BOBAI, src.wallet), lpBnb1 = await pub.getBalance({ address: LP }), op1 = await bal(src.token, OPERATOR_WALLET);
+  ok('three transactions: half to the operator, approve, one swap USD1 -> WBNB -> $BOBAI', txs.length === 3 && /half of the USD1 to the operator/.test(txs[0].label) && /buy \$BOBAI with the other half/.test(txs[2].label), txs.map((t) => t.label).join(' · '));
   ok('the swept USD1 has left the wallet', usd0 - usd1 === plan.amount, `${Number(usd0 - usd1) / 1e18} of ${Number(plan.amount) / 1e18}`);
-  ok('$BOBAI arrived in the income wallet, at least the floor (quote less the 3% tax less 5%)', bobai1 - bobai0 >= (plan.bobaiOut * 97n * 95n) / 10000n && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI for a quote of ${(Number(plan.bobaiOut) / 1e18).toFixed(2)}`);
+  ok('the operator received exactly half, in USD1 as it was paid', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} USD1 of ${Number(plan.amount) / 1e18}`);
+  ok('$BOBAI for the other half arrived in the income wallet, at least the floor (half the quote less the 3% tax less 5%)', bobai1 - bobai0 >= (plan.bobaiOut / 2n * 97n * 95n) / 10000n && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI for half of a quote of ${(Number(plan.bobaiOut) / 1e18).toFixed(2)}`);
   ok('the DeFi wallet received nothing — its capital and record are untouched', lpBnb1 === lpBnb0, `${formatEther(lpBnb1 - lpBnb0)} BNB`);
 });
 

@@ -103,6 +103,7 @@ export const ABI = {
   ERC20: parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function approve(address,uint256) returns (bool)',
+    'function transfer(address,uint256) returns (bool)',
     'function allowance(address,address) view returns (uint256)',
     'function withdraw(uint256)',
     'function deposit() payable',
@@ -679,17 +680,25 @@ export async function planSweep(pub, source, feed = null) {
 // never sold, as a $BOBAI payment always did. The DeFi agent's capital and its record are not touched by it.
 // The floor: the route's quote, less the token's 3% transfer tax, less 5% (bobaiBuyFloor, as for the fee share); the
 // dollar guard (refuseSweep) has already refused a route that prices the income off a dollar.
+// HALF TO THE OPERATOR (2026-10-14, operator: "alle Einnahmen jeweils 50 % $BOBAI und der Rest in Stables an c3c — ich
+// muss langsam auch Profit machen"): of every sweep, half is sent to the operator's wallet in the coin it was paid in
+// (no swap, no fee) and half buys $BOBAI as above. The quote for the $BOBAI half is the plan's, halved.
+export const OPERATOR_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
+export const OPERATOR_SHARE_BPS = 5000n;
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const holder = plan.source.wallet;
+  const toOperator = (plan.amount * OPERATOR_SHARE_BPS) / 10000n, toBobai = plan.amount - toOperator;
+  const bobaiQuote = (plan.bobaiOut * toBobai) / plan.amount;
   const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
-  await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
-  await send(`buy $BOBAI with ${plan.source.symbol} and hold it`, {
+  await send(`send half of the ${plan.source.symbol} to the operator`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'transfer', args: [OPERATOR_WALLET, toOperator] });
+  await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, toBobai] });
+  await send(`buy $BOBAI with the other half and hold it`, {
     address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
-    args: [plan.amount, bobaiBuyFloor(plan.bobaiOut), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
+    args: [toBobai, bobaiBuyFloor(bobaiQuote), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
   });
   const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
-  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), bobai_bought: formatEther(after > before ? after - before : 0n), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
+  return { txs, sold: formatUnits(toBobai, plan.source.decimals), to_operator: formatUnits(toOperator, plan.source.decimals), operator: OPERATOR_WALLET, bobai_bought: formatEther(after > before ? after - before : 0n), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
 }
 
 // --------------------------------------------------------------------------

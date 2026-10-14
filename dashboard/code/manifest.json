@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7135,
-   "zipBytes": 185268,
-   "txtBytes": 572307,
-   "sha256": "f5263125e7183047",
+   "lines": 7149,
+   "zipBytes": 186093,
+   "txtBytes": 575014,
+   "sha256": "27e936d53436006c",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 56,
-   "lines": 18683,
-   "zipBytes": 434724,
-   "txtBytes": 1226202,
-   "sha256": "cf28543b7bf61d2e",
+   "lines": 18693,
+   "zipBytes": 435140,
+   "txtBytes": 1227411,
+   "sha256": "90dff8b4b953df4b",
    "reqs": [
     {
      "what": "A wallet to be paid into",

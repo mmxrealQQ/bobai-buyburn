@@ -117,6 +117,9 @@
     .lpa-go{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0 0}.lpa-go a{color:var(--gold);font-weight:600;text-decoration:none}
     @media (max-width:559px){.lpa-r{grid-template-columns:minmax(0,1fr) auto}.lpa-r code{grid-column:1/-1;grid-row:2}}
     /* the range, drawn (2026-10-13) */
+    .op-row{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);font-size:.82rem;line-height:1.5}
+    .op-row:first-of-type{border-top:0}
+    .op-ok{color:#35e07a}.op-no{color:#ff4d6d}.op-mu{color:var(--muted)}
     .lpr .lpr-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline;margin-bottom:14px}
     .lpr .lpr-in{color:#35e07a;font-weight:600;font-size:13px}.lpr .lpr-out{color:#ff4d6d;font-weight:600;font-size:13px}
     .lpr-bar{position:relative;height:14px;border-radius:99px;background:rgba(255,255,255,.06);margin:30px 0 10px}
@@ -158,6 +161,7 @@
     </div>
     <!-- THE RANGE, DRAWN (2026-10-13): lower, upper, the price now, room, what it holds (app.js lpRange) -->
     <div class="agt-flow fi lpr" id="ag-lp-range" hidden></div>
+    <div class="agt-flow fi lpr" id="ag-opinion" hidden></div>
     <!-- THE CURVE (2026-10-12): worth against capital put in, every run of /lp/series (app.js lpCurve) -->
     <div class="agt-flow fi lpc" id="ag-lp-curve" hidden></div>
     <!-- FOR AGENTS (2026-10-12, operator: "AI and the blockchain must see us"): what another agent needs to find, call or
@@ -247,6 +251,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=116" defer></script>
+<script src="app.js?v=117" defer></script>
 </body>
 </html>

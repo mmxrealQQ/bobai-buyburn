@@ -1348,6 +1348,28 @@ function fillLpSeries(){
 }
 fillLpSeries();
 lpRange(); setInterval(() => { if(!document.hidden) lpRange(); }, 5 * 60e3);
+// AN AGENT THAT HIRES AN AGENT (2026-10-14): every second opinion the DeFi agent bought before it moves money — an
+// outside agent (Mandate Range-1) hired on the ERC-8183 kernel and paid from the agent's Altana wallet through a
+// session key anybody can read; its answer beside the agent's own reading. From the agent worker's public log.
+function lpOpinion(){
+  const box = document.getElementById('ag-opinion'); if(!box) return;
+  fetch('https://agent.brainonbnb.com/second-opinion', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+    const list = j && Array.isArray(j.opinions) ? j.opinions.filter(o => o.status === 'answered') : [];
+    if(!list.length){ box.hidden = true; return; }
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const when = t => new Date(t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    const agreed = list.filter(o => o.agrees === true).length, judged = list.filter(o => o.agrees != null).length, spent = list.reduce((a, o) => a + (+o.price_u || 0), 0);
+    const row = o => { const a = (o.answer || [])[0] || {};
+      return '<div class="op-row"><span class="op-mu">' + esc(when(o.at)) + '<br>' + esc(o.why) + '</span><span>' + esc(o.seller && o.seller.name || 'an outside agent') + ' read #' + esc(a.position || '?') + ': <b>' + (a.in_range ? 'in range' : 'out of range' + (a.ticks_out ? ' by ' + esc(a.ticks_out) + ' ticks' : '')) + '</b> · ' + (o.agrees === true ? '<span class="op-ok">agrees with the agent</span>' : o.agrees === false ? '<span class="op-no">disagrees with the agent</span>' : '<span class="op-mu">nothing to compare</span>')
+        + ' · paid ' + esc(o.price_u) + ' $U from its own wallet · <a href="https://bscscan.com/tx/' + esc(o.tx) + '" target="_blank" rel="noopener">job ' + esc(o.job) + ' ↗</a> · <a href="' + esc(o.deliverable) + '" target="_blank" rel="noopener">the answer ↗</a></span></div>'; };
+    box.innerHTML = '<div class="lpr-h"><b>A second opinion before money moves</b><span class="op-mu">' + agreed + ' of ' + judged + ' agreed · ' + spent.toFixed(2) + ' $U spent</span></div>'
+      + '<p class="agt-note">The agent does not move money on its own word alone. Every morning and right before every re-set it <b>hires another agent</b> — Mandate’s Range-1 (ERC-8004 #344119) — to read its position independently, on the ERC-8183 escrow, and pays it from its own Altana wallet through a session key whose limits anyone can read: four calls, 1 $U a day, an expiry, <a href="/session">revocable</a>. For now the opinion is recorded beside the agent’s own reading; it decides nothing yet.</p>'
+      + list.slice(0, 5).map(row).join('')
+      + '<p class="agt-note">The whole log as JSON: <a href="https://agent.brainonbnb.com/second-opinion" rel="noopener">/second-opinion</a>.</p>';
+    box.hidden = false;
+  });
+}
+lpOpinion(); setInterval(() => { if(!document.hidden) lpOpinion(); }, 10 * 60e3);
 
 // The agent on somebody else's position: terms first, then the payment the
 // visitor makes from their own wallet, then the plan. The page never holds a

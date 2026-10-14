@@ -63,9 +63,10 @@ const SESSION_FILE = path.join(ROOT, 'temp', 'altana', `session-${NET.chainId}.j
 // testnet run and the mainnet run are provably the same policy on different
 // deployments — the usual way these diverge is a hand-edited address.
 //
-// The allowlist is two entries and no more:
+// The allowlist is four entries and no more:
 //   · the ERC-8183 commerce kernel, where jobs are created, funded and settled
 //   · $U, and only its approve() — the kernel pulls the escrow itself
+//   · the router, and only registerJob() and settle() — a hire's dispute policy, bound and completed (2026-10-14)
 // Everything else on the chain is outside the scope, including any transfer of
 // $U to an address of our own choosing. A session that could do that would be a
 // wallet with extra steps.
@@ -75,6 +76,13 @@ export function sessionPolicy(kernel, { limit, nativeLimit, period = 'day', days
       calls: [
         { to: kernel.commerce },
         { to: kernel.paymentToken, signature: 'approve(address,uint256)' },
+        // AN AGENT THAT HIRES AN AGENT (2026-10-14, operator's go): a hire binds its job to the dispute policy on the
+        // router (registerJob) and completes it there after the window (settle) — those two functions on the router
+        // and nothing else of it. Without them the session could fund a job that can never settle.
+        ...(kernel.router ? [
+          { to: kernel.router, signature: 'registerJob(uint256,address)' },
+          { to: kernel.router, signature: 'settle(uint256,bytes)' },
+        ] : []),
       ],
       // $U carries 18 decimals on BNB Chain. The SDK's own documentation warns
       // that the same token is 6 decimals elsewhere, and a cap written for the

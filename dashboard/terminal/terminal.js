@@ -5348,6 +5348,23 @@ export async function open() {
     // at load, so its drop looked new): older records join the record for the replay, silently
     for (const x of fresh) { events.push(x); if (x.t >= Math.max(liveSince - 120e3, Date.now() - 15 * 60e3)) enqueue(x); } // one after another; a long absence's backlog joins the record (and his 'while you were away')
   }, 45000);
+  // AN AGENT THAT HIRES AN AGENT (2026-10-14): the newest second opinion at the visit, then every new one as it comes
+  opinions(true); setInterval(() => { if (!document.hidden && bt.classList.contains('on')) opinions(false); }, 120e3);
+}
+// Every morning and before every re-set the DeFi agent hires an outside agent (Mandate Range-1) to read its position,
+// paid from its own Altana leash (agent worker /second-opinion). One log line each: who was hired, what it read, whether
+// it agrees with the agent, what it paid, and the job's transaction.
+let opSeen = null;
+const opLine = (o) => { const a = (o.answer || [])[0] || {};
+  return logLine('AGENT', '#7fd1ff', ['DeFi agent hired ', [o.seller && o.seller.name || 'an outside agent'], ` for a second opinion on #${a.position || '?'}: `, [a.in_range ? 'in range' : 'out of range'],
+    o.agrees === true ? ' · agrees' : o.agrees === false ? ' · disagrees' : '', ' · paid ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`], ' from its own leash'], [['job', o.tx]], Date.parse(o.at)); };
+async function opinions(first) {
+  const j = await fetch(AG + '/second-opinion').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const list = j && Array.isArray(j.opinions) ? j.opinions.filter((o) => o.status === 'answered' && o.at) : [];
+  if (!list.length) return;
+  if (first || opSeen == null) { opSeen = list[0].at; opLine(list[0]); return; }
+  for (const o of list.filter((x) => x.at > opSeen).reverse()) opLine(o);
+  opSeen = list[0].at;
 }
 function close() {
   if (EMBED) return;

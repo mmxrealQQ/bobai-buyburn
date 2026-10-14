@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 55 files, 18580 lines.
+# one fetch. 56 files, 18677 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3675,7 +3675,7 @@ export const CAPABILITIES = {
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
       example: 'https://agent.brainonbnb.com/example?service=health_factor',
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
-      price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
+      price: '0.10 USD1 per answer, or half that in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
     },
   ],
@@ -7192,6 +7192,7 @@ async function readAgentRecord(env) {
   return withArchive(JSON.parse(raw), arch);
 }
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
+import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -7660,6 +7661,7 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
 // sits in the income wallet as $BOBAI: off the market, until the liquidity
 // agent's sweep learns the token. Said on the 402, not implied.
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
+export const BOBAI_SHARE = 0.5; // an answer paid in $BOBAI costs half its USD1 price (2026-10-14)
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 // THE INPUT AS AN AGENT NATURALLY SENDS IT (2026-10-13): the documented body is {"params":{…}}, but {"token":"0x…"}
 // on its own came back "grid_plan needs `token`" with the token right there. Fields beside task/inputs/params count
@@ -8301,7 +8303,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const description = `${service.name} — one answer`;
   // The same price in $BOBAI, quoted now. If the pair cannot be read the
   // answer is still for sale in USD1; the $BOBAI door just stays shut.
-  const bobai = await bobaiForUsd(Number(ANSWER_PRICE) / 1e18).catch(() => null);
+  // $BOBAI IS THE CHEAPER WAY TO PAY (2026-10-14, operator: profit and volume for $BOBAI first): an answer costs half
+  // its USD1 price in $BOBAI, so a buyer — a person or an agent — has a reason to buy the token to pay with it
+  const bobai = await bobaiForUsd(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).catch(() => null);
   if (!proof) {
     const requirements = {
       x402Version: 2,
@@ -8332,7 +8336,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
-        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(ANSWER_PRICE)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: v2Shape(requirements, { url: resource }).accepts,
@@ -10061,6 +10065,20 @@ ${pageTail}`;
 
     // THE RUG WATCH (2026-10-09, rug-watch.js): free, webhook only — GET the terms, POST to register,
     // GET /rug-watch/<id> for the status, DELETE it with x-rug-watch-secret. Free of the payment path above.
+    // AN AGENT THAT HIRES AN AGENT (2026-10-14, second-opinion.js): the public log of every second opinion the DeFi
+    // agent bought from an outside agent through its Altana leash; POST (internal, x-hit-secret) buys one.
+    if (path === '/second-opinion') {
+      if (request.method === 'POST') {
+        if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+        const b = await request.json().catch(() => ({}));
+        let own = b.own && typeof b.own === 'object' ? { position: b.own.position ?? null, in_range: b.own.in_range ?? null, tick: b.own.tick ?? null } : null;
+        // no reading sent (the daily ask): the agent's own free look at its position, the same read anybody gets
+        if (!own || own.position == null) { const l = await lpPositionLook({ address: SUBJECT }, env).catch(() => null); if (l && l.position) own = { position: String(l.position), in_range: !!l.in_range, tick: l.pool ? l.pool.tick : null }; }
+        const r = await secondOpinion(env, { why: String(b.why || 'by hand').slice(0, 60), own, rpc });
+        return json(r);
+      }
+      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
+    }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
     }
@@ -15027,6 +15045,90 @@ async function sweepWatches(env, deps, clock, budgetMs) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/second-opinion.js
+==============================================================================
+
+// AN AGENT THAT HIRES AN AGENT (2026-10-14, operator's choice: "it has to be revolutionary"). The DeFi agent does not
+// move money on its own word alone: every morning and before every re-set it pays an outside agent for a second
+// opinion on its position — Mandate's Range-1 (ERC-8004 #344119, rebalancing, 0.01 $U on the ERC-8183 kernel) — from
+// its Altana wallet, through the session key whose leash anyone can read in the KeyStore (four calls: the kernel,
+// $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable on /session). Range-1 reads the
+// wallet's PancakeSwap V3 positions from the chain and says whether each is in range; "a payment buys the answer, not
+// authority" (its own words). Stage 1 records the opinion beside the agent's own reading; it decides nothing yet.
+//
+// Rails here, before the session's own: at most 3 hires a UTC day, at most 0.05 $U each, the offer read live from
+// Mandate (no offer, no hire), the wallet must hold the price, the session must not have expired. Every attempt — hired,
+// refused or failed — goes into a public log (GET /second-opinion), newest first.
+import { BNB, signerFromPrivateKey, hireErc8183Agent } from '@altananetwork/sdk';
+
+export const SELLER = { id: 344119, name: 'Mandate Range-1', site: 'https://www.mandatemarkets.com' };
+export const SUBJECT = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'; // the DeFi agent's wallet
+const U = '0xcE24439F2D9C6a2289F741120FE202248B666666';
+const MAX_PRICE = 50000000000000000n, MAX_PER_DAY = 3, LOG_KEY = 'opinion:log', LOG_CAP = 60;
+
+function sessionOf(env) {
+  if (!env.ALTANA_SESSION) return null;
+  const raw = JSON.parse(env.ALTANA_SESSION);
+  return { ...raw, signer: signerFromPrivateKey(raw.signerPrivateKey), expiry: Number(raw.expiry),
+    permissions: { ...raw.permissions, spend: (raw.permissions?.spend || []).map((s) => ({ ...s, limit: BigInt(s.limit) })) } };
+}
+async function balanceOfU(rpc, who) {
+  const r = await rpc('eth_call', [{ to: U, data: '0x70a08231' + who.slice(2).toLowerCase().padStart(64, '0') }, 'latest']);
+  return BigInt(r || '0x0');
+}
+export async function readOpinions(env) {
+  try { return JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]'); } catch { return []; }
+}
+async function log(env, row) {
+  const list = await readOpinions(env);
+  list.unshift(row);
+  await env.AGENT.put(LOG_KEY, JSON.stringify(list.slice(0, LOG_CAP)));
+  return row;
+}
+
+// why: 'daily' or 'before a re-set' (with the agent's own reading beside it, so the record shows both side by side)
+export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}) {
+  const at = new Date().toISOString(), day = at.slice(0, 10);
+  const base = { at, why, seller: SELLER, subject: SUBJECT, own };
+  const session = sessionOf(env);
+  if (!session) return log(env, { ...base, status: 'refused', reason: 'no session key on this worker' });
+  if (session.expiry * 1000 < Date.now()) return log(env, { ...base, status: 'refused', reason: 'the session has expired — grant a new one' });
+  const dayKey = `opinion:day:${day}`, used = Number((await env.AGENT.get(dayKey)) || 0);
+  if (used >= MAX_PER_DAY) return log(env, { ...base, status: 'refused', reason: `already ${used} hires today (at most ${MAX_PER_DAY})` });
+
+  const page = await fetch(`${SELLER.site}/agents/${SELLER.id}`).then((r) => r.text()).catch(() => '');
+  const m = page.match(/\\"escrow\\":\{\\"provider\\":\\"(0x[0-9a-fA-F]{40})\\",\\"budget\\":\\"(\d+)\\",\\"tokenId\\":\\"(\d+)\\",\\"name\\":\\"([^\\]+)\\"/);
+  if (!m) return log(env, { ...base, status: 'refused', reason: 'Mandate shows no escrow offer for Range-1 right now' });
+  const [, provider, budgetRaw, , name] = m, budget = BigInt(budgetRaw);
+  if (budget > MAX_PRICE) return log(env, { ...base, status: 'refused', reason: `the price ${Number(budget) / 1e18} $U is above the cap` });
+  const have = await balanceOfU(rpc, session.walletAddress).catch(() => null);
+  if (have == null || have < budget) return log(env, { ...base, status: 'refused', reason: `the Altana wallet holds ${have == null ? 'an unreadable amount of' : Number(have) / 1e18} $U, the price is ${Number(budget) / 1e18}` });
+
+  await env.AGENT.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 }); // counted before the hire: a failed send still used a try
+  const task = `via mandatemarkets.com: ${name} (ERC-8004 #${SELLER.id}) for ${SUBJECT}`;
+  let hired;
+  try {
+    hired = await hireErc8183Agent(session, { provider, task, budget }, { network: BNB });
+  } catch (e) {
+    return log(env, { ...base, status: 'failed', price_u: Number(budget) / 1e18, reason: String(e.shortMessage || e.message || e).slice(0, 200) });
+  }
+  const jobId = String(hired.jobId), tx = hired.transactionHash || hired.txHash || null;
+  await fetch(`${SELLER.site}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, tx, subject: SUBJECT }) }).catch(() => null);
+  let answer = null, deliveredAt = null;
+  for (let i = 0; i < 10 && !answer; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const d = await fetch(`${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (d && d.answer) { answer = d.answer; deliveredAt = d.deliveredAt || null; }
+  }
+  const positions = answer ? (answer.positions || []).map((p) => ({ position: String(p.position), pair: p.pair, in_range: !!p.inRange, ticks_out: p.ticksOut ?? 0, tick: p.tick, range: p.range, plan: p.plan || null })) : null;
+  // agrees: the outside agent read the same position the same way (in or out of range) as the agent's own look
+  const mine = own && own.position != null ? positions?.find((p) => p.position === String(own.position)) : null;
+  const agrees = mine && own.in_range != null ? mine.in_range === !!own.in_range : null;
+  return log(env, { ...base, status: answer ? 'answered' : 'hired, no answer yet', job: jobId, tx, price_u: Number(budget) / 1e18, paid_by: session.walletAddress,
+    answer: positions, delivered_at: deliveredAt, deliverable: `${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`, agrees });
+}
+
+==============================================================================
 === FILE: worker-agent/self-fetch.js
 ==============================================================================
 
@@ -15451,7 +15553,7 @@ const SEED_PARAMS = {
 function exampleLinks(serviceId, service) {
   return {
     price: {
-      x402: `0.10 USD1 per answer (or the same in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
+      x402: `0.10 USD1 per answer (or half that in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
       escrow: serviceId === 'lp_position_plan'
         ? '0.10 $U through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
         : `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)`,

@@ -1439,7 +1439,7 @@ function fillLpYours(){
           '<div class="lp-ask"><a class="mkt-go" href="' + hireHref + '" target="_top">Hire the DeFi agent &rarr;</a></div></div>' +
           '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Or pay per answer: send the fee, then paste the transaction hash</div>' +
           '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
-          '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
+          '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> — <b>half price</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
           '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +
           '<span class="agt-note">From your own wallet, in one transfer. The hash is checked on-chain: the amount, the recipient, and that it has not been used before. ' + (bobai ? '$BOBAI paid stays $BOBAI in the income wallet, off the market. ' : '') + 'Free preview of the shape: <a href="' + A + '/example?service=lp_position_plan" rel="noopener">our own position, through the same door</a>.</span></div>';
         const pay = el('lp-yours-pay'), txIn = el('lp-yours-tx');

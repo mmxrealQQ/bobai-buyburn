@@ -522,6 +522,7 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
 // sits in the income wallet as $BOBAI: off the market, until the liquidity
 // agent's sweep learns the token. Said on the 402, not implied.
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
+export const BOBAI_SHARE = 0.5; // an answer paid in $BOBAI costs half its USD1 price (2026-10-14)
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 // THE INPUT AS AN AGENT NATURALLY SENDS IT (2026-10-13): the documented body is {"params":{…}}, but {"token":"0x…"}
 // on its own came back "grid_plan needs `token`" with the token right there. Fields beside task/inputs/params count
@@ -1163,7 +1164,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const description = `${service.name} — one answer`;
   // The same price in $BOBAI, quoted now. If the pair cannot be read the
   // answer is still for sale in USD1; the $BOBAI door just stays shut.
-  const bobai = await bobaiForUsd(Number(ANSWER_PRICE) / 1e18).catch(() => null);
+  // $BOBAI IS THE CHEAPER WAY TO PAY (2026-10-14, operator: profit and volume for $BOBAI first): an answer costs half
+  // its USD1 price in $BOBAI, so a buyer — a person or an agent — has a reason to buy the token to pay with it
+  const bobai = await bobaiForUsd(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).catch(() => null);
   if (!proof) {
     const requirements = {
       x402Version: 2,
@@ -1194,7 +1197,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
-        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(ANSWER_PRICE)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: v2Shape(requirements, { url: resource }).accepts,

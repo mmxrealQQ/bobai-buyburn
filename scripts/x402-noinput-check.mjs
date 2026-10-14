@@ -21,5 +21,13 @@ for (const service of ['lp_position_plan', 'health_factor']) {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${service}: paid with no input -> ${r.status} ${String(b.error || b.reason || JSON.stringify(b)).slice(0, 140)}${aboutInput ? ' (refused for the missing input before the payment)' : ''}`);
   if (!ok) fail++;
 }
-console.log(`x402-noinput: ${2 - fail} PASS, ${fail} FAIL`);
+// $BOBAI IS THE CHEAPER WAY TO PAY (2026-10-14): the 402 asks half the USD1 price in $BOBAI (0.05 USD worth, the
+// tokens rounded up), never the full price
+{
+  const t = await (await fetch(`${BASE}/answer?service=yield_plan`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).json().catch(() => ({}));
+  const usd = t.in_bobai ? t.in_bobai.tokens * t.in_bobai.usd_per_bobai : null, ok = usd != null && usd >= 0.049 && usd <= 0.052;
+  console.log(`${ok ? 'PASS' : 'FAIL'} an answer costs half in $BOBAI: ${t.in_bobai ? `${t.in_bobai.tokens} $BOBAI ≈ $${usd.toFixed(4)}` : 'no $BOBAI price on the 402'}`);
+  if (!ok) fail++;
+}
+console.log(`x402-noinput: ${3 - fail} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

@@ -120,7 +120,7 @@ export const CAPABILITIES = {
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
       example: 'https://agent.brainonbnb.com/example?service=health_factor',
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
-      price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
+      price: '0.10 USD1 per answer, or half that in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
     },
   ],

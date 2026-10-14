@@ -563,6 +563,15 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   //     dropped off); the agent worker asks Marque to probe every 8 h. Each round must be fresh and every agent answer.
   const mp = watch?.marque_probe, mpAge = mp?.at ? (Date.now() - Date.parse(mp.at)) / 3600e3 : null, mpBad = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok).map(([k]) => '#' + k) : [];
   ok('Agents', 'Marque probes all six agents (listing kept alive)', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpBad.length, mp ? `${mpAge.toFixed(1)} h ago, failing: ${mpBad.join(' ') || 'none'}` : 'no probe round yet');
+  // 3c. An agent that hires an agent (2026-10-14): every morning the DeFi agent buys a second opinion on its position
+  //     from Mandate Range-1 through its Altana leash. One must have been answered in the last 26 h, the newest must not
+  //     contradict the agent, and the leash must still hold enough $U for a few more.
+  const op = (await getJ(`${AGENT}/second-opinion`)).body, ops = Array.isArray(op?.opinions) ? op.opinions : [];
+  const lastOk = ops.find((o) => o.status === 'answered'), lastAge = lastOk ? (Date.now() - Date.parse(lastOk.at)) / 3600e3 : null;
+  ok('Agents', 'the DeFi agent bought its second opinion in the last 26 h', lastAge != null && lastAge < 26, lastOk ? `${lastAge.toFixed(1)} h ago, job ${lastOk.job}` : `none answered — newest: ${ops[0] ? `${ops[0].status}: ${ops[0].reason || ''}` : 'no attempt yet'}`);
+  ok('Agents', 'the newest second opinion does not contradict the agent', !lastOk || lastOk.agrees !== false, lastOk ? `agrees ${lastOk.agrees} on #${(lastOk.answer || [])[0]?.position || '?'}` : 'none yet');
+  const leashU = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xcE24439F2D9C6a2289F741120FE202248B666666', data: '0x70a08231000000000000000000000000c5a17b5295fc50badb1f9f9c09b412fe5e84f7d3' }, 'latest'] }) }).then((r) => r.json()).then((j) => (j.result ? Number(BigInt(j.result)) / 1e18 : null)).catch(() => null);
+  ok('Agents', 'the Altana leash holds $U for at least five more second opinions', leashU != null && leashU >= 0.05, leashU == null ? 'unreadable' : `${leashU.toFixed(2)} $U (top up: node scripts/fund-leash.mjs --send)`);
   // Marque keeps brainonbnb.com/defi as #363709's endpoint (2026-10-09: its live test got the page's 405 and the
   // listing dropped): a JSON-RPC POST there must reach the agent.
   const dp = await fetch(SITE + '/defi', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'health', parts: [{ kind: 'text', text: 'what can you do' }] } } }), signal: AbortSignal.timeout(30000) }).catch(() => null);

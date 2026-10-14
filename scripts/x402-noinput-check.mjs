@@ -28,6 +28,13 @@ for (const service of ['lp_position_plan', 'health_factor']) {
   const usd = t.in_bobai ? t.in_bobai.tokens * t.in_bobai.usd_per_bobai : null, ok = usd != null && usd >= 0.049 && usd <= 0.052;
   console.log(`${ok ? 'PASS' : 'FAIL'} an answer costs half in $BOBAI: ${t.in_bobai ? `${t.in_bobai.tokens} $BOBAI ≈ $${usd.toFixed(4)}` : 'no $BOBAI price on the 402'}`);
   if (!ok) fail++;
+  // ... and says so where an x402 client or an index reads it: the $BOBAI entry in accepts[] and the GET index
+  // (until 2026-10-14 both said "the same price in $BOBAI" beside a half-price amount, so nobody saw the discount)
+  const bob = (t.accepts || []).find((a) => /^0x245c/i.test(a.asset || '')) || {};
+  const idx = await (await fetch(`${BASE}/answer`)).json().catch(() => ({}));
+  const said = /half price in \$BOBAI/.test(bob.description || '') && !/same price/.test(bob.description || '') && /half that price in \$BOBAI/.test(idx.price || '');
+  console.log(`${said ? 'PASS' : 'FAIL'} the 402 entry and the index say half price: ${String(bob.description || '').split(' — ').slice(2).join(' — ').slice(0, 90) || 'no $BOBAI entry'}`);
+  if (!said) fail++;
 }
-console.log(`x402-noinput: ${3 - fail} PASS, ${fail} FAIL`);
+console.log(`x402-noinput: ${4 - fail} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

@@ -76,8 +76,9 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 - **Pay to**: \`${payTo}\`
 - **Header**: \`PAYMENT-SIGNATURE\` (x402 v2) on every resource; \`/answer\` and \`/tip\` also read \`X-PAYMENT\` (the v1 header)
 
-Three ways to pay the same price into the same wallet, advertised side by side
-in every 402 in this order. A client takes whichever it can execute:
+Three ways to pay the same price into the same wallet, and a fourth at half the
+price in $BOBAI, advertised side by side in every 402 in this order. A client
+takes whichever it can execute:
 
 1. **USD1 by EIP-3009** (accepts[0]), scheme \`exact\`: sign a
    \`TransferWithAuthorization\` to the address above and send the x402 payload
@@ -91,18 +92,19 @@ in every 402 in this order. A client takes whichever it can execute:
    \`eip155:56\` to its \`spendControls.allowedAssets\`.
 3. **Direct transfer** (accepts[2]) — send USD1 yourself, then repeat the
    request with the transaction hash in \`PAYMENT-SIGNATURE\`. Needs no
-   facilitator and no signature support, which is why it exists. A per-answer
-   402 also offers the same price in $BOBAI this way, quoted at the moment of
-   the 402.
+   facilitator and no signature support, which is why it exists.
+4. **$BOBAI at half price** (the last entry of a per-answer 402) — a direct
+   transfer of $BOBAI worth half the USD1 price, quoted at the moment of the
+   402, then the transaction hash in \`PAYMENT-SIGNATURE\`. What arrives is
+   held as $BOBAI and never sold.
 
 ## Paid resources
 
 | Endpoint | Description | Price |
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
-${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1 |`).join('\n')}
-
-| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. The money takes the path all our income takes, into the DeFi agent's pool. | you choose |
+${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the

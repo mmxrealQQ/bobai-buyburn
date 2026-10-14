@@ -74,6 +74,9 @@ if (process.argv.includes('--self-test')) {
     return quiet.errors === 1 && quiet.errors_sent_nothing === true && sent.errors === 1 && sent.errors_sent_nothing === false;
   })());
   is('a step that did not act is not listed', stepWords('increase', { acted: false }) === null);
+  // since 2026-10-14 a sweep feeds no position (half to the operator, half $BOBAI held) and a collect pays the operator a third
+  is('a sweep since the split says where both halves went, never "into the DeFi wallet"; an old one keeps its words', (() => { const w = stepWords('sweep', { acted: true, sold: '0.2', to_operator: '0.2', bobai_bought: '815.4' }).what; return /half to the operator, half bought 815 \$BOBAI, held/.test(w) && !/DeFi wallet/.test(w) && /into the DeFi wallet/.test(stepWords('sweep', { acted: true, bnb_out: 0.001 }).what); })());
+  is('a collect names the operator\'s third when one was paid, and not otherwise', /0\.0013 BNB paid out to the operator/.test(stepWords('collect', { acted: true, produced_bnb: 0.0039, bobai_units: 1700, to_operator_bnb: 0.0013 }).what) && !/operator/.test(stepWords('collect', { acted: true, produced_bnb: 0.0039 }).what));
   is('a relocate names the pool it moved to', /USDT\/BNB 0\.01%/.test(stepWords('relocate', { acted: true, new_pool: CANDIDATES[2].pool, new_position: '9' }).what));
   is('a width upgrade names both widths', /±2% → ±1%/.test(stepWords('rebalance', { acted: true, upgraded_from_pct: 2, upgraded_to_pct: 1 }).what));
   is('a one-sided re-set says which side and that it traded nothing', /one-sided above the price, no trade/.test(stepWords('rebalance', { acted: true, one_sided: 'above_price', new_position: '7' }).what));

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 56 files, 18772 lines.
+# one fetch. 56 files, 18830 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3708,7 +3708,7 @@ export const CAPABILITIES = {
       name: 'pool watch',
       where: 'POST https://agent.brainonbnb.com/watch',
       what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold (paid, depth only; the free rug watch covers rug signals)`,
-      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC`,
+      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC, or half that in $BOBAI at the 402’s quote`,
       why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
     },
     {
@@ -8205,7 +8205,7 @@ async function readEarnings(env) {
 const WATCH_TOOL = {
   name: 'bsc_pool_watch',
   description:
-    'PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and '
+    'PAID (0.50 USD1, or half that in $BOBAI; 30 days). Watch one BNB Smart Chain liquidity pool around the clock and '
     + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
     + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
     + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
@@ -8230,7 +8230,7 @@ const WATCH_TOOL = {
       payment: {
         type: 'string',
         description:
-          'The transaction hash of your USD1 transfer, or a base64 x402 payload. Omit it on the '
+          'The transaction hash of your USD1 (or half-price $BOBAI) transfer, or a base64 x402 payload. Omit it on the '
           + 'first call to be told what to pay and where.',
       },
     },
@@ -8487,6 +8487,9 @@ async function tipRoute(env, ctx, payTo, q, proof) {
 }
 
 async function purchaseWatch(env, ctx, payTo, spec, proof) {
+  // Half the price in $BOBAI here too (2026-10-14), as for every answer: a direct transfer, quoted now; without a
+  // readable pair the watch is still for sale in USD1 and USDC.
+  const bobai = await bobaiForUsd(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).catch(() => null);
   if (!proof) {
     // The 402 itself. accepts[] is an array because a second scheme
     // (eip3009, once a facilitator is in place) will sit beside this one
@@ -8516,6 +8519,11 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
+        ...(bobai ? [{
+          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+        }] : []),
       ],
     };
     return {
@@ -8530,8 +8538,9 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // USDC, the other two in USD1 — a client that budgets off a one-asset
         // sentence holds the wrong token for the other route. In accepts[]
         // order since 2026-10-05 (payWays). This POST reads PAYMENT-SIGNATURE only.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet`,
-        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE' })}.`,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(WATCH_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}.`,
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(WATCH_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -8546,9 +8555,10 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   const pay = await chargeX402(env, {
     payTo, price: WATCH_PRICE_USD1, description: `Pool watch for ${WATCH_DAYS} days`,
     resource: 'https://agent.brainonbnb.com/watch', proof, sold: 'watch',
+    alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null,
   });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const tx = pay.tx, check = { paid: pay.paid, from: pay.from };
+  const tx = pay.tx, check = { paid: pay.paid, from: pay.from, asset: pay.asset || 'USD1' };
 
   // The watch is the goods: created, the payment is delivered and final; a
   // creation that throws leaves the buyer a credit on the same hash.
@@ -8581,7 +8591,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
     read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
-    paid: `${fmtUsd1(check.paid)} USD1`,
+    paid: `${fmtUsd1(check.paid)} ${check.asset}`,
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible
     // thing to receive by accident.
@@ -9942,6 +9952,54 @@ ${pageTail}`;
     // An agent that speaks MCP and wants to buy something has, today, nothing
     // in that catalog it can call natively. The tool below is the same product
     // through the door those agents already have open.
+    // THE DEFI AGENT'S OWN MCP (2026-10-14). Mandate checks that an agent's published tools fit its job and tries
+    // it free, comparing the answer with the chain (its page for #363709: "Tools publishes no tool list", "What you
+    // get, checked: could not be checked"; agents that pass publish an MCP service in their registration). Two
+    // tools: the free look at a position (no input = the position this agent runs itself, so a probe always gets a
+    // reading it can check on chain), and the paid plan, whose call names the terms of the x402 sale.
+    if (path === '/defi-agent/mcp') {
+      const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept', 'Content-Type': 'application/json' };
+      const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
+      const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
+      const TOOLS = [
+        { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+        { name: 'lp_position_plan', description: 'Rebalancing, the paid half (0.10 USD1, or half that in $BOBAI): what this agent would decide about the position — whether a re-set is due and in which width, the width that ended furthest ahead of simply holding over the last seven days, replayed over the recorded prices — from the same code that runs its own position. Calling this tool returns the terms; the plan is sold over x402 at https://agent.brainonbnb.com/answer?service=lp_position_plan (or hired through the ERC-8183 escrow for 0.10 $U).', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id' }, address: { type: 'string', description: 'Or the wallet that holds it' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+      ];
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+      if (request.method === 'GET') return new Response(JSON.stringify({ name: 'Brain on BNB — DeFi Agent (#363709)', protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: 'POST JSON-RPC here. lp_position_look is free; lp_position_plan is sold over x402.' }), { headers: cors });
+      let body;
+      try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
+      if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
+      const { id, method, params } = body || {};
+      if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
+      if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'Brain on BNB — DeFi Agent (#363709)', version: '1.0.0' } });
+      if (method === 'ping') return rpcOk(id, {});
+      if (method === 'tools/list') { note('defimcp:tools_list'); return rpcOk(id, { tools: TOOLS }); }
+      if (method === 'tools/call') {
+        const name = params?.name, a = params?.arguments || {};
+        note(`defimcp:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        if (name === 'lp_position_look') {
+          const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
+          const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
+          try {
+            const look = await lpPositionLook(q, env);
+            const out = !pos && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})`, ...look } : look;
+            return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+          } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }
+        }
+        if (name === 'lp_position_plan') {
+          if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
+          const terms = await sellAnswer(env, ctx, payTo, 'lp_position_plan', {}, null);
+          const t = terms.body || {};
+          const out = { payment_required: true, pay_at: 'https://agent.brainonbnb.com/answer?service=lp_position_plan', price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: 'lp_position_look on this server' };
+          return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        }
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has lp_position_look (free) and lp_position_plan (paid).`);
+      }
+      return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
+    }
+
     if (path === '/mcp') {
       const cors = {
         'Access-Control-Allow-Origin': '*',
@@ -18228,7 +18286,7 @@ takes whichever it can execute:
 
 | Endpoint | Description | Price |
 |----------|-------------|-------|
-| \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
+| \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price}, or half in $BOBAI |
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
 | \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 

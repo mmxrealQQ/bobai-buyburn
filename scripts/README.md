@@ -33,6 +33,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `secret-audit.mjs` | can the repository be published (worktree and history) |
 | `gas-check.mjs` · `gas-refill.mjs` | can every bot still pay; top up the ones that cannot |
 | `dispatch-safety.mjs` | does the router only call read-only tools, on both origins |
+| `sync-mcp-stdio.mjs` | copies the hosted MCP tool descriptions/schemas into the stdio package (`--check` exits 1 on drift); run after a tool wording change is deployed |
 | `phase-parity.mjs` | do the two copies of the tax split agree |
 | `dashboard-check/` | browser-driven checks of single pages and panels (see its README) |
 | `dashboard-check/style-arrival.mjs` | does every visible class on every page meet a rule in a loaded stylesheet (the /advantage lesson) |

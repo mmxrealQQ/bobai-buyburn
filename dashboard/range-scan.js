@@ -334,6 +334,11 @@ export async function rangePlan(input, opts = {}) {
   const held = rows.filter((r) => !r.full_range && r.width_pct != null
     && r.share_of_window_in_range_pct === 100 && r.times_it_crossed_the_edge === 0);
   const narrowestHeld = held.length ? held[0] : null;
+  // AN HOUR NOTHING CROSSED CANNOT RANK THE WIDTHS (2026-10-14): when every range held the whole window, the narrowest
+  // collects most by geometry alone, and the two "best" lines above named it as if it were advice. Over days a range
+  // that narrow crosses and loses to holding — the DeFi agent's own money record says so — and the answer says that next
+  // to the lines it qualifies.
+  const allHeld = rows.some((r) => !r.full_range) && rows.filter((r) => !r.full_range).every((r) => r.share_of_window_in_range_pct === 100 && r.times_it_crossed_the_edge === 0);
 
   return {
     tool: 'pancakeswap_range_plan',
@@ -367,6 +372,8 @@ export async function rangePlan(input, opts = {}) {
       ? (best.full_range ? 'full range' : `±${best.width_pct}%`) : null,
     best_range_after_paying_to_put_it_back: bestNet
       ? (bestNet.full_range ? 'full range' : `±${bestNet.width_pct}%`) : null,
+    window_ranks_the_widths: !allHeld,
+    ...(allHeld ? { read_this_first: 'Every width held the whole window, so the narrowest earned most by geometry alone: this window cannot tell the widths apart, and the two lines above are not advice. Over days a range that narrow crosses the price and loses to simply holding — a live record of a real position, range by range: https://brainonbnb.com/advantage#track-record' } : {}),
     rebalance_cost_usd_assumed: +rebalanceUsd.toFixed(6),
     narrowest_range_that_held_the_whole_window: narrowestHeld ? `±${narrowestHeld.width_pct}%` : null,
     times_better_than_full_range: (best && fullRow && fullRow.fees_usd_in_window > 0)

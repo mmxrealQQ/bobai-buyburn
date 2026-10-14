@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 55 files, 18511 lines.
+# one fetch. 55 files, 18544 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7174,7 +7174,7 @@ async function readAgentRecord(env) {
   const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null');
   return withArchive(JSON.parse(raw), arch);
 }
-import { lpPositionLook } from './lp-service.js';
+import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -8324,13 +8324,24 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  const wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  let wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  // A hire button that pays and names nothing (2026-10-14, Mandate's "Hire for $0.10"): the paying wallet is the input,
+  // as the escrow path does it since 2026-10-04 (sell.js deliverJob) — the DeFi agent plans for the payer's position or
+  // its own (lpDefaultTarget), the health factor reads the payer's account
+  let target = null;
+  if ((serviceId === 'lp_position_plan' || serviceId === 'health_factor') && missingInput(serviceId, wanted)) {
+    const pp = parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
+    const payer = a.authorization?.from || a.permit2Authorization?.from || null;
+    if (serviceId === 'lp_position_plan') target = await lpDefaultTarget(payer).catch(() => ({ address: OWN_LP_WALLET, target: `no position was named: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET})` }));
+    else if (payer) target = { address: payer, target: `no account was named: this reads the paying wallet ${payer}` };
+    if (target) wanted = { ...wanted, ...(target.position ? { position: target.position } : { address: target.address }) };
+  }
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const params = target ? wanted : extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
   let result;
   try {
     result = await doWork(serviceId, params, env);
@@ -8349,6 +8360,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
     produced_at: new Date().toISOString(),
+    ...(target ? { input: target.target } : {}),
     result,
     summary: summarize(serviceId, result),
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
@@ -11685,13 +11697,34 @@ async function withLadder(params, env) {
   if (!env || !env.AGENT || params.position != null || params.ladder) return params;
   try { const l = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); return l && l.main != null ? { ...params, ladder: l } : params; } catch { return params; }
 }
+// THE PLAN WHEN NOTHING IS NAMED (2026-10-14). A marketplace's hire button
+// pays and sends no words at all (Mandate's "Hire for $0.10"): the plan was
+// refused (422, nothing charged) and the hire never happened. Now the paying
+// wallet is the input — its one position, or the first of several — and a
+// wallet without one gets the plan for the position this agent runs itself,
+// the same work, said so in the answer.
+export const OWN_LP_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+export async function lpDefaultTarget(payer) {
+  if (/^0x[a-fA-F0-9]{40}$/.test(String(payer || ''))) {
+    payer = payer.toLowerCase(); // checksum or not, as signed
+    const pub = client(), n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [payer]));
+    if (n === 1) return { address: payer, target: `no position was named: this is the plan for the one PancakeSwap V3 position the paying wallet ${payer} holds` };
+    if (n > 1) {
+      const id = String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [payer, 0n]));
+      return { position: id, target: `no position was named: this is the plan for #${id}, the first of the ${n} the paying wallet ${payer} holds — name another with position: <id>` };
+    }
+  }
+  return { address: OWN_LP_WALLET, target: `no position was named and the paying wallet holds none: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET}) — name yours with position: <id> or address: 0x…` };
+}
+// A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
+const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
 export async function lpPositionLook(params = {}, env = null) {
   const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
   const { facts, poolInfo, owedBnbEquiv } = r;
   const lines = [];
   lines.push(poolInfo.inRange
-    ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
+    ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   if (owedBnbEquiv != null) lines.push(owedBnbEquiv >= 0.002 ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`);
   return {
@@ -11730,7 +11763,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   const collectPays = owedBnbEquiv != null ? owedBnbEquiv >= 0.002 : null;
   const lines = [];
   lines.push(poolInfo.inRange
-    ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
+    ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
   lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
   // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with

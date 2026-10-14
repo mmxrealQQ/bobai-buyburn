@@ -550,6 +550,7 @@ function howToBuy() {
 // it described a 14-tool token server for three weeks after the scanner and
 // Brain Plaza were added, and llms.txt sent every agent to it first).
 const MEASURE_REST = {
+  pancakeswap_position_look: 'https://agent.brainonbnb.com/lp/look?position=<id> or ?address=<wallet>',
   find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
   bnb_agent_chart: 'https://agent.brainonbnb.com/chart/<agent id>',
   bnb_agents_by_evidence: 'https://agent.brainonbnb.com/chart/rank?category=health-factor',
@@ -793,6 +794,7 @@ const MCP_TOOLS = [
   // NAMED preflight, with no verb a router refuses (see pancakeswap_best_route
   // below): "pretrade" splits into a word our own dispatcher would not call.
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer. The same token asked again within 60 seconds gets the same measurement from the edge cache (cache.hit, cache.age_seconds).', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
+  { name: 'pancakeswap_position_look', description: 'Look at any PancakeSwap V3 liquidity position on BNB Chain, read from the chain: in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas, and what PancakeSwap’s proposed The Flip (LPs keeping 88% of swap fees) would change for it - the share the pool pays its LPs today is read from the pool itself. Give a position id, or a wallet that holds one (a wallet with several gets their ids back). Free. What to do about it - whether a re-set is due and in which width - is the paid plan of the DeFi Agent (ERC-8004 #363709), 0.10 USD1 or half that in $BOBAI.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false } },
   { name: 'pancakeswap_range_plan', description: 'For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the one every interface answers with a preset. This does not model and does not forecast. It replays: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of a stated size is walked through the swaps that really happened in a live window and asked, at each one, whether it was in range and what share of the active liquidity it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price walked out. Impermanent loss is not in it, and it is worst exactly where the fees are best. The window is about an hour and travels with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap V3 pool address to pin the pool' }, capitalUsd: { type: 'number', description: 'Size of the position in dollars, optional - defaults to 1000' }, quote: { type: 'string', description: 'The other side of the pair, optional: BNB, USDT, USDC, USD1 or BUSD, or its address. Without it the quote with the deepest V3 pool is used, so pass it whenever a pair was named (CAKE/BNB)' } }, required: ['address'], additionalProperties: false } },
   // NAMED best_route AND NOT swap_route, deliberately. Our own dispatcher — and
   // any other router built the same way — refuses a tool with a mutating verb
@@ -923,6 +925,16 @@ async function runTool(rawName, args, caller = {}) {
       const r = await fetch(`https://agent.brainonbnb.com/chart/rank?category=${c}&limit=${l}`, { signal: AbortSignal.timeout(25000) });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error ? `${j.error}${j.categories ? ' — categories: ' + j.categories.join(', ') : ''}` : 'The ranking is unavailable right now');
+      return j;
+    }
+    case 'pancakeswap_position_look': {
+      // 2026-10-14: the DeFi agent's free look, for any V3 position, with The Flip read from the pool (agent worker /lp/look)
+      const pos = String(args?.position ?? '').trim(), addr = String(args?.address ?? '').trim();
+      if (!/^\d+$/.test(pos) && !/^0x[0-9a-fA-F]{40}$/.test(addr)) throw new Error('Give a PancakeSwap V3 position id (digits) or a wallet address (0x…).');
+      const r = await fetch(`https://agent.brainonbnb.com/lp/look?${/^\d+$/.test(pos) ? `position=${pos}` : `address=${addr}`}`, { signal: AbortSignal.timeout(30000) });
+      const j = await r.json().catch(() => null);
+      if (!j) throw new Error(`The position look did not answer (http ${r.status}); it is also at GET https://agent.brainonbnb.com/lp/look`);
+      if (j.error) throw new Error(j.error);
       return j;
     }
     case 'find_agents_on_bnb_chain': {

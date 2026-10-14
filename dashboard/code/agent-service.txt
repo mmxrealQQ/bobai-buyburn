@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 56 files, 18722 lines.
+# one fetch. 56 files, 18725 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7274,7 +7274,7 @@ export async function keepMarqueListed(env) {
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
-import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
+import { widthClassOf, HOME_POOL, pickWidth, FEE_SHARE_KEPT_PCT } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -9602,6 +9602,9 @@ ${pageTail}`;
       // liquidity page and the Telegram report all read this one figure set.
       const earned = await readEarnings(env).catch(() => null);
       const flow = moneyFlow(rec, { earned });
+      // THE RULE IN FORCE, not the one the last collect ran under (2026-10-14: the thirds were live, the page still read
+      // 50/50 from the morning's collect until the next one): the same constant the agent splits with
+      flow.rule = { fee_share_kept_pct: FEE_SHARE_KEPT_PCT, fee_share_bobai_pct: +((100 - FEE_SHARE_KEPT_PCT) / 2).toFixed(2), fee_share_operator_pct: +((100 - FEE_SHARE_KEPT_PCT) / 2).toFixed(2) };
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       // The ladder record beside it (worker-lp, KV lp:ladder): which position
       // is the main range and which the reserve. The hand script reads it

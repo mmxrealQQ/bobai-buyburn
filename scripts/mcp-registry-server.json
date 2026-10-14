@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.brainonbnb/bobai",
-  "description": "Which ERC-8004 agents on BNB Chain actually answer, and what any BSC trade really costs",
-  "version": "1.4.0",
+  "description": "BNB Chain: which AI agents answer, what a BSC trade costs, what your PancakeSwap V3 position earns",
+  "version": "1.5.0",
   "websiteUrl": "https://brainonbnb.com/",
   "remotes": [
     {

@@ -1551,6 +1551,24 @@ export default {
     // smoke test says who it is and is left out, as on the dashboard worker.
     const selfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
     const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, name)).catch(() => {})); };
+    // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
+    // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
+    // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.
+    const seenA2A = (req, slug) => {
+      if (selfTest) return;
+      const copy = req.clone();
+      ctx.waitUntil((async () => {
+        const raw = await copy.text().catch(() => '');
+        let j = null; try { j = JSON.parse(raw); } catch {}
+        const kinds = (j?.params?.message?.parts || []).map((x) => x?.kind || x?.type || '?').join('+') || 'none';
+        bumpDetail(env, `a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
+        if (!env.AGENT) return;
+        const key = `a2a-seen:${slug}`;
+        const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];
+        list.unshift({ at: new Date().toISOString(), ua: (req.headers.get('user-agent') || '').slice(0, 120), body: raw.slice(0, 1500) });
+        await env.AGENT.put(key, JSON.stringify(list.slice(0, 10)), { expirationTtl: 259200 });
+      })().catch(() => {}));
+    };
 
     if (request.method === 'OPTIONS')
       return new Response(null, {
@@ -1637,7 +1655,7 @@ export default {
       const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
       if (m) {
         const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
-        if (request.method === 'POST' && m[2] && !m[3]) return await handleA2A(request, env, { agent: slug });
+        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug }); }
         return json({
           protocolVersion: '0.3.0',
           name: card.name,
@@ -1671,7 +1689,7 @@ export default {
     // one service — at a path its registration names. POST here sells only
     // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
     // in both dialects: BNB's signed quote and our flat one.
-    if (path === '/defi-agent/a2a' && request.method === 'POST') return await handleA2A(request, env, { agent: 'defi-agent' });
+    if (path === '/defi-agent/a2a' && request.method === 'POST') { seenA2A(request, 'defi-agent'); return await handleA2A(request, env, { agent: 'defi-agent' }); }
     // The BNB Agent SDK buyer reads the card at <A2A endpoint>/.well-known/
     // agent-card.json — under the endpoint, not the origin — so both spellings
     // are served under /defi-agent/a2a as well.
@@ -1844,7 +1862,7 @@ export default {
     // itself. A2A JSON-RPC: negotiate a price, then tell us the job is funded
     // and we deliver it on-chain. See sell.js for why it is A2A and not MCP.
     if (path === '/a2a') {
-      if (request.method === 'POST') return await handleA2A(request, env);
+      if (request.method === 'POST') { seenA2A(request, 'a2a'); return await handleA2A(request, env); }
       // A GET here is somebody looking, not somebody hiring — a person pasting
       // the URL, or an indexer checking whether the endpoint is alive. Answering
       // 404 is technically correct and reads as broken, which is precisely the

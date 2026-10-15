@@ -285,6 +285,8 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
     const t = (o) => trackedBuyLine(o).replace(/<[^>]+>/g, '');
     ok(t({ addr: W, buyer: W, bal: 42e6, rank: 4 }) === '\n🐋 Tracked whale · 🏅 #4 holder', `a whale's line: ${t({ addr: W, buyer: W, bal: 42e6, rank: 4 })}`);
     ok(t({ addr: W, buyer: W, bal: 6e6, rank: 30 }) === '\n🐬 Tracked holder 5M+ · 🏅 #30 holder' && t({ addr: W, buyer: W, bal: 1e6, rank: 90 }) === '\n👀 Tracked wallet', 'a 5M holder has a place; under 5M no place');
+    ok(t({ addr: W, buyer: W, bal: 1e6, cluster: 'B' }) === '\n👀 Tracked wallet · 🔗 Cluster B' && t({ addr: W, buyer: W, bal: 1e6, cluster: '' }) === '\n👀 Tracked wallet · 🔸 Solo', 'a wallet under 5M names its cluster, or Solo');
+    ok(t({ addr: W, buyer: W, bal: 42e6, rank: 4, cluster: 'B' }) === '\n🐋 Tracked whale · 🏅 #4 holder', 'a whale keeps its line without the cluster');
     ok(t({ addr: W, buyer: H(6), bal: 26e6, rank: 2, contract: true }) === '\n🏦 Tracked contract 0x5555...5555 · 🏅 #2 holder', 'a tracked recipient other than the sender is named');
     ok(/if \(official && whaleAlertIsPublic\(data\)\) await tgSend\(text, TG_CHAT_ID\);/.test(src) && /pb\.recipients\.has\(addr\) && buyAlertTells\(pb, await getBnbUsd\(\)\)\) official = false;/.test(src), "the watcher's text of a told buy stays internal");
     ok(/\+ await trackedCtx\(trade\);/.test(src), 'every buy alert asks whether its buyer is tracked');

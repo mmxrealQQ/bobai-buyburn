@@ -1144,8 +1144,12 @@ export function buyAlertTells(pb, bnbUsd) {
   return !!pb && pb.bnbIn > 0n && !IGNORED_WALLETS.has(pb.from) && bnbUsd > 0 && Number(pb.bnbIn) / 1e18 * bnbUsd >= 100;
 }
 // The line under the buyer: what the watcher calls the wallet, and its place from 5M up (exact there). Pure.
-export function trackedBuyLine({ addr, buyer, bal = null, rank = null, contract = false }) {
-  const who = contract ? '🏦 Tracked contract' : bal >= 10_000_000 ? '🐋 Tracked whale' : bal >= 5_000_000 ? '🐬 Tracked holder 5M+' : '👀 Tracked wallet';
+// A wallet under 5M says which cluster it belongs to, as the watcher's text does (operator, 2026-10-15): `cluster` is
+// its label, '' for a wallet on its own, undefined when unknown (nothing said).
+export function trackedBuyLine({ addr, buyer, bal = null, rank = null, contract = false, cluster }) {
+  const eyes = !contract && !(bal >= 5_000_000);
+  const who = (contract ? '🏦 Tracked contract' : bal >= 10_000_000 ? '🐋 Tracked whale' : bal >= 5_000_000 ? '🐬 Tracked holder 5M+' : '👀 Tracked wallet')
+    + (eyes && cluster !== undefined ? (cluster ? ` · 🔗 Cluster ${cluster}` : ' · 🔸 Solo') : '');
   const other = addr && buyer && String(addr).toLowerCase() !== String(buyer).toLowerCase()
     ? ` <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a>` : '';
   return `\n${who}${other}${rank && bal >= 5_000_000 ? ` · 🏅 #${rank} holder` : ''}`;
@@ -4878,7 +4882,12 @@ export default {
           placeBals.set(addr, bal);
           rank = holderRank(placeBals, addr, bal);
         }
-        return trackedBuyLine({ addr, buyer: trade.buyer, bal, rank, contract: watchSets.c.has(addr) });
+        let cluster;
+        if (!(bal >= WATCH_THRESHOLD_TOKENS) && !watchSets.c.has(addr)) {
+          try { cluster = labelClusters(computeClusters([...watchSets.w, ...watchSets.c], await loadWalletEdges(env))).get(addr) || ''; }
+          catch { cluster = undefined; }
+        }
+        return trackedBuyLine({ addr, buyer: trade.buyer, bal, rank, contract: watchSets.c.has(addr), cluster });
       } catch (e) { console.error('[BUY TRACKED]', e.message || e); return ''; }
     };
     const noteAlerted = (trade) => alertedNow.push({ tx: trade.txHash, buyer: String(trade.buyer).toLowerCase(), usd: Math.round(trade.usdValue * 100) / 100, ts: Date.now() });

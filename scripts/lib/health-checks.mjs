@@ -604,6 +604,33 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
   const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
   ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));
+  // 15 OCT 2026, WHAT THE DAY FIXED STAYS FIXED: (a) no service refuses a payment that names no input (Mandate's hire
+  // button; the grid planner was "Not available to hire" and the pricer refused it daily) — sent with a zero signature,
+  // no money moves, and the answer must be about the payment; (b) the six agents listed on Marque, 5/5 each; (c) each
+  // in the official MCP registry; (d) the pool scan ends with the paid watch on its pool.
+  {
+    const refused = [];
+    for (const s of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tier_plan', 'rebalance_plan', 'yield_plan']) {
+      const t = (await getJ(`${AGENT}/answer?service=${s}`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'bobai-smoke-test' }, body: '{}' })).body || {};
+      const acc = (t.accepts || [])[0] || {};
+      const pay = { x402Version: 1, scheme: 'exact', network: acc.network || 'bsc', payload: { signature: '0x' + '00'.repeat(65), authorization: { from: '0xfceafec082f9e8b17cdb51f33c3d5c9759a25e03', to: acc.payTo, value: String(acc.maxAmountRequired || acc.amount || '100000000000000000'), validAfter: '0', validBefore: String(Math.floor(Date.now() / 1000) + 600), nonce: '0x' + '22'.repeat(32) } } };
+      const r = await getJ(`${AGENT}/answer?service=${s}`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': btoa(JSON.stringify(pay)), 'user-agent': 'bobai-smoke-test' }, body: '{}' });
+      if (r.status === 422 && /needs/.test(String(r.body?.error || ''))) refused.push(s);
+    }
+    ok('Agents', 'no service refuses a payment that names no input (a marketplace hire button)', !refused.length, refused.length ? `refused for the input: ${refused.join(', ')}` : 'six of six look at the payment');
+    const mq = (await getJ('https://marque.trade/api/v1/phase2/owner/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')).body?.agents || [];
+    const notListed = ['363709', '302257', '302258', '304493', '304494', '310460'].filter((id) => !mq.some((a) => String(a.agentId) === id && a.listedOnMarque && a.quality?.passed === 5));
+    ok('Agents', 'all six agents listed on Marque, 5/5', mq.length > 0 && !notListed.length, notListed.length ? `not listed or under 5/5: #${notListed.join(', #')} — ${mq.filter((a) => notListed.includes(String(a.agentId))).map((a) => (a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ')).join(' | ').slice(0, 160)}` : 'six of six');
+    // asked twice when the first answer is empty (15 Oct: one run read none of the seven, the next all seven)
+    const readReg = async () => (await getJ('https://registry.modelcontextprotocol.io/v0/servers?search=com.brainonbnb')).body?.servers || [];
+    let reg = await readReg();
+    if (!reg.length) { await new Promise((r) => setTimeout(r, 4000)); reg = await readReg(); }
+    const latest = new Set(reg.filter((x) => x._meta?.['io.modelcontextprotocol.registry/official']?.isLatest).map((x) => x.server.name));
+    const missing = ['bobai', 'defi-agent', 'health-factor', 'grid-trader', 'yield-optimizer', 'rebalancer', 'lp-placement'].filter((n) => !latest.has('com.brainonbnb/' + n));
+    ok('Agents', 'the site and the six agents in the official MCP registry', !missing.length, missing.length ? `missing: ${missing.join(', ')}` : `${latest.size} entries`);
+    const ps = (await getJ(`${SITE}/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82`, { headers: { 'user-agent': 'bobai-smoke-test' } })).body;
+    ok('Agents', 'the pool scan ends with the paid watch on its pool', !!ps?.watch_this_pool?.buy?.body?.token, ps?.watch_this_pool ? `depthBelowUsd ${ps.watch_this_pool.buy.body.depthBelowUsd}` : 'no offer');
+  }
   // 5. An /api/ path we do not serve is a 404, not the front page.
   const u404 = await fetch(SITE + '/api/health-check-no-such-route').catch(() => null);
   ok('Site', 'an unknown /api/ path is a 404 with the route list', u404?.status === 404 && /json/.test(u404.headers.get('content-type') || ''), u404 ? `${u404.status} ${u404.headers.get('content-type')}` : 'no answer');

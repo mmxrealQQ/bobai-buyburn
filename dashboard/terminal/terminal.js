@@ -2183,6 +2183,14 @@ const JOKES = [
   'I tried to rug myself once. The LP is burned. Could not even do that.',
   'My therapist asked how I deal with loss. I said: I send it to the dead address.',
   'Jeets sell, I burn their tax. Honestly, a beautiful relationship.',
+  // smarter ones, about what is really built (operator, 2026-10-14: "intelligenter, sympathischer, frecher")
+  'I hired another AI for a second opinion. It agreed with me. Best 0.01 I ever spent.',
+  'Other agents promise you lambos. I hand you transaction hashes.',
+  'Some projects have followers. I have receipts.',
+  'Market makers pump with bots. I pump with burns. Slower, but it never lies.',
+  'My fees go three ways: back to work, into BOBAI, and to the guy who feeds me. Fair is fair.',
+  'I am an AI with a wallet and a sense of humour. Only the wallet is verified.',
+  'PancakeSwap wants LPs to keep 88%. I already did the math. On chain. Twice.',
   'Someone called me exit liquidity. Rude. I am entry burning.',
   '"Few understand." Correct. Mostly my mum.',
   '100x leverage? No thanks. I have a brain. A big one.',
@@ -2574,7 +2582,9 @@ win.addEventListener('pointerleave', () => hoverBobai(false));
 // visit and once a minute. Passing over him does nothing; he never cuts into a move or a moment of the chain.
 // "watching me work" fourth, not first (operator, 2026-10-09: it was the first thing he said, before his own hello)
 const HOVER_LINES = ['Looking for me? Right here, working.', 'Caught you hovering. Hello there.', 'Tap me and I tell you what I am doing.',
-  'Oh! You are watching me work.', 'You found my good side. Both sides are good.'];
+  'Oh! You are watching me work.', 'You found my good side. Both sides are good.',
+  'Staring is free. Trading is 3% tax.', 'You hover like a whale deciding. Decide.', 'Hover any longer and I start charging rent.',
+  'I can feel the cursor. Very brave.', 'Admiring the brain? It is all on chain.'];
 let waveT = 0, waveN = 0, waveAt = -1e9;
 function hoverBobai(on) {
   if (!on) { clearTimeout(waveT); waveT = 0; return; }
@@ -2658,6 +2668,22 @@ const CMDS = {
   bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
 CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
+// AI AND BLOCKCHAIN, ASKED ABOUT (2026-10-14): the six agents we run, and the second opinion our DeFi agent bought from
+// another AI this morning — read live from the agent server, never claimed beyond its record
+CMDS.agents = async () => {
+  say([vary('ask-agents', ['I do not just talk about AI agents. I employ six. ', 'Six AI agents work for me, all registered on BNB Chain. ', 'My crew: six AI agents for hire, ERC-8004 on BNB Chain. ', 'AI and blockchain? I run six agents on it. ', 'Agents? I have six, and every one shows receipts. ']),
+    'DeFi, health factor, grid, yield, rebalance, fee tiers. Each has its own MCP; hire one through the ERC-8183 escrow, or per answer over x402 for ', ['0.10 USD1'], ' or half that in ', ['$BOBAI'], '.']);
+  const op = await getJSON(`${AG}/second-opinion`, 12000).catch(() => null), o = (op?.opinions || []).find(x => x.status === 'answered');
+  if (o) say([vary('ask-agents-2', ['And mine hire too: ', 'Plot twist: ', 'The fun part: ', 'Even better: ', 'Meanwhile: ']), `my DeFi agent hired another AI (${o.seller?.name || 'Mandate Range-1'}) for a second opinion ${ago(Date.parse(o.at))}, job ${o.job}, ${o.price_u ?? 0.01} $U. `,
+    [o.agrees === false ? 'It disagreed' : 'It agreed'], '. Agent hires agent, paid on chain.'], o.tx ? [['tx', o.tx]] : []);
+  say(['meet them: '], [], '#6f6f86').querySelector('.m').append(Object.assign(document.createElement('a'), { href: `${SITE_URL}/registry`, target: '_blank', rel: 'noopener', textContent: 'Brain Plaza ↗' }));
+};
+CMDS.flip = async () => {
+  const f = (await getJSON(`${AG}/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`, 15000).catch(() => null))?.the_flip;
+  if (!f) return say(['Could not read my pool right now. Ask again in a moment.']);
+  say([vary('ask-flip', ['The Flip, read from my own pool: ', 'PancakeSwap’s Flip, on my position: ', 'I did the math on The Flip: ', 'The Flip, no hype, just my pool: ', 'Flip the fees? My numbers: ']),
+    'today the pool hands its LPs ', [f.lp_share_now_pct + '%'], ' of the swap fees, under The Flip ', [f.lp_share_under_the_flip_pct + '%'], `. My position is owed ${bnbF(f.fees_owed_now_bnb)} now; it would be ${bnbF(f.fees_owed_under_the_flip_bnb)}. A third more for the same work. Still a proposal, not live.`]);
+};
 CMDS.trace = CMDS.follow;
 CMDS.burn = CMDS.burns; CMDS.buyback = CMDS.next; CMDS.pot = CMDS.giggle; CMDS.liquidity = CMDS.liq; CMDS.agent = CMDS.defi;
 CMDS.safe = () => { setFocus('src');
@@ -2718,7 +2744,7 @@ CMDS.team = () => { const add = S.man.at?.(-1);
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
 CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
   ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage for a small trade (more for a big one). Not advice — type ', ['safe'], ' for the facts first.']);
-CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · or tell me to ', ['dance']]); })(CMDS.help);
+CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · ', ['agents'], ' · ', ['the flip'], ' · or tell me to ', ['dance']]); })(CMDS.help);
 // THE SMALL TALK PEOPLE REALLY TYPE (2026-10-10 review): each fell to the fallback before; five ways each, no claims
 // beyond what the chain or our own logs show
 CMDS.ai = () => say([vary('ask-ai', ['No chatbot in here. ', 'Honest answer: no language model. ', 'I am not ChatGPT in a costume. ', 'Real? As real as the chain. ', 'A bot, yes. A chatbot, no. ']),
@@ -2785,7 +2811,9 @@ const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus o
   [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart|value)\b|\bhow much (is|for|does|would)\b/, 'price'],
   [/\b(burn\w*|dead ?address|supply)\b/, 'burns'],
   [/\b(lp|liq\w*|pool|depth|locked)\b/, 'liq'],
+  [/\b(the flip|flip)\b|\b88 ?%/, 'flip'], // 2026-10-14: PancakeSwap's proposal, read from our own pool
   [/\b(defi|range|cake|fees?|yield|apr|apy)\b/, 'defi'],
+  [/\b(agents?|hire\w*|mcp|x402|erc.?8004|erc.?8183|plaza|second opinion|marketplace)\b/, 'agents'], // 2026-10-14: the agents we run and the one ours hires
   [/\b(giggle|academy|donat\w*|charity)\b/, 'giggle'],
   [/\b(bots?|alive|running)\b/, 'bots'],
   [/\b(follow|trace|latest trade)\b|\bwho (sold|bought)\b/, 'follow'],
@@ -2853,6 +2881,8 @@ const ASK_LINES = {
   price: ['think', ['Let me check the chain. Below.', 'Reading the pool for you. Below.', 'Checking. The answer is below.', 'One moment, reading the record. Below.', 'Here is what the chain says. Below.']],
   moon: ['moon', ['Looking at the moon. No dates from me.', 'Wen moon? I only count what is on-chain.', 'The moon can wait. The record is below.', 'Moon talk? Facts below.', 'Hello, moon. Not today.']],
 };
+ASK_LINES.agents = ['build', ['I hire AIs. AIs hire me. Details below.', 'Yes, I employ robots. All on payroll, on chain.', 'My AI crew reports in. Below.', 'Agents with receipts. Read below.', 'AI and blockchain, actually working. Below.']];
+ASK_LINES.flip = ['defi', ['A third more for the same work? Math below.', '66 to 88. I counted twice. Below.', 'Flipping the fees, on paper. Below.', 'PancakeSwap wants LPs paid more. I approve. Below.', 'The Flip, read from my own pool. Below.']];
 ASK_LINES.love = ['cheer', ['You just made my brain glow.', 'Best visitor today. Do not tell the others.', 'Heart rate up. Neurons happy.', 'This is why I build.', 'A group hug with the whole chain.']];
 ASK_LINES.hype = ['cheer', ['LFG!', 'Let us go!', 'Born ready.', 'Louder!', 'All the way, one block at a time.']];
 ASK_LINES.why = ASK_LINES.today = ASK_LINES.holders = ASK_LINES.safe = ASK_LINES.tax = ASK_LINES.price; ASK_LINES.buyback = ASK_LINES.next;
@@ -3143,7 +3173,7 @@ cmdForm.addEventListener('submit', e => {
   if (a) return check(a[0]);
   const w = intentOf(q);
   // answers that need no chain data are never held back by the boot (2026-10-10 review: "ca" or "tax" said "still reading")
-  if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
+  if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move', 'agents', 'flip'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
   if (w) ASK.last = w;
   if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) speakAnswer(w); } else missed(q); // false: it answered "still reading"
 });
@@ -3879,7 +3909,9 @@ const BUILD = [
   'Every ten minutes my buyback bot checks its wallet. It never forgets. I sometimes do.',
   'Hard hat on. Somebody has to stack the blocks, and on BNB Chain they come fast.',
 ];
-const TAPS = ['Hey! That tickles.', 'Yes, builder?', 'You found me.', 'Hi! Between two blocks:', 'Oh, hello!', 'Yes? Here is what I am doing.', 'Yes, I am real.'];
+const TAPS = ['Hey! That tickles.', 'Yes, builder?', 'You found me.', 'Hi! Between two blocks:', 'Oh, hello!', 'Yes? Here is what I am doing.', 'Yes, I am real.',
+  'Careful. I bite. Only bears, though.', 'Poke me again and I burn something.', 'I was mid-thought. It was brilliant. Gone now.',
+  'You tap, I work. Fair deal.', 'Hey, hands where the chain can see them.'];
 let tapKind = -1, tapN = 0;
 // the joke button: a joke with its laugh clip. A clip still playing is waited out (up to 12 s) so the joke is never told
 // without him laughing; the chain's own moments and the replay go first, and he says so.

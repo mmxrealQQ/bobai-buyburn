@@ -5390,13 +5390,30 @@ let opSeen = null;
 const opLine = (o) => { const a = (o.answer || [])[0] || {};
   return logLine('AGENT', '#7fd1ff', ['DeFi agent hired ', [o.seller && o.seller.name || 'an outside agent'], ` for a second opinion on #${a.position || '?'}: `, [a.in_range ? 'in range' : 'out of range'],
     o.agrees === true ? ' · agrees' : o.agrees === false ? ' · disagrees' : '', ' · paid ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`], ' from its own leash'], [['job', o.tx]], Date.parse(o.at)); };
+// THE LOOP (2026-10-15, stage 3 of 'agent hires agent'): under the newest opinion, the circle it belongs to, live from
+// /lp/portfolio — the fees the agent earned, the $BOBAI it holds, the check it bought, and what it does with the answer.
+// Nothing is said that the portfolio does not show; without a reading the line is left out.
+const loopLine = (o, p) => {
+  const pn = p && p.pnl, pool = p && p.pool;
+  if (!pn || !pool || !(pn.from_fees_bnb > 0)) return;
+  const since = (/since (.+)$/.exec(pn.change_text || '') || [])[1];
+  const does = pool.in_range ? `keeps #${pool.position}, in range` : `#${pool.position} is out of range: a re-set after 2 h outside`;
+  logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(pn.from_fees_bnb)], ' in pool fees' + (since ? ` since ${since}` : ''),
+    pn.bobai_units > 0 ? ' · holds ' : '', pn.bobai_units > 0 ? [bobaiAmt(pn.bobai_units)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
+    o.agrees === true ? ' · it agrees · ' : o.agrees === false ? ' · it disagrees, the agent keeps its own reading · ' : ' · ', [does]],
+  [], Date.parse(o.at) + 1);
+};
 async function opinions(first) {
   const j = await fetch(AG + '/second-opinion').then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const list = j && Array.isArray(j.opinions) ? j.opinions.filter((o) => o.status === 'answered' && o.at) : [];
   if (!list.length) return;
-  if (first || opSeen == null) { opSeen = list[0].at; opLine(list[0]); return; }
-  for (const o of list.filter((x) => x.at > opSeen).reverse()) opLine(o);
+  const fresh = first || opSeen == null ? [list[0]] : list.filter((x) => x.at > opSeen).reverse();
   opSeen = list[0].at;
+  if (!fresh.length) return;
+  // the portfolio is read before the lines are written, so the loop stands right under its opinion
+  const p = await fetch(AG + '/lp/portfolio').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  for (const o of fresh) opLine(o);
+  loopLine(fresh[fresh.length - 1], p);
 }
 function close() {
   if (EMBED) return;

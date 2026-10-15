@@ -6,8 +6,11 @@
 // usage: node scripts/x402-noinput-check.mjs [base=https://agent.brainonbnb.com]   exit 1 on any FAIL
 const BASE = (process.argv[2] || 'https://agent.brainonbnb.com').replace(/\/$/, '');
 const PAYER = '0xfceafec082f9e8b17cdb51f33c3d5c9759a25e03'; // a stranger's wallet from job 56955 — nothing is signed for it
-let fail = 0;
-for (const service of ['lp_position_plan', 'health_factor']) {
+let fail = 0, ran = 0;
+// the total is counted, not written down (it said 7 after two checks were added)
+{ const log = console.log; console.log = (...a) => { if (/^(PASS|FAIL)\b/.test(String(a[0]))) ran++; log(...a); }; }
+// grid_plan + lp_tier_plan since 2026-10-15 (no token named = WBNB): Mandate marked #302258 "Not available to hire"
+for (const service of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tier_plan']) {
   const terms = await fetch(`${BASE}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   const t = await terms.json().catch(() => ({}));
   const acc = (t.accepts || [])[0] || {};
@@ -67,5 +70,5 @@ for (const service of ['lp_position_plan', 'health_factor']) {
   console.log(`${ok ? 'PASS' : 'FAIL'} the DeFi agent's free look carries in_range and current_tick at the top, the tick as on chain: ${s.in_range} / ${s.current_tick} vs slot0 ${chainTick}`);
   if (!ok) fail++;
 }
-console.log(`x402-noinput: ${7 - fail} PASS, ${fail} FAIL`);
+console.log(`x402-noinput: ${ran - fail} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

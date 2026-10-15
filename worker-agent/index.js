@@ -1224,6 +1224,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     else if (payer) target = { address: payer, target: `no account was named: this reads the paying wallet ${payer}` };
     if (target) wanted = { ...wanted, ...(target.position ? { position: target.position } : { address: target.address }) };
   }
+  // The same hire button on the grid planner and the fee-tier agent (2026-10-15): Mandate's page reads "Not available to
+  // hire — it answered 402 to the signed payment" for #302258 since 4 Oct. No token named = WBNB, BNB Chain's own coin
+  // and the pair every grid and LP question starts from; the answer says so, and a token named is always used instead.
+  if ((serviceId === 'grid_plan' || serviceId === 'lp_tier_plan') && missingInput(serviceId, wanted)) {
+    target = { token: WBNB, target: `no token was named: this is the ${serviceId === 'grid_plan' ? 'grid' : 'fee-tier plan'} for WBNB (${WBNB}), BNB Chain's own coin — name \`token\` for another` };
+    wanted = { ...wanted, token: WBNB, address: WBNB };
+  }
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
@@ -1592,10 +1599,8 @@ export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '
     if (!token) return null;
     const plan = await gridPlan({ token, levels: p.levels, bandPct: p.bandPct, capitalUsd: p.capitalUsd });
     const g = plan.grid;
-    const levels = g.prices.map((x) => ({ level: x.level, price: x.price, side: x.side, allocation_usd: x.capital_usd }));
     const figures = {
-      lower_price: g.lower_price, upper_price: g.upper_price, level_count: levels.length, levels,
-      capital_usd: g.capital_usd, allocated_usd: +levels.reduce((s, x) => s + x.allocation_usd, 0).toFixed(2),
+      ...checkedFigures('grid_plan', { plan }),
       // asked "with a stop": one grid step below the lowest buy, where the ladder runs out — the buyer's to move
       ...(/\bstop/i.test(text) ? { stop_price: +(g.lower_price / (1 + g.spacing_pct / 100)).toPrecision(8) } : {}),
     };

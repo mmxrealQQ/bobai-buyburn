@@ -423,6 +423,11 @@ export function checkedFigures(serviceId, result) {
     for (const m of plan.ranked) if (m && m.symbol && Number.isFinite(m.supply_apy_pct)) rates[String(m.symbol).replace(/^v/, '')] = m.supply_apy_pct;
     return { venus_usdt_rate_pct: rates.USDT ?? null, venus_supply_rates_pct: rates };
   }
+  // grid (2026-10-15): Mandate compares the levels with the bounds, their count and order, the allocations with the capital
+  if (serviceId === 'grid_plan' && plan && plan.grid && Array.isArray(plan.grid.prices)) {
+    const g = plan.grid, levels = g.prices.map((x) => ({ level: x.level, price: x.price, side: x.side, allocation_usd: x.capital_usd }));
+    return { lower_price: g.lower_price, upper_price: g.upper_price, level_count: levels.length, levels, capital_usd: g.capital_usd, allocated_usd: +levels.reduce((s, x) => s + x.allocation_usd, 0).toFixed(2) };
+  }
   return {};
 }
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {

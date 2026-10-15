@@ -4352,7 +4352,10 @@ const pxBnb = () => S.price > 0 && S.bnbP > 0 ? S.price / S.bnbP : 0;
 async function loadCandles() {
   try {
     const j = await getJSON(CANDLES_URL, 12000);
-    if (Array.isArray(j?.rows) && j.rows.length) { CH.rows = j.rows.filter(r => r.c > 0).sort((a, b) => a.t - b.t); CH.min = j.minutes || 10; CH.src = 'ledger'; CH.dirty = true; try { if (opened) readMood(); } catch {} return; } // the chip shows at once
+    if (Array.isArray(j?.rows) && j.rows.length) { const firstLedger = CH.src !== 'ledger'; CH.rows = j.rows.filter(r => r.c > 0).sort((a, b) => a.t - b.t); CH.min = j.minutes || 10; CH.src = 'ledger'; CH.dirty = true; try { if (opened) readMood(); } catch {}
+      // a replay started before the ledger came (REPLAY tapped right after the boot): its older trades join from here on
+      if (firstLedger && mode === 'replay' && playhead) dotsFrom(playhead); // once: the minute's reloads leave the replay's plan alone
+      return; } // the chip shows at once
   } catch {}
   // no ledger: the hour of swaps this page read itself, in the same ten-minute buckets
   if (CH.src === 'ledger') return;
@@ -5201,7 +5204,27 @@ function goLive() {
 // any sell) flies into the brain as its dot when the playhead passes it — no board, no tax float, no slow-down. At a
 // high speed a burst would fire dozens in one frame: four per frame show, the rest pass silently.
 let dots = [], dotI = 0;
-function dotsFrom(t) { dots = S.hist.filter(x => !isAlert(x) && !x.taxSwap && x.usd >= 0.01).sort((a, b) => a.t - b.t); dotI = dots.findIndex(x => x.t >= t); if (dotI < 0) dotI = dots.length; }
+// OLDER THAN THE PAGE'S OWN READ, FROM THE LEDGER (operator, 2026-10-15: "the 6H/24H replay shows no sells older than
+// about an hour"): S.hist holds only the ~1 h this page read itself. Before it, every trade the chart's ledger counts
+// flies too — the $100+ ones it lists by transaction, the rest spread over their candle's minutes with the candle's
+// remaining volume shared out. Our own bots' trades and the $100+ buys stay the record's (events); nothing twice.
+function ledgerDots(from) {
+  const out = [], ms = (CH.min || 10) * 60e3, upto = S.histFrom || Date.now(), seen = new Set(S.hist.map(x => (x.tx || '').toLowerCase()));
+  if (CH.src !== 'ledger') return out;
+  for (const r of CH.rows) {
+    if (r.t <= from || r.t - ms >= upto) continue;
+    const u = r.u || S.bnbP || 0, xs = (r.x || []).map(([buy, bnb, bobai, tx, to]) => ({ buy: !!buy, bnb, bobai, usd: bnb * u, tx: tx || '', ours: OURS.includes(to || '') }));
+    const t0 = r.t - ms, whole = r.t <= upto;
+    xs.forEach((x, i) => { x.t = t0 + (i + 1) * ms / (xs.length + 1); x.kind = 'trade'; if (!x.ours && !isAlert(x) && !seen.has(x.tx.toLowerCase()) && x.t < upto) out.push(x); });
+    if (!whole) continue; // the bucket the page's own read begins in: only its listed trades, the page has the rest
+    const nb = Math.max(0, (r.b || 0) - xs.filter(x => x.buy).length), ns = Math.max(0, (r.s || 0) - xs.filter(x => !x.buy).length), n = nb + ns;
+    const each = n ? Math.max(0.01, ((r.v || 0) - xs.reduce((a, x) => a + x.bnb, 0)) / n * u) : 0;
+    const sides = []; for (let i = 0; i < Math.max(nb, ns); i++) { if (i < nb) sides.push(true); if (i < ns) sides.push(false); } // buys and sells taking turns
+    sides.forEach((buy, k) => out.push({ kind: 'trade', buy, usd: each, t: t0 + (k + 1) * ms / (n + 1), ledger: true }));
+  }
+  return out;
+}
+function dotsFrom(t) { const led = ledgerDots(t); window.__btDotsLedger = led.length; dots = [...led, ...S.hist.filter(x => !isAlert(x) && !x.taxSwap && x.usd >= 0.01)].sort((a, b) => a.t - b.t); dotI = dots.findIndex(x => x.t >= t); if (dotI < 0) dotI = dots.length; }
 function replayDots(t) { let n = 0; while (dotI < dots.length && dots[dotI].t <= t) { const x = dots[dotI++]; if (n++ < 4) tradeDot(x); } }
 // Time-lapse with time dilation: quiet hours fly past, and the playhead slows to a crawl while an
 // event plays out, so the timeline, the scene and the log are always on the same moment.
@@ -5411,9 +5434,15 @@ export async function open() {
 // paid from its own Altana leash (agent worker /second-opinion). One log line each: who was hired, what it read, whether
 // it agrees with the agent, what it paid, and the job's transaction.
 let opSeen = null;
-const opLine = (o) => { const a = (o.answer || [])[0] || {};
-  return logLine('AGENT', '#7fd1ff', ['DeFi agent hired ', [o.seller && o.seller.name || 'an outside agent'], ` for a second opinion on #${a.position || '?'}: `, [a.in_range ? 'in range' : 'out of range'],
-    o.agrees === true ? ' · agrees' : o.agrees === false ? ' · disagrees' : '', ' · paid ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`], ' from its own leash'], [['job', o.tx]], Date.parse(o.at)); };
+// THE OPINION AT THE VISIT IS TOLD, NOT BACKDATED (operator, 2026-10-15: the AGENT line carried 06:23 right under BOOT
+// 12:05 and read like an old log left in): the log starts with the visit, so the newest opinion is written at the
+// visit's time and says in words when it was bought; one that comes in live keeps its own time
+const whenSaid = (t) => { const d = new Date(t), now = new Date(), hm = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), dd = Math.round((day(now) - day(d)) / 86400e3);
+  return dd <= 0 ? `today at ${hm}` : dd === 1 ? `yesterday at ${hm}` : `${d.toLocaleDateString('en-GB', { weekday: 'long' })} at ${hm}`; };
+const opLine = (o, told) => { const a = (o.answer || [])[0] || {};
+  return logLine('AGENT', '#7fd1ff', ['DeFi agent hired ', [o.seller && o.seller.name || 'an outside agent'], told ? ` ${whenSaid(Date.parse(o.at))}` : '', ` for a second opinion on #${a.position || '?'}: `, [a.in_range ? 'in range' : 'out of range'],
+    o.agrees === true ? ' · agrees' : o.agrees === false ? ' · disagrees' : '', ' · paid ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`], ' from its own leash'], [['job', o.tx]], told ? Date.now() : Date.parse(o.at)); };
 // THE LOOP (2026-10-15, stage 3 of 'agent hires agent'): under the newest opinion, the circle it belongs to, live from
 // /lp/portfolio — the fees the agent earned, the $BOBAI it holds, the check it bought, and what it does with the answer.
 // Nothing is said that the portfolio does not show; without a reading the line is left out.
@@ -5425,18 +5454,18 @@ const loopLine = (o, p) => {
   logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(pn.from_fees_bnb)], ' in pool fees' + (since ? ` since ${since}` : ''),
     pn.bobai_units > 0 ? ' · holds ' : '', pn.bobai_units > 0 ? [bobaiAmt(pn.bobai_units)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
     o.agrees === true ? ' · it agrees · ' : o.agrees === false ? ' · it disagrees, the agent keeps its own reading · ' : ' · ', [does]],
-  [], Date.parse(o.at) + 1);
+  [], Date.now()); // the portfolio's figures are read now
 };
 async function opinions(first) {
   const j = await fetch(AG + '/second-opinion').then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const list = j && Array.isArray(j.opinions) ? j.opinions.filter((o) => o.status === 'answered' && o.at) : [];
   if (!list.length) return;
-  const fresh = first || opSeen == null ? [list[0]] : list.filter((x) => x.at > opSeen).reverse();
+  const told = first || opSeen == null, fresh = told ? [list[0]] : list.filter((x) => x.at > opSeen).reverse();
   opSeen = list[0].at;
   if (!fresh.length) return;
   // the portfolio is read before the lines are written, so the loop stands right under its opinion
   const p = await fetch(AG + '/lp/portfolio').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  for (const o of fresh) opLine(o);
+  for (const o of fresh) opLine(o, told);
   loopLine(fresh[fresh.length - 1], p);
 }
 function close() {

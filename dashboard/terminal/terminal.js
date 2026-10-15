@@ -849,8 +849,9 @@ function circleLine(k) {
     creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders, the old split; from the next payout 82% creator, 18% to 5 builders' : '82% creator, 18% to 5 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,
       `The creator slice pays the builders too: ${sp}. Last payout ${b}, ${t}.`, `Last creator payout: ${b}, ${t}. ${sp}.`]); },
-    src: () => { const t = `${nf(f.b || 0)} buy${f.b === 1 ? '' : 's'}, ${nf(f.s || 0)} sell${f.s === 1 ? '' : 's'}`; return vary('v13', [`Every trade pays 3% tax into my brain. This hour: ${t}.`, `This hour: ${t}. Each one paid 3% to the brain.`,
-      `The source of it all: 3% of every trade. This hour, ${t}.`, `${t} this hour, all taxed 3%. That is my fuel.`, `Trades feed me: ${t} this hour, 3% each.`]); },
+    src: () => { const own = (f.ob || 0) + (f.os || 0), ownT = own ? ` My own bots traded too: ${f.ob ? `${nf(f.ob)} buy${f.ob === 1 ? '' : 's'}` : ''}${f.ob && f.os ? ' and ' : ''}${f.os ? `${nf(f.os)} sell${f.os === 1 ? '' : 's'}` : ''}.` : '';
+      const t = `${nf(f.b || 0)} buy${f.b === 1 ? '' : 's'}, ${nf(f.s || 0)} sell${f.s === 1 ? '' : 's'}`; return vary('v13', [`Every trade pays 3% tax into my brain. This hour: ${t}.`, `This hour: ${t}. Each one paid 3% to the brain.`,
+      `The source of it all: 3% of every trade. This hour, ${t}.`, `${t} this hour, all taxed 3%. That is my fuel.`, `Trades feed me: ${t} this hour, 3% each.`]) + ownT; },
     core: () => { const u = `$${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)}`, s = splitBnb() > 0; return vary('v14', [`Right now ${u} of tax is charging my next buyback.${s ? ' My bot splits it at its next check.' : ''}`,
       `${u} of tax waiting in my brain for the next buyback.${s ? ' The split is next.' : ''}`, `My brain holds ${u} of tax right now.${s ? ' Ready to split.' : ' Still charging.'}`,
       `The next buyback is worth ${u} so far.${s ? ' My bot splits it soon.' : ''}`, `Charging: ${u} of tax for my next buyback.${s ? ' Split coming at the next check.' : ''}`]); },
@@ -1065,6 +1066,7 @@ window.__btDup = () => { const d = new Set((S.nft?.drops || []).map(n => (n.buyT
 window.__btTestReal = (tx, usd) => { const x = { kind: 'trade', id: 'test-r' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx, mint: true }; events.push(x); enqueue(x); watchMint(x); };
 window.__btTestMint = (usd, tier, ms) => { const x = { kind: 'trade', id: 'test-m' + Date.now(), t: Date.now(), buy: true, usd, bnb: usd / (S.bnbP || 600), bobai: 1, ours: false, tx: '', mint: true }; enqueue(x); setTimeout(() => { x.drop = { usd, tokenId: 0, tier, rarity: 0 }; mintArrived(x, x.drop); }, ms); };
 // a pretend small buy of $usd through the live poll's own door (seenSmall), this browser only — to check the thank-you
+window.__btTestOwn = (usd, sell) => { S.hist.push({ kind: 'trade', id: 'test-o' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: true, who: BOTS[2], tx: '0xtesto' + Date.now() }); readMood(); return LIFE.flow; }; // for checks: one of our bots traded (nothing drawn)
 window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
 window.__btTestMark = () => { const d = S.deadA || 0, next = (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 200 * 1e9; noteDead(d, next + 1); return (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 2; }; // a pretend crossing, this browser only; S.deadA untouched
 window.__btCtx = (x) => tradeContext(x); // for checks: what he would say in front of a trade's line
@@ -1953,6 +1955,10 @@ function readMood() {
   const fl = { b: 0, s: 0, bu: 0, su: 0 };
   // every swap the page read is in S.hist; the record (events) keeps only the ones with a scene (2026-10-01)
   for (const e of S.hist) if (!e.taxSwap && !e.ours && e.t >= now - 3600e3) { if (e.buy) { fl.b++; fl.bu += e.usd || 0; } else { fl.s++; fl.su += e.usd || 0; } }
+  // our own bots' trades of the hour, counted apart (operator, 2026-10-15: the log showed the DeFi agent's buy, the
+  // TRADES line said '0 buys, 0 sells' — both true, read together they looked wrong); the line names them separately
+  fl.ob = S.hist.filter(e => !e.taxSwap && e.ours && e.buy && e.t >= now - 3600e3).length;
+  fl.os = S.hist.filter(e => !e.taxSwap && e.ours && !e.buy && e.t >= now - 3600e3).length;
   LIFE.flow = fl;
   for (const e of S.hist) if (!e.taxSwap && e.bobai > 0 && e.bnb > 0 && e.t >= now - 3600e3) pts.push([e.t, e.bnb / e.bobai]);
   for (const [t, p] of LIFE.prices) if (t >= now - 3600e3) pts.push([t, p / (S.bnbP || 1)]);
@@ -3786,8 +3792,26 @@ function showFlip(spec) {
     body.appendChild(cv); setTimeout(() => drawSpark(cv, spec.spark), 80); // a timeout, not a frame: the board is laid out by then
   }
   if (spec.meter) { defiMeter(spec.meter); meterEl.style.setProperty('--at', at + 0.1 + 's'); body.appendChild(meterEl); }
-  placeFlip();
+  placeFlip(); if (fitFlipRows()) placeFlip();
 }
+// EVERY FIGURE WHOLE ON THE BOARD (operator, 2026-10-15: on PAYDAY the ')' of FEES EARNED and BACK TO WORK was missing):
+// a row is one line that may not wrap, and the pen's clip cuts what passes the board's edge — '0.000123 BNB (≈$0.09)' at
+// 21px beside its label is wider than a 280-360px board. A figure that does not fit is written smaller (down to 13px),
+// and one that still does not fit goes under its label. Returns whether a row changed.
+function fitFlipRows() {
+  let changed = false;
+  for (const i of flipEl.querySelectorAll('.fl-r > .fl-i')) {
+    const b = i.querySelector('b'); if (!b) continue;
+    if (b.style.fontSize || i.style.flexWrap) { b.style.fontSize = ''; i.style.flexWrap = ''; changed = true; }
+    const over = i.scrollWidth - i.clientWidth; if (over <= 0 || !b.offsetWidth) continue;
+    const fs = parseFloat(getComputedStyle(b).fontSize) || 21, want = fs * (b.offsetWidth - over - 2) / b.offsetWidth;
+    b.style.fontSize = Math.max(13, want).toFixed(1) + 'px'; changed = true;
+    if (i.scrollWidth > i.clientWidth) i.style.flexWrap = 'wrap';
+  }
+  return changed;
+}
+// for checks from outside: write a board and say, row by row, how far each one runs past its line (0 or less = whole)
+window.__btBoard = (head, rows) => { showFlip({ head, rows }); return [...flipEl.querySelectorAll('.fl-r > .fl-i')].map(i => [i.querySelector('span')?.textContent, i.querySelector('b')?.textContent, i.scrollWidth - i.clientWidth]); };
 // the tax of one trade, split by the table in force (the same shares the scene's streams show)
 const taxSplit = usd => DEST.filter(d => d.pct > 0).map(d => [usd * 0.03 * d.pct / 3, d.c, SPLIT_LAB[d.k] || d.k.toUpperCase()]);
 // a mini chart on the board: three hours of candles around the moment, and a mark on it
@@ -5422,7 +5446,7 @@ function close() {
 }
 bt.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && bt.classList.contains('on')) close(); });
-new ResizeObserver(() => { if (opened) { FIT.scale = 1; FIT.tries = 0; layout(); placeFlip(); } }).observe(win); // a new size is fitted afresh
+new ResizeObserver(() => { if (opened) { FIT.scale = 1; FIT.tries = 0; layout(); placeFlip(); if (!flipEl.hidden && fitFlipRows()) placeFlip(); } }).observe(win); // a new size is fitted afresh
 // the clock has its time from the first frame: empty for its first half second, the title row widened and then shrank
 // when the time came, and LIVE with the Halloween switch slid 57 px to the left (2026-10-06)
 { const clk = () => { $('clk').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false }); }; clk(); setInterval(clk, 500); }

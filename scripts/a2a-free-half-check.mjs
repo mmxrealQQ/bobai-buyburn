@@ -57,6 +57,28 @@ for (const slug of ['defi-agent', 'lp-placement']) {
   const d = dataOf(await a2a('lp-placement', [{ kind: 'text', text: 'Which fee tier pays for CAKE 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82?' }]));
   check(!!d && !d.positions && !!d.understood, 'fee-tier agent, a fee-tier question: still its own offer, no position reading', d ? Object.keys(d).slice(0, 4).join(', ') : 'no data part');
 }
+// Mandate's grid question (its standard page, 2026-10-15): the levels inside the bounds asked for (within 1%), the count
+// asked for (give or take one) in price order, allocations adding up to no more than the capital. The bounds are taken
+// from our own reading of the WBNB/USDT pair's reserves, not from the answer.
+async function wbnbUsd() {
+  const r = await post('https://bsc-dataseed.binance.org', { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE', data: '0x0902f1ac' }, 'latest'] });
+  if (!r.result) return null;
+  const usdt = BigInt('0x' + r.result.slice(2, 66)), wbnb = BigInt('0x' + r.result.slice(66, 130));   // token0 USDT, token1 WBNB, both 18 decimals
+  return Number(usdt * 10n ** 6n / wbnb) / 1e6;
+}
+async function gridOk(what, d, { band = 8, n = 10, capital = 1000, stop = false } = {}) {
+  const px = await wbnbUsd(), lo = px * (1 - band / 100), hi = px * (1 + band / 100);
+  const lv = Array.isArray(d?.levels) ? d.levels.map((x) => Number(x?.price ?? x)) : [];
+  const alloc = Array.isArray(d?.levels) ? d.levels.reduce((s, x) => s + Number(x?.allocation_usd ?? 0), 0) : NaN;
+  const inside = lv.length && lv.every((p) => p >= lo * 0.99 && p <= hi * 1.01), ordered = lv.every((p, i) => !i || p > lv[i - 1]);
+  const stopOk = !stop || (Number.isFinite(d?.stop_price) && d.stop_price < lv[0]);
+  check(!!px && inside && Math.abs(lv.length - n) <= 1 && ordered && alloc > 0 && alloc <= capital && d.allocated_usd <= capital && stopOk, what,
+    d ? `levels ${lv.length} ${lv[0]?.toFixed(2)}..${lv.at(-1)?.toFixed(2)} vs ours ${lo.toFixed(2)}..${hi.toFixed(2)}, allocated ${alloc}, stop ${d.stop_price ?? '-'}` : 'no data part');
+}
+await gridOk('grid agent, Mandate\'s grid question as a sentence: levels, bounds, allocations at the top',
+  dataOf(await a2a('grid-trader', [{ kind: 'text', text: 'A grid for WBNB/USDT between two prices 8% either side of the price now, with a stop and 1,000 USD of capital, over 10 levels.' }])), { stop: true });
+await gridOk('grid agent, a data part {token, levels, bandPct, capitalUsd}',
+  dataOf(await a2a('grid-trader', [{ kind: 'data', data: { token: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', levels: 10, bandPct: 8, capitalUsd: 1000 } }])));
 {
   const d = (await a2a('defi-agent', [{ kind: 'text', text: 'what can you do' }]))?.result?.parts?.[0]?.text || '';
   check(/PancakeSwap V3/.test(d), '"what can you do" still answers in one sentence', d.slice(0, 60));

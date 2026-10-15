@@ -40,6 +40,8 @@ import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
+import { gridPlan } from './grid.js';
+import { understand } from './understand.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -1578,6 +1580,26 @@ export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '
     const position = await healthFactor(acct);
     const figures = { health_factor: position.health_factor ?? null };
     return { figures, out: { ...figures, account: acct, position } };
+  }
+  // THE GRID PLANNER'S FREE HALF (2026-10-15): Mandate asks every grid agent "a grid for WBNB/USDT 8% either side,
+  // 1,000 USD, 10 levels" and compares the levels with the bounds, their count, their order and the allocations with
+  // the capital; ours answered with a price and a link ("the answer is not data we can read"). The levels and their
+  // allocations are given away — arithmetic on the live price; what a cycle costs on the pool (break-even spacing,
+  // viability, warnings) stays the paid half.
+  if (slug === 'grid-trader') {
+    const p = { ...understand(SERVICES.grid_plan, text), ...Object.fromEntries(['token', 'address', 'levels', 'bandPct', 'capitalUsd'].filter((k) => a[k] != null).map((k) => [k, a[k]])) };
+    const token = addrOf(p.token, p.address);
+    if (!token) return null;
+    const plan = await gridPlan({ token, levels: p.levels, bandPct: p.bandPct, capitalUsd: p.capitalUsd });
+    const g = plan.grid;
+    const levels = g.prices.map((x) => ({ level: x.level, price: x.price, side: x.side, allocation_usd: x.capital_usd }));
+    const figures = {
+      lower_price: g.lower_price, upper_price: g.upper_price, level_count: levels.length, levels,
+      capital_usd: g.capital_usd, allocated_usd: +levels.reduce((s, x) => s + x.allocation_usd, 0).toFixed(2),
+      // asked "with a stop": one grid step below the lowest buy, where the ladder runs out — the buyer's to move
+      ...(/\bstop/i.test(text) ? { stop_price: +(g.lower_price / (1 + g.spacing_pct / 100)).toPrecision(8) } : {}),
+    };
+    return { figures, out: { ...figures, token: plan.token, pool: plan.pool, band_pct: g.band_pct, spacing_pct: g.spacing_pct, price_now_usd: plan.token.price_usd, order: 'ascending price', paid_half_adds: 'the round-trip cost of a cycle on this pool (swap fee, price impact at the fill size, transfer tax from executed trades), the break-even spacing and whether this grid can make money at all', measured_at: plan.measured_at, source: plan.source } };
   }
   if (slug === 'yield-optimizer') {
     const plan = await yieldPlan({});

@@ -35,7 +35,8 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `dispatch-safety.mjs` | does the router only call read-only tools, on both origins |
 | `sync-mcp-stdio.mjs` | copies the hosted MCP tool descriptions/schemas into the stdio package (`--check` exits 1 on drift); run after a tool wording change is deployed |
 | `revoke-own-feedback.mjs` | lists ERC-8004 feedback our own wallets gave our own agents; `--confirm` revokes it on chain (from the NFT relayer) |
-| `a2a-free-half-check.mjs` | asks our agents the way a checker does (a sentence, a data part {wallet}, the MCP tool with `wallet`): the free reading with in_range / current_tick (= slot0), health_factor, venus_usdt_rate_pct at the top |
+| `a2a-free-half-check.mjs` | asks our agents the way a checker does (a sentence, a data part {wallet}, the MCP tool with `wallet`): the free reading with in_range / current_tick (= slot0), health_factor, venus_usdt_rate_pct at the top; Mandate's grid question (levels, bounds, allocations) and the range question to the fee-tier agent and the portfolio pricer |
+| `pool-scan-offer-check.mjs` | the free pool scan (REST and MCP) ends with `watch_this_pool`, the paid pool watch on that pool filled in (half today's 1% depth), the reading whole, none on the site's own pages, and the offer's request opens the purchase (402) |
 | `e2e-agent-journey.mjs` | a stranger AI agent end to end, live and read-only: discover, measure, find, hire (quote), pay (terms), trust |
 | `phase-parity.mjs` | do the two copies of the tax split agree |
 | `dashboard-check/` | browser-driven checks of single pages and panels (see its README) |

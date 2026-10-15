@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+// scripts/pool-scan-offer-check.mjs — the free pool scan ends with the paid pool watch on that pool (2026-10-15)
+//
+// The pool scan is the tool other agents call most, and it was all free. Its reading stays as it was; for a pool that
+// can be priced, `watch_this_pool` follows with the watch filled in (this token, half today's 1% depth). This checks:
+// REST and MCP carry the offer with the scanned token and the depth from the reading itself, the reading's own fields
+// are all still there, the site's own pages get the reading alone, and the offer's request really opens a purchase
+// (HTTP 402 naming the watch).
+//
+//   node scripts/pool-scan-offer-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
+const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
+const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
+const FIELDS = ['address', 'quotable', 'price', 'pool', 'tradeCost', 'onePercentDepth', 'sellability', 'tax', 'lp'];
+let pass = 0, fail = 0;
+const check = (ok, what, detail = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${detail ? ' — ' + detail : ''}`); };
+const offerOk = (j) => {
+  const w = j?.watch_this_pool, depth = Number(j?.onePercentDepth?.buyUsd), want = depth > 0 ? Math.max(50, Math.round(depth / 2 / 10) * 10) : 1000;
+  return !!w && w.buy?.url === 'https://agent.brainonbnb.com/watch' && String(w.buy?.body?.token).toLowerCase() === CAKE.toLowerCase() && w.buy.body.depthBelowUsd === want && /\$BOBAI/.test(w.price);
+};
+{
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { accept: 'application/json' } })).json().catch(() => null);
+  check(offerOk(j), 'REST: the scan ends with the watch on this pool, filled in', j?.watch_this_pool ? `depthBelowUsd ${j.watch_this_pool.buy?.body?.depthBelowUsd} (1% depth ${j.onePercentDepth?.buyUsd})` : 'no watch_this_pool');
+  check(!!j && FIELDS.every((f) => f in j), 'REST: the reading itself is whole', FIELDS.filter((f) => !(j && f in j)).join(', ') || 'all fields');
+}
+{
+  const r = await (await fetch(`${BASE}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'bsc_pool_scan', arguments: { address: CAKE } } }) })).json().catch(() => null);
+  const s = r?.result?.structuredContent || (() => { try { return JSON.parse(r?.result?.content?.[0]?.text); } catch { return null; } })();
+  check(offerOk(s), 'MCP bsc_pool_scan: the same offer', s?.watch_this_pool ? 'present' : 'missing');
+}
+{
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { accept: 'application/json', referer: 'https://brainonbnb.com/scanner' } })).json().catch(() => null);
+  check(!!j && j.quotable && !j.watch_this_pool, 'the site\'s own scanner page gets the reading alone', j?.watch_this_pool ? 'offer shown on our own page' : 'no offer');
+}
+{
+  const body = { token: CAKE, depthBelowUsd: 1000, callback: 'https://example.com/hook' };
+  const r = await fetch('https://agent.brainonbnb.com/watch', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'bobai-smoke-test' }, body: JSON.stringify(body) });
+  const t = await r.json().catch(() => ({}));
+  check(r.status === 402 && /depth/i.test(t.what || '') && t.in_bobai?.tokens > 0, 'the offer\'s request opens the purchase (402, the watch, the $BOBAI price)', `${r.status} ${String(t.what || t.error || '').slice(0, 60)}`);
+}
+console.log(`pool-scan-offer: ${pass} PASS, ${fail} FAIL`);
+process.exitCode = fail ? 1 : 0;

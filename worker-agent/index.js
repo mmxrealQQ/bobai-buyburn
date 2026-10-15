@@ -1547,13 +1547,27 @@ async function lpWidthVerdict(env) {
 // promise "give me a position and I return whether it is in range"; over A2A that question got a price and a link.
 // Returns { figures, out } (figures: what a checker compares, also at the top of out) or null when there is no
 // free half for this agent or the input it needs is missing. defaultOwn: no position named = this agent's own.
-export async function freeHalf(slug, a = {}, env, { defaultOwn = false } = {}) {
+export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '' } = {}) {
+  // the fee-tier agent is filed under rebalancing, so checkers ask it for a range check of positions: that question
+  // (and only that one — a token's fee tiers stay its own offer) is answered with the same reading of the chain
+  if (slug === 'lp-placement') return /\bpositions?\b|\brange\b/i.test(text) && /0x[a-fA-F0-9]{40}|\b\d{5,}\b/.test(text) ? freeHalf('defi-agent', { position: String(text).match(/\b(?:#|position\s*)(\d{5,})\b/i)?.[1], address: String(text).match(/0x[a-fA-F0-9]{40}/)?.[0] }, env) : null;
   const addrOf = (...v) => v.map((x) => String(x ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0]).find(Boolean) || null;
   if (slug === 'defi-agent') {
     const pos = String(a.position ?? a.tokenId ?? a.token_id ?? '').trim(), addr = addrOf(a.address, a.wallet, a.owner);
     if (!/^\d+$/.test(pos) && !addr && !defaultOwn) return null;
     const q = /^\d+$/.test(pos) ? { position: pos } : addr ? { address: addr } : { address: OWN_LP_WALLET };
     const look0 = await lpPositionLook(q, env);
+    // A WALLET WITH SEVERAL POSITIONS IS READ POSITION BY POSITION (2026-10-15): Mandate asks "range check ... for the
+    // positions of 0x54c0…" (a wallet with five) and got only their ids back — 'states neither whether the position is
+    // in range nor the pool's tick'. Each one (up to ten) is read from the chain now, in the words its own Range-1 uses too.
+    if (Array.isArray(look0?.position_ids) && look0.position_ids.length > 1) {
+      const ids = look0.position_ids.slice(0, 10);
+      const each = await Promise.all(ids.map((id) => lpPositionLook({ position: id }, env).catch((e) => ({ position: id, error: String(e.shortMessage || e.message || e).slice(0, 160) }))));
+      const positions = each.map((l, k) => l?.pool ? { position: l.position ?? ids[k], pool: l.pool.address, fee_tier_pct: l.pool.fee_tier_pct ?? null, in_range: l.in_range ?? null, current_tick: l.pool.tick ?? null, tick_lower: l.pool.ticks?.[0] ?? null, tick_upper: l.pool.ticks?.[1] ?? null, inRange: l.in_range ?? null, tick: l.pool.tick ?? null, room: l.room ?? null, value_bnb: l.value_bnb ?? null, verdict: l.verdict } : { position: ids[k], error: l?.error || l?.verdict || 'not readable' });
+      const inR = positions.filter((x) => x.in_range === true).length, outR = positions.filter((x) => x.in_range === false).length;
+      const figures = { positions };
+      return { figures, out: { address: look0.address, positions_held: look0.position_ids.length, ...figures, verdict: `${look0.position_ids.length} PancakeSwap V3 positions; ${ids.length < look0.position_ids.length ? `the first ${ids.length} read: ` : ''}${inR} in range, ${outR} out of range.`, service: 'lp_position_look', measured_at: new Date().toISOString(), source: 'PancakeSwap V3 NonfungiblePositionManager and each pool itself, read live' } };
+    }
     const figures = look0?.pool ? { ...(look0.position != null ? { position: look0.position } : {}), in_range: look0.in_range ?? null, current_tick: look0.pool.tick ?? null, tick_lower: look0.pool.ticks?.[0] ?? null, tick_upper: look0.pool.ticks?.[1] ?? null } : {};
     const out = { ...(!/^\d+$/.test(pos) && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})` } : {}), ...figures, ...look0 };
     return { figures, out };
@@ -1686,7 +1700,7 @@ export default {
       const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
       if (m) {
         const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
-        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug, freeHalf: (q) => freeHalf(slug, q, env) }); }
+        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug, freeHalf: (q, t) => freeHalf(slug, q, env, { text: t }) }); }
         return json({
           protocolVersion: '0.3.0',
           name: card.name,

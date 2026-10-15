@@ -44,6 +44,19 @@ await rangeOk('DeFi agent, a data part {position}', dataOf(await a2a('defi-agent
   const s = j.result?.structuredContent || {};
   check(!s.input && s.owner?.toLowerCase() === WALLET.toLowerCase() && typeof s.in_range === 'boolean', 'MCP lp_position_look reads the wallet given as `wallet` (Mandate\'s word)', s.input ? `ignored it: "${s.input.slice(0, 60)}"` : `owner ${s.owner}`);
 }
+// Mandate's own question (captured 2026-10-15 09:50 UTC): a wallet with five positions, "the positions" — each one read
+const MANDATE_Q = 'PancakeSwap V3 range check and re-centre plan for the positions of 0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90, via mandatemarkets.com';
+for (const slug of ['defi-agent', 'lp-placement']) {
+  const d = dataOf(await a2a(slug, [{ kind: 'text', text: MANDATE_Q }]));
+  const ps = Array.isArray(d?.positions) ? d.positions : [];
+  const pool = ps.find((p) => p.pool)?.pool, tick = pool ? await slot0Tick(pool) : null;
+  const okEach = ps.length > 1 && ps.every((p) => typeof p.in_range === 'boolean' && Number.isInteger(p.current_tick) && (p.in_range === (p.tick_lower <= p.current_tick && p.current_tick < p.tick_upper)));
+  check(okEach && tick != null && Math.abs(ps[0].current_tick - tick) <= 30, `${slug}, Mandate's range check of a wallet with several positions: each one read`, `${ps.length} positions, ${ps.filter((p) => p.in_range).length} in range, tick ${ps[0]?.current_tick} vs slot0 ${tick}`);
+}
+{
+  const d = dataOf(await a2a('lp-placement', [{ kind: 'text', text: 'Which fee tier pays for CAKE 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82?' }]));
+  check(!!d && !d.positions && !!d.understood, 'fee-tier agent, a fee-tier question: still its own offer, no position reading', d ? Object.keys(d).slice(0, 4).join(', ') : 'no data part');
+}
 {
   const d = (await a2a('defi-agent', [{ kind: 'text', text: 'what can you do' }]))?.result?.parts?.[0]?.text || '';
   check(/PancakeSwap V3/.test(d), '"what can you do" still answers in one sentence', d.slice(0, 60));

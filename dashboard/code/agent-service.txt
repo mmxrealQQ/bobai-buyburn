@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 56 files, 18959 lines.
+# one fetch. 56 files, 18985 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7220,6 +7220,8 @@ import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
+import { gridPlan } from './grid.js';
+import { understand } from './understand.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -8758,6 +8760,26 @@ export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '
     const position = await healthFactor(acct);
     const figures = { health_factor: position.health_factor ?? null };
     return { figures, out: { ...figures, account: acct, position } };
+  }
+  // THE GRID PLANNER'S FREE HALF (2026-10-15): Mandate asks every grid agent "a grid for WBNB/USDT 8% either side,
+  // 1,000 USD, 10 levels" and compares the levels with the bounds, their count, their order and the allocations with
+  // the capital; ours answered with a price and a link ("the answer is not data we can read"). The levels and their
+  // allocations are given away — arithmetic on the live price; what a cycle costs on the pool (break-even spacing,
+  // viability, warnings) stays the paid half.
+  if (slug === 'grid-trader') {
+    const p = { ...understand(SERVICES.grid_plan, text), ...Object.fromEntries(['token', 'address', 'levels', 'bandPct', 'capitalUsd'].filter((k) => a[k] != null).map((k) => [k, a[k]])) };
+    const token = addrOf(p.token, p.address);
+    if (!token) return null;
+    const plan = await gridPlan({ token, levels: p.levels, bandPct: p.bandPct, capitalUsd: p.capitalUsd });
+    const g = plan.grid;
+    const levels = g.prices.map((x) => ({ level: x.level, price: x.price, side: x.side, allocation_usd: x.capital_usd }));
+    const figures = {
+      lower_price: g.lower_price, upper_price: g.upper_price, level_count: levels.length, levels,
+      capital_usd: g.capital_usd, allocated_usd: +levels.reduce((s, x) => s + x.allocation_usd, 0).toFixed(2),
+      // asked "with a stop": one grid step below the lowest buy, where the ladder runs out — the buyer's to move
+      ...(/\bstop/i.test(text) ? { stop_price: +(g.lower_price / (1 + g.spacing_pct / 100)).toPrecision(8) } : {}),
+    };
+    return { figures, out: { ...figures, token: plan.token, pool: plan.pool, band_pct: g.band_pct, spacing_pct: g.spacing_pct, price_now_usd: plan.token.price_usd, order: 'ascending price', paid_half_adds: 'the round-trip cost of a cycle on this pool (swap fee, price impact at the fill size, transfer tax from executed trades), the break-even spacing and whether this grid can make money at all', measured_at: plan.measured_at, source: plan.source } };
   }
   if (slug === 'yield-optimizer') {
     const plan = await yieldPlan({});
@@ -17817,6 +17839,7 @@ export { PEERS, SURFACE, OWN_AGENT_IDS };
 // is paid or signed here; the price and the paths are the ones the catalogue already states.
 
 const ADDR = /0x[a-fA-F0-9]{40}/g;
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const usd = (t) => { const m = String(t).match(/\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?/) || String(t).match(/([\d,]+(?:\.\d+)?)\s*(?:usd|dollars?)\b/i); if (!m) return null; const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1); return v > 0 ? v : null; };
 
 // what each service takes, read from the sentence (only the keys the service names in its `needs`)
@@ -17825,11 +17848,14 @@ export function understand(service, text = '') {
   const need = Object.keys(service.needs || {});
   if (need.includes('address') && addrs[0]) p.address = addrs[0];
   if (need.includes('token') && addrs[0]) p.token = addrs[0];
+  // "a grid for WBNB/USDT" names the token without its address (Mandate's grid question, 2026-10-15): WBNB is the one
+  // token read by name, since BNB Chain's wrapped BNB has exactly one address
+  else if (need.includes('token') && /\bW?BNB\b/.test(t)) p.token = WBNB;
   if (need.includes('position')) { const m = t.match(/position\s*(?:id\s*)?#?\s*(\d{3,})/i); if (m) p.position = m[1]; else if (addrs[0]) p.address = addrs[0]; }
   if (need.includes('capitalUsd')) { const v = usd(t); if (v) p.capitalUsd = v; }
   if (need.includes('amountUsd')) { const v = usd(t); if (v) p.amountUsd = v; }
   if (need.includes('levels')) { const m = t.match(/(\d{1,3})\s*(?:levels?|grids?|steps?)/i); if (m) p.levels = Number(m[1]); }
-  if (need.includes('bandPct')) { const m = t.match(/(?:band|range)\D{0,12}(\d{1,2}(?:\.\d+)?)\s*%|(\d{1,2}(?:\.\d+)?)\s*%\s*(?:band|range)/i); if (m) p.bandPct = Number(m[1] || m[2]); }
+  if (need.includes('bandPct')) { const m = t.match(/(?:band|range)\D{0,12}(\d{1,2}(?:\.\d+)?)\s*%|(\d{1,2}(?:\.\d+)?)\s*%\s*(?:band|range|either side|each side|on (?:each|either|both) sides?|above and below)|±\s*(\d{1,2}(?:\.\d+)?)\s*%/i); if (m) p.bandPct = Number(m[1] || m[2] || m[3]); }
   if (need.includes('holdings')) {
     // "$600 CAKE (0x…) and $400 WBNB (0x…)": each address with the dollar figure written just before it
     const h = []; const rx = /\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?[^$]{0,40}?(0x[a-fA-F0-9]{40})/g; let m;

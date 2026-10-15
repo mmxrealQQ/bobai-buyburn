@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 56 files, 18830 lines.
+# one fetch. 56 files, 18945 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7219,7 +7219,7 @@ import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -7233,6 +7233,8 @@ async function readAgentRecord(env) {
   return withArchive(JSON.parse(raw), arch);
 }
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
+import { healthFactor } from './venus.js';
+import { yieldPlan } from './yield.js';
 import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
@@ -8427,6 +8429,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     ...(target ? { input: target.target } : {}),
     result,
     summary: summarize(serviceId, result),
+    ...checkedFigures(serviceId, result), // in_range / current_tick at the top for a checker (sell.js)
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
   } };
 }
@@ -8719,6 +8722,37 @@ async function lpWidthVerdict(env) {
   return widthVerdict(env, await bnbUsd().catch(() => null));
 }
 
+// THE FREE HALF, ONE PLACE (2026-10-15): the reading each agent gives away — the DeFi agent's look at a position, the
+// Venus health factor of an account, the Venus supply rates — for its MCP tool and for a question over A2A. The cards
+// promise "give me a position and I return whether it is in range"; over A2A that question got a price and a link.
+// Returns { figures, out } (figures: what a checker compares, also at the top of out) or null when there is no
+// free half for this agent or the input it needs is missing. defaultOwn: no position named = this agent's own.
+export async function freeHalf(slug, a = {}, env, { defaultOwn = false } = {}) {
+  const addrOf = (...v) => v.map((x) => String(x ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0]).find(Boolean) || null;
+  if (slug === 'defi-agent') {
+    const pos = String(a.position ?? a.tokenId ?? a.token_id ?? '').trim(), addr = addrOf(a.address, a.wallet, a.owner);
+    if (!/^\d+$/.test(pos) && !addr && !defaultOwn) return null;
+    const q = /^\d+$/.test(pos) ? { position: pos } : addr ? { address: addr } : { address: OWN_LP_WALLET };
+    const look0 = await lpPositionLook(q, env);
+    const figures = look0?.pool ? { ...(look0.position != null ? { position: look0.position } : {}), in_range: look0.in_range ?? null, current_tick: look0.pool.tick ?? null, tick_lower: look0.pool.ticks?.[0] ?? null, tick_upper: look0.pool.ticks?.[1] ?? null } : {};
+    const out = { ...(!/^\d+$/.test(pos) && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})` } : {}), ...figures, ...look0 };
+    return { figures, out };
+  }
+  if (slug === 'health-factor') {
+    const acct = addrOf(a.address, a.account, a.wallet, a.owner);
+    if (!acct) return null;
+    const position = await healthFactor(acct);
+    const figures = { health_factor: position.health_factor ?? null };
+    return { figures, out: { ...figures, account: acct, position } };
+  }
+  if (slug === 'yield-optimizer') {
+    const plan = await yieldPlan({});
+    const figures = checkedFigures('yield_plan', { plan });
+    return { figures, out: { ...figures, ranked: (plan.ranked || []).map((m) => ({ symbol: m.symbol, supply_apy_pct: m.supply_apy_pct, borrow_apy_pct: m.borrow_apy_pct, utilisation_pct: m.utilisation_pct })), measured_at: plan.measured_at } };
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     bindSelf(env);
@@ -8728,6 +8762,24 @@ export default {
     // smoke test says who it is and is left out, as on the dashboard worker.
     const selfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
     const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, name)).catch(() => {})); };
+    // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
+    // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
+    // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.
+    const seenA2A = (req, slug) => {
+      if (selfTest) return;
+      const copy = req.clone();
+      ctx.waitUntil((async () => {
+        const raw = await copy.text().catch(() => '');
+        let j = null; try { j = JSON.parse(raw); } catch {}
+        const kinds = (j?.params?.message?.parts || []).map((x) => x?.kind || x?.type || '?').join('+') || 'none';
+        bumpDetail(env, `a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
+        if (!env.AGENT) return;
+        const key = `a2a-seen:${slug}`;
+        const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];
+        list.unshift({ at: new Date().toISOString(), ua: (req.headers.get('user-agent') || '').slice(0, 120), body: raw.slice(0, 1500) });
+        await env.AGENT.put(key, JSON.stringify(list.slice(0, 10)), { expirationTtl: 259200 });
+      })().catch(() => {}));
+    };
 
     if (request.method === 'OPTIONS')
       return new Response(null, {
@@ -8814,7 +8866,7 @@ export default {
       const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
       if (m) {
         const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
-        if (request.method === 'POST' && m[2] && !m[3]) return await handleA2A(request, env, { agent: slug });
+        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug, freeHalf: (q) => freeHalf(slug, q, env) }); }
         return json({
           protocolVersion: '0.3.0',
           name: card.name,
@@ -8848,7 +8900,7 @@ export default {
     // one service — at a path its registration names. POST here sells only
     // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
     // in both dialects: BNB's signed quote and our flat one.
-    if (path === '/defi-agent/a2a' && request.method === 'POST') return await handleA2A(request, env, { agent: 'defi-agent' });
+    if (path === '/defi-agent/a2a' && request.method === 'POST') { seenA2A(request, 'defi-agent'); return await handleA2A(request, env, { agent: 'defi-agent', freeHalf: (q) => freeHalf('defi-agent', q, env) }); }
     // The BNB Agent SDK buyer reads the card at <A2A endpoint>/.well-known/
     // agent-card.json — under the endpoint, not the origin — so both spellings
     // are served under /defi-agent/a2a as well.
@@ -9021,7 +9073,7 @@ export default {
     // itself. A2A JSON-RPC: negotiate a price, then tell us the job is funded
     // and we deliver it on-chain. See sell.js for why it is A2A and not MCP.
     if (path === '/a2a') {
-      if (request.method === 'POST') return await handleA2A(request, env);
+      if (request.method === 'POST') { seenA2A(request, 'a2a'); return await handleA2A(request, env); }
       // A GET here is somebody looking, not somebody hiring — a person pasting
       // the URL, or an indexer checking whether the endpoint is alive. Answering
       // 404 is technically correct and reads as broken, which is precisely the
@@ -9957,45 +10009,73 @@ ${pageTail}`;
     // get, checked: could not be checked"; agents that pass publish an MCP service in their registration). Two
     // tools: the free look at a position (no input = the position this agent runs itself, so a probe always gets a
     // reading it can check on chain), and the paid plan, whose call names the terms of the x402 sale.
-    if (path === '/defi-agent/mcp') {
+    // EVERY AGENT OF OURS HAS ITS OWN MCP (2026-10-14, the DeFi agent's first): Mandate shows "Tools: publishes no tool
+    // list" for any agent without an MCP server or A2A card skills, and "fits the job" when the tools match its category.
+    // Each lists one free tool of its category (a probe always gets a reading it can check on chain) and its paid
+    // answer, whose call names the x402 terms.
+    const mcpSlug = (path.match(/^\/([a-z-]+)\/mcp$/) || [])[1];
+    if (mcpSlug && AGENT_SERVICE[mcpSlug]) {
+      const serviceId = AGENT_SERVICE[mcpSlug], svc = SERVICES[serviceId];
       const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept', 'Content-Type': 'application/json' };
       const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
       const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
-      const TOOLS = [
-        { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
-        { name: 'lp_position_plan', description: 'Rebalancing, the paid half (0.10 USD1, or half that in $BOBAI): what this agent would decide about the position — whether a re-set is due and in which width, the width that ended furthest ahead of simply holding over the last seven days, replayed over the recorded prices — from the same code that runs its own position. Calling this tool returns the terms; the plan is sold over x402 at https://agent.brainonbnb.com/answer?service=lp_position_plan (or hired through the ERC-8183 escrow for 0.10 $U).', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id' }, address: { type: 'string', description: 'Or the wallet that holds it' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
-      ];
+      const RO = { readOnlyHint: true, openWorldHint: true };
+      const TOKEN = { type: 'string', description: 'A BEP-20 token address on BNB Chain (0x…)' };
+      const FREE = {
+        'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+        'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
+        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from the chain and cross-checked against each market’s own rate model, best first; venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
+        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half lays the grid and its break-even spacing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
+        rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
+        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half places a position in the tier that pays.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
+      }[mcpSlug];
+      const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
+      const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-      if (request.method === 'GET') return new Response(JSON.stringify({ name: 'Brain on BNB — DeFi Agent (#363709)', protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: 'POST JSON-RPC here. lp_position_look is free; lp_position_plan is sold over x402.' }), { headers: cors });
+      const NAME = `${svc.name} — Brain On BNB AI`;
+      if (request.method === 'GET') return new Response(JSON.stringify({ name: NAME, protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: `POST JSON-RPC here. ${FREE.name} is free; ${PAID.name} is sold over x402.` }), { headers: cors });
       let body;
       try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
       if (Array.isArray(body)) return rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.');
       const { id, method, params } = body || {};
       if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
       if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
-      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'Brain on BNB — DeFi Agent (#363709)', version: '1.0.0' } });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.0.0' } });
       if (method === 'ping') return rpcOk(id, {});
-      if (method === 'tools/list') { note('defimcp:tools_list'); return rpcOk(id, { tools: TOOLS }); }
+      if (method === 'tools/list') { note(`agentmcp:${mcpSlug}:tools_list`); return rpcOk(id, { tools: TOOLS }); }
       if (method === 'tools/call') {
         const name = params?.name, a = params?.arguments || {};
-        note(`defimcp:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
-        if (name === 'lp_position_look') {
-          const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
-          const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
+        note(`agentmcp:${mcpSlug}:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        const answer = (out) => rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) }] });
+        if (name === FREE.name && mcpSlug !== 'defi-agent') {
           try {
-            const look = await lpPositionLook(q, env);
-            const out = !pos && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})`, ...look } : look;
+            if (mcpSlug === 'health-factor' || mcpSlug === 'yield-optimizer') {
+              const r = await freeHalf(mcpSlug, a, env);
+              return r ? answer(r.out) : refuse('give the Venus account: address 0x…');
+            }
+            const qs = new URLSearchParams(Object.entries(a).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
+            const r = await fetch(`https://brainonbnb.com${FREE.rest}?${qs}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+            const j = await r.json().catch(() => null);
+            return j && r.ok ? answer(j) : refuse(j?.error || `http ${r.status}`);
+          } catch (e) { return refuse(e); }
+        }
+        if (name === 'lp_position_look') {
+          try {
+            // the figures a checker compares with the chain at the top (as the paid answer since 2026-10-14); a wallet
+            // given as `wallet` or `owner` (Mandate's Range-1 words) is read too, it used to be dropped for our own position
+            const { out } = await freeHalf('defi-agent', a, env, { defaultOwn: true });
             return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
           } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }
         }
-        if (name === 'lp_position_plan') {
+        if (name === PAID.name) {
           if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
-          const terms = await sellAnswer(env, ctx, payTo, 'lp_position_plan', {}, null);
+          const terms = await sellAnswer(env, ctx, payTo, serviceId, {}, null);
           const t = terms.body || {};
-          const out = { payment_required: true, pay_at: 'https://agent.brainonbnb.com/answer?service=lp_position_plan', price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: 'lp_position_look on this server' };
+          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
-        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has lp_position_look (free) and lp_position_plan (paid).`);
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has ${FREE.name} (free) and ${PAID.name} (paid).`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
     }
@@ -15714,6 +15794,23 @@ function exampleLinks(serviceId, service) {
     terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',
   };
 }
+// THE FIGURES A CHECKER COMPARES, AT THE TOP (2026-10-14). Mandate asks every rebalancing agent the same question and
+// compares "in range" and "current tick" with its own reading of the chain; ours sat two levels down
+// (result.plan.in_range, result.plan.pool.tick) and its page said "not data we can read". The paid answer and its
+// free example both carry them at the top level, from this one place.
+// The same for its house agents in the other categories: Guard-1 is compared on "health factor", Yield-1 on "Venus
+// USDT rate" (the supply rate).
+export function checkedFigures(serviceId, result) {
+  const plan = result && result.plan;
+  if (serviceId === 'lp_position_plan' && plan && plan.pool) return { position: plan.position ?? null, in_range: plan.in_range ?? null, current_tick: plan.pool.tick ?? null, tick_lower: plan.pool.ticks?.[0] ?? null, tick_upper: plan.pool.ticks?.[1] ?? null };
+  if (serviceId === 'health_factor' && result && result.position) return { health_factor: result.position.health_factor ?? null };
+  if (serviceId === 'yield_plan' && plan && Array.isArray(plan.ranked)) {
+    const rates = {};
+    for (const m of plan.ranked) if (m && m.symbol && Number.isFinite(m.supply_apy_pct)) rates[String(m.symbol).replace(/^v/, '')] = m.supply_apy_pct;
+    return { venus_usdt_rate_pct: rates.USDT ?? null, venus_supply_rates_pct: rates };
+  }
+  return {};
+}
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const service = SERVICES[serviceId];
   if (!service) return null;
@@ -15733,6 +15830,7 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
     task,
     produced_at: new Date().toISOString(),
     took_ms: Date.now() - t0,
+    ...checkedFigures(serviceId, result),
     result,
     note: 'Run by the same code a funded job runs, on the sentence the hire box opens with. Not a paid job; the figures are from the moment above.',
   };
@@ -15813,7 +15911,23 @@ export async function handleA2A(request, env, opts = {}) {
     // (understand.js, 2026-10-13 — it used to answer every question with its self-description and the whole catalogue)
     if (forced && SERVICES[forced]) {
       const r = understoodReply({ service: SERVICES[forced], text, missing: missingInput, agentUrl: `https://agent.brainonbnb.com/${opts.agent}/a2a` });
+      // THE FREE HALF, ANSWERED (2026-10-15): "is this position in range" got a price and a link, though the card
+      // promises the reading and the MCP tool gives it away; the reading leads now, the offer for the paid half follows
+      const free = opts.freeHalf ? await opts.freeHalf(r.data.understood.params || {}).catch(() => null) : null;
+      if (free) {
+        const data = { ...free.figures, free_reading: free.out, paid_half: r.data };
+        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(data) }, { kind: 'data', data }] });
+      }
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: r.sentence }, { kind: 'data', data: r.data }] });
+    }
+  }
+  // A question as data, without a skill (2026-10-15): {wallet}, {position}, {address} on an agent's own endpoint is
+  // answered with the free reading, as its MCP tool answers it, instead of the agent describing itself.
+  if (!skill && forced && opts.freeHalf && Object.keys(data).length) {
+    const free = await opts.freeHalf({ ...data, ...(data.params || {}) }).catch(() => null);
+    if (free) {
+      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: SERVICES[forced].price_display, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
     }
   }
 
@@ -16045,6 +16159,7 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     provider: account.address,
     client: job.client,
     produced_at: new Date().toISOString(),
+    ...checkedFigures(service.id, result),
     result,
     method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
     verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',

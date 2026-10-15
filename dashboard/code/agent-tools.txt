@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2979 lines.
+# one fetch. 5 files, 2998 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -870,6 +870,23 @@ function sizeArg(args, key, example) {
 // replaces a Worker's 502 body with its own "error code: 502" text, so the
 // plain-words answer never reached an agent (MCP delivered it, REST did not).
 const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route', 'bsc_rug_watch']);
+// THE FREE READING, AND WHAT KEEPS READING IT (2026-10-15, operator: "make the pool scan earn"). The pool scan is the tool
+// other agents call most (243 calls by others on 15 Oct) and it was all free; the reading stays exactly as it was. At its
+// end, for a pool that can be priced, the paid pool watch on that same pool, filled in: 30 days of depth readings and a
+// callback when it can no longer absorb the size — at half today's 1% depth unless the buyer sets another. Half price
+// in $BOBAI. Never on the site's own pages; never instead of the reading.
+function withWatchOffer(name, out) {
+  if ((DEPRECATED_TOOL_NAMES[name] || name) !== 'bsc_pool_scan' || !out || typeof out !== 'object' || !out.quotable) return out;
+  const token = String(out.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], depth = Number(out.onePercentDepth?.buyUsd);
+  if (!token) return out;
+  const at = depth > 0 ? Math.max(50, Math.round(depth / 2 / 10) * 10) : 1000;
+  return { ...out, watch_this_pool: {
+    what: `This reading is one moment. The pool watch reads this pool's depth for 30 days and calls your URL the moment it can no longer absorb $${at.toLocaleString('en-US')} at 1% price impact — a pulled or drained pool, before you trade into it.`,
+    price: '0.50 USD1 (or USDC) per watch — or half that in $BOBAI',
+    buy: { method: 'POST', url: 'https://agent.brainonbnb.com/watch', body: { token, depthBelowUsd: at, callback: 'https://<your endpoint>' } },
+    note: `depthBelowUsd is set at half of today's 1% depth${depth > 0 ? ` ($${Math.round(depth).toLocaleString('en-US')})` : ''}; change it to your size. The first reply is HTTP 402 with the terms; pay, then send the same request again.`,
+  } };
+}
 const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'pancakeswap_range_plan']);
 function errorAnswer(e) {
   const msg = e?.message || String(e);
@@ -1270,7 +1287,7 @@ async function handleMcp(request, note = () => {}) {
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
         // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
-        const raw = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
+        const raw = withWatchOffer(params?.name, await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') }));
         const out = (await firstCall(request)) ? withThanks(raw) : raw;
         // The JSON itself next to its text (2026-10-09, MCP 2025-06-18
         // structuredContent) for the three trading reads, so a client hands
@@ -1718,8 +1735,10 @@ export default {
         // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
         // required. The site's own pages read these routes for their figures and get them without it.
         const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
-        if (siteCall || !(await firstCall(request))) return new Response(JSON.stringify(out, null, 2), { headers }); // the note once per caller (2026-10-01)
-        return new Response(JSON.stringify(withThanks(out), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
+        if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers }); // the site's own pages: the reading alone
+        const sold = withWatchOffer(WITH_ADDRESS[url.pathname], out);
+        if (!(await firstCall(request))) return new Response(JSON.stringify(sold, null, 2), { headers }); // the note once per caller (2026-10-01)
+        return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {
         // Status, code and hint from errorAnswer (2026-10-09), the same three fields MCP carries.
         const { status, body } = errorAnswer(e);

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/lp-placement",
+  "description": "PancakeSwap V3 fee tiers for a BSC token, free; which tier and range to place liquidity in, paid.",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/registry",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://agent.brainonbnb.com/lp-placement/mcp"
+    }
+  ]
+}

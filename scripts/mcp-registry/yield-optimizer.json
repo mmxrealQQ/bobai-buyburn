@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/yield-optimizer",
+  "description": "Venus supply rates on BNB Chain, free; whether moving a position pays for its gas, paid.",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/registry",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://agent.brainonbnb.com/yield-optimizer/mcp"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/health-factor",
+  "description": "Venus health factor of any BNB Chain account, free; liquidation drawdown and stress table, paid.",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/registry",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://agent.brainonbnb.com/health-factor/mcp"
+    }
+  ]
+}

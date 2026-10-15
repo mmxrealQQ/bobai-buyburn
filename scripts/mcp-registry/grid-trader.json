@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/grid-trader",
+  "description": "What a BSC pool really costs to trade, free; grid levels with their break-even spacing, paid.",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/registry",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://agent.brainonbnb.com/grid-trader/mcp"
+    }
+  ]
+}

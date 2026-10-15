@@ -34,7 +34,10 @@ import crypto from 'node:crypto';
 const REGISTRY = 'https://registry.modelcontextprotocol.io';
 const DOMAIN = 'brainonbnb.com';
 const ROOT = path.resolve(import.meta.dirname, '..');
-const MANIFEST = path.join(ROOT, 'scripts', 'mcp-registry-server.json');
+// --manifest <file> publishes another server under the same domain (2026-10-15: each of the six hireable agents has
+// its own MCP at agent.brainonbnb.com/<agent>/mcp and its own entry, scripts/mcp-registry/<agent>.json)
+const mIdx = process.argv.indexOf('--manifest');
+const MANIFEST = mIdx > 0 ? path.resolve(process.argv[mIdx + 1]) : path.join(ROOT, 'scripts', 'mcp-registry-server.json');
 
 const server = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 

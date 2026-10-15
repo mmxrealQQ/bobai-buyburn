@@ -25,7 +25,7 @@ step('the x402 catalogue lists the paid resources', (x402.body?.resources || [])
 
 // 2. MEASURE (free)
 const init = await rpc(`${S}/mcp`, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
-step('MCP initialize', init.body?.result?.serverInfo?.version === '1.5.0', init.body?.result?.serverInfo?.version);
+step('MCP initialize', init.body?.result?.serverInfo?.version === '1.5.1', init.body?.result?.serverInfo?.version);
 const tl = await rpc(`${S}/mcp`, 'tools/list');
 step('MCP lists 26 tools', (tl.body?.result?.tools || []).length === 26, `${(tl.body?.result?.tools || []).length}`);
 const pf = await rpc(`${S}/mcp`, 'tools/call', { name: 'bsc_token_preflight', arguments: { address: CAKE, usd: 250 } });

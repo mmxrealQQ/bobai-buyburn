@@ -16,7 +16,7 @@ import { createInterface } from 'node:readline';
 
 const BASE = 'https://brainonbnb.com';
 const PROTOCOL = '2025-06-18';
-const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.5.0' };
+const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.5.1' };
 // The same introduction the hosted server gives on initialize (MCP_INSTRUCTIONS in dashboard/_worker.js).
 const INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way.';
 

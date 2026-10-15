@@ -525,7 +525,23 @@ export async function handleA2A(request, env, opts = {}) {
     // (understand.js, 2026-10-13 — it used to answer every question with its self-description and the whole catalogue)
     if (forced && SERVICES[forced]) {
       const r = understoodReply({ service: SERVICES[forced], text, missing: missingInput, agentUrl: `https://agent.brainonbnb.com/${opts.agent}/a2a` });
+      // THE FREE HALF, ANSWERED (2026-10-15): "is this position in range" got a price and a link, though the card
+      // promises the reading and the MCP tool gives it away; the reading leads now, the offer for the paid half follows
+      const free = opts.freeHalf ? await opts.freeHalf(r.data.understood.params || {}).catch(() => null) : null;
+      if (free) {
+        const data = { ...free.figures, free_reading: free.out, paid_half: r.data };
+        return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(data) }, { kind: 'data', data }] });
+      }
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: r.sentence }, { kind: 'data', data: r.data }] });
+    }
+  }
+  // A question as data, without a skill (2026-10-15): {wallet}, {position}, {address} on an agent's own endpoint is
+  // answered with the free reading, as its MCP tool answers it, instead of the agent describing itself.
+  if (!skill && forced && opts.freeHalf && Object.keys(data).length) {
+    const free = await opts.freeHalf({ ...data, ...(data.params || {}) }).catch(() => null);
+    if (free) {
+      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: SERVICES[forced].price_display, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
     }
   }
 

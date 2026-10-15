@@ -1542,6 +1542,37 @@ async function lpWidthVerdict(env) {
   return widthVerdict(env, await bnbUsd().catch(() => null));
 }
 
+// THE FREE HALF, ONE PLACE (2026-10-15): the reading each agent gives away — the DeFi agent's look at a position, the
+// Venus health factor of an account, the Venus supply rates — for its MCP tool and for a question over A2A. The cards
+// promise "give me a position and I return whether it is in range"; over A2A that question got a price and a link.
+// Returns { figures, out } (figures: what a checker compares, also at the top of out) or null when there is no
+// free half for this agent or the input it needs is missing. defaultOwn: no position named = this agent's own.
+export async function freeHalf(slug, a = {}, env, { defaultOwn = false } = {}) {
+  const addrOf = (...v) => v.map((x) => String(x ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0]).find(Boolean) || null;
+  if (slug === 'defi-agent') {
+    const pos = String(a.position ?? a.tokenId ?? a.token_id ?? '').trim(), addr = addrOf(a.address, a.wallet, a.owner);
+    if (!/^\d+$/.test(pos) && !addr && !defaultOwn) return null;
+    const q = /^\d+$/.test(pos) ? { position: pos } : addr ? { address: addr } : { address: OWN_LP_WALLET };
+    const look0 = await lpPositionLook(q, env);
+    const figures = look0?.pool ? { ...(look0.position != null ? { position: look0.position } : {}), in_range: look0.in_range ?? null, current_tick: look0.pool.tick ?? null, tick_lower: look0.pool.ticks?.[0] ?? null, tick_upper: look0.pool.ticks?.[1] ?? null } : {};
+    const out = { ...(!/^\d+$/.test(pos) && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})` } : {}), ...figures, ...look0 };
+    return { figures, out };
+  }
+  if (slug === 'health-factor') {
+    const acct = addrOf(a.address, a.account, a.wallet, a.owner);
+    if (!acct) return null;
+    const position = await healthFactor(acct);
+    const figures = { health_factor: position.health_factor ?? null };
+    return { figures, out: { ...figures, account: acct, position } };
+  }
+  if (slug === 'yield-optimizer') {
+    const plan = await yieldPlan({});
+    const figures = checkedFigures('yield_plan', { plan });
+    return { figures, out: { ...figures, ranked: (plan.ranked || []).map((m) => ({ symbol: m.symbol, supply_apy_pct: m.supply_apy_pct, borrow_apy_pct: m.borrow_apy_pct, utilisation_pct: m.utilisation_pct })), measured_at: plan.measured_at } };
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     bindSelf(env);
@@ -1655,7 +1686,7 @@ export default {
       const m = path.match(/^\/(health-factor|grid-trader|yield-optimizer|rebalancer|lp-placement)(\/a2a)?(\/\.well-known\/agent(-card)?\.json)?$/);
       if (m) {
         const slug = m[1], card = OWN_CARDS[slug], s = SERVICES[AGENT_SERVICE[slug]];
-        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug }); }
+        if (request.method === 'POST' && m[2] && !m[3]) { seenA2A(request, slug); return await handleA2A(request, env, { agent: slug, freeHalf: (q) => freeHalf(slug, q, env) }); }
         return json({
           protocolVersion: '0.3.0',
           name: card.name,
@@ -1689,7 +1720,7 @@ export default {
     // one service — at a path its registration names. POST here sells only
     // the position plan (handleA2A opts.agent), through the ERC-8183 escrow,
     // in both dialects: BNB's signed quote and our flat one.
-    if (path === '/defi-agent/a2a' && request.method === 'POST') { seenA2A(request, 'defi-agent'); return await handleA2A(request, env, { agent: 'defi-agent' }); }
+    if (path === '/defi-agent/a2a' && request.method === 'POST') { seenA2A(request, 'defi-agent'); return await handleA2A(request, env, { agent: 'defi-agent', freeHalf: (q) => freeHalf('defi-agent', q, env) }); }
     // The BNB Agent SDK buyer reads the card at <A2A endpoint>/.well-known/
     // agent-card.json — under the endpoint, not the origin — so both spellings
     // are served under /defi-agent/a2a as well.
@@ -2811,7 +2842,7 @@ ${pageTail}`;
       const RO = { readOnlyHint: true, openWorldHint: true };
       const TOKEN = { type: 'string', description: 'A BEP-20 token address on BNB Chain (0x…)' };
       const FREE = {
-        'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
+        'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
         'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
         'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from the chain and cross-checked against each market’s own rate model, best first; venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
         'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half lays the grid and its break-even spacing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
@@ -2839,15 +2870,9 @@ ${pageTail}`;
         const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) }] });
         if (name === FREE.name && mcpSlug !== 'defi-agent') {
           try {
-            if (mcpSlug === 'health-factor') {
-              const acct = String(a.address ?? a.account ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0];
-              if (!acct) return refuse('give the Venus account: address 0x…');
-              const position = await healthFactor(acct);
-              return answer({ health_factor: position.health_factor ?? null, account: acct, position });
-            }
-            if (mcpSlug === 'yield-optimizer') {
-              const plan = await yieldPlan({});
-              return answer({ ...checkedFigures('yield_plan', { plan }), ranked: (plan.ranked || []).map((m) => ({ symbol: m.symbol, supply_apy_pct: m.supply_apy_pct, borrow_apy_pct: m.borrow_apy_pct, utilisation_pct: m.utilisation_pct })), measured_at: plan.measured_at });
+            if (mcpSlug === 'health-factor' || mcpSlug === 'yield-optimizer') {
+              const r = await freeHalf(mcpSlug, a, env);
+              return r ? answer(r.out) : refuse('give the Venus account: address 0x…');
             }
             const qs = new URLSearchParams(Object.entries(a).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
             const r = await fetch(`https://brainonbnb.com${FREE.rest}?${qs}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
@@ -2856,13 +2881,10 @@ ${pageTail}`;
           } catch (e) { return refuse(e); }
         }
         if (name === 'lp_position_look') {
-          const pos = String(a.position ?? '').trim(), addr = String(a.address ?? '').trim();
-          const q = /^\d+$/.test(pos) ? { position: pos } : /^0x[0-9a-fA-F]{40}$/.test(addr) ? { address: addr } : { address: OWN_LP_WALLET };
           try {
-            const look0 = await lpPositionLook(q, env);
-            // the figures a checker compares with the chain, at the top (as the paid answer since 2026-10-14)
-            const look = look0?.pool ? { current_tick: look0.pool.tick ?? null, tick_lower: look0.pool.ticks?.[0] ?? null, tick_upper: look0.pool.ticks?.[1] ?? null, ...look0 } : look0;
-            const out = !pos && !addr ? { input: `no position was named: this is the position this agent runs itself (wallet ${OWN_LP_WALLET})`, ...look } : look;
+            // the figures a checker compares with the chain at the top (as the paid answer since 2026-10-14); a wallet
+            // given as `wallet` or `owner` (Mandate's Range-1 words) is read too, it used to be dropped for our own position
+            const { out } = await freeHalf('defi-agent', a, env, { defaultOwn: true });
             return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
           } catch (e) { return rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e.shortMessage || e.message).slice(0, 300) }] }); }
         }

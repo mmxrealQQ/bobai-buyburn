@@ -596,6 +596,11 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     if ((r.body?.result?.tools || []).length !== 2) mcpBad.push(`${slug} (${r.status})`);
   }
   ok('Agents', 'every agent of ours publishes its tool list over MCP (Mandate: Tools)', !mcpBad.length, mcpBad.length ? `missing: ${mcpBad.join(', ')}` : 'all five list two tools');
+  // What the card promises, over A2A (2026-10-15): a question as data ({wallet}) is answered with the free reading,
+  // in_range and current_tick at the top — it used to get the agent's self-description (scripts/a2a-free-half-check.mjs)
+  const fa = await getJ(`${AGENT}/defi-agent/a2a`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'health', parts: [{ kind: 'data', data: { wallet: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } }] } } }) });
+  const fad = (fa.body?.result?.parts || []).find((p) => p.kind === 'data')?.data;
+  ok('Agents', 'the DeFi agent answers a position question over A2A with in_range and current_tick (what its card promises)', typeof fad?.in_range === 'boolean' && Number.isInteger(fad?.current_tick), fad ? `in range ${fad.in_range}, tick ${fad.current_tick}` : `http ${fa.status}, no data part`);
   // 4. x402 offers USD1 by EIP-3009 (what marketplaces pay with).
   const terms = (await getJ(`${AGENT}/answer?service=yield_plan`)).body;
   ok('Agents', 'x402 offers USD1 by EIP-3009', (terms?.accepts || []).some((a) => String(a.asset).toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d' && (a.extra?.assetTransferMethod === 'eip3009' || a.extra?.transferMethod === 'eip3009')), (terms?.accepts || []).map((a) => a.extra?.assetTransferMethod).join(', '));

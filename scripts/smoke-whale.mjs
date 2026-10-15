@@ -266,6 +266,29 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   const recap = renderDailyRecap([{ kind: 'SELL', from: W, to: '0x6ead', amount: 2e6, usdValue: 460, ts: now - 3600e3, pattern: true }, { kind: 'SELL', from: W, to: '0x6ead', amount: 1e6, usdValue: 230, ts: now - 1800e3, folded: true }], [W], null, true, { ...holdings, top10: { entered: [H(7)], left: [H(9)] } }).replace(/<[^>]+>/g, '');
   ok(/🧩 1 more folded into a pattern alert/.test(recap) && /📉 0x5555\.\.\.5555 selling in pieces/.test(recap) && /🏅 Top 10 changed · in: 0x7777\.\.\.7777 · out: 0x9999\.\.\.9999/.test(recap), `the recap tells the runs and the top 10:\n${recap}`);
   const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  // 2026-10-15: a tracked wallet's buy of $100+ is ONE message in the official group — the buy alert, with the
+  // watcher's line; the watcher's text of it stays internal. Every buy tier, not only the WHALE BUY.
+  {
+    const { pairBuyOfReceipt, buyAlertTells, trackedBuyLine } = worker;
+    const PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', TOKEN = src.match(/const BOBAI_TOKEN = '(0x[0-9a-fA-F]{40})'/)[1];
+    const TR = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', SW = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+    const pad = (a) => '0x' + '0'.repeat(24) + a.slice(2).toLowerCase();
+    const word = (n) => BigInt(n).toString(16).padStart(64, '0');
+    const swapLog = (bnbWei, bobaiWei) => ({ address: PAIR, topics: [SW], data: '0x' + word(0) + word(bnbWei) + word(bobaiWei) + word(0) });
+    const xfer = (from, to) => ({ address: TOKEN, topics: [TR, pad(from), pad(to)], data: '0x' + word(1) });
+    const rc = (from, bnbWei) => ({ from, logs: [swapLog(bnbWei, 10n ** 24n), xfer(PAIR, W), xfer(PAIR, TOKEN)] });
+    const pb = pairBuyOfReceipt(rc(H(6), 2n * 10n ** 17n));
+    ok(pb.recipients.has(W) && pb.bnbIn === 2n * 10n ** 17n && pb.from === H(6), 'the receipt gives the BNB in and who got BOBAI out of the pair');
+    ok(buyAlertTells(pb, 600) === true && buyAlertTells(pb, 400) === false, '$120 of BNB in is told by the buy alert, $80 is not');
+    ok(buyAlertTells(pairBuyOfReceipt(rc('0xdefc0e900dfc83e207902cf22265ae63f94c01ce', 10n ** 18n)), 600) === false, "our own bot's buy is no buy alert, so the watcher keeps it");
+    ok(buyAlertTells(pb, null) === false && pairBuyOfReceipt(null) === null, 'no price or no receipt: the watcher posts as before');
+    const t = (o) => trackedBuyLine(o).replace(/<[^>]+>/g, '');
+    ok(t({ addr: W, buyer: W, bal: 42e6, rank: 4 }) === '\n🐋 Tracked whale · 🏅 #4 holder', `a whale's line: ${t({ addr: W, buyer: W, bal: 42e6, rank: 4 })}`);
+    ok(t({ addr: W, buyer: W, bal: 6e6, rank: 30 }) === '\n🐬 Tracked holder 5M+ · 🏅 #30 holder' && t({ addr: W, buyer: W, bal: 1e6, rank: 90 }) === '\n👀 Tracked wallet', 'a 5M holder has a place; under 5M no place');
+    ok(t({ addr: W, buyer: H(6), bal: 26e6, rank: 2, contract: true }) === '\n🏦 Tracked contract 0x5555...5555 · 🏅 #2 holder', 'a tracked recipient other than the sender is named');
+    ok(/if \(official && whaleAlertIsPublic\(data\)\) await tgSend\(text, TG_CHAT_ID\);/.test(src) && /pb\.recipients\.has\(addr\) && buyAlertTells\(pb, await getBnbUsd\(\)\)\) official = false;/.test(src), "the watcher's text of a told buy stays internal");
+    ok(/\+ await trackedCtx\(trade\);/.test(src), 'every buy alert asks whether its buyer is tracked');
+  }
   ok(/if \(bal === null \|\| bal < WATCH_THRESHOLD_WEI\) continue;/.test(src) && /const WATCH_THRESHOLD_WEI = 5_000_000n/.test(src), 'a holder enters the watch-set from 5M');
 }
 

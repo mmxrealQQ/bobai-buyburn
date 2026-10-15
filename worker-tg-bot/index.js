@@ -1122,6 +1122,35 @@ export function alertTrade(pending, drop) {
   return to ? { ...pending, buyer: to } : pending;
 }
 
+// A TRACKED WALLET'S BUY IS ONE MESSAGE (operator, 2026-10-15: a buy of $100+ by a wallet the whale watcher tracks came
+// into the official group twice — the buy alert with its picture, then the watcher's text of the same buy). The buy
+// alert tells it, with one line saying who the buyer is to the watcher; the watcher's text of that buy stays internal.
+// Both sides read the same transaction receipt: the BNB that went into the pair and who got BOBAI out of it. Pure.
+export function pairBuyOfReceipt(receipt) {
+  if (!receipt || !Array.isArray(receipt.logs)) return null;
+  const low = (s) => String(s || '').toLowerCase();
+  const topicAddr = (t) => '0x' + low(t).slice(26);
+  const swaps = receipt.logs.filter((l) => low(l.address) === BOBAI_PAIR && low((l.topics || [])[0]) === SWAP_TOPIC);
+  const fold = foldBuysByTx(swaps)[0];
+  const recipients = new Set();
+  for (const l of receipt.logs) {
+    const t = l.topics || [];
+    if (low(l.address) === low(BOBAI_TOKEN) && low(t[0]) === TRANSFER_TOPIC && topicAddr(t[1]) === BOBAI_PAIR) recipients.add(topicAddr(t[2]));
+  }
+  return { from: low(receipt.from), bnbIn: fold ? fold.amount1In : 0n, recipients };
+}
+// The buy alert's own rule: $100+ of BNB into the pair, the sender not one of our wallets. Pure.
+export function buyAlertTells(pb, bnbUsd) {
+  return !!pb && pb.bnbIn > 0n && !IGNORED_WALLETS.has(pb.from) && bnbUsd > 0 && Number(pb.bnbIn) / 1e18 * bnbUsd >= 100;
+}
+// The line under the buyer: what the watcher calls the wallet, and its place from 5M up (exact there). Pure.
+export function trackedBuyLine({ addr, buyer, bal = null, rank = null, contract = false }) {
+  const who = contract ? '🏦 Tracked contract' : bal >= 10_000_000 ? '🐋 Tracked whale' : bal >= 5_000_000 ? '🐬 Tracked holder 5M+' : '👀 Tracked wallet';
+  const other = addr && buyer && String(addr).toLowerCase() !== String(buyer).toLowerCase()
+    ? ` <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a>` : '';
+  return `\n${who}${other}${rank && bal >= 5_000_000 ? ` · 🏅 #${rank} holder` : ''}`;
+}
+
 function nftProgressBar(minted, cap) {
   if (cap <= 0) return '░░░░░░░░░░';
   const filled = Math.min(10, Math.round((minted / cap) * 10));
@@ -2368,14 +2397,16 @@ ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
 // EXACTLY AS INTERNAL (operator, 2026-10-13: a $12.70 whale buy showed in the internal group only — "exactly the same
 // as internal"): every whale alert the internal group gets, the official group gets too, word for word. The $5 quiet
 // line and the folding of small repeated moves still decide what is posted at all, for both.
+// ONE EXCEPTION (operator, 2026-10-15): a tracked wallet's buy that the buy alert tells ($100+) is told there, once,
+// with the watcher's line in it — `official` false; internal still gets the watcher's text.
 export const WHALE_PUBLIC_USD = 0;
 export const whaleAlertIsPublic = () => true;
-async function postWhaleAlert(data) {
+async function postWhaleAlert(data, official = true) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const text = renderWhaleAlert(data);
   if (!text) return false;
   const ok = await tgSend(text);
-  if (whaleAlertIsPublic(data)) await tgSend(text, TG_CHAT_ID);
+  if (official && whaleAlertIsPublic(data)) await tgSend(text, TG_CHAT_ID);
   return ok;
 }
 
@@ -3668,7 +3699,9 @@ export default {
       const sent = await postBuyAlert({ bnbAmount: usd / bnbUsd, bobaiAmount: usd / price, usdValue: usd, buyer: '0x000000000000000000000000000000000000dEaD', txHash: '0x' + '0'.repeat(64) },
         '0.00', nft + '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID, body.uncapped === true,
         // the longest context line a real alert carries (2026-10-09), so the preview measures the same room
-        body.context === false ? '' : '\n📊 Holds 12.34M BOBAI (≈$2.8K) · 12th buy from this wallet this week · largest buy in 7 days');
+        (body.context === false ? '' : '\n📊 Holds 12.34M BOBAI (≈$2.8K) · 12th buy from this wallet this week · largest buy in 7 days')
+        // "tracked": true — the line a buyer the whale watcher tracks gets (2026-10-15)
+        + (body.tracked === true ? trackedBuyLine({ addr: '0x000000000000000000000000000000000000dEaD', buyer: '0x000000000000000000000000000000000000dEaD', bal: 42.1e6, rank: 4 }) : ''));
       return new Response(JSON.stringify({ ok: !!sent, went_out_as: sent || null, photo_refused: lastPhotoRefusal, caption: lastCaption, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
@@ -4668,12 +4701,20 @@ export default {
                   }
                 }
               }
+              // A buy the buy alert tells goes to the official group there, once (2026-10-15). A failed read leaves it here.
+              let official = true;
+              if (kind === 'BUY' && !told && !quiet && !folded) {
+                try {
+                  const pb = pairBuyOfReceipt(await rpcCall('eth_getTransactionReceipt', [txHash]));
+                  if (pb && pb.recipients.has(addr) && buyAlertTells(pb, await getBnbUsd())) official = false;
+                } catch { official = true; }
+              }
               const sent = told || quiet || folded ? true : await postWhaleAlert({
                 kind, from: senderAddr, to: receiverAddr,
                 amount: absAmt, usdValue, txHash,
                 fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd, otherIsContract: viaContract, dormant,
                 moverIsContract: contractSet.has(addr), rank, rankBefore, poolShare: poolShare != null ? poolShare / 100 : null, pattern,
-              });
+              }, official);
               if (sent) {
                 if (!quiet && !told && !folded) alerts++;
                 if (!told) whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now(), ...(quiet ? { quiet: true } : {}), ...(viaContract ? { contract: true } : {}), ...(folded ? { folded: true } : {}), ...(pattern ? { pattern: true } : {}) });
@@ -4801,8 +4842,44 @@ export default {
         let hold = null;
         try { hold = Number(await getBobaiBalanceStrict(trade.buyer)) / 1e18; } catch { hold = null; }
         return buyContextLine({ usd: trade.usdValue, buyer: trade.buyer, tx: trade.txHash, alerted: (alertedRec || alertedNow.length) ? addAlertedBuys(alertedRec, alertedNow) : null,
-          ledger: ledgerCache, holdTokens: hold, price: trade.bobaiAmount > 0 ? trade.usdValue / trade.bobaiAmount : 0 });
+          ledger: ledgerCache, holdTokens: hold, price: trade.bobaiAmount > 0 ? trade.usdValue / trade.bobaiAmount : 0 }) + await trackedCtx(trade);
       } catch (e) { console.error('[BUY CTX]', e.message || e); return ''; }
+    };
+    // A buyer the whale watcher tracks (2026-10-15): the watcher's text of this buy stays internal, so the alert says
+    // it here. The buyer named, else whoever got BOBAI out of the pair in this transaction. The watch lists and the
+    // places are read once per tick, only when a tracked wallet bought.
+    let watchSets, placeBals;
+    const trackedCtx = async (trade) => {
+      try {
+        if (watchSets === undefined) {
+          const [w, c] = await Promise.all([loadTrackedWallets(env), loadTrackedContracts(env)]);
+          watchSets = { w: new Set(w), c: new Set(c) };
+        }
+        const isWatched = (a) => watchSets.w.has(a) || watchSets.c.has(a);
+        const buyer = String(trade.buyer || '').toLowerCase();
+        let addr = isWatched(buyer) ? buyer : null;
+        if (!addr) {
+          const pb = pairBuyOfReceipt(await rpcCall('eth_getTransactionReceipt', [trade.txHash]));
+          addr = pb ? [...pb.recipients].find(isWatched) || null : null;
+        }
+        if (!addr) return '';
+        let bal = null, rank = null;
+        try { bal = Number(await getBobaiBalanceStrict(addr)) / 1e18; } catch { bal = null; }
+        if (bal >= WATCH_THRESHOLD_TOKENS) {
+          if (!placeBals) {
+            placeBals = new Map();
+            const all = [...watchSets.w, ...watchSets.c];
+            for (let i = 0; i < all.length; i += 8) {
+              const chunk = all.slice(i, i + 8);
+              const bals = await Promise.all(chunk.map((a) => getBobaiBalanceStrict(a).catch(() => null)));
+              chunk.forEach((a, j) => { if (bals[j] != null) placeBals.set(a, Number(bals[j] / 10n ** 18n)); });
+            }
+          }
+          placeBals.set(addr, bal);
+          rank = holderRank(placeBals, addr, bal);
+        }
+        return trackedBuyLine({ addr, buyer: trade.buyer, bal, rank, contract: watchSets.c.has(addr) });
+      } catch (e) { console.error('[BUY TRACKED]', e.message || e); return ''; }
     };
     const noteAlerted = (trade) => alertedNow.push({ tx: trade.txHash, buyer: String(trade.buyer).toLowerCase(), usd: Math.round(trade.usdValue * 100) / 100, ts: Date.now() });
 

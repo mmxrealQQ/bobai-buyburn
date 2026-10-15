@@ -5451,8 +5451,12 @@ const loopLine = (o, p) => {
   if (!pn || !pool || !(pn.from_fees_bnb > 0)) return;
   const since = (/since (.+)$/.exec(pn.change_text || '') || [])[1];
   const does = pool.in_range ? `keeps #${pool.position}, in range` : `#${pool.position} is out of range: a re-set after 2 h outside`;
-  logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(pn.from_fees_bnb)], ' in pool fees' + (since ? ` since ${since}` : ''),
-    pn.bobai_units > 0 ? ' · holds ' : '', pn.bobai_units > 0 ? [bobaiAmt(pn.bobai_units)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
+  // ONE SOURCE FOR ONE FIGURE (2026-10-15, open list #4): the fees and the $BOBAI held come from the agent record the
+  // DEFI AGENT block and BOBAI's 'defi' answer read (/lp/agent); /lp/portfolio adds the fees the position still owes
+  // and would have printed a different figure beside them once those reach the third decimal
+  const fees = S.lp?.flow?.in?.fees?.bnb ?? pn.from_fees_bnb, held = S.lp?.flow?.out?.bobai_units ?? pn.bobai_units;
+  logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(fees)], ' in pool fees' + (since ? ` since ${since}` : ''),
+    held > 0 ? ' · holds ' : '', held > 0 ? [bobaiAmt(held)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
     o.agrees === true ? ' · it agrees · ' : o.agrees === false ? ' · it disagrees, the agent keeps its own reading · ' : ' · ', [does]],
   [], Date.now()); // the portfolio's figures are read now
 };

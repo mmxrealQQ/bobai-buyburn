@@ -65,12 +65,14 @@ export async function answerRangeTask(task, rpcs) {
   const spacing = task.feeTier && task.feeTier !== fee ? (SPACING[task.feeTier] || poolSpacing) : poolSpacing;
 
   const inRange = tick >= tickLower && tick < tickUpper;
-  // Price distance to the nearer bound, in percent of the current price.
+  // Price distance to the nearer bound, in percent of the current price — a distance, never negative: inRange says on
+  // which side of it the price is (2026-10-15, Marque MCS-REB-1 on an out-of-range position: expected 0.858139, ours
+  // -0.858139; the task asks for "percent in price terms to the nearer bound")
   const p = Number(sqrtP) ** 2 / 2 ** 192;
   const pl = 1.0001 ** tickLower, pu = 1.0001 ** tickUpper;
   const pctToNearestBound = inRange
     ? Math.min((pu / p - 1) * 100, (1 - pl / p) * 100)
-    : -Math.min(Math.abs(pl / p - 1) * 100, Math.abs(pu / p - 1) * 100);
+    : Math.min(Math.abs(pl / p - 1) * 100, Math.abs(pu / p - 1) * 100);
 
   // Symmetric re-centre: ±w% in price around spot, snapped outward to the
   // spacing so the range never ends up narrower than the policy.

@@ -664,9 +664,9 @@ function info(k) {
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [
-      ['Working capital', rb ? bnbF(lpNow().value ?? 0) : '…'], ['Range', lpNow().inR === false ? 'OUT of range' : 'in range'],
-      ['Pool', 'CAKE/BNB 0.05%'], ['Fees earned', lp?.flow?.in?.fees ? bnbF(lp.flow.in.fees.bnb) : '…'],
-      ['BOBAI it holds', bobaiAmt(lp?.flow?.out?.bobai_units || 0)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
+      ['Working capital', rb ? bnbF(defiNow().value ?? 0) : '…'], ['Range', lpNow().inR === false ? 'OUT of range' : 'in range'],
+      ['Pool', 'CAKE/BNB 0.05%'], ['Fees earned', defiNow().fees != null ? bnbF(defiNow().fees) : '…'],
+      ['BOBAI it holds', bobaiAmt(defiNow().held)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
       note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and half of what it earns buys BOBAI it keeps.',
       links: [['agent wallet', bsc('0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')], ['full record', SITE + '/liquidity']] };
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
@@ -738,6 +738,14 @@ function lpNow() {
   const inR = ticks && tick != null ? tick >= ticks[0] && tick < ticks[1] : (inc?.in_range ?? rb?.in_range ?? null);
   const value = inc?.value_after_bnb ?? inc?.value_bnb ?? rb?.value_with_reserve_bnb ?? rb?.value_bnb ?? null;
   return { rb, inc, ticks, tick, inR, value };
+}
+// THE DEFI AGENT'S FIGURES, ONE MODEL (2026-10-15, open list #4): /defi and the Telegram card read /lp/portfolio — the
+// position's worth read from the chain now, the fees including what the position still owes, the $BOBAI held. The
+// terminal showed the last hourly check's value and the record's fees without the owed part beside them (2.092 here,
+// 2.0905 on /defi). Every DeFi figure here comes from the portfolio; the record only while it has not been read yet.
+function defiNow() {
+  const pf = S.pf;
+  return { value: pf?.worth?.bnb ?? lpNow().value, fees: pf?.pnl?.from_fees_bnb ?? S.lp?.flow?.in?.fees?.bnb ?? null, held: pf?.holdings?.bobai_units ?? S.lp?.flow?.out?.bobai_units ?? 0 };
 }
 function rangeHtml() {
   const { ticks, tick } = lpNow();
@@ -2076,7 +2084,7 @@ const WORK = [
     return vary('w-range', [`My DeFi agent is in range: CAKE/BNB can fall ${d} or rise ${u} before it has to move.`, `In range and earning. ${d} of room below, ${u} above.`,
       `The DeFi agent sits where the trades are: ${d} to the lower edge, ${u} to the upper one.`, `${d} down or ${u} up, and my DeFi agent re-sets. Until then it collects fees.`,
       `Range check: in, with ${d} below and ${u} above. Fees are coming in.`]); }],
-  ['defi', () => { const fees = +(S.lp?.flow?.in?.fees?.bnb || 0), days = (Date.now() - Date.parse(S.lp?.flow?.since || '')) / 86400e3, cap = lpNow().value;
+  ['defi', () => { const fees = +(defiNow().fees || 0), days = (Date.now() - Date.parse(S.lp?.flow?.since || '')) / 86400e3, cap = defiNow().value;
     if (!(fees > 0) || !(days >= 3) || !(cap > 0) || !(S.bnbP > 0)) return null; // the same figures as defiRate()
     const u = `$${nf(fees * S.bnbP, 2)}`, dd = `${Math.round(days)} days`, apr = `${(fees / cap / days * 365 * 100).toFixed(0)}%`;
     return vary('w-fees', [`My DeFi agent has collected ${u} in fees in ${dd}. About ${apr} a year on its capital, so far.`, `${u} in pool fees over ${dd}, earned by my DeFi agent. The past, not a promise.`,
@@ -2661,7 +2669,8 @@ const CMDS = {
     say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
-    say(['The DeFi agent works ', [bnbF(lpNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(S.lp?.flow?.in?.fees?.bnb || 0)], `${defiRate()}; it holds ${bobaiAmt(S.lp?.flow?.out?.bobai_units || 0)} bought with half of them.`], [], D.defi.c); },
+    // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
+    say(['The DeFi agent works ', [bnbF(defiNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(defiNow().fees || 0)], `${defiRate()}; it holds ${bobaiAmt(defiNow().held)} bought from fees, never sold.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
     if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4R(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
@@ -2870,7 +2879,7 @@ function nextEta() {
 }
 // what the DeFi agent's fees come to a year on its capital, from its own record (2026-10-09); the past, not a forecast
 function defiRate() {
-  const fees = +(S.lp?.flow?.in?.fees?.bnb || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = lpNow().value;
+  const fees = +(defiNow().fees || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = defiNow().value;
   const days = (Date.now() - since) / 86400e3;
   if (!(fees > 0) || !(days >= 3) || !(cap > 0)) return '';
   return ` in ${Math.round(days)} days (≈$${nf(fees * S.bnbP, 2)}), about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital so far`;
@@ -3292,16 +3301,16 @@ function paintLogs() {
   const lp = S.lp;
   if (lp) {
     const rb = lp.last?.steps?.rebalance, inc = lp.last_check?.steps?.increase;
-    const v = lpNow().value, inr = lpNow().inR;
-    if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${bobaiAmt(lp.flow?.out?.bobai_units || 0)}`);
+    const v = defiNow().value, inr = lpNow().inR;
+    if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${bobaiAmt(defiNow().held)}`);
   }
 }
 async function logs() {
   const N = NUMS(), have = x => Promise.resolve(x);
-  const [burns, liq, lp, nft, dev, man] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json')])
+  const [burns, liq, lp, nft, dev, man, pf] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio')] /* the DeFi figures' one model (defiNow) */)
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
-  if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev;
+  if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
   if (nft && !EXACT._run) { EXACT._run = 1; setTimeout(async () => { for (const n of (S.nft?.drops || []).filter(d => d.ts * 1000 > Date.now() - 7 * 86400e3)) await exactBuyUsd(n); }, 6000); }
   // THE DEV WALLET'S OWN ADDS (2026-09-30, operator: "show them"): the manual runs from d38 (liq-runs.json, the same file
   // the Classic liquidity block reads) — the biggest liquidity of most weeks, and the film showed only the bot's small ones.
@@ -3996,7 +4005,7 @@ function bobaiTap() {
   const kinds = [
     () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${bobaiAmt(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
-    () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(lpNow().value ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : inr === true ? 'The price is in its range, so it earns fees.' : 'I am still reading where the price sits in its range.'}`, 6400); },
+    () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(defiNow().value ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : inr === true ? 'The price is in its range, so it earns fees.' : 'I am still reading where the price sits in its range.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
     () => { if (HARD_DAY()) { const l = heartLine(); setPose(moveForLine(l, null) || poseOr('hodl'), 6); speak(l, 7000); } else if (!tellJoke(6000)) { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); } }, // no joke ready: what he builds (not 'thanks for watching me', operator 2026-10-06) // a tap on a hard day: a word of heart, not a joke
     () => { setPose(poseOr('build'), 6); speak(pick(BUILD), 6400); },
@@ -4088,7 +4097,10 @@ function awayBits(since) {
   const runs = S.burns.filter(e => Date.parse(e.time) > since), burned = runs.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
   const rows = CH.rows.filter(r => r.t > since), buys = rows.reduce((a, r) => a + (r.b || 0), 0), sells = rows.reduce((a, r) => a + (r.s || 0), 0);
   const before = [...CH.rows].reverse().find(r => r.t <= since), last = CH.rows[CH.rows.length - 1];
-  const ch = before && last ? usdCh({ o: before.c, ou: before.u }, last) : null; // in USD (2026-10-04)
+  // the last 24 hours are the price answer's and the mood chip's 24 hours, to the live price (2026-10-15, one figure:
+  // 'what did I miss' said +3.6% to the last closed candle while 'price' said +3.7%); other spans keep the ledger's rows
+  const day = Math.abs(since - (Date.now() - 86400e3)) < 300e3 ? chartWords() : null;
+  const ch = day ? day.ch : before && last ? usdCh({ o: before.c, ou: before.u }, last) : null; // in USD (2026-10-04)
   const drops = (S.nft?.drops || []).filter(n => n.ts * 1000 > since).length; // S.nft is null until its state was read (2026-10-09)
   const liqBnb = S.liq.filter(l => Date.parse(l.time) > since).reduce((a, l) => a + (+l.bnb || 0), 0);
   const man = S.man.filter(l => Date.parse(l.time) > since), manBnb = man.reduce((a, l) => a + (+l.bnb || 0), 0), manBob = man.reduce((a, l) => a + (+l.bobai || 0), 0);
@@ -5451,10 +5463,9 @@ const loopLine = (o, p) => {
   if (!pn || !pool || !(pn.from_fees_bnb > 0)) return;
   const since = (/since (.+)$/.exec(pn.change_text || '') || [])[1];
   const does = pool.in_range ? `keeps #${pool.position}, in range` : `#${pool.position} is out of range: a re-set after 2 h outside`;
-  // ONE SOURCE FOR ONE FIGURE (2026-10-15, open list #4): the fees and the $BOBAI held come from the agent record the
-  // DEFI AGENT block and BOBAI's 'defi' answer read (/lp/agent); /lp/portfolio adds the fees the position still owes
-  // and would have printed a different figure beside them once those reach the third decimal
-  const fees = S.lp?.flow?.in?.fees?.bnb ?? pn.from_fees_bnb, held = S.lp?.flow?.out?.bobai_units ?? pn.bobai_units;
+  // ONE SOURCE FOR ONE FIGURE (2026-10-15, open list #4): the portfolio this line was given, as every DeFi figure here
+  if (p.worth) S.pf = p;
+  const { fees, held } = defiNow();
   logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(fees)], ' in pool fees' + (since ? ` since ${since}` : ''),
     held > 0 ? ' · holds ' : '', held > 0 ? [bobaiAmt(held)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
     o.agrees === true ? ' · it agrees · ' : o.agrees === false ? ' · it disagrees, the agent keeps its own reading · ' : ' · ', [does]],

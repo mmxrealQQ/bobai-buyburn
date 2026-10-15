@@ -3701,6 +3701,19 @@ export default {
         });
       }
       const wantBrain = (body.target === 'internal' || body.target === 'operator') ? body.prefixBrain === true : body.prefixBrain !== false;
+      // ONCE (2026-10-15): the health worker's morning message came twice on 14.10. (09:11 and 09:12 UTC) with no
+      // retry anywhere in the code — a cron trigger fired twice. A caller may name the message with `once`; the same
+      // name within 2 days is answered as sent and not sent again.
+      const onceKey = body.once ? `bc-once:${String(body.once).slice(0, 120)}` : null;
+      if (onceKey && env.KV) {
+        const seen = await env.KV.get(onceKey).catch(() => null);
+        if (seen) {
+          return new Response(JSON.stringify({ ok: true, message_id: Number(seen) || null, duplicate: true }), {
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        await env.KV.put(onceKey, 'pending', { expirationTtl: 172800 }).catch(() => {});
+      }
       try {
         if (wantBrain) {
           await tg('sendMessage', {
@@ -3715,11 +3728,13 @@ export default {
           parse_mode: 'HTML',
           disable_web_page_preview: body.disablePreview !== false,
         });
+        if (onceKey && env.KV && r?.result?.message_id) await env.KV.put(onceKey, String(r.result.message_id), { expirationTtl: 172800 }).catch(() => {});
         return new Response(JSON.stringify({ ok: true, message_id: r?.result?.message_id || null }), {
           headers: { 'content-type': 'application/json' },
         });
       } catch (err) {
         console.error('[BROADCAST ERROR]', err.message || err);
+        if (onceKey && env.KV) await env.KV.delete(onceKey).catch(() => {});
         return new Response(JSON.stringify({ ok: false, error: 'send failed' }), {
           status: 500, headers: { 'content-type': 'application/json' },
         });

@@ -69,7 +69,7 @@ async function runOnce(env) {
   }
 }
 
-async function morningRun(env, { notify, pauseMs = 60000, secondLook = false }) {
+async function morningRun(env, { notify, pauseMs = 60000, secondLook = false, scheduled = false }) {
   const first = await runOnce(env);
   let results = first, failing = first.filter((r) => !r.good);
   if (failing.length) {
@@ -83,9 +83,11 @@ async function morningRun(env, { notify, pauseMs = 60000, secondLook = false }) 
     const r = await env.TG.fetch('https://tg/broadcast', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET || '' },
-      body: JSON.stringify({ target: 'operator', text }),
+      // `once`: a cron trigger that fires twice (14.10.: 09:11 and 09:12 UTC) sends the morning message only once.
+      body: JSON.stringify({ target: 'operator', text, ...(scheduled ? { once: `health-morning:${new Date().toISOString().slice(0, 10)}` } : {}) }),
     }).then((x) => x.json()).catch((e) => ({ ok: false, error: e && e.message || String(e) }));
     sent = r && r.ok === true && r.message_id != null;
+    if (r && r.duplicate) { console.log('[HEALTH] the morning message was already sent today — not repeated'); return { checks: results.length, failing, sent, text, duplicate: true }; }
     if (!sent) console.error('[HEALTH] the message did not go out:', JSON.stringify(r));
   }
   console.log(`[HEALTH] ${results.length} checks, ${failing.length} failing, sent=${sent}`);
@@ -169,7 +171,7 @@ async function lightRun(env, { notify, pauseMs = 60000 }) {
 export default {
   async scheduled(event, env, ctx) {
     if (event && event.cron === LIGHT_CRON) { ctx.waitUntil(lightRun(env, { notify: true })); return; }
-    ctx.waitUntil(morningRun(env, { notify: true, secondLook: true }));
+    ctx.waitUntil(morningRun(env, { notify: true, secondLook: true, scheduled: true }));
   },
   async fetch(request, env) {
     const url = new URL(request.url);

@@ -41,6 +41,7 @@ import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
 import { gridPlan } from './grid.js';
+import { rebalanceDefaultTarget } from './rebalance.js';
 import { understand } from './understand.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
@@ -1231,6 +1232,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     target = { token: WBNB, target: `no token was named: this is the ${serviceId === 'grid_plan' ? 'grid' : 'fee-tier plan'} for WBNB (${WBNB}), BNB Chain's own coin — name \`token\` for another` };
     wanted = { ...wanted, token: WBNB, address: WBNB };
   }
+  // and on the Portfolio Rebalance Pricer (#304494, refused daily since Mandate lists it): the paying wallet's holdings,
+  // read from the chain (rebalance.js rebalanceDefaultTarget) — before the payment is taken, so a read that fails costs nothing
+  if (serviceId === 'rebalance_plan' && missingInput(serviceId, wanted)) {
+    const pp = parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
+    const got = await rebalanceDefaultTarget(a.authorization?.from || a.permit2Authorization?.from || null).catch(() => null);
+    if (got && got.holdings.length) { target = { target: got.target }; wanted = { ...wanted, holdings: got.holdings }; }
+  }
   const lacks = missingInput(serviceId, wanted);
   if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
@@ -1559,7 +1567,9 @@ async function lpWidthVerdict(env) {
 export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '' } = {}) {
   // the fee-tier agent is filed under rebalancing, so checkers ask it for a range check of positions: that question
   // (and only that one — a token's fee tiers stay its own offer) is answered with the same reading of the chain
-  if (slug === 'lp-placement') return /\bpositions?\b|\brange\b/i.test(text) && /0x[a-fA-F0-9]{40}|\b\d{5,}\b/.test(text) ? freeHalf('defi-agent', { position: String(text).match(/\b(?:#|position\s*)(\d{5,})\b/i)?.[1], address: String(text).match(/0x[a-fA-F0-9]{40}/)?.[0] }, env) : null;
+  // the portfolio pricer is filed under rebalancing too (2026-10-15, Mandate: "states neither whether the position is in
+  // range nor the pool's tick"): the same question gets the same reading, and only that question
+  if (slug === 'lp-placement' || slug === 'rebalancer') return /\bpositions?\b|\brange\b/i.test(text) && /0x[a-fA-F0-9]{40}|\b\d{5,}\b/.test(text) ? freeHalf('defi-agent', { position: String(text).match(/\b(?:#|position\s*)(\d{5,})\b/i)?.[1], address: String(text).match(/0x[a-fA-F0-9]{40}/)?.[0] }, env) : null;
   const addrOf = (...v) => v.map((x) => String(x ?? '').match(/0x[a-fA-F0-9]{40}/)?.[0]).find(Boolean) || null;
   if (slug === 'defi-agent') {
     const pos = String(a.position ?? a.tokenId ?? a.token_id ?? '').trim(), addr = addrOf(a.address, a.wallet, a.owner);

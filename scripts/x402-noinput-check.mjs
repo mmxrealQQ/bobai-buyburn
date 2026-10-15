@@ -10,7 +10,8 @@ let fail = 0, ran = 0;
 // the total is counted, not written down (it said 7 after two checks were added)
 { const log = console.log; console.log = (...a) => { if (/^(PASS|FAIL)\b/.test(String(a[0]))) ran++; log(...a); }; }
 // grid_plan + lp_tier_plan since 2026-10-15 (no token named = WBNB): Mandate marked #302258 "Not available to hire"
-for (const service of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tier_plan']) {
+// rebalance_plan since 2026-10-15 (no holdings named = the payer's, or the DeFi agent's own wallet): refused daily on Mandate
+for (const service of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tier_plan', 'rebalance_plan']) {
   const terms = await fetch(`${BASE}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   const t = await terms.json().catch(() => ({}));
   const acc = (t.accepts || [])[0] || {};

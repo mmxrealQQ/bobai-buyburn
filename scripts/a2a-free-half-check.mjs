@@ -46,7 +46,7 @@ await rangeOk('DeFi agent, a data part {position}', dataOf(await a2a('defi-agent
 }
 // Mandate's own question (captured 2026-10-15 09:50 UTC): a wallet with five positions, "the positions" — each one read
 const MANDATE_Q = 'PancakeSwap V3 range check and re-centre plan for the positions of 0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90, via mandatemarkets.com';
-for (const slug of ['defi-agent', 'lp-placement']) {
+for (const slug of ['defi-agent', 'lp-placement', 'rebalancer']) { // rebalancer since 2026-10-15 (filed under rebalancing)
   const d = dataOf(await a2a(slug, [{ kind: 'text', text: MANDATE_Q }]));
   const ps = Array.isArray(d?.positions) ? d.positions : [];
   const pool = ps.find((p) => p.pool)?.pool, tick = pool ? await slot0Tick(pool) : null;
@@ -56,6 +56,10 @@ for (const slug of ['defi-agent', 'lp-placement']) {
 {
   const d = dataOf(await a2a('lp-placement', [{ kind: 'text', text: 'Which fee tier pays for CAKE 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82?' }]));
   check(!!d && !d.positions && !!d.understood, 'fee-tier agent, a fee-tier question: still its own offer, no position reading', d ? Object.keys(d).slice(0, 4).join(', ') : 'no data part');
+}
+{
+  const d = dataOf(await a2a('rebalancer', [{ kind: 'text', text: 'Rebalance $600 of CAKE 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 and $400 of WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c to 50/50' }]));
+  check(!!d && !d.positions && !!d.understood, 'portfolio pricer, a rebalance question: still its own offer, no position reading', d ? Object.keys(d).slice(0, 4).join(', ') : 'no data part');
 }
 // Mandate's grid question (its standard page, 2026-10-15): the levels inside the bounds asked for (within 1%), the count
 // asked for (give or take one) in price order, allocations adding up to no more than the capital. The bounds are taken

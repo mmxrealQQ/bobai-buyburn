@@ -26,6 +26,10 @@
 // the right allocation is. You bring the target; it prices the route there and
 // says plainly when the route costs more than arriving is worth.
 
+import { createPublicClient, http, fallback } from 'viem';
+import { bsc } from 'viem/chains';
+import { RPCS, readBnbUsd } from '../shared/lp-agent.js';
+
 const SCANNER = 'https://brainonbnb.com/mcp';
 
 // Cost of moving `usd` through a token's pool, one way. Shares its shape with
@@ -76,6 +80,44 @@ async function scanPool(address) {
   // on the readiness check (2026-09-20).
   if (j.result?.isError) throw new Error(String(text).slice(0, 300));
   return JSON.parse(text);
+}
+
+// THE PORTFOLIO WHEN NOTHING IS NAMED (2026-10-15). Mandate's "Hire for $0.10" on the Portfolio Rebalance Pricer
+// (#304494) pays every day and sends no words; it was refused each time ("needs `holdings`", nothing charged) and the
+// page lists "Refused a payment" day after day. As the DeFi agent and the health monitor do since 2026-10-14, the
+// paying wallet is the input: what it holds of the main BNB Chain tokens, read from the chain and valued in dollars
+// (stablecoins at 1, BNB at Chainlink, the rest at their pool). A wallet holding none of them gets the plan for the
+// DeFi agent's own wallet, said so. Equal weight stays the target, as for any portfolio given without one.
+const DEFAULT_TOKENS = [
+  ['WBNB', '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'], ['USDT', '0x55d398326f99059fF775485246999027B3197955'],
+  ['USDC', '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'], ['USD1', '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d'],
+  ['BTCB', '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'], ['ETH', '0x2170Ed0880ac9A755fd29B2688956BD959F933F8'],
+  ['CAKE', '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82'], ['BOBAI', '0x245c386dcfed896f5c346107596141e5edcbffff'],
+];
+const STABLE = new Set(['USDT', 'USDC', 'USD1']);
+const OWN_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+async function walletHoldings(addr) {
+  const pub = createPublicClient({ chain: bsc, transport: fallback(RPCS.map((u) => http(u, { timeout: 15000 }))) });
+  const erc20 = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
+  const [native, ...bals] = await Promise.all([pub.getBalance({ address: addr }), ...DEFAULT_TOKENS.map(([, t]) => pub.readContract({ address: t, abi: erc20, functionName: 'balanceOf', args: [addr] }))]);
+  const { bnbUsd } = await readBnbUsd(pub);
+  const out = [];
+  for (let i = 0; i < DEFAULT_TOKENS.length; i++) {
+    const [sym, token] = DEFAULT_TOKENS[i];
+    const units = Number(bals[i] + (sym === 'WBNB' ? native : 0n)) / 1e18; // all eight carry 18 decimals on BNB Chain; native BNB counts as WBNB
+    if (!(units > 0)) continue;
+    const px = STABLE.has(sym) ? 1 : sym === 'WBNB' ? bnbUsd : await scanPool(token).then((s) => s.price?.usd).catch(() => null);
+    const usd = px ? units * px : 0;
+    if (usd >= 1) out.push({ token, symbol: sym, units: +units.toPrecision(8), usd: +usd.toFixed(2) });
+  }
+  return out;
+}
+export async function rebalanceDefaultTarget(payer) {
+  const p = /^0x[a-fA-F0-9]{40}$/.test(String(payer || '')) ? payer : null;
+  const mine = p ? await walletHoldings(p).catch(() => []) : [];
+  if (mine.length >= 2) return { holdings: mine, target: `no holdings were named: this prices the paying wallet ${p} — ${mine.map((h) => `${h.symbol} $${h.usd}`).join(', ')} — to equal weight, read from the chain now` };
+  const own = await walletHoldings(OWN_WALLET);
+  return { holdings: own, target: `no holdings were named and the paying wallet holds ${mine.length ? 'one' : 'none'} of the main BNB Chain tokens worth a dollar: this prices the DeFi agent's own wallet ${OWN_WALLET} — ${own.map((h) => `${h.symbol} $${h.usd}`).join(', ')} — to equal weight; name yours with holdings: [{ token, usd }]` };
 }
 
 /**

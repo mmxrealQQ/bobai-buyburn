@@ -859,16 +859,26 @@ const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'panca
 // end, for a pool that can be priced, the paid pool watch on that same pool, filled in: 30 days of depth readings and a
 // callback when it can no longer absorb the size — at half today's 1% depth unless the buyer sets another. Half price
 // in $BOBAI. Never on the site's own pages; never instead of the reading.
+// THE OFFER HAS TO BE BUYABLE AS GIVEN (2026-10-16). Its body carried callback 'https://<your endpoint>', which the
+// watch refuses (no spaces in a URL), and named no pair, so the watch took the token's V2 pair with WBNB — another
+// pool than the one scanned whenever the scan read a USDT pair or a V3 pool, at a threshold taken from that other pool.
+// Now: the scanned pair and its quote ride in the body, the callback is left to the buyer (without one the watch is
+// read back at GET /watch/<id>), and a pool the watch cannot read — it reads V2 reserves — gets no offer.
+const WATCH_QUOTE_BY_SYMBOL = {
+  BNB: WBNB, WBNB, USDT: '0x55d398326f99059fF775485246999027B3197955', BUSD: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
+  USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', USD1: '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d',
+};
 function withWatchOffer(name, out) {
   if ((DEPRECATED_TOOL_NAMES[name] || name) !== 'bsc_pool_scan' || !out || typeof out !== 'object' || !out.quotable) return out;
   const token = String(out.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], depth = Number(out.onePercentDepth?.buyUsd);
-  if (!token) return out;
+  const pair = String(out.pool?.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], quote = WATCH_QUOTE_BY_SYMBOL[out.price?.quoteSymbol];
+  if (!token || !pair || !quote || out.pool?.kind !== 'v2') return out;
   const at = depth > 0 ? Math.max(50, Math.round(depth / 2 / 10) * 10) : 1000;
   return { ...out, watch_this_pool: {
-    what: `This reading is one moment. The pool watch reads this pool's depth for 30 days and calls your URL the moment it can no longer absorb $${at.toLocaleString('en-US')} at 1% price impact — a pulled or drained pool, before you trade into it.`,
+    what: `This reading is one moment. The pool watch reads this pool's depth for 30 days and tells you the moment it can no longer absorb $${at.toLocaleString('en-US')} at 1% price impact — a pulled or drained pool, before you trade into it.`,
     price: '0.50 USD1 (or USDC) per watch — or half that in $BOBAI',
-    buy: { method: 'POST', url: 'https://agent.brainonbnb.com/watch', body: { token, depthBelowUsd: at, callback: 'https://<your endpoint>' } },
-    note: `depthBelowUsd is set at half of today's 1% depth${depth > 0 ? ` ($${Math.round(depth).toLocaleString('en-US')})` : ''}; change it to your size. The first reply is HTTP 402 with the terms; pay, then send the same request again.`,
+    buy: { method: 'POST', url: 'https://agent.brainonbnb.com/watch', body: { token, pair, quote, depthBelowUsd: at } },
+    note: `depthBelowUsd is set at half of today's 1% depth${depth > 0 ? ` ($${Math.round(depth).toLocaleString('en-US')})` : ''}; change it to your size. Add "callback": "https://…" to be called when it fires; without one, read the watch back at GET /watch/<id>. The first reply is HTTP 402 with the terms; pay, then send the same request again.`,
   } };
 }
 const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'pancakeswap_range_plan']);
@@ -1271,7 +1281,9 @@ async function handleMcp(request, note = () => {}) {
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
         // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
-        const raw = withWatchOffer(params?.name, await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') }));
+        const read = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
+        const raw = withWatchOffer(params?.name, read);
+        if ((DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') note(raw?.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(read?.pool?.kind || 'none').slice(0, 8)}`);
         const out = (await firstCall(request)) ? withThanks(raw) : raw;
         // The JSON itself next to its text (2026-10-09, MCP 2025-06-18
         // structuredContent) for the three trading reads, so a client hands
@@ -1721,6 +1733,8 @@ export default {
         const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
         if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers }); // the site's own pages: the reading alone
         const sold = withWatchOffer(WITH_ADDRESS[url.pathname], out);
+        // Which scans the watch can be offered on (2026-10-16): V2 pools only, so count the rest by kind before deciding on a V3 watch.
+        if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan') count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(out?.pool?.kind || 'none').slice(0, 8)}`]);
         if (!(await firstCall(request))) return new Response(JSON.stringify(sold, null, 2), { headers }); // the note once per caller (2026-10-01)
         return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {

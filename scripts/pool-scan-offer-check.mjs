@@ -37,5 +37,21 @@ const offerOk = (j) => {
   const t = await r.json().catch(() => ({}));
   check(r.status === 402 && /depth/i.test(t.what || '') && t.in_bobai?.tokens > 0, 'the offer\'s request opens the purchase (402, the watch, the $BOBAI price)', `${r.status} ${String(t.what || t.error || '').slice(0, 60)}`);
 }
+// THE OFFER AS IT ARRIVES (2026-10-16). The check above sent a body of its own, with a real callback — the offer's own
+// body carried 'https://<your endpoint>', which the watch refuses, and named no pair, so the watch took the token's
+// V2 pair with WBNB: on CAKE another pool than the one scanned, on a V3 market (ETH) a V2 pair at a V3 threshold.
+// Now the offer's body is sent exactly as given: it has to open the purchase on the very pool the scan read, and a
+// market the watch cannot read (V3) gets no offer at all.
+const ETH = '0x2170Ed0880ac9A755fd29B2688956BD959F933F8';
+for (const [label, addr] of [['CAKE (V2 · BNB)', CAKE], ['ETH (V3)', ETH]]) {
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${addr}`, { headers: { accept: 'application/json', 'user-agent': 'bobai-smoke-test' } })).json().catch(() => null);
+  const body = j?.watch_this_pool?.buy?.body;
+  if (j?.pool?.kind !== 'v2') { check(!!j && !body, `${label}: a pool the watch cannot read gets no offer`, body ? `offer on a ${j?.pool?.kind} pool` : `${j?.pool?.kind}, no offer`); continue; }
+  if (!body) { check(false, `${label}: the offer's body, as given, opens the purchase on the scanned pool`, 'no offer'); continue; }
+  const r = await fetch('https://agent.brainonbnb.com/watch', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'bobai-smoke-test' }, body: JSON.stringify(body) });
+  const t = await r.json().catch(() => ({}));
+  const ww = t.would_watch || {};
+  check(r.status === 402 && !ww.refused && ww.pair === String(j.pool.address).toLowerCase(), `${label}: the offer's body, as given, opens the purchase on the scanned pool`, ww.refused ? `refused: ${ww.refused}` : `${r.status} watches ${ww.pair} · scanned ${String(j.pool.address).toLowerCase()}`);
+}
 console.log(`pool-scan-offer: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

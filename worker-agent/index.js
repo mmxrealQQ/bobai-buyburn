@@ -27,7 +27,9 @@
 
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
-import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms } from './holder-pass.js';
+import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
+// The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
+const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -1799,8 +1801,9 @@ export default {
           skills: [
             { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category] },
             { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
-            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: '0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402)', escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
+          holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
           additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
           documentationUrl: 'https://brainonbnb.com/registry',
@@ -1838,8 +1841,9 @@ export default {
         skills: [
           { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
-          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: '0.10 $U (ERC-8183 escrow)', escrow: true },
+          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         ],
+        holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         // What the agent does on its own, every day, where anybody can check it.
         operations: {
           what: 'collects fees, re-sets the range when the price leaves it, adds new capital; daily run 04:23 UTC, hourly check at :50, 10-minute deposit watch',
@@ -1944,6 +1948,8 @@ export default {
               : { escrow: true, channel: 'ERC-8183 escrow at this agent, or per answer over x402 at ' + `${SELF_ORIGIN}/answer?service=${s.id}` }),
           })),
         ],
+        // Hold, don't pay (2026-10-16): the x402 route of every answer takes the $BOBAI holder pass.
+        holder_pass: { ...holderPassTerms(), applies_to: `every answer over x402 (${SELF_ORIGIN}/answer?service=<id>) and the pool watch (${SELF_ORIGIN}/watch); not the ERC-8183 escrow` },
         // Where the rest of the story is, for a reader rather than a parser.
         additionalInterfaces: [
           { transport: 'JSONRPC', url: `${SELF_ORIGIN}/a2a` },
@@ -2943,7 +2949,7 @@ ${pageTail}`;
         rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
         'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half places a position in the tier that pays.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
       }[mcpSlug];
-      const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
+      const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI, ${HOLDER_PRICE_NOTE.replace('see holder_pass', 'terms in the reply')}): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
       const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
       const NAME = `${svc.name} — Brain On BNB AI`;

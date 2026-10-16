@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.brainonbnb/rebalancer",
-  "description": "PancakeSwap best route on BNB Chain, free; a portfolio rebalance priced against real pools, paid.",
-  "version": "1.0.0",
+  "description": "PancakeSwap best route, free; a rebalance priced on real pools paid, or free holding 1M $BOBAI.",
+  "version": "1.0.1",
   "websiteUrl": "https://brainonbnb.com/registry",
   "remotes": [
     {

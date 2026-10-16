@@ -62,5 +62,31 @@ const WATCH = `${AGENT}/watch`, SPEC = { token: '0x0E09FaBB73Bd3Ade0a17ECC321fD1
   const t = await (await fetch('https://brainonbnb.com/llms.txt')).text();
   check(/\$BOBAI holder pass/.test(t) && /bobai-holder <address> <issued> <signature>/.test(t), 'llms.txt says how to use it');
 }
+// WHERE BUYERS LOOK (2026-10-16): the pass is only worth something if it is seen before a hire. The seven A2A cards
+// carry holder_pass and say it at the price; each agent's own MCP names it in its paid tool (Mandate reads that
+// list); the six agents' entries in the official MCP registry say it in their description.
+const SLUGS = ['defi-agent', 'health-factor', 'grid-trader', 'yield-optimizer', 'rebalancer', 'lp-placement'];
+{
+  const main = await (await fetch(`${AGENT}/.well-known/agent-card.json`, { headers: H })).json().catch(() => ({}));
+  check(/bobai-holder/.test(main.holder_pass?.how || '') && /not the ERC-8183 escrow/.test(main.holder_pass?.applies_to || ''), 'the main A2A card carries holder_pass and says what it covers');
+  for (const slug of SLUGS) {
+    const c = await (await fetch(`${AGENT}/${slug}/.well-known/agent-card.json`, { headers: H })).json().catch(() => ({}));
+    const sk = (c.skills || []).find((s) => /1,000,000 \$BOBAI/.test(s.price || ''));
+    check(!!c.holder_pass?.how && !!sk && /\/answer\?service=/.test(c.holder_pass?.x402 || ''), `${slug}: card carries holder_pass, the price names it`, sk ? sk.id : 'no price names it');
+  }
+  for (const slug of SLUGS) {
+    const r = await (await fetch(`${AGENT}/${slug}/mcp`, { method: 'POST', headers: { ...H, accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })).json().catch(() => ({}));
+    const paid = (r.result?.tools || [])[1];
+    check(/1,000,000 \$BOBAI/.test(paid?.description || ''), `${slug}: its MCP's paid tool names the pass`, paid ? paid.name : 'no paid tool');
+  }
+  const reg = await (await fetch('https://registry.modelcontextprotocol.io/v0/servers?search=com.brainonbnb&version=latest', { headers: H })).json().catch(() => ({}));
+  // every version comes back; the one the registry marks isLatest is what a client shows
+  const isLatest = (x) => !!(x._meta || x.server?._meta || {})['io.modelcontextprotocol.registry/official']?.isLatest;
+  const latest = new Map((reg.servers || []).filter(isLatest).map((x) => x.server || x).map((x) => [x.name, x]));
+  for (const slug of SLUGS) {
+    const e = latest.get(`com.brainonbnb/${slug}`);
+    check(/1M \$BOBAI/.test(e?.description || ''), `MCP registry com.brainonbnb/${slug}: the description names the pass`, e ? `${e.version}: ${e.description}` : 'not found');
+  }
+}
 console.log(`holder-pass live: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

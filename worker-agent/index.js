@@ -26,6 +26,7 @@
 // payment is a read; the worker never moves funds.
 
 import { bindSelf } from './self-fetch.js';
+import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -643,7 +644,14 @@ async function resolveWatchSpec(spec) {
     pair = found; out.pair_found = true;
   }
   const res = await call(pair, SEL.getReserves).catch(() => null);
-  if (!res || res.length < 2 + 64 * 2) return { error: 'that pair does not answer as a PancakeSwap V2 pair (no reserves) — the watch reads V2 reserves, a V3 or Infinity pool cannot be watched' };
+  // A PancakeSwap V3 pool is watched too (2026-10-16): its 1% depth is asked of the quoter (v3-depth.js), the
+  // same measure the pool scan reports, so the scan can offer the watch on the V3 pool it read.
+  if (!res || res.length < 2 + 64 * 2) {
+    const v3 = await readV3Pool(RPCS, pair, token, quote);
+    if (v3.error === 'not a PancakeSwap V3 pool') return { error: 'that pool answers neither as a PancakeSwap V2 pair nor as a PancakeSwap V3 pool — the watch reads those two; an Infinity pool or another venue cannot be watched' };
+    if (v3.error) return { error: v3.error };
+    return { spec: { ...out, token, pair, quote, kind: 'v3', fee: v3.fee } };
+  }
   const t0 = await call(pair, SEL.token0).catch(() => null);
   const t1 = await call(pair, '0xd21220a7').catch(() => null);
   const sides = [t0, t1].map((x) => (x && x.length >= 66 ? '0x' + x.slice(-40).toLowerCase() : null));
@@ -664,6 +672,7 @@ async function createWatch(env, spec, payment) {
     token: spec.token.toLowerCase(),
     pair: spec.pair.toLowerCase(),
     quote: (spec.quote || WBNB).toLowerCase(),
+    ...(spec.kind === 'v3' ? { kind: 'v3', fee: spec.fee } : {}),
     depthBelowUsd: spec.depthBelowUsd ?? null,
     callback: spec.callback || null,
     createdAt: now,
@@ -677,6 +686,19 @@ async function createWatch(env, spec, payment) {
     expirationTtl: WATCH_DAYS * 86400 + 86400,
   });
   return watch;
+}
+
+// The size that moves the watched pool's price 1%, in USD: on a V2 pair from the quote reserve, on a PancakeSwap V3
+// pool from the quoter's crossing (a floor when deeper than the largest probe). The sweep and the unpaid answer's
+// would_watch read it through this one function. null: nothing could be read this time.
+async function watchDepthUsd(w, bnbPrice) {
+  const quoteUsd = w.quote === WBNB ? bnbPrice : 1;
+  if (w.kind === 'v3') {
+    const d = await v3BuyDepthUsd(RPCS, { pool: w.pair, token: w.token, quote: w.quote, fee: w.fee, quoteUsd });
+    return d ? { depthUsd: d.depthUsd, floor: d.floor } : null;
+  }
+  const reserveUsd = await poolDepthUsd(w.pair, w.quote, quoteUsd);
+  return { depthUsd: reserveUsd * ONE_PCT_OF_RESERVE, reserveUsd: Math.round(reserveUsd), floor: false };
 }
 
 async function checkWatches(env) {
@@ -694,9 +716,11 @@ async function checkWatches(env) {
 
     let depth;
     try {
-      const reserveUsd = await poolDepthUsd(w.pair, w.quote, w.quote === WBNB ? price : 1);
-      w.lastReserveUsd = Math.round(reserveUsd);
-      depth = reserveUsd * ONE_PCT_OF_RESERVE;   // the size that moves the price 1%
+      const d = await watchDepthUsd(w, price);
+      if (!d) continue;
+      depth = d.depthUsd;
+      if (d.reserveUsd != null) w.lastReserveUsd = d.reserveUsd;
+      w.lastDepthFloor = d.floor || undefined;
     } catch { continue; } // a node dropping a call is not a depth collapse
     w.lastDepthUsd = Math.round(depth);
     w.lastCheckedAt = Date.now();
@@ -1042,7 +1066,7 @@ const WATCH_TOOL = {
     required: ['token'],
     properties: {
       token: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'The BEP-20 token address.' },
-      pair: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'Optional. The PancakeSwap V2 pair holding it; left out, it is found from the token and the quote.' },
+      pair: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'Optional. The PancakeSwap V2 pair or V3 pool holding it; left out, its V2 pair is found from the token and the quote.' },
       quote: { type: 'string', description: 'Optional. The other side of the pair, if it is not WBNB.' },
       depthBelowUsd: {
         type: 'number',
@@ -1381,7 +1405,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
         how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(WATCH_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(WATCH_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
-        needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair or V3 pool (0x…); left out, its V2 pair is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
@@ -1420,13 +1444,13 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   // A caller who mistypes a field has to be told, or they are paying for
   // something they did not ask for.
   const KNOWN = new Set(['token', 'pair', 'quote', 'depthBelowUsd', 'callback']);
-  const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k) && k !== 'pair_found');
+  const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k) && !['pair_found', 'kind', 'fee'].includes(k));   // kind/fee: read from a V3 pool, not sent
 
   return { status: 200, body: {
     ok: true,
     watch: watch.id,
     expires: new Date(watch.expiresAt).toISOString(),
-    watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd, ...(spec && spec.pair_found ? { pair_note: 'found from the token: its PancakeSwap V2 pair with ' + (watch.quote === WBNB ? 'WBNB' : watch.quote) } : {}) },
+    watching: { token: watch.token, pair: watch.pair, ...(watch.kind === 'v3' ? { pool: `PancakeSwap V3 ${watch.fee / 10000}%` } : {}), depthBelowUsd: watch.depthBelowUsd, ...(spec && spec.pair_found ? { pair_note: 'found from the token: its PancakeSwap V2 pair with ' + (watch.quote === WBNB ? 'WBNB' : watch.quote) } : {}) },
     callback: watch.callback ? 'will POST on trigger' : 'none set — read it back at the url below',
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
@@ -3052,9 +3076,10 @@ ${pageTail}`;
       const w = JSON.parse(raw);
       return json({
         watch: w.id,
-        watching: { token: w.token, pair: w.pair, quote: w.quote, depthBelowUsd: w.depthBelowUsd },
+        watching: { token: w.token, pair: w.pair, quote: w.quote, ...(w.kind === 'v3' ? { pool: `PancakeSwap V3 ${w.fee / 10000}%` } : {}), depthBelowUsd: w.depthBelowUsd },
         callback: w.callback,
         lastDepthUsd: w.lastDepthUsd,
+        ...(w.lastDepthFloor ? { lastDepthNote: 'at least this much: the pool did not move 1% at the largest size quoted' } : {}),
         lastCheckedAt: w.lastCheckedAt ? new Date(w.lastCheckedAt).toISOString() : null,
         // Never checked yet reads as "broken" unless we say why: the sweep runs
         // on a cron, so a watch bought a minute ago legitimately has no reading.
@@ -3155,7 +3180,7 @@ ${pageTail}`;
         // USD1: a client that takes the facilitator route pays the same amount
         // in USDC, and a price line naming one asset hides the other.
         price: terms.body.price,
-        buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional, found from the token (its PancakeSwap V2 pair with WBNB, or with quote)',
+        buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional (a PancakeSwap V2 pair or V3 pool), found from the token when left out (its PancakeSwap V2 pair with WBNB, or with quote)',
         how: terms.body.how,
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -3185,7 +3210,11 @@ ${pageTail}`;
         // would be watched — or why none can be (2026-09-24, A7).
         if (spec && spec.token && out.body && typeof out.body === 'object') {
           const ready = await resolveWatchSpec(spec).catch(() => ({ error: 'the pair could not be read right now' }));
-          out.body.would_watch = ready.error ? { refused: ready.error } : { token: ready.spec.token, pair: ready.spec.pair, quote: ready.spec.quote, pair_found: !!ready.spec.pair_found };
+          // …and what it reads there right now, by the very function the sweep uses (2026-10-16): the buyer sees the
+          // depth the threshold is compared with before paying.
+          const now = ready.error ? null : await bnbUsd().then((p) => watchDepthUsd(ready.spec, p)).catch(() => null);
+          out.body.would_watch = ready.error ? { refused: ready.error } : { token: ready.spec.token, pair: ready.spec.pair, quote: ready.spec.quote, ...(ready.spec.kind === 'v3' ? { pool: `PancakeSwap V3 ${ready.spec.fee / 10000}%` } : {}), pair_found: !!ready.spec.pair_found,
+            ...(now ? { depth_now_usd: Math.round(now.depthUsd), ...(now.floor ? { depth_now_note: 'at least this much' } : {}) } : {}) };
         }
         return json(out.body, out.status, out.headers || {});
       }

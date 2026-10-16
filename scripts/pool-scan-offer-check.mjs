@@ -42,16 +42,22 @@ const offerOk = (j) => {
 // V2 pair with WBNB: on CAKE another pool than the one scanned, on a V3 market (ETH) a V2 pair at a V3 threshold.
 // Now the offer's body is sent exactly as given: it has to open the purchase on the very pool the scan read, and a
 // market the watch cannot read (V3) gets no offer at all.
+// The same day the watch learned PancakeSwap V3 (worker-agent/v3-depth.js): ETH's V3 pool is offered too, and the
+// depth the watch reads (would_watch.depth_now_usd, by the sweep's own function) is the scan's 1% depth — within 5%,
+// as the two reads are a few blocks apart. V2 shows the same within its own measure (reserve × (√1.01 − 1)).
 const ETH = '0x2170Ed0880ac9A755fd29B2688956BD959F933F8';
-for (const [label, addr] of [['CAKE (V2 · BNB)', CAKE], ['ETH (V3)', ETH]]) {
+for (const [label, addr] of [['CAKE (V2 · BNB)', CAKE], ['ETH (PancakeSwap V3)', ETH]]) {
   const j = await (await fetch(`${BASE}/api/pool-scan?address=${addr}`, { headers: { accept: 'application/json', 'user-agent': 'bobai-smoke-test' } })).json().catch(() => null);
   const body = j?.watch_this_pool?.buy?.body;
-  if (j?.pool?.kind !== 'v2') { check(!!j && !body, `${label}: a pool the watch cannot read gets no offer`, body ? `offer on a ${j?.pool?.kind} pool` : `${j?.pool?.kind}, no offer`); continue; }
-  if (!body) { check(false, `${label}: the offer's body, as given, opens the purchase on the scanned pool`, 'no offer'); continue; }
+  const watchable = j?.pool?.kind === 'v2' || (j?.pool?.kind === 'v3' && j?.pool?.venue === 'PancakeSwap V3');
+  if (!watchable) { check(!!j && !body, `${label}: a pool the watch cannot read gets no offer`, body ? `offer on a ${j?.pool?.kind} pool` : `${j?.pool?.kind}, no offer`); continue; }
+  if (!body) { check(false, `${label}: the offer's body, as given, opens the purchase on the scanned pool`, `no offer on a ${j?.pool?.kind} pool`); continue; }
   const r = await fetch('https://agent.brainonbnb.com/watch', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'bobai-smoke-test' }, body: JSON.stringify(body) });
   const t = await r.json().catch(() => ({}));
   const ww = t.would_watch || {};
   check(r.status === 402 && !ww.refused && ww.pair === String(j.pool.address).toLowerCase(), `${label}: the offer's body, as given, opens the purchase on the scanned pool`, ww.refused ? `refused: ${ww.refused}` : `${r.status} watches ${ww.pair} · scanned ${String(j.pool.address).toLowerCase()}`);
+  const scanD = Number(j.onePercentDepth?.buyUsd), watchD = Number(ww.depth_now_usd);
+  check(scanD > 0 && watchD > 0 && Math.abs(watchD / scanD - 1) < 0.05, `${label}: the watch reads the depth the scan reported`, `watch $${watchD} · scan $${scanD}`);
 }
 console.log(`pool-scan-offer: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

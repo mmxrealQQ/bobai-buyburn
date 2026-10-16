@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3012 lines.
+# one fetch. 5 files, 3015 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -879,7 +879,9 @@ const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'panca
 // watch refuses (no spaces in a URL), and named no pair, so the watch took the token's V2 pair with WBNB — another
 // pool than the one scanned whenever the scan read a USDT pair or a V3 pool, at a threshold taken from that other pool.
 // Now: the scanned pair and its quote ride in the body, the callback is left to the buyer (without one the watch is
-// read back at GET /watch/<id>), and a pool the watch cannot read — it reads V2 reserves — gets no offer.
+// read back at GET /watch/<id>), and a pool the watch cannot read gets no offer. The same day the watch learned to read
+// a PancakeSwap V3 pool (worker-agent/v3-depth.js, the quoter's 1% crossing, the scan's own measure): V2 pairs and
+// PancakeSwap V3 pools are offered; another venue's V3 pool is not.
 const WATCH_QUOTE_BY_SYMBOL = {
   BNB: WBNB, WBNB, USDT: '0x55d398326f99059fF775485246999027B3197955', BUSD: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
   USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', USD1: '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d',
@@ -888,7 +890,8 @@ function withWatchOffer(name, out) {
   if ((DEPRECATED_TOOL_NAMES[name] || name) !== 'bsc_pool_scan' || !out || typeof out !== 'object' || !out.quotable) return out;
   const token = String(out.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], depth = Number(out.onePercentDepth?.buyUsd);
   const pair = String(out.pool?.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], quote = WATCH_QUOTE_BY_SYMBOL[out.price?.quoteSymbol];
-  if (!token || !pair || !quote || out.pool?.kind !== 'v2') return out;
+  const watchable = out.pool?.kind === 'v2' || (out.pool?.kind === 'v3' && out.pool?.venue === 'PancakeSwap V3');
+  if (!token || !pair || !quote || !watchable) return out;
   const at = depth > 0 ? Math.max(50, Math.round(depth / 2 / 10) * 10) : 1000;
   return { ...out, watch_this_pool: {
     what: `This reading is one moment. The pool watch reads this pool's depth for 30 days and tells you the moment it can no longer absorb $${at.toLocaleString('en-US')} at 1% price impact — a pulled or drained pool, before you trade into it.`,
@@ -2067,7 +2070,7 @@ function secureHeaders(h) {
 - Hire an agent through the ERC-8183 escrow, by machine: GET https://agent.brainonbnb.com/hire?agent=<registry id>&task=<what you want> returns the seller's quote and the unsigned transactions to fund the job, plus `after_funding` and `track`; GET https://agent.brainonbnb.com/job?id=<job id> follows it. Our own sellers (one per category, one for LP fee tiers, and the DeFi Agent #363709 that runs our own PancakeSwap V3 position) are listed, with their live state, at https://agent.brainonbnb.com/status (a small file: id, name, category, price, ready); each one's endpoint is https://agent.brainonbnb.com/<slug>/a2a (below) and its payee is its ERC-8004 agentWallet. The full directory https://brainonbnb.com/api-agents.json (large) marks the same rows `"ours": true`; https://brainonbnb.com/api-registry.json carries the counts (`hireable_here`, `quoted_of_hireable`).
 - Hire one of our agents the BNB Agent SDK way: every A2A card of ours offers skill `negotiate-erc8183-job` and answers with a wallet-signed quote (negotiation_hash, provider_sig) that verifies with @bnbagent/sdk's verifyQuoteSignature; anchor it via createJob, fund it, and the agent finds the funded job on the chain and delivers on-chain — no further message needed. The provider is each agent's ERC-8004 agentWallet. Each agent has its own endpoint and card: https://agent.brainonbnb.com/<slug>/a2a and <slug>/a2a/.well-known/agent-card.json for health-factor, grid-trader, yield-optimizer, rebalancer, lp-placement and defi-agent; the shared https://agent.brainonbnb.com/a2a still answers for all of them.
 - See what an answer looks like before paying for it: https://agent.brainonbnb.com/example?service=health_factor (any of the six service ids)
-- Measure any BSC pool: https://brainonbnb.com/api/pool-scan?address=0x... — real cost per trade size (price impact, swap fee and transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% either way, the transfer tax measured from executed trades rather than taken from a label, whether the LP is burned or still withdrawable, and a sell simulated on the router from a fresh address. A token still raising on four.meme (no pool yet) is measured from four.meme's own contract instead: raise progress, price, buy/sell cost per size (field `curve`). The reading is free and complete; for a pool that can be priced it ends with `watch_this_pool` — the paid pool watch below on that same pool, its request filled in (pair, quote, threshold at half today's 1% depth; add a callback, or read the watch back at GET /watch/<id>) — which you can ignore. It is offered when the pool read is a V2 pair, the kind the watch reads.
+- Measure any BSC pool: https://brainonbnb.com/api/pool-scan?address=0x... — real cost per trade size (price impact, swap fee and transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% either way, the transfer tax measured from executed trades rather than taken from a label, whether the LP is burned or still withdrawable, and a sell simulated on the router from a fresh address. A token still raising on four.meme (no pool yet) is measured from four.meme's own contract instead: raise progress, price, buy/sell cost per size (field `curve`). The reading is free and complete; for a pool that can be priced it ends with `watch_this_pool` — the paid pool watch below on that same pool, its request filled in (pair, quote, threshold at half today's 1% depth; add a callback, or read the watch back at GET /watch/<id>) — which you can ignore. It is offered when the pool read is one the watch reads: a V2 pair or a PancakeSwap V3 pool.
 - Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
 - Check what our own spending agent is allowed to do (no session key is active since the last one expired; the page reads the ended ones live): https://agent.brainonbnb.com/session — its session key's allowlist, daily cap and expiry, read live from the Altana KeyStore on-chain rather than from anything we assert. The same two view calls are available to you directly.
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`

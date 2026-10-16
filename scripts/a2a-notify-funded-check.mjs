@@ -38,6 +38,9 @@ for (const slug of [...AGENTS, null]) {
     const skill = j && Array.isArray(j.skills) && j.skills.find((s) => s && s.id === 'notify_funded');
     ok(!!skill, `${p} declares notify_funded`);
     if (skill) ok(/job_id/.test(skill.description || '') && skill.examples?.length > 0, `${p} notify_funded says how (job_id, example)`);
+    // The step after funding, where the buyer reads it: the quote skill.
+    const neg = j && Array.isArray(j.skills) && j.skills.find((s) => s && s.id === 'negotiate-erc8183-job');
+    ok(neg && /notify_funded with the job_id/.test(neg.description || '') && !/without notify_funded\.|no further message/.test(neg.description || ''), `${p} negotiate-erc8183-job names notify_funded as the step after funding`);
   }
   const r = await send(base, { skill: 'notify_funded' });
   ok(r && r.error && /needs job_id/.test(r.error.message || ''), `POST ${base} routes notify_funded (${r?.error?.message || JSON.stringify(r).slice(0, 80)})`);

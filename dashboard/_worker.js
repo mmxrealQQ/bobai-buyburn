@@ -879,7 +879,7 @@ function withWatchOffer(name, out) {
   const at = depth > 0 ? Math.max(50, Math.round(depth / 2 / 10) * 10) : 1000;
   return { ...out, watch_this_pool: {
     what: `This reading is one moment. The pool watch reads this pool's depth for 30 days and tells you the moment it can no longer absorb $${at.toLocaleString('en-US')} at 1% price impact — a pulled or drained pool, before you trade into it.`,
-    price: '0.50 USD1 (or USDC) per watch — or half that in $BOBAI',
+    price: '0.50 USD1 (or USDC) per watch — or half that in $BOBAI — or nothing for a wallet holding 1,000,000 $BOBAI (holder pass: a signature, no transaction; terms in the 402)',
     buy: { method: 'POST', url: 'https://agent.brainonbnb.com/watch', body: { token, pair, quote, depthBelowUsd: at } },
     note: `depthBelowUsd is set at half of today's 1% depth${depth > 0 ? ` ($${Math.round(depth).toLocaleString('en-US')})` : ''}; change it to your size. Add "callback": "https://…" to be called when it fires; without one, read the watch back at GET /watch/<id>. The first reply is HTTP 402 with the terms; pay, then send the same request again.`,
   } };
@@ -1737,7 +1737,10 @@ export default {
         if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers }); // the site's own pages: the reading alone
         const sold = withWatchOffer(WITH_ADDRESS[url.pathname], out);
         // Which scans the watch can be offered on (2026-10-16): V2 pools only, so count the rest by kind before deciding on a V3 watch.
-        if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan') count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(out?.pool?.kind || 'none').slice(0, 8)}`]);
+        // …and WHO scans (2026-10-16): ~70 a day from outside, nearly all under the "other" family. The client's own
+        // product name (the user agent's first word, letters only, no version) names a bot without naming a person.
+        const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
+        if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan') count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(out?.pool?.kind || 'none').slice(0, 8)}`, `poolscanua:${product}`]);
         if (!(await firstCall(request))) return new Response(JSON.stringify(sold, null, 2), { headers }); // the note once per caller (2026-10-01)
         return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {

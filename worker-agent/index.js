@@ -27,6 +27,7 @@
 
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
+import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms } from './holder-pass.js';
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -1099,6 +1100,19 @@ const WATCH_TOOL = {
 // support, whereas the reverse order lets a retry storm mint goods off one
 // payment. Returns { ok, tx, paid, from } or { ok:false, status, body }.
 async function chargeX402(env, { payTo, price, description, resource, proof, sold, alt = null }) {
+  // THE HOLDER PASS (holder-pass.js, 2026-10-16): a wallet holding the $BOBAI line uses the paid services without paying,
+  // within a daily allowance. Nothing is paid, so nothing is earned: no earn: record, the sale is claimed under its own
+  // one-time id so delivery, credit and the ledger work as for any sale.
+  if (isHolderProof(proof)) {
+    const hp = await useHolderPass(env, rpc, proof, sold);
+    if (!hp.ok) return { ok: false, status: hp.status, body: hp.body };
+    const tx = `holder:${hp.wallet}:${sold}:${Date.now()}`;
+    const claim = await claimPayment(env, tx, sold);
+    if (!claim.ok) return { ok: false, status: 402, body: { error: 'holder pass not accepted', reason: claim.reason } };
+    await bump(env, `holder_pass_${hp.kind}`).catch(() => {});
+    bumpDetail(env, [`sell:holder:${sold}`]);
+    return { ok: true, tx, paid: 0n, from: hp.wallet, asset: 'holder pass', claim: claim.by, holder: hp };
+  }
   const parsed = parsePaymentHeader(proof);
   let check, tx, asset = 'USD1';
   let queued = null;
@@ -1229,6 +1243,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(ANSWER_PRICE)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold. Since 2026-10-14 every payment in USD1, USDC or $U is split when it is swept: half buys $BOBAI that is held there, half is the operator’s revenue.' } } : {}),
+        // Hold, don't pay (2026-10-16, holder-pass.js): a wallet with the $BOBAI line uses this without paying.
+        holder_pass: holderPassTerms(),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: v2Shape(requirements, { url: resource }).accepts,
@@ -1243,8 +1259,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   // its own (lpDefaultTarget), the health factor reads the payer's account
   let target = null;
   if ((serviceId === 'lp_position_plan' || serviceId === 'health_factor') && missingInput(serviceId, wanted)) {
-    const pp = parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
-    const payer = a.authorization?.from || a.permit2Authorization?.from || null;
+    const pp = isHolderProof(proof) ? { kind: 'holder' } : parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
+    // a holder pass names its wallet: that is the payer's input, as a signed payment's is
+    const payer = holderWalletOf(proof) || a.authorization?.from || a.permit2Authorization?.from || null;
     if (serviceId === 'lp_position_plan') target = await lpDefaultTarget(payer).catch(() => ({ address: OWN_LP_WALLET, target: `no position was named: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET})` }));
     else if (payer) target = { address: payer, target: `no account was named: this reads the paying wallet ${payer}` };
     if (target) wanted = { ...wanted, ...(target.position ? { position: target.position } : { address: target.address }) };
@@ -1259,8 +1276,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   // and on the Portfolio Rebalance Pricer (#304494, refused daily since Mandate lists it): the paying wallet's holdings,
   // read from the chain (rebalance.js rebalanceDefaultTarget) — before the payment is taken, so a read that fails costs nothing
   if (serviceId === 'rebalance_plan' && missingInput(serviceId, wanted)) {
-    const pp = parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
-    const got = await rebalanceDefaultTarget(a.authorization?.from || a.permit2Authorization?.from || null).catch(() => null);
+    const pp = isHolderProof(proof) ? { kind: 'holder' } : parsePaymentHeader(proof), a = pp.kind === 'x402' ? pp.value.payload || {} : {};
+    const got = await rebalanceDefaultTarget(holderWalletOf(proof) || a.authorization?.from || a.permit2Authorization?.from || null).catch(() => null);
     if (got && got.holdings.length) { target = { target: got.target }; wanted = { ...wanted, holdings: got.holdings }; }
   }
   const lacks = missingInput(serviceId, wanted);
@@ -1285,7 +1302,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'answer_sold'));
   return { status: 200, body: {
-    ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
+    ok: true, service: serviceId, name: service.name, tx: pay.tx,
+    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, answer ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
     produced_at: new Date().toISOString(),
     ...(target ? { input: target.target } : {}),
     result,
@@ -1408,6 +1426,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair or V3 pool (0x…); left out, its V2 pair is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
+        holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
@@ -1455,7 +1474,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
     read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
-    paid: `${fmtUsd1(check.paid)} ${check.asset}`,
+    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, watch ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(check.paid)} ${check.asset}`,
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible
     // thing to receive by accident.
@@ -3184,6 +3203,7 @@ ${pageTail}`;
         how: terms.body.how,
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
+        holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
         catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
       });

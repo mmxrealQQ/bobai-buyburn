@@ -39,6 +39,7 @@ export const holderPassTerms = () => ({
   how: 'Sign, with the wallet, the message "BOBAI holder pass\\nwallet: <lowercase address>\\nissued: <ISO 8601 UTC time, e.g. new Date().toISOString()>" (EIP-191 personal_sign — a signature, no transaction, nothing spent), then send the same request with header PAYMENT-SIGNATURE: bobai-holder <address> <issued> <signature>',
   issued_within: '10 minutes before the request',
   why: 'Held, not spent: the tokens stay in your wallet.',
+  in_a_browser: 'https://brainonbnb.com/pass — connect the wallet, sign, read the answer',
 });
 
 const no = (code, reason) => ({ ok: false, status: 402, body: { error: 'holder pass not accepted', code, reason, holder_pass: holderPassTerms() } });

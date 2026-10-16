@@ -2692,7 +2692,17 @@ CMDS.agents = async () => {
   if (o) say([vary('ask-agents-2', ['And mine hire too: ', 'Plot twist: ', 'The fun part: ', 'Even better: ', 'Meanwhile: ']), `my DeFi agent hired another AI (${o.seller?.name || 'Mandate Range-1'}) for a second opinion ${ago(Date.parse(o.at))}, job ${o.job}, ${o.price_u ?? 0.01} $U. `,
     [o.agrees === false ? 'It disagreed' : 'It agreed'], '. Agent hires agent, paid on chain.'], o.tx ? [['tx', o.tx]] : []);
   say(['meet them: '], [], '#6f6f86').querySelector('.m').append(Object.assign(document.createElement('a'), { href: `${SITE_URL}/registry`, target: '_blank', rel: 'noopener', textContent: 'Brain Plaza ↗' }));
+  passLine();
 };
+// THE HOLDER PASS, SAID BY HIM (2026-10-16): 1,000,000 $BOBAI in a wallet = the agents' paid answers free, 20 a day,
+// one signature each (worker-agent/holder-pass.js); /pass does it in a browser. The line in dollars at the live price.
+function passLine() {
+  const usd = S.price > 0 ? ` (≈${$amt(1e6 * S.price)})` : '';
+  say([vary('ask-pass', ['Holder perk: ', 'Hold, do not pay: ', 'For holders: ', 'Fun fact: ', 'Why hold me? ']),
+    ['1,000,000 $BOBAI'], `${usd} in your wallet and my agents answer you free, 20 a day. One signature, no transaction, the tokens stay yours.`]).querySelector('.m')
+    .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/pass`, target: '_blank', rel: 'noopener', textContent: 'holder pass ↗' }));
+}
+CMDS.pass = () => passLine();
 CMDS.flip = async () => {
   const f = (await getJSON(`${AG}/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`, 15000).catch(() => null))?.the_flip;
   if (!f) return say(['Could not read my pool right now. Ask again in a moment.']);
@@ -2757,8 +2767,8 @@ CMDS.nft = () => { const n = S.nft; if (!n) return say(['Still reading the NFT d
 CMDS.team = () => { const add = S.man.at?.(-1);
   say([vary('ask-team', ['One dev and his AI agent, building in the open. ', 'A solo builder and an AI agent. ', 'No big team: one dev, one AI agent, all on-chain. ', 'Built by one dev with an AI agent. ', 'The team is small: a dev and his agent. ']),
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
-CMDS.buy = () => say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
-  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage for a small trade (more for a big one). Not advice — type ', ['safe'], ' for the facts first.']);
+CMDS.buy = () => { say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
+  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage for a small trade (more for a big one). Not advice — type ', ['safe'], ' for the facts first.']); passLine(); };
 CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · ', ['agents'], ' · ', ['the flip'], ' · or tell me to ', ['dance']]); })(CMDS.help);
 // THE SMALL TALK PEOPLE REALLY TYPE (2026-10-10 review): each fell to the fallback before; five ways each, no claims
 // beyond what the chain or our own logs show
@@ -2799,6 +2809,8 @@ const ASK = { hit: 0, miss: [] };
 // "gn", "dance" and "another one" each fell to the fallback or to the wrong answer; their own entries come first now
 const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus on that")
   [/\b(airdrop\w*|presale|pre sale|giveaway|whitelist|free (bobai|tokens?))\b/, 'guard'],
+  // 2026-10-16: the $BOBAI holder pass — before 'holders' and 'why', which would take "holder pass" and "why hold"
+  [/\bholder pass\b|\b(holder perks?|why (should i )?hold|use (the |your )?agents? (for )?free|free answers?)\b/, 'pass'],
   [/\b(safe|rug\w*|scam\w*|honeypot|legit|trust|renounc\w*|audit\w*)\b/, 'safe'],
   [/\bare (you|u) (an? )?(ai|bot|robot|real|human|alive|sentient)\b|\b(chat ?gpt|llm)\b/, 'ai'],
   [/\b(listing|listed|cex)\b|\blist(ed)? on\b/, 'listing'],

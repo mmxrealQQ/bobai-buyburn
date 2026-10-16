@@ -3134,6 +3134,7 @@ ${pageTail}`;
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
+          holder_pass: holderPassTerms(),
           catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
         });
         // A PAID GET (2026-10-04): x402 clients that pay by GET — the way

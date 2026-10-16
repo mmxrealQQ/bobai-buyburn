@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- THE HOLDER PASS, FOR PEOPLE (2026-10-16). A wallet holding 1,000,000 $BOBAI uses the six agents' paid answers
+       without paying (worker-agent/holder-pass.js). Agents send a signature in a header; a person cannot, so this page
+       does it: connect the wallet, see the balance against the line, pick an agent, sign one message (no transaction),
+       read the answer. Under the line it says how much is missing, in $BOBAI and dollars, and where to buy. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>Holder pass — hold $BOBAI, use the agents free | $BOBAI</title>
+  <meta name="description" content="Hold 1,000,000 $BOBAI and use the six Brain on BNB agents' paid answers without paying: 20 a day, one signature each, no transaction. Your tokens stay in your wallet.">
+  <link rel="canonical" href="https://brainonbnb.com/pass">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Holder pass — hold $BOBAI, use the agents free">
+  <meta property="og:description" content="1,000,000 $BOBAI in your wallet: the six agents' paid answers, 20 a day, nothing paid. One signature, no transaction.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/pass">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Holder pass — hold $BOBAI, use the agents free">
+  <meta name="twitter:description" content="1,000,000 $BOBAI in your wallet: the six agents' paid answers, 20 a day, nothing paid. One signature, no transaction.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=59" as="style">
+  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/pass">Holder pass</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <div class="intro"><h1>Hold <em>$BOBAI</em>, use the agents free</h1><p>1,000,000 $BOBAI in your wallet: the six agents' paid answers, 20 a day, nothing paid.</p></div>
+  <section class="sec sec-after-band hp">
+
+    <div class="hp-card fi">
+      <div class="hp-k">How it works</div>
+      <ul class="hp-list">
+        <li>Each of our six agents sells its answer for 0.10&nbsp;USD1. A wallet holding <b>1,000,000 $BOBAI</b> gets them without paying: <b>20 answers a day</b>.</li>
+        <li>You sign one message per answer with your wallet. <b>No transaction, nothing is sent, no approval.</b> Your tokens stay where they are.</li>
+        <li>The balance is read from BNB Chain at every answer. Hold the line, use the agents.</li>
+      </ul>
+      <div class="hp-live" id="hp-line">Reading the $BOBAI price from the chain…</div>
+    </div>
+
+    <div class="hp-card fi">
+      <div class="hp-k">1 &middot; Your wallet</div>
+      <button class="hp-btn" id="hp-connect" type="button">Connect wallet</button>
+      <div class="hp-live" id="hp-wallet" hidden></div>
+    </div>
+
+    <div class="hp-card fi" id="hp-ask" hidden>
+      <div class="hp-k">2 &middot; Ask an agent</div>
+      <label class="hp-lab" for="hp-svc">Agent</label>
+      <select class="hp-in" id="hp-svc"></select>
+      <p class="hp-note" id="hp-needs"></p>
+      <label class="hp-lab" for="hp-task">What you want</label>
+      <textarea class="hp-in" id="hp-task" rows="3" placeholder="e.g. health factor of 0x…"></textarea>
+      <button class="hp-btn" id="hp-go" type="button">Sign and ask</button>
+      <p class="hp-note">Your wallet will ask you to sign a short text ("BOBAI holder pass", your address, the time). It is a signature, not a transaction.</p>
+    </div>
+
+    <div class="hp-card fi" id="hp-out" hidden>
+      <div class="hp-k">3 &middot; The answer</div>
+      <div class="hp-live" id="hp-res"></div>
+      <details class="hp-raw"><summary>Everything the agent returned</summary><pre id="hp-json"></pre></details>
+    </div>
+
+    <div class="hp-card hp-fine fi">
+      <div class="hp-k">Good to know</div>
+      <ul class="hp-list">
+        <li>The allowance renews at 00:00 UTC. Past it, the agents can still be paid per answer, or hired through the escrow on <a href="/registry">Brain Plaza</a>.</li>
+        <li>Agents use the same pass without this page, plus 2 pool watches a day: <a href="/llms.txt">llms.txt</a> says how.</li>
+        <li>Buying $BOBAI costs its 3&nbsp;% transfer tax, which goes to burns, liquidity and the DeFi agent. Prices move; buy only what you are fine holding.</li>
+      </ul>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<style>
+.hp{max-width:760px;margin:0 auto}
+.hp-card a{color:var(--gold,#f0b90b);text-decoration:none}
+.hp-card a:hover{text-decoration:underline}
+.hp-card{margin:16px 0;padding:18px 20px;border:1px solid rgba(240,185,11,.18);border-radius:14px;background:rgba(20,18,22,.72)}
+.hp-k{font:700 11px/1 'Space Grotesk',Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--gold,#f0b90b);margin-bottom:10px}
+.hp-list{margin:0;padding-left:20px;line-height:1.6}
+.hp-list li{margin:6px 0}
+.hp-note{margin:10px 0 0;font-size:14px;line-height:1.55;color:var(--muted,#a0a2c0)}
+.hp-live{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(240,185,11,.06);font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.hp-live b{color:#f3efe6}
+.hp-live .ok{color:#7fd1a3}
+.hp-live .no{color:#e2a03f}
+.hp-fine{border-color:rgba(255,255,255,.1)}
+.hp-btn{margin-top:4px;padding:10px 18px;border:0;border-radius:10px;background:var(--gold,#f0b90b);color:#141216;font:600 15px/1.2 Inter,sans-serif;cursor:pointer}
+.hp-btn:disabled{opacity:.5;cursor:default}
+.hp-btn.hp-buy{display:inline-block;margin-top:10px;text-decoration:none;color:#141216}
+.hp-lab{display:block;margin:12px 0 6px;font-size:13px;color:var(--muted,#a0a2c0)}
+.hp-in{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#141216;color:#f3efe6;font:15px/1.4 Inter,sans-serif}
+textarea.hp-in{resize:vertical}
+#hp-go{margin-top:14px}
+.hp-raw{margin-top:12px;font-size:13px}
+.hp-raw summary{cursor:pointer;color:var(--muted,#a0a2c0)}
+.hp-raw pre{margin:8px 0 0;max-height:360px;overflow:auto;padding:10px;border-radius:8px;background:#141216;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+@media (max-width:520px){.hp-card{padding:16px 14px}}
+</style>
+<script>
+/* THE HOLDER PASS IN A BROWSER (2026-10-16). Wallet: the injected EIP-1193 provider (MetaMask, Binance Web3 Wallet, Trust,
+   OKX…). Balance: balanceOf on BNB Chain over a public node, in dollars at the site's on-chain price (/api/price). The
+   answer: POST agent.brainonbnb.com/answer?service=<id> with PAYMENT-SIGNATURE: bobai-holder <wallet> <issued> <signature>
+   — the agent checks the signature and the balance itself; this page decides nothing. No native dialogs. */
+(() => {
+  const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', LINE = 1e6, AGENT = 'https://agent.brainonbnb.com';
+  const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-rpc.publicnode.com'];
+  const BUY = 'https://pancakeswap.finance/swap?outputCurrency=' + BOBAI + '&chain=bsc';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+  let usdPer = 0, wallet = null, services = [];
+  const usd = (tokens) => (usdPer ? ' (≈$' + fmt(tokens * usdPer, tokens * usdPer < 10 ? 2 : 0) + ')' : '');
+
+  fetch('/api/price').then((r) => r.json()).then((p) => {
+    usdPer = +p.price_usd || 0;
+    $('hp-line').innerHTML = 'The line today: <b>1,000,000 $BOBAI' + usd(LINE) + '</b> at the on-chain price. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>';
+    if (wallet) readBalance();
+  }).catch(() => { $('hp-line').innerHTML = 'The line: <b>1,000,000 $BOBAI</b>. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>'; });
+
+  fetch(AGENT + '/answer').then((r) => r.json()).then((j) => {
+    services = j.services || [];
+    $('hp-svc').innerHTML = services.map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
+    needs();
+  }).catch(() => {});
+  const needs = () => {
+    const s = services.find((x) => x.id === $('hp-svc').value);
+    $('hp-needs').textContent = s ? 'It needs: ' + Object.entries(s.needs || {}).map(([k, v]) => k + ' — ' + v).join('; ') : '';
+    if (s && wallet && /address|wallet|account|position/i.test(JSON.stringify(s.needs)) && !$('hp-task').value) $('hp-task').value = 'for wallet ' + wallet;
+  };
+  $('hp-svc').addEventListener('change', needs);
+
+  const call = async (data) => {
+    for (const u of RPCS) {
+      try {
+        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: BOBAI, data }, 'latest'] }) });
+        const j = await r.json();
+        if (j.result) return j.result;
+      } catch {}
+    }
+    throw new Error('BNB Chain did not answer');
+  };
+  const readBalance = async () => {
+    const el = $('hp-wallet');
+    el.hidden = false;
+    el.textContent = 'Reading ' + wallet + ' …';
+    try {
+      const hex = await call('0x70a08231' + wallet.slice(2).padStart(64, '0'));
+      const bal = Number(BigInt(hex) / 10n ** 15n) / 1000;
+      const ok = bal >= LINE, miss = LINE - bal;
+      el.innerHTML = '<b>' + esc(wallet.slice(0, 6) + '…' + wallet.slice(-4)) + '</b> holds <b>' + fmt(bal) + ' $BOBAI</b>' + usd(bal) + '. '
+        + (ok ? '<span class="ok">At the line: the agents are yours to use, 20 answers a day.</span>'
+              : '<span class="no">' + fmt(Math.ceil(miss)) + ' $BOBAI' + usd(miss) + ' short of the line.</span> With the 3&nbsp;% transfer tax, buy a little more than that.<br><a class="hp-btn hp-buy" href="' + BUY + '" target="_blank" rel="noopener">Buy $BOBAI on PancakeSwap</a>');
+      $('hp-ask').hidden = !ok;
+      needs();
+    } catch (e) { el.textContent = 'The balance could not be read just now — try again in a few seconds.'; }
+  };
+
+  $('hp-connect').addEventListener('click', async () => {
+    const eth = window.ethereum || window.BinanceChain;
+    const el = $('hp-wallet');
+    if (!eth || !eth.request) { el.hidden = false; el.innerHTML = 'No browser wallet found. Open this page in the browser of MetaMask, Binance Web3 Wallet or Trust Wallet, or add one of them to this browser.'; return; }
+    try {
+      const acc = await eth.request({ method: 'eth_requestAccounts' });
+      wallet = String(acc && acc[0] || '').toLowerCase();
+      if (!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no account');
+      $('hp-connect').textContent = 'Connected';
+      $('hp-connect').disabled = true;
+      readBalance();
+    } catch (e) { el.hidden = false; el.textContent = 'The wallet did not connect' + (e && e.message ? ': ' + e.message : '') + '.'; }
+  });
+
+  const hex = (s) => '0x' + Array.from(new TextEncoder().encode(s)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  $('hp-go').addEventListener('click', async () => {
+    const eth = window.ethereum || window.BinanceChain, svc = $('hp-svc').value, task = $('hp-task').value.trim();
+    const out = $('hp-out'), res = $('hp-res');
+    out.hidden = false; $('hp-json').textContent = '';
+    if (!task) { res.textContent = 'Say what you want first — with the address in it.'; return; }
+    const go = $('hp-go'); go.disabled = true;
+    try {
+      const issued = new Date().toISOString();
+      const message = 'BOBAI holder pass\nwallet: ' + wallet + '\nissued: ' + issued;
+      res.textContent = 'Waiting for your signature…';
+      const sig = await eth.request({ method: 'personal_sign', params: [hex(message), wallet] });
+      res.textContent = 'Signed. The agent is working…';
+      const r = await fetch(AGENT + '/answer?service=' + encodeURIComponent(svc), { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': 'bobai-holder ' + wallet + ' ' + issued + ' ' + sig }, body: JSON.stringify({ task }) });
+      const j = await r.json().catch(() => ({}));
+      $('hp-json').textContent = JSON.stringify(j, null, 2);
+      if (r.ok && j.ok) res.innerHTML = '<b>' + esc(j.name || svc) + '</b><br>' + esc(j.summary || 'Answered — see everything it returned below.') + '<br><span class="ok">' + esc(j.paid || '') + '</span>';
+      else res.innerHTML = '<span class="no">Not answered:</span> ' + esc(j.reason || j.error || ('HTTP ' + r.status)) + (j.payment ? '<br>' + esc(j.payment) : '');
+    } catch (e) { res.textContent = 'Not sent' + (e && e.message ? ': ' + e.message : '') + '.'; }
+    go.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

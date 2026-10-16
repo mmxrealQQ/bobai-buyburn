@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 58 files, 19279 lines.
+# one fetch. 58 files, 19281 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7219,6 +7219,7 @@ export const holderPassTerms = () => ({
   how: 'Sign, with the wallet, the message "BOBAI holder pass\\nwallet: <lowercase address>\\nissued: <ISO 8601 UTC time, e.g. new Date().toISOString()>" (EIP-191 personal_sign — a signature, no transaction, nothing spent), then send the same request with header PAYMENT-SIGNATURE: bobai-holder <address> <issued> <signature>',
   issued_within: '10 minutes before the request',
   why: 'Held, not spent: the tokens stay in your wallet.',
+  in_a_browser: 'https://brainonbnb.com/pass — connect the wallet, sign, read the answer',
 });
 
 const no = (code, reason) => ({ ok: false, status: 402, body: { error: 'holder pass not accepted', code, reason, holder_pass: holderPassTerms() } });
@@ -10395,6 +10396,7 @@ ${pageTail}`;
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
+          holder_pass: holderPassTerms(),
           catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
         });
         // A PAID GET (2026-10-04): x402 clients that pay by GET — the way

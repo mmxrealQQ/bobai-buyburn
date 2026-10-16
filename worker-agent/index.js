@@ -30,6 +30,17 @@ import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
 // The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
 const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
+// On every card that takes an escrow job (2026-10-16): Pokter hired the DeFi
+// Agent (job 57001) and read notify_funded on the hub card only, so it could
+// not tell the agent the job was funded; the job watch found it 14 minutes
+// later. A marketplace reads the card of the agent it lists.
+const NOTIFY_FUNDED_SKILL = {
+  id: 'notify_funded',
+  name: 'Notify the seller a job is funded',
+  description: 'Send {"skill":"notify_funded","job_id":<int>} once the job is funded and delivery starts at once. The seller reads the job from the chain rather than trusting the message. Optional: the job watch also finds funded jobs on its own, within minutes.',
+  tags: ['erc8183', 'delivery'],
+  examples: ['{"skill":"notify_funded","job_id":57001}'],
+};
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -1800,6 +1811,7 @@ export default {
           defaultOutputModes: ['application/json'],
           skills: [
             { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category] },
+            NOTIFY_FUNDED_SKILL,
             { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
             { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
@@ -1840,6 +1852,7 @@ export default {
         defaultOutputModes: ['application/json'],
         skills: [
           { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it; the agent finds the funded job on the chain and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
+          NOTIFY_FUNDED_SKILL,
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
           { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         ],
@@ -1923,12 +1936,7 @@ export default {
             description: 'Send {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (negotiation_hash, provider_sig). Anchor it via createJob and fund it; delivery follows without notify_funded.',
             tags: ['erc8183', 'negotiation', 'bnb-chain'],
           },
-          {
-            id: 'notify_funded',
-            name: 'Notify the seller a job is funded',
-            description: 'Tell the seller a job exists in the kernel and is funded. The seller reads the job from the chain rather than trusting the message, then delivers.',
-            tags: ['erc-8183', 'delivery'],
-          },
+          NOTIFY_FUNDED_SKILL,
           ...Object.values(SERVICES).map((s) => ({
             id: s.id,
             name: s.name,

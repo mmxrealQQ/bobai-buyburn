@@ -1088,6 +1088,16 @@ window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the 
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : kind.includes(':') ? e.kind + ':' + e.key === kind : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
+// a burn as it reaches a live visitor (burnflow.mjs): the token's tax swap first (read by the 8 s trade poll, answered at
+// once), the run 'gap' s later through the queue, then what the record has right after it (the DeFi share, a liquidity add)
+window.__btTestBurnLive = (gap = 12, talk = false) => {
+  const r = [...events].reverse().find(e => e.kind === 'run'); if (!r) return false;
+  if (talk) setTimeout(() => speak('Sideways today. The chart is doing a plank, and I keep building block by block.', 5200), gap * 1000 - 400); // a line of his own just before it
+  const after = events.filter(e => e !== r && (e.kind === 'defi' || e.kind === 'liq') && e.t > r.t && e.t - r.t < 3 * 60e3);
+  react('tax', { usd: 30, ours: true, taxSwap: true });
+  setTimeout(() => { enqueue({ ...r, id: 'test-b' + Date.now() }); for (const e of after) enqueue({ ...e, id: 'test-a' + Date.now() + e.id }); }, gap * 1000);
+  return after.map(e => e.kind + ':' + (e.key || '')).join(',') || 'run only';
+};
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
@@ -1682,7 +1692,7 @@ function faceTick(now) {
 // BUBBLE AND MOVE TOGETHER (2026-09-28): a line said while his move still waits for the clip before it to come home
 // is held back and typed the moment the move starts (flushSay); a line typed just before the move was queued is
 // taken back and held the same way (holdSay)
-let LASTSAY = null, HELD = null; const SAY_GRACE = 80; // ms between asking for a line and showing it (holdSay)
+let LASTSAY = null, HELD = null, SHOWN = null, WAITSAY = null, waitSayT = 0; const SAY_GRACE = 80; // ms between asking for a line and showing it (holdSay)
 // THE GREETING'S TIMING, FOR CHECKS (2026-10-02: 2 of 12 flow runs showed the greeting line ~1.6 s after the wave): what held
 // the line, what let it go and when the wave really started — flow.mjs prints it when its greeting rule fails
 const trace = (...a) => { const T = window.__btTrace = window.__btTrace || []; if (T.length < 80) T.push([Math.round(performance.now()), ...a]); };
@@ -1699,6 +1709,7 @@ let tapHi = ''; // the hello in front of the first tap's answer (set by bobaiTap
 function speak(text, ms = 5200) {
   if (!text) return;
   if (tapHi) text = tapHi + ' ' + text; // the first tap's hello (bobaiTap)
+  const ms0 = ms;
   ms = Math.max(ms, text.length * 22 + 2600) + 500; // time to read it once it is typed (2026-10-09: a context in front made lines longer than their time); +0.5 s for every bubble (operator, same day)
   // held for the move: the line before it closes now (2026-09-29: it stayed up, stretched over the wait, and the new line
   // only swapped its text in when the move came)
@@ -1713,13 +1724,27 @@ function speak(text, ms = 5200) {
     LIFE.sayUntil = now + 3500 + ms; // nobody else speaks into the wait (the held line would be replaced)
     return;
   }
+  // NO LINE IS CUT FOR THE NEXT ONE (operator, 2026-10-17: "never break off or jump to the next"; burnflow.mjs on the phone:
+  // his own line "-4.5% in 24 hours, 12 trad" went after 0.6 s, mid-word, for the burn's line): a line on screen is typed to
+  // its end and read (22 ms a letter + 2.6 s); the new one waits for that, and a newer one takes the waiting one's place
+  const tNow = performance.now();
+  if (!REDUCED && SHOWN && SHOWN.id === typing && tNow < SHOWN.end && bubble.classList.contains('on')) {
+    WAITSAY = { text, ms: ms0 }; clearTimeout(waitSayT);
+    waitSayT = setTimeout(() => { const w = WAITSAY; WAITSAY = null; if (w) speak(w.text, w.ms); }, SHOWN.end - tNow + 150);
+    LIFE.sayUntil = Math.max(LIFE.sayUntil, SHOWN.end + 150 + ms); // nobody else starts a line into the wait
+    trace('wait-say', text.slice(0, 24)); return;
+  }
   LASTSAY = { text, ms, at: performance.now() }; trace('say', text.slice(0, 24), VID.cur);
   const id = ++typing; bubble.textContent = ''; bubble.classList.remove('on', 'tight');
   const grace = REDUCED ? 0 : SAY_GRACE;
   LIFE.sayUntil = performance.now() + grace + ms;
   const show = () => {
     if (id !== typing) return; // held for a move in the meantime (holdSay): nothing of it was seen
-    void bubble.offsetWidth; bubble.classList.add('on');
+    // HIS LINE IS SEEN IN THE SCENE TOO (operator, 2026-10-17, after a live burn: "the bubbles disappear after 0.1 s"): a
+    // moment hid the bubble (.in-moment .say), and the line of a burn or a buy starts with its board and is about as long —
+    // so it was never seen, or for a blink at the board's end. Live, the line stays up beside the board (.say.scene)
+    void bubble.offsetWidth; bubble.classList.add('on'); bubble.classList.toggle('scene', mode === 'live');
+    SHOWN = { id, end: performance.now() + text.length * 22 + 2600 }; // what a line on screen is owed before another may replace it
     if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
     FACE.talkUntil = performance.now() + Math.min(3200, text.length * 22 + 500); // he says it while it types
     // typed by the clock, 22 ms a letter: on a slow device the timer fires late, and one letter per tick left a long line
@@ -1764,6 +1789,10 @@ function underBubble(clear) {
   const now = performance.now(); if (!clear && now < underAt) return; underAt = now + 250;
   const b = !clear && bubble.getBoundingClientRect();
   for (const w of WORKERS) { const r = b && w.el.getBoundingClientRect(); w.el.classList.toggle('under', !!b && r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom); }
+  // the mood chip too (2026-10-17, layout 1024x768: the greeting stood over "mood chill" when the chip came in): the bubble
+  // is drawn above it and the chip steps back, as on the phone
+  const mc = document.querySelector('#bt .mdc'), m = b && mc && !mc.hidden && mc.getBoundingClientRect();
+  win.classList.toggle('talk-over', !!m && m.width > 0 && m.right > b.left && m.left < b.right && m.bottom > b.top && m.top < b.bottom);
 }
 // the mood: the pool's own price over the last hour — from the swaps he saw, then from his own reads
 // THE MARKET'S WEATHER (2026-09-26): the whole scene takes a breath of the hour's mood — a hint of green when the

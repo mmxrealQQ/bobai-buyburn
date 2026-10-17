@@ -884,6 +884,16 @@ function withWatchOffer(name, out) {
     note: `depthBelowUsd is set at half of today's 1% depth${depth > 0 ? ` ($${Math.round(depth).toLocaleString('en-US')})` : ''}; change it to your size. Add "callback": "https://…" to be called when it fires; without one, read the watch back at GET /watch/<id>. The first reply is HTTP 402 with the terms; pay, then send the same request again.`,
   } };
 }
+// WHAT A SCAN FOUND, in one word for /stats/detail (2026-10-17): 'none' covered a four.meme curve, a one-sided pool,
+// a pool too small to describe the market and no pool at all alike, and one trading bot's ~460 scans a day read 'none'.
+function scanShape(out) {
+  if (out?.pool?.kind) return String(out.pool.kind).slice(0, 8);
+  if (out?.curve) return 'curve';
+  if (out?.oneSidedPools) return 'onesided';
+  if (out?.liquidity?.readablePoolUsd > 0) return 'sliver';
+  if (out?.liquidity?.elsewhereUsd > 0) return 'elsewhere';
+  return 'nopool';
+}
 const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'pancakeswap_range_plan']);
 function errorAnswer(e) {
   const msg = e?.message || String(e);
@@ -1286,7 +1296,7 @@ async function handleMcp(request, note = () => {}) {
         // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
         const read = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
         const raw = withWatchOffer(params?.name, read);
-        if ((DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') note(raw?.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(read?.pool?.kind || 'none').slice(0, 8)}`);
+        if ((DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') note(raw?.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${scanShape(read)}`);
         const out = (await firstCall(request)) ? withThanks(raw) : raw;
         // The JSON itself next to its text (2026-10-09, MCP 2025-06-18
         // structuredContent) for the three trading reads, so a client hands
@@ -1723,6 +1733,11 @@ export default {
         'Cache-Control': isScan ? 'no-store' : 'public, max-age=60',
         'Access-Control-Allow-Origin': '*',
       };
+      const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
+      // WHO scans (2026-10-16): nearly all outside scans come under the "other" family. The client's own product name
+      // (the user agent's first word, letters only, no version) names a bot without naming a person.
+      const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
+      const outsideScan = !isOwn && !siteCall && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan';
       try {
         const out = WITH_ADDRESS[url.pathname]
           // The size is part of the question (2026-09-18): llms.txt, skill.md and
@@ -1733,19 +1748,18 @@ export default {
           : await runTool(REST_TOOLS[url.pathname], {});
         // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
         // required. The site's own pages read these routes for their figures and get them without it.
-        const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
         if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers }); // the site's own pages: the reading alone
         const sold = withWatchOffer(WITH_ADDRESS[url.pathname], out);
-        // Which scans the watch can be offered on (2026-10-16): V2 pools only, so count the rest by kind before deciding on a V3 watch.
-        // …and WHO scans (2026-10-16): ~70 a day from outside, nearly all under the "other" family. The client's own
-        // product name (the user agent's first word, letters only, no version) names a bot without naming a person.
-        const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
-        if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan') count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${String(out?.pool?.kind || 'none').slice(0, 8)}`, `poolscanua:${product}`]);
+        // Which scans the watch can be offered on (2026-10-16), and what the others found (scanShape, 2026-10-17).
+        if (outsideScan) count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${scanShape(out)}`, `poolscanua:${product}`]);
         if (!(await firstCall(request))) return new Response(JSON.stringify(sold, null, 2), { headers }); // the note once per caller (2026-10-01)
         return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {
         // Status, code and hint from errorAnswer (2026-10-09), the same three fields MCP carries.
         const { status, body } = errorAnswer(e);
+        // A refused scan counts too (2026-10-17): on 17.10. 86 outside scans by 05 UTC, 14 of them answered; the rest
+        // never reached the counter above. poolscanua stays the count of everyone who scans, answered or not.
+        if (outsideScan) count(null, [`poolscan:err:${String(body?.code || status).slice(0, 20)}`, `poolscanua:${product}`]);
         return new Response(JSON.stringify(body), { status, headers });
       }
     }

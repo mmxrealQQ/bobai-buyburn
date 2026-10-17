@@ -333,7 +333,7 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… the chain silent: 503 chain_unavailable', a.status === 503 && a.body.code === 'chain_unavailable', JSON.stringify(a));
   a = errorAnswer(E('That pool cannot be priced. It trades against a token with no BNB pool of its own.'));
   ok('… and any other determinate answer: 422 with a code too', a.status === 422 && a.body.code === 'not_measurable' && !!a.body.hint, JSON.stringify(a));
-  const rest = w.match(/const \{ status, body \} = errorAnswer\(e\);\s*return new Response\(JSON\.stringify\(body\), \{ status, headers \}\)/);
+  const rest = w.match(/const \{ status, body \} = errorAnswer\(e\);[\s\S]{0,500}?return new Response\(JSON\.stringify\(body\), \{ status, headers \}\)/);
   ok('the REST route answers with errorAnswer’s status and body', !!rest);
   const mcpErr = /const \{ body: eb \} = errorAnswer\(e\);[\s\S]{0,300}code: \$\{eb\.code\}[\s\S]{0,120}structuredContent: eb, isError: true/.test(w);
   ok('MCP carries the same code: in the text and as structuredContent, with isError', mcpErr);

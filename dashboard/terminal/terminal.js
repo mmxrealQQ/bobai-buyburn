@@ -2417,6 +2417,8 @@ const ownBusy = () => !!(VID.v && !REDUCED && (VID.go || VID.goOn || (VID.want &
 // doing (a work figure, his hard hat, or a move that fits the market). A joke that cannot laugh right now becomes work.
 function ownMoment(act) {
   act = act || (() => { const L = actsNow(), ok = L.filter(([p]) => flowPose(p) === p); return pick(ok.length ? ok : L); });
+  // back after a while: his first own moment is about what you asked him last time (meBackLine), once a visit
+  { const mb = meBackLine(); if (mb) { const named = moveForLine(mb, null); setPose(named || poseOr('think'), 6, !!named); speak(mb, 7800); (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), 'me', 'me']); return true; } }
   const k = ownKind(), log = got => { (window.__btOwn = window.__btOwn || []).push([Math.round(performance.now() / 1000), k, got]); return true; }; // for checks from outside
   if (k === 'mood') { tellMood(6400); return log('mood'); }
   if (k === 'heart') { const l = heartLine(), named = moveForLine(l, null); setPose(named || poseOr(pick(['hodl', 'think', 'walk'].filter(p => flowPose(p) === p).concat('hodl'))), 6, !!named); speak(l, 7200); return log('heart'); }
@@ -2908,6 +2910,123 @@ function missed(q) {
   say([vary('ask-miss', [`Not sure what you mean. ${fact} Try `, `That one I do not know yet. ${fact} Ask me `, `Hm, I only speak BOBAI. ${fact} Try `,
     `No idea, honestly. ${fact} You can ask `, `Lost me there. ${fact} Ask `]), ['help'], ', or paste any token address and I check it.']);
 }
+// HE ANSWERS THE QUESTION ASKED (operator, 2026-10-17: "more intelligent"): "how many burns this week", "biggest burn
+// ever", "volume yesterday", "price this week", "and yesterday?" each got the topic's one block, whatever was asked.
+// Now a question that names a span (hour, 24 h, yesterday, week, month, all time) or a shape (how many, how much,
+// biggest, last, more than) on burns, trades or the price is answered as asked, from the same record the scene shows,
+// with the span before it to compare. What the record does not reach (trades: the 7-day ledger) is said as such.
+const DAY = 86400e3;
+function askSpan(t) {
+  const now = Date.now(), d0 = Date.parse(new Date().toISOString().slice(0, 10)); // 00:00 UTC today
+  if (/\b(this|last|past) hour\b|\b(1 ?h|60 ?min\w*)\b/.test(t)) return { k: 'hour', label: 'in the last hour', from: now - 3600e3, to: now, plabel: 'the hour before', pfrom: now - 7200e3 };
+  if (/\bday before yesterday\b/.test(t)) return { k: 'yday2', label: 'the day before yesterday (UTC)', from: d0 - 2 * DAY, to: d0 - DAY, plabel: 'the day before', pfrom: d0 - 3 * DAY };
+  if (/\byesterday\b/.test(t)) return { k: 'yday', label: 'yesterday (UTC)', from: d0 - DAY, to: d0, plabel: 'the day before', pfrom: d0 - 2 * DAY };
+  if (/\b(today|24 ?h(ours?|rs?)?|last day|past day)\b/.test(t)) return { k: 'day', label: 'in the last 24 hours', from: now - DAY, to: now, plabel: 'the 24 hours before', pfrom: now - 2 * DAY };
+  if (/\b(this|last|past) week\b|\b7 ?d(ays?)?\b|\bweekly\b|\bweek\b/.test(t)) return { k: 'week', label: 'in the last 7 days', from: now - 7 * DAY, to: now, plabel: 'the 7 days before', pfrom: now - 14 * DAY };
+  if (/\b(this|last|past) month\b|\b30 ?d(ays?)?\b|\bmonthly\b|\bmonth\b/.test(t)) return { k: 'month', label: 'in the last 30 days', from: now - 30 * DAY, to: now, plabel: 'the 30 days before', pfrom: now - 60 * DAY };
+  if (/\b(all ?time|ever|in total|total|so far|since (launch|the start|the beginning)|overall)\b/.test(t)) return { k: 'all', label: 'since my first burn run', from: 0, to: now };
+  return null;
+}
+const askShape = t => /\bhow many\b|\bcount\b|\bnumber of\b/.test(t) ? 'count' : /\b(biggest|largest|best|highest|max\w*|record|top|most)\b/.test(t) ? 'big'
+  : /\b(smallest|lowest|least|min\w*)\b/.test(t) ? 'small' : /\b(last|latest|recent|previous) (burn|run|buyback)s?\b|\bwhen (was|did)\b/.test(t) ? 'last'
+  : /\b(more|less|fewer|than|vs|versus|compar\w*|better|worse)\b/.test(t) ? 'cmp' : /\bhow much\b|\bhow big\b|\bsum\b/.test(t) ? 'much' : null;
+const askMetric = t => /\b(next|eta|when will|how long)\b/.test(t) ? null // the next buyback has its own answer
+  : /\b(burn\w*|buybacks?)\b/.test(t) ? 'burn' : /\b(volume|trad(e|es|ed|ing|ers?)|buys|bought|buyers?|sells|sold|sellers?|swaps?)\b/.test(t) ? 'trade'
+  : /\b(price|chart|pump\w*|dump\w*)\b|\bup or down\b/.test(t) ? 'price' : null;
+const pctWord = (a, b) => b > 0 ? (Math.abs(a / b - 1) < 0.03 ? 'about the same' : a >= b ? `${Math.round((a / b - 1) * 100)}% more` : `${Math.round((1 - a / b) * 100)}% less`) : '';
+const PM = { m: null, at: 0 }; // the last precise question's metric: "and yesterday?" right after one keeps it
+function precise(q) {
+  const t = q.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  let m = askMetric(t); const sp = askSpan(t), sh = askShape(t);
+  // a follow-up names only a span ("and yesterday?", "what about this week") and comes within three minutes
+  if (!m && sp && PM.m && Date.now() - PM.at < 180e3 && t.split(' ').length <= 5) m = PM.m;
+  if (!m || !(sp || sh) || /\bwho\b/.test(t)) return false; // "who sold today" follows the trade
+  // "price today" / "volume today" without a shape keep their own, fuller answers (24 h is their span already)
+  if (m === 'price' && (!sp || sp.k === 'day') && sh !== 'big' && sh !== 'small') return false;
+  if (!S.burns.length || (m !== 'burn' && CH.src !== 'ledger')) { say(['still reading the chain — ask again in a few seconds.']); return true; }
+  PM.m = m; PM.at = Date.now();
+  const span = sp || (sh === 'last' ? null : { k: 'all', label: 'since my first burn run', from: 0, to: Date.now() });
+  ({ burn: burnAnswer, trade: tradeAnswer, price: priceAnswer })[m](span, sh);
+  speakAnswer(m === 'burn' ? 'burns' : 'price'); meAsked(m === 'burn' ? 'burns' : m === 'trade' ? 'today' : 'price');
+  return true;
+}
+function burnAnswer(sp, sh) {
+  const all = S.burns.filter(e => +e.bobaiBurned > 0), at = e => Date.parse(e.time), sum = l => l.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
+  if (sh === 'last' || !sp) { const e = all.at(-1); if (!e) return say(['No burn run on record yet.']);
+    return say([vary('pa-last', ['My last burn: ', 'The latest run: ', 'Most recent burn: ', 'Last time I burned: ', 'The newest one: ']), [bobaiAmt(+e.bobaiBurned)], `, ${ago(at(e))} (${agoL(at(e))}).`], [['tx', e.bobaiBurnTx]], D.burnA.c); }
+  const runs = all.filter(e => at(e) >= sp.from && at(e) < sp.to), first = all[0];
+  if (!runs.length) { const chg = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100);
+    return say([`No burn run ${sp.label}. `, all.at(-1) ? `The last one was ${ago(at(all.at(-1)))}; ` : '', `the next buyback is ${chg}% charged.`], [], D.burnA.c); }
+  if (sh === 'big' || sh === 'small') { const e = runs.reduce((a, b) => (sh === 'big' ? +b.bobaiBurned > +a.bobaiBurned : +b.bobaiBurned < +a.bobaiBurned) ? b : a);
+    return say([`The ${sh === 'big' ? 'biggest' : 'smallest'} burn ${sp.label}: `, [bobaiAmt(+e.bobaiBurned)], `, ${agoL(at(e))} — one of ${nf(runs.length)} run${runs.length === 1 ? '' : 's'}.`], [['tx', e.bobaiBurnTx]], D.burnA.c); }
+  const tot = sum(runs), parts = [`${nf(runs.length)} burn run${runs.length === 1 ? '' : 's'} ${sp.label} burned `, [bobaiAmt(tot)], '.'];
+  if (sp.k === 'all' && first) { const days = Math.max(1, (Date.now() - at(first)) / DAY); parts.push(` That is since ${agoL(at(first)).slice(0, 6)}, about ${(runs.length / days).toFixed(1)} runs a day. ${supplyPct(S.deadA || 0)}% of the supply sits at the dead address now.`); }
+  else if (sp.pfrom != null) { const pr = all.filter(e => at(e) >= sp.pfrom && at(e) < sp.from), pt = sum(pr);
+    parts.push(pr.length ? ` ${sp.plabel[0].toUpperCase() + sp.plabel.slice(1)}: ${nf(pr.length)} run${pr.length === 1 ? '' : 's'}, ${bobaiAmt(pt)}, so ${pctWord(tot, pt) || 'the same'} now.` : ` ${sp.plabel[0].toUpperCase() + sp.plabel.slice(1)} had no run at all.`); }
+  say(parts, [['last', runs.at(-1).bobaiBurnTx]], D.burnA.c);
+}
+// the 10-minute trade ledger reaches back 7 days; single trades only as far as this page read them (S.histFrom)
+function tradeAnswer(sp, sh) {
+  const from0 = CH.rows[0]?.t || Date.now(), cut = sp.from < from0 - 30 * 60e3, from = Math.max(sp.from, from0);
+  const sumOf = (a, b) => CH.rows.filter(r => r.t >= a && r.t < b).reduce((o, r) => ({ b: o.b + (r.b || 0), s: o.s + (r.s || 0), u: o.u + Math.max(0, (r.v || 0) - (r.o || 0)) * (r.u || S.bnbP) }), { b: 0, s: 0, u: 0 });
+  const note = cut ? `My trade ledger reaches back 7 days, so here are its 7 days: ` : '';
+  if (sh === 'big' || sh === 'small') { const hFrom = Math.max(sp.from, S.histFrom || Date.now());
+    const l = S.hist.filter(x => !x.ours && !x.taxSwap && x.t >= hFrom && x.t < sp.to && x.usd > 0);
+    if (!l.length) return say([`I keep single trades for the last ${sinceWords(Date.now() - (S.histFrom || Date.now()))} only, and there was none from outside in it.`]);
+    const x = l.reduce((a, b) => (sh === 'big' ? b.usd > a.usd : b.usd < a.usd) ? b : a), part = hFrom > sp.from + 60e3 ? `I keep single trades for the last ${sinceWords(Date.now() - hFrom)}; there the ${sh === 'big' ? 'biggest' : 'smallest'}` : `The ${sh === 'big' ? 'biggest' : 'smallest'} trade ${sp.label}`;
+    return say([`${part} was a ${x.buy ? 'buy' : 'sell'} of `, ['$' + nf(x.usd, x.usd < 10 ? 2 : 0)], `, ${ago(x.t)}.`], [['tx', x.tx]]); }
+  const n = sumOf(from, sp.to), parts = [note + `${nf(n.b)} buy${n.b === 1 ? '' : 's'} and ${nf(n.s)} sell${n.s === 1 ? '' : 's'} ${cut ? 'in them' : sp.label}, `, ['$' + nf(n.u)], ' traded (without my own bots). 3% of it, ', ['$' + nf(n.u * 0.03, 2)], ', went to the burns and pots.'];
+  if (!cut && sp.pfrom != null && sp.pfrom >= from0 - 30 * 60e3) { const p = sumOf(sp.pfrom, sp.from); if (p.u > 0) parts.push(` ${sp.plabel[0].toUpperCase() + sp.plabel.slice(1)}: $${nf(p.u)}, so ${pctWord(n.u, p.u) || 'the same'} now.`); }
+  say(parts);
+}
+function priceAnswer(sp, sh) {
+  const from0 = CH.rows[0]?.t || Date.now(), cut = sp.from < from0 - 30 * 60e3, rows = CH.rows.filter(r => r.t >= Math.max(sp.from, from0) && r.t < sp.to && r.c > 0);
+  if (rows.length < 2) return say(['Not enough of my ledger in that span to say. It reaches back 7 days.']);
+  const usd = r => r.c * (r.u || S.bnbP), note = cut ? 'My ledger reaches back 7 days; in those, ' : '';
+  if (sh === 'big' || sh === 'small') { const r = rows.reduce((a, b) => (sh === 'big' ? usd(b) > usd(a) : usd(b) < usd(a)) ? b : a);
+    return say([note + `${cut ? 'the' : 'The'} ${sh === 'big' ? 'highest' : 'lowest'} close ${cut ? '' : sp.label + ' '}was `, ['$' + usd(r).toFixed(8)], `, ${agoL(r.t)}. Now `, ['$' + (S.price || 0).toFixed(8)], '.']); }
+  const before = [...CH.rows].reverse().find(r => r.t <= Math.max(sp.from, from0)) || rows[0], end = sp.to >= Date.now() - 60e3 ? { c: S.price / (S.bnbP || 1), u: S.bnbP } : rows.at(-1);
+  const ch = usdCh({ o: before.c, ou: before.u }, end), hi = Math.max(...rows.map(usd)), lo = Math.min(...rows.map(usd));
+  if (ch == null) return say(['Could not read the price for that span right now.']);
+  say([note + `BOBAI went `, [(ch >= 0 ? '+' : '') + ch.toFixed(1) + '%'], `${cut ? '' : ' ' + sp.label} in USD, from $${usd(before).toFixed(8)} to $${(end.c * end.u).toFixed(8)}. Range of the 10-minute closes: $${lo.toFixed(8)} to $${hi.toFixed(8)}. No forecast from me, only the record.`]);
+}
+// HE REMEMBERS YOU (operator, 2026-10-17: "more likeable"): this browser keeps what you asked him about (topic and
+// count, never the words, never sent anywhere). Back after 20 minutes or more, one of his own lines is about that topic:
+// what happened to it since you asked. A topic asked three, five or ten times gets a word of its own, once a visit.
+const ME_KEY = 'bt-me', ME = (() => { try { return JSON.parse(localStorage.getItem(ME_KEY) || 'null') || {}; } catch { return {}; } })();
+const ME0 = { ...ME, k: { ...(ME.k || {}) } }; // as it was when the page opened: the line is about the last visit's question
+ME.k = ME.k || {};
+const ME_TOPIC = { burns: 'my burns', next: 'the next buyback', price: 'the price', why: 'the price', today: 'the trades', defi: 'my DeFi agent', liq: 'the liquidity', giggle: 'the Giggle Academy pot', holders: 'the holders', safe: 'whether I am safe', agents: 'my AI agents', pass: 'the holder pass', flip: 'The Flip' };
+let meSaidFav = false, meBackDone = false;
+function meAsked(k) {
+  if (!ME_TOPIC[k]) return;
+  ME.k[k] = (ME.k[k] || 0) + 1; ME.last = k; ME.at = Date.now();
+  try { localStorage.setItem(ME_KEY, JSON.stringify(ME)); } catch {}
+  const n = ME.k[k]; if (meSaidFav || ![3, 5, 10, 25].includes(n)) return; meSaidFav = true;
+  const top = ME_TOPIC[k];
+  say([vary('me-fav', [`${top[0].toUpperCase() + top.slice(1)} again — that is your ${n === 3 ? '3rd' : n + 'th'} time. You and I have the same favourite topic.`, `Question number ${n} about ${top}. I like a builder who checks.`,
+    `${n} times ${top} now. I keep that one ready for you.`, `You asked about ${top} ${n} times. Never trust, verify — you get it.`, `${top[0].toUpperCase() + top.slice(1)}, ask number ${n}. I never get tired of that one.`])], [], '#F0B90B');
+}
+// the line about the last visit's question: what the record says happened to that topic since; null when it has none
+function meBackLine(peek) {
+  const k = ME0.last, at = +ME0.at || 0, gap = Date.now() - (seenBefore || 0);
+  if (meBackDone || !k || !at || !seenBefore || gap < 20 * 60e3 || Date.now() - at > 30 * DAY || !S.burns.length) return null;
+  const sw = sinceWords(Date.now() - at), top = ME_TOPIC[k], opens = [`Last time you asked me about ${top}.`, `You wanted to know about ${top} last time.`, `I remember: ${top} was your question last time.`,
+    `Your question last visit was about ${top}.`, `Last visit, ${top} was on your mind.`], open = peek ? opens[0] : vary('me-back', opens);
+  let tail = null;
+  if (k === 'burns' || k === 'next') { const runs = S.burns.filter(e => +e.bobaiBurned > 0 && Date.parse(e.time) > at), b = runs.reduce((a, e) => a + (+e.bobaiBurned || 0), 0), chg = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100);
+    tail = runs.length ? `In the ${sw} since: ${runs.length} burn run${runs.length === 1 ? '' : 's'}, ${bobaiAmt(b)} gone. The next one is ${chg}% charged.` : `No burn run in the ${sw} since; the next buyback is ${chg}% charged.`; }
+  else if (k === 'price' || k === 'why' || k === 'today') { if (CH.src !== 'ledger' || at < (CH.rows[0]?.t || 0)) return null;
+    const r = [...CH.rows].reverse().find(x => x.t <= at), ch = r && usdCh({ o: r.c, ou: r.u }, { c: S.price / (S.bnbP || 1), u: S.bnbP }), tr = CH.rows.filter(x => x.t > at).reduce((a, x) => a + (x.b || 0) + (x.s || 0), 0);
+    if (ch == null) return null; tail = `Since then, ${sw}: ${ch >= 0 ? '+' : ''}${ch.toFixed(1)}% in USD over ${nf(tr)} trades.`; }
+  else if (k === 'defi') { if (!S.lp) return null; const inr = lpNow().inR;
+    tail = `It is ${inr === false ? 'out of range right now, waiting to reset' : 'in range right now, earning'}; fees so far ${bnbF(defiNow().fees || 0)}.`; }
+  else if (k === 'giggle' && GIGGLE_OPEN()) { const g = ggBnb(); tail = `The pot holds ${bnb4R(g)} (≈$${nf(g * S.bnbP, 2)}) now, ${Math.ceil((ggEnd() - Date.now()) / DAY)} days to go.`; }
+  if (!tail) return null;
+  if (!peek) meBackDone = true;
+  return `${open} ${tail}`;
+}
+window.__btMeBack = () => meBackLine(true); window.__btPrecise = q => { const t = q.toLowerCase(); return [askMetric(t), askSpan(t)?.k || null, askShape(t)]; };
 window.__btAsk = q => intentOf(q); window.__btAskLog = () => ({ hit: ASK.hit, miss: [...ASK.miss] }); // for checks from outside
 // the next buyback at the last 24 h's pace (2026-10-09): 3% of the dollars traded fills the queue; an estimate, said as one
 function nextEta() {
@@ -3227,11 +3346,12 @@ cmdForm.addEventListener('submit', e => {
     return tradeFromTx(h[0]).then(t => t ? followTrade(t) : say(['that transaction has no BOBAI trade in it. Try ', ['follow'], ' for the latest.'])).catch(() => say(['could not read that transaction right now — try again in a moment.'])); }
   const a = q.match(ADDR);
   if (a) return check(a[0]);
+  if (precise(q)) { ASK.hit++; ASK.last = null; return; } // a span or a shape asked: that answer, not the topic's block
   const w = intentOf(q);
   // answers that need no chain data are never held back by the boot (2026-10-10 review: "ca" or "tax" said "still reading")
   if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move', 'agents', 'flip'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
   if (w) ASK.last = w;
-  if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) speakAnswer(w); } else missed(q); // false: it answered "still reading"
+  if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) { speakAnswer(w); meAsked(w); } } else missed(q); // false: it answered "still reading"
 });
 cmdIn.addEventListener('focus', () => win.classList.add('typing'));
 cmdIn.addEventListener('blur', () => setTimeout(() => win.classList.remove('typing'), 200));

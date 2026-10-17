@@ -53,5 +53,16 @@ ok(defiLine(first) === '' && defiLine([]) === '', 'a run without DeFi checks has
   ok(secondLookMessage(buybackWalletVerdict({ bnb: 0.07, nonce: 17, at: 661000 }, first)) === '' && secondLookMessage(buybackWalletVerdict({ bnb: 0.0031, nonce: 17 }, first)) === '', 'a bot that has sent since the first look is told to nobody');
 }
 
+{
+  // 16.10.: Telegram timed out, the once-key stayed 'pending', no morning message. Both ends must survive that.
+  const fs = await import('node:fs');
+  const tgb = fs.readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  const bc = tgb.slice(tgb.indexOf('const onceKey = body.once'), tgb.indexOf('[BROADCAST ERROR]'));
+  ok(/if \(!r\?\.result\?\.message_id\) \{[^}]*KV\.delete\(onceKey\)/.test(bc), 'a broadcast Telegram refused frees its once-key (tg() never throws)');
+  ok(/r = await send\(\)/.test(bc), 'a refused broadcast is tried once more');
+  const hw = fs.readFileSync(path.join(ROOT, 'worker-health', 'index.js'), 'utf8');
+  ok(/notifyRetryMs\)\); r = await post\(\)/.test(hw), 'the morning message is posted once more when the first post did not go out');
+}
+
 if (fails.length) { console.error('SMOKE-HEALTH-WORKER FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-health-worker ok: 16 pins');
+console.log('smoke-health-worker ok: 19 pins');

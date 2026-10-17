@@ -69,7 +69,7 @@ async function runOnce(env) {
   }
 }
 
-async function morningRun(env, { notify, pauseMs = 60000, secondLook = false, scheduled = false }) {
+async function morningRun(env, { notify, pauseMs = 60000, notifyRetryMs = 120000, secondLook = false, scheduled = false }) {
   const first = await runOnce(env);
   let results = first, failing = first.filter((r) => !r.good);
   if (failing.length) {
@@ -80,12 +80,15 @@ async function morningRun(env, { notify, pauseMs = 60000, secondLook = false, sc
   const text = renderHealthMessage(results, failing, new Date().toISOString().slice(0, 10));
   let sent = null;
   if (notify) {
-    const r = await env.TG.fetch('https://tg/broadcast', {
+    const post = () => env.TG.fetch('https://tg/broadcast', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET || '' },
       // `once`: a cron trigger that fires twice (14.10.: 09:11 and 09:12 UTC) sends the morning message only once.
       body: JSON.stringify({ target: 'operator', text, ...(scheduled ? { once: `health-morning:${new Date().toISOString().slice(0, 10)}` } : {}) }),
     }).then((x) => x.json()).catch((e) => ({ ok: false, error: e && e.message || String(e) }));
+    let r = await post();
+    // 16.10.: Telegram did not answer at 09:11 UTC and the day had no message. Two minutes later, once more.
+    if (!(r && (r.duplicate || (r.ok === true && r.message_id != null)))) { await new Promise((ok) => setTimeout(ok, notifyRetryMs)); r = await post(); }
     sent = r && r.ok === true && r.message_id != null;
     if (r && r.duplicate) { console.log('[HEALTH] the morning message was already sent today — not repeated'); return { checks: results.length, failing, sent, text, duplicate: true }; }
     if (!sent) console.error('[HEALTH] the message did not go out:', JSON.stringify(r));

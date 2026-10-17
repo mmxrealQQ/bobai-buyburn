@@ -3759,13 +3759,24 @@ export default {
             disable_notification: true,
           });
         }
-        const r = await tg('sendMessage', {
+        const send = () => tg('sendMessage', {
           chat_id: targetChat,
           text,
           parse_mode: 'HTML',
           disable_web_page_preview: body.disablePreview !== false,
         });
-        if (onceKey && env.KV && r?.result?.message_id) await env.KV.put(onceKey, String(r.result.message_id), { expirationTtl: 172800 }).catch(() => {});
+        // A REFUSED SEND IS NOT SENT (2026-10-17): tg() answers {ok:false} instead of throwing, so on 16.10. a Telegram
+        // timeout (09:11 UTC, "no answer within 10 s") left the once-key at 'pending' and the morning message never came.
+        // One more try after 5 s; still nothing -> the key goes and the caller hears ok:false.
+        let r = await send();
+        if (!r?.result?.message_id) { await new Promise((ok) => setTimeout(ok, 5000)); r = await send(); }
+        if (!r?.result?.message_id) {
+          if (onceKey && env.KV) await env.KV.delete(onceKey).catch(() => {});
+          return new Response(JSON.stringify({ ok: false, error: 'send failed', description: String(r?.description || '').slice(0, 160) }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (onceKey && env.KV) await env.KV.put(onceKey, String(r.result.message_id), { expirationTtl: 172800 }).catch(() => {});
         return new Response(JSON.stringify({ ok: true, message_id: r?.result?.message_id || null }), {
           headers: { 'content-type': 'application/json' },
         });

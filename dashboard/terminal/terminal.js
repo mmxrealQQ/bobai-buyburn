@@ -4399,6 +4399,58 @@ function awayBits(since) {
 // THE SAME, FOR A TAB THAT WAS IN THE BACKGROUND (2026-09-29): ten minutes or more away, he waves and says what happened
 // meanwhile — once the ledger and the logs have been read again, and never over a moment of the chain
 let hiddenAt = 0;
+// HE NOTICES YOU (2026-10-18, operator's option 5). The pointer resting on him he has noticed since 28.9. (the wave).
+// Two more, each once and never over a move, a scene or a line still on screen:
+// · a quiet watcher — the tab in view, nothing touched for four minutes: one word to them, with one real number;
+// · a holder — a wallet this browser already connected to brainonbnb.com (on /pass) is read with eth_accounts, which
+//   asks nothing and opens nothing; its $BOBAI balance from the chain decides the greeting. 1,000,000 or more: the
+//   holder pass; less: thanks, and what the pass still needs; none: nothing. Once a day per wallet, in this browser only.
+const YOU = { inputAt: Date.now(), quietSaid: false, holderSaid: false, wallet: null, bal: null };
+for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) document.addEventListener(ev, () => { YOU.inputAt = Date.now(); }, { passive: true, capture: true });
+const youCalm = () => mode === 'live' && opened && !document.hidden && !QUEUE.length && performance.now() >= sceneUntil + 2500 && !VID.go && !ownBusy() && performance.now() >= LIFE.sayUntil && backReady();
+function quietWatcherLine() {
+  const chg = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100), c = chartWords(), m = Math.max(4, Math.round((Date.now() - YOU.inputAt) / 60e3));
+  if (!c) return null;
+  return vary('you-quiet', [`You have been watching quietly for ${m} minutes. One number for you: my next burn is ${chg}% charged.`,
+    `Still with me? ${m} minutes without a tap. The day so far: ${c.s}, ${nTrades(c.n)}.`,
+    `A quiet watcher, I like that. If you want to know more, tap anything. Right now: ${c.s} in 24 hours.`,
+    `${m} minutes of watching. Here is what I am doing: my next burn is ${chg}% charged, every trade adds to it.`,
+    `You are still here, so here is a fact for you: ${nTrades(c.n)} in 24 hours, ${c.s}. Ask me anything below.`]);
+}
+function holderLine(bal) {
+  if (!(bal > 0)) return null;
+  if (bal >= 1e6) return vary('you-holder', [`Welcome back, holder: ${bobaiAmt(bal)} in your wallet. My agents are yours, 20 answers a day, no payment.`,
+    `I see ${bobaiAmt(bal)} in your wallet. That is a holder pass: my agents answer you for free.`,
+    `A holder! ${bobaiAmt(bal)}. Thank you. The agents, the pool watch and the scan pass are yours with one signature.`,
+    `${bobaiAmt(bal)} held. You are over the line: the holder pass is yours, at brainonbnb.com/pass.`,
+    `Hello, holder of ${bobaiAmt(bal)}. Held, not spent, and the agents work for you.`]);
+  const gap = 1e6 - bal;
+  return vary('you-holding', [`I see ${bobaiAmt(bal)} in your wallet. Thank you for holding.`,
+    `${bobaiAmt(bal)} in your wallet. ${bobaiAmt(gap)} more and the holder pass is yours.`,
+    `Thank you for holding ${bobaiAmt(bal)}. Every holder counts.`,
+    `You hold ${bobaiAmt(bal)}. At 1,000,000 my agents answer you for free.`,
+    `${bobaiAmt(bal)} held. I noticed, and I thank you.`]);
+}
+async function readYourWallet() {
+  const eth = window.ethereum; if (!eth || typeof eth.request !== 'function') return;
+  let acc; try { acc = await eth.request({ method: 'eth_accounts' }); } catch { return; }
+  const a = Array.isArray(acc) && /^0x[0-9a-fA-F]{40}$/.test(acc[0] || '') ? acc[0].toLowerCase() : null; if (!a) return;
+  try { const [h] = await rpc([call(BOBAI, balOf(a))]); YOU.wallet = a; YOU.bal = Number(BigInt(h || '0x0') / 10n ** 15n) / 1000; } catch {}
+}
+setTimeout(readYourWallet, 6e3);
+setInterval(() => {
+  try {
+    if (!youCalm()) return;
+    if (!YOU.holderSaid && YOU.wallet && YOU.bal > 0) {
+      YOU.holderSaid = true;
+      let seen = ''; try { seen = localStorage.getItem('bt-holder-day') || ''; } catch {}
+      const key = YOU.wallet + ':' + new Date().toISOString().slice(0, 10), l = holderLine(YOU.bal);
+      if (seen !== key && l) { try { localStorage.setItem('bt-holder-day', key); } catch {} YOU.holderText = l; LIFE.quietSince = Date.now(); speak(l, 6500); return; }
+    }
+    if (!YOU.quietSaid && Date.now() - YOU.inputAt >= 240e3) { const l = quietWatcherLine(); if (l) { YOU.quietSaid = true; LIFE.quietSince = Date.now(); speak(l, 6500); } }
+  } catch {}
+}, 15e3);
+window.__btYou = { quiet: () => quietWatcherLine(), holder: b => holderLine(b), state: () => ({ ...YOU }), calm: () => youCalm(), idleFor: ms => { YOU.inputAt = Date.now() - ms; } }; // for qa/youseen.mjs
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
   const since = hiddenAt; hiddenAt = 0;

@@ -1,3 +1,6 @@
+# /neu: the short front page parked on 2.9. — not public any more, the file stays (operator, 2026-10-18)
+/neu / 302
+/neu.html / 302
 # the agent chart (Brain Plaza phase 2): one page draws any id from agent.brainonbnb.com/chart/<id>
 /agent/* /agent 200
 /agents /defi 301

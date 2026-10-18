@@ -32,6 +32,7 @@
 // dashboard/advantage.html.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ownTestHeaders } from './lib/own-test-headers.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT_DIR = path.join(ROOT, 'data', 'advantage');
@@ -95,7 +96,11 @@ async function getJson(m, url, timeoutMs = 60000) {
   // Calls into our own worker carry its secret, so /hire files them as our
   // quote runs and not as outside callers on the public track record
   // (2026-09-18: they never did, and were counted as strangers).
-  const ours = /^https:\/\/agent\.brainonbnb\.com\//.test(url) && process.env.HIT_SECRET ? { headers: { 'x-hit-secret': process.env.HIT_SECRET } } : {};
+  // …and on brainonbnb.com too (2026-10-18): the pool scan is free for 50 scans a caller a day, and a day of our own
+  // checks from this address had used them — task 2 was measured against the 429 and reported "did not answer". The
+  // secret only keeps our run out of that count; the answer is the one any caller gets.
+  const own = ownTestHeaders();
+  const ours = /^https:\/\/(agent\.)?brainonbnb\.com\//.test(url) && own['x-hit-secret'] ? { headers: own } : {};
   const r = await fetch(url, { ...ours, signal: AbortSignal.timeout(timeoutMs) });
   const text = await r.text();
   if (/^\s*<!doctype html/i.test(text)) {

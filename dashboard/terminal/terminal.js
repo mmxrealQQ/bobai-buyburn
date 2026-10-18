@@ -1853,27 +1853,28 @@ const COMBO = {
     c => `Quiet chain, ${pct(c.ch ?? 0)} on the day. A little walk around my pool while it naps.`,
     c => `${mins(c.quietMin)} of silence on my chart. The calm before the next buyback.`,
     c => `${pct(c.ch ?? 0)} on the day and nothing moving. Coffee, refill, still building.`] },
+  // HONEST ON A RED DAY (operator's option 6, 2026-10-18): the red moods said "a discount for the patient", "red is
+  // temporary", "weak hands feed the burn" — cheer, no evidence. Now each says what happened, from his own records:
+  // the day's change (his chart), the sells and buys and the volume of 24 hours (his ledger), and the largest sell a
+  // wallet he watches made (the whale watcher's movers) — no promise, no advice, no word that names a move.
   'down-loud': { name: 'battle mode', moves: ['saber', 'hodl', 'pushups', 'bull', 'popcorn'], lines: [
-    c => `${pct(c.ch)} in 24 hours and ${nTrades(c.n2)} in two hours. Every sell pays 3%, and part of it burns.`,
-    c => `Red and loud: ${$usd(c.v2)} traded in two hours. The LP is burned, the pool stays. So do I.`,
-    c => `${pct(c.ch)} and a lot of hands moving. Weak hands feed the burn; strong hands get a smaller supply. Stay strong.`,
-    c => `${pct(c.ch)} on the day, ${$usd(c.v2)} traded in two hours. Busy red days burn the most tax.`,
-    c => `Red and busy: ${nTrades(c.n2)} in two hours. Diamond hands, steady bots, burned LP.`,
-    c => `${pct(c.ch)} in 24 hours. Saber out. The bears do not get my pool.`] },
+    c => { const e = redFacts(); return `${pct(c.ch)} in 24 hours: ${e.counts}, ${$usd(e.vol)} traded.${e.big}`; },
+    c => { const e = redFacts(); return `I will not dress it up: ${pct(c.ch)} on the day. ${e.lead}.${e.big}`; },
+    c => { const e = redFacts(); return `Red and busy: ${pct(c.ch)} on the day, ${$usd(c.v2)} traded in two hours. Over 24 hours: ${e.counts}.${e.big}`; },
+    c => { const e = redFacts(); return `Here is why the chart is red: ${e.lead} in 24 hours, ${pct(c.ch)}.${e.big}`; },
+    c => { const e = redFacts(); return `${pct(c.ch)} today. The record of 24 hours: ${e.lead}.${e.big}`; }] },
   'down-normal': { name: 'stubborn', moves: ['hodl', 'think', 'pushups', 'walk'], lines: [
-    c => `${pct(c.ch)} in 24 hours. Diamond hands, same plan.`,
-    c => `${pct(c.ch)} today, ${nTrades(c.n2)} in two hours. Red candles, and the bots work exactly the same.`,
-    c => `${pct(c.ch)} on the day. Every red candle is a discount for the patient. We keep building.`,
-    c => `${pct(c.ch)} in 24 hours. I do push-ups, the bots do burns. Both of us get stronger.`,
-    c => `${pct(c.ch)} today. Red is temporary, a burned LP is forever.`,
-    c => `${pct(c.ch)} on the day, ${nTrades(c.n2)} in two hours. Same machine, same 3%, same plan.`] },
+    c => { const e = redFacts(); return `${pct(c.ch)} in 24 hours: ${e.counts}, ${$usd(e.vol)} traded.${e.big}`; },
+    c => { const e = redFacts(); return `Straight answer: ${pct(c.ch)} on the day. ${e.lead}.${e.big}`; },
+    c => { const e = redFacts(); return `The day so far: ${pct(c.ch)}, ${e.counts}. That is the market, shown as it is.${e.big}`; },
+    c => { const e = redFacts(); return `Red, ${pct(c.ch)}, and I can show why. Over 24 hours: ${e.lead}.${e.big}`; },
+    c => { const e = redFacts(); return `${pct(c.ch)} today on ${$usd(e.vol)} of trades. ${e.lead}.${e.big}`; }] },
   'down-quiet': { name: 'patient', moves: ['think', 'hodl', 'coffee', 'shrug', 'zen'], lines: [
-    c => `${pct(c.ch)} on the day, and no trade for ${mins(c.quietMin)}. The sellers took a break. I did not.`,
-    c => `Red and quiet: ${mins(c.quietMin)} without a trade. Time to think, not to panic.`,
-    c => `${pct(c.ch)} today and a calm chain. The best projects are built on days nobody watches. Today is one.`,
-    c => `${pct(c.ch)} and nobody trading for ${mins(c.quietMin)}. Calm hands. I like calm hands.`,
-    c => `Quiet red day, ${pct(c.ch)}. A coffee and a long view.`,
-    c => `${pct(c.ch)} in 24 hours and a sleepy chain. The bots do not nap, and neither do I.`] },
+    c => { const e = redFacts(); return `${pct(c.ch)} on the day and no trade for ${mins(c.quietMin)}. Over 24 hours: ${e.counts}.${e.big}`; },
+    c => { const e = redFacts(); return `Red and quiet, ${mins(c.quietMin)} without a trade. What made the day: ${e.lead}.${e.big}`; },
+    c => { const e = redFacts(); return `${pct(c.ch)} in 24 hours, ${e.counts}, and it has gone still.${e.big}`; },
+    c => { const e = redFacts(); return `The honest picture: ${pct(c.ch)}, ${$usd(e.vol)} traded, nothing for ${mins(c.quietMin)}. ${e.lead}.`; },
+    c => { const e = redFacts(); return `A slow red day, ${pct(c.ch)}. ${e.lead}.${e.big}`; }] },
 };
 // SMARTER BY MOOD (2026-09-30, operator: "more intelligent: lines, building explanations and jokes that fit the market
 // and his mood; when bored or chill a bit more active, interactive; a red market gets positive, motivating vibes").
@@ -2540,6 +2541,27 @@ function walletBack(x) {
     : vary('ctx-back-buy', [`The wallet that bought ${u} at ${at} is back for more. `, `Same wallet again: ${u} at ${at}, and now this. `, `It bought ${u} at ${at}. It is back. `,
       `A returning buyer: ${u} at ${at}, and once more now. `, `Second helping: this wallet already bought ${u} at ${at}. `]);
 }
+// WHAT MADE A RED DAY (2026-10-18, option 6): his ledger's last 24 hours — buys and sells counted, and since today the
+// BNB each side moved (rows bb/sb) — and the largest sell by name (row x: trades of $100+, the token's own tax swaps
+// kept out). counts: "13 sells and 25 buys"; lead: who moved more money, in dollars when the rows carry it; big: the
+// largest sell with its time, or ''. Everything here is the pool's own record; nothing is guessed.
+function redFacts() {
+  const now = Date.now(), day = CH.rows.filter(r => r.t >= now - 86400e3), U = r => r.u || S.bnbP || 0;
+  const b = day.reduce((a, r) => a + (r.b || 0), 0), s = day.reduce((a, r) => a + (r.s || 0), 0), vol = day.reduce((a, r) => a + (r.v || 0) * U(r), 0);
+  const hasSide = day.length && day.every(r => r.bb != null);
+  const bu = hasSide ? day.reduce((a, r) => a + r.bb * U(r), 0) : null, su = hasSide ? day.reduce((a, r) => a + r.sb * U(r), 0) : null;
+  const one = (n, w) => `${nf(n)} ${w}${n === 1 ? '' : 's'}`;
+  const counts = `${one(s, 'sell')} and ${one(b, 'buy')}`;
+  const lead = hasSide
+    ? (su > bu ? `${$usd(su)} sold against ${$usd(bu)} bought${s < b ? `, in ${one(s, 'sell')} against ${one(b, 'buy')}: fewer sells, bigger ones` : ''}` : `${$usd(bu)} bought against ${$usd(su)} sold, ${counts}`)
+    : (s > b ? `${counts}, the sellers led` : `${counts}, and the sells weighed more`);
+  let big = null;
+  for (const r of day) for (const e of Array.isArray(r.x) ? r.x : []) if (e[0] === 0 && (!big || e[1] * U(r) > big.usd)) big = { usd: e[1] * U(r), t: r.t };
+  const at = big ? new Date(big.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+  return { b, s, vol, bu, su, counts, lead, big: big ? ` The largest single sell: ${$usd(big.usd)}, in the ten minutes to ${at}.` : '' };
+}
+window.__btRedFacts = () => redFacts(); // for qa/redday.mjs
+window.__btRedLines = c => ['down-loud', 'down-normal', 'down-quiet'].flatMap(k => COMBO[k].lines.map(f => ({ k, line: f(c) }))); // every red mood line, for one given day
 // THE BIGGEST TRADE SINCE … (2026-10-18, option 3), for the trades under the alert line and every sell: his ledger keeps
 // every ten minutes' volume for 7 days. If no ten-minute stretch since a moment traded this much in total, no single
 // trade did either — that is provable from the ledger, and it is the only claim made. A day or more, $20 or more.

@@ -3650,7 +3650,9 @@ export default {
     // The Brain Terminal draws BOBAI's chart from it: one ten-minute bucket per candle, the close from the pool's
     // reserves, the wicks from the swaps' own prices. Public on-chain figures only; one KV read, cached a minute.
     if (url.pathname === '/candles' && request.method === 'GET') {
-      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, ...(x.own_bnb ? { o: x.own_bnb } : {}), b: x.buys, s: x.sells, u: x.bnb_usd, ...(x.big ? { x: x.big } : {}) }));
+      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, ...(x.own_bnb ? { o: x.own_bnb } : {}), b: x.buys, s: x.sells, u: x.bnb_usd, ...(x.big ? { x: x.big } : {}),
+        // what each side moved, in BNB (2026-10-18): the terminal says a red day in dollars — sold against bought — not only in counts
+        ...(x.buy_bnb != null ? { bb: x.buy_bnb, sb: x.sell_bnb } : {}) }));
       return new Response(JSON.stringify({ minutes: BUCKET_MINUTES, source: 'PancakeSwap pool Swap events + reserves, read every ten minutes', rows }), {
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*' },
       });

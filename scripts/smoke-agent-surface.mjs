@@ -770,7 +770,8 @@ section('The marketplace, from the front door');
   ok('a fabricated proof is refused with a reason, and nothing is produced', ansBogus.status === 402 && /not accepted/.test(bogusBody.error || '') && !!bogusBody.reason && !bogusBody.result);
   ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);
   const x402cat = await fetch(`${AGENT}/.well-known/x402`).then((r) => r.json()).catch(() => null);
-  ok('the x402 catalogue lists the watch, the six answers and the tip', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 8 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 6 && x402cat.resources.some((u) => /\/tip$/.test(u)));
+  // + the pool scan day pass (2026-10-18)
+  ok('the x402 catalogue lists the watch, the scan day pass, the six answers and the tip', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 9 && x402cat.resources.some((u) => /\/scan-pass$/.test(u)) &&x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 6 && x402cat.resources.some((u) => /\/tip$/.test(u)));
   // The voluntary tip (2026-09-26): a 402 at the amount the tipper names, into the same wallet as the paid
   // services, refusals before any money; and every free answer from outside names it in its thank-you note.
   const tip = await fetch(`${AGENT}/tip?usd=2`).then(async (r) => ({ status: r.status, j: await r.json().catch(() => null) })).catch(() => null);

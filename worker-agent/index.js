@@ -28,6 +28,7 @@
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
+import { issueScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
 // The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
 const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
 // On every card that takes an escrow job (2026-10-16): Pokter hired the DeFi
@@ -1072,7 +1073,7 @@ const WATCH_TOOL = {
     + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
     + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
     + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
-    + 'call is free. Measuring a pool once is free too and always will be: use bsc_pool_scan at '
+    + 'call is free. Measuring a pool once is free too — 50 scans per caller a day, a day pass past that: use bsc_pool_scan at '
     + 'https://brainonbnb.com/mcp for that. This tool is only worth paying for because somebody '
     + 'has to still be running in an hour.',
   inputSchema: {
@@ -1378,6 +1379,67 @@ async function tipRoute(env, ctx, payTo, q, proof) {
   return { status: 200, body: {
     ok: true, thanks: 'Thank you! Your tip arrived. With the next sweep half of it buys $BOBAI, held off the market, and half is the project\u2019s revenue.',
     paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx, by: 'BOBAI · https://brainonbnb.com',
+  } };
+}
+
+// THE POOL SCAN DAY PASS (shared/scan-pass.js, 2026-10-18): the pool scan at brainonbnb.com is free for 50 scans per
+// caller and UTC day; past that this pass carries on for a day. Sold like the watch — USD1 by EIP-3009 or transfer,
+// USDC by standard x402, half in $BOBAI, nothing with the holder pass — and handed back as a string the site checks
+// with the secret both workers share.
+async function purchaseScanPass(env, ctx, payTo, proof) {
+  const usd = Number(SCAN_PASS_PRICE_USD1) / 1e18;
+  const bobai = await bobaiForUsd(usd * BOBAI_SHARE).catch(() => null);
+  const what = `Pool scan day pass: ${SCAN_PASS_HOURS} hours of bsc_pool_scan past the ${SCAN_FREE_PER_DAY} free a day, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`;
+  if (!proof) {
+    const resource = SCAN_PASS_URL;
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
+        dexterAccepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
+        {
+          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
+          description: `${what} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+        ...(bobai ? [{
+          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+        }] : []),
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: what })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
+      body: {
+        error: 'payment required',
+        what: `${what}. The first ${SCAN_FREE_PER_DAY} scans every UTC day stay free without it.`,
+        price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        how: `${payWays({ amount: fmtUsd1(SCAN_PASS_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}. POST this URL with no body.`,
+        use: 'The answer carries the pass; send it as header X-Scan-Pass on every pool scan (https://brainonbnb.com/api/pool-scan or the MCP tool bsc_pool_scan at https://brainonbnb.com/mcp).',
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(usd * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
+        holder_pass: holderPassTerms(),
+        accepts: v2Shape(requirements, { url: resource }).accepts,
+      },
+    };
+  }
+  if (!env.HIT_SECRET) return { status: 503, body: { error: 'the scan pass cannot be issued right now; nothing was charged' } };
+  const pay = await chargeX402(env, {
+    payTo, price: SCAN_PASS_PRICE_USD1, description: what, resource: SCAN_PASS_URL, proof, sold: 'scanpass',
+    alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null,
+  });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  const issued = await issueScanPass(env.HIT_SECRET);
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
+  ctx.waitUntil(bump(env, 'scanpass_sold'));
+  return { status: 200, body: {
+    ok: true,
+    pass: issued.pass,
+    expires: issued.expires,
+    use: `Send header X-Scan-Pass: ${issued.pass} on every pool scan until ${issued.expires} (up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans): https://brainonbnb.com/api/pool-scan?address=0x… or bsc_pool_scan at https://brainonbnb.com/mcp.`,
+    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, day pass ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    tx: pay.holder ? undefined : pay.tx,
   } };
 }
 
@@ -3201,6 +3263,15 @@ ${pageTail}`;
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
+    }
+
+    if (path === '/scan-pass' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
+      const proof = request.method === 'POST' ? (request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT')) : null;
+      const out = await purchaseScanPass(env, ctx, payTo, proof);
+      note(proof ? (out.status === 200 ? 'sell:scanpass:paid' : 'sell:scanpass:refused') : 'sell:scanpass:terms');
+      // GET reads the terms with 200, as /watch does; POST without payment is the 402 itself.
+      return json(out.body, request.method === 'GET' && !proof ? 200 : out.status, out.headers || {});
     }
 
     if (path === '/watch' && request.method === 'GET') {

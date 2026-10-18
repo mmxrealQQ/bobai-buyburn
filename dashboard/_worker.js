@@ -10,6 +10,7 @@ import { swapRoute } from './swap-route.js';
 import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
+import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -790,7 +791,7 @@ const MCP_TOOLS = [
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
   // a swap UI shows leaves out the transfer tax and the swap fee.
-  { name: 'bsc_pool_scan', description: 'The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), lp.custody (who holds the LP of a V2 pair, wallet by wallet, the deployer flagged; complete from the pair\'s own logs when it is under an hour old; V3 positions not read), holders (the largest wallets with exchange, lock and burn addresses named apart, or unknown: true with the reason when there is no real list yet), age (pool and token, from the first block their code existed), activity (swaps, buys vs sells, unique traders, volume and the largest sell over the window read), flow (who sold over that window: the deployer and wallets it funded, netted against liquidity they added back to the same pair, top holders selling over a quarter of their balance, and for a pool under an hour old the launch-block buyers still holding), venues[] (the scanned pool first, pools under $100 left out) and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_pool_scan', description: 'The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), lp.custody (who holds the LP of a V2 pair, wallet by wallet, the deployer flagged; complete from the pair\'s own logs when it is under an hour old; V3 positions not read), holders (the largest wallets with exchange, lock and burn addresses named apart, or unknown: true with the reason when there is no real list yet), age (pool and token, from the first block their code existed), activity (swaps, buys vs sells, unique traders, volume and the largest sell over the window read), flow (who sold over that window: the deployer and wallets it funded, netted against liquidity they added back to the same pair, top holders selling over a quarter of their balance, and for a pool under an hour old the launch-block buyers still holding), venues[] (the scanned pool first, pools under $100 left out) and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h. Free for 50 scans per caller and UTC day; past that it answers code free_limit, and a day pass carries on (POST https://agent.brainonbnb.com/scan-pass: 0.50 USD1, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   // NAMED preflight, with no verb a router refuses (see pancakeswap_best_route
   // below): "pretrade" splits into a word our own dispatcher would not call.
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer. The same token asked again within 60 seconds gets the same measurement from the edge cache (cache.hit, cache.age_seconds).', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
@@ -1225,13 +1226,51 @@ const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, mess
 // /stats/detail — see count() in fetch. A tool name a caller made up is
 // counted as 'unknown', so the names stay ours.
 const MCP_CLIENT = (s) => String(s || 'unknown').toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32) || 'unknown';
-async function handleMcp(request, note = () => {}) {
+// 50 FREE POOL SCANS A CALLER A DAY, THEN A DAY PASS (shared/scan-pass.js, 2026-10-18). Counted per caller address and
+// UTC day in this data centre's cache — free, no KV write, and a caller reaching us through several data centres may get
+// a few more than 50, never fewer. A valid X-Scan-Pass carries on (up to SCAN_PASS_CAP scans); our own tests carry the
+// shared secret. Returns null to go ahead, or { status, body, headers } to refuse with.
+async function cacheBump(path, ttlSec, cap) {
+  if (typeof caches === 'undefined') return 0;
+  const key = new Request('https://brainonbnb.com/__scanq/' + path), cache = caches.default;
+  const n = Number(await (await cache.match(key))?.text().catch(() => '0') || 0);
+  if (n >= cap) return n + 1;
+  await cache.put(key, new Response(String(n + 1), { headers: { 'Cache-Control': `public, max-age=${Math.max(60, Math.round(ttlSec))}` } }));
+  return n + 1;
+}
+async function scanAllowance(request) {
+  try {
+    const secret = WORKER_ENV?.HIT_SECRET;
+    // Our own tests go free; with x-scan-quota-key they are counted under that name instead, so the checker can run a
+    // caller to the line without spending the day of the address it runs from (scripts/scan-quota-check.mjs).
+    const owned = !!secret && request.headers.get('x-hit-secret') === secret;
+    const testKey = owned ? request.headers.get('x-scan-quota-key') : null;
+    if (owned && !testKey) return null;
+    const pass = request.headers.get('x-scan-pass');
+    if (pass) {
+      const c = await checkScanPass(secret, pass);
+      if (!c.ok) return { status: 402, body: { error: c.reason, code: 'bad_scan_pass', hint: `Buy a day pass at POST ${SCAN_PASS_URL}, or leave X-Scan-Pass out to use the ${SCAN_FREE_PER_DAY} free scans of the day.` }, note: 'poolscan:pass:bad' };
+      const n = await cacheBump('pass/' + c.id, (c.exp - Date.now()) / 1000, SCAN_PASS_CAP);
+      if (n > SCAN_PASS_CAP) return { status: 429, body: { error: `This day pass has carried its ${SCAN_PASS_CAP.toLocaleString('en-US')} scans.`, code: 'pass_used', hint: `Buy another at POST ${SCAN_PASS_URL}.` }, note: 'poolscan:pass:used' };
+      return { ok: true, note: 'poolscan:pass' };
+    }
+    const ip = testKey ? 'test:' + testKey : request.headers.get('cf-connecting-ip');
+    if (!ip) return null;
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-scanq:' + ip));
+    const now = new Date(), end = new Date(now); end.setUTCHours(24, 0, 0, 0);
+    const n = await cacheBump([...new Uint8Array(d)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('') + '/' + now.toISOString().slice(0, 10), (end - now) / 1000, SCAN_FREE_PER_DAY);
+    if (n > SCAN_FREE_PER_DAY) return { status: 429, body: scanLimitTerms(SCAN_FREE_PER_DAY), headers: { 'Retry-After': String(Math.ceil((end - now) / 1000)) }, note: 'poolscan:limit' };
+    return null;
+  } catch { return null; }   // a counter that cannot count lets the scan through
+}
+
+async function handleMcp(request, note = () => {}, own = false) {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     // The headers a browser-based MCP client sends (2026-10-05): with only
     // Content-Type allowed, its preflight failed before the first call.
-    'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept, X-BOBAI-Thanks',
+    'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept, X-BOBAI-Thanks, X-Scan-Pass',
     'Content-Type': 'application/json',
   };
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -1293,6 +1332,12 @@ async function handleMcp(request, note = () => {}) {
       // that as a result with isError, which the model gets to read, not as a
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
+        // past the free scans of the day, the day pass (2026-10-18)
+        if (!own && (DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') {
+          const lim = await scanAllowance(request);
+          if (lim?.note) note(lim.note);
+          if (lim && !lim.ok) return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: `${lim.body.error}\n\ncode: ${lim.body.code} — ${lim.body.hint}` }], structuredContent: lim.body, isError: true })), { headers: cors });
+        }
         // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
         const read = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
         const raw = withWatchOffer(params?.name, read);
@@ -1631,7 +1676,7 @@ export default {
     // detail.
     const isOwn = request.headers.get('cf-connecting-ip') === '2a06:98c0:3600::103' && !request.headers.get('cf-worker');
     if (isOwn) {
-      if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)));
+      if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
     }
     else if (url.pathname === '/mcp') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
@@ -1738,6 +1783,13 @@ export default {
       // (the user agent's first word, letters only, no version) names a bot without naming a person.
       const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
       const outsideScan = !isOwn && !siteCall && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan';
+      // Past the free scans of the day, the day pass (2026-10-18). Only a browser on our own pages is left out: the
+      // referer alone is anyone's to send.
+      if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan' && request.headers.get('sec-fetch-site') !== 'same-origin') {
+        const lim = await scanAllowance(request);
+        if (lim?.note) count(null, [lim.note, ...(lim.ok ? [] : [`poolscanua:${product}`])]);
+        if (lim && !lim.ok) return new Response(JSON.stringify(lim.body, null, 2), { status: lim.status, headers: { ...headers, ...(lim.headers || {}) } });
+      }
       try {
         const out = WITH_ADDRESS[url.pathname]
           // The size is part of the question (2026-09-18): llms.txt, skill.md and

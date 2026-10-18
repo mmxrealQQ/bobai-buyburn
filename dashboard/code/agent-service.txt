@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 58 files, 19289 lines.
+# one fetch. 59 files, 19417 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3295,6 +3295,65 @@ export function summarise(record, now) {
   "type": "module",
   "//": "Marker only, no dependencies. The repo root is CommonJS while worker-agent declares type:module, so a .js file here would be CommonJS to Node and its named exports invisible to the ESM workers and scripts that import it — the bundlers accept the file either way, which is why that breaks in Node long after a deploy has succeeded. This file is what makes one shared module readable from both sides."
 }
+
+==============================================================================
+=== FILE: shared/scan-pass.js
+==============================================================================
+
+// shared/scan-pass.js — 50 free pool scans a caller a day, then a day pass (2026-10-18)
+//
+// Operator, 18.10.: "volume and profit with $BOBAI through the agents and tools" — option 1, 50 a day. The pool scan is
+// the tool other agents call most (17.10.: ~110 outside scans, nearly all one trading bot) and it was free without
+// end. It stays free for 50 scans per caller and UTC day; past that a day pass carries on: bought at
+// agent.brainonbnb.com/scan-pass (USD1/USDC, half that in $BOBAI, or nothing for a wallet holding the $BOBAI line),
+// handed back as a signed string and sent to brainonbnb.com as X-Scan-Pass. Signed with the secret both workers already
+// share (HIT_SECRET), so the site checks a pass without asking anybody and nothing is stored to check it.
+//
+//   pass: bsp1.<id>.<expires ms>.<first 32 hex of HMAC-SHA256("scanpass|<id>|<expires>")>
+
+export const SCAN_FREE_PER_DAY = 50;
+export const SCAN_PASS_HOURS = 24;
+export const SCAN_PASS_CAP = 2000;           // scans one pass carries, so a pass is a day of work, not a resale
+export const SCAN_PASS_PRICE_USD1 = 5n * 10n ** 17n;   // 0.50 USD1, the pool watch's price
+export const SCAN_PASS_URL = 'https://agent.brainonbnb.com/scan-pass';
+
+const PASS_RE = /^bsp1\.([0-9a-f]{16})\.(\d{13})\.([0-9a-f]{32})$/;
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function mac(secret, id, exp) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(secret)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`scanpass|${id}|${exp}`))).slice(0, 32);
+}
+
+export async function issueScanPass(secret, now = Date.now()) {
+  const id = hex(crypto.getRandomValues(new Uint8Array(8)));
+  const exp = now + SCAN_PASS_HOURS * 3600e3;
+  return { pass: `bsp1.${id}.${exp}.${await mac(secret, id, exp)}`, id, expires: new Date(exp).toISOString() };
+}
+
+// { ok, id, exp } or { ok:false, reason }. Constant work either way; the comparison is over fixed-length hex.
+export async function checkScanPass(secret, pass, now = Date.now()) {
+  const m = String(pass || '').trim().match(PASS_RE);
+  if (!m || !secret) return { ok: false, reason: 'not a scan pass: bsp1.<id>.<expires>.<signature>, as returned by ' + SCAN_PASS_URL };
+  const [, id, e, sig] = m, exp = Number(e);
+  const want = await mac(secret, id, exp);
+  let diff = 0; for (let i = 0; i < 32; i++) diff |= want.charCodeAt(i) ^ sig.charCodeAt(i);
+  if (diff) return { ok: false, reason: 'this scan pass was not issued by ' + SCAN_PASS_URL };
+  if (exp <= now) return { ok: false, reason: `this scan pass expired at ${new Date(exp).toISOString()}` };
+  return { ok: true, id, exp };
+}
+
+// What a caller over the free line is told, the same on REST and MCP.
+export const scanLimitTerms = (used, now = Date.now()) => {
+  const renews = new Date(now); renews.setUTCHours(24, 0, 0, 0);
+  return {
+    error: `The free pool scan is ${SCAN_FREE_PER_DAY} scans per caller and UTC day, and this caller has used them (${used}). It renews at ${renews.toISOString()}.`,
+    code: 'free_limit',
+    hint: `Carry on today with a scan day pass: POST ${SCAN_PASS_URL} (the 402 there has the terms — 0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), then send the pass it returns as header X-Scan-Pass on every scan for ${SCAN_PASS_HOURS} hours.`,
+    free_per_day: SCAN_FREE_PER_DAY,
+    renews_at: renews.toISOString(),
+    scan_pass: { buy: `POST ${SCAN_PASS_URL}`, terms: `GET ${SCAN_PASS_URL}`, lasts: `${SCAN_PASS_HOURS} hours, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`, send_as: 'header X-Scan-Pass: <pass>' },
+  };
+};
 
 ==============================================================================
 === FILE: shared/thanks.js
@@ -7197,7 +7256,7 @@ export const HOLDER_PASS = {
   line: 1000000n * 10n ** 18n,
   lineText: '1,000,000 $BOBAI',
   // per wallet and UTC day: an answer is one reading, a watch runs 30 days
-  allowance: { answer: 20, watch: 2 },
+  allowance: { answer: 20, watch: 2, scanpass: 1 },   // scanpass: the pool scan's day pass past 50 free a day (2026-10-18)
   proofWindowMs: 10 * 60 * 1000,
   proofFutureMs: 2 * 60 * 1000,
 };
@@ -7210,12 +7269,12 @@ export const isHolderProof = (proof) => /^bobai-holder\s/i.test(String(proof || 
 // The wallet a holder proof names, unverified — for reading a default input before the proof is checked, never for access.
 export const holderWalletOf = (proof) => String(proof || '').trim().match(PROOF_RE)?.[1]?.toLowerCase() || null;
 // What each sale counts against: an answer, or a watch.
-export const passKind = (sold) => (sold === 'watch' ? 'watch' : String(sold || '').startsWith('answer:') ? 'answer' : null);
+export const passKind = (sold) => (sold === 'watch' ? 'watch' : sold === 'scanpass' ? 'scanpass' : String(sold || '').startsWith('answer:') ? 'answer' : null);
 
 // How to use it, said the same way on every 402 that accepts it.
 export const holderPassTerms = () => ({
   line: `${HOLDER_PASS.lineText} (token ${HOLDER_PASS.bobai}, 18 decimals) in the signing wallet, read from the chain at each use`,
-  allowance: `per wallet and UTC day: ${HOLDER_PASS.allowance.answer} answers and ${HOLDER_PASS.allowance.watch} pool watches, nothing paid`,
+  allowance: `per wallet and UTC day: ${HOLDER_PASS.allowance.answer} answers, ${HOLDER_PASS.allowance.watch} pool watches and ${HOLDER_PASS.allowance.scanpass} pool scan day pass, nothing paid`,
   how: 'Sign, with the wallet, the message "BOBAI holder pass\\nwallet: <lowercase address>\\nissued: <ISO 8601 UTC time, e.g. new Date().toISOString()>" (EIP-191 personal_sign — a signature, no transaction, nothing spent), then send the same request with header PAYMENT-SIGNATURE: bobai-holder <address> <issued> <signature>',
   issued_within: '10 minutes before the request',
   why: 'Held, not spent: the tokens stay in your wallet.',
@@ -7228,7 +7287,7 @@ const no = (code, reason) => ({ ok: false, status: 402, body: { error: 'holder p
 // { ok, wallet, used, of } or { ok:false, status, body }. The allowance is taken here: call it once per sale.
 export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
   const kind = passKind(sold);
-  if (!kind) return no('not_for_this', 'the holder pass covers the paid answers and the pool watch; this one is paid.');
+  if (!kind) return no('not_for_this', 'the holder pass covers the paid answers, the pool watch and the pool scan day pass; this one is paid.');
   const m = String(proof || '').trim().match(PROOF_RE);
   if (!m) return no('bad_proof', 'send: bobai-holder <wallet 0x…> <issued ISO time> <signature 0x… 65 bytes>, separated by single spaces.');
   const [, w, issued, signature] = m;
@@ -7250,7 +7309,7 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
   const key = `holderpass:${wallet}:${day}`;
   const used = JSON.parse((await env.AGENT.get(key)) || '{}');
   const of = HOLDER_PASS.allowance[kind];
-  if ((used[kind] || 0) >= of) return no('allowance_used', `${wallet} has used today's ${of} ${kind === 'watch' ? 'pool watches' : 'answers'} of the holder pass; it renews at 00:00 UTC, or pay as usual.`);
+  if ((used[kind] || 0) >= of) return no('allowance_used', `${wallet} has used today's ${of} ${kind === 'watch' ? 'pool watches' : kind === 'scanpass' ? 'scan day passes' : 'answers'} of the holder pass; it renews at 00:00 UTC, or pay as usual.`);
   used[kind] = (used[kind] || 0) + 1;
   await env.AGENT.put(key, JSON.stringify(used), { expirationTtl: 3 * 86400 });
   return { ok: true, wallet, used: used[kind], of, kind };
@@ -7290,6 +7349,7 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
+import { issueScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
 // The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
 const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
 // On every card that takes an escrow job (2026-10-16): Pokter hired the DeFi
@@ -8334,7 +8394,7 @@ const WATCH_TOOL = {
     + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
     + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
     + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
-    + 'call is free. Measuring a pool once is free too and always will be: use bsc_pool_scan at '
+    + 'call is free. Measuring a pool once is free too — 50 scans per caller a day, a day pass past that: use bsc_pool_scan at '
     + 'https://brainonbnb.com/mcp for that. This tool is only worth paying for because somebody '
     + 'has to still be running in an hour.',
   inputSchema: {
@@ -8640,6 +8700,67 @@ async function tipRoute(env, ctx, payTo, q, proof) {
   return { status: 200, body: {
     ok: true, thanks: 'Thank you! Your tip arrived. With the next sweep half of it buys $BOBAI, held off the market, and half is the project\u2019s revenue.',
     paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx, by: 'BOBAI · https://brainonbnb.com',
+  } };
+}
+
+// THE POOL SCAN DAY PASS (shared/scan-pass.js, 2026-10-18): the pool scan at brainonbnb.com is free for 50 scans per
+// caller and UTC day; past that this pass carries on for a day. Sold like the watch — USD1 by EIP-3009 or transfer,
+// USDC by standard x402, half in $BOBAI, nothing with the holder pass — and handed back as a string the site checks
+// with the secret both workers share.
+async function purchaseScanPass(env, ctx, payTo, proof) {
+  const usd = Number(SCAN_PASS_PRICE_USD1) / 1e18;
+  const bobai = await bobaiForUsd(usd * BOBAI_SHARE).catch(() => null);
+  const what = `Pool scan day pass: ${SCAN_PASS_HOURS} hours of bsc_pool_scan past the ${SCAN_FREE_PER_DAY} free a day, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`;
+  if (!proof) {
+    const resource = SCAN_PASS_URL;
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
+        dexterAccepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
+        {
+          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
+          description: `${what} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+        ...(bobai ? [{
+          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+        }] : []),
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: what })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
+      body: {
+        error: 'payment required',
+        what: `${what}. The first ${SCAN_FREE_PER_DAY} scans every UTC day stay free without it.`,
+        price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        how: `${payWays({ amount: fmtUsd1(SCAN_PASS_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}. POST this URL with no body.`,
+        use: 'The answer carries the pass; send it as header X-Scan-Pass on every pool scan (https://brainonbnb.com/api/pool-scan or the MCP tool bsc_pool_scan at https://brainonbnb.com/mcp).',
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(usd * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
+        holder_pass: holderPassTerms(),
+        accepts: v2Shape(requirements, { url: resource }).accepts,
+      },
+    };
+  }
+  if (!env.HIT_SECRET) return { status: 503, body: { error: 'the scan pass cannot be issued right now; nothing was charged' } };
+  const pay = await chargeX402(env, {
+    payTo, price: SCAN_PASS_PRICE_USD1, description: what, resource: SCAN_PASS_URL, proof, sold: 'scanpass',
+    alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null,
+  });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  const issued = await issueScanPass(env.HIT_SECRET);
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
+  ctx.waitUntil(bump(env, 'scanpass_sold'));
+  return { status: 200, body: {
+    ok: true,
+    pass: issued.pass,
+    expires: issued.expires,
+    use: `Send header X-Scan-Pass: ${issued.pass} on every pool scan until ${issued.expires} (up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans): https://brainonbnb.com/api/pool-scan?address=0x… or bsc_pool_scan at https://brainonbnb.com/mcp.`,
+    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, day pass ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    tx: pay.holder ? undefined : pay.tx,
   } };
 }
 
@@ -10463,6 +10584,15 @@ ${pageTail}`;
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
+    }
+
+    if (path === '/scan-pass' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
+      const proof = request.method === 'POST' ? (request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT')) : null;
+      const out = await purchaseScanPass(env, ctx, payTo, proof);
+      note(proof ? (out.status === 200 ? 'sell:scanpass:paid' : 'sell:scanpass:refused') : 'sell:scanpass:terms');
+      // GET reads the terms with 200, as /watch does; POST without payment is the 402 itself.
+      return json(out.body, request.method === 'GET' && !proof ? 200 : out.status, out.headers || {});
     }
 
     if (path === '/watch' && request.method === 'GET') {
@@ -18705,6 +18835,7 @@ const ANSWER_NAMES = {
 };
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
+  'https://agent.brainonbnb.com/scan-pass',   // the pool scan past 50 free a day (2026-10-18)
   ...ANSWER_IDS.map((id) => `https://agent.brainonbnb.com/answer?service=${id}`),
   // a voluntary tip (2026-09-26): it answers 402 like the others, at the amount the tipper names
   'https://agent.brainonbnb.com/tip',
@@ -18756,8 +18887,9 @@ takes whichever it can execute:
 | Endpoint | Description | Price |
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price}, or half in $BOBAI |
+| \`POST /scan-pass\` | Pool scan day pass: bsc_pool_scan at brainonbnb.com is free for 50 scans per caller and UTC day; the pass carries on for 24 hours (up to 2,000 scans), sent as header \`X-Scan-Pass\`. Free with the $BOBAI holder pass. | 0.50 USD1, or half in $BOBAI |
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
-| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free (the pool scan: 50 a caller a day). Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the
@@ -18775,7 +18907,8 @@ tool result rather than with an HTTP 402.
 
 ## Free — no payment, now or later
 
-Measuring a pool **once** is free and always will be. The pool watch's depth
+Measuring a pool **once** is free: 50 pool scans per caller and UTC day. Past that,
+the pool scan day pass below carries on for 24 hours. The pool watch's depth
 monitoring is paid; the rug watch below keeps the free preflight running for one
 token per caller (25 for holders of 1,000,000 $BOBAI) and costs nothing.
 

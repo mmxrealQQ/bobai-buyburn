@@ -58,6 +58,11 @@ export const GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract
   V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',
   V3FACTORY='0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
   QUOTER='0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
+  // UNISWAP V3 ON BNB CHAIN (2026-10-18): checked on chain, not taken from a page — three of a token's "uniswap" pools
+  // answered factory() with this address; its QuoterV2 and SwapRouter02 answer factory() with it too (the router's
+  // WETH9 is WBNB), and the quoter takes the same quoteExactInputSingle call as PancakeSwap's.
+  UNI_V3_FACTORY='0xdb1d10011ad0ff90774d0c6bb92e5c5c8b4461f7',
+  UNI_QUOTER='0x78d78e420da98ad378d7799be8f4af69033eb077',
   WBNB='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
   BNB_PAIR='0x58f876857a02d6762e0101bb5c46a8c1ed44dc16',
   DEAD='0x000000000000000000000000000000000000dead',
@@ -69,6 +74,7 @@ export const QUOTES=[[WBNB,'BNB',0],
   ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d','USDC',1],
   ['0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d','USD1',1]];
 export const V3_FEES=[100,500,2500,10000];
+export const UNI_V3_FEES=[100,500,3000,10000];   // Uniswap's tiers: 0.30%, where PancakeSwap has 0.25%
 // Constant-product venues, and the fee each one charges.
 //
 // Every fee here was DERIVED, not read off a docs page: for each router, its
@@ -304,7 +310,7 @@ export async function classify(addr){
     // with the wrong quoter — every cost row null, 1% depth printed as $0
     // (2026-09-18).
     return {kind:'v3pool',fee:Number(hx(q[1])),token0:addrAt(q[3]),token1:addrAt(q[4]),
-      sqrt:hx('0x'+q[2].slice(2,66)),factory:addrAt(q[5]),pancake:addrAt(q[5])===V3FACTORY};
+      sqrt:hx('0x'+q[2].slice(2,66)),factory:addrAt(q[5]),pancake:addrAt(q[5])===V3FACTORY,uniswap:addrAt(q[5])===UNI_V3_FACTORY};
   return {kind:'token'};
 }
 
@@ -335,11 +341,14 @@ export async function priceToken(addr,bnbUsd){
 // Asked of the factories, not of an index. An index that has not caught up makes
 // a live token look dead — GoPlus does not list $CAKE's V2 pair at all, and does
 // not know $MatthewCoin's. The factory always answers.
-export async function discover(token,tokDec,bnbUsd){
+// `uniswap` (2026-10-18): Uniswap V3's pools too — asked for by the pool scan only; the fee-tier and range tools
+// that also call this are PancakeSwap's and must not be handed another venue's pool.
+export async function discover(token,tokDec,bnbUsd,{uniswap=false}={}){
   const facs=Object.keys(FACTORIES);
   const v2=[];facs.forEach(f=>QUOTES.forEach(([q])=>v2.push(call(f,getPair(token,q)))));
   const v3=[];QUOTES.forEach(([q])=>V3_FEES.forEach(f=>v3.push(call(V3FACTORY,getPool(token,q,f)))));
-  const found=await rpcBatch([...v2,...v3]);
+  const u3=[];if(uniswap)QUOTES.forEach(([q])=>UNI_V3_FEES.forEach(f=>u3.push(call(UNI_V3_FACTORY,getPool(token,q,f)))));
+  const found=await rpcBatch([...v2,...v3,...u3]);
   const cands=[];
   facs.forEach((f,fi)=>QUOTES.forEach(([qa,sym,stable],i)=>{
     const p=addrAt(found[fi*QUOTES.length+i]);
@@ -350,6 +359,11 @@ export async function discover(token,tokDec,bnbUsd){
     const p=addrAt(found[facs.length*QUOTES.length+i*V3_FEES.length+k]);
     if(p&&p!==NULLA)cands.push({kind:'v3',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
       fee:f/1e6,feeRaw:f,venue:'PancakeSwap V3'});
+  }));
+  if(uniswap)QUOTES.forEach(([qa,sym,stable],i)=>UNI_V3_FEES.forEach((f,k)=>{
+    const p=addrAt(found[facs.length*QUOTES.length+v3.length+i*UNI_V3_FEES.length+k]);
+    if(p&&p!==NULLA)cands.push({kind:'v3',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:f/1e6,feeRaw:f,venue:'Uniswap V3',quoter:UNI_QUOTER});
   }));
   if(!cands.length)return [];
   // Depth is measured, never assumed: V2 from reserves, V3 from what the pool
@@ -422,7 +436,7 @@ export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
     const pair=String(o.pair||'').toLowerCase();
     if(!/^0x[0-9a-f]{40}$/.test(pair))continue;
     let w;try{w=await classify(pair)}catch(e){continue}
-    if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&w.pancake))continue;
+    if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&(w.pancake||w.uniswap)))continue;
     if(w.token0!==token&&w.token1!==token)continue;
     const quote=w.token0===token?w.token1:w.token0;
     const hop=await priceQuote(quote,bnbUsd).catch(()=>null);
@@ -431,8 +445,8 @@ export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
       ?{kind:'v2',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.venue.fee,venue:w.venue.name,factory:w.factory,
         tok:(w.token0===token?w.reserves[0]:w.reserves[1])/Math.pow(10,tokDec),
         q:(w.token0===token?w.reserves[1]:w.reserves[0])/1e18}
-      :{kind:'v3',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.fee/1e6,feeRaw:w.fee,venue:'PancakeSwap V3',
-        sqrt:w.sqrt,tokenIs0:w.token0===token};
+      :{kind:'v3',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.fee/1e6,feeRaw:w.fee,venue:w.uniswap?'Uniswap V3':'PancakeSwap V3',
+        ...(w.uniswap?{quoter:UNI_QUOTER}:{}),sqrt:w.sqrt,tokenIs0:w.token0===token};
     if(c.kind==='v3'){
       const bal=await rpcBatch([call(quote,balOf(pair)),call(token,balOf(pair))]);
       c.q=Number(hx(bal[0]))/1e18;c.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
@@ -483,7 +497,8 @@ export function sqrtToPrice(sqrt,decIn,decOut){
 // not the trade. Quoting a near-zero amount alongside the real ones gives a
 // "before" from the same block state, so the difference is the trade and
 // nothing else.
-export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,taxS,sqrtBefore,tokenIs0){
+// `quoter` (2026-10-18): the pool's own venue's quoter — PancakeSwap's unless the pool is Uniswap's
+export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,taxS,sqrtBefore,tokenIs0,quoter=QUOTER){
   // The sell side is quoted with the amount that SURVIVES the transfer tax,
   // because that is all the pool ever sees. Quoting the gross amount and
   // scaling the answer afterwards would be an approximation where an exact
@@ -491,9 +506,9 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
   const amtsBuy=STEPS.map(u=>BigInt(Math.floor(u/quoteUsd*1e18))),
         amtsSell=STEPS.map(u=>BigInt(Math.floor(u/px*(1-taxS)*Math.pow(10,tokDec))));
   const dust=BigInt(Math.max(1,Math.floor(1/quoteUsd*1e18)));   // ~$1 of the quote token
-  const calls=[call(QUOTER,quoteCall(quote,token,dust,feeRaw)),
-               ...amtsBuy.map(a=>call(QUOTER,quoteCall(quote,token,a,feeRaw))),
-               ...amtsSell.map(a=>call(QUOTER,quoteCall(token,quote,a,feeRaw)))];
+  const calls=[call(quoter,quoteCall(quote,token,dust,feeRaw)),
+               ...amtsBuy.map(a=>call(quoter,quoteCall(quote,token,a,feeRaw))),
+               ...amtsSell.map(a=>call(quoter,quoteCall(token,quote,a,feeRaw)))];
   const all=await rpcBatch(calls);
   const baseHex=all[0],r=all.slice(1);
   const before=(baseHex&&baseHex.length>=130)
@@ -561,7 +576,7 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
 // deeper or far thinner than they assume, so the quoter is swept geometrically
 // and the crossing of 1% is read off the curve. Interpolated in log space
 // because impact against size is very close to a straight line there.
-export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBefore,tokenIs0,taxS=0){
+export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBefore,tokenIs0,taxS=0,quoter=QUOTER){
   // $20 to $976M. The old sweep stopped at $1.3M and simply gave up on anything
   // deeper: USDC/USDT at the 0.01% tier does not move one percent for any figure
   // in that range, so both fields printed "—" for a pool holding $27M — read as
@@ -575,9 +590,9 @@ export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBe
   // divides by (1-taxS). Without it a 5%-tax token's "moves the price −1%" was
   // the size that reaches the pool, not the size the seller has to send.
   const surv=1-(taxS||0);
-  const calls=[call(QUOTER,quoteCall(quote,token,dust,feeRaw)),
-               ...probes.map(u=>call(QUOTER,quoteCall(quote,token,BigInt(Math.floor(u/quoteUsd*1e18)),feeRaw))),
-               ...probes.map(u=>call(QUOTER,quoteCall(token,quote,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec))),feeRaw)))];
+  const calls=[call(quoter,quoteCall(quote,token,dust,feeRaw)),
+               ...probes.map(u=>call(quoter,quoteCall(quote,token,BigInt(Math.floor(u/quoteUsd*1e18)),feeRaw))),
+               ...probes.map(u=>call(quoter,quoteCall(token,quote,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec))),feeRaw)))];
   const all=await rpcBatch(calls);
   const baseHex=all[0],r=all.slice(1);
   const before=(baseHex&&baseHex.length>=130)?Number(BigInt('0x'+baseHex.slice(66,130))):Number(sqrtBefore);
@@ -1347,6 +1362,8 @@ function revertText(err){
 // rule refuses a contract where a wallet sails through. A V3 revert is
 // therefore reported with that caveat in the sentence, not as a bare verdict.
 const V3_SWAP_ROUTER='0x1b81d678ffb9c0263b24a97847620c99d213eb14';
+// Uniswap's SwapRouter02 (2026-10-18; factory() and WETH9() checked on chain): exactInputSingle without a deadline
+const UNI_SWAP_ROUTER='0xb971ef87ede563556b2ed4b1c0b0019111dd85d2', SEL_EXACT_INPUT_SINGLE_02='0x04e45aaf';
 const SEL_APPROVE='0x095ea7b3', SEL_EXACT_INPUT_SINGLE='0x414bf389';
 const decodeAggregate3Raw=(hex,n)=>{
   const b=hex.slice(2),at=o=>b.slice(o*2,o*2+64);
@@ -1370,7 +1387,8 @@ export async function simulateV3Sell(token,pool,withoutBalance=false){
   const t0=addrAt(head[0]),t1=addrAt(head[1]),fac=addrAt(head[3]);
   const quote=t0===token?t1:t1===token?t0:null;
   if(!quote)return {ok:false,reason:'the pool that was read does not hold this token'};
-  if(fac!==V3FACTORY)return {ok:false,reason:'the sell test trades through PancakeSwap\'s V3 router, and this pool belongs to another venue — not run, not cleared'};
+  const uni=fac===UNI_V3_FACTORY, ROUTER=uni?UNI_SWAP_ROUTER:V3_SWAP_ROUTER, VENUE=uni?'Uniswap V3':'PancakeSwap V3';
+  if(fac!==V3FACTORY&&!uni)return {ok:false,reason:'the sell test trades through PancakeSwap\'s or Uniswap\'s V3 router, and this pool belongs to another venue — not run, not cleared'};
   const fee=BigInt(head[2]),held=BigInt(head[4]||'0x0');
   const amount=held/1000n>0n?held/1000n:1n;
   const amtHex='0x'+pad32(amount);
@@ -1385,11 +1403,13 @@ export async function simulateV3Sell(token,pool,withoutBalance=false){
   if(!b1.hit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
   const balKey=balKeys[b1.hit.id];
   const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
-  const swap=SEL_EXACT_INPUT_SINGLE+pad32(token)+pad32(quote)+pad32(fee)+holderKey+deadline+pad32(amount)+pad32(0n)+pad32(0n);
+  const swap=uni
+    ?SEL_EXACT_INPUT_SINGLE_02+pad32(token)+pad32(quote)+pad32(fee)+holderKey+pad32(amount)+pad32(0n)+pad32(0n)
+    :SEL_EXACT_INPUT_SINGLE+pad32(token)+pad32(quote)+pad32(fee)+holderKey+deadline+pad32(amount)+pad32(0n)+pad32(0n);
   const calls=[
     {to:quote,data:SEL_BAL+holderKey},
-    {to:token,data:SEL_APPROVE+pad32(V3_SWAP_ROUTER)+pad32(amount)},
-    {to:V3_SWAP_ROUTER,data:swap},
+    {to:token,data:SEL_APPROVE+pad32(ROUTER)+pad32(amount)},
+    {to:ROUTER,data:swap},
     {to:quote,data:SEL_BAL+holderKey},
   ];
   const body={jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:MULTICALL3,data:encodeAggregate3(calls,true),gas:'0x2dc6c0'},'latest',...(withoutBalance?[]:[{[token]:{stateDiff:{[balKey]:amtHex}}}])]};
@@ -1400,9 +1420,9 @@ export async function simulateV3Sell(token,pool,withoutBalance=false){
   }
   if(!res)return {ok:false,reason:'every node refused the simulation call (rate limit or unsupported) — not checked, not cleared'};
   const out=decodeAggregate3Raw(res,4);
-  const named={pair:pool,path:[token,quote],through_scanned_pool:true,venue:'PancakeSwap V3'};
+  const named={pair:pool,path:[token,quote],through_scanned_pool:true,venue:VENUE};
   const size_note='one part in a thousand of what the pool holds of this token, sold from a contract at a fresh address';
-  const source='eth_call with a state override: Multicall3 holds a test balance, approves PancakeSwap\'s V3 SwapRouter and sells through exactInputSingle on this pool\'s fee tier, at this block';
+  const source='eth_call with a state override: Multicall3 holds a test balance, approves '+(uni?'Uniswap\'s SwapRouter02':'PancakeSwap\'s V3 SwapRouter')+' and sells through exactInputSingle on this pool\'s fee tier, at this block';
   if(!out[1].ok)return {ok:false,reason:'the token refused the approve() the test needs — not checked, not cleared'};
   if(!out[2].ok){
     const why=revertText({data:out[2].data,message:'the swap reverted'});

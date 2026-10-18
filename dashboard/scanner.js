@@ -11,10 +11,10 @@
 //      showed nothing at all, which is the most dangerous thing this page
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
-  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,priceQuote,flapInfo,flapLadder,
+  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,priceQuote,flapInfo,flapLadder,UNI_QUOTER,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=35';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=36';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -1514,8 +1514,8 @@ async function scanOnce(input){
       if(hop.dec!=null&&hop.dec!==18)
         return fail('That pool is quoted in a token with '+hop.dec+' decimals.',
           'Its depth cannot be stated correctly here yet: this scan counts the quote side in 18 decimals, as BNB and the stablecoins do. Paste the token itself instead — it is then measured in its deepest pool against BNB or a stablecoin.');
-      if(what.kind==='v3pool'&&!what.pancake)
-        return fail('That V3 pool is not a PancakeSwap pool.',
+      if(what.kind==='v3pool'&&!what.pancake&&!what.uniswap)
+        return fail('That V3 pool is neither a PancakeSwap nor a Uniswap pool.',
           'Its factory is '+short(what.factory||'')+'. The concentrated-liquidity maths on this page is priced through PancakeSwap\'s own quoter, which knows nothing about another venue\'s pool. Paste the token instead and the scan finds its PancakeSwap pools.');
       if(what.kind==='v2pair'&&!what.venue)
         return fail('That pool is on a venue this page does not price.',
@@ -1526,7 +1526,7 @@ async function scanOnce(input){
           tok:(addrAt(what.token0)===token?what.reserves[0]:what.reserves[1])/Math.pow(10,tokDec),
           q:(addrAt(what.token0)===token?what.reserves[1]:what.reserves[0])/1e18}
         :{kind:'v3',pair:input,quote,sym:hop.sym,usd:hop.usd,fee:what.fee/1e6,feeRaw:what.fee,
-          sqrt:what.sqrt,tokenIs0:what.token0===token};
+          sqrt:what.sqrt,tokenIs0:what.token0===token,...(what.uniswap?{venue:'Uniswap V3',quoter:UNI_QUOTER}:{})};
       if(pool.kind==='v3'){
         const bal=await rpcBatch([call(quote,balOf(input)),call(token,balOf(input))]);
         pool.q=Number(hx(bal[0]))/1e18;pool.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
@@ -1538,7 +1538,7 @@ async function scanOnce(input){
       // pool while the real depth sits one fee tier over, and staying silent
       // about that would answer the question asked instead of the one meant.
       try{
-        const alt=(await discover(token,tokDec,bnbUsd))
+        const alt=(await discover(token,tokDec,bnbUsd,{uniswap:true}))
           .find(c=>c.pair.toLowerCase()!==pool.pair.toLowerCase()&&c.hard>(pool.q||0)*pool.usd*1.15);
         if(alt)deeper=alt;
       }catch(e){}
@@ -1549,7 +1549,7 @@ async function scanOnce(input){
       at('asking the factories which pools exist…');
       const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
       tokDec=decOf(info[0]);
-      const cands=await discover(token,tokDec,bnbUsd);
+      const cands=await discover(token,tokDec,bnbUsd,{uniswap:true});
       pool=cands[0]||null;oneSided=cands.oneSided||[];
       hop={direct:true,sym:pool?pool.sym:'BNB'};
       if(pool&&pool.kind==='v3'){
@@ -1713,9 +1713,9 @@ async function scanOnce(input){
       down=onePctV2(pool.tok,pool.fee,1/0.99)/(1-taxS)*px;
     }else{
       rows=await ladderV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
-        taxB,taxS,pool.sqrt,pool.tokenIs0);
+        taxB,taxS,pool.sqrt,pool.tokenIs0,pool.quoter);
       const oc=await onePctV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
-        pool.sqrt,pool.tokenIs0,taxS);
+        pool.sqrt,pool.tokenIs0,taxS,pool.quoter);
       up=oc.up;down=oc.down;upMin=oc.upMin;downMin=oc.downMin;
     }
 

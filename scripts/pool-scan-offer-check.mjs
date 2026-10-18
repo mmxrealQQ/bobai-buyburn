@@ -8,6 +8,8 @@
 // (HTTP 402 naming the watch).
 //
 //   node scripts/pool-scan-offer-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
+import { ownTestHeaders } from './lib/own-test-headers.mjs';
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 const FIELDS = ['address', 'quotable', 'price', 'pool', 'tradeCost', 'onePercentDepth', 'sellability', 'tax', 'lp'];
@@ -18,17 +20,17 @@ const offerOk = (j) => {
   return !!w && w.buy?.url === 'https://agent.brainonbnb.com/watch' && String(w.buy?.body?.token).toLowerCase() === CAKE.toLowerCase() && w.buy.body.depthBelowUsd === want && /\$BOBAI/.test(w.price);
 };
 {
-  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { accept: 'application/json' } })).json().catch(() => null);
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { ...OWN, accept: 'application/json' } })).json().catch(() => null);
   check(offerOk(j), 'REST: the scan ends with the watch on this pool, filled in', j?.watch_this_pool ? `depthBelowUsd ${j.watch_this_pool.buy?.body?.depthBelowUsd} (1% depth ${j.onePercentDepth?.buyUsd})` : 'no watch_this_pool');
   check(!!j && FIELDS.every((f) => f in j), 'REST: the reading itself is whole', FIELDS.filter((f) => !(j && f in j)).join(', ') || 'all fields');
 }
 {
-  const r = await (await fetch(`${BASE}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'bsc_pool_scan', arguments: { address: CAKE } } }) })).json().catch(() => null);
+  const r = await (await fetch(`${BASE}/mcp`, { method: 'POST', headers: { ...OWN, 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'bsc_pool_scan', arguments: { address: CAKE } } }) })).json().catch(() => null);
   const s = r?.result?.structuredContent || (() => { try { return JSON.parse(r?.result?.content?.[0]?.text); } catch { return null; } })();
   check(offerOk(s), 'MCP bsc_pool_scan: the same offer', s?.watch_this_pool ? 'present' : 'missing');
 }
 {
-  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { accept: 'application/json', referer: 'https://brainonbnb.com/scanner' } })).json().catch(() => null);
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { ...OWN, accept: 'application/json', referer: 'https://brainonbnb.com/scanner' } })).json().catch(() => null);
   check(!!j && j.quotable && !j.watch_this_pool, 'the site\'s own scanner page gets the reading alone', j?.watch_this_pool ? 'offer shown on our own page' : 'no offer');
 }
 {
@@ -47,7 +49,7 @@ const offerOk = (j) => {
 // as the two reads are a few blocks apart. V2 shows the same within its own measure (reserve × (√1.01 − 1)).
 const ETH = '0x2170Ed0880ac9A755fd29B2688956BD959F933F8';
 for (const [label, addr] of [['CAKE (V2 · BNB)', CAKE], ['ETH (PancakeSwap V3)', ETH]]) {
-  const j = await (await fetch(`${BASE}/api/pool-scan?address=${addr}`, { headers: { accept: 'application/json', 'user-agent': 'bobai-smoke-test' } })).json().catch(() => null);
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${addr}`, { headers: { ...OWN, accept: 'application/json', 'user-agent': 'bobai-smoke-test' } })).json().catch(() => null);
   const body = j?.watch_this_pool?.buy?.body;
   const watchable = j?.pool?.kind === 'v2' || (j?.pool?.kind === 'v3' && j?.pool?.venue === 'PancakeSwap V3');
   if (!watchable) { check(!!j && !body, `${label}: a pool the watch cannot read gets no offer`, body ? `offer on a ${j?.pool?.kind} pool` : `${j?.pool?.kind}, no offer`); continue; }

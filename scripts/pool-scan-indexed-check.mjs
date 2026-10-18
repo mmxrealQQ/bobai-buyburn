@@ -9,6 +9,8 @@
 // named, the quote's pricing pool stated, and the price within 10% of the index's (an independent figure, not ours).
 //
 //   node scripts/pool-scan-indexed-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
+import { ownTestHeaders } from './lib/own-test-headers.mjs';
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 // token, the quote its main pool trades against, and its kind — PancakeSwap V2 and V3 both, each found 18.10.
 const CASES = [
@@ -21,7 +23,7 @@ let pass = 0, fail = 0;
 const check = (ok, what, detail = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${detail ? ' — ' + detail : ''}`); };
 for (const [token, quote, kind] of CASES) {
   // As the site's own page asks: the reading alone, and not counted as an outside scan.
-  const j = await (await fetch(`${BASE}/api/pool-scan?address=${token}&r=${Date.now()}`, { headers: { accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => null);
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${token}&r=${Date.now()}`, { headers: { ...OWN, accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => null);
   const ds = await (await fetch(`https://api.dexscreener.com/latest/dex/tokens/${token}`)).json().catch(() => null);
   const idx = (ds?.pairs || []).find((p) => p.chainId === 'bsc' && p.pairAddress?.toLowerCase() === j?.pool?.address?.toLowerCase());
   const label = `${j?.symbol || token.slice(0, 10)} (${quote} ${kind})`;

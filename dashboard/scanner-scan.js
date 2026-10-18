@@ -17,7 +17,7 @@
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, indexedPool, priceQuote, flapInfo, flapLadder, FLAP_PORTAL,
+  classify, priceToken, discover, indexedPool, UNI_QUOTER, priceQuote, flapInfo, flapLadder, FLAP_PORTAL,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
@@ -298,9 +298,9 @@ export async function scan(input, env) {
         'That pool is quoted in a token with ' + hop.dec + ' decimals.',
         'Its depth cannot be stated correctly here yet: the maths of this scan counts the quote side in 18 decimals, as BNB and the stablecoins do. Paste the token itself instead — the scan then measures it in its deepest pool against BNB or a stablecoin.',
       );
-    if (what.kind === 'v3pool' && !what.pancake)
+    if (what.kind === 'v3pool' && !what.pancake && !what.uniswap)
       throw new ScanError(
-        'That V3 pool is not a PancakeSwap pool.',
+        'That V3 pool is neither a PancakeSwap nor a Uniswap pool.',
         'Its factory is ' + (what.factory || 'unreadable') + '. The concentrated-liquidity maths here is priced through PancakeSwap\'s own quoter, which knows nothing about another venue\'s pool — scanning it under PancakeSwap\'s name would state another pool\'s costs. Paste the token instead and the scan finds its PancakeSwap pools.',
       );
     if (what.kind === 'v2pair' && !what.venue)
@@ -319,6 +319,7 @@ export async function scan(input, env) {
         : {
             kind: 'v3', pair: input, quote, sym: hop.sym, usd: hop.usd,
             fee: what.fee / 1e6, feeRaw: what.fee, sqrt: what.sqrt,
+            ...(what.uniswap ? { venue: 'Uniswap V3', quoter: UNI_QUOTER } : {}),   // Uniswap V3 (2026-10-18)
             tokenIs0: what.token0 === token,
           };
     if (pool.kind === 'v3') {
@@ -331,7 +332,7 @@ export async function scan(input, env) {
     // are still asked what else exists, because a link often points at a side
     // pool while the real depth sits one fee tier over.
     try {
-      const alt = (await discover(token, tokDec, bnbUsd)).find(
+      const alt = (await discover(token, tokDec, bnbUsd, { uniswap: true })).find(
         (c) => c.pair.toLowerCase() !== pool.pair.toLowerCase() && c.hard > (pool.q || 0) * pool.usd * 1.15,
       );
       if (alt) deeper = alt;
@@ -344,7 +345,7 @@ export async function scan(input, env) {
     token = input;
     const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol), call(token, S.name)]);
     tokDec = decOf(info[0]);
-    const cands = await discover(token, tokDec, bnbUsd);
+    const cands = await discover(token, tokDec, bnbUsd, { uniswap: true });
     pool = cands[0] || null;
     oneSided = cands.oneSided || [];
     hop = { direct: true, sym: pool ? pool.sym : 'BNB' };
@@ -542,12 +543,14 @@ export async function scan(input, env) {
       // Muskonomy's one-sided 1% V3 pool read "no pool at a venue whose swap fee
       // has been verified", which sends a reader looking for a venue problem
       // when the fact is that there is nothing in the pool to be paid out of.
+      // "Most of it sits at …" only when that pool really holds more than the one read (2026-10-18): a token spread over
+      // a dozen pools was told "most of it sits at" a pool smaller than the one measured
       reason: (pool
-        ? 'The readable pool holds too small a share of this token’s liquidity to describe its market.'
+        ? `The readable pool (${poolName(pool)}) holds ${(share * 100).toFixed(0)}% of this token’s liquidity by index figures, spread over ${others.filter((x) => (x.liquidity || 0) >= VENUE_DUST_USD).length + 1} pools — too small a share to describe its market.`
         : oneSided.length
           ? `Pool found (${poolName(oneSided[0])}, ${oneSided[0].pair}), but it holds no ${oneSided[0].sym} to sell into — only the token’s own side, so a sell has nothing to be paid out of.`
           : 'No pool at a venue whose swap fee has been verified here.')
-        + (others[0] && others[0].liquidity >= 1000
+        + (others[0] && others[0].liquidity >= 1000 && !(pool && mine != null && others[0].liquidity <= mine)
           ? ` Most of it sits at ${others[0].name} (about $${Math.round(others[0].liquidity).toLocaleString('en-US')} by index figures, not measured here).`
           : ''),
       liquidity: { readablePoolUsd: Math.round(hard), elsewhereUsd: Math.round(otherLiq), shareOfLiquidity: +share.toFixed(4) },
@@ -648,8 +651,8 @@ export async function scan(input, env) {
     up = onePctV2(pool.q, pool.fee, 1.01) * pool.usd;
     down = (onePctV2(pool.tok, pool.fee, 1 / 0.99) / (1 - taxS)) * px;
   } else {
-    rows = await ladderV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, taxB, taxS, pool.sqrt, pool.tokenIs0);
-    const oc = await onePctV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, pool.sqrt, pool.tokenIs0, taxS);
+    rows = await ladderV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, taxB, taxS, pool.sqrt, pool.tokenIs0, pool.quoter);
+    const oc = await onePctV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, pool.sqrt, pool.tokenIs0, taxS, pool.quoter);
     up = oc.up; down = oc.down; upMin = oc.upMin; downMin = oc.downMin;
   }
 

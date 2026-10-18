@@ -10,6 +10,8 @@
 // the curve cannot pay. Nothing is traded.
 //
 //   node scripts/flap-curve-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
+import { ownTestHeaders } from './lib/own-test-headers.mjs';
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const PORTAL = '0xe2ce6ab80874fa9fa2aae65d277dd6b8e65c9de0';
 // flap.sh tokens seen on the curve 18.10.; the first still tradable is used (curves graduate or empty)
@@ -26,7 +28,7 @@ for (const t of CANDIDATES) {
 }
 check(!!token, 'a flap.sh token still tradable on its curve was found', token || 'none of the candidates — add a fresh one');
 if (token) {
-  const j = await (await fetch(`${BASE}/api/pool-scan?address=${token}&r=${Date.now()}`, { headers: { accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => ({}));
+  const j = await (await fetch(`${BASE}/api/pool-scan?address=${token}&r=${Date.now()}`, { headers: { ...OWN, accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => ({}));
   const c = j.curve || {};
   check(c.platform === 'flap.sh' && /flap\.sh bonding curve/.test(j.reason || ''), 'the pool scan answers from the curve', (j.reason || j.error || '').slice(0, 120));
   check(c.reserve != null && Math.abs(c.reserve - state.reserve) <= Math.max(1e-6, state.reserve * 0.02), 'its reserve is the Portal\'s own (read here independently)', `${c.reserve} vs ${state.reserve}`);
@@ -36,7 +38,7 @@ if (token) {
   const over = (c.tradeCost || []).filter((r) => r.sizeUsd > (c.reserveUsd ?? Infinity));
   check(over.every((r) => r.sellCostPct == null && /holds/.test(r.note || '')), 'every sell larger than the money in the curve is marked unpayable', `${over.length} sizes above $${c.reserveUsd}`);
   check(!(c.indexLiquidityUsd > c.reserveUsd) || /virtual|index figures/.test(j.reason || '') , 'the index\'s figure is set beside the real one', `index $${c.indexLiquidityUsd} · curve $${c.reserveUsd}`);
-  const p = await (await fetch(`${BASE}/api/preflight?address=${token}&usd=250&r=${Date.now()}`, { headers: { accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => ({}));
+  const p = await (await fetch(`${BASE}/api/preflight?address=${token}&usd=250&r=${Date.now()}`, { headers: { ...OWN, accept: 'application/json', referer: 'https://brainonbnb.com/scanner' }, signal: AbortSignal.timeout(90000) })).json().catch(() => ({}));
   const codes = [...(p.stop || []), ...(p.caution || [])].map((x) => x.code);
   check(/flap\.sh bonding curve/.test(p.venue || ''), 'the preflight names the venue', p.venue || p.error);
   check(c.reserveUsd >= 250 || codes.includes('curve_cannot_pay'), 'the preflight stops a $250 sell the curve cannot pay', codes.join(','));

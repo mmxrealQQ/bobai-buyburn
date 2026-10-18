@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 59 files, 19422 lines.
+# one fetch. 59 files, 19496 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8685,10 +8685,10 @@ async function tipRoute(env, ctx, payTo, q, proof) {
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
-        what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
+        what: 'A voluntary tip. It buys and unlocks nothing: the free measurements stay free (the pool scan 50 a caller a day) and the paid answers, the pool watch and the scan day pass keep their price whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
         how: `${payWays({ amount: String(amt.usd), payTo })}.`,
-        where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
+        where_it_goes: "The x402 wallet of BOBAI's agent services; at the next sweep half of it buys $BOBAI, held in that wallet and never sold, and half is the operator's revenue — like every payment here.",
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -8823,7 +8823,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -9306,9 +9306,9 @@ export default {
           {
             id: 'negotiate',
             name: 'Negotiate an ERC-8183 job',
-            description: 'Ask for a price. Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
+            description: 'Ask for a price. Send a data part {"skill":"negotiate","task":"<what you need>"} (or "service":"<one of the skill ids below>"). Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
             tags: ['erc-8183', 'negotiation', 'escrow'],
-            examples: ['quote finding the best yield for my BNB on BNB Chain'],
+            examples: ['{"skill":"negotiate","task":"quote finding the best yield for my BNB on BNB Chain"}'],
           },
           // BNB's standard hire (2026-10-04): the BNB Agent SDK and the
           // marketplaces built on it negotiate only under this id and expect
@@ -9340,7 +9340,7 @@ export default {
           })),
         ],
         // Hold, don't pay (2026-10-16): the x402 route of every answer takes the $BOBAI holder pass.
-        holder_pass: { ...holderPassTerms(), applies_to: `every answer over x402 (${SELF_ORIGIN}/answer?service=<id>) and the pool watch (${SELF_ORIGIN}/watch); not the ERC-8183 escrow` },
+        holder_pass: { ...holderPassTerms(), applies_to: `every answer over x402 (${SELF_ORIGIN}/answer?service=<id>), the pool watch (${SELF_ORIGIN}/watch) and the pool scan day pass (${SELF_ORIGIN}/scan-pass); not the ERC-8183 escrow` },
         // Where the rest of the story is, for a reader rather than a parser.
         additionalInterfaces: [
           { transport: 'JSONRPC', url: `${SELF_ORIGIN}/a2a` },
@@ -10335,10 +10335,10 @@ ${pageTail}`;
       const FREE = {
         'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
         'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
-        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from the chain and cross-checked against each market’s own rate model, best first; venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
-        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half lays the grid and its break-even spacing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
+        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from each market’s contract, best first (the paid answer cross-checks every rate against the market’s own rate model); venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
+        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half adds what a grid cycle costs on this pool and the spacing that breaks even. Free for 50 scans per caller and UTC day; past that a day pass carries on (POST https://agent.brainonbnb.com/scan-pass, 0.50 USD1 or half that in $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
         rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
-        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half places a position in the tier that pays.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
+        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half plans the position: the tier and the range to put it in. It signs and moves nothing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
       }[mcpSlug];
       const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI, ${HOLDER_PRICE_NOTE.replace('see holder_pass', 'terms in the reply')}): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
       const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
@@ -10388,7 +10388,7 @@ ${pageTail}`;
           if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
           const terms = await sellAnswer(env, ctx, payTo, serviceId, {}, null);
           const t = terms.body || {};
-          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
+          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, holder_pass: holderPassTerms(), accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
         return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has ${FREE.name} (free) and ${PAID.name} (paid).`);
@@ -10616,7 +10616,7 @@ ${pageTail}`;
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
         catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
       });
     }
@@ -15840,7 +15840,7 @@ const quoteWindow = async () => readDisputeWindow(async (to, data) => {
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
-import { understoodReply } from './understand.js';
+import { understoodReply, readHoldings, readTargets } from './understand.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -16073,6 +16073,16 @@ export const extractParams = (text = '', given = {}) => {
   // split the stated capital evenly between them. Equal weight is the only
   // split that does not smuggle in a view about what the portfolio should be,
   // which is the same reasoning rebalance.js already applies to its targets.
+  // Each address with its own figure first, as the A2A reading does (understand.js, 2026-10-18): "1000 USD of 0x… and
+  // 1000 USD of 0x… to 70/30" is two holdings of 1000 and a 70/30 target, not an even split of the first figure.
+  if (!Array.isArray(out.holdings) || !out.holdings.length) {
+    const h = readHoldings(String(text));
+    if (h.length) out.holdings = h;
+  }
+  if (Array.isArray(out.holdings) && out.holdings.length >= 2 && (out.targets == null || typeof out.targets !== 'object')) {
+    const tg = readTargets(String(text), out.holdings);
+    if (tg) out.targets = tg;
+  }
   if (!Array.isArray(out.holdings) || !out.holdings.length) {
     const tokens = [...new Set(String(text).match(/0x[a-fA-F0-9]{40}/g) || [])];
     if (tokens.length) {
@@ -16307,7 +16317,7 @@ export async function handleA2A(request, env, opts = {}) {
   if (!skill && forced && opts.freeHalf && Object.keys(data).length) {
     const free = await opts.freeHalf({ ...data, ...(data.params || {}) }, [data.task_description, data.description, text].filter(Boolean).join(' ')).catch(() => null);
     if (free) {
-      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: SERVICES[forced].price_display, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
+      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[forced].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
     }
   }
@@ -16369,7 +16379,9 @@ export async function handleA2A(request, env, opts = {}) {
   // --- negotiate ---------------------------------------------------------
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
-    const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    // task / description / request too (2026-10-18): an outside review sent the card's example under "task" and was told
+    // "we do not sell that"; only task_description was read
+    const wanted = [data.task_description, data.task, data.description, data.request, data.terms?.deliverables, text].filter((v) => typeof v === 'string' && v).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
     if (elsewhere) return rpcOk(id, flatMessage({ accepted: false, reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
@@ -16416,6 +16428,23 @@ export async function handleA2A(request, env, opts = {}) {
     if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
     const r = await deliverJob(jobId, env, { text, data });
     return r.error ? rpcErr(id, -32000, r.error) : rpcOk(id, r.result);
+  }
+
+  // --- a skill named by the id the card lists it under (2026-10-18) ------
+  // The cards list each service as a skill (health_factor, grid_plan …); an outside review sent
+  // {"skill":"health_factor","address":…} and got -32601 unknown skill — only plain words reached it. Now the id is
+  // answered as the plain question is: the free reading where this agent has one, the paid half's terms with it.
+  if (SERVICES[skill]) {
+    if (forced && forced !== skill) {
+      return rpcOk(id, flatMessage({ accepted: false, reason: `This agent sells ${forced} (${SERVICES[forced].name}). ${skill} is sold by https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a — or per answer over x402 at https://agent.brainonbnb.com/answer?service=${skill}.` }));
+    }
+    const paidHalf = { service: skill, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[skill].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${skill}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a` };
+    const { skill: _s, method: _m, ...inputs } = data;
+    const free = forced && opts.freeHalf ? await opts.freeHalf({ ...inputs, ...(data.params || {}) }, [data.task_description, data.task, text].filter((v) => typeof v === 'string' && v).join(' ')).catch(() => null) : null;
+    const out = free
+      ? { ...free.figures, free_reading: free.out, paid_half: paidHalf }
+      : { service: SERVICES[skill], free_reading: forced ? `none for these inputs — ${missingInput(skill, extractParams(String(data.task || data.task_description || text || ''), { ...inputs, ...(data.params || {}) })) || 'name the address'}` : `ask this agent's own endpoint, https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a`, paid_half: paidHalf };
+    return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
   }
 
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
@@ -18187,6 +18216,40 @@ const ADDR = /0x[a-fA-F0-9]{40}/g;
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const usd = (t) => { const m = String(t).match(/\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?/) || String(t).match(/([\d,]+(?:\.\d+)?)\s*(?:usd|dollars?)\b/i); if (!m) return null; const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1); return v > 0 ? v : null; };
 
+// "$600 CAKE (0x…)", "1000 USD of 0x…", "0x… worth 1k": each address with the dollar figure written beside it (2026-10-18:
+// an outside review wrote "1000 USD of 0x… and 1000 USD of 0x…" and was understood as 500 each)
+const AMT = '(?:\\$\\s?([\\d,]+(?:\\.\\d+)?)\\s*(k|K)?|([\\d,]+(?:\\.\\d+)?)\\s*(k|K)?\\s*(?:usd[a-z1]*|dollars?|\\$))';
+const num = (a, k) => parseFloat(String(a).replace(/,/g, '')) * (k ? 1000 : 1);
+// The figure stands on the side the sentence puts it: an address written before the first figure takes the figure after
+// it. Only a reading that gives EVERY address its figure counts; anything less is not a portfolio read correctly.
+export function readHoldings(t) {
+  const addrs = new Set((t.match(ADDR) || []).map((a) => a.toLowerCase()));
+  const firstAddr = t.search(/0x[a-fA-F0-9]{40}/), firstAmt = t.replace(ADDR, (a) => 'x'.repeat(a.length)).search(new RegExp(AMT, 'i'));
+  const addrFirst = firstAddr >= 0 && (firstAmt < 0 || firstAddr < firstAmt);
+  const rx = addrFirst ? new RegExp('(0x[a-fA-F0-9]{40})[^$\\d]{0,24}?' + AMT, 'gi') : new RegExp(AMT + '[^$\\d]{0,40}?(0x[a-fA-F0-9]{40})', 'gi');
+  const h = [], seen = new Set(); let m;
+  while ((m = rx.exec(t))) {
+    const [token, a, k] = addrFirst ? [m[1], m[2] ?? m[4], m[3] ?? m[5]] : [m[5], m[1] ?? m[3], m[2] ?? m[4]];
+    if (!seen.has(token.toLowerCase())) { seen.add(token.toLowerCase()); h.push({ token, usd: num(a, k) }); }
+  }
+  return h.length === addrs.size ? h : [];
+}
+// "to 70/30" (weights in the order the holdings were named) or "70% 0x… 30% 0x…"; only when they add up to 100
+export function readTargets(t, holdings = []) {
+  const out = {};
+  const rx = /(\d{1,3}(?:\.\d+)?)\s*%\s*(?:of|in|into|for)?\s*(?:[A-Za-z$]{1,10}\s*)?\(?\s*(0x[a-fA-F0-9]{40})/g; let m;
+  while ((m = rx.exec(t))) out[m[2]] = Number(m[1]);
+  if (!Object.keys(out).length && holdings.length >= 2) {
+    const r = t.match(/(\d{1,3}(?:\.\d+)?(?:\s*\/\s*\d{1,3}(?:\.\d+)?)+)/);
+    const w = r ? r[1].split('/').map(Number) : [];
+    if (w.length === holdings.length) holdings.forEach((h, i) => { out[h.token] = w[i]; });
+  }
+  const sum = Object.values(out).reduce((a, b) => a + b, 0);
+  return Object.keys(out).length >= 2 && Math.abs(sum - 100) < 0.5 ? out : null;
+}
+// "amountUsd 5000", "from: vUSDT" — a field named the way the card names it is read as that field
+const named = (t, key) => t.match(new RegExp('\\b' + key + '\\b["\']?\\s*[:=]?\\s*["\']?([^\\s,;"\'}]+)', 'i'))?.[1];
+
 // what each service takes, read from the sentence (only the keys the service names in its `needs`)
 export function understand(service, text = '') {
   const t = String(text), addrs = [...new Set(t.match(ADDR) || [])], p = {};
@@ -18198,14 +18261,25 @@ export function understand(service, text = '') {
   else if (need.includes('token') && /\bW?BNB\b/.test(t)) p.token = WBNB;
   if (need.includes('position')) { const m = t.match(/position\s*(?:id\s*)?#?\s*(\d{3,})/i); if (m) p.position = m[1]; else if (addrs[0]) p.address = addrs[0]; }
   if (need.includes('capitalUsd')) { const v = usd(t); if (v) p.capitalUsd = v; }
-  if (need.includes('amountUsd')) { const v = usd(t); if (v) p.amountUsd = v; }
+  if (need.includes('amountUsd')) { const v = usd(t) ?? (Number(named(t, 'amountUsd')) > 0 ? Number(named(t, 'amountUsd')) : null); if (v) p.amountUsd = v; }
+  if (need.includes('currentApyPct')) {
+    // "I earn 2% on USDT today", "currentApyPct 2"
+    const m = t.match(/earn(?:s|ing)?\s+(?:about\s+|around\s+)?(\d{1,2}(?:\.\d+)?)\s*%(?:\s*(?:apy|apr))?(?:\s+(?:on|in|from)\s+(v?[A-Za-z]{2,8}))?/i);
+    const v = m ? Number(m[1]) : Number(named(t, 'currentApyPct'));
+    if (v > 0) p.currentApyPct = v;
+    if (need.includes('from') && m?.[2] && !/^(today|now|it|my|the|venus)$/i.test(m[2])) p.from = m[2];
+  }
+  if (need.includes('from') && !p.from) {
+    const v = named(t, 'from') || t.match(/\b(?:from|out of|holding|hold|in)\s+(v[A-Z]{2,8}|[A-Z]{3,6})\b/)?.[1];
+    if (v && !/^(USD|BSC|VENUS)$/i.test(v)) p.from = v;
+  }
   if (need.includes('levels')) { const m = t.match(/(\d{1,3})\s*(?:levels?|grids?|steps?)/i); if (m) p.levels = Number(m[1]); }
   if (need.includes('bandPct')) { const m = t.match(/(?:band|range)\D{0,12}(\d{1,2}(?:\.\d+)?)\s*%|(\d{1,2}(?:\.\d+)?)\s*%\s*(?:band|range|either side|each side|on (?:each|either|both) sides?|above and below)|±\s*(\d{1,2}(?:\.\d+)?)\s*%/i); if (m) p.bandPct = Number(m[1] || m[2] || m[3]); }
   if (need.includes('holdings')) {
     // "$600 CAKE (0x…) and $400 WBNB (0x…)": each address with the dollar figure written just before it
-    const h = []; const rx = /\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?[^$]{0,40}?(0x[a-fA-F0-9]{40})/g; let m;
-    while ((m = rx.exec(t))) h.push({ token: m[3], usd: parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1) });
+    const h = readHoldings(t);
     if (h.length) p.holdings = h; else if (addrs.length) p.holdings = addrs.map((a) => ({ token: a, usd: usd(t) ? usd(t) / addrs.length : 1000 / addrs.length }));
+    if (need.includes('targets') && p.holdings) { const tg = readTargets(t, p.holdings); if (tg) p.targets = tg; }
   }
   return p;
 }
@@ -18896,7 +18970,7 @@ takes whichever it can execute:
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
 | \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free (the pool scan: 50 a caller a day). Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
-Call any of them once **without** payment and it answers 402 with the price,
+POST any of them once **without** payment and it answers 402 with the price (a GET reads the same terms with 200),
 the payment options and the inputs it needs. That call is free and is the
 intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 

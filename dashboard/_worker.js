@@ -599,7 +599,7 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token_info"}}'
 \`\`\`
 
-## Measure any BSC token or pool, find any agent — free, no key, not about $BOBAI
+## Measure any BSC token or pool, find any agent — free (the pool scan 50 a caller a day, then a day pass), no key, not about $BOBAI
 ${measureSection()}
 - The same measurements as an installable skill: \`npx skills add https://brainonbnb.com\` — and the page: https://brainonbnb.com/scanner
 - Brain Plaza by URL: https://agent.brainonbnb.com/find?q=<what you need> · POST https://agent.brainonbnb.com/dispatch {"task":"…"} (read-only tools only) · https://agent.brainonbnb.com/sessions · https://agent.brainonbnb.com/hire?agent=<id>&task=<…>

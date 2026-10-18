@@ -78,7 +78,7 @@ const quoteWindow = async () => readDisputeWindow(async (to, data) => {
 import { submitDeliverable, providerAccount } from './submit.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
-import { understoodReply } from './understand.js';
+import { understoodReply, readHoldings, readTargets } from './understand.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -311,6 +311,16 @@ export const extractParams = (text = '', given = {}) => {
   // split the stated capital evenly between them. Equal weight is the only
   // split that does not smuggle in a view about what the portfolio should be,
   // which is the same reasoning rebalance.js already applies to its targets.
+  // Each address with its own figure first, as the A2A reading does (understand.js, 2026-10-18): "1000 USD of 0x… and
+  // 1000 USD of 0x… to 70/30" is two holdings of 1000 and a 70/30 target, not an even split of the first figure.
+  if (!Array.isArray(out.holdings) || !out.holdings.length) {
+    const h = readHoldings(String(text));
+    if (h.length) out.holdings = h;
+  }
+  if (Array.isArray(out.holdings) && out.holdings.length >= 2 && (out.targets == null || typeof out.targets !== 'object')) {
+    const tg = readTargets(String(text), out.holdings);
+    if (tg) out.targets = tg;
+  }
   if (!Array.isArray(out.holdings) || !out.holdings.length) {
     const tokens = [...new Set(String(text).match(/0x[a-fA-F0-9]{40}/g) || [])];
     if (tokens.length) {
@@ -545,7 +555,7 @@ export async function handleA2A(request, env, opts = {}) {
   if (!skill && forced && opts.freeHalf && Object.keys(data).length) {
     const free = await opts.freeHalf({ ...data, ...(data.params || {}) }, [data.task_description, data.description, text].filter(Boolean).join(' ')).catch(() => null);
     if (free) {
-      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: SERVICES[forced].price_display, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
+      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[forced].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
     }
   }
@@ -607,7 +617,9 @@ export async function handleA2A(request, env, opts = {}) {
   // --- negotiate ---------------------------------------------------------
   if (skill === 'negotiate' || skill === 'quote') {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
-    const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    // task / description / request too (2026-10-18): an outside review sent the card's example under "task" and was told
+    // "we do not sell that"; only task_description was read
+    const wanted = [data.task_description, data.task, data.description, data.request, data.terms?.deliverables, text].filter((v) => typeof v === 'string' && v).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
     if (elsewhere) return rpcOk(id, flatMessage({ accepted: false, reason: elsewhere }));
     const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
@@ -654,6 +666,23 @@ export async function handleA2A(request, env, opts = {}) {
     if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
     const r = await deliverJob(jobId, env, { text, data });
     return r.error ? rpcErr(id, -32000, r.error) : rpcOk(id, r.result);
+  }
+
+  // --- a skill named by the id the card lists it under (2026-10-18) ------
+  // The cards list each service as a skill (health_factor, grid_plan …); an outside review sent
+  // {"skill":"health_factor","address":…} and got -32601 unknown skill — only plain words reached it. Now the id is
+  // answered as the plain question is: the free reading where this agent has one, the paid half's terms with it.
+  if (SERVICES[skill]) {
+    if (forced && forced !== skill) {
+      return rpcOk(id, flatMessage({ accepted: false, reason: `This agent sells ${forced} (${SERVICES[forced].name}). ${skill} is sold by https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a — or per answer over x402 at https://agent.brainonbnb.com/answer?service=${skill}.` }));
+    }
+    const paidHalf = { service: skill, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[skill].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${skill}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a` };
+    const { skill: _s, method: _m, ...inputs } = data;
+    const free = forced && opts.freeHalf ? await opts.freeHalf({ ...inputs, ...(data.params || {}) }, [data.task_description, data.task, text].filter((v) => typeof v === 'string' && v).join(' ')).catch(() => null) : null;
+    const out = free
+      ? { ...free.figures, free_reading: free.out, paid_half: paidHalf }
+      : { service: SERVICES[skill], free_reading: forced ? `none for these inputs — ${missingInput(skill, extractParams(String(data.task || data.task_description || text || ''), { ...inputs, ...(data.params || {}) })) || 'name the address'}` : `ask this agent's own endpoint, https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a`, paid_half: paidHalf };
+    return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
   }
 
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);

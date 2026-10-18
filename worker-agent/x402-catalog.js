@@ -108,7 +108,7 @@ takes whichever it can execute:
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
 | \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free (the pool scan: 50 a caller a day). Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
-Call any of them once **without** payment and it answers 402 with the price,
+POST any of them once **without** payment and it answers 402 with the price (a GET reads the same terms with 200),
 the payment options and the inputs it needs. That call is free and is the
 intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 

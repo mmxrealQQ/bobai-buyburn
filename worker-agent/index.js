@@ -1364,10 +1364,10 @@ async function tipRoute(env, ctx, payTo, q, proof) {
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
-        what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
+        what: 'A voluntary tip. It buys and unlocks nothing: the free measurements stay free (the pool scan 50 a caller a day) and the paid answers, the pool watch and the scan day pass keep their price whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
         how: `${payWays({ amount: String(amt.usd), payTo })}.`,
-        where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
+        where_it_goes: "The x402 wallet of BOBAI's agent services; at the next sweep half of it buys $BOBAI, held in that wallet and never sold, and half is the operator's revenue — like every payment here.",
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -1502,7 +1502,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -1985,9 +1985,9 @@ export default {
           {
             id: 'negotiate',
             name: 'Negotiate an ERC-8183 job',
-            description: 'Ask for a price. Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
+            description: 'Ask for a price. Send a data part {"skill":"negotiate","task":"<what you need>"} (or "service":"<one of the skill ids below>"). Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
             tags: ['erc-8183', 'negotiation', 'escrow'],
-            examples: ['quote finding the best yield for my BNB on BNB Chain'],
+            examples: ['{"skill":"negotiate","task":"quote finding the best yield for my BNB on BNB Chain"}'],
           },
           // BNB's standard hire (2026-10-04): the BNB Agent SDK and the
           // marketplaces built on it negotiate only under this id and expect
@@ -2019,7 +2019,7 @@ export default {
           })),
         ],
         // Hold, don't pay (2026-10-16): the x402 route of every answer takes the $BOBAI holder pass.
-        holder_pass: { ...holderPassTerms(), applies_to: `every answer over x402 (${SELF_ORIGIN}/answer?service=<id>) and the pool watch (${SELF_ORIGIN}/watch); not the ERC-8183 escrow` },
+        holder_pass: { ...holderPassTerms(), applies_to: `every answer over x402 (${SELF_ORIGIN}/answer?service=<id>), the pool watch (${SELF_ORIGIN}/watch) and the pool scan day pass (${SELF_ORIGIN}/scan-pass); not the ERC-8183 escrow` },
         // Where the rest of the story is, for a reader rather than a parser.
         additionalInterfaces: [
           { transport: 'JSONRPC', url: `${SELF_ORIGIN}/a2a` },
@@ -3014,10 +3014,10 @@ ${pageTail}`;
       const FREE = {
         'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
         'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
-        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from the chain and cross-checked against each market’s own rate model, best first; venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
-        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half lays the grid and its break-even spacing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
+        'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from each market’s contract, best first (the paid answer cross-checks every rate against the market’s own rate model); venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
+        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half adds what a grid cycle costs on this pool and the spacing that breaks even. Free for 50 scans per caller and UTC day; past that a day pass carries on (POST https://agent.brainonbnb.com/scan-pass, 0.50 USD1 or half that in $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
         rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
-        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half places a position in the tier that pays.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
+        'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half plans the position: the tier and the range to put it in. It signs and moves nothing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
       }[mcpSlug];
       const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI, ${HOLDER_PRICE_NOTE.replace('see holder_pass', 'terms in the reply')}): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
       const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
@@ -3067,7 +3067,7 @@ ${pageTail}`;
           if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
           const terms = await sellAnswer(env, ctx, payTo, serviceId, {}, null);
           const t = terms.body || {};
-          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
+          const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, holder_pass: holderPassTerms(), accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
         return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has ${FREE.name} (free) and ${PAID.name} (paid).`);
@@ -3295,7 +3295,7 @@ ${pageTail}`;
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
         catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
       });
     }

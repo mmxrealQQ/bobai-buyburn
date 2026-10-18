@@ -17,6 +17,7 @@ import { classify, recordTransition, summarise } from '../shared/own-jobs.js';
 import { createWalletClient, createPublicClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { providerAccount } from './submit.js';
+import { readOpinions } from './second-opinion.js';
 
 // SETTLED BY US, NOT LEFT TO CHANCE (2026-10-14, operator's go). A job's escrow releases only when somebody calls
 // router.settle(jobId) after the dispute window, and nearly nobody does (27,230 jobs on the kernel sit SUBMITTED). A
@@ -77,7 +78,11 @@ export async function tickOwnJobs(env, rpc, ids = []) {
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   } catch { delivered = []; }
-  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
+  // and every second opinion we bought (2026-10-18: job 57021 was paid while its caller had stopped waiting and never
+  // reached this list; its row in the opinion log is now written as soon as the hire goes out)
+  let bought = [];
+  try { bought = (await readOpinions(env)).map((o) => o.job).filter(Boolean); } catch { bought = []; }
+  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...bought, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
   if (!all.length) return { ok: false, error: 'no job ids recorded yet — POST /own-jobs with the secret and {"ids":[…]}' };
 
   const windowSec = await readDisputeWindow(call);

@@ -29,16 +29,27 @@ async function balanceOfU(rpc, who) {
 export async function readOpinions(env) {
   try { return JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]'); } catch { return []; }
 }
+// One attempt is one row: a row written while the attempt is under way (same `at`) is replaced by its later state.
 async function log(env, row) {
   const list = await readOpinions(env);
-  list.unshift(row);
+  const i = list.findIndex((r) => r.at === row.at);
+  if (i >= 0) list[i] = row; else list.unshift(row);
   await env.AGENT.put(LOG_KEY, JSON.stringify(list.slice(0, LOG_CAP)));
   return row;
 }
 
-// why: 'daily' or 'before a re-set' (with the agent's own reading beside it, so the record shows both side by side)
+// why: 'daily' or 'before a re-set' (with the agent's own reading beside it, so the record shows both side by side).
+// 2026-10-18: the 04:23 hire (job 57021) was paid and answered but never logged — the hire took over two minutes, the
+// caller gave up after 60 s and the attempt died before its row. Now the row is written before the hire goes out and
+// updated after it, and anything thrown is logged as failed instead of vanishing.
 export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}) {
-  const at = new Date().toISOString(), day = at.slice(0, 10);
+  const at = new Date().toISOString();
+  try { return await buyOpinion(env, { at, why, own, rpc }); }
+  catch (e) { return log(env, { at, why, seller: SELLER, subject: SUBJECT, own, status: 'failed', reason: String(e && (e.shortMessage || e.message) || e).slice(0, 200) }); }
+}
+
+async function buyOpinion(env, { at, why, own, rpc }) {
+  const day = at.slice(0, 10);
   const base = { at, why, seller: SELLER, subject: SUBJECT, own };
   const session = sessionOf(env);
   if (!session) return log(env, { ...base, status: 'refused', reason: 'no session key on this worker' });
@@ -46,7 +57,7 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
   const dayKey = `opinion:day:${day}`, used = Number((await env.AGENT.get(dayKey)) || 0);
   if (used >= MAX_PER_DAY) return log(env, { ...base, status: 'refused', reason: `already ${used} hires today (at most ${MAX_PER_DAY})` });
 
-  const page = await fetch(`${SELLER.site}/agents/${SELLER.id}`).then((r) => r.text()).catch(() => '');
+  const page = await fetch(`${SELLER.site}/agents/${SELLER.id}`, { signal: AbortSignal.timeout(20000) }).then((r) => r.text()).catch(() => '');
   const m = page.match(/\\"escrow\\":\{\\"provider\\":\\"(0x[0-9a-fA-F]{40})\\",\\"budget\\":\\"(\d+)\\",\\"tokenId\\":\\"(\d+)\\",\\"name\\":\\"([^\\]+)\\"/);
   if (!m) return log(env, { ...base, status: 'refused', reason: 'Mandate shows no escrow offer for Range-1 right now' });
   const [, provider, budgetRaw, , name] = m, budget = BigInt(budgetRaw);
@@ -56,6 +67,7 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
 
   await env.AGENT.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 }); // counted before the hire: a failed send still used a try
   const task = `via mandatemarkets.com: ${name} (ERC-8004 #${SELLER.id}) for ${SUBJECT}`;
+  await log(env, { ...base, status: 'hiring', price_u: Number(budget) / 1e18, paid_by: session.walletAddress });
   let hired;
   try {
     hired = await hireErc8183Agent(session, { provider, task, budget }, { network: BNB });
@@ -63,11 +75,12 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
     return log(env, { ...base, status: 'failed', price_u: Number(budget) / 1e18, reason: String(e.shortMessage || e.message || e).slice(0, 200) });
   }
   const jobId = String(hired.jobId), tx = hired.transactionHash || hired.txHash || null;
-  await fetch(`${SELLER.site}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, tx, subject: SUBJECT }) }).catch(() => null);
+  await log(env, { ...base, status: 'hired, no answer yet', job: jobId, tx, price_u: Number(budget) / 1e18, paid_by: session.walletAddress, deliverable: `${SELLER.site}/api/escrow/jobs/${jobId}/deliverable` });
+  await fetch(`${SELLER.site}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, tx, subject: SUBJECT }), signal: AbortSignal.timeout(15000) }).catch(() => null);
   let answer = null, deliveredAt = null;
   for (let i = 0; i < 10 && !answer; i++) {
     await new Promise((r) => setTimeout(r, 3000));
-    const d = await fetch(`${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const d = await fetch(`${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (d && d.answer) { answer = d.answer; deliveredAt = d.deliveredAt || null; }
   }
   const positions = answer ? (answer.positions || []).map((p) => ({ position: String(p.position), pair: p.pair, in_range: !!p.inRange, ticks_out: p.ticksOut ?? 0, tick: p.tick, range: p.range, plan: p.plan || null })) : null;

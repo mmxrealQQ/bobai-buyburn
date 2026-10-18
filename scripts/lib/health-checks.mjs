@@ -575,7 +575,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   //     contradict the agent, and the leash must still hold enough $U for a few more.
   const op = (await getJ(`${AGENT}/second-opinion`)).body, ops = Array.isArray(op?.opinions) ? op.opinions : [];
   const lastOk = ops.find((o) => o.status === 'answered'), lastAge = lastOk ? (Date.now() - Date.parse(lastOk.at)) / 3600e3 : null;
-  ok('Agents', 'the DeFi agent bought its second opinion in the last 26 h', lastAge != null && lastAge < 26, lastOk ? `${lastAge.toFixed(1)} h ago, job ${lastOk.job}` : `none answered — newest: ${ops[0] ? `${ops[0].status}: ${ops[0].reason || ''}` : 'no attempt yet'}`);
+  // the LP worker's own note of its last ask (2026-10-18: the 04:23 ask timed out and left no row, the red line said only "29.9 h ago")
+  const ask = op?.last_ask, askNote = ask ? ` · last ask ${ask.at.slice(5, 16).replace('T', ' ')} UTC: ${ask.status}${ask.job ? ` job ${ask.job}` : ''}${ask.reason ? ` (${ask.reason})` : ''}` : '';
+  const fresh = lastAge != null && lastAge < 26;
+  ok('Agents', 'the DeFi agent bought its second opinion in the last 26 h', fresh, (lastOk ? `${lastAge.toFixed(1)} h ago, job ${lastOk.job}` : `none answered — newest: ${ops[0] ? `${ops[0].status}: ${ops[0].reason || ''}` : 'no attempt yet'}`) + (fresh ? '' : askNote));
   ok('Agents', 'the newest second opinion does not contradict the agent', !lastOk || lastOk.agrees !== false, lastOk ? `agrees ${lastOk.agrees} on #${(lastOk.answer || [])[0]?.position || '?'}` : 'none yet');
   const leashU = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xcE24439F2D9C6a2289F741120FE202248B666666', data: '0x70a08231000000000000000000000000c5a17b5295fc50badb1f9f9c09b412fe5e84f7d3' }, 'latest'] }) }).then((r) => r.json()).then((j) => (j.result ? Number(BigInt(j.result)) / 1e18 : null)).catch(() => null);
   ok('Agents', 'the Altana leash holds $U for at least five more second opinions', leashU != null && leashU >= 0.05, leashU == null ? 'unreadable' : `${leashU.toFixed(2)} $U (top up: node scripts/fund-leash.mjs --send)`);

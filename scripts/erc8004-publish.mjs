@@ -2860,9 +2860,10 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       // one "ours" per card, whatever its layout: the badge says it, the old chip goes (2026-10-13)
       [].slice.call(document.querySelectorAll('article')).forEach(function(a){var l=a.querySelector('.rg-listed');if(l&&/ours/.test(l.textContent))[].slice.call(a.querySelectorAll('.rg-x4')).forEach(function(x){x.remove()})});
       var fl=document.getElementById('rg-feat-list');
-      // hidden until there is something to show (operator, 2026-10-12: "hide it until it is finished")
-      if(!(j.listings||[]).filter(function(L){return !L.house}).length){strip.remove();return} // only paid listings make the strip
+      // OPEN SINCE 2026-10-18 (operator: "listing freischalten"): with no paid listing yet the strip says so and keeps its
+      // link to /list — our own agents never fill it (they carry "ours" on their rows)
       strip.hidden=false;
+      if(!(j.listings||[]).filter(function(L){return !L.house}).length){fl.innerHTML='<p class="rg-note">No paid listing yet. Yours could be the first.</p>';return}
       fl.innerHTML=off.map(function(L){return '<article class="rgc"><div class="rgc-h"><div class="rgc-id">'+logo(L)+'<b>'+esc(L.name||('Agent #'+L.id))+'</b> <a class="rg-t rg-listed" href="'+esc(L.profile)+'">'+(L.badge?'&#10003; verified &amp; maintained':'listed &middot; paused')+(L.house?' &middot; ours':'')+'</a><div class="rg-note">ERC-8004 #'+esc(L.id)+' &middot; listed since '+esc(L.since)+'</div></div></div>'+(L.description?'<p class="rgc-what">'+esc(String(L.description).slice(0,220))+'</p>':'')+'<p class="rg-note"><a href="'+esc(L.profile)+'">Its page &rarr;</a></p></article>'}).join('')||'<p class="rg-note">Every listed agent is shown in its category below.</p>';
     }).catch(function(){strip.remove()});
   })();

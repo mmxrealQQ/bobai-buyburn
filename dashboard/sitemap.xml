@@ -5415,4 +5415,9 @@
     <priority>0.6</priority>
   </url>
   <!-- /agent charts -->
+  <url>
+    <loc>https://brainonbnb.com/list</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>

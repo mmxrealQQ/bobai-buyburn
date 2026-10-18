@@ -115,7 +115,7 @@ export async function keepMarqueListed(env) {
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
-import { widthClassOf, HOME_POOL, pickWidth, FEE_SHARE_KEPT_PCT } from '../shared/lp-guards.js';
+import { widthClassOf, HOME_POOL, pickWidth, FEE_SHARE_KEPT_PCT, MIN_SWEEP_BNB } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs, readSettled } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -1207,6 +1207,68 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
 // this is for an agent that wants the answer now and has a wallet.
 const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
 
+// WHERE THIS PAYMENT GOES (2026-10-18, operator: every payment buys $BOBAI, visibly). The buy stays in the daily sweep
+// (shared/lp-agent.js executeSweep, untouched): bought one payment at a time, three transactions of gas would take about
+// half of a 0.05 buy. Every paid reply says what happens to its money and where to follow it; GET /buys maps each payment
+// to the sweep that bought $BOBAI with it, or says it is still waiting and why.
+const BUYS_URL = `${SELF_ORIGIN}/buys`;
+const SWEEP_SOURCE = { USD1: 'x402', USDC: 'x402-usdc' };
+function paymentFate(pay) {
+  if (pay.holder) return { your_payment: 'Nothing was paid (holder pass): your $BOBAI stays in your wallet.', follow: BUYS_URL };
+  const follow = `${BUYS_URL}?tx=${pay.tx}`;
+  if (pay.asset === 'BOBAI') return { your_payment: `Paid in $BOBAI: all of it stays in the income wallet as $BOBAI, off the market and never sold.`, follow };
+  const half = pay.paid / 2n, asset = pay.asset || 'USD1';
+  return {
+    your_payment: `${fmtUsd1(half)} ${asset} of it buys $BOBAI at the next sweep (daily at 04:23 UTC, once the income wallet holds at least ${MIN_SWEEP_BNB} BNB worth of ${asset}, so gas does not eat it) and is held there, never sold; the other ${fmtUsd1(pay.paid - half)} ${asset} is the operator's revenue.`,
+    follow,
+  };
+}
+
+// GET /buys — every x402 payment and the $BOBAI it bought. From the earnings register (earn:*) and the DeFi agent's run
+// record (its sweeps since the buy began on 2026-10-14), plus the income wallet's $BOBAI read from the chain.
+async function readBuys(env, onlyTx = null) {
+  const rec = await readAgentRecord(env).catch(() => null);
+  const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
+  const sweeps = [];
+  for (const e of hist) for (const s of Array.isArray(e.steps?.sweep) ? e.steps.sweep : []) {
+    if (s.acted && !s.error && s.bobai_bought != null) sweeps.push({ at: e.at, source: s.source, token: s.token, sold: s.sold, to_operator: s.to_operator, bobai_bought: s.bobai_bought, txs: s.txs || [] });
+  }
+  const last = hist.length ? hist[hist.length - 1] : null;
+  const waiting = (Array.isArray(last?.steps?.sweep) ? last.steps.sweep : []).filter((s) => !s.acted && s.balance > 0)
+    .map((s) => ({ source: s.source, token: s.token, wallet: s.wallet, balance: s.balance, bnb_equivalent: s.bnb_equivalent, floor_bnb: MIN_SWEEP_BNB, why: s.why }));
+  const list = await listAll(env, 'earn:');
+  const payments = [];
+  for (const k of list.keys) {
+    const r = JSON.parse((await env.AGENT.get(k.name)) || '{}');
+    if (!r.tx || (onlyTx && r.tx !== onlyTx)) continue;
+    const asset = r.paid_in || 'USD1';
+    const p = { at: r.at ? new Date(r.at).toISOString() : null, tx: r.tx, for: r.for, asset, amount: r.paid_in ? fmtUsd1(BigInt(r.paid_atomic || r.amount)) : fmtUsd1(BigInt(r.amount)), from: r.from || null, self_test: !r.from || isOwnWallet(r.from) };
+    if (asset === 'BOBAI') p.bobai = 'paid in $BOBAI: held as it came, never sold';
+    else {
+      const sw = sweeps.find((s) => s.source === SWEEP_SOURCE[asset] && Date.parse(s.at) > (r.at || 0));
+      p.bobai = sw ? `half bought $BOBAI in the sweep of ${String(sw.at).slice(0, 16).replace('T', ' ')} UTC` : 'half waits for the next sweep that clears the gas floor';
+      if (sw) p.sweep_txs = sw.txs;
+    }
+    payments.push(p);
+  }
+  payments.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  let held = null;
+  try {
+    const hex = await rpc('eth_call', [{ to: BOBAI, data: '0x70a08231' + String(env.X402_WALLET || '').slice(2).toLowerCase().padStart(64, '0') }, 'latest']);
+    held = hex && hex !== '0x' ? Number(BigInt(hex) / 10n ** 15n) / 1000 : null;
+  } catch { held = null; }
+  return {
+    what_this_is: 'Every payment for an answer, a pool watch or a scan day pass, and the $BOBAI it bought. Half of each USD1/USDC payment buys $BOBAI at the daily sweep (04:23 UTC) once the income wallet holds enough to be worth the gas, and that $BOBAI is held, never sold; the other half is the operator\'s revenue. A payment in $BOBAI stays $BOBAI. Our own test purchases are marked self_test.',
+    rule: { to_bobai: '50%', to_operator: '50%', sweep: 'daily 04:23 UTC', gas_floor_bnb: MIN_SWEEP_BNB, code: 'https://brainonbnb.com/code/agent-service.txt (shared/lp-agent.js executeSweep)' },
+    income_wallet: env.X402_WALLET || null,
+    bobai_held_by_income_wallet: held,
+    waiting,
+    sweeps: sweeps.reverse(),
+    payments: onlyTx ? payments : payments.slice(0, 100),
+    from_strangers: payments.filter((p) => !p.self_test).length,
+  };
+}
+
 // How to pay, in the order of accepts[] (2026-10-05): one sentence for every
 // 402 here. /tip and /watch still called USDC "accepts[0]" after USD1 by
 // EIP-3009 moved in front of it. `headers` is what that route reads the
@@ -1318,6 +1380,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, tx: pay.tx,
     paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, answer ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    ...paymentFate(pay),
     produced_at: new Date().toISOString(),
     ...(target ? { input: target.target } : {}),
     result,
@@ -1439,6 +1502,7 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
     expires: issued.expires,
     use: `Send header X-Scan-Pass: ${issued.pass} on every pool scan until ${issued.expires} (up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans): https://brainonbnb.com/api/pool-scan?address=0x… or bsc_pool_scan at https://brainonbnb.com/mcp.`,
     paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, day pass ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    ...paymentFate(pay),
     tx: pay.holder ? undefined : pay.tx,
   } };
 }
@@ -1550,6 +1614,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // the id the buyer will ever be handed.
     read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
     paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, watch ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(check.paid)} ${check.asset}`,
+    ...paymentFate(pay),
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible
     // thing to receive by accident.
@@ -2646,6 +2711,10 @@ ${pageTail}`;
     // What the DeFi agent's daily tick did — sweep, collect, rebalance,
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
+    if (path === '/buys') {
+      const tx = (url.searchParams.get('tx') || '').toLowerCase().match(/^0x[0-9a-f]{64}$|^x402:\d+$|^holder:\S+$/)?.[0] || null;
+      return json(await readBuys(env, tx), 200, { 'Cache-Control': 'public, max-age=60' });
+    }
     if (path === '/lp/agent' || path === '/lp/collect') {
       const rec = await readAgentRecord(env);
       if (!rec) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3093 lines.
+# one fetch. 5 files, 3094 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2200,6 +2200,7 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 wallet: <lowercase address>
 issued: <ISO time>" with that wallet (personal_sign — no transaction, nothing spent) and send PAYMENT-SIGNATURE: bobai-holder <address> <issued> <signature> instead of a payment; the balance is read from the chain each time. Terms under holder_pass in every 402. What costs money here: a paid answer (0.10 USD1), the pool watch (0.50 USD1 for 30 days) and the pool scan day pass (0.50 USD1 for 24 hours, past 50 free scans a day) — each half that in $BOBAI; everything else is free.
 - What has been asked and earned, with the receiving wallet named: https://agent.brainonbnb.com/stats
+- Every payment and the $BOBAI it bought: https://agent.brainonbnb.com/buys (add ?tx=<hash> for one) — half of each USD1/USDC payment buys $BOBAI at the daily sweep, held and never sold, once the income wallet holds enough to be worth the gas; what still waits is listed with the reason. Every paid reply says this under your_payment.
 
 ## The token — key facts, verifiable on-chain
 

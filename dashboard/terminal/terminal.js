@@ -2474,6 +2474,14 @@ const REACT_MORE = {
     return [`My DeFi agent re-set its reserve range${w}. Ready for the next move of the price.`, `Reserve range moved${w}. The second position waits where the price may go.`, `The DeFi agent's reserve is set again${w}.`,
       `A fresh reserve range${w}: when the price steps out of the main one, this one is already there.`, `Reserve re-set${w}. Two ranges, one pool, no idle capital.`]; },
   'defi-sweep': x => { const s = x.s || {}, a = `${s.sweeping ?? s.balance ?? ''} ${s.token || ''}`.trim(), v = s.bnb_equivalent ? ` (${bnbF(s.bnb_equivalent)})` : '';
+    // SINCE 2026-10-14 the sweep sends half to the operator and buys $BOBAI with the other half, held (shared/lp-agent.js
+    // executeSweep); these lines still said the money went into the DeFi agent's pool (found 2026-10-18)
+    if (s.to_operator != null) { const t = s.token || '', all = nf((+s.sold || 0) + (+s.to_operator || 0), 2), half = nf(+s.sold || 0, 2), op = nf(+s.to_operator || 0, 2), b = +s.bobai_bought > 0 ? bobaiAmt(s.bobai_bought) : '$BOBAI';
+      return [`Agents paid my services ${all} ${t}. Half of it just bought ${b}, held for good. The other half is the operator's pay.`,
+        `Payday from my agent services: ${b}, bought with half of ${all} ${t}. Never sold.`,
+        `The services' till is swept: ${half} ${t} became ${b}, held. ${op} ${t} went to the operator.`,
+        `My agent services earned ${all} ${t}. Half of it bought ${b} and keeps it off the market.`,
+        `${b} bought with what agents paid me. It stays in the income wallet, never sold.`]; }
     return [`What agents paid my services, ${a}${v}, just went to my DeFi agent.`, `Payments swept: ${a}${v} from my agent services into the DeFi agent.`, `My agent services earned ${a}${v}. Now it works in the pool.`,
       `${a}${v} from paid answers, handed to my DeFi agent.`, `The services' till is empty again: ${a}${v} went to my DeFi agent.`]; },
   dev: x => { const t = bnbF(+x.d.availableBnb);

@@ -17,7 +17,7 @@
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, indexedPool,
+  classify, priceToken, discover, indexedPool, priceQuote, flapInfo, flapLadder, FLAP_PORTAL,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
@@ -484,6 +484,50 @@ export async function scan(input, env) {
           source: 'four.meme TokenManagerHelper3 (getTokenInfo, tryBuy, trySell) on BNB Smart Chain, at this block',
         },
         venues: [],
+        source: 'measured on BNB Smart Chain via public RPC',
+      };
+    }
+  }
+  // flap.sh's curve (2026-10-18, flapInfo in scanner-chain.js): a token still on it has no pool here, and the index's
+  // "flapsh" figure was answered "most of it sits at Flapsh … not measured here". Measured from the Portal instead.
+  if (!pool) {
+    const fl = await flapInfo(token).catch(() => null);
+    if (fl && !fl.graduated) {
+      const hopQ = fl.quoteAddr && !fl.quoteIsStable ? await priceQuote(fl.quoteAddr, bnbUsd).catch(() => null) : null;
+      const quoteUsd = fl.quoteSym === 'BNB' ? bnbUsd : fl.quoteIsStable ? 1 : hopQ?.usd || 0;
+      const quoteSym = fl.quoteSym || hopQ?.sym || null;
+      const rows = await flapLadder(token, fl, quoteUsd, STEPS);
+      const sellRow = rows.find((r) => r.sellCost != null);
+      const indexUsd = Math.round(otherLiq);
+      return {
+        address: token, name, symbol: symb, quotable: false,
+        reason: `Still on its flap.sh bonding curve (${fl.stage}) — there is no PancakeSwap pool yet; trades go through flap.sh's Portal contract.`
+          + (quoteUsd > 0 ? ` The curve holds ${fl.reserve.toPrecision(3)} ${quoteSym || 'of its quote token'} (about $${Math.round(fl.reserve * quoteUsd).toLocaleString('en-US')}) to pay any sell out of${indexUsd > 0 ? `; index figures show $${indexUsd.toLocaleString('en-US')} for the same curve` : ''}.` : ''),
+        curve: {
+          platform: 'flap.sh',
+          stage: `bonding curve, ${fl.stage}`,
+          quoteSymbol: quoteSym,
+          priceQuote: fl.price,
+          priceUsd: quoteUsd > 0 ? fl.price * quoteUsd : null,
+          feePct: fl.feeBuyPct, sellFeePct: fl.feeSellPct,
+          reserve: fl.reserve, reserveUsd: quoteUsd > 0 ? +(fl.reserve * quoteUsd).toFixed(2) : null,
+          indexLiquidityUsd: indexUsd > 0 ? indexUsd : null,   // what an index shows for this curve: its virtual reserve, not money
+          supplySold: fl.sold, movesToDexAtSupply: fl.dexAtSupply,
+          progressPct: fl.progressPct == null ? null : +fl.progressPct.toFixed(2),
+          tradeCost: rows.map((r) => ({
+            sizeUsd: r.usd,
+            buyCostPct: r.buyCost == null ? null : +r.buyCost.toFixed(3),
+            sellCostPct: r.sellCost == null ? null : +r.sellCost.toFixed(3),
+            note: r.buyNote || r.sellNote || undefined,
+          })),
+          sellQuoted: !!sellRow,
+          quotePriced: quoteUsd > 0,
+          ...(hopQ?.hopPair ? { quotePricedVia: { pair: hopQ.hopPair, name: hopQ.hopName, hardSideUsd: Math.round(hopQ.hopUsd) } } : {}),
+          custody: 'The money in the curve sits in flap.sh\'s Portal contract, not in the creator\'s wallet; a sell is paid out of it, so no sell larger than it can be paid. There is no pool and therefore no liquidity to withdraw.',
+          onCompletion: 'When the supply sold reaches movesToDexAtSupply, flap.sh moves the token to a DEX; the pool path of this tool applies from then on.',
+          source: `flap.sh Portal ${FLAP_PORTAL} (getTokenV5, quoteExactInput, getFeeRate) on BNB Smart Chain, at this block`,
+        },
+        venues: venueList(),
         source: 'measured on BNB Smart Chain via public RPC',
       };
     }

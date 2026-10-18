@@ -98,11 +98,18 @@ export function shape(s, r, usd, routeError = null, control = null) {
     const buy = costAtSize(c.tradeCost, usd, 'buyCostPct'), sell = costAtSize(c.tradeCost, usd, 'sellCostPct');
     // A raise in a quote token this tool cannot price asks no dollar size at all: that is our blind spot, not a sell
     // that fails (2026-10-09 review: it read "stop" for a token that sells fine). Only an asked and refused sell stops.
-    if (!c.sellQuoted && c.quotePriced === false) caution.push({ code: 'quote_not_priced', why: `The raise is in ${c.quoteSymbol || 'a token'} this tool cannot price, so no trade size in dollars was measured; the sell was not tested.` });
-    else if (!c.sellQuoted) stop.push({ code: 'sell_not_quotable', why: 'four.meme’s contract returned no sell quote at any size asked.' });
-    caution.push({ code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.`, ...fig(c.progressPct, 100, 'pct') });
+    // flap.sh's curve too (2026-10-18): a sell is paid out of the money in the curve, and an index shows its virtual
+    // reserve as "liquidity" — the one figure on such a token that misleads most
+    const flap = c.platform === 'flap.sh';
+    if (!c.sellQuoted && c.quotePriced === false) caution.push({ code: 'quote_not_priced', why: `The ${flap ? 'curve' : 'raise'} is in ${c.quoteSymbol || 'a token'} this tool cannot price, so no trade size in dollars was measured; the sell was not tested.` });
+    else if (flap && c.reserveUsd != null && c.reserveUsd < usd) stop.push({ code: 'curve_cannot_pay', why: `The curve holds about $${c.reserveUsd} — all a sell is paid out of; a sell of $${usd} cannot be paid.`, ...fig(c.reserveUsd, usd, 'usd') });
+    else if (!c.sellQuoted) stop.push({ code: 'sell_not_quotable', why: `${flap ? 'flap.sh’s Portal' : 'four.meme’s contract'} returned no sell quote at any size asked.` });
+    if (flap && c.indexLiquidityUsd > 0) caution.push({ code: 'index_liquidity_virtual', why: `Index sites show about $${c.indexLiquidityUsd} of liquidity for this curve; that figure counts the curve’s virtual reserve. The money in it is about $${c.reserveUsd ?? '?'}.`, ...fig(c.reserveUsd, c.indexLiquidityUsd, 'usd') });
+    caution.push(flap
+      ? { code: 'on_launch_curve', why: `Still on flap.sh’s bonding curve (${c.progressPct ?? '?'}% of the supply that moves it to a DEX is sold): trades go through flap.sh’s Portal contract, not a pool, and the price path changes when it moves to a DEX.`, ...fig(c.progressPct, 100, 'pct') }
+      : { code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.`, ...fig(c.progressPct, 100, 'pct') });
     if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the cost shown is the largest rung’s and the real one is higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
-    return out({ venue: 'four.meme bonding curve', stop, caution,
+    return out({ venue: flap ? 'flap.sh bonding curve' : 'four.meme bonding curve', stop, caution,
       entry: { cost_pct: round(buy.pct, 3), fee_pct: c.feePct ?? null },
       exit: { sell_quoted: !!c.sellQuoted, cost_pct: round(sell.pct, 3) },
       control: ctl,

@@ -11,10 +11,10 @@
 //      showed nothing at all, which is the most dangerous thing this page
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
-  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,
+  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,priceQuote,flapInfo,flapLadder,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=34';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=35';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -1359,13 +1359,15 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool,on
 // the money is (in the platform's contract until the raise completes — a
 // readable balance, not a promise), and whether a sell would be paid out.
 function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
+  // four.meme or flap.sh (2026-10-18): the same card, each platform named and read as itself
+  const flap=cv.platform==='flap.sh', P=flap?'flap.sh':'four.meme', PC=flap?'flap.sh’s Portal contract':'four.meme’s contract';
   const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
   const teaser=$('sc-what');if(teaser)teaser.hidden=true;
   const head=el('header','hd');
   const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
   head.appendChild(ttl);
   head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
-    link('four.meme','https://four.meme/token/'+addr)));
+    ...(flap?[]:[link('four.meme','https://four.meme/token/'+addr)])));
   o.appendChild(head);
 
   const q=cv.quoteSym||'the quote token';
@@ -1376,7 +1378,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
   const c=el('section','cd vd-card');
   const h=el('div','cd-h');
   h.appendChild(el('h3',null,'The short answer'));
-  h.appendChild(el('p',null,'This token is still on its four.meme launch curve. There is no PancakeSwap pool yet; every trade goes through four.meme’s contract, and that is what was asked.'));
+  h.appendChild(el('p',null,'This token is still on its '+P+(flap?' bonding':' launch')+' curve. There is no PancakeSwap pool yet; every trade goes through '+PC+', and that is what was asked.'));
   c.appendChild(h);
   const list=el('div','vd');
   const line=(tone,hd,body)=>{const r=el('div','vd-r vd-'+tone);r.appendChild(el('b',null,hd));r.appendChild(el('span',null,body));list.appendChild(r)};
@@ -1387,34 +1389,46 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
     const toll=cv.feePct;
     const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
     line(tone,'A $'+nf(ref.usd)+' trade costs you '+(ref.buyCost==null?'—':pc(ref.buyCost))+' to buy and '+(ref.sellCost==null?'—':pc(ref.sellCost))+' to sell.',
-      'four.meme’s own quote for that size right now, its '+pc(toll)+' fee included. The rest is the curve moving under the trade'+(ref.buyNote?'; the buy side: '+ref.buyNote:'')+'.');
+      P+'’s own quote for that size right now, its '+pc(toll)+' fee included. The rest is the curve moving under the trade'+(ref.buyNote?'; the buy side: '+ref.buyNote:'')+'.');
   }else{
     line('unknown','What a trade costs could not be quoted.',
       rows.length?'The curve answered no size this page asks about.':(quoteUsd>0?'The helper contract did not answer.':'The curve is raising in '+q+', which this page cannot express in dollars.'));
   }
-  line('mid',(cv.progressPct==null?'The raise is in progress':pc(cv.progressPct,1)+' of the raise is done')+' — '+qAmt(cv.raised)+' of '+qAmt(cv.maxRaising)+'.',
+  if(flap){
+    // the money a sell is paid out of, against the figure an index shows for the same curve (its virtual reserve)
+    const resUsd=quoteUsd>0?cv.reserve*quoteUsd:null;
+    line(resUsd!=null&&resUsd<100?'bad':'mid','The curve holds '+qAmt(cv.reserve)+(resUsd!=null?' (about '+usd(resUsd)+')':'')+' to pay sells out of.',
+      'That is all the money in it: a sell larger than this cannot be paid.'+(cv.indexUsd>0?' Index sites show about '+usd(cv.indexUsd)+' of “liquidity” for this curve; that figure counts the curve’s virtual reserve, which no sell is paid from.':'')+' '+(cv.progressPct==null?'':pc(cv.progressPct,1)+' of the supply that moves it to a DEX is sold.'));
+  }else line('mid',(cv.progressPct==null?'The raise is in progress':pc(cv.progressPct,1)+' of the raise is done')+' — '+qAmt(cv.raised)+' of '+qAmt(cv.maxRaising)+'.',
     'The money raised sits in four.meme’s contract until the raise completes, not in the creator’s wallet. When it completes, four.meme lists the token on PancakeSwap; until then there is no liquidity to pull, because there is no pool.');
   const sellRow=rows.find(r=>r.sellCost!=null);
   if(sellRow)line('good','A sell would be paid out right now.',
-    'four.meme quoted '+q+' for a sell of the size above at this block. That is the curve’s answer, not a simulation of your wallet; the token contract itself is a four.meme template.');
-  else line('unknown','Whether a sell would be paid out could not be checked.','The helper contract quoted no sell at any size this page asks about.');
+    P+' quoted '+q+' for a sell of the size above at this block. That is the curve’s answer, not a simulation of your wallet; the token contract itself is a '+P+' template.');
+  else if(flap&&rows.some(r=>r.sellNote))line('bad','No sell of $'+nf(rows[0].usd)+' or more can be paid out right now.','The curve holds less than that. Smaller sells are paid from what it holds, until it is empty.');
+  else line('unknown','Whether a sell would be paid out could not be checked.','The '+(flap?'Portal':'helper contract')+' quoted no sell at any size this page asks about.');
   c.appendChild(list);o.appendChild(c);
 
   // The ladder, in the pool ladder’s own columns. "Impact" here is the cost
   // beyond the fee, which on a curve is the price moving under the trade.
   if(rows.length){
-    const lad=card('What a trade really costs on the curve','four.meme’s quote for each size, fee included, against its last price.');
+    const lad=card('What a trade really costs on the curve',P+'’s quote for each size, fee included, against its last price.');
     const shaped=rows.map(r=>({usd:r.usd,buyCost:r.buyCost,sellCost:r.sellCost,
       buyMove:r.buyCost==null?null:Math.max(0,r.buyCost-cv.feePct),
       sellMove:r.sellCost==null?null:-Math.max(0,r.sellCost-cv.feePct)}));
     const capped=rows.filter(r=>r.buyNote).map(r=>'$'+nf(r.usd));
-    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct},'curve'));
+    const noPay=rows.filter(r=>r.sellNote).map(r=>'$'+nf(r.usd));
+    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':flap&&noPay.length?'A dash on the sell side ('+noPay.join(', ')+') means the curve holds less than that size to pay out.':null,{buy:cv.feePct,sell:cv.sellFeePct??cv.feePct},'curve'));
     o.appendChild(lad);
   }
 
   // The facts the lines above were made from.
-  const f=card('The curve, as four.meme’s contract reports it','Read from TokenManagerHelper3 at this block; nothing is cached.');
-  f.appendChild(statRow([
+  const f=card('The curve, as '+PC+' reports it',flap?'Read from the Portal (getTokenV5, quoteExactInput) at this block; nothing is cached.':'Read from TokenManagerHelper3 at this block; nothing is cached.');
+  f.appendChild(statRow(flap?[
+    {v:priceUsd!=null?usd(priceUsd):qAmt(cv.price),l:'Price',s:priceUsd!=null?qAmt(cv.price)+' per token':'per token'},
+    {v:qAmt(cv.reserve),l:'In the curve',s:quoteUsd>0?'about '+usd(cv.reserve*quoteUsd)+', all a sell is paid from':'all a sell is paid from'},
+    {v:nf(cv.sold),l:'Tokens sold',s:'of '+nf(cv.dexAtSupply)+', then a DEX'},
+    {v:pc(cv.feePct),l:'Platform fee',s:'buy; '+pc(cv.sellFeePct??cv.feePct)+' sell'},
+  ]:[
     {v:priceUsd!=null?usd(priceUsd):qAmt(cv.price),l:'Price',s:priceUsd!=null?qAmt(cv.price)+' per token':'per token'},
     {v:qAmt(cv.raised),l:'Raised',s:'of '+qAmt(cv.maxRaising)},
     {v:nf(cv.offersLeft),l:'Tokens left to sell',s:'of '+nf(cv.maxOffers)},
@@ -1426,8 +1440,8 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
   // The router sell test has nothing to sell into here; the chip says so and
   // points at the curve's own answer above rather than reading as a failure.
   o.appendChild(flagsCard(gp,!!(gp.token_name||gp.dex||gp.is_open_source!=null),
-    {ok:false,curve:true,reason:'Not applicable on the launch curve: there is no pool and no router to sell into. Whether a sell would be paid out is answered above, from four.meme’s own contract.'}));
-  o.appendChild(el('p','dis','Curve figures come from four.meme’s helper contract on BNB Smart Chain; contract properties from GoPlus. Measurement, not advice.'));
+    {ok:false,curve:true,reason:'Not applicable on the '+(flap?'bonding':'launch')+' curve: there is no pool and no router to sell into. Whether a sell would be paid out is answered above, from '+PC+'.'}));
+  o.appendChild(el('p','dis','Curve figures come from '+(flap?'flap.sh’s Portal contract':'four.meme’s helper contract')+' on BNB Smart Chain; contract properties from GoPlus. Measurement, not advice.'));
 }
 
 // ---- orchestration ---------------------------------------------------------
@@ -1629,6 +1643,21 @@ async function scanOnce(input){
         const quoteUsd=cv.quoteSym==='BNB'?bnbUsd:cv.quoteIsStable?1:0;
         const rows=await curveLadder(token,cv,quoteUsd,STEPS);
         renderCurve(gp,token,name,symb,cv,rows,quoteUsd);
+        remember(token,symb);
+        return;
+      }
+    }
+    // flap.sh's curve (2026-10-18, flapInfo in scanner-chain.js; the same as /api/pool-scan): the index lists it as a
+    // "flapsh" pair, so it is asked whether or not the index knows other venues
+    if(!pool){
+      at('asking flap.sh whether it is still on its curve…');
+      const fl=await flapInfo(token);
+      if(fl&&!fl.graduated){
+        const hopQ=fl.quoteAddr&&!fl.quoteIsStable?await priceQuote(fl.quoteAddr,bnbUsd).catch(()=>null):null;
+        const quoteUsd=fl.quoteSym==='BNB'?bnbUsd:fl.quoteIsStable?1:(hopQ&&hopQ.usd)||0;
+        const cvF={...fl,quoteSym:fl.quoteSym||(hopQ&&hopQ.sym)||null,feePct:fl.feeBuyPct,sellFeePct:fl.feeSellPct,indexUsd:otherLiq};
+        const rows=await flapLadder(token,fl,quoteUsd,STEPS);
+        renderCurve(gp,token,name,symb,cvF,rows,quoteUsd);
         remember(token,symb);
         return;
       }

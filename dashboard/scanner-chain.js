@@ -1711,6 +1711,77 @@ export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
   return rows;
 }
 
+// ---- flap.sh: a token still on its bonding curve (2026-10-18) ---------------
+// flap.sh is the other launchpad on BNB Chain. Its tokens trade inside its
+// Portal contract until a share of the supply is sold, then move to a DEX. The
+// index lists that curve as a "flapsh" pair with a liquidity figure, and this
+// scanner said "most of it sits at Flapsh … not measured here": on 18.10. a
+// trading bot's scans ended there, and one such token showed $8,915 of index
+// liquidity while the Portal held 0.071 BNB (~$51) to pay any sell out of.
+// The Portal answers like four.meme's helper: getTokenV5(token) — status (1
+// tradable, 2 in duel, 3 killed, 4 on a DEX; 0 = not a flap.sh token), the money
+// in the curve (reserve, in the quote token), the supply sold, the price
+// (quote per token) and the supply at which it moves to a DEX — and
+// quoteExactInput((input, output, amount)), the trade itself quoted with fee
+// and tax. Selectors and the BSC address were taken from the flap.sh SDK
+// (four-flap-meme-sdk 4.3.4, read as data) and checked live: version v5.25.0,
+// getFeeRate 100/100 (1 % each way). previewBuy/previewSell revert in this
+// version, so they are not used.
+export const FLAP_PORTAL='0xe2ce6ab80874fa9fa2aae65d277dd6b8e65c9de0';
+const FLAP_SEL={v5:'0x5c4bc504',quote:'0xfc847c2b',fee:'0x84e5eed0'};
+const FLAP_STATUS={1:'tradable',2:'in a duel',3:'killed',4:'moved to a DEX'};
+
+// null when the address is not a flap.sh token (status 0 or a revert)
+export async function flapInfo(token,url){
+  let r;
+  try{r=await rpcBatch([call(FLAP_PORTAL,FLAP_SEL.v5+pad(token)),call(FLAP_PORTAL,FLAP_SEL.fee)],url)}
+  catch(e){return null}
+  const s=r[0];
+  const status=Number(wordAt(s,0)||0n);
+  if(!status)return null;
+  const quoteAddr=addrWord(s,9);
+  const isBnb=!quoteAddr||quoteAddr===NULLA||quoteAddr===WBNB;
+  const known=QUOTES.find(([a])=>a===quoteAddr);
+  const circ=Number(wordAt(s,2))/1e18, thresh=Number(wordAt(s,8))/1e18;
+  return {
+    platform:'flap.sh', status, stage:FLAP_STATUS[status]||'unknown',
+    quoteAddr:isBnb?null:quoteAddr,
+    quoteSym:isBnb?'BNB':known?known[1]:null,
+    quoteIsStable:!isBnb&&!!known&&known[2]===1,
+    price:Number(wordAt(s,3))/1e18,
+    reserve:Number(wordAt(s,1))/1e18,
+    sold:circ, dexAtSupply:thresh,
+    progressPct:thresh>0?Math.min(100,circ/thresh*100):null,
+    feeBuyPct:r[1]?Number(wordAt(r[1],0))/100:null,
+    feeSellPct:r[1]?Number(wordAt(r[1],1))/100:null,
+    graduated:status===4,
+  };
+}
+
+// A buy and a sell of each USD size, quoted by the Portal itself, against the
+// curve's own price — the definition curveLadder and the pool ladder use. A
+// sell bigger than the money in the curve cannot be paid and says so.
+export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
+  if(!(quoteUsd>0)||!(info.price>0))return [];
+  const q=info.quoteAddr||NULLA, sizes=sizesUsd.filter(s=>s>0), calls=[];
+  for(const usd of sizes){
+    calls.push(call(FLAP_PORTAL,FLAP_SEL.quote+pad(q)+pad(token)+num(BigInt(Math.floor(usd/quoteUsd*1e18)))));
+    calls.push(call(FLAP_PORTAL,FLAP_SEL.quote+pad(token)+pad(q)+num(BigInt(Math.floor(usd/quoteUsd/info.price*1e18)))));
+  }
+  let res;
+  try{res=await rpcBatch(calls,url)}catch(e){return []}
+  return sizes.map((usd,i)=>{
+    const b=res[2*i],s=res[2*i+1];
+    const row={usd,buyCost:null,sellCost:null,buyNote:null,sellNote:null};
+    const paid=usd/quoteUsd, got=b?Number(wordAt(b,0))/1e18:0, out=s?Number(wordAt(s,0))/1e18:0;
+    if(got>0)row.buyCost=(paid/(got*info.price)-1)*100; else row.buyNote='the curve did not quote this size';
+    if(paid>info.reserve)row.sellNote='more than the curve holds to pay out';
+    else if(out>0)row.sellCost=(1-out/paid)*100;
+    else row.sellNote='the curve did not quote this size';
+    return row;
+  });
+}
+
 // What is trading on four.meme's curve right now, straight from the manager's
 // own logs: the most recently traded tokens that have not graduated, each with
 // its raise, price and what a $100 buy and sell would cost. Nobody shows the

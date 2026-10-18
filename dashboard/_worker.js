@@ -1254,7 +1254,8 @@ async function scanAllowance(request) {
       if (n > SCAN_PASS_CAP) return { status: 429, body: { error: `This day pass has carried its ${SCAN_PASS_CAP.toLocaleString('en-US')} scans.`, code: 'pass_used', hint: `Buy another at POST ${SCAN_PASS_URL}.` }, note: 'poolscan:pass:used' };
       return { ok: true, note: 'poolscan:pass' };
     }
-    const ip = testKey ? 'test:' + testKey : request.headers.get('cf-connecting-ip');
+    // 'ip:<address>': our agent worker relaying an outside caller's scan (its agent MCP servers) — that caller's own day
+    const ip = testKey ? (testKey.startsWith('ip:') ? testKey.slice(3) : 'test:' + testKey) : request.headers.get('cf-connecting-ip');
     if (!ip) return null;
     const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-scanq:' + ip));
     const now = new Date(), end = new Date(now); end.setUTCHours(24, 0, 0, 0);
@@ -1785,7 +1786,7 @@ export default {
       const outsideScan = !isOwn && !siteCall && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan';
       // Past the free scans of the day, the day pass (2026-10-18). Only a browser on our own pages is left out: the
       // referer alone is anyone's to send.
-      if (!isOwn && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan' && request.headers.get('sec-fetch-site') !== 'same-origin') {
+      if ((!isOwn || request.headers.get('x-scan-quota-key')) && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan' && request.headers.get('sec-fetch-site') !== 'same-origin') {
         const lim = await scanAllowance(request);
         if (lim?.note) count(null, [lim.note, ...(lim.ok ? [] : [`poolscanua:${product}`])]);
         if (lim && !lim.ok) return new Response(JSON.stringify(lim.body, null, 2), { status: lim.status, headers: { ...headers, ...(lim.headers || {}) } });

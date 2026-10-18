@@ -3045,9 +3045,14 @@ ${pageTail}`;
               return r ? answer(r.out) : refuse('give the Venus account: address 0x…');
             }
             const qs = new URLSearchParams(Object.entries(a).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
-            const r = await fetch(`https://brainonbnb.com${FREE.rest}?${qs}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+            // The pool scan's 50 a day (2026-10-18) count for the caller here too: relayed from this worker the site would
+            // see us, so the caller's address goes with the shared secret, and a day pass they send goes on.
+            const caller = request.headers.get('cf-connecting-ip'), scanPass = request.headers.get('x-scan-pass');
+            const relay = FREE.rest === '/api/pool-scan' && env.HIT_SECRET && caller
+              ? { 'x-hit-secret': env.HIT_SECRET, 'x-scan-quota-key': 'ip:' + caller, ...(scanPass ? { 'x-scan-pass': scanPass } : {}) } : {};
+            const r = await fetch(`https://brainonbnb.com${FREE.rest}?${qs}`, { headers: { accept: 'application/json', ...relay }, signal: AbortSignal.timeout(30000) });
             const j = await r.json().catch(() => null);
-            return j && r.ok ? answer(j) : refuse(j?.error || `http ${r.status}`);
+            return j && r.ok ? answer(j) : refuse(j?.hint ? `${j.error} ${j.hint}` : j?.error || `http ${r.status}`);
           } catch (e) { return refuse(e); }
         }
         if (name === 'lp_position_look') {

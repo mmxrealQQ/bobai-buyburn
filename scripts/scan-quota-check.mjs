@@ -71,6 +71,10 @@ else {
   check(forged.status === 402 && fj.code === 'bad_scan_pass', 'a forged pass is refused (402 bad_scan_pass)', `${forged.status} ${fj.code}`);
   const m = await (await fetch(`${BASE}/mcp`, { method: 'POST', headers: { ...hdr, 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'bsc_pool_scan', arguments: { address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82' } } }) })).json().catch(() => null);
   check(m?.result?.isError && m.result.structuredContent?.code === 'free_limit', 'MCP bsc_pool_scan past the line: isError, code free_limit', m?.result?.structuredContent?.code || JSON.stringify(m).slice(0, 80));
+  // The agent MCP servers relay the scan from our own worker, which the site does not count: the caller's day has to
+  // travel with it. A forged pass sent there is refused by the site, which proves the relay goes through the line.
+  const g = await (await fetch(`${AGENT}/grid-trader/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'x-scan-pass': minted.pass.slice(0, -1) + (minted.pass.endsWith('0') ? '1' : '0') }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'bsc_pool_scan', arguments: { address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82' } } }) })).json().catch(() => null);
+  check(g?.result?.isError && /not issued by/.test(g.result.content?.[0]?.text || ''), 'the agent MCP relay (grid-trader bsc_pool_scan) is held to the same line', (g?.result?.content?.[0]?.text || JSON.stringify(g)).slice(0, 90));
   const other = await scan({ ...hdr, 'x-scan-quota-key': key + 'x' });
   check(other.status === 400, 'another caller still has its own 50', String(other.status));
 }

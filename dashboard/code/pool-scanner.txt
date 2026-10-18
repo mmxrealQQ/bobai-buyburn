@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7201 lines.
+# one fetch. 6 files, 7298 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -393,6 +393,70 @@ export async function discover(token,tokDec,bnbUsd){
   // that no pool exists at a verified venue.
   out.oneSided=cands.filter(c=>!(c.hard>0)&&c.tok>0);
   return out;
+}
+
+// The quote of an index-named pool, priced through ITS deepest pool against BNB
+// or a stablecoin (V2 or V3), not through its V2 BNB pair alone: in the first
+// trial a token called "ETC" priced through a $27 pair put a meme at $720, and
+// real SOL's V2 pair is a side pocket. Under $1,000 on the hard side the dollar
+// figure would be invented, so there is none. 18 decimals only (see the scan).
+export const HOP_MIN_USD=1000;
+export async function priceQuote(addr,bnbUsd){
+  const known=QUOTES.find(([a])=>a===addr);
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true,dec:18};
+  const info=await rpcBatch([call(addr,S.symbol),call(addr,S.decimals)]);
+  const sym=decStr(info[0]).slice(0,12)||'?',dec=decOf(info[1]);
+  if(dec!==18)return null;
+  const best=(await discover(addr,dec,bnbUsd))[0];
+  if(!best||!(best.hard>=HOP_MIN_USD))return null;
+  let usd;
+  if(best.kind==='v2')usd=(best.q/best.tok)*best.usd;
+  else{
+    const s=await rpcBatch([call(best.pair,S.slot0),call(best.pair,S.token0)]);
+    const is0=addrAt(s[1])===addr,r=sqrtToPrice(hx('0x'+s[0].slice(2,66)),18,18);
+    usd=(is0?r:1/r)*best.usd;
+  }
+  if(!(usd>0)||!isFinite(usd))return null;
+  return {usd,sym,direct:false,dec,hopPair:best.pair,hopUsd:best.hard,hopBnb:best.hard/bnbUsd,
+    hopName:(best.venue||'PancakeSwap V3')+' · '+best.sym};
+}
+
+// === THE INDEX'S POOL, MEASURED (2026-10-18) ===
+// discover() asks the factories for pairs against BNB and the four stablecoins
+// only. A token whose market sits in a PancakeSwap pool against CAKE, BTCB or
+// SOL was answered "most of it sits at PancakeSwap V2 · Cake … not measured
+// here": on 17.10. 69 of ~114 outside scans (nearly all one trading bot) ended
+// there, and a sample of 44 listed BSC tokens put 15 there, most of them on a
+// PancakeSwap pool. The index names the pair; the chain is then asked what it
+// is, exactly as for a pasted pool: a verified venue's pair or PancakeSwap's V3
+// pool, holding this token, quoted in an 18-decimal token with a BNB pool of its
+// own. `list` is the index's pairs, deepest first; `beat` the hard side to beat.
+export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
+  token=String(token||'').toLowerCase();
+  for(const o of (list||[]).slice(0,3)){
+    if(!((o.liquidity||0)>=1000))break;
+    const pair=String(o.pair||'').toLowerCase();
+    if(!/^0x[0-9a-f]{40}$/.test(pair))continue;
+    let w;try{w=await classify(pair)}catch(e){continue}
+    if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&w.pancake))continue;
+    if(w.token0!==token&&w.token1!==token)continue;
+    const quote=w.token0===token?w.token1:w.token0;
+    const hop=await priceQuote(quote,bnbUsd).catch(()=>null);
+    if(!hop)continue;
+    const c=w.kind==='v2pair'
+      ?{kind:'v2',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.venue.fee,venue:w.venue.name,factory:w.factory,
+        tok:(w.token0===token?w.reserves[0]:w.reserves[1])/Math.pow(10,tokDec),
+        q:(w.token0===token?w.reserves[1]:w.reserves[0])/1e18}
+      :{kind:'v3',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.fee/1e6,feeRaw:w.fee,venue:'PancakeSwap V3',
+        sqrt:w.sqrt,tokenIs0:w.token0===token};
+    if(c.kind==='v3'){
+      const bal=await rpcBatch([call(quote,balOf(pair)),call(token,balOf(pair))]);
+      c.q=Number(hx(bal[0]))/1e18;c.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
+    }
+    c.hard=(c.q||0)*c.usd;
+    if(c.hard>beat&&c.tok>0)return {pool:c,hop};
+  }
+  return null;
 }
 
 // === V2 MATH ===
@@ -2331,7 +2395,7 @@ export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custod
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover,
+  classify, priceToken, discover, indexedPool,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
@@ -2688,6 +2752,20 @@ export async function scan(input, env) {
   // "returning 1%" — a liquid token that read like a honeypot. The right
   // refusal came only on the calls where DexScreener happened to fail.
   const dsAll = await venues(token);
+  // A deeper PancakeSwap pool the factories were not asked about (2026-10-18,
+  // indexedPool): quoted in CAKE, BTCB, SOL… Taken when the index ranks it above
+  // the pool found and the chain confirms it holds more. A pasted pool stays.
+  if (what.kind !== 'v2pair' && what.kind !== 'v3pool') {
+    const idx = [
+      ...(dsAll || []).map((x) => ({ pair: x.pair, liquidity: x.liq || 0 })),
+      ...(gp.dex || []).map((x) => ({ pair: String(x.pair || '').toLowerCase(), liquidity: parseFloat(x.liquidity) || 0 })),
+    ].sort((a, b) => b.liquidity - a.liquidity);
+    const cur = pool ? pool.pair.toLowerCase() : null;
+    const curIdx = cur ? Math.max(0, ...idx.filter((x) => x.pair === cur).map((x) => x.liquidity)) : 0;
+    const ahead = idx.filter((x, i) => x.pair !== cur && x.liquidity > curIdx && idx.findIndex((y) => y.pair === x.pair) === i);
+    const found = ahead.length ? await indexedPool(token, tokDec, bnbUsd, ahead, pool ? (pool.q || 0) * pool.usd : 0).catch(() => null) : null;
+    if (found) { pool = found.pool; hop = found.hop; }
+  }
   const mineKey = pool ? pool.pair.toLowerCase() : null;
   const byPair = new Map();
   for (const x of dsAll || [])
@@ -2972,7 +3050,10 @@ export async function scan(input, env) {
     // "At this block" has to name the block (2026-09-12): the head the tax
     // window ended at, and when this answer was made.
     block: tax.block ?? null, measuredAt: new Date().toISOString(),
-    price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd },
+    // A quote that is not BNB or a stablecoin is priced through its own BNB pair (2026-10-18): named, with that
+    // pair's BNB side, because the dollar figures inherit its depth and a dollar trade crosses it first.
+    price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd,
+      ...(hop && !hop.direct && hop.hopPair ? { quotePricedVia: { pair: hop.hopPair, ...(hop.hopName ? { name: hop.hopName } : {}), hardSideUsd: Math.round(hop.hopUsd ?? (hop.hopBnb || 0) * bnbUsd) } } : {}) },
     supply: { total: supply, burned, circulating: supply != null ? supply - burned : null },
     pool: {
       address: pool.pair, kind: pool.kind, venue: pool.venue || (pool.kind === 'v3' ? 'PancakeSwap V3' : null),
@@ -3589,7 +3670,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=76" type="module"></script>
+<script src="scanner.js?v=77" type="module"></script>
 </body>
 </html>
 
@@ -3610,10 +3691,10 @@ export async function scan(input, env) {
 //      showed nothing at all, which is the most dangerous thing this page
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
-  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
+  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=33';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=34';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -4666,8 +4747,10 @@ function render(d){
     const w=el('div','warn warn-soft');
     w.appendChild(el('b',null,'Every dollar figure here is derived, not direct.'));
     w.appendChild(el('span',null,'This pool is quoted in $'+hop.sym+', not in BNB or a stablecoin, so $'+hop.sym+
-      ' had to be priced through its own BNB pool first — which holds '+nf(hop.hopBnb||0,3)+
-      ' BNB. Everything above is only as trustworthy as that one pool: if it is thin or stale, so are these dollars. The percentages are unaffected.'));
+      (hop.hopName
+        ?' had to be priced through its own deepest pool first ('+hop.hopName+') — which holds $'+nf(hop.hopUsd||0)+' on its BNB or stablecoin side.'
+        :' had to be priced through its own BNB pool first — which holds '+nf(hop.hopBnb||0,3)+' BNB.')+
+      ' Everything above is only as trustworthy as that one pool: if it is thin or stale, so are these dollars. The percentages are unaffected.'));
     o.appendChild(w);
   }
 
@@ -5153,6 +5236,20 @@ async function scanOnce(input){
     // the fallback and only covers what it happens to know.
     at('checking where else it trades…');
     const dsAll=await venues(token);
+    // A deeper PancakeSwap pool quoted in CAKE, BTCB, SOL… (2026-10-18, indexedPool; as in scanner-scan.js).
+    if(what.kind!=='v2pair'&&what.kind!=='v3pool'){
+      const idx=[...(dsAll||[]).map(x=>({pair:x.pair,liquidity:x.liq||0})),
+        ...(gp.dex||[]).map(x=>({pair:String(x.pair||'').toLowerCase(),liquidity:parseFloat(x.liquidity)||0}))]
+        .sort((a,b)=>b.liquidity-a.liquidity);
+      const cur=pool?pool.pair.toLowerCase():null;
+      const curIdx=cur?Math.max(0,...idx.filter(x=>x.pair===cur).map(x=>x.liquidity)):0;
+      const ahead=idx.filter((x,i)=>x.pair!==cur&&x.liquidity>curIdx&&idx.findIndex(y=>y.pair===x.pair)===i);
+      if(ahead.length){
+        at('measuring the deeper pool the index names…');
+        const found=await indexedPool(token,tokDec,bnbUsd,ahead,pool?(pool.q||0)*pool.usd:0).catch(()=>null);
+        if(found){pool=found.pool;hop=found.hop}
+      }
+    }
     const others=dsAll
       ? dsAll.filter(x=>!pool||x.pair!==pool.pair.toLowerCase())
         .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq}))

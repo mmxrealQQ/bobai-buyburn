@@ -17,7 +17,7 @@
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover,
+  classify, priceToken, discover, indexedPool,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
@@ -374,6 +374,20 @@ export async function scan(input, env) {
   // "returning 1%" — a liquid token that read like a honeypot. The right
   // refusal came only on the calls where DexScreener happened to fail.
   const dsAll = await venues(token);
+  // A deeper PancakeSwap pool the factories were not asked about (2026-10-18,
+  // indexedPool): quoted in CAKE, BTCB, SOL… Taken when the index ranks it above
+  // the pool found and the chain confirms it holds more. A pasted pool stays.
+  if (what.kind !== 'v2pair' && what.kind !== 'v3pool') {
+    const idx = [
+      ...(dsAll || []).map((x) => ({ pair: x.pair, liquidity: x.liq || 0 })),
+      ...(gp.dex || []).map((x) => ({ pair: String(x.pair || '').toLowerCase(), liquidity: parseFloat(x.liquidity) || 0 })),
+    ].sort((a, b) => b.liquidity - a.liquidity);
+    const cur = pool ? pool.pair.toLowerCase() : null;
+    const curIdx = cur ? Math.max(0, ...idx.filter((x) => x.pair === cur).map((x) => x.liquidity)) : 0;
+    const ahead = idx.filter((x, i) => x.pair !== cur && x.liquidity > curIdx && idx.findIndex((y) => y.pair === x.pair) === i);
+    const found = ahead.length ? await indexedPool(token, tokDec, bnbUsd, ahead, pool ? (pool.q || 0) * pool.usd : 0).catch(() => null) : null;
+    if (found) { pool = found.pool; hop = found.hop; }
+  }
   const mineKey = pool ? pool.pair.toLowerCase() : null;
   const byPair = new Map();
   for (const x of dsAll || [])
@@ -658,7 +672,10 @@ export async function scan(input, env) {
     // "At this block" has to name the block (2026-09-12): the head the tax
     // window ended at, and when this answer was made.
     block: tax.block ?? null, measuredAt: new Date().toISOString(),
-    price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd },
+    // A quote that is not BNB or a stablecoin is priced through its own BNB pair (2026-10-18): named, with that
+    // pair's BNB side, because the dollar figures inherit its depth and a dollar trade crosses it first.
+    price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd,
+      ...(hop && !hop.direct && hop.hopPair ? { quotePricedVia: { pair: hop.hopPair, ...(hop.hopName ? { name: hop.hopName } : {}), hardSideUsd: Math.round(hop.hopUsd ?? (hop.hopBnb || 0) * bnbUsd) } } : {}) },
     supply: { total: supply, burned, circulating: supply != null ? supply - burned : null },
     pool: {
       address: pool.pair, kind: pool.kind, venue: pool.venue || (pool.kind === 'v3' ? 'PancakeSwap V3' : null),

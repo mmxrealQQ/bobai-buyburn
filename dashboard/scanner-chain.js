@@ -379,6 +379,70 @@ export async function discover(token,tokDec,bnbUsd){
   return out;
 }
 
+// The quote of an index-named pool, priced through ITS deepest pool against BNB
+// or a stablecoin (V2 or V3), not through its V2 BNB pair alone: in the first
+// trial a token called "ETC" priced through a $27 pair put a meme at $720, and
+// real SOL's V2 pair is a side pocket. Under $1,000 on the hard side the dollar
+// figure would be invented, so there is none. 18 decimals only (see the scan).
+export const HOP_MIN_USD=1000;
+export async function priceQuote(addr,bnbUsd){
+  const known=QUOTES.find(([a])=>a===addr);
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true,dec:18};
+  const info=await rpcBatch([call(addr,S.symbol),call(addr,S.decimals)]);
+  const sym=decStr(info[0]).slice(0,12)||'?',dec=decOf(info[1]);
+  if(dec!==18)return null;
+  const best=(await discover(addr,dec,bnbUsd))[0];
+  if(!best||!(best.hard>=HOP_MIN_USD))return null;
+  let usd;
+  if(best.kind==='v2')usd=(best.q/best.tok)*best.usd;
+  else{
+    const s=await rpcBatch([call(best.pair,S.slot0),call(best.pair,S.token0)]);
+    const is0=addrAt(s[1])===addr,r=sqrtToPrice(hx('0x'+s[0].slice(2,66)),18,18);
+    usd=(is0?r:1/r)*best.usd;
+  }
+  if(!(usd>0)||!isFinite(usd))return null;
+  return {usd,sym,direct:false,dec,hopPair:best.pair,hopUsd:best.hard,hopBnb:best.hard/bnbUsd,
+    hopName:(best.venue||'PancakeSwap V3')+' · '+best.sym};
+}
+
+// === THE INDEX'S POOL, MEASURED (2026-10-18) ===
+// discover() asks the factories for pairs against BNB and the four stablecoins
+// only. A token whose market sits in a PancakeSwap pool against CAKE, BTCB or
+// SOL was answered "most of it sits at PancakeSwap V2 · Cake … not measured
+// here": on 17.10. 69 of ~114 outside scans (nearly all one trading bot) ended
+// there, and a sample of 44 listed BSC tokens put 15 there, most of them on a
+// PancakeSwap pool. The index names the pair; the chain is then asked what it
+// is, exactly as for a pasted pool: a verified venue's pair or PancakeSwap's V3
+// pool, holding this token, quoted in an 18-decimal token with a BNB pool of its
+// own. `list` is the index's pairs, deepest first; `beat` the hard side to beat.
+export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
+  token=String(token||'').toLowerCase();
+  for(const o of (list||[]).slice(0,3)){
+    if(!((o.liquidity||0)>=1000))break;
+    const pair=String(o.pair||'').toLowerCase();
+    if(!/^0x[0-9a-f]{40}$/.test(pair))continue;
+    let w;try{w=await classify(pair)}catch(e){continue}
+    if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&w.pancake))continue;
+    if(w.token0!==token&&w.token1!==token)continue;
+    const quote=w.token0===token?w.token1:w.token0;
+    const hop=await priceQuote(quote,bnbUsd).catch(()=>null);
+    if(!hop)continue;
+    const c=w.kind==='v2pair'
+      ?{kind:'v2',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.venue.fee,venue:w.venue.name,factory:w.factory,
+        tok:(w.token0===token?w.reserves[0]:w.reserves[1])/Math.pow(10,tokDec),
+        q:(w.token0===token?w.reserves[1]:w.reserves[0])/1e18}
+      :{kind:'v3',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.fee/1e6,feeRaw:w.fee,venue:'PancakeSwap V3',
+        sqrt:w.sqrt,tokenIs0:w.token0===token};
+    if(c.kind==='v3'){
+      const bal=await rpcBatch([call(quote,balOf(pair)),call(token,balOf(pair))]);
+      c.q=Number(hx(bal[0]))/1e18;c.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
+    }
+    c.hard=(c.q||0)*c.usd;
+    if(c.hard>beat&&c.tok>0)return {pool:c,hop};
+  }
+  return null;
+}
+
 // === V2 MATH ===
 // IMPACT is where the price ends up: reserves after against reserves before. The
 // pool fee stays in the pool and counts; a transfer tax never reaches the

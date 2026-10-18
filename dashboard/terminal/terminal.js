@@ -2484,9 +2484,9 @@ const REACT_MORE = {
   'defi-increase': x => { const s = x.s || {}, c = bnbF(capOf(s)), v = s.value_after_bnb ? ` The position is ${bnbF(s.value_after_bnb)} now.` : '';
     return [`New capital at work: ${c} more in my DeFi agent's pool.${v}`, `My DeFi agent put ${c} more to work.${v}`, `${c} of fresh capital into the CAKE/BNB range. More capital, more fees.`,
       `The DeFi agent topped up its position by ${c}.${v}`, `More in the pool: ${c}, put to work by my DeFi agent.`]; },
-  'defi-rebalance': x => { const s = x.s || {}, w = wpct(s), side = s.one_sided ? ' Parked right beside the price, no trade needed.' : ' Back around the price.';
+  'defi-rebalance': x => { const s = x.s || {}, w = wpct(s), side = s.one_sided ? ' Parked right beside the price, no trade needed.' : ' Back around the price.', why = resetWhyNext(s, x.t);
     return [`The price moved, so my DeFi agent moved its range${w}.${side}`, `Range re-set${w}.${side}`, `My DeFi agent followed the price: a new range${w}.`,
-      `New range for my DeFi agent${w}. Out of range earns nothing, so it moves.`, `Re-set done${w}. The agent sits where the trades happen again.`]; },
+      `New range for my DeFi agent${w}. Out of range earns nothing, so it moves.`, `Re-set done${w}. The agent sits where the trades happen again.`].map(l => l + why); },
   'defi-ladder': x => { const w = wpct(x.s);
     return [`My DeFi agent re-set its reserve range${w}. Ready for the next move of the price.`, `Reserve range moved${w}. The second position waits where the price may go.`, `The DeFi agent's reserve is set again${w}.`,
       `A fresh reserve range${w}: when the price steps out of the main one, this one is already there.`, `Reserve re-set${w}. Two ranges, one pool, no idle capital.`]; },
@@ -2561,6 +2561,8 @@ function redFacts() {
   return { b, s, vol, bu, su, counts, lead, big: big ? ` The largest single sell: ${$usd(big.usd)}, in the ten minutes to ${at}.` : '' };
 }
 window.__btRedFacts = () => redFacts(); // for qa/redday.mjs
+// option 2, for qa/whynext.mjs: the burn's why + next as said now, the queue it is read from, and a re-set's lines for a given entry
+window.__btWhy = (s, t) => ({ burn: burnWhyNext(), queued: S.queued, min: MIN_DISPATCH, eta: etaShort(), reset: REACT_MORE['defi-rebalance']({ s, t }) });
 window.__btRedLines = c => ['down-loud', 'down-normal', 'down-quiet'].flatMap(k => COMBO[k].lines.map(f => ({ k, line: f(c) }))); // every red mood line, for one given day
 // THE BIGGEST TRADE SINCE … (2026-10-18, option 3), for the trades under the alert line and every sell: his ledger keeps
 // every ten minutes' volume for 7 days. If no ten-minute stretch since a moment traded this much in total, no single
@@ -2669,7 +2671,7 @@ function react(kind, x) {
     sell: [`Someone sold ${$u(x.usd)}. Sells pay 3% too. Thank you, friend.`, `A ${$u(x.usd)} sell. No hard feelings: ${tax} of it stays and works.`, `${$u(x.usd)} out. I shrug, I burn, I keep going.`,
       `${$u(x.usd)} sold. ${tax} of it stays behind and works for the holders.`, `A ${$u(x.usd)} sell. Goodbye and thanks for the ${tax} of tax.`],
     run: [`Burn time. ${bobaiAmt(x.bobaiBurned)}, gone for good.`, `${bobaiAmt(x.bobaiBurned)} into the fire. Supply only goes one way.`, `Buyback done: ${bobaiAmt(x.bobaiBurned)} burned. Every step has its tx.`,
-      `${bobaiAmt(x.bobaiBurned)} just went to the dead address. Never coming back.`, `Another buyback, another burn: ${bobaiAmt(x.bobaiBurned)} out of the supply.`].map(l => burnContext(x) + l),
+      `${bobaiAmt(x.bobaiBurned)} just went to the dead address. Never coming back.`, `Another buyback, another burn: ${bobaiAmt(x.bobaiBurned)} out of the supply.`].map((wn => l => burnContext(x) + l + wn)(burnWhyNext())), // why + next, once for the five (2026-10-18)
     liq: x?.dev ? [`The dev wallet just added ${bnbF(x.bnb)} and ${bobaiAmt(x.bobai)} to my pool. LP burned, like every time.`, `Dev add: ${bnbF(x.bnb)} + ${bobaiAmt(x.bobai)} into the pool, ${nf(x.lpBurned, 1)} LP to the dead address.`,
         `${bnbF(x.bnb)} and ${bobaiAmt(x.bobai)} from the dev wallet, straight into my pool. The LP? Burned.`, `My pool just got deeper: ${bnbF(x.bnb)} + ${bobaiAmt(x.bobai)} from the dev wallet, LP burned.`, `A dev add of ${bnbF(x.bnb)}. ${nf(x.lpBurned, 1)} LP tokens to the dead address, as always.`]
       : +x?.bnb > 0 ? [`More liquidity: ${bnbF(x.bnb)} into my pool, ${nf(x.lpBurned, 1)} LP burned. Deeper pool, forever.`, `Added ${bnbF(x.bnb)} to the pool and burned the LP. Nobody can pull that. Not even me.`,
@@ -3116,6 +3118,35 @@ function meBackLine(peek) {
 window.__btMeBack = () => meBackLine(true); window.__btPrecise = q => { const t = q.toLowerCase(); return [askMetric(t), askSpan(t)?.k || null, askShape(t)]; };
 window.__btAsk = q => intentOf(q); window.__btAskLog = () => ({ hit: ASK.hit, miss: [...ASK.miss] }); // for checks from outside
 // the next buyback at the last 24 h's pace (2026-10-09): 3% of the dollars traded fills the queue; an estimate, said as one
+// WHY, AND WHAT COMES NEXT (2026-10-18, operator's option 2): a burn and a range re-set were said as what happened; now
+// each also says why it happened and what comes after, from the record — the tax queue and its pace for a burn, the
+// re-set's own entry (which side the price left on, since when) for the DeFi agent. Five ways each; '' when the record
+// does not carry it. Right after a run the queue may not have been read again: then the charge is left out, not said wrong.
+function etaShort() {
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + Math.max(0, (r.v || 0) - (r.o || 0)) * (r.u || S.bnbP), 0);
+  const missUsd = Math.max(0, (MIN_DISPATCH - S.queued) * S.price), perH = volUsd * 0.03 / 24;
+  if (!(missUsd > 0) || !(perH > 0) || !S.price) return '';
+  const h = missUsd / perH;
+  return h > 72 ? ', more than three days away at the last 24 h pace' : `, about ${h < 1.5 ? Math.max(1, Math.round(h * 60)) + ' min' : Math.round(h) + ' h'} away at the last 24 h pace`;
+}
+function burnWhyNext() {
+  const chg = Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100), next = chg < 95 ? `${chg}% charged${etaShort()}` : '';
+  return vary('why-burn', next ? [` Why now: my tax queue was full, so the bot bought and burned. The next one is ${next}.`,
+    ` It ran because the collected tax was full. Next burn: ${next}.`, ` The trades filled my tax queue, and that fired it. The next one is ${next}.`,
+    ` Every trade's 3% charged this one. The next is ${next}.`, ` Why: a full tax queue. What next: the queue fills again, ${next}.`]
+    : [` Why now: my tax queue was full, so the bot bought and burned.`, ` It ran because the collected tax was full.`, ` The trades filled my tax queue, and that fired it.`,
+      ` Every trade's 3% charged this one.`, ` Why: a full tax queue. Now it fills again.`]);
+}
+function resetWhyNext(s, at) {
+  const since = Date.parse(s?.outside_since || ''); if (!since || !/^(below|above)$/.test(s?.price_side || '')) return '';
+  const m = Math.max(1, Math.round(((at || Date.now()) - since) / 60e3)), dur = m >= 90 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+  const side = s.price_side === 'below' ? 'under' : 'over', hm = new Date(since).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return vary('why-reset', [` Why: the price had been ${side} the old range since ${hm}, ${dur}. Next: the new range earns fees while the price stays in it.`,
+    ` The price sat ${side} the old range for ${dur}, so it moved. From here it earns as long as the price stays inside.`,
+    ` It waited ${dur} with the price ${side} the range before paying for the move. Now the fees come back while the price stays in.`,
+    ` Out of range since ${hm}, ${side} it: that is why. The new one pays fees for every trade inside it.`,
+    ` ${dur} ${side} the range earned nothing, so it moved. Next it only moves again if the price leaves this one and stays out.`]);
+}
 function nextEta() {
   /* r.o = the tax swap + our bots' buys in that bucket (2026-10-10): not traders, so not the pace */
   const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), volUsd = day.reduce((a, r) => a + Math.max(0, (r.v || 0) - (r.o || 0)) * (r.u || S.bnbP), 0);

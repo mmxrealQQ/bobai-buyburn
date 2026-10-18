@@ -1078,6 +1078,8 @@ window.__btTestOwn = (usd, sell) => { S.hist.push({ kind: 'trade', id: 'test-o' 
 window.__btTestSmall = (usd, sell, quiet) => { const x = { kind: 'trade', id: 'test-q' + Date.now(), t: Date.now(), buy: !sell, usd, bnb: usd / (S.bnbP || 600), bobai: usd / (S.price || 2e-4), ours: false, tx: '0xtestq' + Date.now(), testQuiet: !!quiet }; S.hist.push(x); chartSwap(x); seenSmall(x); };
 window.__btTestMark = () => { const d = S.deadA || 0, next = (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 200 * 1e9; noteDead(d, next + 1); return (Math.floor(d / 1e9 * 200 + 1e-9) + 1) / 2; }; // a pretend crossing, this browser only; S.deadA untouched
 window.__btCtx = (x) => tradeContext(x); // for checks: what he would say in front of a trade's line
+window.__btPatterns = () => ({ walletBack, ledgerBiggest, buyContext, movers: MOVERS, rows: CH.rows.length, src: CH.src, // option 3's patterns, for qa/patterns.mjs
+  ledger: () => CH.rows.map(r => [r.t, (r.v || 0) * (r.u || S.bnbP || 0)]) });
 window.__btWork = () => WORK.slice(1).map(w => { try { return w[1](); } catch (e) { return 'ERR ' + e.message; } }); // for checks: his work lines, read now
 // for checks from outside (read-only): when the window showed and which clip was starting then
 window.__btShows = [];
@@ -2446,10 +2448,24 @@ function burnContext(x) {
 // A BUY IN ITS WEEK (2026-10-06), like burnContext for the burns. The trades in memory reach back an hour, but every buy
 // of $100 or more mints an NFT, and the drop log keeps them all with their exact dollars — so the week's alert buys are
 // known. Said only while no tier is sold out (then a buy may go without an NFT and the log would miss it).
+// (sinceWords, further down: "30 hours", "9 days" — the records below are said from a day on, 2026-10-18)
 function buyContext(x) {
+  const back = walletBack(x); if (back) return back;
   const nft = S.nft; if (!nft || !Array.isArray(nft.drops) || !x?.usd) return '';
   if ((nft.minted || []).some((m, i) => nft.cap && m >= nft.cap[i])) return '';
   const t = x.t || Date.now(), tx = String(x.tx || '').toLowerCase();
+  // THE BIGGEST SINCE … (2026-10-18): the drop log keeps every buy of $100+ since the drops began, not just the week —
+  // the last one at least this big says how long it has been; none at all, since the first drop
+  const older = nft.drops.filter(n => (n.buyTx || '').toLowerCase() !== tx && n.ts * 1000 < t);
+  if (older.length >= 3) {
+    const bigger = older.filter(n => nUsd(n) >= x.usd).map(n => n.ts * 1000);
+    const first = Math.min(...older.map(n => n.ts * 1000));
+    if (!bigger.length) return vary('ctx-big-ever', [`My biggest buy since the NFT drops began on ${new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}! `,
+      `No bigger buy since my first NFT drop! `, `A record: the biggest buy since the drops began! `, `Biggest buy in the whole drop log! `, `Nothing this big since the NFT drops started! `]);
+    const gap = t - Math.max(...bigger);
+    if (gap >= 7 * 86400e3) return vary('ctx-big-since', [`Biggest buy in ${sinceWords(gap)}! `, `Nothing this big in ${sinceWords(gap)}! `, `The biggest buy for ${sinceWords(gap)}! `,
+      `${sinceWords(gap)} since a buy this big! `, `First buy this size in ${sinceWords(gap)}! `]);
+  }
   const wk = nft.drops.filter(n => (n.buyTx || '').toLowerCase() !== tx && n.ts * 1000 >= t - 7 * 86400e3 && n.ts * 1000 <= t);
   if (wk.length >= 3 && x.usd > Math.max(...wk.map(n => nUsd(n)))) return 'Biggest buy of the week! ';
   const day = wk.filter(n => n.ts * 1000 >= t - 86400e3).length + 1;
@@ -2503,7 +2519,48 @@ function sayMore(k, x) {
 // WHAT A TRADE MEANS IN ITS HOUR (operator, 2026-10-09: "BOBAI as intelligent and likeable as possible"): the first
 // trade after an hour or more of silence, or the third buy (or sell) in ten minutes with none of the other side, is
 // said before his line. From the trades this page read and the ledger's candles; '' when nothing stands out.
+// THE SAME WALLET AGAIN (2026-10-18, option 3): the whale watcher's movers of the last 24 hours (our TG worker, read
+// through /api/smart-money every ten minutes) name each wallet with its trade; a buy from one of them, half an hour or
+// more after its earlier trade, is that wallet coming back. Only a wallet that is not ours, only a fresh buy.
+const MOVERS = { list: [], at: 0 };
+async function loadMovers() {
+  try { const j = await getJSON(`${SITE}/api/smart-money`, 12000), m = j?.whale_flows?.top_movers_24h; if (Array.isArray(m)) { MOVERS.list = m; MOVERS.at = Date.now(); } } catch { /* the line is only left out */ }
+}
+setTimeout(loadMovers, 9e3); setInterval(loadMovers, 600e3);
+function walletBack(x) {
+  if (!x?.buy || x.ours || !x.who || !/^0x[0-9a-f]{40}$/.test(x.who)) return '';
+  const now = x.t || Date.now();
+  const before = MOVERS.list.filter(m => String(m.wallet).toLowerCase() === x.who && !String(m.tx).toLowerCase().includes(String(x.tx).toLowerCase())
+    && Date.parse(m.time_utc) <= now - 30 * 60e3 && Date.parse(m.time_utc) >= now - 86400e3).sort((a, b) => Date.parse(b.time_utc) - Date.parse(a.time_utc))[0];
+  if (!before) return '';
+  const at = new Date(Date.parse(before.time_utc)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), u = '$' + nf(+before.usd || 0, +before.usd < 10 ? 2 : 0);
+  return before.kind === 'SELL'
+    ? vary('ctx-back-sell', [`The wallet that sold ${u} at ${at} is buying back in. `, `Back again: this wallet sold ${u} at ${at}, now it buys. `, `It sold ${u} at ${at}. Now the same wallet buys. `,
+      `Changed its mind: ${u} sold at ${at}, and now a buy. `, `Same wallet, other direction: sold ${u} at ${at}, buying now. `])
+    : vary('ctx-back-buy', [`The wallet that bought ${u} at ${at} is back for more. `, `Same wallet again: ${u} at ${at}, and now this. `, `It bought ${u} at ${at}. It is back. `,
+      `A returning buyer: ${u} at ${at}, and once more now. `, `Second helping: this wallet already bought ${u} at ${at}. `]);
+}
+// THE BIGGEST TRADE SINCE … (2026-10-18, option 3), for the trades under the alert line and every sell: his ledger keeps
+// every ten minutes' volume for 7 days. If no ten-minute stretch since a moment traded this much in total, no single
+// trade did either — that is provable from the ledger, and it is the only claim made. A day or more, $20 or more.
+function ledgerBiggest(x) {
+  if (!(x.usd >= 20) || CH.src !== 'ledger') return '';
+  const now = x.t || Date.now(), rows = CH.rows.filter(r => r.t < now - 600e3);
+  if (rows.length < 144) return ''; // under a day of ledger: nothing to compare with
+  let since = null;
+  for (let i = rows.length - 1; i >= 0; i--) if ((rows[i].v || 0) * (rows[i].u || S.bnbP || 0) >= x.usd) { since = rows[i].t; break; }
+  for (const e of S.hist) if (!e.ours && !e.taxSwap && e.tx !== x.tx && e.t < now && e.usd >= x.usd) since = Math.max(since || 0, e.t);
+  const side = x.buy ? 'buy' : 'sell';
+  if (since == null) return now - rows[0].t >= 6.5 * 86400e3 ? vary('ctx-ledger-top-' + side, x.buy
+    ? [`The biggest buy in my whole 7-day ledger! `, `No buy this big in 7 days! `, `Biggest buy of the last 7 days! `, `A 7-day record buy! `, `Nothing this size in a week of trades! `]
+    : [`The biggest sell in 7 days. `, `No sell this big all week. `, `Biggest sell of the last 7 days. `, `A week's largest sell. `, `Nothing sold this big in 7 days. `]) : '';
+  const gap = now - since; if (gap < 86400e3) return '';
+  return vary('ctx-ledger-since-' + side, x.buy
+    ? [`Biggest buy in ${sinceWords(gap)}! `, `No buy this size in ${sinceWords(gap)}! `, `${sinceWords(gap)} since a buy this big! `, `The largest buy for ${sinceWords(gap)}! `, `First buy this big in ${sinceWords(gap)}! `]
+    : [`Biggest sell in ${sinceWords(gap)}. `, `No sell this size in ${sinceWords(gap)}. `, `${sinceWords(gap)} since a sell this big. `, `The largest sell for ${sinceWords(gap)}. `, `First sell this big in ${sinceWords(gap)}. `]);
+}
 function tradeContext(x) {
+  const pattern = walletBack(x) || ledgerBiggest(x); if (pattern) return pattern;
   const now = x.t || Date.now(), seen = S.hist.filter(e => !e.ours && !e.taxSwap && e.tx !== x.tx && e.t < now);
   let last = 0; for (const e of seen) last = Math.max(last, e.t);
   for (const r of CH.rows) if ((r.b || 0) + (r.s || 0) > 0 && r.t < now) last = Math.max(last, r.t);

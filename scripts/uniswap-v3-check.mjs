@@ -13,8 +13,10 @@ import { ownTestHeaders } from './lib/own-test-headers.mjs';
 const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const UNI = '0xdb1d10011ad0ff90774d0c6bb92e5c5c8b4461f7';
-const TOKEN = '0x80557fab10a562ba2ed50c9d639e7b3121fe8f3d';   // 贵州茅台: its deepest readable pool is Uniswap V3 (18.10.)
-const PASTED = '0x80ab6b68d8d11466365e426772277c155a482513';  // 贵州茅台/USDT, Uniswap V3 (a pasted pool is still held to the 25% share rule)
+// BTW/USDT 0.3% (~$369k), 72% of BTW's liquidity on 19.10. — the first pin, 贵州茅台, thinned out to ~$12k over five
+// pools and its Uniswap pool fell under the 25% share rule, a market change and not a fault (ZEC/USDT, 41%, would do too)
+const TOKEN = '0x444045b0ee1ee319a660a5e3d604ca0ffa35acaa';   // BTW: its deepest readable pool is Uniswap V3
+const PASTED = '0xf7b5a9b7ef764606f900c9c1db39afc682049bc4';  // BTW/USDT, Uniswap V3 (a pasted pool is still held to the 25% share rule)
 const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
 let pass = 0, fail = 0;
 const check = (ok, what, detail = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${detail ? ' — ' + String(detail).slice(0, 150) : ''}`); };

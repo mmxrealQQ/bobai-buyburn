@@ -132,7 +132,8 @@
   async function where02() {
     const body = $('#w02 .bw-body'); if (!body) return;
     let box = $('#w02 .cx02');
-    if (!box) { box = document.createElement('div'); box.className = 'cx02'; box.dataset.nousd = '1'; body.insertAdjacentElement('afterbegin', box); }
+    // never an empty frame while the logs load (2026-10-19: the box stood empty at the top of the window, then jumped)
+    if (!box) { box = document.createElement('div'); box.className = 'cx02'; box.dataset.nousd = '1'; box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">Reading the bot’s own logs…</p>'; body.insertAdjacentElement('afterbegin', box); }
     if (!split7 || Date.now() - split7At > 5 * 60e3) {
       const [b, l] = await Promise.all([fetch('/logs/burns.json').then((r) => r.json()).catch(() => null), fetch('/logs/bobai-liq-log.json').then((r) => r.json()).catch(() => null)]);
       if (!Array.isArray(b) || !Array.isArray(l)) { if (!split7) box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">The bot’s logs could not be read just now.</p>'; return; }
@@ -281,18 +282,23 @@
   const tx = (h, t) => h ? `<a href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener">${t} ↗</a>` : '';
   const ext = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t} ↗</a>`;
   const dt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  let owner05 = null, stats05 = null, bot05 = 0, goal05 = 0;
+  let owner05 = null, stats05 = null, buys05 = null, bot05 = 0, goal05 = 0;
   const read05 = () => {
     fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data: '0x8da5cb5b' }, 'latest'] }) })
       .then((r) => r.json()).then((j) => { if (typeof j?.result === 'string') owner05 = { v: '0x' + j.result.slice(-40), at: Date.now() }; }).catch(() => {});
     fetch('https://agent.brainonbnb.com/stats').then((r) => r.json()).then((j) => { stats05 = j; }).catch(() => {});
+    // the paid answers from the ledger itself (every payment with its transaction), our own test purchases left out
+    fetch('https://agent.brainonbnb.com/buys').then((r) => r.json()).then((j) => { const from = Date.now() - 7 * 86400e3; buys05 = (j.payments || []).filter((p) => !p.self_test && String(p.for).startsWith('answer') && Date.parse(p.at) >= from).length; }).catch(() => {});
     fetch('https://logs.brainonbnb.com/health', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const t = Date.parse(j?.buyback); if (t) bot05 = t; }).catch(() => {});
   };
   const goals05 = () => {
     const N = NUMS(), out = {}, bnbP = N.chain?.bnbUsd;
     const v = typeof window.__btVol24 === 'function' && window.__btVol24();
     if (v && v.first && v.first <= Date.now() - 86400e3 + 60e3) out.vol = `$${v.usd >= 1000 ? cmp(v.usd) : v.usd.toFixed(0)} traded on the chain in the last 24 h`;
-    const days = stats05?.asked?.by_day; if (days) { const from = new Date(Date.now() - 7 * 86400e3).toISOString().slice(0, 10); let n = 0, m = 0; for (const [d, k] of Object.entries(days)) if (d > from) for (const [kk, c] of Object.entries(k)) { if (kk === 'watch_checks') continue; n += c; if (kk === 'mcp') m += c; } out.agents = `${cmp(n)} calls to our agent server in 7 days, ${cmp(m)} of them MCP`; }
+    const days = stats05?.asked?.by_day; if (days) { const from = new Date(Date.now() - 7 * 86400e3).toISOString().slice(0, 10); let n = 0, m = 0; for (const [d, k] of Object.entries(days)) if (d > from) for (const [kk, c] of Object.entries(k)) { if (/_checks$/.test(kk)) continue; n += c; }
+      // HONEST COUNT (2026-10-19): our own watch checks (rug_watch_checks too) are no callers, and "of them MCP" counted every
+      // registry's handshake as use; the paid answers (the ledger, buys05) are what agents actually bought
+      out.agents = `${cmp(n)} requests to our agent server in 7 days` + (buys05 != null ? `, ${buys05} answer${buys05 === 1 ? '' : 's'} paid for by other agents` : ''); }
     if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.ceil((N.gg.end - Date.now()) / 86400e3)); out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(N.gg.bnb * bnbP)}` : ''} · ${d} d to the kids`; }
     return out;
   };

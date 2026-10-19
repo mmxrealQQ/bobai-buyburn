@@ -31,10 +31,12 @@
     // the same next-buyback figure as the Classic tile (2026-10-05): app.js publishes it with the bot's gas reserve left out
     const q = N().chain, sBnb = q ? (q.splitBnb ?? (q.walletBnb > 0.004 ? q.walletBnb - 0.003 : 0)) : 0, nextUsd = q ? (q.nextBuybackUsd ?? q.queuedBobai * q.priceUsd + sBnb * q.bnbUsd) : 0;
     strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · THE TABLE IN FORCE</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul>${parts.map(([v, c, l]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b></li>`).join('')}</ul></div></div>`
-      + (q ? fig('NEXT BUYBACK CHARGING', '$' + nf(nextUsd, 2), 1) + fig('TAX IN THE TOKEN', cmp(q.queuedBobai) + ' BOBAI' + (q.priceUsd > 0 ? ' ≈$' + nf(q.queuedBobai * q.priceUsd, 2) : '')) + (sBnb > 0 ? fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB' + usdAt(sBnb, q.bnbUsd)) : '')
+      // ONE FIGURE ONCE (2026-10-19): "next buyback charging" and "tax in the token" were the same dollars whenever no BNB
+      // waited to be split, and the bar below said it a third time; the bar now carries it, the two tiles only when BNB waits
+      + (q ? (sBnb > 0 ? fig('NEXT BUYBACK', '$' + nf(nextUsd, 2), 1) + fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB' + usdAt(sBnb, q.bnbUsd)) : '')
         // THE CHARGE AS A BAR (2026-10-10): the token sends its tax on at minDispatch(); a bar fills toward it — the 0.0000 BNB
         // tile it replaces said nothing most of the time
-        + (q.minDispatch > 0 ? ((k) => `<div class="hd"><div class="ht">NEXT BUYBACK · ${Math.round(k * 100)}% CHARGED</div><div class="sup"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(90deg,#ff7a3d,#ffd28a);box-shadow:0 0 12px #ff7a3d"></i></div><div class="sup-k"><span>${cmp(q.queuedBobai)} of ${cmp(q.minDispatch)} BOBAI${usdAt(q.minDispatch, q.priceUsd)}</span><span>at 100% the token swaps it, the bot buys back and burns</span></div></div>`)(Math.max(0, Math.min(1, q.queuedBobai / q.minDispatch))) : '') : '');
+        + (q.minDispatch > 0 ? ((k) => `<div class="hd"><div class="ht">NEXT BUYBACK · ${Math.round(k * 100)}% CHARGED${q.priceUsd > 0 ? ' · $' + nf(q.queuedBobai * q.priceUsd, 2) + ' IN THE TOKEN' : ''}</div><div class="sup"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(90deg,#ff7a3d,#ffd28a);box-shadow:0 0 12px #ff7a3d"></i></div><div class="sup-k"><span>${cmp(q.queuedBobai)} of ${cmp(q.minDispatch)} BOBAI${usdAt(q.minDispatch, q.priceUsd)}</span><span>at 100% the token swaps it, the bot buys back and burns</span></div></div>`)(Math.max(0, Math.min(1, q.queuedBobai / q.minDispatch))) : '') : '');
   }
   // 03 PROOF: thirty days of burns, BOBAI and $BOB, one bar a day
   async function w03(win) {

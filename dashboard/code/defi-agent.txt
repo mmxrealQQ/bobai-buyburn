@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7224 lines.
+# one fetch. 17 files, 7245 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6620,11 +6620,32 @@ async function readState(env) {
 // The second opinion, asked of the agent worker over its service binding (AGENT_SRV); never throws.
 async function askSecondOpinion(env, why, own = null) {
   if (!env.AGENT_SRV || !env.AGENT_HIT_SECRET) return { status: 'not asked', reason: 'no AGENT_SRV binding or AGENT_HIT_SECRET on this worker' };
+  // 2026-10-18: 60 s cut off a hire that took over two minutes (job 57021, paid and answered, never logged); a cron
+  // has 15 minutes, so five are waited. Every outcome is kept in KV (opinion:ask:last, shown on GET /second-opinion).
+  const at = new Date().toISOString();
+  let out;
   try {
-    const r = await env.AGENT_SRV.fetch('https://agent/second-opinion', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': env.AGENT_HIT_SECRET }, body: JSON.stringify({ why, own }), signal: AbortSignal.timeout(60000) });
+    const r = await env.AGENT_SRV.fetch('https://agent/second-opinion', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': env.AGENT_HIT_SECRET }, body: JSON.stringify({ why, own }), signal: AbortSignal.timeout(300000) });
     const j = await r.json();
-    return { status: j.status || 'unknown', job: j.job || null, tx: j.tx || null, agrees: j.agrees ?? null, answer: j.answer || null, reason: j.reason || j.error || null };
-  } catch (e) { return { status: 'failed', reason: String(e && e.message || e).slice(0, 120) }; }
+    out = { status: j.status || 'unknown', job: j.job || null, tx: j.tx || null, agrees: j.agrees ?? null, answer: j.answer || null, reason: j.reason || j.error || null };
+  } catch (e) { out = { status: 'failed', reason: String(e && e.message || e).slice(0, 120) }; }
+  await env.AGENT.put('opinion:ask:last', JSON.stringify({ at, why, status: out.status, job: out.job, reason: out.reason })).catch(() => {});
+  return out;
+}
+
+// The daily ask, asked once more two minutes later when it got no job at all (a refusal by a rail is not retried:
+// the same rail would refuse again). A hire that went out but came back without an answer is not bought twice.
+async function dailySecondOpinion(env) {
+  const first = await askSecondOpinion(env, 'daily');
+  if (first.job || first.status === 'refused' || first.status === 'not asked') return first;
+  const since = Date.now() - 6 * 60000;
+  await new Promise((r) => setTimeout(r, 120000));
+  // the first attempt may still have hired after this side stopped waiting: its row says so, then nothing is bought again
+  const log = await env.AGENT_SRV.fetch('https://agent/second-opinion').then((r) => r.json()).catch(() => null);
+  if (!log || !Array.isArray(log.opinions)) return first;
+  const went = log.opinions.find((o) => Date.parse(o.at) >= since && (o.job || o.status === 'hiring'));
+  if (went) return { status: went.status, job: went.job || null, agrees: went.agrees ?? null, reason: 'the first ask hired after all' };
+  return askSecondOpinion(env, 'daily, asked again');
 }
 
 export async function agentTick(env, { dry = false, steps = STEPS, watch = false, retriedAfter = null } = {}) {
@@ -7102,7 +7123,7 @@ export default {
     const watch = event.cron !== DAILY_CRON && event.cron !== HOURLY_CRON;
     const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance', 'ladder', 'increase'];
     // the daily second opinion (2026-10-14): once a morning, beside the daily run, so the loop is seen every day
-    if (event.cron === DAILY_CRON) ctx.waitUntil(askSecondOpinion(env, 'daily').then((o) => console.log(`[LP] second opinion: ${o.status}${o.job ? ` job ${o.job}` : ''}${o.agrees != null ? `, agrees ${o.agrees}` : ''}`)));
+    if (event.cron === DAILY_CRON) ctx.waitUntil(dailySecondOpinion(env).then((o) => console.log(`[LP] second opinion: ${o.status}${o.job ? ` job ${o.job}` : ''}${o.agrees != null ? `, agrees ${o.agrees}` : ''}`)));
     ctx.waitUntil(agentTick(env, { steps, watch }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
     // The x402 Permit2 queue (A8, 2026-09-24): apart from the agent's run, so
     // nothing in it can stop a re-set, and nothing in a re-set can stop it.

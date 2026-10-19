@@ -189,8 +189,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=59" as="style">
-  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="preload" href="styles.css?v=60" as="style">
+  <link rel="stylesheet" href="styles.css?v=60">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -235,10 +235,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792315435071">
+<link rel="stylesheet" href="brain/brain.css?v=1792388187130">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1792315242">
+<link rel="stylesheet" href="terminal/terminal.css?v=1792387667">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -749,12 +749,10 @@
   </section></div></div></div>
 <div class="bw-win" style="--c:#60a5fa" id="w04" role="dialog" aria-modal="true" aria-label="04 ECOSYSTEM: Everything BOBAI runs" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>04</b> · ECOSYSTEM<em>Everything BOBAI runs</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec sec-after-band b-green">
     <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
+    <!-- FIVE CARDS, ONE LINE (operator, 2026-10-19: "übersichtlicher, weniger, dafür das richtige und aktuell"): the agent
+         ecosystem and the NFT drops as cards; the three side apps as one line under them, each still with its logo,
+         which the Brain page's window header borrows (brain.js reads a.ec and a.ec-also). -->
     <div class="ecg">
-      <a class="ec fi" href="nft/">
-        <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
-        <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. The collection is capped at 1,925; how many are out is counted live inside. No claim step, no gas for the holder.</p>
-        <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
-      </a>
       <!-- Built like the rest of this block, and labelled Beta rather than Live:
            the tool itself opens with a notice saying it is still being built, so
            the card must not promise more than the page behind it does. -->
@@ -801,7 +799,7 @@
           </svg>
           <h3>Agent Services</h3>
         </div>
-        <p>One command puts the token check into your own AI assistant. Other people's agents can pay a few cents per answer or to have a pool watched around the clock — built to become this project's first income outside its own tax.</p>
+        <p>Six agents that answer other AIs for 0.10 USD1 an answer, or through an on-chain escrow. Other agents already pay for them, and half of every payment is kept to buy $BOBAI. The free token check goes into your own AI with one command.</p>
         <div class="ec-foot"><span class="ec-go">See The Offer <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="/defi">
@@ -813,25 +811,20 @@
           </svg>
           <h3>DeFi Agent</h3>
         </div>
-        <p>A slice of the trade tax is put to work in a PancakeSwap V3 pool on BNB Chain, on its own. A third of what it earns keeps working, a third buys $BOBAI the agent holds, a third is paid out to the operator. Half of whatever other AIs pay us buys $BOBAI too. Every step is a transaction you can check.</p>
+        <p>A slice of the trade tax works in a PancakeSwap V3 pool on BNB Chain, run by the agent itself every day. Of what it earns, a third keeps working, a third buys $BOBAI it holds, a third goes to the operator. Every step is a transaction you can check.</p>
         <div class="ec-foot"><span class="ec-go">Read The Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
-      <a class="ec fi" href="brainscreener/">
-        <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo" loading="lazy" decoding="async"><h3>brainScreener</h3></div>
-        <p>13 scientifically grounded self-tests — ADHD, IQ, depression, anxiety, trauma, personality. Anonymous, free, no registration, instant results.</p>
-        <div class="ec-foot"><span class="ec-go">Take A Test <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
-      </a>
-      <a class="ec fi" href="game/">
-        <div class="ec-top"><img src="game/score-96.webp" width="82" height="96" alt="Brain On BNB AI game icon" loading="lazy" decoding="async"><h3>Burn &amp; Add Liq</h3></div>
-        <p>A browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with a public highscore board.</p>
-        <div class="ec-foot"><span class="ec-go">Play Game <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
-      </a>
-      <a class="ec fi" href="worldcup/">
-        <div class="ec-top"><img src="worldcup/wclogo-96.webp" width="57" height="96" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
-        <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 8.94M $BOBAI, now a frozen archive.</p>
-        <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
+      <a class="ec fi" href="nft/">
+        <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
+        <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. The collection is capped at 1,925; how many are out is counted live inside. No claim step, no gas for the holder.</p>
+        <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
     </div>
+    <p class="ec-more fi"><span>Also built here</span>
+      <a class="ec-also" href="brainscreener/" title="13 anonymous self-tests, free"><span class="ec-top"><img src="ico-brainscreener.png" alt="" loading="lazy" decoding="async"></span>brainScreener</a>
+      <a class="ec-also" href="game/" title="A browser game with a public highscore board"><span class="ec-top"><img src="game/score-96.webp" alt="" loading="lazy" decoding="async"></span>Burn &amp; Add Liq</a>
+      <a class="ec-also" href="worldcup/" title="The 2026 World Cup tip game, paid out 8.94M $BOBAI"><span class="ec-top"><img src="worldcup/wclogo-96.webp" alt="" loading="lazy" decoding="async"></span>Worldcup '26 <em>archive</em></a>
+    </p>
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
@@ -1326,9 +1319,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1792315242')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1792387667')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792315435072" defer></script>
-<script src="brain/cards.js?v=1792315435072" defer></script>
-<script src="brain/hero.js?v=1792315435072" defer></script>
+<script src="brain/brain.js?v=1792388187131" defer></script>
+<script src="brain/cards.js?v=1792388187131" defer></script>
+<script src="brain/hero.js?v=1792388187131" defer></script>
 </body></html>

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 59 files, 19565 lines.
+# one fetch. 59 files, 19599 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7726,6 +7726,12 @@ function bumpDetail(env, names, n = 1) {
     m[name] = (m[name] || 0) + n;
   }
   detailDirty.add(day);
+  // The pool-scan line and its day pass are written at once (2026-10-19): on 19.10. a trading bot's 49 refused scans
+  // were all counted and its 50 free ones of 00 UTC not one — they sat in an isolate that took no further hit before
+  // it was evicted. Some 500 a day; one KV write each.
+  if ([].concat(names || []).some((raw) => /^(poolscan|sell:scanpass)/.test(cleanDetail(raw)))) {
+    return (flushing ? flushing.catch(() => {}) : Promise.resolve()).then(() => flushCounters(env)).catch(() => {});
+  }
   if (Date.now() - lastFlush < FLUSH_MS) return;
   return flushCounters(env);
 }
@@ -7833,13 +7839,7 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
   if (!receipt) return { ok: false, reason: 'transaction not found — if it was just sent, wait for it to confirm' };
   if (receipt.status !== '0x1') return { ok: false, reason: 'that transaction failed on-chain' };
 
-  let paid = 0n;
-  for (const log of receipt.logs || []) {
-    if ((log.address || '').toLowerCase() !== asset.toLowerCase()) continue;
-    if ((log.topics || [])[0] !== TRANSFER_TOPIC) continue;
-    if (addrFromTopic(log.topics[2]) !== payTo.toLowerCase()) continue;
-    paid += hexToBig(log.data);
-  }
+  const { paid, payer } = transferredIn(receipt, asset, payTo);
   if (paid < min)
     return {
       ok: false,
@@ -7853,7 +7853,22 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
     const head = await rpc('eth_blockNumber', [], RECEIPT_RPCS).catch(() => null);
     if (head && parseInt(head, 16) - parseInt(receipt.blockNumber, 16) > MAX_PAYMENT_AGE_BLOCKS) return { ok: false, reason: 'that payment is more than a day old — a payment is made for the request it buys' };
   }
-  return { ok: true, paid, asset: asset.toLowerCase(), from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+  return { ok: true, paid, asset: asset.toLowerCase(), from: payer || (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+}
+
+// What a receipt moved to payTo in this coin, and who it came from. The payer is the sender of the transfer, not of the
+// transaction (2026-10-19): an EIP-3009 payment is sent on chain by our own provider wallet, so receipt.from named
+// 0x7380 for every one of Mandate's paid calls and /buys filed them as our own tests (from_strangers 0).
+export function transferredIn(receipt, asset, payTo) {
+  let paid = 0n, payer = null;
+  for (const log of receipt.logs || []) {
+    if ((log.address || '').toLowerCase() !== asset.toLowerCase()) continue;
+    if ((log.topics || [])[0] !== TRANSFER_TOPIC) continue;
+    if (addrFromTopic(log.topics[2]) !== payTo.toLowerCase()) continue;
+    paid += hexToBig(log.data);
+    payer = payer || addrFromTopic(log.topics[1]);
+  }
+  return { paid, payer };
 }
 
 // $BOBAI as a second coin for the per-answer sale. The amount is the answer's
@@ -10648,13 +10663,14 @@ ${pageTail}`;
         const b = await request.json().catch(() => ({}));
         let own = b.own && typeof b.own === 'object' ? { position: b.own.position ?? null, in_range: b.own.in_range ?? null, tick: b.own.tick ?? null } : null;
         // no reading sent (the daily ask): the agent's own free look at its position, the same read anybody gets
-        if (!own || own.position == null) { const l = await lpPositionLook({ address: SUBJECT }, env).catch(() => null); if (l && l.position) own = { position: String(l.position), in_range: !!l.in_range, tick: l.pool ? l.pool.tick : null }; }
-        const r = await secondOpinion(env, { why: String(b.why || 'by hand').slice(0, 60), own, rpc });
+        if (!own || own.position == null) { const l = await Promise.race([lpPositionLook({ address: SUBJECT }, env), new Promise((r) => setTimeout(() => r(null), 20000))]).catch(() => null); if (l && l.position) own = { position: String(l.position), in_range: !!l.in_range, tick: l.pool ? l.pool.tick : null }; }
+        // kept alive by waitUntil too, so a caller that stops waiting does not cut the hire off before its row (2026-10-18)
+        const work = secondOpinion(env, { why: String(b.why || 'by hand').slice(0, 60), own, rpc });
         // the job joins our own jobs, so the daily tick settles it after its window (own-jobs.js settleDue)
-        if (r && r.job) ctx.waitUntil(tickOwnJobs(env, rpc, [r.job]).catch(() => {}));
-        return json(r);
+        ctx.waitUntil(work.then((r) => (r && r.job ? tickOwnJobs(env, rpc, [r.job]) : null)).catch(() => {}));
+        return json(await work);
       }
-      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
+      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, last_ask: await env.AGENT.get('opinion:ask:last', 'json').catch(() => null), opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
@@ -13600,6 +13616,7 @@ import { classify, recordTransition, summarise } from '../shared/own-jobs.js';
 import { createWalletClient, createPublicClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { providerAccount } from './submit.js';
+import { readOpinions } from './second-opinion.js';
 
 // SETTLED BY US, NOT LEFT TO CHANCE (2026-10-14, operator's go). A job's escrow releases only when somebody calls
 // router.settle(jobId) after the dispute window, and nearly nobody does (27,230 jobs on the kernel sit SUBMITTED). A
@@ -13660,7 +13677,11 @@ export async function tickOwnJobs(env, rpc, ids = []) {
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   } catch { delivered = []; }
-  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
+  // and every second opinion we bought (2026-10-18: job 57021 was paid while its caller had stopped waiting and never
+  // reached this list; its row in the opinion log is now written as soon as the hire goes out)
+  let bought = [];
+  try { bought = (await readOpinions(env)).map((o) => o.job).filter(Boolean); } catch { bought = []; }
+  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...bought, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
   if (!all.length) return { ok: false, error: 'no job ids recorded yet — POST /own-jobs with the secret and {"ids":[…]}' };
 
   const windowSec = await readDisputeWindow(call);
@@ -15756,16 +15777,27 @@ async function balanceOfU(rpc, who) {
 export async function readOpinions(env) {
   try { return JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]'); } catch { return []; }
 }
+// One attempt is one row: a row written while the attempt is under way (same `at`) is replaced by its later state.
 async function log(env, row) {
   const list = await readOpinions(env);
-  list.unshift(row);
+  const i = list.findIndex((r) => r.at === row.at);
+  if (i >= 0) list[i] = row; else list.unshift(row);
   await env.AGENT.put(LOG_KEY, JSON.stringify(list.slice(0, LOG_CAP)));
   return row;
 }
 
-// why: 'daily' or 'before a re-set' (with the agent's own reading beside it, so the record shows both side by side)
+// why: 'daily' or 'before a re-set' (with the agent's own reading beside it, so the record shows both side by side).
+// 2026-10-18: the 04:23 hire (job 57021) was paid and answered but never logged — the hire took over two minutes, the
+// caller gave up after 60 s and the attempt died before its row. Now the row is written before the hire goes out and
+// updated after it, and anything thrown is logged as failed instead of vanishing.
 export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}) {
-  const at = new Date().toISOString(), day = at.slice(0, 10);
+  const at = new Date().toISOString();
+  try { return await buyOpinion(env, { at, why, own, rpc }); }
+  catch (e) { return log(env, { at, why, seller: SELLER, subject: SUBJECT, own, status: 'failed', reason: String(e && (e.shortMessage || e.message) || e).slice(0, 200) }); }
+}
+
+async function buyOpinion(env, { at, why, own, rpc }) {
+  const day = at.slice(0, 10);
   const base = { at, why, seller: SELLER, subject: SUBJECT, own };
   const session = sessionOf(env);
   if (!session) return log(env, { ...base, status: 'refused', reason: 'no session key on this worker' });
@@ -15773,7 +15805,7 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
   const dayKey = `opinion:day:${day}`, used = Number((await env.AGENT.get(dayKey)) || 0);
   if (used >= MAX_PER_DAY) return log(env, { ...base, status: 'refused', reason: `already ${used} hires today (at most ${MAX_PER_DAY})` });
 
-  const page = await fetch(`${SELLER.site}/agents/${SELLER.id}`).then((r) => r.text()).catch(() => '');
+  const page = await fetch(`${SELLER.site}/agents/${SELLER.id}`, { signal: AbortSignal.timeout(20000) }).then((r) => r.text()).catch(() => '');
   const m = page.match(/\\"escrow\\":\{\\"provider\\":\\"(0x[0-9a-fA-F]{40})\\",\\"budget\\":\\"(\d+)\\",\\"tokenId\\":\\"(\d+)\\",\\"name\\":\\"([^\\]+)\\"/);
   if (!m) return log(env, { ...base, status: 'refused', reason: 'Mandate shows no escrow offer for Range-1 right now' });
   const [, provider, budgetRaw, , name] = m, budget = BigInt(budgetRaw);
@@ -15783,6 +15815,7 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
 
   await env.AGENT.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 }); // counted before the hire: a failed send still used a try
   const task = `via mandatemarkets.com: ${name} (ERC-8004 #${SELLER.id}) for ${SUBJECT}`;
+  await log(env, { ...base, status: 'hiring', price_u: Number(budget) / 1e18, paid_by: session.walletAddress });
   let hired;
   try {
     hired = await hireErc8183Agent(session, { provider, task, budget }, { network: BNB });
@@ -15790,11 +15823,12 @@ export async function secondOpinion(env, { why = 'daily', own = null, rpc } = {}
     return log(env, { ...base, status: 'failed', price_u: Number(budget) / 1e18, reason: String(e.shortMessage || e.message || e).slice(0, 200) });
   }
   const jobId = String(hired.jobId), tx = hired.transactionHash || hired.txHash || null;
-  await fetch(`${SELLER.site}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, tx, subject: SUBJECT }) }).catch(() => null);
+  await log(env, { ...base, status: 'hired, no answer yet', job: jobId, tx, price_u: Number(budget) / 1e18, paid_by: session.walletAddress, deliverable: `${SELLER.site}/api/escrow/jobs/${jobId}/deliverable` });
+  await fetch(`${SELLER.site}/api/escrow/jobs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, tx, subject: SUBJECT }), signal: AbortSignal.timeout(15000) }).catch(() => null);
   let answer = null, deliveredAt = null;
   for (let i = 0; i < 10 && !answer; i++) {
     await new Promise((r) => setTimeout(r, 3000));
-    const d = await fetch(`${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const d = await fetch(`${SELLER.site}/api/escrow/jobs/${jobId}/deliverable`, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (d && d.answer) { answer = d.answer; deliveredAt = d.deliveredAt || null; }
   }
   const positions = answer ? (answer.positions || []).map((p) => ({ position: String(p.position), pair: p.pair, in_range: !!p.inRange, ticks_out: p.ticksOut ?? 0, tick: p.tick, range: p.range, plan: p.plan || null })) : null;

@@ -80,8 +80,8 @@
     $('.pg-t', w).textContent = NAMES[key] || title || 'Page';
     w.setAttribute('aria-label', NAMES[key] || title || 'Page'); $('.pg-f', w)?.setAttribute('title', NAMES[key] || title || 'Page'); // a screen reader names the page, not "Page"
     // the header carries the page's own logo, the one on its ecosystem card, instead of an arrow (operator, 2026-09-27);
-    // a page without a card (the library, the lite paper …) carries the BOBAI logo
-    const k = $('.pg-k', w), card = $$('a.ec').find((a) => new URL(a.getAttribute('href'), location.origin).pathname.split('/')[1] === key);
+    // a page without a card (the library, the lite paper …) carries the BOBAI logo; the side apps' line counts as cards
+    const k = $('.pg-k', w), card = $$('a.ec, a.ec-also').find((a) => new URL(a.getAttribute('href'), location.origin).pathname.split('/')[1] === key);
     const ico = card && card.querySelector('.ec-top svg, .ec-top img');
     k.replaceChildren(ico ? ico.cloneNode(true) : Object.assign(document.createElement('img'), { src: '/logo-sm.png', alt: '' }));
     const plain = new URL(u); plain.searchParams.delete('embed'); $('.pg-open', w).href = plain.pathname + plain.search + plain.hash;

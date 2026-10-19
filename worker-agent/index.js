@@ -518,13 +518,7 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
   if (!receipt) return { ok: false, reason: 'transaction not found — if it was just sent, wait for it to confirm' };
   if (receipt.status !== '0x1') return { ok: false, reason: 'that transaction failed on-chain' };
 
-  let paid = 0n;
-  for (const log of receipt.logs || []) {
-    if ((log.address || '').toLowerCase() !== asset.toLowerCase()) continue;
-    if ((log.topics || [])[0] !== TRANSFER_TOPIC) continue;
-    if (addrFromTopic(log.topics[2]) !== payTo.toLowerCase()) continue;
-    paid += hexToBig(log.data);
-  }
+  const { paid, payer } = transferredIn(receipt, asset, payTo);
   if (paid < min)
     return {
       ok: false,
@@ -538,7 +532,22 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
     const head = await rpc('eth_blockNumber', [], RECEIPT_RPCS).catch(() => null);
     if (head && parseInt(head, 16) - parseInt(receipt.blockNumber, 16) > MAX_PAYMENT_AGE_BLOCKS) return { ok: false, reason: 'that payment is more than a day old — a payment is made for the request it buys' };
   }
-  return { ok: true, paid, asset: asset.toLowerCase(), from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+  return { ok: true, paid, asset: asset.toLowerCase(), from: payer || (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+}
+
+// What a receipt moved to payTo in this coin, and who it came from. The payer is the sender of the transfer, not of the
+// transaction (2026-10-19): an EIP-3009 payment is sent on chain by our own provider wallet, so receipt.from named
+// 0x7380 for every one of Mandate's paid calls and /buys filed them as our own tests (from_strangers 0).
+export function transferredIn(receipt, asset, payTo) {
+  let paid = 0n, payer = null;
+  for (const log of receipt.logs || []) {
+    if ((log.address || '').toLowerCase() !== asset.toLowerCase()) continue;
+    if ((log.topics || [])[0] !== TRANSFER_TOPIC) continue;
+    if (addrFromTopic(log.topics[2]) !== payTo.toLowerCase()) continue;
+    paid += hexToBig(log.data);
+    payer = payer || addrFromTopic(log.topics[1]);
+  }
+  return { paid, payer };
 }
 
 // $BOBAI as a second coin for the per-answer sale. The amount is the answer's

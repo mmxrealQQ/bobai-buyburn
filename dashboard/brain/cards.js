@@ -324,7 +324,8 @@
       // HONEST COUNT (2026-10-19): our own watch checks (rug_watch_checks too) are no callers, and "of them MCP" counted every
       // registry's handshake as use; the paid answers (the ledger, buys05) are what agents actually bought
       out.agents = `${cmp(n)} requests to our agent server in 7 days` + (buys05 != null ? `, ${buys05} answer${buys05 === 1 ? '' : 's'} paid for by other agents` : ''); }
-    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.ceil((N.gg.end - Date.now()) / 86400e3)); out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(N.gg.bnb * bnbP)}` : ''} · ${d} d to the kids`; }
+    // whole days, as the pot's own countdown counts them (2026-10-19: this said 32 d beside 02's "31 days left")
+    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${d} d to the kids`; }
     return out;
   };
   function line05() {
@@ -362,9 +363,41 @@
       const h = r[1](); if (h) pf.innerHTML = h;
     });
   }
+  // 05 ON ONE SCREEN (operator, 2026-10-19, his choice): the track on top; each phase that is done one line — a mark,
+  // its name, one sentence, one proof; the phase now open with its goals and their live figures; every step of every
+  // phase (with its proof, as before) under one closed Details. Phases are read from the page, so a new one appears.
+  const SAY05 = { Build: 'Fair launch on Four.Meme, LP burned, owner renounced', Believe: 'Every trade feeds the bot, around the clock',
+    Brain: 'Terminal, scanner, Brain Plaza, DeFi agent, rug watch', 'Big Brain': 'Volume, more agents, the Giggle pot to the kids' };
+  function shape05() {
+    const body = $('#w06 .bw-body'), rmg = body && $('.rmg', body), hero = body && $('.bw-hero', body); if (!rmg) return;
+    if (!hero) { if ((shape05.tries = (shape05.tries || 0) + 1) < 20) setTimeout(shape05, 300); return; }
+    if (!body.dataset.shaped) {
+      body.dataset.shaped = '1';
+      const box = document.createElement('div'); box.className = 'cx5'; box.dataset.nousd = '1';
+      hero.insertAdjacentElement('afterend', box);
+      const more = document.createElement('details'); more.className = 'cx2-more';
+      more.innerHTML = '<summary>Every step of every phase, each with its proof</summary>';
+      rmg.insertAdjacentElement('beforebegin', more); more.append(rmg);
+    }
+    fill05();
+  }
+  function fill05() {
+    const box = $('#w06 .cx5'); if (!box) return;
+    const N = NUMS(), g = goals05(), ph = $$('#w06 .rm');
+    const mins = bot05 ? Math.max(1, Math.round((Date.now() - bot05) / 60e3)) : null;
+    const owner = owner05 ? (owner05.v === '0x' + '0'.repeat(40) ? 'owner() = 0x000…000, nobody' : `owner() = ${owner05.v}`) : 'reading owner()…';
+    const PROOF = { Build: ext(`https://bscscan.com/token/${CA}#readContract`, owner), Believe: mins ? ext('https://logs.brainonbnb.com/health', `heartbeat ${mins} min ago`) : 'reading the heartbeat…', Brain: 'live on this page' };
+    const done = ph.filter((p) => !p.classList.contains('rmn')), now = ph.find((p) => p.classList.contains('rmn'));
+    const name = (p) => $('h3', p)?.textContent.trim() || '';
+    const paid = buys05 != null ? `${buys05} answer${buys05 === 1 ? '' : 's'} paid by other agents in 7 days` : '';
+    const GOALS = [['Volume', g.vol || 'the 24-hour figure shows once the terminal has read a full day'], ['Agents use our tools', paid || 'reading the payments…'],
+      ['The Giggle pot', g.pot || 'reading the pot…'], ['No price promise', 'this map names no price and no date']];
+    box.innerHTML = done.map((p) => `<div class="cx5-r"><i>✓</i><b>${name(p)}</b><span>${SAY05[name(p)] || $('li span:last-child', p)?.firstChild?.textContent || ''}</span><em>${PROOF[name(p)] || ''}</em></div>`).join('')
+      + (now ? `<div class="cx5-now"><div class="cx5-h">▶ NOW · ${name(now)}</div>${GOALS.map(([k, v], i) => `<div class="cx5-g"><b>${k}</b><span class="${i < 3 ? 'ec-live' : 'cx5-p'}">${v}</span></div>`).join('')}</div>` : '');
+  }
   setTimeout(read05, 4000); setInterval(() => { if (!document.hidden) read05(); }, 5 * 60e3);
-  setInterval(() => { if (!document.hidden) line05(); }, 6000);
-  new MutationObserver(() => { const w = $('#w06'); if (w && !w.hidden) { proof05(); setTimeout(proof05, 1500); } }).observe(document.getElementById('w06') || document.body, { attributes: true, attributeFilter: ['hidden'] });
+  setInterval(() => { if (!document.hidden) { line05(); const w = $('#w06'); if (w && !w.hidden) fill05(); } }, 6000);
+  new MutationObserver(() => { const w = $('#w06'); if (w && !w.hidden) { read05(); shape05(); proof05(); setTimeout(() => { proof05(); fill05(); }, 1500); } }).observe(document.getElementById('w06') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   window.__card05 = { goals: () => goals05(), proof: () => { proof05(); return $$('#w06 .rm li').map((li) => [li.textContent.trim().slice(0, 40), li.querySelector('.pf')?.textContent || '']); } };
 
   // 07 QUESTIONS: one question at a time, turning like a card

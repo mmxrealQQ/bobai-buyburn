@@ -505,3 +505,18 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .cx2-more>summary::before{content:'▸ ';color:var(--gold,#f0b90b)}
 .cx2-more[open]>summary::before{content:'▾ '}
 @media (max-width:600px){.cx2k{grid-template-columns:1fr}.bw-hero .ring ul.wk-list{flex-basis:100%;max-width:none}.bw-hero .ring ul.wk-list li{grid-template-columns:9px minmax(0,1fr) 40px 96px}}
+/* 05 ON ONE SCREEN (operator, 2026-10-19, his choice): each phase done one line, the phase now open with its live goals */
+#w06 section.sec>.sh{display:none}
+.cx5{display:flex;flex-direction:column;gap:6px;margin:14px 16px}
+.cx5-r{display:grid;grid-template-columns:18px 90px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);font-size:13px}
+.cx5-r i{font-style:normal;color:#35e07a;font-weight:700}
+.cx5-r b{color:#f3efe6;font:700 13.5px 'Space Grotesk',sans-serif}
+.cx5-r span{color:var(--muted,#a0a2c0)}
+.cx5-r em{font-style:normal;font-size:12px;white-space:nowrap}
+.cx5-r em a{color:var(--gold,#f0b90b);text-decoration:none}
+.cx5-now{margin-top:8px;padding:14px 16px;border-radius:16px;border:1px solid rgba(240,185,11,.35);background:rgba(240,185,11,.05);display:flex;flex-direction:column;gap:9px}
+.cx5-h{font:700 11px var(--bp-mono,monospace);letter-spacing:.14em;color:var(--gold,#f0b90b)}
+.cx5-g{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;align-items:center;font-size:13px}
+.cx5-g b{color:#f3efe6;font-weight:600}
+.cx5-p{color:var(--muted,#a0a2c0)}
+@media (max-width:600px){.cx5-r{grid-template-columns:18px minmax(0,1fr);row-gap:2px}.cx5-r span,.cx5-r em{grid-column:2}.cx5-r em{white-space:normal}.cx5-g{grid-template-columns:1fr;gap:2px}}

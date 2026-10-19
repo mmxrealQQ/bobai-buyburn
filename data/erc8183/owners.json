@@ -1,7 +1,7 @@
 {
-  "resolvedAt": "2026-10-05T06:29:08.055Z",
+  "resolvedAt": "2026-10-19T05:47:55.147Z",
   "population": "ERC-8004 agents carrying an http endpoint",
-  "agents": 1985,
+  "agents": 2027,
   "unread": 0,
   "owners": {
     "0x89e9e1ab11dd1b138b1dce6d6a4a0926aafd5029": [
@@ -8576,7 +8576,7 @@
         "name": "mandaterebalance-agent"
       }
     ],
-    "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963": [
+    "0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a": [
       {
         "id": 302257,
         "name": "Brain on BNB — Venus Health Factor Monitor"
@@ -8596,6 +8596,10 @@
       {
         "id": 310460,
         "name": "Brain on BNB — PancakeSwap Fee Tier Placement"
+      },
+      {
+        "id": 363709,
+        "name": "Brain on BNB — DeFi Agent"
       }
     ],
     "0xbbfd4c1e74bbc25047c9e6dfb9136f5a7055d1cc": [
@@ -8683,7 +8687,7 @@
     "0x4d09af0beac3f65c5bdbf1d19f31caca7924b7ec": [
       {
         "id": 327090,
-        "name": "Qwibi"
+        "name": "QwibiBNB"
       }
     ],
     "0xc58a0c1b25418382934cf06740292c87de6d66df": [
@@ -8860,6 +8864,34 @@
       {
         "id": 361907,
         "name": "TradFi Schedule Agent 1 by 4LPHA"
+      },
+      {
+        "id": 364199,
+        "name": "Agentic Trade Agent 1 by 4LPHA"
+      },
+      {
+        "id": 364343,
+        "name": "Agentic DCA Agent 1 by 4LPHA"
+      },
+      {
+        "id": 365218,
+        "name": "Agentic Schedule Agent 1 by 4LPHA"
+      },
+      {
+        "id": 365252,
+        "name": "Agentic Schedule Agent 2 by 4LPHA"
+      },
+      {
+        "id": 365265,
+        "name": "Agentic Schedule Agent 3 by 4LPHA"
+      },
+      {
+        "id": 365842,
+        "name": "Agentic Portfolio Agent 1 by 4LPHA"
+      },
+      {
+        "id": 368707,
+        "name": "Agentic DCA Agent 2 by 4LPHA"
       }
     ],
     "0x85eb68dd5c2367f80e365ace2a2794fc108833cf": [
@@ -9232,10 +9264,208 @@
         "name": "Plinth keeper"
       }
     ],
-    "0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a": [
+    "0x60eab5fbe65f88abbc5ef49beac52b4d7cb8e079": [
       {
-        "id": 363709,
-        "name": "Brain on BNB — DeFi Agent"
+        "id": 365285,
+        "name": "StockGap Seller"
+      }
+    ],
+    "0x1e8316ce99376e8e1f5e6b6482243e4d47daddc3": [
+      {
+        "id": 365431,
+        "name": "Stockyard"
+      }
+    ],
+    "0xcd0a2370f2dc12c1802707b7d9ab3fec891e3c02": [
+      {
+        "id": 365554,
+        "name": "Elitr News Analyst"
+      },
+      {
+        "id": 365555,
+        "name": "Elitr On-chain Flow Analyst"
+      }
+    ],
+    "0xc742ada2872a042dd36d2e706907b4036968960c": [
+      {
+        "id": 365556,
+        "name": "Elitr Execution Agent"
+      }
+    ],
+    "0x7b322413f200fcc4578e130d8269bc227b008e10": [
+      {
+        "id": 365900,
+        "name": "StellarFalcon"
+      }
+    ],
+    "0x30ce2986c17bef0496435809158e5f0a7ae77989": [
+      {
+        "id": 367667,
+        "name": "PRONOUS"
+      }
+    ],
+    "0xfd9fbd6719a0b521314a67ff36ef26634bf71642": [
+      {
+        "id": 367734,
+        "name": "Elitr Desk Brief"
+      }
+    ],
+    "0xc52c09547bcff9115853f9226bef4fa43993ad56": [
+      {
+        "id": 367795,
+        "name": "keel-analyst"
+      },
+      {
+        "id": 367807,
+        "name": "keel-analyst"
+      }
+    ],
+    "0x2a55d842c097dd323a212f561b1fab39b738e62f": [
+      {
+        "id": 367797,
+        "name": "keel-grader"
+      },
+      {
+        "id": 367808,
+        "name": "keel-grader"
+      }
+    ],
+    "0x3428faeff4f4775b9edba3f3f7ef4f3b8e3df1b7": [
+      {
+        "id": 367798,
+        "name": "keel-scout"
+      }
+    ],
+    "0xccd7f069275549793b2a8804a5691fca6665d152": [
+      {
+        "id": 368122,
+        "name": "Ballast Risk Desk"
+      }
+    ],
+    "0x07347a83b70d810c8cb082f870732dc489727aa9": [
+      {
+        "id": 368737,
+        "name": "TwilightSentinel"
+      }
+    ],
+    "0x592ef127fefd45eaa56fe0d715daaf72f998a652": [
+      {
+        "id": 369195,
+        "name": "4lpha bStock Desk"
+      }
+    ],
+    "0xfceafec082f9e8b17cdb51f33c3d5c9759a25e03": [
+      {
+        "id": 369628,
+        "name": "BNB Yield Finder"
+      }
+    ],
+    "0x440860e5dfb8e7d3e1903a0ec3d3589e2fc5cf73": [
+      {
+        "id": 370049,
+        "name": "Tare keeper"
+      }
+    ],
+    "0xf0c93c57ce4124fab9d7b29c3837f8a17bba8850": [
+      {
+        "id": 370408,
+        "name": "BotHire"
+      }
+    ],
+    "0x2bd0bbae2379145e54f4fc8e64ed9ba1cda27cb7": [
+      {
+        "id": 370811,
+        "name": "ShareSend"
+      }
+    ],
+    "0x8b031d852ba4358f291774abc345ed781bc93950": [
+      {
+        "id": 370830,
+        "name": "popanalyst"
+      }
+    ],
+    "0x8e8b22406158c2243bc325b4e3b12b34eeb301b0": [
+      {
+        "id": 370837,
+        "name": "SharePay Merchant"
+      }
+    ],
+    "0x6890d02b614aed8466d30f3642afd193e952f19e": [
+      {
+        "id": 370890,
+        "name": "Nightshift Scorer"
+      }
+    ],
+    "0x4fed3c73de4392299747bf976749586b96d2c9e8": [
+      {
+        "id": 370891,
+        "name": "Nightshift Forecaster: Anchor"
+      }
+    ],
+    "0x11cff8165119475bc7f76ef755f4c0b7e33c0183": [
+      {
+        "id": 370892,
+        "name": "Nightshift Forecaster: Echo"
+      }
+    ],
+    "0xed958842c7477e76d926e4b08130a0b5c2dcbd99": [
+      {
+        "id": 370893,
+        "name": "Nightshift Forecaster: NFV"
+      }
+    ],
+    "0xd8acae17c151fe640eb83593f69ff44678427ee7": [
+      {
+        "id": 370894,
+        "name": "Nightshift Trade"
+      }
+    ],
+    "0x5bb7e9bcf1d2f4d6266fc39bd12450c6b18dd632": [
+      {
+        "id": 370988,
+        "name": "Bitstock"
+      }
+    ],
+    "0xf38ed31acd342c17aa38ca0fa02215afd1eba265": [
+      {
+        "id": 371009,
+        "name": "Stockroom Desk Analyst"
+      }
+    ],
+    "0x1d16b5b87a32226a52737f6b32a8d0e93bacc981": [
+      {
+        "id": 371185,
+        "name": "Regime"
+      }
+    ],
+    "0xbae29ba6b4979b35ca416b292e2e603e4e32d70f": [
+      {
+        "id": 371303,
+        "name": "TrueSahm"
+      }
+    ],
+    "0x6a3347cc27f952dd2d0c8f5d407fa0630ff1beda": [
+      {
+        "id": 372010,
+        "name": "Larry"
+      }
+    ],
+    "0x93847647d7eb72a69e162117df6a8697df53edda": [
+      {
+        "id": 372022,
+        "name": "Pokter Facts Evidence"
+      }
+    ],
+    "0xbf98fcf727ae3da335fa3aa0784314b52dec7a01": [
+      {
+        "id": 372214,
+        "name": "Phoveus"
+      }
+    ],
+    "0x04604cfb8e2184a04a3b74b51e6c5458d0f9061c": [
+      {
+        "id": 373391,
+        "name": "CrystalCipher"
       }
     ]
   }

@@ -405,11 +405,11 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 .cx01-u button[aria-pressed=true]{background:var(--gold,#f0b90b);color:#0b090a}
 .cx01-out{margin-top:10px;display:grid;gap:4px}
 .cx01-t{font-size:13.5px;margin-bottom:4px}
-.cx01-r{display:grid;grid-template-columns:10px minmax(0,1fr) 46px auto;gap:8px;align-items:center;font-size:13px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.06)}
+.cx01-r{display:grid;grid-template-columns:10px minmax(0,1fr) 46px 88px;gap:8px;align-items:center;font-size:13px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.06)}
 .cx01-r i{width:9px;height:9px;border-radius:50%}
 .cx01-r b{font:600 12px ui-monospace,monospace;color:var(--muted,#a0a2c0);text-align:right}
 .cx01-r em{font-style:normal;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-.cx01-r em small{display:block;font-weight:500;font-size:11px;color:#35e07a}
+.cx01-r span small{margin-left:8px;font-weight:500;font-size:11px;color:#35e07a;opacity:.8;white-space:nowrap}
 .cx01-r.hi span{color:#35e07a;font-weight:600}
 .cx01-n{margin:8px 0 0;font-size:11.5px;color:var(--muted,#a0a2c0)}
 /* 02 LIVE (2026-10-12): the next split charging under the ring; the window's 7-day account */

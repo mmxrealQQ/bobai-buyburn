@@ -43,7 +43,7 @@ import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 import { SOLD_BY } from '../worker-agent/catalog.js';
-import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
+import { SERVICE_BY_SLUG, OWN_AGENTS } from './lib/own-agents.mjs';
 import { summarize } from '../shared/job-summary.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -317,6 +317,11 @@ try {
     // described as the other one, in the section a judge is asked to compare
     // agents in. A slug names exactly one agent; a category does not.
     const svc = SERVICES[SERVICE_BY_SLUG[slug]] || null;
+    // WHAT IT SPEAKS, FROM ITS OWN ON-CHAIN DOCUMENT (2026-10-19): the list was typed here as a2a + x402 and the
+    // services came from the census's older read, so the Screener showed all six without MCP, which each of them
+    // serves at /<slug>/mcp. own-agents.mjs is the document setAgentURI writes; the row reads the same one.
+    const doc = OWN_AGENTS.find((o) => o.slug === slug)?.doc;
+    const names = (doc?.services || []).map((s) => String(s.name).toLowerCase());
     return {
       id: a.id,
       name: a.name,
@@ -324,7 +329,8 @@ try {
       // Every agent of ours has its own endpoint and card since 2026-10-04
       // (/<slug>/a2a); the shared /a2a counter stays for old links.
       endpoints: [`https://agent.brainonbnb.com/${slug}/a2a`, `https://agent.brainonbnb.com/${slug}/a2a/.well-known/agent-card.json`],
-      speaks: ['a2a', 'x402'],
+      speaks: doc ? ['a2a', 'mcp', 'x402'].filter((p) => names.includes(p)) : ['a2a', 'x402'],
+      ...(doc ? { declared_services: doc.services.map((s) => ({ name: s.name, endpoint: s.endpoint })) } : {}),
       // What it can be asked for, named the way the seller names it. Empty
       // tools on purpose: see the merge below.
       skills: svc ? [{ name: svc.id, description: svc.name }] : [],

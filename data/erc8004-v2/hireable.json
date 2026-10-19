@@ -8,6 +8,12 @@
       "ours": false
     },
     {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 265375,
       "label": "BNB LP Range Rebalancer",
       "category": "rebalancing",
@@ -16,12 +22,6 @@
     {
       "id": 340460,
       "label": "LingoAI Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -351,6 +351,12 @@
     {
       "id": 270183,
       "label": "AgentCensus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 368122,
+      "label": "Ballast Risk Desk",
       "category": "health-factor",
       "ours": false
     },

@@ -223,28 +223,27 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/health-factor/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/health-factor/a2a"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=health_factor",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=health_factor"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/health-factor/mcp"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/health-factor/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/health-factor/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/agent/302257",
-          "version": null
+          "endpoint": "https://brainonbnb.com/agent/302257"
         },
         {
           "name": "marketplace",
-          "endpoint": "https://brainonbnb.com/registry",
-          "version": null
+          "endpoint": "https://brainonbnb.com/registry"
         }
       ],
       "endpoints": [
@@ -253,6 +252,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],
@@ -287,33 +287,31 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/grid-trader/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/grid-trader/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/agent/302258",
-          "version": null
+          "endpoint": "https://brainonbnb.com/agent/302258"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=grid_plan",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=grid_plan"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/grid-trader/mcp"
         },
         {
           "name": "poolScanner",
-          "endpoint": "https://brainonbnb.com/scanner",
-          "version": null
+          "endpoint": "https://brainonbnb.com/scanner"
         },
         {
           "name": "marketplace",
-          "endpoint": "https://brainonbnb.com/registry",
-          "version": null
+          "endpoint": "https://brainonbnb.com/registry"
         }
       ],
       "endpoints": [
@@ -322,6 +320,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],
@@ -356,28 +355,27 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=yield_plan",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=yield_plan"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/yield-optimizer/mcp"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/yield-optimizer/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/yield-optimizer/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/agent/304493",
-          "version": null
+          "endpoint": "https://brainonbnb.com/agent/304493"
         },
         {
           "name": "marketplace",
-          "endpoint": "https://brainonbnb.com/registry",
-          "version": null
+          "endpoint": "https://brainonbnb.com/registry"
         }
       ],
       "endpoints": [
@@ -386,6 +384,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],
@@ -420,33 +419,31 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/rebalancer/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/rebalancer/a2a"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/rebalancer/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/rebalancer/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/agent/304494",
-          "version": null
+          "endpoint": "https://brainonbnb.com/agent/304494"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=rebalance_plan",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=rebalance_plan"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/rebalancer/mcp"
         },
         {
           "name": "poolScanner",
-          "endpoint": "https://brainonbnb.com/scanner",
-          "version": null
+          "endpoint": "https://brainonbnb.com/scanner"
         },
         {
           "name": "marketplace",
-          "endpoint": "https://brainonbnb.com/registry",
-          "version": null
+          "endpoint": "https://brainonbnb.com/registry"
         }
       ],
       "endpoints": [
@@ -455,6 +452,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],
@@ -489,33 +487,31 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/lp-placement/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/lp-placement/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/agent/310460",
-          "version": null
+          "endpoint": "https://brainonbnb.com/agent/310460"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=lp_tier_plan",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=lp_tier_plan"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/lp-placement/mcp"
         },
         {
           "name": "feeTiers",
-          "endpoint": "https://brainonbnb.com/api/fee-tiers",
-          "version": null
+          "endpoint": "https://brainonbnb.com/api/fee-tiers"
         },
         {
           "name": "marketplace",
-          "endpoint": "https://brainonbnb.com/registry",
-          "version": null
+          "endpoint": "https://brainonbnb.com/registry"
         }
       ],
       "endpoints": [
@@ -524,6 +520,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],
@@ -1058,28 +1055,27 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
-          "version": "0.3.0"
+          "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a"
         },
         {
           "name": "x402",
-          "endpoint": "https://agent.brainonbnb.com/answer?service=lp_position_plan",
-          "version": "2"
+          "endpoint": "https://agent.brainonbnb.com/answer?service=lp_position_plan"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://agent.brainonbnb.com/defi-agent/mcp"
         },
         {
           "name": "agentCard",
-          "endpoint": "https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json"
         },
         {
           "name": "web",
-          "endpoint": "https://brainonbnb.com/defi",
-          "version": null
+          "endpoint": "https://brainonbnb.com/defi"
         },
         {
           "name": "record",
-          "endpoint": "https://agent.brainonbnb.com/lp/agent",
-          "version": null
+          "endpoint": "https://agent.brainonbnb.com/lp/agent"
         }
       ],
       "endpoints": [
@@ -1088,6 +1084,7 @@
       ],
       "speaks": [
         "a2a",
+        "mcp",
         "x402"
       ],
       "tools": [],

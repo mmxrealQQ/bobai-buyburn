@@ -785,7 +785,7 @@
     }
   ],
   "how_to_read_it": "tag1 is the metric and tag2 the window it covers. value carries its own decimals: 10000 at 2 decimals under \"uptime\" is 100.00 percent. Values under different tags are different units and are never combined. `latest` holds one entry per rater per tag, because a feedback index is per client and index 2 from one rater is not newer than index 1 from another.",
-  "our_rater": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
+  "our_rater": "0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a",
   "agents": [
     {
       "id": 2554,
@@ -106176,7 +106176,7 @@
           }
         ]
       },
-      "rated_by_this_marketplace": true
+      "rated_by_this_marketplace": false
     },
     {
       "id": 269233,
@@ -106216,7 +106216,7 @@
           }
         ]
       },
-      "rated_by_this_marketplace": true
+      "rated_by_this_marketplace": false
     },
     {
       "id": 341553,

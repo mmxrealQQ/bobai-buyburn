@@ -65,7 +65,8 @@
       if (!ph || !(p > 0)) { out.innerHTML = '<p class="cx01-n">Reading the price and the split…</p>'; return; }
       const tradeUsd = unit === 'usd' ? a : a * p;
       const rows = PARTS.map(([k, col, name, bobai]) => { const pc = parseFloat(ph[k]) || 0; if (!pc) return ''; const u = tradeUsd * pc / 100;
-        return `<div class="cx01-r${bobai ? ' hi' : ''}"><i style="background:${col}"></i><span>${name}</span><b>${pc}%</b><em>${usd(u)}${bobai ? ` <small>${cmp(u / p)} $BOBAI ≈$${u.toFixed(2)}</small>` : ''}</em></div>`; }).join('');
+        // the $BOBAI it burns sits beside the name, so every row's share stands right next to its dollars (2026-10-19)
+        return `<div class="cx01-r${bobai ? ' hi' : ''}"><i style="background:${col}"></i><span>${name}${bobai ? ` <small>${cmp(u / p)} $BOBAI</small>` : ''}</span><b>${pc}%</b><em>${usd(u)}</em></div>`; }).join('');
       const tax = PARTS.reduce((t, [k]) => t + (parseFloat(ph[k]) || 0), 0);
       out.innerHTML = `<div class="cx01-t">A ${usd(tradeUsd)} trade${unit === 'bobai' ? ` (${cmp(a)} $BOBAI)` : ''} pays ${usd(tradeUsd * tax / 100)} tax (${+tax.toFixed(2)}%):</div>` + rows;
     };

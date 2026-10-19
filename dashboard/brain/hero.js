@@ -34,6 +34,9 @@
     // paid out to it in the last 7 days and its last transaction — the "where it went" box that repeated the six
     // shares above the ring is gone. The week comes from cards.js (its split7, keyed by share), in dollars at today's BNB.
     const wk = typeof window.__card02?.where === 'function' ? window.__card02.where() : null, bnbP = N().chain?.bnbUsd || 0;
+    // no week yet: ask cards.js for it here, not only on its own watch of the window (19.10.: that watch could miss an
+    // open, and the rows said "…" until the window was opened again); it redraws this ring when the week has arrived
+    if (!wk && typeof window.__card02?.load === 'function') window.__card02.load();
     const week = (k) => { const p = wk && wk.parts.find((x) => x[5] === k); if (!p) return `<em class="wk">${wk ? '—' : '…'}</em>`;   // … while the logs load
       const usd = p[2] * bnbP; return `<em class="wk">${p[2] > 0 && bnbP > 0 ? '$' + (usd >= 100 ? nf(usd) : usd.toFixed(2)) : '—'}${p[4] ? ` <a href="https://bscscan.com/tx/${p[4]}" target="_blank" rel="noopener" title="its last transaction on BscScan">tx ↗</a>` : ''}</em>`; };
     strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · PAID OUT, LAST 7 DAYS</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul class="wk-list">${parts.map(([v, c, l, k]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b>${week(k)}</li>`).join('')}</ul></div></div>`
@@ -55,7 +58,14 @@
     const tot = b.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     const h = strip(win);
     const px = N().chain?.priceUsd > 0 ? N().chain.priceUsd : 0, usd = (n) => px ? ' ≈$' + nf(n * px) : '', w7 = n7.reduce((a, e) => a + (+e.bobaiBurned || 0), 0); // BOBAI with its dollars at today's price (2026-10-10)
-    h.innerHTML = fig('BOT BURN RUNS', nf(b.length)) + fig('BOBAI BURNED BY THE BOT', cmp(tot) + usd(tot), 1) + fig('LAST 7 DAYS', cmp(w7) + ' BOBAI' + usd(w7)) + fig('LAST BURN', new Date(Date.parse(b[b.length - 1].time)).toISOString().replace('T', ' ').slice(0, 16) + ' UTC')
+    // THREE FIGURES, EACH SAID ONCE (operator, 2026-10-19, his choice for 03): what is gone for good (the dead address,
+    // read from the chain), what the bot burned (its runs), the last 7 days (and when the last burn was)
+    const dead = N().chain?.bobaiDead || 0, last = Date.parse(b[b.length - 1].time);
+    h.dataset.nousd = '1';   // its dollars are its own: app.js would add a second ≈$ after every BOBAI amount
+    const fig3 = (k, v, s, c) => `<div class="hf hf3"><span>${k}</span><b${c ? ' class="c"' : ''}>${v}</b><small>${s}</small></div>`;
+    h.innerHTML = (dead ? fig3('GONE FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', cmp(dead) + ' BOBAI at the dead address' + usd(dead), 1) : '')
+      + fig3('BURNED BY THE BOT', cmp(tot) + ' BOBAI', nf(b.length) + ' runs' + usd(tot))
+      + fig3('LAST 7 DAYS', cmp(w7) + ' BOBAI', 'last burn ' + new Date(last).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC' + usd(w7))
       + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90" role="img" aria-label="BOBAI burned by the bot per day, last 30 days: ${cmp(A.reduce((x, y) => x + y, 0))} BOBAI in all, the biggest day ${cmp(Math.max(...A))} BOBAI"></canvas><div class="bbt" hidden></div></div></div>`;
     const cv = $('canvas', h), tip = $('.bbt', h);
     let hi = -1;

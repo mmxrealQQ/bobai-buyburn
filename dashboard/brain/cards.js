@@ -135,9 +135,19 @@
   async function where02() {
     const body = $('#w02 .bw-body'); if (!body) return;
     shape02();
+    if (where02.busy) return;   // hero.js asks too (below), while a read may already be on its way
     if (!split7 || Date.now() - split7At > 5 * 60e3) {
+      where02.busy = true;
+      try { await read02(); } finally { where02.busy = false; }
+    }
+  }
+  async function read02() {
+    {
       const [b, l] = await Promise.all([fetch('/logs/burns.json').then((r) => r.json()).catch(() => null), fetch('/logs/bobai-liq-log.json').then((r) => r.json()).catch(() => null)]);
-      if (!Array.isArray(b) || !Array.isArray(l)) return;   // the ring shows no week then: a blank, never a guess
+      // the ring shows no week then, never a guess — and asks again shortly, three times (19.10.: a slow read on the preview
+      // left "…" in every row until the window was opened again)
+      if (!Array.isArray(b) || !Array.isArray(l)) { if ((where02.tries = (where02.tries || 0) + 1) <= 3) setTimeout(where02, 3000); return; }
+      where02.tries = 0;
       const from = Date.now() - 7 * 86400e3, B = b.filter((e) => Date.parse(e.time) >= from), L = l.filter((e) => Date.parse(e.time) >= from);
       const sum = (A, k) => A.reduce((t, e) => t + (+e[k] || 0), 0), last = (A, k) => [...A].reverse().find((e) => e[k])?.[k];
       // every token amount with its dollars at today's price (operator rule, 2026-10-10)
@@ -185,7 +195,7 @@
   }
   new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   new MutationObserver(() => { const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }).observe(document.getElementById('w03') || document.body, { attributes: true, attributeFilter: ['hidden'] });
-  window.__card02 = { next: () => next02(), where: () => split7 };
+  window.__card02 = { next: () => next02(), where: () => split7, load: () => where02() };
 
   // 03 PROOF: BOBAI burned per day, 14 days (the burn log the homepage already read; read here when it has not)
   // app.js reads the same 107 KB log; the card waits up to 10 s for its copy before asking itself (2026-09-30: a slow phone
@@ -224,17 +234,31 @@
 
   // 03's WINDOW: CHECK IT YOURSELF (operator, 2026-10-12): the dead address's $BOBAI as the chain says it right now (the
   // page's own 30-second read), and the bot's last burns, each with its transaction — believe nobody, look it up
+  // 03 ON ONE SCREEN (operator, 2026-10-19, his choice): under the chart the last three burns (when, how much, its
+  // transaction) and one line of links to check it yourself; every address, every burn since launch and the past
+  // campaigns move under one closed Details. The dead address's balance is the strip's first figure now.
   function proof03() {
     const body = $('#w03 .bw-body'); if (!body) return;
+    const hero = $('.bw-hero', body);
+    if (!hero) { if ((proof03.tries = (proof03.tries || 0) + 1) < 20) setTimeout(proof03, 300); return; }
     let box = $('#w03 .cx03');
-    if (!box) { box = document.createElement('div'); box.className = 'cx02 cx03'; box.dataset.nousd = '1'; body.insertAdjacentElement('afterbegin', box); }
+    if (!box) { box = document.createElement('div'); box.className = 'cx02 cx03'; box.dataset.nousd = '1'; hero.insertAdjacentElement('afterend', box); }
+    if (!body.dataset.shaped) {
+      const sec = $('section.sec', body);
+      if (sec) {
+        body.dataset.shaped = '1';
+        const more = document.createElement('details'); more.className = 'cx2-more';
+        more.innerHTML = '<summary>Details · every address, every burn since launch, past campaigns</summary>';
+        sec.insertAdjacentElement('beforebegin', more); more.append(sec);
+      }
+    }
     const c = NUMS().chain, b = NUMS().burns || burnsOwn, p = c?.priceUsd;
-    const L = Array.isArray(b) ? b.filter((e) => +e.bobaiBurned > 0 && e.bobaiBurnTx).slice(-10).reverse() : [];
+    const L = Array.isArray(b) ? b.filter((e) => +e.bobaiBurned > 0 && e.bobaiBurnTx).slice(-3).reverse() : [];
     const dead = 'https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0x000000000000000000000000000000000000dEaD';
-    const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
-    box.innerHTML = `<h4>Check it yourself</h4>`
-      + (c?.bobaiDead ? `<p class="cx02-s">At the dead address right now: <b style="color:#f3efe6">${c.bobaiDead.toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</b>${p > 0 ? ` ≈$${cmp(c.bobaiDead * p)}` : ''} — read from BNB Chain ${Math.max(1, Math.round((Date.now() - (c.at || Date.now())) / 1000))} s ago. <a href="${dead}" target="_blank" rel="noopener">See it on BscScan ↗</a></p>` : '<p class="cx02-s">Reading the dead address…</p>')
-      + (L.length ? `<p class="cx02-s" style="margin-top:6px">The bot’s last ${L.length} burns — open any of them:</p>` + L.map((e) => `<div class="cx01-r cx02-r"><i style="background:#ff7a3d"></i><span>${when(Date.parse(e.time))}<small>bought with ${(+e.bobaiBurnBnb || 0).toFixed(4)} BNB${c?.bnbUsd > 0 ? ` ≈$${((+e.bobaiBurnBnb || 0) * c.bnbUsd).toFixed(2)}` : ''}</small></span><b></b><em>${cmp(+e.bobaiBurned)} $BOBAI${p > 0 ? ` ≈$${(+e.bobaiBurned * p).toFixed(2)}` : ''} <a href="https://bscscan.com/tx/${e.bobaiBurnTx}" target="_blank" rel="noopener">tx ↗</a></em></div>`).join('') : '');
+    const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });   // UTC once, in the heading: a phone kept each date on two lines
+    box.innerHTML = `<h4>The last burns <small class="cx03-u">UTC</small></h4>`
+      + (L.length ? L.map((e) => `<div class="cx01-r cx02-r"><i style="background:#ff7a3d"></i><span>${when(Date.parse(e.time))}</span><b></b><em>${cmp(+e.bobaiBurned)} $BOBAI${p > 0 ? ` ≈$${(+e.bobaiBurned * p).toFixed(2)}` : ''} <a href="https://bscscan.com/tx/${e.bobaiBurnTx}" target="_blank" rel="noopener">tx ↗</a></em></div>`).join('') : '<p class="cx02-s">Reading the bot’s log…</p>')
+      + `<p class="cx02-s cx03-k">Check it yourself: <a href="${dead}" target="_blank" rel="noopener">the dead address ↗</a> · <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">the contract ↗</a> · <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">the bot’s log ↗</a></p>`;
   }
   window.__card03.proof = () => proof03();
 

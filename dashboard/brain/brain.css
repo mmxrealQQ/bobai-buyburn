@@ -520,3 +520,11 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .cx5-g b{color:#f3efe6;font-weight:600}
 .cx5-p{color:var(--muted,#a0a2c0)}
 @media (max-width:600px){.cx5-r{grid-template-columns:18px minmax(0,1fr);row-gap:2px}.cx5-r span,.cx5-r em{grid-column:2}.cx5-r em{white-space:normal}.cx5-g{grid-template-columns:1fr;gap:2px}}
+/* 03 ON ONE SCREEN (operator, 2026-10-19, his choice): three figures, each with the line that says what it is */
+.bw-hero .hf3 small{display:block;margin-top:3px;font:500 11px 'Inter',sans-serif;color:var(--bp-muted,#a0a2c0);letter-spacing:0}
+.cx03{margin:12px 16px}
+.cx03 .cx02-r span{color:#dcd8ea}
+.cx03-k{margin-top:10px!important}
+.cx03-k a{color:var(--gold,#f0b90b);text-decoration:none}
+.cx03 .cx02-r span{white-space:nowrap}
+.cx03-u{font:600 10px var(--bp-mono,monospace);color:var(--bp-muted,#a0a2c0);letter-spacing:.1em;margin-left:6px}

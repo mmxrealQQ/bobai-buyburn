@@ -704,7 +704,7 @@ export async function infinityFind(token){
     const [c0,c1]=BigInt(q)<BigInt(token)?[q,token]:[token,q];   // currency0 is the lower address; native BNB (0x0) always
     ids.push(infPoolId(c0,c1,h,f,p));
   }
-  const r=await rpcBatch(ids.flatMap(id=>[call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]));
+  const r=await multicall(ids.flatMap(id=>[call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]));   // one request
   return ids.filter((id,i)=>{const s=r[2*i],l=r[2*i+1];return s&&s.length>=66&&hx('0x'+s.slice(2,66))>0n&&hx(l)>0n});
 }
 // How much quote money a pool found this way holds, as far as a trade can reach it: what a sell pays out by the time
@@ -724,13 +724,13 @@ export async function infReachUsd(pool,tokDec,px){
 // call are pinned to one block, so a busy pool cannot move between the rungs and their baseline.
 const INF_EPS=1000n;   // the second quote is 1/1000 larger
 async function infQuotes(pool,legs){
-  // three blocks back: a call split over two endpoints must find the block on both (19.10.: COLLECT's sell side came
-  // back empty when its half of the batch reached an endpoint one block behind the head the first had named)
-  const h0=await rpc('eth_blockNumber',[]).catch(()=>null),head=h0?'0x'+(parseInt(h0,16)-3).toString(16):null;
+  // ONE eth_call through Multicall3 (multicall, below): every quote from one block state by construction, and one
+  // outgoing request where a batch of 26–50 calls cost two or three — a Worker may make 50 per scan, and the Infinity
+  // path's reads had pushed the tax read past that on COLLECT (19.10.: "the log endpoint did not answer").
   const calls=legs.flatMap(([zf,a])=>[call(INF_CL_QUOTER,infQuote(pool.key,zf,a)),call(INF_CL_QUOTER,infQuote(pool.key,zf,a+a/INF_EPS))]);
-  const r=await rpcBatch(calls,undefined,head||'latest');
+  const r=await multicall(calls);
   const out=x=>x&&x.length>=66?Number(BigInt('0x'+x.slice(2,66))):null;
-  return {block:head?parseInt(head,16):null,legs:legs.map(([,a],i)=>{const o1=out(r[2*i]),o2=out(r[2*i+1]),da=Number(a/INF_EPS);
+  return {block:null,legs:legs.map(([,a],i)=>{const o1=out(r[2*i]),o2=out(r[2*i+1]),da=Number(a/INF_EPS);
     return {out:o1,marg:o1!=null&&o2!=null&&da>0&&o2>o1?(o2-o1)/da:null}})};
 }
 export async function ladderInf(pool,tokDec,px,taxB,taxS){
@@ -835,6 +835,10 @@ export const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840
       // Both are accepted; only the first is ever seen at this venue.
       SWAP_V3_T='0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83',
       SWAP_V3_UNI='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
+      // PancakeSwap Infinity CL's Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, …),
+      // emitted by the CLPoolManager with the pool id as topic 1 — its amounts are the SWAPPER's side, the reverse of
+      // V3: positive went to the trader, negative came from it (read off GWEI/USDT's own logs, 19.10.)
+      SWAP_INF_T='0x04206ad2b7c0f463bff3dd4f33c5735b0f2957a351e4f79763a4fa9e775dd237',
       XFER_T='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
       // A V2 pair's Mint(sender, amount0, amount1): liquidity added. Taken off BOBAI's own add (0xcfa93c73…).
       MINT_T='0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f';
@@ -865,6 +869,11 @@ export async function measureTax(token,pair,tokenIs0,kind){
     // while every other reading on the page said "the last hour", and a thin
     // pool was simulated where an hour of trades would have measured it.
     const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+    // AN INFINITY POOL (2026-10-19): `pair` is its id; its swaps are the manager's Swap logs with that id as topic 1,
+    // and its tokens move to and from the shared Vault — which stands where a pair's own address stands below. Only
+    // a transaction with ONE Infinity swap in it is read: the Vault is everybody's, so a second swap in the same
+    // transaction could move this token through it too.
+    const inf=kind==='inf',hold=inf?INF_VAULT:pair;
     // THE NEWEST TRADES FIRST, THE HOUR ONLY WHEN THEY ARE NOT ENOUGH
     // (2026-09-21). This read the whole hour and then used its newest sixteen
     // receipts. On the pools traded most that hour is more than the endpoint
@@ -881,7 +890,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
     // for SIZE is not retried — the same range has the same size.
     let tooLarge=false;
     const fetchWindow=async blocks=>{
-      const filter={address:pair,topics:topic,fromBlock:'0x'+(head-(blocks-1)).toString(16),toBlock:'0x'+head.toString(16)};
+      const filter={address:inf?INF_CL_PM:pair,topics:inf?[SWAP_INF_T,pair]:topic,fromBlock:'0x'+(head-(blocks-1)).toString(16),toBlock:'0x'+head.toString(16)};
       for(let pass=0;pass<2;pass++){
         if(pass)await new Promise(r=>setTimeout(r,900));
         for(const url of LOGS_RPCS){
@@ -908,6 +917,9 @@ export async function measureTax(token,pair,tokenIs0,kind){
       if(kind==='v3'){
         const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),mine=tokenIs0?a:b;
         tokOut=mine<0n?-mine:0n;tokIn=mine>0n?mine:0n;
+      }else if(inf){   // the swapper's side: positive came out to the trader, negative went in
+        const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),mine=tokenIs0?a:b;
+        tokOut=mine>0n?mine:0n;tokIn=mine<0n?-mine:0n;
       }else{
         const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
         tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;
@@ -932,7 +944,8 @@ export async function measureTax(token,pair,tokenIs0,kind){
       const pools=new Set(rec.logs.filter(isSwap).map(x=>x.address.toLowerCase()));
       // Our own pair swapped twice in one transaction cannot be matched to one
       // Swap event, so that transaction is skipped rather than misread.
-      if(rec.logs.filter(x=>isSwap(x)&&x.address.toLowerCase()===pair).length!==1)continue;
+      if(inf?rec.logs.filter(x=>x.topics[0]===SWAP_INF_T).length!==1||rec.logs.filter(x=>x.topics[0]===SWAP_INF_T&&x.topics[1]===pair).length!==1
+        :rec.logs.filter(x=>isSwap(x)&&x.address.toLowerCase()===pair).length!==1)continue;
       const xf=rec.logs.filter(x=>x.address.toLowerCase()===token&&x.topics[0]===XFER_T&&x.topics.length>=3)
         .map(x=>({from:'0x'+x.topics[1].slice(26),to:'0x'+x.topics[2].slice(26),v:U(x.data.slice(2)),
           i:parseInt(x.logIndex,16)}));
@@ -943,11 +956,11 @@ export async function measureTax(token,pair,tokenIs0,kind){
       // averaging it in would put a negative or a 300% tax on the page.
       const keep=(a,v)=>{if(isFinite(v)&&v>=-0.0001&&v<0.99)a.push(Math.max(0,v))};
       if(tokOut>0n){
-        const outs=xf.filter(x=>x.from===pair);
+        const outs=xf.filter(x=>x.from===hold);
         if(outs.length){const got=outs.reduce((m,x)=>x.v>m?x.v:m,0n);
           keep(buys,1-Number(got)/Number(tokOut))}
       }else{
-        const inn=xf.find(x=>x.to===pair);
+        const inn=xf.find(x=>x.to===hold);
         // A taxed sell emits its fee leg RIGHT NEXT to the transfer that funds
         // the swap — same call, adjacent log indices. Anything the same wallet
         // sends elsewhere in a long routed transaction is a different trade, not
@@ -955,7 +968,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
         // Two filters, because either alone leaves a hole: not to another pool,
         // and not four logs away from the transfer it is supposed to belong to.
         if(inn){const total=xf.filter(x=>x.from===inn.from&&Math.abs(x.i-inn.i)<=3&&
-            (x.to===pair||!pools.has(x.to)))
+            (x.to===hold||!pools.has(x.to)))
           .reduce((s,x)=>s+x.v,0n);
           // Above 50% this is not a tax reading, it is a mismatch. Real taxes
           // that high exist, but they cannot be told apart from a bad match, and

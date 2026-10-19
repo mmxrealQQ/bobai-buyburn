@@ -600,14 +600,12 @@ export async function scan(input, env) {
       : pool.tokenIs0;
   // How old the pool and the token are (contractAges): two or three archive
   // reads, started here so they run beside the tax read and cost no wait.
-  // An Infinity pool is a 32-byte id, not a contract: its age is not searched, and its swaps move the shared Vault's
-  // balances, so neither the tax read nor the sell test (both built on the pair's own transfers) applies yet — each says
-  // so instead of answering about the wrong thing (2026-10-19).
+  // An Infinity pool is a 32-byte id, not a contract: its age is not searched. Its tax is read like any pool's, off
+  // its own Swap logs and the token's transfers to and from the shared Vault (measureTax, 2026-10-19); the sell test,
+  // built on a pair's own transfers, does not apply yet and says so instead of answering about the wrong thing.
   const inf = pool.kind === 'inf';
   const agesP = contractAges(inf ? [token] : [pool.pair, token]).catch(() => null);
-  let tax = inf
-    ? { ok: false, reason: 'not read for a PancakeSwap Infinity pool yet: its tokens sit in the shared Vault, so its trades cannot be told apart by their transfers' }
-    : await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
   let sim = inf

@@ -668,15 +668,14 @@ function verdictCard(d,pool,gp,gpOk,tax){
           :'This token takes '+pc(d.taxB*100)+' when you buy and '+pc(d.taxS*100)+' when you sell.',
       (measured?'Measured from trades that actually executed, not read off the contract label.'
         :(d.simB||d.simS)?'Simulated on the chain at this block from a fresh address — the same trade run and its gap read, not a label. No executed trade was available to measure it from.'
-              :'Reported by GoPlus and not verified here — '+(pool.kind==='inf'?'the tax is not read from the trades of a PancakeSwap Infinity pool yet.':'no executed trade was available to measure it from.'))
+              :'Reported by GoPlus and not verified here — no executed trade was available to measure it from.')
       +' It is already included in the cost above.');
   }else if(measured){
     line('good','No transfer tax. You keep what you trade, minus the pool fee.',
       'Measured from trades that actually executed. A token can still add one later if its contract allows it.');
   }else{
-    // an Infinity pool's trades move the shared Vault's balances, so they are not read for the tax yet (2026-10-19)
     line('unknown','Whether it takes a transfer tax could not be established.',
-      (pool.kind==='inf'?'This is a PancakeSwap Infinity pool, whose trades are not read for the tax yet':'No executed trade was available to measure it from')+', and no label is trusted in its place. Treat the cost above as a floor.');
+      'No executed trade was available to measure it from, and no label is trusted in its place. Treat the cost above as a floor.');
   }
 
   // 3. Who can remove the liquidity. On a concentrated-liquidity pool there are
@@ -1028,8 +1027,8 @@ function render(d){
     w.appendChild(el('span',null,'Infinity keeps every pool’s tokens in one shared Vault, so this pool’s own reserves cannot be read on chain: its '+quoteSym+' backing below is '
       +(pool.liqSource==='quoter'?'what a sell pays out by the time it has halved the price, measured with the pool’s quoter (no index lists this pool)':'half of the index figure for it')
       +'. The trade costs and the 1% depth are not taken from that figure — PancakeSwap’s own Infinity quoter priced each size at block '+(tax&&tax.block||'—')+'.'
-      +(pool.hooks?' The pool runs a hook contract ('+short(pool.hooks)+') on every swap; it can set the fee per trade or refuse a trade, and every figure here ran through it. The tax is not read from trades for this pool yet, and the sell test is not run on it.'
-        :' No hook. The tax is not read from trades for this pool yet, and the sell test is not run on it.')));
+      +(pool.hooks?' The pool runs a hook contract ('+short(pool.hooks)+') on every swap; it can set the fee per trade or refuse a trade, and every figure here ran through it.':' No hook.')
+      +' The tax is read from this pool’s own trades through the Vault; the sell test is not run on an Infinity pool yet.'));
     o.appendChild(w);
   }
   const dep=card('How deep is it really?',
@@ -1712,16 +1711,15 @@ async function scanOnce(input){
     if(!(px>0))return fail('That pool is empty.','Both sides read back as zero — there is nothing to measure.');
 
     // How old the pool and the token are (contractAges, 2026-09-27): archive reads started now, beside the tax read.
-    // An Infinity pool is an id, not a contract: no age to search, and neither the tax read nor the sell test (both
-    // built on the pair's own transfers) applies — each says so (2026-10-19, as scanner-scan.js).
+    // An Infinity pool is an id, not a contract: no age to search. Its tax is read off its own Swap logs and the
+    // Vault's transfers (measureTax); the sell test does not apply yet and says so (2026-10-19, as scanner-scan.js).
     const inf=pool.kind==='inf';
     const agesP=contractAges(inf?[token]:[pool.pair,token]).catch(()=>null);
     at('measuring the tax from real trades…');
     const tokenIs0=pool.kind==='v2'
       ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
       : pool.tokenIs0;
-    const tax=inf?{ok:false,reason:'not read for a PancakeSwap Infinity pool yet: its tokens sit in the shared Vault, so its trades cannot be told apart by their transfers'}
-      :await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     at('simulating a sell…');
     const sim=inf?{ok:false,reason:'the sell test covers PancakeSwap V2 pairs and V3 pools; the sell side of this Infinity pool is priced by its own quoter below, hook included'}
       :await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);

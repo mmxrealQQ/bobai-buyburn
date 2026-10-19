@@ -25,6 +25,39 @@ const check = (ok, what, detail = '') => { ok ? pass++ : fail++; console.log(`${
     ? m.infPoolId('0x30117e4bc17d7b044194b76a38365c53b72f7d49', '0x55d398326f99059ff775485246999027b3197955', '0x72e09ebd9b24f47730b651889a4ed984cba53d90', 67, 0x0a0055)
     : null;
   check(id === '0x473e34fad874524a146022cfd7c9df2af73988adeea0f21629dbb8c301305a17', 'offline: the id derived from GWEI/USDT\'s key is its pool id', String(id));
+
+  // THE TAX THROUGH THE VAULT (2026-10-19), on a made-up chain: none of the 106 tokens in the largest Infinity pools
+  // carries a transfer tax, so a taxed trade is built here. A buy the pool paid out as 100 arrives as 97 (3 to a tax
+  // wallet); a sell sends 100 of which the Vault gets 95; a transaction with a second Infinity swap in it — the Vault
+  // is everybody's — must be skipped, or its unrelated transfer would read as a 50% tax.
+  const PM = '0xa0ffb9c1ce1fe56963b0321b32e7a0302114058b', VAULT = '0x238a358808379702088667322f80ac48bad5e6c4';
+  const SWAP = '0x04206ad2b7c0f463bff3dd4f33c5735b0f2957a351e4f79763a4fa9e775dd237', XFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const TOK = '0x1111111111111111111111111111111111111111', POOL = '0x' + 'ab'.repeat(32), OTHER = '0x' + 'cd'.repeat(32);
+  const w = (v) => (BigInt.asUintN(256, BigInt(v))).toString(16).padStart(64, '0'), t = (a) => '0x' + a.slice(2).padStart(64, '0');
+  const E = 10n ** 18n, buyer = '0x' + '22'.repeat(20), seller = '0x' + '33'.repeat(20), taxw = '0x' + '44'.repeat(20);
+  const swap = (id, a0, tx) => ({ address: PM, topics: [SWAP, id, t(buyer)], data: '0x' + w(a0) + w(0) + w(0) + w(0) + w(0) + w(0) + w(0), transactionHash: tx, logIndex: '0x0' });
+  const xf = (from, to, v, i) => ({ address: TOK, topics: [XFER, t(from), t(to)], data: '0x' + w(v), logIndex: '0x' + i.toString(16) });
+  const TX = {
+    '0x01': [swap(POOL, 100n * E, '0x01'), xf(VAULT, buyer, 97n * E, 1), xf(VAULT, taxw, 3n * E, 2)],
+    '0x02': [swap(POOL, -95n * E, '0x02'), xf(seller, VAULT, 95n * E, 1), xf(seller, taxw, 5n * E, 2)],
+    '0x03': [swap(POOL, 100n * E, '0x03'), swap(OTHER, 5n * E, '0x03'), xf(VAULT, buyer, 50n * E, 1)],
+  };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => {
+    const ask = JSON.parse(init.body), one = (q) => {
+      if (q.method === 'eth_blockNumber') return { jsonrpc: '2.0', id: q.id, result: '0x3e8' };
+      if (q.method === 'eth_getLogs') return { jsonrpc: '2.0', id: q.id, result: q.params[0].topics?.[1] === POOL ? Object.values(TX).map((l) => l[0]) : [] };
+      if (q.method === 'eth_getTransactionReceipt') return { jsonrpc: '2.0', id: q.id, result: { logs: TX[q.params[0]] || [] } };
+      if (q.method === 'eth_getBlockByNumber') return { jsonrpc: '2.0', id: q.id, result: { timestamp: '0x0' } };
+      return { jsonrpc: '2.0', id: q.id, result: '0x' };
+    };
+    return new Response(JSON.stringify(Array.isArray(ask) ? ask.map(one) : one(ask)), { headers: { 'content-type': 'application/json' } });
+  };
+  let tx;
+  try { tx = await m.measureTax(TOK, POOL, true, 'inf'); } finally { globalThis.fetch = realFetch; }
+  check(tx?.ok && Math.abs(tx.buy - 0.03) < 1e-9, 'offline: a 3% buy tax is read through the Vault', JSON.stringify(tx && { ok: tx.ok, buy: tx.buy, n: tx.nBuy, reason: tx.reason }));
+  check(tx?.ok && Math.abs(tx.sell - 0.05) < 1e-9, 'offline: a 5% sell tax is read through the Vault', JSON.stringify(tx && { sell: tx.sell, n: tx.nSell }));
+  check(tx?.nBuy === 1, 'offline: a transaction with a second Infinity swap is skipped, not read as a 50% tax', JSON.stringify(tx?.spread));
 }
 
 const INF = [
@@ -44,6 +77,7 @@ for (const [t, name, quote] of INF) {
   const rows = j.tradeCost || [];
   check(rows.length === 6 && rows.every((r) => r.buyCostPct > 0 && r.sellCostPct > 0 && r.buyCostPct < 50 && r.sellCostPct < 50), `${name}: a cost for every size, each way`, rows.map((r) => `${r.sizeUsd}:${r.buyCostPct}/${r.sellCostPct}`).join(' '));
   check(rows.every((r, i) => !i || r.buyCostPct >= rows[i - 1].buyCostPct - 0.002), `${name}: a larger buy never costs less`);
+  check(j.tax?.buySource === 'measured' || j.tax?.sellSource === 'measured' || /has not traded/.test(j.tax?.reason || ''), `${name}: the tax is measured from its own trades through the Vault`, `${j.tax?.buyPct}%/${j.tax?.sellPct}% · ${j.tax?.source} · trades ${JSON.stringify(j.tax?.tradesMeasured || null)}`);
   check(j.onePercentDepth?.buyUsd > 0 && j.onePercentDepth?.sellUsd > 0, `${name}: the 1% depth each way`, `${j.onePercentDepth?.buyUsd} / ${j.onePercentDepth?.sellUsd}`);
   const ds = await (await fetch(`https://api.dexscreener.com/latest/dex/tokens/${t}`)).json().catch(() => null);
   const ref = (ds?.pairs || []).filter((x) => x.chainId === 'bsc' && x.priceUsd).sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];

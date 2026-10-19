@@ -88,6 +88,21 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   ok('a day that is no date is 400', (await call('/stats/detail?day=x')).status === 400);
   const empty = await (await call('/stats/detail?day=2020-01-01')).json();
   ok('a day without counts is empty, not an error', empty.isolates === 0 && Object.keys(empty.names).length === 0);
+
+  // The pool-scan line is written at once (2026-10-19): a count still in an isolate's memory is lost when it is evicted.
+  // Nothing moves the clock here — the flush just above set it, so an ordinary name waits its five minutes.
+  // This isolate's day is past its 300 names, so new ones read as "other": the pins compare the sum written.
+  const written = () => Object.values(JSON.parse(store.get(detailKeys[0]) || '{}')).reduce((a, b) => a + b, 0);
+  const before = written();
+  await hit({ detail: 'mcp:quiet' });
+  await Promise.all(waits);
+  ok('an ordinary name waits for the next flush', written() === before, `${before} -> ${written()}`);
+  await hit({ detail: ['poolscan:nooffer:v2', 'poolscanua:haplo-trading'] });
+  await Promise.all(waits);
+  ok('a pool-scan name is in KV at once, with what waited before it', written() === before + 3, `${before} -> ${written()}`);
+  await hit({ detail: 'sell:scanpass:terms' });
+  await Promise.all(waits);
+  ok('… and so is a step of the scan day pass', written() === before + 4, `${before} -> ${written()}`);
 }
 
 // ---------------------------------------------------------------- dashboard

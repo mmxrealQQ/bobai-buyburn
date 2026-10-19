@@ -12,9 +12,10 @@
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,priceQuote,flapInfo,flapLadder,UNI_QUOTER,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
+  ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
+  measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=36';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=37';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -667,14 +668,15 @@ function verdictCard(d,pool,gp,gpOk,tax){
           :'This token takes '+pc(d.taxB*100)+' when you buy and '+pc(d.taxS*100)+' when you sell.',
       (measured?'Measured from trades that actually executed, not read off the contract label.'
         :(d.simB||d.simS)?'Simulated on the chain at this block from a fresh address — the same trade run and its gap read, not a label. No executed trade was available to measure it from.'
-              :'Reported by GoPlus and not verified here — no executed trade was available to measure it from.')
+              :'Reported by GoPlus and not verified here — '+(pool.kind==='inf'?'the tax is not read from the trades of a PancakeSwap Infinity pool yet.':'no executed trade was available to measure it from.'))
       +' It is already included in the cost above.');
   }else if(measured){
     line('good','No transfer tax. You keep what you trade, minus the pool fee.',
       'Measured from trades that actually executed. A token can still add one later if its contract allows it.');
   }else{
+    // an Infinity pool's trades move the shared Vault's balances, so they are not read for the tax yet (2026-10-19)
     line('unknown','Whether it takes a transfer tax could not be established.',
-      'No executed trade was available to measure it from, and no label is trusted in its place. Treat the cost above as a floor.');
+      (pool.kind==='inf'?'This is a PancakeSwap Infinity pool, whose trades are not read for the tax yet':'No executed trade was available to measure it from')+', and no label is trusted in its place. Treat the cost above as a floor.');
   }
 
   // 3. Who can remove the liquidity. On a concentrated-liquidity pool there are
@@ -962,6 +964,7 @@ function render(d){
   const meta=el('div','hd-m');
   meta.appendChild(el('span','badge',pool.kind==='v3'
     ? 'PancakeSwap V3 · '+(pool.fee*100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'% tier'
+    : pool.kind==='inf'?'PancakeSwap Infinity CL · '+(+(pool.fee*100).toFixed(4))+'% fee'+(pool.hooks?' · hook':'')
     : (pool.venue||'PancakeSwap V2')+' · '+(pool.fee*100).toFixed(2)+'% fee'));
   meta.appendChild(el('span','badge badge-q',symb+' / '+quoteSym));
   if(gp.launchpad_token&&gp.launchpad_token.launchpad_name)
@@ -969,7 +972,10 @@ function render(d){
   head.appendChild(meta);
   const lnk=el('div','hd-l');
   lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
-    link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
+    // an Infinity pool is an id inside the pool manager, not an address BscScan can open: its hook can be
+    pool.kind==='inf'
+      ? link('Pool id '+short(pool.pair),pool.hooks?'https://bscscan.com/address/'+pool.hooks:'https://bscscan.com/address/'+pool.key.pm)
+      : link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
     link('DexScreener','https://dexscreener.com/bsc/'+pool.pair),
     // The same reading as an agent gets it: the page proves the API works,
     // so the page names the API (2026-09-12).
@@ -1014,7 +1020,18 @@ function render(d){
   // pool holds 36% quote, and as the price falls its positions convert toward
   // the token side, buying the quote out. Printing the V2 sentence over a V3
   // pool is right about the number and wrong about what it means.
-  const v3=pool.kind==='v3';
+  const v3=pool.kind==='v3'||pool.kind==='inf';
+  // PANCAKESWAP INFINITY (2026-10-19): what is read differently, said before any figure — the same words as the API
+  if(pool.kind==='inf'){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'A PancakeSwap Infinity pool.'));
+    w.appendChild(el('span',null,'Infinity keeps every pool’s tokens in one shared Vault, so this pool’s own reserves cannot be read on chain: its '+quoteSym+' backing below is '
+      +(pool.liqSource==='quoter'?'what a sell pays out by the time it has halved the price, measured with the pool’s quoter (no index lists this pool)':'half of the index figure for it')
+      +'. The trade costs and the 1% depth are not taken from that figure — PancakeSwap’s own Infinity quoter priced each size at block '+(tax&&tax.block||'—')+'.'
+      +(pool.hooks?' The pool runs a hook contract ('+short(pool.hooks)+') on every swap; it can set the fee per trade or refuse a trade, and every figure here ran through it. The tax is not read from trades for this pool yet, and the sell test is not run on it.'
+        :' No hook. The tax is not read from trades for this pool yet, and the sell test is not run on it.')));
+    o.appendChild(w);
+  }
   const dep=card('How deep is it really?',
     v3?'The two sides of a concentrated-liquidity pool are not balanced — what sits here is whatever the current price has left in range. The '+quoteSym+' side is still the half that does not depend on this token being worth anything.'
       :'Half of any “liquidity” headline is the token itself, valued at its own price — it shrinks exactly when it would be needed. The '+quoteSym+' side is the half that holds.');
@@ -1569,10 +1586,25 @@ async function scanOnce(input){
     // Venues from DexScreener, which indexes the small DEXes; GoPlus's list is
     // the fallback and only covers what it happens to know.
     at('checking where else it trades…');
-    const dsAll=await venues(token);
+    const dsAll=(await venues(token))||[];
+    // PancakeSwap Infinity CL pools found from their keys on chain and sized by the quoter (2026-10-19, infinityFind;
+    // the same as scanner-scan.js): measured even when an index lists them, the larger figure stands.
+    if(what.kind!=='v2pair'&&what.kind!=='v3pool'){
+      at('looking for PancakeSwap Infinity pools…');
+      for(const id of (await infinityFind(token).catch(()=>[])).slice(0,3)){
+        const f=await infinityPool(token,tokDec,bnbUsd,{pair:id,probe:true}).catch(()=>null);
+        if(!f)continue;
+        const liq=Math.round(2*(await infReachUsd(f.pool,tokDec,f.px).catch(()=>0)));
+        const listed=Math.max(0,...dsAll.filter(x=>x.pair===id).map(x=>x.liq||0),...(gp.dex||[]).filter(x=>String(x.pair||'').toLowerCase()===id).map(x=>parseFloat(x.liquidity)||0));
+        if(!(liq>listed))continue;
+        for(let i=dsAll.length-1;i>=0;i--)if(dsAll[i].pair===id)dsAll.splice(i,1);
+        dsAll.push({pair:id,name:'PancakeSwap Infinity CL '+(+(f.pool.fee*100).toFixed(4))+'%',quote:f.hop.sym,liq,source:'quoter'});
+      }
+      dsAll.sort((a,b)=>b.liq-a.liq);
+    }
     // A deeper PancakeSwap pool quoted in CAKE, BTCB, SOL… (2026-10-18, indexedPool; as in scanner-scan.js).
     if(what.kind!=='v2pair'&&what.kind!=='v3pool'){
-      const idx=[...(dsAll||[]).map(x=>({pair:x.pair,liquidity:x.liq||0})),
+      const idx=[...(dsAll||[]).map(x=>({pair:x.pair,liquidity:x.liq||0,source:x.source})),
         ...(gp.dex||[]).map(x=>({pair:String(x.pair||'').toLowerCase(),liquidity:parseFloat(x.liquidity)||0}))]
         .sort((a,b)=>b.liquidity-a.liquidity);
       const cur=pool?pool.pair.toLowerCase():null;
@@ -1584,7 +1616,7 @@ async function scanOnce(input){
         if(found){pool=found.pool;hop=found.hop}
       }
     }
-    const others=dsAll
+    const others=dsAll.length
       ? dsAll.filter(x=>!pool||x.pair!==pool.pair.toLowerCase())
         .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq}))
       : (gp.dex||[]).filter(x=>x.pair&&(!pool||x.pair.toLowerCase()!==pool.pair.toLowerCase()))
@@ -1672,7 +1704,7 @@ async function scanOnce(input){
     // then reappeared as a nonsensical "you pay 32.8%". V3 keeps its price in
     // sqrtPriceX96, so that is where it is read from.
     let px;
-    if(pool.kind==='v3'){
+    if(pool.kind==='v3'||pool.kind==='inf'){
       const d0=pool.tokenIs0?tokDec:18,d1=pool.tokenIs0?18:tokDec,
             r=Math.pow(Number(pool.sqrt)/Math.pow(2,96),2)*Math.pow(10,d0-d1);
       px=(pool.tokenIs0?r:1/r)*pool.usd;
@@ -1680,14 +1712,19 @@ async function scanOnce(input){
     if(!(px>0))return fail('That pool is empty.','Both sides read back as zero — there is nothing to measure.');
 
     // How old the pool and the token are (contractAges, 2026-09-27): archive reads started now, beside the tax read.
-    const agesP=contractAges([pool.pair,token]).catch(()=>null);
+    // An Infinity pool is an id, not a contract: no age to search, and neither the tax read nor the sell test (both
+    // built on the pair's own transfers) applies — each says so (2026-10-19, as scanner-scan.js).
+    const inf=pool.kind==='inf';
+    const agesP=contractAges(inf?[token]:[pool.pair,token]).catch(()=>null);
     at('measuring the tax from real trades…');
     const tokenIs0=pool.kind==='v2'
       ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
       : pool.tokenIs0;
-    const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    const tax=inf?{ok:false,reason:'not read for a PancakeSwap Infinity pool yet: its tokens sit in the shared Vault, so its trades cannot be told apart by their transfers'}
+      :await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     at('simulating a sell…');
-    const sim=await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    const sim=inf?{ok:false,reason:'the sell test covers PancakeSwap V2 pairs and V3 pools; the sell side of this Infinity pool is priced by its own quoter below, hook included'}
+      :await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     // A blank label is no label: Number("") is 0 and would read as a labelled 0%.
     const lab2=v=>(v==null||String(v).trim()===''||!isFinite(Number(v))?NaN:Number(v));
     const gB=lab2(gp.buy_tax),gS=lab2(gp.sell_tax);
@@ -1711,6 +1748,11 @@ async function scanOnce(input){
       rows=ladderV2(pool.tok,pool.q,pool.fee,taxB,taxS,px,pool.usd);
       up=onePctV2(pool.q,pool.fee,1.01)*pool.usd;
       down=onePctV2(pool.tok,pool.fee,1/0.99)/(1-taxS)*px;
+    }else if(inf){
+      rows=await ladderInf(pool,tokDec,px,taxB,taxS);
+      const oc=await onePctInf(pool,tokDec,px,taxS);
+      up=oc.up;down=oc.down;upMin=oc.upMin;downMin=oc.downMin;
+      if(rows.block&&tax.block==null)tax.block=rows.block;
     }else{
       rows=await ladderV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
         taxB,taxS,pool.sqrt,pool.tokenIs0,pool.quoter);
@@ -1743,7 +1785,7 @@ async function scanOnce(input){
     at('reading who holds the LP and who trades it…');
     const [custody,activity]=await Promise.all([
       pool.kind==='v2'?lpCustody({pair:pool.pair,lpTot,feeTo,gp,head:tax.block}).catch(()=>null):null,
-      readActivity(token,pool.pair.toLowerCase(),tokenIs0,pool.kind,tax,pool.usd).catch(()=>null)]);
+      inf?null:readActivity(token,pool.pair.toLowerCase(),tokenIs0,pool.kind,tax,pool.usd).catch(()=>null)]);
     const ages=await agesP;
     const age={pool:custody&&custody.pairCreatedAt?{createdAt:custody.pairCreatedAt,ageHours:(Date.now()-Date.parse(custody.pairCreatedAt))/3.6e6,exact:true}
       :(ages&&ages[pool.pair.toLowerCase()])||null,token:(ages&&ages[token])||null};
@@ -1753,7 +1795,7 @@ async function scanOnce(input){
       .catch(()=>({unknown:true,reason:'the balances could not be read from the chain'}));
     // Who is selling (readFlow, 2026-09-27): its log read runs beside the holder read, the same code as the API.
     const [holders,flow]=await Promise.all([holdersP,
-      readFlow({token,pair:pool.pair,kind:pool.kind,tokenIs0,activity,holders:holdersP,custody,gp,ageToken:age.token,agePool:age.pool,
+      inf?null:readFlow({token,pair:pool.pair,kind:pool.kind,tokenIs0,activity,holders:holdersP,custody,gp,ageToken:age.token,agePool:age.pool,
         supply,burned,tokDec,quoteUsd:pool.usd,pools:others.map(o=>o.pair)}).catch(()=>null)]);
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,

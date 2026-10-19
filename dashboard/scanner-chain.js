@@ -434,6 +434,12 @@ export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
   for(const o of (list||[]).slice(0,3)){
     if(!((o.liquidity||0)>=1000))break;
     const pair=String(o.pair||'').toLowerCase();
+    // a 32-byte id is a PancakeSwap Infinity CL pool (2026-10-19)
+    if(/^0x[0-9a-f]{64}$/.test(pair)){
+      const f=await infinityPool(token,tokDec,bnbUsd,o).catch(()=>null);
+      if(f&&f.pool.hard>beat&&f.pool.tok>0)return f;
+      continue;
+    }
     if(!/^0x[0-9a-f]{40}$/.test(pair))continue;
     let w;try{w=await classify(pair)}catch(e){continue}
     if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&(w.pancake||w.uniswap)))continue;
@@ -624,6 +630,151 @@ export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBe
   // trader sends, and the tax was taken off inside the quoted amount, so there
   // is nothing left to scale here.
   const u=cross(0),d=cross(probes.length);
+  return {up:u.v,down:d.v,upMin:u.min,downMin:d.min};
+}
+
+// === PANCAKESWAP INFINITY CL (2026-10-19) ===
+// The largest market the scan could not read: on 18.10. a sample of 45 active BSC tokens put four "elsewhere", their
+// money in Pancake Infinity CL pools (GWEI: $907k there against $28k in its Uniswap pool). Infinity is one singleton
+// CLPoolManager; a pool is a bytes32 id, its key (currency0, currency1, hooks, poolManager, fee, parameters) is read
+// with poolIdToPoolKey, and every pool's tokens sit together in one Vault — so a pool's own reserves cannot be read
+// with balanceOf, and its quote side is the index's figure, said as such. A pool may carry a HOOK contract that runs on
+// every swap and can change the fee or refuse a trade: every price below is therefore asked of PancakeSwap's own
+// CLQuoter, which runs the hook — never computed from the pool's maths alone. Addresses from PancakeSwap's developer
+// docs, each checked on chain (19.10.: GWEI/USDT's key read back with this manager as its poolManager, the quoter
+// answered 100 USDT -> 4,535.75 GWEI against 4,536.6 at spot). Currency 0x0 is native BNB.
+export const INF_CL_PM='0xa0ffb9c1ce1fe56963b0321b32e7a0302114058b',INF_CL_QUOTER='0xd0737c9762912dd34c3271197e362aa736df0926',
+  INF_VAULT='0x238a358808379702088667322f80ac48bad5e6c4';
+const INF={key:'0x0e2d484a',slot0:'0xc815641c',liq:'0xfa6793d5',quote:'0x9938b8ed'};
+// quoteExactInputSingle(((c0,c1,hooks,pm,fee,params),zeroForOne,exactAmount,hookData)), hookData empty — encoded by
+// hand (this file runs in the browser too) and checked equal to viem's encoding.
+const infQuote=(k,zf,amt)=>INF.quote+num(0x20)+pad(k.c0)+pad(k.c1)+pad(k.hooks)+pad(k.pm)+num(k.fee)+k.params.slice(2)
+  +num(zf?1:0)+num(amt)+num(0x120)+num(0);
+const signed24=h=>{let v=Number(BigInt('0x'+h)&0xffffffn);return v>=0x800000?v-0x1000000:v};
+// One index entry (a 32-byte pool id) -> a pool this scan can price, or null. Quoted in BNB, a stablecoin, or any
+// 18-decimal token with a BNB pool of its own (priceQuote), exactly as the V2/V3 index path.
+export async function infinityPool(token,tokDec,bnbUsd,o){
+  const id=String(o.pair||'').toLowerCase();
+  if(!/^0x[0-9a-f]{64}$/.test(id))return null;
+  const r=await rpcBatch([call(INF_CL_PM,INF.key+id.slice(2)),call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]);
+  const h=r[0];if(!h||h.length<2+64*6)return null;
+  const w=i=>h.slice(2+64*i,2+64*(i+1));
+  const k={c0:'0x'+w(0).slice(24),c1:'0x'+w(1).slice(24),hooks:'0x'+w(2).slice(24),pm:'0x'+w(3).slice(24),fee:Number(BigInt('0x'+w(4))),params:'0x'+w(5)};
+  if(k.pm!==INF_CL_PM)return null;                  // a Bin pool or another manager: not this maths
+  if(k.c0!==token&&k.c1!==token)return null;
+  const s=r[1];if(!s||s.length<2+64*4)return null;
+  const sqrt=BigInt('0x'+s.slice(2,66)),lpFee=Number(BigInt('0x'+s.slice(2+64*3,2+64*4)));
+  if(!(sqrt>0n))return null;
+  const tokenIs0=k.c0===token,quote=tokenIs0?k.c1:k.c0,quoteP=quote===NULLA?WBNB:quote;
+  const hop=await priceQuote(quoteP,bnbUsd).catch(()=>null);
+  if(!hop)return null;
+  const d0=tokenIs0?tokDec:18,d1=tokenIs0?18:tokDec,ratio=sqrtToPrice(sqrt,d0,d1);
+  const px=(tokenIs0?ratio:1/ratio)*hop.usd;
+  if(!(px>0)||!isFinite(px))return null;
+  if(o.probe)return {pool:{kind:'inf',pair:id,quote,sym:hop.sym,usd:hop.usd,fee:lpFee/1e6,feeRaw:lpFee,sqrt,tokenIs0,key:k},hop,px};
+  const half=(o.liquidity||0)/2;
+  const pool={kind:'inf',pair:id,quote,sym:hop.sym,usd:hop.usd,fee:lpFee/1e6,feeRaw:lpFee,sqrt,tokenIs0,key:k,
+    venue:'PancakeSwap Infinity CL',hooks:k.hooks===NULLA?null:k.hooks,tickSpacing:signed24(w(5).slice(-10,-4))||null,   // parameters: hook bitmap in the low 16 bits, tickSpacing in the 24 above
+    tick:signed24(s.slice(66,130)),liquidity:String(hx(r[2])),
+    q:half/hop.usd,tok:half/px,hard:half,indexLiquidityUsd:Math.round(o.liquidity||0),liqSource:o.source||'index'};
+  return {pool,hop};
+}
+// FINDING THEM WITHOUT AN INDEX. The indexes this scan reads list some Infinity pools and miss others (19.10.: DNA's
+// $1.7M pool, KII's and AEON's $1M ones were in neither, and the scan measured a side pool at Uniswap). There is no
+// factory to ask, but a pool's id is keccak256 of its key, and the keys in use cluster: the 80 largest Infinity CL
+// pools on 19.10. ($55M+) sat on a few (hooks, fee, parameters) combinations, read off each pool's own key. Every
+// combination below is tried against BNB and the four dollar tokens; the chain says which ids exist.
+// keccak256 is keccakHex, further down (the sell test uses it for storage slots).
+// [hooks, fee, parameters] — the combinations of the largest pools, 19.10. (pools, value): 0x72e0… 67 0a0055 (18,
+// $20.8M) · 0xb0ba…0d0f 67 0a0045 (13, $17.1M) · 0x9a9b…53fd 67 0a0055 (7, $8.0M) and 0f0055 · 0xb0bb…46af 67 with
+// tickSpacing 1, 2 and 10 (9, $9.0M) · no hook, 67, tickSpacing 1 and 10 (5, $2.6M).
+const INF_COMBOS=[['0x72e09ebd9b24f47730b651889a4ed984cba53d90',67,0x0a0055],['0xb0baa371b899950b4ef6a27c21baf5ef7c434d0f',67,0x0a0045],
+  ['0x9a9b5331ce8d74b2b721291d57de696e878353fd',67,0x0a0055],['0x9a9b5331ce8d74b2b721291d57de696e878353fd',67,0x0f0055],
+  ['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x010045],['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x020045],
+  ['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x0a0045],[NULLA,67,0x010000],[NULLA,67,0x0a0000]];
+const INF_QUOTES=[NULLA,'0x55d398326f99059ff775485246999027b3197955','0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+  '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d','0xce24439f2d9c6a2289f741120fe202248b666666'];
+export const infPoolId=(c0,c1,hooks,fee,params)=>keccakHex('0x'+pad(c0)+pad(c1)+pad(hooks)+pad(INF_CL_PM)+num(fee)+num(params));
+// The ids of this token's Infinity CL pools that exist (a price set and liquidity in range), from the combinations above.
+export async function infinityFind(token){
+  token=String(token||'').toLowerCase();
+  const ids=[];
+  for(const q of INF_QUOTES)for(const [h,f,p] of INF_COMBOS){
+    if(q===token)continue;
+    const [c0,c1]=BigInt(q)<BigInt(token)?[q,token]:[token,q];   // currency0 is the lower address; native BNB (0x0) always
+    ids.push(infPoolId(c0,c1,h,f,p));
+  }
+  const r=await rpcBatch(ids.flatMap(id=>[call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]));
+  return ids.filter((id,i)=>{const s=r[2*i],l=r[2*i+1];return s&&s.length>=66&&hx('0x'+s.slice(2,66))>0n&&hx(l)>0n});
+}
+// How much quote money a pool found this way holds, as far as a trade can reach it: what a sell pays out by the time
+// it has halved the price (the quoter, hook included; the largest probe's payout as a floor when none halves it).
+// Twice that stands in for the index's two-sided figure — said as measured, never as the index's.
+export async function infReachUsd(pool,tokDec,px){
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i));
+  const dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const q=await infQuotes(pool,[[pool.tokenIs0,dustT],...probes.map(u=>[pool.tokenIs0,BigInt(Math.floor(u/px*Math.pow(10,tokDec)))])]);
+  const [d,...r]=q.legs;let best=0;
+  for(const x of r){if(x.out==null)break;best=x.out/1e18*pool.usd;if(x.marg&&d.marg&&x.marg/d.marg<=0.5)break}
+  return best;
+}
+// The quoter answers only the amount out, not the price after. The price after a trade is read as the MARGINAL rate
+// there: a second quote 0.1% larger, the extra output over the extra input — the same thing the pool would quote for
+// the next unit, hook and fee included, ticks crossed or not. Before = the same at a ~$1 dust size. All quotes of one
+// call are pinned to one block, so a busy pool cannot move between the rungs and their baseline.
+const INF_EPS=1000n;   // the second quote is 1/1000 larger
+async function infQuotes(pool,legs){
+  // three blocks back: a call split over two endpoints must find the block on both (19.10.: COLLECT's sell side came
+  // back empty when its half of the batch reached an endpoint one block behind the head the first had named)
+  const h0=await rpc('eth_blockNumber',[]).catch(()=>null),head=h0?'0x'+(parseInt(h0,16)-3).toString(16):null;
+  const calls=legs.flatMap(([zf,a])=>[call(INF_CL_QUOTER,infQuote(pool.key,zf,a)),call(INF_CL_QUOTER,infQuote(pool.key,zf,a+a/INF_EPS))]);
+  const r=await rpcBatch(calls,undefined,head||'latest');
+  const out=x=>x&&x.length>=66?Number(BigInt('0x'+x.slice(2,66))):null;
+  return {block:head?parseInt(head,16):null,legs:legs.map(([,a],i)=>{const o1=out(r[2*i]),o2=out(r[2*i+1]),da=Number(a/INF_EPS);
+    return {out:o1,marg:o1!=null&&o2!=null&&da>0&&o2>o1?(o2-o1)/da:null}})};
+}
+export async function ladderInf(pool,tokDec,px,taxB,taxS){
+  const buyZ=!pool.tokenIs0,sellZ=pool.tokenIs0,qu=pool.usd;
+  const dust=BigInt(Math.max(1e6,Math.floor(1/qu*1e18)));
+  const amtsBuy=STEPS.map(u=>BigInt(Math.floor(u/qu*1e18))),amtsSell=STEPS.map(u=>BigInt(Math.floor(u/px*(1-taxS)*Math.pow(10,tokDec))));
+  const dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const q=await infQuotes(pool,[[buyZ,dust],[sellZ,dustT],...amtsBuy.map(a=>[buyZ,a]),...amtsSell.map(a=>[sellZ,a])]);
+  const [db,ds,...r]=q.legs;
+  // spot from the dust buy, the fee added back (as ladderV3): cost is a comparison against the mid price
+  const spot=db.out>0?(Number(dust)/1e18)*(1-pool.fee)/(db.out/Math.pow(10,tokDec))*qu:px;
+  const RUNS_OUT='the pool runs out at this size';
+  const rows=STEPS.map((u,i)=>{
+    const b=r[i],s=r[STEPS.length+i];
+    const gotTok=b.out!=null?b.out/Math.pow(10,tokDec)*(1-taxB):null,gotQ=s.out!=null?s.out/1e18:null;
+    const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/((1-taxS)>0?(1-taxS):1);
+    const bMove=b.marg&&db.marg?(db.marg/b.marg-1)*100:null,sMove=s.marg&&ds.marg?(s.marg/ds.marg-1)*100:null;
+    const bDry=b.out==null||(bMove!=null&&bMove>1000),sDry=s.out==null||(sMove!=null&&sMove< -99);
+    return {usd:u,
+      buyMove:bDry?null:bMove,buyCost:!bDry&&gotTok!=null?(1-(gotTok*spot)/u)*100:null,buyNote:bDry?RUNS_OUT:null,
+      sellMove:sDry?null:sMove,sellCost:!sDry&&gotQ!=null&&sentTok>0?(1-(gotQ*qu)/(sentTok*spot))*100:null,sellNote:sDry?RUNS_OUT:null};
+  });
+  rows.block=q.block;rows.spot=spot;
+  return rows;
+}
+// The size that moves the price 1%, each way: the same geometric sweep and log-space crossing as onePctV3, the move
+// read from the marginal rate. A floor ("more than …") when every quotable probe stayed under 1%.
+export async function onePctInf(pool,tokDec,px,taxS=0){
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i)),qu=pool.usd,surv=1-(taxS||0);
+  const buyZ=!pool.tokenIs0,sellZ=pool.tokenIs0;
+  const dust=BigInt(Math.max(1e6,Math.floor(1/qu*1e18))),dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const q=await infQuotes(pool,[[buyZ,dust],[sellZ,dustT],
+    ...probes.map(u=>[buyZ,BigInt(Math.floor(u/qu*1e18))]),...probes.map(u=>[sellZ,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec)))])]);
+  const [db,ds,...r]=q.legs;
+  const cross=(off,base,buy)=>{
+    const pts=probes.map((u,i)=>{const m=r[off+i].marg;return {u,m:m&&base.marg?Math.abs((buy?base.marg/m:m/base.marg)-1)*100:null}}).filter(p=>p.m!=null&&p.m>0);
+    if(!pts.length)return {v:null,min:null};
+    for(let i=1;i<pts.length;i++)if(pts[i].m>=1&&pts[i-1].m<1){
+      const a=pts[i-1],b=pts[i],t=(Math.log(1)-Math.log(a.m))/(Math.log(b.m)-Math.log(a.m));
+      return {v:Math.exp(Math.log(a.u)+t*(Math.log(b.u)-Math.log(a.u))),min:null};
+    }
+    const last=pts[pts.length-1];return {v:null,min:last.m<1?last.u:null};
+  };
+  const u=cross(0,db,true),d=cross(probes.length,ds,false);
   return {up:u.v,down:d.v,upMin:u.min,downMin:d.min};
 }
 

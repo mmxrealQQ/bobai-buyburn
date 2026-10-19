@@ -17,8 +17,9 @@
 import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, indexedPool, UNI_QUOTER, priceQuote, flapInfo, flapLadder, FLAP_PORTAL,
-  ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
+  classify, priceToken, discover, indexedPool, UNI_QUOTER, priceQuote, flapInfo, flapLadder, FLAP_PORTAL, INF_CL_QUOTER,
+  infinityFind, infinityPool, infReachUsd,
+  ladderV2, onePctV2, ladderV3, onePctV3, ladderInf, onePctInf, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
 } from './scanner-chain.js';
@@ -374,13 +375,30 @@ export async function scan(input, env) {
   // $75 pool as holding a third of the token's liquidity, with a round trip
   // "returning 1%" — a liquid token that read like a honeypot. The right
   // refusal came only on the calls where DexScreener happened to fail.
-  const dsAll = await venues(token);
+  const dsAll = (await venues(token)) || [];
+  // PancakeSwap Infinity CL pools no index lists (2026-10-19, infinityFind): found from their keys on chain, sized by
+  // the quoter, and put beside the index's pools — named as measured, never as an index figure.
+  // Measured even when an index lists the pool: GoPlus listed AEON's $1M pool at $127 (19.10.), and that figure would
+  // have decided against it. The larger of the index's figure and the measurement stands.
+  if (what.kind !== 'v2pair' && what.kind !== 'v3pool') {
+    const ids = (await infinityFind(token).catch(() => [])).slice(0, 3);
+    for (const id of ids) {
+      const f = await infinityPool(token, tokDec, bnbUsd, { pair: id, probe: true }).catch(() => null);
+      if (!f) continue;
+      const liq = Math.round(2 * (await infReachUsd(f.pool, tokDec, f.px).catch(() => 0)));
+      const listed = Math.max(0, ...dsAll.filter((x) => x.pair === id).map((x) => x.liq || 0), ...(gp.dex || []).filter((x) => String(x.pair || '').toLowerCase() === id).map((x) => parseFloat(x.liquidity) || 0));
+      if (!(liq > listed)) continue;
+      for (let i = dsAll.length - 1; i >= 0; i--) if (dsAll[i].pair === id) dsAll.splice(i, 1);
+      dsAll.push({ pair: id, name: 'PancakeSwap Infinity CL ' + +(f.pool.fee * 100).toFixed(4) + '%', quote: f.hop.sym, liq, source: 'quoter' });
+    }
+    dsAll.sort((a, b) => b.liq - a.liq);
+  }
   // A deeper PancakeSwap pool the factories were not asked about (2026-10-18,
   // indexedPool): quoted in CAKE, BTCB, SOL… Taken when the index ranks it above
   // the pool found and the chain confirms it holds more. A pasted pool stays.
   if (what.kind !== 'v2pair' && what.kind !== 'v3pool') {
     const idx = [
-      ...(dsAll || []).map((x) => ({ pair: x.pair, liquidity: x.liq || 0 })),
+      ...(dsAll || []).map((x) => ({ pair: x.pair, liquidity: x.liq || 0, source: x.source })),
       ...(gp.dex || []).map((x) => ({ pair: String(x.pair || '').toLowerCase(), liquidity: parseFloat(x.liquidity) || 0 })),
     ].sort((a, b) => b.liquidity - a.liquidity);
     const cur = pool ? pool.pair.toLowerCase() : null;
@@ -429,7 +447,7 @@ export async function scan(input, env) {
   // count everything, dust included — they answer a different question.
   const VENUE_DUST_USD = 100;
   const poolName = (p) => (p.venue || (p.kind === 'v3' ? 'PancakeSwap V3' : 'PancakeSwap V2'))
-    + (p.kind === 'v3' ? ' ' + +(p.fee * 100).toFixed(4) + '%' : '') + ' · ' + (p.sym || '?');
+    + (p.kind === 'v3' || p.kind === 'inf' ? ' ' + +(p.fee * 100).toFixed(4) + '%' : '') + ' · ' + (p.sym || '?');
   const venueList = () => [
     ...(pool ? [{ pair: pool.pair, name: poolName(pool), liquidity: Math.round(mine != null ? mine : hard * 2), scanned: true }] : []),
     ...others.filter((x) => (x.liquidity || 0) >= VENUE_DUST_USD),
@@ -566,7 +584,7 @@ export async function scan(input, env) {
   // a concentrated-liquidity pool it is not — V3 keeps its price in
   // sqrtPriceX96, so that is where it is read from.
   let px;
-  if (pool.kind === 'v3') {
+  if (pool.kind === 'v3' || pool.kind === 'inf') {
     const d0 = pool.tokenIs0 ? tokDec : 18;
     const d1 = pool.tokenIs0 ? 18 : tokDec;
     const r = Math.pow(Number(pool.sqrt) / Math.pow(2, 96), 2) * Math.pow(10, d0 - d1);
@@ -582,11 +600,19 @@ export async function scan(input, env) {
       : pool.tokenIs0;
   // How old the pool and the token are (contractAges): two or three archive
   // reads, started here so they run beside the tax read and cost no wait.
-  const agesP = contractAges([pool.pair, token]).catch(() => null);
-  let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  // An Infinity pool is a 32-byte id, not a contract: its age is not searched, and its swaps move the shared Vault's
+  // balances, so neither the tax read nor the sell test (both built on the pair's own transfers) applies yet — each says
+  // so instead of answering about the wrong thing (2026-10-19).
+  const inf = pool.kind === 'inf';
+  const agesP = contractAges(inf ? [token] : [pool.pair, token]).catch(() => null);
+  let tax = inf
+    ? { ok: false, reason: 'not read for a PancakeSwap Infinity pool yet: its tokens sit in the shared Vault, so its trades cannot be told apart by their transfers' }
+    : await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
-  let sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  let sim = inf
+    ? { ok: false, reason: 'the sell test covers PancakeSwap V2 pairs and V3 pools; the sell side of this Infinity pool is priced by its own quoter below, hook included' }
+    : await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // One patient retry before the label wins. Measured on 2026-09-08: one scan
   // in ten came back with status 200 and the tax "labelled by GoPlus" and the
   // sell test "every BSC endpoint refused" — the same question, answered by
@@ -596,7 +622,7 @@ export async function scan(input, env) {
   // three to five calls; a label sold as a measurement costs more than that.
   const simMeasured = (s) => !!(s && s.tax && (s.tax.buy_pct != null || s.tax.sell_pct != null));
   let secondTry = false;
-  if (!tax.ok && !simMeasured(sim)) {
+  if (!inf && !tax.ok && !simMeasured(sim)) {
     await new Promise((r) => setTimeout(r, 1500));
     secondTry = true;
     tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
@@ -650,6 +676,11 @@ export async function scan(input, env) {
     rows = ladderV2(pool.tok, pool.q, pool.fee, taxB, taxS, px, pool.usd);
     up = onePctV2(pool.q, pool.fee, 1.01) * pool.usd;
     down = (onePctV2(pool.tok, pool.fee, 1 / 0.99) / (1 - taxS)) * px;
+  } else if (inf) {
+    rows = await ladderInf(pool, tokDec, px, taxB, taxS);
+    const oc = await onePctInf(pool, tokDec, px, taxS);
+    up = oc.up; down = oc.down; upMin = oc.upMin; downMin = oc.downMin;
+    if (rows.block && tax.block == null) tax.block = rows.block;
   } else {
     rows = await ladderV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, taxB, taxS, pool.sqrt, pool.tokenIs0, pool.quoter);
     const oc = await onePctV3(pool.pair, token, pool.quote, pool.feeRaw, tokDec, px, pool.usd, pool.sqrt, pool.tokenIs0, taxS, pool.quoter);
@@ -682,7 +713,7 @@ export async function scan(input, env) {
   // side by side, each at most two log reads and a balance batch.
   const [custody, activity] = await Promise.all([
     pool.kind === 'v2' ? lpCustody({ pair: pool.pair, lpTot, feeTo, gp, head: tax.block }).catch(() => null) : null,
-    readActivity(token, pool.pair.toLowerCase(), tokenIs0, pool.kind, tax, pool.usd).catch(() => null),
+    inf ? null : readActivity(token, pool.pair.toLowerCase(), tokenIs0, pool.kind, tax, pool.usd).catch(() => null),
   ]);
   const ages = await agesP;
   // A pair young enough for its whole LP ledger to be in the log window carries
@@ -710,7 +741,7 @@ export async function scan(input, env) {
   // Its one log read runs beside the holder read; its one batch after it.
   const [holders, flow] = await Promise.all([
     holdersP,
-    readFlow({ token, pair: pool.pair, kind: pool.kind, tokenIs0, activity, holders: holdersP, custody, gp,
+    inf ? null : readFlow({ token, pair: pool.pair, kind: pool.kind, tokenIs0, activity, holders: holdersP, custody, gp,
       ageToken, agePool, supply, burned, tokDec, quoteUsd: pool.usd, pools: others.map((o) => o.pair) }).catch(() => null),
   ]);
 
@@ -737,7 +768,22 @@ export async function scan(input, env) {
       // by roughly 2x on purpose. Without this line they read as a contradiction
       // between our own endpoints, which is how a correct number loses an
       // argument it should win.
-      liquidityBasis: 'quote side only — the hard asset in the pool. Counting both sides, as an LP would, is roughly twice this; that is what pancakeswap_fee_tiers reports as capital_usd.',
+      liquidityBasis: inf
+        ? (pool.liqSource === 'quoter'
+          ? 'what a sell pays out by the time it has halved the price, measured with the pool\'s own quoter (no index lists this pool; twice it, $' + (pool.indexLiquidityUsd || 0).toLocaleString('en-US') + ', stands in for a two-sided figure)'
+          : 'half of the index figure for this pool (both sides $' + (pool.indexLiquidityUsd || 0).toLocaleString('en-US') + ')')
+          + ': PancakeSwap Infinity keeps every pool\'s tokens in one shared Vault, so a single pool\'s reserves cannot be read on chain. The costs and the 1% depth below are not from this figure — they are quoted at this block by the pool\'s own quoter.'
+        : 'quote side only — the hard asset in the pool. Counting both sides, as an LP would, is roughly twice this; that is what pancakeswap_fee_tiers reports as capital_usd.',
+      ...(inf ? {
+        poolId: pool.pair, poolManager: pool.key.pm, tickSpacing: pool.tickSpacing,
+        // A hook is code the pool runs on every swap: it can change the fee or refuse a trade, and can be changed by
+        // nobody but is chosen by whoever created the pool. Named, never hidden; every figure here already ran through it.
+        hooks: pool.hooks,
+        hooksNote: pool.hooks
+          ? 'This pool runs a hook contract on every swap. It can set the fee per trade or refuse a trade; the figures here are the quoter\'s answer at this block with the hook running, not a promise for the next one.'
+          : 'No hook: the pool\'s own maths alone.',
+        quotedBy: 'PancakeSwap Infinity CLQuoter ' + INF_CL_QUOTER,
+      } : {}),
       shareOfLiquidity: +share.toFixed(4),
       partialMarket: partial != null,
     },
@@ -767,7 +813,9 @@ export async function scan(input, env) {
       ...(r.buyNote ? { buyNote: r.buyNote } : {}), ...(r.sellNote ? { sellNote: r.sellNote } : {}),
     })),
     onePercentDepth: {
-      buyUsd: Math.round(up), sellUsd: Math.round(down),
+      // null, not 0, when a direction could not be measured (2026-10-19): Math.round(null) printed "0", a claim that a
+      // single dollar moves the price — and preflight then warned that any size "is more than the $0 that moves" it
+      buyUsd: up == null ? null : Math.round(up), sellUsd: down == null ? null : Math.round(down),
       note: 'USD size that moves the price by 1% in each direction',
       ...(upMin != null ? { buyUsdLowerBound: Math.round(upMin), sellUsdLowerBound: Math.round(downMin) } : {}),
     },

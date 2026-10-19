@@ -1489,3 +1489,15 @@ fillLpYours();
   addEventListener('resize', light);
   light();
 })();
+
+// 04's LIVE FIGURES (2026-10-19, operator: "viel einfacher, viel weniger, dafür das wichtigste"): one figure a card,
+// from the sources the front page's 04 tile reads. A figure that does not arrive leaves the card's own true line.
+(() => {
+  const set = (k, t) => { const e = document.querySelector('[data-eclive="' + k + '"]'); if (e && t) e.textContent = t; };
+  const nf = (n) => Number(n).toLocaleString('en-US');
+  const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  get('/api-registry.json').then((j) => { const n = j && j.reachability && j.reachability.reachable; if (n) set('plaza', nf(n) + ' agents answer'); });
+  get('https://agent.brainonbnb.com/stats').then((j) => { const f = j && j.earned && j.earned.from_strangers; if (f && f.count > 0) set('services', nf(f.count) + ' answers paid by agents'); });
+  get('https://agent.brainonbnb.com/lp/portfolio').then((j) => { const p = j && j.pool; if (p && typeof p.in_range === 'boolean') set('defi', String(p.label || 'CAKE/BNB').split(' ')[0] + (p.in_range ? ' in range' : ' out of range') + (p.width_pct ? ' · ±' + p.width_pct + '%' : '')); });
+  get('/api/nft-drop').then((j) => { const t = j && j.total; if (t && t.minted != null && t.cap) set('nft', nf(t.minted) + ' of ' + nf(t.cap) + ' minted'); });
+})();

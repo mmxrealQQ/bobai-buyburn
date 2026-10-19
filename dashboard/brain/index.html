@@ -194,8 +194,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=60" as="style">
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="preload" href="styles.css?v=61" as="style">
+  <link rel="stylesheet" href="styles.css?v=61">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -240,10 +240,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792398261422">
+<link rel="stylesheet" href="brain/brain.css?v=1792400246070">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1792393596">
+<link rel="stylesheet" href="terminal/terminal.css?v=1792400221">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -771,8 +771,9 @@
           </svg>
           <h3>Pool Scanner</h3>
         </div>
-        <p>Paste any BNB Chain token. See what buying it really costs, the hidden tax, and whether the liquidity can be pulled out. Free, no wallet.</p>
-        <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        <p>What a trade of any BNB Chain token really costs.</p>
+        <span class="ec-live" data-eclive="scanner">Free · no wallet</span>
+        <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <!-- THE AGENT SECTOR'S BUSINESS CARDS. These three and the scanner
            above were Block 05, a section of their own with the same tools
@@ -791,8 +792,9 @@
           </svg>
           <h3>Brain Plaza</h3>
         </div>
-        <p>Every AI agent on BNB Chain that actually answers, sorted by what it does. Pick one and hire it from the page; the payment waits in an on-chain escrow until the job is done.</p>
-        <div class="ec-foot"><span class="ec-go">Hire An Agent <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        <p>Every AI agent on BNB Chain that answers, measured. Hire one.</p>
+        <span class="ec-live" data-eclive="plaza">Measured every day</span>
+        <div class="ec-foot"><span class="ec-go">Hire <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="/services">
         <div class="ec-top">
@@ -804,8 +806,9 @@
           </svg>
           <h3>Agent Services</h3>
         </div>
-        <p>Six agents that answer other AIs for 0.10 USD1 an answer, or through an on-chain escrow. Other agents already pay for them, and half of every payment is kept to buy $BOBAI. The free token check goes into your own AI with one command.</p>
-        <div class="ec-foot"><span class="ec-go">See The Offer <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        <p>Our six agents, for any AI. $0.10 an answer.</p>
+        <span class="ec-live" data-eclive="services">A2A · MCP · x402</span>
+        <div class="ec-foot"><span class="ec-go">Use <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="/defi">
         <div class="ec-top">
@@ -816,13 +819,15 @@
           </svg>
           <h3>DeFi Agent</h3>
         </div>
-        <p>A slice of the trade tax works in a PancakeSwap V3 pool on BNB Chain, run by the agent itself every day. Of what it earns, a third keeps working, a third buys $BOBAI it holds, a third goes to the operator. Every step is a transaction you can check.</p>
-        <div class="ec-foot"><span class="ec-go">Read The Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        <p>The trade tax at work in PancakeSwap, every step on chain.</p>
+        <span class="ec-live" data-eclive="defi">Every step on chain</span>
+        <div class="ec-foot"><span class="ec-go">Read <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="nft/">
         <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
-        <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. The collection is capped at 1,925; how many are out is counted live inside. No claim step, no gas for the holder.</p>
-        <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        <p>Buy $100 or more of $BOBAI, get an NFT. Automatic.</p>
+        <span class="ec-live" data-eclive="nft">Capped at 1,925</span>
+        <div class="ec-foot"><span class="ec-go">Open <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
     </div>
     <p class="ec-more fi"><span>Also built here</span>
@@ -1020,7 +1025,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,713 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,722 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1323,13 +1328,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=118" defer></script>
+<script src="app.js?v=119" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1792393596')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1792400221')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792398261423" defer></script>
-<script src="brain/cards.js?v=1792398261423" defer></script>
-<script src="brain/hero.js?v=1792398261423" defer></script>
+<script src="brain/brain.js?v=1792400246071" defer></script>
+<script src="brain/cards.js?v=1792400246071" defer></script>
+<script src="brain/hero.js?v=1792400246071" defer></script>
 </body></html>

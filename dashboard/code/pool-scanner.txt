@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7722 lines.
+# one fetch. 6 files, 7733 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6796,6 +6796,17 @@ export { flagsCard, verdictCard };
     .ec-also .ec-top img{width:18px;height:18px;border-radius:5px}
     .ec-also em{font-style:normal;opacity:.6}
     .ec-also:hover{color:var(--gold)}
+    /* FIVE IN ONE ROW (operator, 2026-10-19: "viel einfacher, viel weniger, dafür das wichtigste"): a card is its name,
+       one sentence, one live figure and one button; the green dot says it is live, so the word LIVE goes */
+    .ecg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .ecg .ec{padding:18px 16px;gap:8px}
+    .ecg .ec p{font-size:.76rem;line-height:1.5;flex:0 0 auto}
+    .ecg .ec-st.live{display:none}
+    .ec-live{display:flex;align-items:center;gap:7px;margin-top:auto;min-height:1.4em;font:600 .7rem/1.35 'Space Grotesk',sans-serif;color:var(--text)}
+    .ec-live::before{content:'';width:7px;height:7px;border-radius:50%;flex:none;background:var(--green);box-shadow:0 0 8px var(--green)}
+    @media (max-width:1100px){.ecg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media (max-width:700px){.ecg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:420px){.ecg{grid-template-columns:1fr}}
     .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
     .ec-go .arr{transition:transform .25s}
     .ec:hover .ec-go .arr{transform:translateX(3px)}

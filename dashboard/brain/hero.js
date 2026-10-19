@@ -96,16 +96,7 @@
     requestAnimationFrame(draw);
   }
   // 07 QUESTIONS: find one by typing
-  function w07(win) {
-    if ($('.bw-hero', win)) return;
-    strip(win).innerHTML = '<input class="fq" type="search" placeholder="Search the answers — buy, tax, contract, agents …" aria-label="Search the questions">';
-    // feedback (2026-10-10): no match said nothing at all, and a single match stayed folded shut
-    const none = Object.assign(document.createElement('p'), { className: 'fq-none', hidden: true }); none.setAttribute('role', 'status'); $('.fq', win).after(none);
-    $('.fq', win).addEventListener('input', (e) => { const q = e.target.value.trim().toLowerCase(), ds = $$('details', win); let n = 0, one = null;
-      for (const d of ds) { const hit = !q || d.textContent.toLowerCase().includes(q); d.hidden = !hit; if (hit && q) { n++; one = d; } }
-      none.hidden = !q || n > 0; if (!none.hidden) none.textContent = `No answer for "${e.target.value.trim()}" yet. Ask BOBAI in the terminal.`;
-      if (n === 1 && one) one.open = true; });
-  }
+  // 06 QUESTIONS (window w07) has no strip: its one search is cards.js search07 (2026-10-19; this file drew a second box above it)
   // 05 ROADMAP (window w06): the plan as one track — every phase a station, the shipped ones lit, the active one pulsing
   function w06(win) {
     if ($('.bw-hero', win)) return;
@@ -113,7 +104,7 @@
     const done = ph.filter((p) => !p.classList.contains('rmn')).length;
     strip(win).innerHTML = `<div class="hd"><div class="ht">THE PLAN · ${done} OF ${ph.length} PHASES SHIPPED OR RUNNING</div><div class="rtrack">${ph.map((p) => { const st = p.classList.contains('rmd') ? 'done' : p.classList.contains('rmn') ? 'next' : 'on'; const items = p.querySelectorAll('li').length, ok = p.querySelectorAll('.ck').length; return `<div class="rt ${st}"><i></i><b>${p.querySelector('h3')?.textContent || ''}</b><span>${(p.querySelector('.rp')?.textContent || '').replace(/Phase \d+ — /, '')}</span><em>${ok} of ${items} done</em></div>`; }).join('')}</div></div>`;
   }
-  const BUILD = { w01, w02, w03, w06, w07 };
+  const BUILD = { w01, w02, w03, w06 };
   // cards.js redraws 02's ring the moment the week's figures have arrived, not at the next 20-s refresh
   window.__hero02 = () => { const w = document.getElementById('w02'); if (w && !w.hidden) w02(w); };
   let timer = 0;

@@ -467,6 +467,7 @@
   const faqs = () => $$('#w07 details.faq-item');
   function openQ(k) {
     const d = faqs()[k]; if (!d) return;
+    const fold = d.closest('details.cx7-more'); if (fold) fold.open = true;   // a question from the tile may sit in the fold (2026-10-19)
     faqs().forEach((x) => { if (x !== d) x.open = false; }); d.open = true; d.classList.add('faq-hit');
     setTimeout(() => d.classList.remove('faq-hit'), 2600); setTimeout(() => d.scrollIntoView({ block: 'start', behavior: 'smooth' }), 400);
   }
@@ -484,12 +485,16 @@
     copyCa07();
     const list = $('#w07 .faq-list'); if (!list || $('#w07 .faq-search')) return;
     const box = document.createElement('div'); box.className = 'faq-search';
-    box.innerHTML = '<input type="search" placeholder="Search the answers: tax, contract, burn…" aria-label="Search the answers"><span class="faq-n" aria-live="polite"></span>';
+    // the one search of the window (2026-10-19: hero.js had a second one above it): it reaches every answer, and the
+    // fold of the other questions (shape07) opens when a match is in it and steps aside when none is
+    box.innerHTML = `<input type="search" placeholder="Search all ${faqs().length} answers: tax, contract, buy, agents…" aria-label="Search the answers"><span class="faq-n" aria-live="polite"></span>`;
     list.insertAdjacentElement('beforebegin', box);
     const inp = box.querySelector('input'), n = box.querySelector('.faq-n');
     inp.addEventListener('input', () => {
       const words = inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean); let c = 0;
       faqs().forEach((d) => { const t = d.textContent.toLowerCase(), hit = words.every((w) => t.includes(w)); d.hidden = !hit; d.open = words.length > 0 && hit; if (hit) c++; });
+      const fold = $('#w07 details.cx7-more');
+      if (fold) { fold.hidden = words.length > 0 && !faqs().some((d) => fold.contains(d) && !d.hidden); if (words.length && !fold.hidden) fold.open = true; }
       n.textContent = words.length ? (c ? `${c} answer${c === 1 ? '' : 's'}` : 'No answer has these words. Ask BOBAI in the terminal.') : '';
     });
   }
@@ -539,7 +544,23 @@
     links.after(more); more.append(about); if (soc) more.append(soc);
     $('.cx1-copy', k).addEventListener('click', (e) => { const b = e.currentTarget; (navigator.clipboard ? navigator.clipboard.writeText(CA) : Promise.reject()).then(() => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1600); }).catch(() => {}); });
   }
-  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); shape01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }
+  // 06 ON ONE SCREEN (operator, 2026-10-19, his choice): the search on top (hero.js, it reaches every answer), then the
+  // five questions a buyer asks first — the address, where to buy, is it safe, the tax, can my agent use the tools — and
+  // the others under one closed fold. Moved, not copied: one answer each on the page.
+  const TOP07 = [/official \$BOBAI contract address/, /Where can I buy/, /Is \$BOBAI safe/, /trading tax/, /own AI agent/];
+  function shape07() {
+    const body = $('#w07 .bw-body'), list = body && $('.faq-list', body); if (!list || body.dataset.shaped) return;
+    const items = $$('details.faq-item', list); if (items.length < 8) return;
+    body.dataset.shaped = '1';
+    const top = document.createElement('div'); top.className = 'faq-list cx7';
+    for (const re of TOP07) { const d = items.find((x) => re.test(x.querySelector('summary').textContent)); if (d) top.append(d); }
+    const sec = list.closest('section') || list;
+    sec.insertAdjacentElement('beforebegin', top);
+    const more = document.createElement('details'); more.className = 'cx2-more cx7-more';
+    more.innerHTML = `<summary>${$$('details.faq-item', list).length} more questions</summary>`;
+    top.insertAdjacentElement('afterend', more); more.append(sec);
+  }
+  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); shape01(); shape07(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
   // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both

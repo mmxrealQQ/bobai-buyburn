@@ -540,3 +540,7 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .cx1-l{margin:6px 16px 0;font-size:12.5px;color:var(--bp-muted,#a0a2c0)}
 .cx1-l a{color:var(--gold,#f0b90b);text-decoration:none}
 @media (max-width:600px){.cx1-buy{margin-left:0;width:100%;text-align:center}}
+/* 06 (2026-10-19): the five first questions, then the fold */
+#w07 .cx7{margin:12px 16px 0}
+#w07 .cx7-more>summary{font-size:12.5px}
+#w07 .faq-search{margin:12px 16px 0}

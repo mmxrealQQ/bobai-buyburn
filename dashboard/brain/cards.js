@@ -516,7 +516,30 @@
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }
-  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }
+  // 01 ON ONE SCREEN (operator, 2026-10-19, his choice "buy and trust"): under the figures one sentence of what $BOBAI
+  // is, its address to copy and the way to buy it; then the contract's two answers read just now and the trade
+  // calculator (both moved up, not rebuilt); one line of links; how it works, the split, the tax plan and every listing
+  // under one closed Details. The split itself is 02's window. hero.js prepends its strip, so it stays on top.
+  function shape01() {
+    const body = $('#w01 .bw-body'), calc = $('#w01 .cx01'), proof = $('#w01 .cx01v'), about = $('#w01 #about'), soc = $('#w01 #socials');
+    if (!body || !calc || !proof || !about || body.dataset.shaped) return;
+    body.dataset.shaped = '1';
+    const k = document.createElement('div'); k.className = 'cx1'; k.dataset.nousd = '1';
+    k.innerHTML = `<p class="cx1-s">A meme token on BNB Chain whose 3% trade tax buys back and burns, adds liquidity and funds a DeFi agent — every step a transaction.</p>`
+      + `<div class="cx1-row"><code title="the $BOBAI contract on BNB Chain">${CA}</code><button type="button" class="cx1-copy">Copy</button>`
+      + `<a class="cx1-buy" href="https://pancakeswap.finance/swap?outputCurrency=${CA}" target="_blank" rel="noopener">Buy on PancakeSwap →</a></div>`;
+    body.prepend(k);
+    k.after(proof); proof.after(calc);
+    const links = document.createElement('p'); links.className = 'cx1-l';
+    links.innerHTML = [['https://t.me/bobai_official', 'Telegram'], ['https://x.com/BrainOnBNB', 'X'], [`https://dexscreener.com/bsc/${CA}`, 'DexScreener'],
+      ['https://www.coingecko.com/en/coins/brain-on-bnb-ai', 'CoinGecko'], [`https://bscscan.com/token/${CA}`, 'BscScan']].map(([u, t]) => `<a href="${u}" target="_blank" rel="noopener">${t} ↗</a>`).join(' · ');
+    calc.after(links);
+    const more = document.createElement('details'); more.className = 'cx2-more';
+    more.innerHTML = '<summary>Details · how it works, the tax plan, everywhere it is listed</summary>';
+    links.after(more); more.append(about); if (soc) more.append(soc);
+    $('.cx1-copy', k).addEventListener('click', (e) => { const b = e.currentTarget; (navigator.clipboard ? navigator.clipboard.writeText(CA) : Promise.reject()).then(() => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1600); }).catch(() => {}); });
+  }
+  function all() { draw01(); draw02(); draw03(); draw04(); draw06(); figs(); calc01(); shape01(); const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }
   addEventListener('bobai:nums', all);
   addEventListener('resize', () => { draw03(); });
   // the TG bot's 111 KB candle ledger was fetched every 2 min for nothing, and an NFT card drawer was never called: both

@@ -348,9 +348,9 @@ function page() {
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
     </section>
     <div class="sv-nums">
-      <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids read on-chain</span></div>
+      <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids registered on BNB Chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">${ASKED_FLOOR ? ASKED_FLOOR.toLocaleString('en-US') : '&ndash;'}</b><span>requests answered for other agents</span></div>
+      <div class="sv-num"><b id="sv-asked">${ASKED_FLOOR ? ASKED_FLOOR.toLocaleString('en-US') : '&ndash;'}</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>${DELIVERIES.length}</b><span>things you can hire us to deliver</span></div>
     </div>
     <!-- A WAY THROUGH A LONG PAGE (2026-10-13: 14,000 px on a phone): one row of jumps to its parts -->

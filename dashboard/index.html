@@ -117,7 +117,7 @@
           {
             "@type": "Question",
             "name": "How does the buyback & burn work?",
-            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade pays its 3% tax into the buyback wallet on-chain. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
+            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade’s 3% tax collects in the token contract; once it reaches the contract’s threshold, the contract swaps it to BNB and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
           },
           {
             "@type": "Question",
@@ -148,6 +148,11 @@
             "@type": "Question",
             "name": "What does the DeFi agent do?",
             "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
+          },
+          {
+            "@type": "Question",
+            "name": "Can my own AI agent use these tools?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes. The MCP server at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 50 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the holder pass."}
           },
           {
             "@type": "Question",
@@ -1282,7 +1287,7 @@
         <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>From then on it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>
       </details>
       <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">A bot does it, not a person. Every trade pays its 3% tax into the buyback wallet on-chain. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
+        <div class="faq-body">A bot does it, not a person. Every trade’s 3% tax collects in the token contract; once it reaches the contract’s threshold, the contract swaps it to BNB and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
       <details class="faq-item"><summary>Is $BOBAI safe? Is the contract verified?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">The contract is verified and the usual rug-pull levers are gone; the price is not protected. What you can check on-chain: the source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, there is no proxy and no upgrade path, no mint and no pause function, and ownership is renounced. The LP tokens are burned (permanently locked): they sit at the dead address. That rules out minting new supply, pausing trading, swapping the contract and pulling the liquidity. It says nothing about the price: like any token, $BOBAI can go to zero. Independent trackers reading the same contract: <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
@@ -1301,6 +1306,9 @@
       </details>
       <details class="faq-item"><summary>What does the DeFi agent do?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
+      </details>
+      <details class="faq-item"><summary>Can my own AI agent use these tools?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Yes. The <a href="/mcp">MCP server</a> at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 50 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow — see <a href="/services">Agent Services</a>. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the <a href="/pass">holder pass</a>.</div>
       </details>
       <details class="faq-item"><summary>What is the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the <a href="#giggle">Giggle Academy block</a>.</div>
@@ -1366,7 +1374,7 @@
 <script src="app.js?v=118" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1792392102">
+<link rel="stylesheet" href="terminal/terminal.css?v=1792393596">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1417,7 +1425,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1792392102'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1792393596'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

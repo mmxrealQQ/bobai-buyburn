@@ -25,12 +25,18 @@
   const SPLIT = [['bobaiPct', '#ff7a3d', 'BOBAI bought & burned'], ['bobPct', '#fbbf24', '$BOB bought & burned'], ['liqPct', '#2dd4bf', 'liquidity, LP burned'], ['lpPct', '#60a5fa', 'DeFi agent'], ['gigglePct', '#f472b6', 'Giggle Academy pot'], ['creatorPct', '#d6c7b8', 'creator']];
   function w02(win) {
     const ph = typeof window.__bobaiPhase === 'function' && window.__bobaiPhase(); if (!ph) return;
-    const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
+    const parts = SPLIT.map(([k, c, l]) => [parseFloat(ph[k]) || 0, c, l, k]).filter((p) => p[0] > 0), tot = parts.reduce((a, p) => a + p[0], 0) || 3;
     const R = 50, C = 2 * Math.PI * R; let off = 0;
     const arcs = parts.map(([v, c]) => { const len = v / tot * C, s = `<circle r="${R}" cx="65" cy="65" stroke="${c}" stroke-dasharray="${Math.max(0, len - 2).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" style="filter:drop-shadow(0 0 4px ${c})"/>`; off += len; return s; }).join('');
     // the same next-buyback figure as the Classic tile (2026-10-05): app.js publishes it with the bot's gas reserve left out
     const q = N().chain, sBnb = q ? (q.splitBnb ?? (q.walletBnb > 0.004 ? q.walletBnb - 0.003 : 0)) : 0, nextUsd = q ? (q.nextBuybackUsd ?? q.queuedBobai * q.priceUsd + sBnb * q.bnbUsd) : 0;
-    strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · THE TABLE IN FORCE</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul>${parts.map(([v, c, l]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b></li>`).join('')}</ul></div></div>`
+    // ONE LIST, NOT TWO (operator, 2026-10-19: 02 on one screen): each share of the table carries what the bot really
+    // paid out to it in the last 7 days and its last transaction — the "where it went" box that repeated the six
+    // shares above the ring is gone. The week comes from cards.js (its split7, keyed by share), in dollars at today's BNB.
+    const wk = typeof window.__card02?.where === 'function' ? window.__card02.where() : null, bnbP = N().chain?.bnbUsd || 0;
+    const week = (k) => { const p = wk && wk.parts.find((x) => x[5] === k); if (!p) return `<em class="wk">${wk ? '—' : '…'}</em>`;   // … while the logs load
+      const usd = p[2] * bnbP; return `<em class="wk">${p[2] > 0 && bnbP > 0 ? '$' + (usd >= 100 ? nf(usd) : usd.toFixed(2)) : '—'}${p[4] ? ` <a href="https://bscscan.com/tx/${p[4]}" target="_blank" rel="noopener" title="its last transaction on BscScan">tx ↗</a>` : ''}</em>`; };
+    strip(win).innerHTML = `<div class="hd"><div class="ht">WHERE THE 3% OF EVERY TRADE GOES · PAID OUT, LAST 7 DAYS</div><div class="ring"><svg viewBox="0 0 130 130"><circle class="bg" r="${R}" cx="65" cy="65"/>${arcs}<text x="65" y="71">3%</text></svg><ul class="wk-list">${parts.map(([v, c, l, k]) => `<li style="color:${c}"><i style="background:${c}"></i><span style="color:#dcd8ea">${l}</span><b>${v}%</b>${week(k)}</li>`).join('')}</ul></div></div>`
       // ONE FIGURE ONCE (2026-10-19): "next buyback charging" and "tax in the token" were the same dollars whenever no BNB
       // waited to be split, and the bar below said it a third time; the bar now carries it, the two tiles only when BNB waits
       + (q ? (sBnb > 0 ? fig('NEXT BUYBACK', '$' + nf(nextUsd, 2), 1) + fig('BNB TO SPLIT · GAS RESERVE KEPT', sBnb.toFixed(4) + ' BNB' + usdAt(sBnb, q.bnbUsd)) : '')
@@ -98,6 +104,8 @@
     strip(win).innerHTML = `<div class="hd"><div class="ht">THE PLAN · ${done} OF ${ph.length} PHASES SHIPPED OR RUNNING</div><div class="rtrack">${ph.map((p) => { const st = p.classList.contains('rmd') ? 'done' : p.classList.contains('rmn') ? 'next' : 'on'; const items = p.querySelectorAll('li').length, ok = p.querySelectorAll('.ck').length; return `<div class="rt ${st}"><i></i><b>${p.querySelector('h3')?.textContent || ''}</b><span>${(p.querySelector('.rp')?.textContent || '').replace(/Phase \d+ — /, '')}</span><em>${ok} of ${items} done</em></div>`; }).join('')}</div></div>`;
   }
   const BUILD = { w01, w02, w03, w06, w07 };
+  // cards.js redraws 02's ring the moment the week's figures have arrived, not at the next 20-s refresh
+  window.__hero02 = () => { const w = document.getElementById('w02'); if (w && !w.hidden) w02(w); };
   let timer = 0;
   addEventListener('bp:open', (e) => {
     const id = e.detail, win = document.getElementById(id), f = BUILD[id]; if (!win || !f) return;

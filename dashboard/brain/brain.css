@@ -487,3 +487,21 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
    gives up its height before the words do; below 740 px 05's and 06's small pictures go, rather than show half of one */
 @media (max-height:820px) and (min-width:1000px){.bp-side button.bw-card .bw-viz{min-height:0;margin:4px 0 2px;overflow:hidden}}
 @media (max-height:740px) and (min-width:1000px){.bp-side button.bw-card[data-open="w06"] .bw-viz,.bp-side button.bw-card[data-open="w07"] .bw-viz{display:none}}
+/* 02 ON ONE SCREEN (operator, 2026-10-19, his choice): the ring's list is one row a share — name, share, the last 7
+   days' payout and its last transaction; under it the boost and the pot as two small cards; the rest under Details */
+.bw-hero .ring ul.wk-list{grid-template-columns:1fr;max-width:520px;gap:5px}
+.bw-hero .ring ul.wk-list li{display:grid;grid-template-columns:9px minmax(0,1fr) 44px 110px;gap:8px;align-items:center}
+.bw-hero .ring ul.wk-list li b{margin-left:0;text-align:right}
+.bw-hero .ring ul.wk-list li em.wk{font-style:normal;color:#f3efe6;text-align:right;white-space:nowrap}
+.bw-hero .ring ul.wk-list li em.wk a{color:var(--gold,#f0b90b);text-decoration:none;margin-left:6px;font-size:10px}
+.cx2k{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 16px}
+.cx2c{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.03)}
+.cx2c b{font:700 14px 'Space Grotesk',sans-serif;color:#f3efe6}
+.cx2c p{margin:0;font-size:12.5px;line-height:1.5;color:var(--muted,#a0a2c0)}
+.cx2c small{font:600 11px var(--bp-mono,monospace);color:var(--gold,#f0b90b);letter-spacing:.04em}
+#w02 section.sec>.sh{display:none}
+.cx2-more{margin:16px 16px 0;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
+.cx2-more>summary{cursor:pointer;font:600 12px var(--bp-mono,monospace);color:var(--muted,#a0a2c0);letter-spacing:.03em;padding:6px 0;list-style:none}
+.cx2-more>summary::before{content:'▸ ';color:var(--gold,#f0b90b)}
+.cx2-more[open]>summary::before{content:'▾ '}
+@media (max-width:600px){.cx2k{grid-template-columns:1fr}.bw-hero .ring ul.wk-list{flex-basis:100%;max-width:none}.bw-hero .ring ul.wk-list li{grid-template-columns:9px minmax(0,1fr) 40px 96px}}

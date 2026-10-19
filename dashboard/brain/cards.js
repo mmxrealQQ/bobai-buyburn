@@ -129,34 +129,59 @@
   // WHERE IT WENT, 7 DAYS (02's window): every part the bot sent, summed from its own logs — the split runs
   // (logs/burns.json) and the liquidity adds (logs/bobai-liq-log.json) — with the last transaction of each part
   let split7 = null, split7At = 0;
+  // ON ONE SCREEN (operator, 2026-10-19, his choice): the week is no longer a box of its own above the ring that
+  // repeated the six shares — hero.js puts each share's week into the ring's own list (split7, keyed by share), and
+  // shape02 below turns the boost and the pot into two small cards with the tables and the pool's depth under Details.
   async function where02() {
     const body = $('#w02 .bw-body'); if (!body) return;
-    let box = $('#w02 .cx02');
-    // never an empty frame while the logs load (2026-10-19: the box stood empty at the top of the window, then jumped)
-    if (!box) { box = document.createElement('div'); box.className = 'cx02'; box.dataset.nousd = '1'; box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">Reading the bot’s own logs…</p>'; body.insertAdjacentElement('afterbegin', box); }
+    shape02();
     if (!split7 || Date.now() - split7At > 5 * 60e3) {
       const [b, l] = await Promise.all([fetch('/logs/burns.json').then((r) => r.json()).catch(() => null), fetch('/logs/bobai-liq-log.json').then((r) => r.json()).catch(() => null)]);
-      if (!Array.isArray(b) || !Array.isArray(l)) { if (!split7) box.innerHTML = '<h4>Where it went · last 7 days</h4><p class="cx01-n">The bot’s logs could not be read just now.</p>'; return; }
+      if (!Array.isArray(b) || !Array.isArray(l)) return;   // the ring shows no week then: a blank, never a guess
       const from = Date.now() - 7 * 86400e3, B = b.filter((e) => Date.parse(e.time) >= from), L = l.filter((e) => Date.parse(e.time) >= from);
       const sum = (A, k) => A.reduce((t, e) => t + (+e[k] || 0), 0), last = (A, k) => [...A].reverse().find((e) => e[k])?.[k];
       // every token amount with its dollars at today's price (operator rule, 2026-10-10)
       const C = NUMS().chain || {}, at$ = (x, pr) => pr > 0 ? ` ≈$${cmp(x * pr)}` : '';
       split7 = { runs: B.length, adds: L.length, parts: [
-        ['#35e07a', '$BOBAI bought and burned', sum(B, 'bobaiBurnBnb'), `${cmp(sum(B, 'bobaiBurned'))} $BOBAI${at$(sum(B, 'bobaiBurned'), C.priceUsd)} to the dead address`, last(B, 'bobaiBurnTx')],
-        ['#ff6b6b', '$BOB bought and burned', sum(B, 'bobBurnBnb'), `${cmp(sum(B, 'bobBurned'))} $BOB${at$(sum(B, 'bobBurned'), C.bobUsdPrice)} to the dead address`, last(B, 'bobBurnTx')],
-        ['#f0b90b', 'liquidity added, LP burned', sum(L, 'bnb'), `${cmp(sum(L, 'bobaiBought'))} $BOBAI${at$(sum(L, 'bobaiBought'), C.priceUsd)} paired, ${sum(L, 'lpBurned').toFixed(2)} LP burned`, last(L, 'lpBurnTx')],
-        ['#60a5fa', 'to the DeFi agent', sum(B, 'lpAgentBnb'), 'its working capital', last(B, 'lpAgentTx')],
-        ['#f472b6', 'to the Giggle pot', sum(B, 'giggleBnb'), 'the Giggle Academy pot', last(B, 'giggleTx')],
-        ['#a0a2c0', 'to the creator', sum(B, 'creatorBnb'), 'the creator’s share', last(B, 'creatorTx')],
+        ['#35e07a', '$BOBAI bought and burned', sum(B, 'bobaiBurnBnb'), `${cmp(sum(B, 'bobaiBurned'))} $BOBAI${at$(sum(B, 'bobaiBurned'), C.priceUsd)} to the dead address`, last(B, 'bobaiBurnTx'), 'bobaiPct'],
+        ['#ff6b6b', '$BOB bought and burned', sum(B, 'bobBurnBnb'), `${cmp(sum(B, 'bobBurned'))} $BOB${at$(sum(B, 'bobBurned'), C.bobUsdPrice)} to the dead address`, last(B, 'bobBurnTx'), 'bobPct'],
+        ['#f0b90b', 'liquidity added, LP burned', sum(L, 'bnb'), `${cmp(sum(L, 'bobaiBought'))} $BOBAI${at$(sum(L, 'bobaiBought'), C.priceUsd)} paired, ${sum(L, 'lpBurned').toFixed(2)} LP burned`, last(L, 'lpBurnTx'), 'liqPct'],
+        ['#60a5fa', 'to the DeFi agent', sum(B, 'lpAgentBnb'), 'its working capital', last(B, 'lpAgentTx'), 'lpPct'],
+        ['#f472b6', 'to the Giggle pot', sum(B, 'giggleBnb'), 'the Giggle Academy pot', last(B, 'giggleTx'), 'gigglePct'],
+        ['#a0a2c0', 'to the creator', sum(B, 'creatorBnb'), 'the creator’s share', last(B, 'creatorTx'), 'creatorPct'],
       ] };
       split7At = Date.now();
+      if (typeof window.__hero02 === 'function') window.__hero02();
     }
-    const bnbP = NUMS().chain?.bnbUsd || 0, tot = split7.parts.reduce((t, p) => t + p[2], 0);
-    const usd = (x) => bnbP > 0 ? ` ≈$${(x * bnbP).toFixed(x * bnbP >= 100 ? 0 : 2)}` : '';
-    const n = next02();
-    box.innerHTML = `<h4>Where it went · last 7 days</h4><p class="cx02-s">${split7.runs} split run${split7.runs === 1 ? '' : 's'} and ${split7.adds} liquidity add${split7.adds === 1 ? '' : 's'} by the bot, ${tot.toFixed(4)} BNB${usd(tot)} in all — from its own logs; each line links its last transaction.</p>`
-      + split7.parts.map(([col, name, bnb, what, tx]) => `<div class="cx01-r cx02-r"><i style="background:${col}"></i><span>${name}<small>${what}</small></span><b>${tot ? (bnb / tot * 100).toFixed(0) + '%' : ''}</b><em>${bnb.toFixed(4)} BNB${usd(bnb)}${tx ? ` <a href="https://bscscan.com/tx/${tx}" target="_blank" rel="noopener" title="its last transaction on BscScan">tx ↗</a>` : ''}</em></div>`).join('')
-      + (n ? `<p class="cx01-n">Next split: ${n.ready ? `$${n.usd.toFixed(2)} in BNB is ready; the bot splits it ${n.mins == null ? 'on its next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}.` : `$${n.usd.toFixed(2)} of tax is charging in the token, ${n.pct.toFixed(1)}% of the ${cmp(NUMS().chain.minDispatch)} $BOBAI ≈$${cmp(NUMS().chain.minDispatch * NUMS().chain.priceUsd)} at which it is sent on.`} Dollars at today’s BNB price.</p>` : '');
+  }
+  // the boost and the pot as two cards (name, one sentence, one live figure, the days left), read from the fields
+  // app.js already fills (bb3-*, gg-*); the full blocks, their tables and the pool's depth move under Details
+  function shape02() {
+    const body = $('#w02 .bw-body'); if (!body) return;
+    if (!body.dataset.shaped) {
+      const boost = $('#liq-boost-bobai-3', body), pot = $('#giggle', body), sec = $('section.sec', body), lqd = sec && $('.lqd', sec), hero = $('.bw-hero', body);
+      if (!hero && !shape02.tries) shape02.tries = 0;
+      if (!hero && shape02.tries++ < 20) { setTimeout(shape02, 300); return; }   // the ring is drawn on the same open
+      if (!boost || !pot || !sec || !hero) return;
+      body.dataset.shaped = '1';
+      const k = document.createElement('div'); k.className = 'cx2k'; k.dataset.nousd = '1';
+      k.innerHTML = `<div class="cx2c" data-k="boost"><b>Liq Boost III</b><p>0.5% of every trade into the BOBAI/BNB pool, its LP burned.</p><span class="ec-live" data-v>Running until Nov 20</span><small data-d></small></div>`
+        + `<div class="cx2c" data-k="pot"><b>Giggle Academy pot</b><p>0.3% of every trade, given to the kids on Nov 20.</p><span class="ec-live" data-v>Collecting until Nov 20</span><small data-d></small></div>`;
+      hero.insertAdjacentElement('afterend', k);
+      const more = document.createElement('details'); more.className = 'cx2-more';
+      more.innerHTML = '<summary>Details · every liquidity add, the pot’s payments, how deep the pool is</summary>';
+      sec.insertAdjacentElement('afterend', more);
+      more.append(boost, pot); if (lqd) more.append(lqd);
+      setInterval(() => { const w = $('#w02'); if (w && !w.hidden) fill02(); }, 30e3);
+    }
+    fill02();
+  }
+  function fill02() {
+    const t = (id) => (document.getElementById(id)?.textContent || '').trim(), ok = (s) => s && s !== '--' && s !== '…';
+    const card = (k, v, d) => { const c = $(`#w02 .cx2c[data-k="${k}"]`); if (!c) return; if (v) $('[data-v]', c).textContent = v; if (d) $('[data-d]', c).textContent = d; };
+    const days = (id) => ok(t(id)) ? `${t(id)} day${t(id) === '1' ? '' : 's'} left` : '';
+    card('boost', ok(t('bb3-count')) && ok(t('bb3-bnb')) ? `${t('bb3-count')} adds · ${t('bb3-bnb')}` : '', days('bb3-days'));
+    card('pot', ok(t('gg-bnb')) ? t('gg-bnb') : '', days('gg-days'));   // gg-bnb carries its BNB and its dollars already
   }
   new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   new MutationObserver(() => { const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }).observe(document.getElementById('w03') || document.body, { attributes: true, attributeFilter: ['hidden'] });

@@ -3938,8 +3938,10 @@ function momentIn(kind, usd, sub, t, fast, card, sayKey, ctx) {
   // each get their full moment, board and clip together.
   // LIVE, EVERY ALERT ITS OWN SCENE (operator, 2026-10-01: "in a bull run every buy alert gets its time, one after the
   // other, like a flow"): one 8 s poll stamps all its buys with the same time, so this rule let only the first of a burst
-  // on stage. Live, the queue already plays them in turn; the rule stays for the replay only.
-  if (mode !== 'live' && Math.abs(t - LAST_M.t) < 15e3 && level <= LAST_M.level) { (window.__btSkip = window.__btSkip || []).push([title, 'burst']); return; } // a board the burst rule kept back, for checks
+  // on stage. Live, the queue already plays them in turn.
+  // THE REPLAY TOO (operator, 2026-10-20: "in the replay, after the whale buy of ~$976 the $289 is not shown"): the rule
+  // had stayed for the replay and swallowed a $289.56 buy two seconds after a $974.94 one (19.10. 23:10:09/11). The
+  // replay waits for each scene's full time (stepReplay), so every alert plays in turn there as well.
   LAST_M.t = t; LAST_M.level = level; shownNow = true;
   LIFE.next = Math.max(LIFE.next, performance.now() + 30e3); // after the chain's moment, a calm stretch before his own moves
   const hold = [5.2, 6.0, 7.5, 9.0][level]; // long enough for his explanation to be read, in live and in replay alike

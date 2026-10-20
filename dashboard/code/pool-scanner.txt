@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7733 lines.
+# one fetch. 6 files, 7738 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6796,6 +6796,11 @@ export { flagsCard, verdictCard };
     .ec-also .ec-top img{width:18px;height:18px;border-radius:5px}
     .ec-also em{font-style:normal;opacity:.6}
     .ec-also:hover{color:var(--gold)}
+    /* WORKS WITH US (operator, 2026-10-20): the three agent marketplaces we trade with, one figure each, from the chain */
+    .ec-with{color:inherit;text-decoration:none;transition:color .2s}
+    .ec-with b{font-weight:600;color:var(--text,inherit)}
+    .ec-with:hover,.ec-with:hover b{color:var(--gold)}
+    .ec-more+.ec-more{margin-top:8px}
     /* FIVE IN ONE ROW (operator, 2026-10-19: "viel einfacher, viel weniger, dafür das wichtigste"): a card is its name,
        one sentence, one live figure and one button; the green dot says it is live, so the word LIVE goes */
     .ecg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}

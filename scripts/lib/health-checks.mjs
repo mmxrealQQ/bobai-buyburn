@@ -230,25 +230,39 @@ export const KEEP_808_WALLETS = {
 // the operator's wallet is his own; it may hold more than 808.41 whenever he likes, only below it is red. The other four
 // are bots' wallets whose code keeps exactly 808.41.
 export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C']);
-const KEEP_WEI = 80841n * 10n ** 16n, KEEP_TOL_WEI = 10n ** 16n;
-export function keepVerdict(label, wei, atLeast = false) {
-  const name = `${label} holds ${atLeast ? 'at least ' : ''}808.41 BOBAI`;
+// THREE WALLETS KEEP 80,841 BOBAI (operator, 2026-10-20: "these three at 80841, fixed"): topped up once by the NFT relayer
+// (temp/topup-80841.mjs, buy 0x945dbd97…). x402 income is paid in $BOBAI too and keeps all of it, so it holds AT LEAST.
+export const KEEP_80841_WALLETS = {
+  'Altana admin 0xC5A1…F7d3': '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3',
+  'agent provider 0x7380…5963': '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+  'x402 income 0x690E…4dE4': '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+};
+export const KEEP_80841_AT_LEAST = new Set(['0x690E950214980BC329823A2DB2fD90C06Bd54dE4']);
+const KEEP_WEI = 80841n * 10n ** 16n, KEEP_TOL_WEI = 10n ** 16n, KEEP_BIG_WEI = 80841n * 10n ** 18n;
+export function keepVerdict(label, wei, atLeast = false, keep = KEEP_WEI) {
+  const amt = (Number(keep / 10n ** 14n) / 1e4).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const name = `${label} holds ${atLeast ? 'at least ' : ''}${amt} BOBAI`;
   if (typeof wei !== 'bigint') return { name, good: false, detail: 'could not be read' };
-  const diff = wei - KEEP_WEI, off = diff < 0n ? -diff : diff, good = atLeast ? diff >= -KEEP_TOL_WEI : off <= KEEP_TOL_WEI;
+  const diff = wei - keep, off = diff < 0n ? -diff : diff, good = atLeast ? diff >= -KEEP_TOL_WEI : off <= KEEP_TOL_WEI;
   const shown = (Number(wei) / 1e18).toLocaleString('en-US', { maximumFractionDigits: 4 });
-  return { name, good, detail: good ? `${shown} BOBAI` : `${shown} BOBAI — ${diff < 0n ? 'below' : 'above'} the 808.41 it keeps` };
+  return { name, good, detail: good ? `${shown} BOBAI` : `${shown} BOBAI — ${diff < 0n ? 'below' : 'above'} the ${amt} it keeps` };
 }
 const keepHolds = () => keepVerdict('x', 808410000002992638762n).good === true && keepVerdict('x', 808410000000000000000n).good === true
   && keepVerdict('x', 0n).good === false && keepVerdict('x', 26792110000000000000000n).good === false && keepVerdict('x', 808390000000000000000n).good === false
   && keepVerdict('x', null).good === false
-  && keepVerdict('x', 26792110000000000000000n, true).good === true && keepVerdict('x', 808390000000000000000n, true).good === false && keepVerdict('x', null, true).good === false;
+  && keepVerdict('x', 26792110000000000000000n, true).good === true && keepVerdict('x', 808390000000000000000n, true).good === false && keepVerdict('x', null, true).good === false
+  && keepVerdict('x', KEEP_BIG_WEI, false, KEEP_BIG_WEI).good === true && keepVerdict('x', KEEP_WEI, false, KEEP_BIG_WEI).good === false
+  && keepVerdict('x', KEEP_BIG_WEI + 10n ** 18n, false, KEEP_BIG_WEI).good === false && keepVerdict('x', KEEP_BIG_WEI + 10n ** 18n, true, KEEP_BIG_WEI).good === true
+  && keepVerdict('x', KEEP_BIG_WEI - 10n ** 18n, true, KEEP_BIG_WEI).good === false && keepVerdict('x', KEEP_BIG_WEI, false, KEEP_BIG_WEI).name === 'x holds 80,841 BOBAI';
 export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org') {
   const client = createPublicClient({ chain: bsc, transport: http(rpc) });
   const abi = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
   const bal = (a) => client.readContract({ address: '0x245c386dcfed896f5c346107596141e5edcbffff', abi, functionName: 'balanceOf', args: [a] });
-  return Promise.all(Object.entries(KEEP_808_WALLETS).map(async ([label, a]) => {
+  const all = [...Object.entries(KEEP_808_WALLETS).map(([l, a]) => [l, a, KEEP_808_AT_LEAST.has(a), KEEP_WEI]),
+    ...Object.entries(KEEP_80841_WALLETS).map(([l, a]) => [l, a, KEEP_80841_AT_LEAST.has(a), KEEP_BIG_WEI])];
+  return Promise.all(all.map(async ([label, a, least, keep]) => {
     try {
-      const least = KEEP_808_AT_LEAST.has(a), v = keepVerdict(label, await bal(a), least);
+      const v = keepVerdict(label, await bal(a), least, keep);
       if (v.good) return v;
       // MID-RUN IS NOT BROKEN (2026-10-09 review): a liquidity run of d38 lasts minutes, longer than the minute the
       // morning run waits, and its wallet holds more than 808.41 between its steps. Off by more than a cent: look
@@ -256,10 +270,10 @@ export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org')
       const n0 = await client.getTransactionCount({ address: a, blockTag: 'latest' });
       await new Promise((r) => setTimeout(r, 45000));
       const [n1, again] = await Promise.all([client.getTransactionCount({ address: a, blockTag: 'latest' }), bal(a)]);
-      const v2 = keepVerdict(label, again, least);
+      const v2 = keepVerdict(label, again, least, keep);
       if (v2.good) return v2;
       return n1 > n0 ? { ...v2, good: true, detail: `${v2.detail.split(' — ')[0]} — mid-run (sent ${n1 - n0} tx in 45 s), not judged` } : v2;
-    } catch { return keepVerdict(label, null); }
+    } catch { return keepVerdict(label, null, least, keep); }
   }));
 }
 

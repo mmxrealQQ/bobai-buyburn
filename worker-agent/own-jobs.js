@@ -102,6 +102,11 @@ export async function tickOwnJobs(env, rpc, ids = []) {
     const out = recordTransition(record, id, snap, at);
     record = out.record;
     if (out.changed) changes++;
+    // who paid and who delivered (2026-10-20): the front page's "Works with us" line counts the jobs of each partner
+    if (record[id].client !== job.client || record[id].provider !== job.provider) {
+      record = { ...record, [id]: { ...record[id], client: job.client, provider: job.provider } };
+      changes++;
+    }
     rows.push({ id, status: snap.status, state: c.state, note: c.note });
   }
   const next = { jobs: record, checked_at: at, dispute_window_sec: windowSec, summary: summarise(record, at) };

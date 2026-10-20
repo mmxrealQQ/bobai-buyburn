@@ -193,8 +193,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=61" as="style">
-  <link rel="stylesheet" href="styles.css?v=61">
+  <link rel="preload" href="styles.css?v=62" as="style">
+  <link rel="stylesheet" href="styles.css?v=62">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -842,6 +842,13 @@
       <a class="ec-also" href="game/" title="A browser game with a public highscore board"><span class="ec-top"><img src="game/score-96.webp" alt="" loading="lazy" decoding="async"></span>Burn &amp; Add Liq</a>
       <a class="ec-also" href="worldcup/" title="The 2026 World Cup tip game, paid out 8.94M $BOBAI"><span class="ec-top"><img src="worldcup/wclogo-96.webp" alt="" loading="lazy" decoding="async"></span>Worldcup '26 <em>archive</em></a>
     </p>
+    <!-- WORKS WITH US (operator, 2026-10-20): the agent marketplaces that trade with our agents. app.js puts one figure
+         beside each name from the chain (escrow jobs, x402 payments); without it the names stand alone. -->
+    <p class="ec-more fi"><span>Works with us</span>
+      <a class="ec-with" href="https://www.mandatemarkets.com" target="_blank" rel="noopener"><b>Mandate</b> <span data-ecwith="mandate"></span></a>
+      <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
+      <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><b>Marque</b> <span data-ecwith="marque"></span></a>
+    </p>
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
@@ -1376,7 +1383,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=119" defer></script>
+<script src="app.js?v=120" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
 <link rel="stylesheet" href="terminal/terminal.css?v=1792408938">

@@ -1500,4 +1500,20 @@ fillLpYours();
   get('https://agent.brainonbnb.com/stats').then((j) => { const f = j && j.earned && j.earned.from_strangers; if (f && f.count > 0) set('services', nf(f.count) + ' answers paid by agents'); });
   get('https://agent.brainonbnb.com/lp/portfolio').then((j) => { const p = j && j.pool; if (p && typeof p.in_range === 'boolean') set('defi', String(p.label || 'CAKE/BNB').split(' ')[0] + (p.in_range ? ' in range' : ' out of range') + (p.width_pct ? ' · ±' + p.width_pct + '%' : '')); });
   get('/api/nft-drop').then((j) => { const t = j && j.total; if (t && t.minted != null && t.cap) set('nft', nf(t.minted) + ' of ' + nf(t.cap) + ' minted'); });
+  // WORKS WITH US (2026-10-20): escrow jobs read from the kernel (/jobs/own keeps each job's client and provider) and
+  // x402 payments checked on chain (/buys). A job counts once it was paid into escrow; open or refunded ones do not.
+  const MANDATE = '0xd6d11aa5046dc5c7be8d63b9223b60d7ad94cbe9', POKTER = '0xdab12cf15f4385188be62bda9f00877af4c1b32f';
+  const CAMPAIGN = '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a'; // our Set and Earn wallet hired Marque's agents
+  const MARQUE = ['0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00', '0x253f7ad5d52099c4a2293418a661e9974dfb5e84', '0x5aaf7b5b2170986c59279682bd714c475ae8c718', '0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6'];
+  const w = (k, t) => { const e = document.querySelector('[data-ecwith="' + k + '"]'); if (e && t) e.textContent = '· ' + t; };
+  Promise.all([get('https://agent.brainonbnb.com/jobs/own'), get('https://agent.brainonbnb.com/buys')]).then(([o, b]) => {
+    const paid = Object.values((o && o.jobs) || {}).filter((j) => j.client && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || ''));
+    const from = (a) => paid.filter((j) => j.client.toLowerCase() === a).length;
+    const x402 = ((b && b.payments) || []).filter((p) => !p.self_test && String(p.from).toLowerCase() === MANDATE).length;
+    const m = from(MANDATE) + x402, p = from(POKTER);
+    const q = paid.filter((j) => j.client.toLowerCase() === CAMPAIGN && MARQUE.includes(String(j.provider).toLowerCase())).length;
+    if (m) w('mandate', 'paid us ' + nf(m) + '×');
+    if (p) w('pokter', 'hired us ' + nf(p) + '×');
+    if (q) w('marque', 'we hired ' + nf(q) + ' of its agents');
+  });
 })();

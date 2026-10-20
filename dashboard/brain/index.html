@@ -194,8 +194,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=61" as="style">
-  <link rel="stylesheet" href="styles.css?v=61">
+  <link rel="preload" href="styles.css?v=62" as="style">
+  <link rel="stylesheet" href="styles.css?v=62">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -240,7 +240,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792408962922">
+<link rel="stylesheet" href="brain/brain.css?v=1792467204250">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1792408938">
@@ -835,6 +835,13 @@
       <a class="ec-also" href="game/" title="A browser game with a public highscore board"><span class="ec-top"><img src="game/score-96.webp" alt="" loading="lazy" decoding="async"></span>Burn &amp; Add Liq</a>
       <a class="ec-also" href="worldcup/" title="The 2026 World Cup tip game, paid out 8.94M $BOBAI"><span class="ec-top"><img src="worldcup/wclogo-96.webp" alt="" loading="lazy" decoding="async"></span>Worldcup '26 <em>archive</em></a>
     </p>
+    <!-- WORKS WITH US (operator, 2026-10-20): the agent marketplaces that trade with our agents. app.js puts one figure
+         beside each name from the chain (escrow jobs, x402 payments); without it the names stand alone. -->
+    <p class="ec-more fi"><span>Works with us</span>
+      <a class="ec-with" href="https://www.mandatemarkets.com" target="_blank" rel="noopener"><b>Mandate</b> <span data-ecwith="mandate"></span></a>
+      <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
+      <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><b>Marque</b> <span data-ecwith="marque"></span></a>
+    </p>
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
@@ -1163,7 +1170,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">59 files &middot; 19,599 lines &middot; 0.4 MB</span>
+          <span class="lib-m">59 files &middot; 19,600 lines &middot; 0.4 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1328,13 +1335,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=119" defer></script>
+<script src="app.js?v=120" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1792408938')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792408962923" defer></script>
-<script src="brain/cards.js?v=1792408962923" defer></script>
-<script src="brain/hero.js?v=1792408962923" defer></script>
+<script src="brain/brain.js?v=1792467204251" defer></script>
+<script src="brain/cards.js?v=1792467204251" defer></script>
+<script src="brain/hero.js?v=1792467204251" defer></script>
 </body></html>

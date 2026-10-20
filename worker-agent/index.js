@@ -408,7 +408,8 @@ function bumpDetail(env, names, n = 1) {
   // The pool-scan line and its day pass are written at once (2026-10-19): on 19.10. a trading bot's 49 refused scans
   // were all counted and its 50 free ones of 00 UTC not one — they sat in an isolate that took no further hit before
   // it was evicted. Some 500 a day; one KV write each.
-  if ([].concat(names || []).some((raw) => /^(poolscan|sell:scanpass)/.test(cleanDetail(raw)))) {
+  // A payment too (2026-10-20): /buys showed 8 paid answers on 19.10., /stats/detail 3 — a few a day.
+  if ([].concat(names || []).some((raw) => /^(poolscan|sell:scanpass)|(^|:)paid:/.test(cleanDetail(raw)))) {
     return (flushing ? flushing.catch(() => {}) : Promise.resolve()).then(() => flushCounters(env)).catch(() => {});
   }
   if (Date.now() - lastFlush < FLUSH_MS) return;

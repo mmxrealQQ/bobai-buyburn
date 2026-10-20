@@ -103,6 +103,16 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   await hit({ detail: 'sell:scanpass:terms' });
   await Promise.all(waits);
   ok('… and so is a step of the scan day pass', written() === before + 4, `${before} -> ${written()}`);
+  // A payment is written at once too (2026-10-20): /buys showed 8 paid answers on 19.10., /stats/detail 3.
+  await hit({ detail: 'sell:answer:grid_plan:paid:200' });
+  await Promise.all(waits);
+  ok('… and so is a paid step', written() === before + 5, `${before} -> ${written()}`);
+  await hit({ detail: 'tip:paid:200' });
+  await Promise.all(waits);
+  ok('… and a paid tip', written() === before + 6, `${before} -> ${written()}`);
+  await hit({ detail: 'sell:answer:grid_plan:terms' });
+  await Promise.all(waits);
+  ok('but the terms of a sale still wait', written() === before + 6, `${before} -> ${written()}`);
 }
 
 // ---------------------------------------------------------------- dashboard

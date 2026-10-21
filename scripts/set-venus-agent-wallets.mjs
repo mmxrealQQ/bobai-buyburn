@@ -38,7 +38,8 @@ if (!confirm) { console.log(`\nplan only: ${todo.length} transaction(s) from ${o
 const now = new Date(), m = now.getUTCHours() * 60 + now.getUTCMinutes();
 if (m >= 4 * 60 + 15 && m <= 4 * 60 + 45) stop('04:15–04:45 UTC is the DeFi agent\'s run from this same wallet; try after 04:45');
 for (const [id, a] of todo) {
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+  // the registry refuses a deadline far ahead ("deadline too far" at 600 s, 21.10.); 240 s passed on the fork
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 240);
   const sig = await agentWalletSig(a, { agentId: id, owner: owner.address, deadline });
   await pub.simulateContract({ account: owner, address: IDENTITY_REGISTRY, abi: SET_AGENT_WALLET_ABI, functionName: 'setAgentWallet', args: [id, a.address, deadline, sig] });
   const hash = await wal.writeContract({ address: IDENTITY_REGISTRY, abi: SET_AGENT_WALLET_ABI, functionName: 'setAgentWallet', args: [id, a.address, deadline, sig], gasPrice: 100000000n });

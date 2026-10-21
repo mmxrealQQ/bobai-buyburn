@@ -1516,4 +1516,20 @@ fillLpYours();
     if (p) w('pokter', 'hired us ' + nf(p) + '×');
     if (q) w('marque', 'we hired ' + nf(q) + ' of its agents');
   });
+  // FOR EVERY AGENT ON BNB CHAIN (2026-10-21): what the job settler released to whom, what the Venus agents did, what
+  // the pool scan pass costs — each from the agent worker's own record, in USD. Without an answer the card keeps its line.
+  get('https://agent.brainonbnb.com/settle/public').then((j) => {
+    const t = j && j.totals;
+    if (t && t.jobs > 0) set('settle', '$' + Number(t.released_u).toFixed(2) + ' released to ' + nf(t.providers.length) + (t.providers.length === 1 ? ' agent' : ' agents'));
+    else if (j && j.waiting) set('settle', nf(j.waiting) + ' jobs watched · daily 21:15 UTC');
+  });
+  get('https://agent.brainonbnb.com/venus/work').then((j) => {
+    const acts = ((j && j.log) || []).filter((x) => x.tx).length;
+    if (acts > 0) set('venus', nf(acts) + (acts === 1 ? ' action' : ' actions') + ' on Venus so far');
+    else if (j && j.switched_on) set('venus', 'Switched on · daily 05:00 UTC');
+  });
+  get('https://agent.brainonbnb.com/scan-pass').then((j) => {
+    const p = j && String(j.price || '').match(/^(\d+(?:\.\d+)?) USD1/);
+    if (p) set('pass', '50 free a day, then $' + Number(p[1]).toFixed(2) + ' a day');
+  });
 })();

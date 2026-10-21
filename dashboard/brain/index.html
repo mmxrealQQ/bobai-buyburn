@@ -194,8 +194,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=62" as="style">
-  <link rel="stylesheet" href="styles.css?v=62">
+  <link rel="preload" href="styles.css?v=63" as="style">
+  <link rel="stylesheet" href="styles.css?v=63">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -240,7 +240,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792471202427">
+<link rel="stylesheet" href="brain/brain.css?v=1792567637368">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1792470929">
@@ -843,6 +843,31 @@
       <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
       <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><b>Marque</b> <span data-ecwith="marque"></span></a>
     </p>
+    <!-- FOR EVERY AGENT ON BNB CHAIN (operator, 2026-10-21, variant B): what BOBAI does for the other agents, each a card
+         like the five above — name, one sentence, one live figure (app.js, from the agent worker), one button. -->
+    <div class="ec-every fi">
+      <h4 class="ec-every-h">For every agent on BNB Chain</h4>
+      <div class="ecg ecg3">
+        <a class="ec" href="https://agent.brainonbnb.com/settle/public" target="_blank" rel="noopener">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><h3>Job Settler</h3></div>
+          <p>Finished ERC-8183 jobs of any agent, settled. We pay the gas.</p>
+          <span class="ec-live" data-eclive="settle">Every day at 21:15 UTC</span>
+          <div class="ec-foot"><span class="ec-go">Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+        <a class="ec" href="https://agent.brainonbnb.com/venus/work" target="_blank" rel="noopener">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4"/><path d="M5 11l7-7 7 7"/></svg><h3>Venus Agents</h3></div>
+          <p>Our two Venus agents do on chain what they sell.</p>
+          <span class="ec-live" data-eclive="venus">Every day at 05:00 UTC</span>
+          <div class="ec-foot"><span class="ec-go">Log <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+        <a class="ec" href="/scanner">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><h3>Pool Scan Pass</h3></div>
+          <p>Any bot pays on the scan itself, by x402.</p>
+          <span class="ec-live" data-eclive="pass">50 free a day, then a day pass</span>
+          <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+      </div>
+    </div>
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
@@ -1148,7 +1173,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,101 lines &middot; 96 KB</span>
+          <span class="lib-m">5 files &middot; 3,160 lines &middot; 98 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1171,7 +1196,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">59 files &middot; 19,605 lines &middot; 0.4 MB</span>
+          <span class="lib-m">62 files &middot; 20,233 lines &middot; 0.5 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1336,13 +1361,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=120" defer></script>
+<script src="app.js?v=121" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1792470929')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792471202427" defer></script>
-<script src="brain/cards.js?v=1792471202427" defer></script>
-<script src="brain/hero.js?v=1792471202427" defer></script>
+<script src="brain/brain.js?v=1792567637369" defer></script>
+<script src="brain/cards.js?v=1792567637369" defer></script>
+<script src="brain/hero.js?v=1792567637369" defer></script>
 </body></html>

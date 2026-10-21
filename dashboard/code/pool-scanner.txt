@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7738 lines.
+# one fetch. 6 files, 7743 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6801,6 +6801,10 @@ export { flagsCard, verdictCard };
     .ec-with b{font-weight:600;color:var(--text,inherit)}
     .ec-with:hover,.ec-with:hover b{color:var(--gold)}
     .ec-more+.ec-more{margin-top:8px}
+    /* FOR EVERY AGENT ON BNB CHAIN (operator, 2026-10-21, variant B): three cards of what BOBAI does for other agents */
+    .ec-every{margin-top:22px}
+    .ec-every-h{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;font-weight:600}
+    .ecg.ecg3{grid-template-columns:repeat(3,minmax(0,1fr))}
     /* FIVE IN ONE ROW (operator, 2026-10-19: "viel einfacher, viel weniger, dafür das wichtigste"): a card is its name,
        one sentence, one live figure and one button; the green dot says it is live, so the word LIVE goes */
     .ecg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
@@ -6812,6 +6816,7 @@ export { flagsCard, verdictCard };
     @media (max-width:1100px){.ecg{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media (max-width:700px){.ecg{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:420px){.ecg{grid-template-columns:1fr}}
+    @media (max-width:700px){.ecg.ecg3{grid-template-columns:1fr}}
     .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
     .ec-go .arr{transition:transform .25s}
     .ec:hover .ec-go .arr{transform:translateX(3px)}

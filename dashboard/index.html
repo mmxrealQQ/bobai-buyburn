@@ -193,8 +193,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=62" as="style">
-  <link rel="stylesheet" href="styles.css?v=62">
+  <link rel="preload" href="styles.css?v=63" as="style">
+  <link rel="stylesheet" href="styles.css?v=63">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -849,6 +849,31 @@
       <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
       <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><b>Marque</b> <span data-ecwith="marque"></span></a>
     </p>
+    <!-- FOR EVERY AGENT ON BNB CHAIN (operator, 2026-10-21, variant B): what BOBAI does for the other agents, each a card
+         like the five above — name, one sentence, one live figure (app.js, from the agent worker), one button. -->
+    <div class="ec-every fi">
+      <h4 class="ec-every-h">For every agent on BNB Chain</h4>
+      <div class="ecg ecg3">
+        <a class="ec" href="https://agent.brainonbnb.com/settle/public" target="_blank" rel="noopener">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><h3>Job Settler</h3></div>
+          <p>Finished ERC-8183 jobs of any agent, settled. We pay the gas.</p>
+          <span class="ec-live" data-eclive="settle">Every day at 21:15 UTC</span>
+          <div class="ec-foot"><span class="ec-go">Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+        <a class="ec" href="https://agent.brainonbnb.com/venus/work" target="_blank" rel="noopener">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4"/><path d="M5 11l7-7 7 7"/></svg><h3>Venus Agents</h3></div>
+          <p>Our two Venus agents do on chain what they sell.</p>
+          <span class="ec-live" data-eclive="venus">Every day at 05:00 UTC</span>
+          <div class="ec-foot"><span class="ec-go">Log <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+        <a class="ec" href="/scanner">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><h3>Pool Scan Pass</h3></div>
+          <p>Any bot pays on the scan itself, by x402.</p>
+          <span class="ec-live" data-eclive="pass">50 free a day, then a day pass</span>
+          <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
+      </div>
+    </div>
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
@@ -1039,7 +1064,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,738 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,743 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1383,7 +1408,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=120" defer></script>
+<script src="app.js?v=121" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
 <link rel="stylesheet" href="terminal/terminal.css?v=1792470929">

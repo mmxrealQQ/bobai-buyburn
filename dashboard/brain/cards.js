@@ -300,7 +300,8 @@
   // 04 ECOSYSTEM: the apps inside, as their own icons
   function draw04() {
     const el = viz('04'); if (!el || el.dataset.done) return;
-    const cards = $$('#w04 .ec'); if (!cards.length) return;
+    // the apps only: the three "for every agent" cards under them (2026-10-21) are services of BOBAI's, not apps
+    const cards = $$('#w04 .ec').filter((c) => !c.closest('.ec-every')); if (!cards.length) return;
     // with their names (2026-09-28): eight bare 26 px icons left the biggest card half empty and said nothing
     const SHORT = { 'NFT Buy Drops': 'NFT Drops', 'Pool Scanner': 'Scanner', 'Agent Services': 'Services', 'Burn & Add Liq': 'Burn & Liq', "Worldcup '26": 'Worldcup' };
     const nm = (c) => { const t = (c.querySelector('h3')?.textContent || '').trim(); const d = document.createElement('i'); d.textContent = SHORT[t] || t; return d.innerHTML; };

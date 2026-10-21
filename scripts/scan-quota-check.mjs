@@ -7,7 +7,9 @@
 // carries on. Offline: the pass is signed and checked, a changed, expired or foreign one is refused. Live: the terms and
 // the 402 of the pass, the holder pass read for it (a fresh key below the line: refused for that reason, not as "not
 // for this"), a caller run to the line under a test name (x-hit-secret + x-scan-quota-key, so the address this runs from
-// keeps its day), the pass past the line, a forged pass, and MCP refusing the same way.
+// keeps its day), the pass past the line, a forged pass, and MCP refusing the same way. Since 21.10. the 51st REST scan
+// is the pass's own x402 402 (a bot ran into the 429 600 times a day and never bought): its terms, a payment that is
+// none refused, and the pass kept for a caller at the agent worker carrying that caller on with nothing to send.
 //
 //   node scripts/scan-quota-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import fs from 'node:fs';
@@ -61,8 +63,14 @@ else {
   const codes = [];
   for (let i = 0; i < P.SCAN_FREE_PER_DAY; i++) codes.push((await scan()).status);
   check(codes.every((c) => c === 400), `scans 1–${P.SCAN_FREE_PER_DAY} go through (answered, here bad_address)`, [...new Set(codes)].join(','));
+  // 2026-10-21: on REST the 51st scan is the day pass's own 402, which an x402 client pays and repeats.
   const over = await scan(), oj = await over.json().catch(() => ({}));
-  check(over.status === 429 && oj.code === 'free_limit' && /scan-pass/.test(oj.hint || '') && Number(over.headers.get('retry-after')) > 0, `scan ${P.SCAN_FREE_PER_DAY + 1} is refused: 429 free_limit, the day pass named, Retry-After`, `${over.status} ${oj.code} retry-after ${over.headers.get('retry-after')}`);
+  let offer = null; try { offer = JSON.parse(Buffer.from(over.headers.get('payment-required') || '', 'base64').toString()); } catch {}
+  check(over.status === 402 && oj.code === 'free_limit' && /PAYMENT-SIGNATURE/.test(oj.hint || '') && Number(over.headers.get('retry-after')) > 0, `scan ${P.SCAN_FREE_PER_DAY + 1} is refused as the day pass's 402: free_limit, how to pay it here, Retry-After`, `${over.status} ${oj.code} retry-after ${over.headers.get('retry-after')}`);
+  const pt = (offer?.accepts || []).map((x) => String(x.payTo || '').toLowerCase());
+  check(pt.length >= 3 && new Set(pt).size === 1 && /^0x[0-9a-f]{40}$/.test(pt[0]) && (oj.accepts || []).length === pt.length && /0\.50/.test(oj.price || '') && !!oj.holder_pass, 'its PAYMENT-REQUIRED is the pass for sale: every way to pay, one wallet, the price, the holder pass', `${pt.length} ways, ${new Set(pt).size} wallet(s), ${(oj.price || '').slice(0, 40)}`);
+  const junk = await scan({ ...hdr, 'x-payment': '0x' + '00'.repeat(32) }), jj = await junk.json().catch(() => ({}));
+  check(junk.status === 402 && !junk.headers.get('x-scan-pass') && !!junk.headers.get('payment-required') && /Nothing was taken/.test(jj.hint || ''), 'a payment that is none is refused: 402, no pass, no scan, the terms again', `${junk.status} ${(jj.reason || jj.error || '').slice(0, 60)}`);
   const minted = await P.issueScanPass(SECRET);
   const withPass = await scan({ ...hdr, 'x-scan-pass': minted.pass });
   check(withPass.status === 400, 'past the line, a valid X-Scan-Pass carries on', String(withPass.status));
@@ -77,6 +85,19 @@ else {
   check(g?.result?.isError && /not issued by/.test(g.result.content?.[0]?.text || ''), 'the agent MCP relay (grid-trader bsc_pool_scan) is held to the same line', (g?.result?.content?.[0]?.text || JSON.stringify(g)).slice(0, 90));
   const other = await scan({ ...hdr, 'x-scan-quota-key': key + 'x' });
   check(other.status === 400, 'another caller still has its own 50', String(other.status));
+  // The pass bought on the scan is kept under the caller's key at the agent worker: past the line, that caller scans
+  // on without sending anything. Kept first, then run to the line (a caller looked up and found without one is
+  // remembered for a minute in that data centre).
+  const k2 = key + 'u', ck = await P.scanCallerKey('test:' + k2), unlockUrl = `${AGENT}/scan-pass/unlock`;
+  const anon = await fetch(unlockUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ for: ck, pass: minted.pass }) });
+  check(anon.status === 401, 'the kept pass is written by the site alone (no secret: 401)', String(anon.status));
+  const fake = await fetch(unlockUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': SECRET }, body: JSON.stringify({ for: ck, pass: minted.pass.slice(0, -1) + (minted.pass.endsWith('0') ? '1' : '0') }) });
+  check(fake.status === 400, 'a pass that does not check is not kept', String(fake.status));
+  const kept = await fetch(unlockUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': SECRET }, body: JSON.stringify({ for: ck, pass: minted.pass }) });
+  check(kept.status === 200, 'a real pass is kept for the caller', String(kept.status));
+  const h2 = { ...hdr, 'x-scan-quota-key': k2 }, codes2 = [];
+  for (let i = 0; i <= P.SCAN_FREE_PER_DAY + 1; i++) codes2.push((await scan(h2)).status);
+  check(codes2.every((c) => c === 400), `a caller with a kept pass scans past the line with nothing to send (${P.SCAN_FREE_PER_DAY + 2} scans)`, [...new Set(codes2)].join(','));
 }
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

@@ -40,13 +40,22 @@ export async function checkScanPass(secret, pass, now = Date.now()) {
   return { ok: true, id, exp };
 }
 
-// What a caller over the free line is told, the same on REST and MCP.
-export const scanLimitTerms = (used, now = Date.now()) => {
+// The name a caller's day is counted under, and the day pass it paid for is kept under (2026-10-21): never the address.
+export async function scanCallerKey(ip) {
+  return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-scanq:' + ip))).slice(0, 32);
+}
+
+// What a caller over the free line is told. On REST (x402: true, 2026-10-21) the refusal is itself the 402 of the day
+// pass: a client that speaks x402 pays it and repeats the request, the scan is answered and its address scans on for
+// the day. MCP has no 402 to answer with, so there the pass is bought at its own URL and sent as X-Scan-Pass.
+export const scanLimitTerms = (used, now = Date.now(), { x402 = false } = {}) => {
   const renews = new Date(now); renews.setUTCHours(24, 0, 0, 0);
   return {
     error: `The free pool scan is ${SCAN_FREE_PER_DAY} scans per caller and UTC day, and this caller has used them (${used}). It renews at ${renews.toISOString()}.`,
     code: 'free_limit',
-    hint: `Carry on today with a scan day pass: POST ${SCAN_PASS_URL} (the 402 there has the terms — 0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), then send the pass it returns as header X-Scan-Pass on every scan for ${SCAN_PASS_HOURS} hours.`,
+    hint: x402
+      ? `This answer is the 402 of a scan day pass (0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI): pay it by x402 and send this request again with the payment in PAYMENT-SIGNATURE or X-PAYMENT. The scan is answered, and this address scans on for ${SCAN_PASS_HOURS} hours without anything else to send; the pass comes back as header X-Scan-Pass for use from elsewhere.`
+      : `Carry on today with a scan day pass: POST ${SCAN_PASS_URL} (the 402 there has the terms — 0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), then send the pass it returns as header X-Scan-Pass on every scan for ${SCAN_PASS_HOURS} hours.`,
     free_per_day: SCAN_FREE_PER_DAY,
     renews_at: renews.toISOString(),
     scan_pass: { buy: `POST ${SCAN_PASS_URL}`, terms: `GET ${SCAN_PASS_URL}`, lasts: `${SCAN_PASS_HOURS} hours, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`, send_as: 'header X-Scan-Pass: <pass>' },

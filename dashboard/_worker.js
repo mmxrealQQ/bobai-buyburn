@@ -10,7 +10,7 @@ import { swapRoute } from './swap-route.js';
 import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
-import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms } from '../shared/scan-pass.js';
+import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -1238,7 +1238,36 @@ async function cacheBump(path, ttlSec, cap) {
   await cache.put(key, new Response(String(n + 1), { headers: { 'Cache-Control': `public, max-age=${Math.max(60, Math.round(ttlSec))}` } }));
   return n + 1;
 }
-async function scanAllowance(request) {
+// THE 51ST SCAN IS THE DAY PASS'S 402 (2026-10-21, operator: option 1). 19.–20.10. one trading bot scanned 643 and 720
+// times a day and ran into the line 549 and 628 times; it never bought the pass, because a 429 with a hint is nothing
+// an x402 client acts on. On REST the refusal is now the pass's own 402 (its terms read from the agent worker, a
+// minute's cache); repeated with the payment, the site buys the pass with it there (the sale itself unchanged), answers
+// the scan, hands the pass back as X-Scan-Pass and has it kept under the caller's key, so that address scans on for
+// the day without sending anything. One payment, one pass: a caller already unlocked is never asked again.
+const PASS_UNLOCK_URL = SCAN_PASS_URL + '/unlock';
+async function scanPassOffer() {
+  const key = new Request('https://brainonbnb.com/__scanq/offer'), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  const r = await fetch(SCAN_PASS_URL, { headers: { 'user-agent': 'brainonbnb-site' }, signal: AbortSignal.timeout(8000) });
+  const j = await r.json(), header = r.headers.get('payment-required');
+  if (!r.ok || !header || !Array.isArray(j.accepts)) throw new Error('no terms');
+  const offer = { header, price: j.price, accepts: j.accepts, ...(j.in_bobai ? { in_bobai: j.in_bobai } : {}), holder_pass: j.holder_pass };
+  await cache.put(key, new Response(JSON.stringify(offer), { headers: { 'Cache-Control': 'public, max-age=60' } }));
+  return offer;
+}
+// The pass kept for a caller: this data centre's cache first (a miss is remembered for a minute), then the agent's KV.
+async function unlockedPass(secret, callerKey) {
+  const key = new Request('https://brainonbnb.com/__scanq/unlock/' + callerKey), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) { const t = await hit.text(); return t === 'none' ? null : t; }
+  const r = await fetch(`${PASS_UNLOCK_URL}?for=${callerKey}`, { headers: { 'x-hit-secret': secret, 'user-agent': 'brainonbnb-site' }, signal: AbortSignal.timeout(5000) });
+  const pass = r.ok ? (await r.json()).pass : null;
+  const c = pass ? await checkScanPass(secret, pass) : { ok: false };
+  await cache.put(key, new Response(c.ok ? pass : 'none', { headers: { 'Cache-Control': `public, max-age=${c.ok ? Math.max(60, Math.floor((c.exp - Date.now()) / 1000)) : 60}` } }));
+  return c.ok ? pass : null;
+}
+async function scanAllowance(request, { rest = false } = {}) {
   try {
     const secret = WORKER_ENV?.HIT_SECRET;
     // Our own tests go free; with x-scan-quota-key they are counted under that name instead, so the checker can run a
@@ -1246,22 +1275,50 @@ async function scanAllowance(request) {
     const owned = !!secret && request.headers.get('x-hit-secret') === secret;
     const testKey = owned ? request.headers.get('x-scan-quota-key') : null;
     if (owned && !testKey) return null;
-    const pass = request.headers.get('x-scan-pass');
-    if (pass) {
+    // 'ip:<address>': our agent worker relaying an outside caller's scan (its agent MCP servers) — that caller's own day
+    const ip = testKey ? (testKey.startsWith('ip:') ? testKey.slice(3) : 'test:' + testKey) : request.headers.get('cf-connecting-ip');
+    const callerKey = ip ? await scanCallerKey(ip) : null;
+    const withPass = async (pass, note) => {
       const c = await checkScanPass(secret, pass);
       if (!c.ok) return { status: 402, body: { error: c.reason, code: 'bad_scan_pass', hint: `Buy a day pass at POST ${SCAN_PASS_URL}, or leave X-Scan-Pass out to use the ${SCAN_FREE_PER_DAY} free scans of the day.` }, note: 'poolscan:pass:bad' };
       const n = await cacheBump('pass/' + c.id, (c.exp - Date.now()) / 1000, SCAN_PASS_CAP);
       if (n > SCAN_PASS_CAP) return { status: 429, body: { error: `This day pass has carried its ${SCAN_PASS_CAP.toLocaleString('en-US')} scans.`, code: 'pass_used', hint: `Buy another at POST ${SCAN_PASS_URL}.` }, note: 'poolscan:pass:used' };
-      return { ok: true, note: 'poolscan:pass' };
+      return { ok: true, note };
+    };
+    // The scan repeated with a payment: the payment buys the pass at the agent worker, exactly as POST /scan-pass would.
+    const proof = rest ? (request.headers.get('payment-signature') || request.headers.get('x-payment')) : null;
+    if (proof && secret) {
+      const r = await fetch(SCAN_PASS_URL, { method: 'POST', headers: { 'PAYMENT-SIGNATURE': proof, 'X-PAYMENT': proof, 'user-agent': 'brainonbnb-site' }, signal: AbortSignal.timeout(90000) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status !== 200 || !j.pass) {
+        const offer = await scanPassOffer().catch(() => null);
+        return { status: r.status === 200 ? 502 : r.status, body: { ...j, code: j.code || 'payment_refused', hint: 'Nothing was taken for this scan. The terms are in PAYMENT-REQUIRED; the free scans of the day are unchanged.' }, headers: offer ? { 'PAYMENT-REQUIRED': offer.header, 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' } : {}, note: 'poolscan:payrefused' };
+      }
+      if (callerKey) {
+        await fetch(PASS_UNLOCK_URL, { method: 'POST', headers: { 'x-hit-secret': secret, 'content-type': 'application/json', 'user-agent': 'brainonbnb-site' }, body: JSON.stringify({ for: callerKey, pass: j.pass }), signal: AbortSignal.timeout(8000) }).catch(() => {});
+        await caches.default.put(new Request('https://brainonbnb.com/__scanq/unlock/' + callerKey), new Response(j.pass, { headers: { 'Cache-Control': `public, max-age=${Math.max(60, Math.floor((Date.parse(j.expires) - Date.now()) / 1000))}` } })).catch(() => {});
+      }
+      const ok = await withPass(j.pass, 'poolscan:bought');
+      const receipt = btoa(JSON.stringify({ success: true, transaction: j.tx || null, network: 'eip155:56', paid: j.paid, pass_expires: j.expires }));
+      return { ...ok, grant: { 'X-Scan-Pass': j.pass, 'PAYMENT-RESPONSE': receipt, 'Access-Control-Expose-Headers': 'X-Scan-Pass, PAYMENT-RESPONSE' } };
     }
-    // 'ip:<address>': our agent worker relaying an outside caller's scan (its agent MCP servers) — that caller's own day
-    const ip = testKey ? (testKey.startsWith('ip:') ? testKey.slice(3) : 'test:' + testKey) : request.headers.get('cf-connecting-ip');
-    if (!ip) return null;
-    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-scanq:' + ip));
+    const pass = request.headers.get('x-scan-pass');
+    if (pass) return withPass(pass, 'poolscan:pass');
+    if (!callerKey) return null;
     const now = new Date(), end = new Date(now); end.setUTCHours(24, 0, 0, 0);
-    const n = await cacheBump([...new Uint8Array(d)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('') + '/' + now.toISOString().slice(0, 10), (end - now) / 1000, SCAN_FREE_PER_DAY);
-    if (n > SCAN_FREE_PER_DAY) return { status: 429, body: scanLimitTerms(SCAN_FREE_PER_DAY), headers: { 'Retry-After': String(Math.ceil((end - now) / 1000)) }, note: 'poolscan:limit' };
-    return null;
+    const n = await cacheBump(callerKey + '/' + now.toISOString().slice(0, 10), (end - now) / 1000, SCAN_FREE_PER_DAY);
+    if (n <= SCAN_FREE_PER_DAY) return null;
+    const kept = secret ? await unlockedPass(secret, callerKey).catch(() => null) : null;
+    if (kept) return withPass(kept, 'poolscan:unlock');
+    const retry = { 'Retry-After': String(Math.ceil((end - now) / 1000)) };
+    if (rest) {
+      const offer = await scanPassOffer().catch(() => null);
+      if (offer) {
+        const { header, ...terms } = offer;
+        return { status: 402, body: { ...scanLimitTerms(SCAN_FREE_PER_DAY, Date.now(), { x402: true }), ...terms }, headers: { ...retry, 'PAYMENT-REQUIRED': header, 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' }, note: 'poolscan:limit' };
+      }
+    }
+    return { status: 429, body: scanLimitTerms(SCAN_FREE_PER_DAY), headers: retry, note: 'poolscan:limit' };
   } catch { return null; }   // a counter that cannot count lets the scan through
 }
 
@@ -1787,9 +1844,10 @@ export default {
       // Past the free scans of the day, the day pass (2026-10-18). Only a browser on our own pages is left out: the
       // referer alone is anyone's to send.
       if ((!isOwn || request.headers.get('x-scan-quota-key')) && WITH_ADDRESS[url.pathname] === 'bsc_pool_scan' && request.headers.get('sec-fetch-site') !== 'same-origin') {
-        const lim = await scanAllowance(request);
+        const lim = await scanAllowance(request, { rest: true });
         if (lim?.note) count(null, [lim.note, ...(lim.ok ? [] : [`poolscanua:${product}`])]);
         if (lim && !lim.ok) return new Response(JSON.stringify(lim.body, null, 2), { status: lim.status, headers: { ...headers, ...(lim.headers || {}) } });
+        if (lim?.grant) Object.assign(headers, lim.grant);   // bought with this scan: the pass and the receipt go back with the answer
       }
       try {
         const out = WITH_ADDRESS[url.pathname]
@@ -1806,7 +1864,7 @@ export default {
         // Which scans the watch can be offered on (2026-10-16), and what the others found (scanShape, 2026-10-17).
         if (outsideScan) count(null, [sold.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${scanShape(out)}`, `poolscanua:${product}`]);
         if (!(await firstCall(request))) return new Response(JSON.stringify(sold, null, 2), { headers }); // the note once per caller (2026-10-01)
-        return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
+        return new Response(JSON.stringify(withThanks(sold), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': [headers['Access-Control-Expose-Headers'], 'X-Thanks'].filter(Boolean).join(', ') } });
       } catch (e) {
         // Status, code and hint from errorAnswer (2026-10-09), the same three fields MCP carries.
         const { status, body } = errorAnswer(e);

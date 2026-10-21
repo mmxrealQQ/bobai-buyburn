@@ -28,7 +28,7 @@
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
-import { issueScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
+import { issueScanPass, checkScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
 // The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
 const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
 // On every card that takes an escrow job (2026-10-16): Pokter hired the DeFi
@@ -3354,6 +3354,26 @@ ${pageTail}`;
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
+    }
+
+    // THE DAY PASS A CALLER PAID FOR ON THE SCAN ITSELF (2026-10-21): brainonbnb.com answers the 51st scan with the
+    // pass's 402, buys the pass with the payment the caller repeats the scan with, and keeps it here under the caller's
+    // key (scanCallerKey — never the address), so that address scans on for the day through every data centre without
+    // sending anything. Only the site writes and reads it (the shared secret); a pass that does not check is not kept.
+    if (path === '/scan-pass/unlock' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (request.method === 'GET') {
+        const k = String(url.searchParams.get('for') || '');
+        if (!/^[0-9a-f]{32}$/.test(k)) return json({ error: 'for: the caller key, 32 hex' }, 400);
+        const pass = await env.AGENT.get('scanunlock:' + k);
+        return pass ? json({ pass }) : json({ pass: null }, 404);
+      }
+      const b = await request.json().catch(() => ({}));
+      const k = String(b.for || ''), c = await checkScanPass(env.HIT_SECRET, b.pass);
+      if (!/^[0-9a-f]{32}$/.test(k) || !c.ok) return json({ error: c.ok ? 'for: the caller key, 32 hex' : c.reason }, 400);
+      await env.AGENT.put('scanunlock:' + k, b.pass, { expirationTtl: Math.max(60, Math.floor((c.exp - Date.now()) / 1000)) });
+      note('sell:scanpass:unlock');
+      return json({ ok: true, until: new Date(c.exp).toISOString() });
     }
 
     if (path === '/scan-pass' && (request.method === 'GET' || request.method === 'POST')) {

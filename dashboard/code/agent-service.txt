@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 59 files, 19605 lines.
+# one fetch. 62 files, 20233 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3342,13 +3342,22 @@ export async function checkScanPass(secret, pass, now = Date.now()) {
   return { ok: true, id, exp };
 }
 
-// What a caller over the free line is told, the same on REST and MCP.
-export const scanLimitTerms = (used, now = Date.now()) => {
+// The name a caller's day is counted under, and the day pass it paid for is kept under (2026-10-21): never the address.
+export async function scanCallerKey(ip) {
+  return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-scanq:' + ip))).slice(0, 32);
+}
+
+// What a caller over the free line is told. On REST (x402: true, 2026-10-21) the refusal is itself the 402 of the day
+// pass: a client that speaks x402 pays it and repeats the request, the scan is answered and its address scans on for
+// the day. MCP has no 402 to answer with, so there the pass is bought at its own URL and sent as X-Scan-Pass.
+export const scanLimitTerms = (used, now = Date.now(), { x402 = false } = {}) => {
   const renews = new Date(now); renews.setUTCHours(24, 0, 0, 0);
   return {
     error: `The free pool scan is ${SCAN_FREE_PER_DAY} scans per caller and UTC day, and this caller has used them (${used}). It renews at ${renews.toISOString()}.`,
     code: 'free_limit',
-    hint: `Carry on today with a scan day pass: POST ${SCAN_PASS_URL} (the 402 there has the terms — 0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), then send the pass it returns as header X-Scan-Pass on every scan for ${SCAN_PASS_HOURS} hours.`,
+    hint: x402
+      ? `This answer is the 402 of a scan day pass (0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI): pay it by x402 and send this request again with the payment in PAYMENT-SIGNATURE or X-PAYMENT. The scan is answered, and this address scans on for ${SCAN_PASS_HOURS} hours without anything else to send; the pass comes back as header X-Scan-Pass for use from elsewhere.`
+      : `Carry on today with a scan day pass: POST ${SCAN_PASS_URL} (the 402 there has the terms — 0.50 USD1 or USDC, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), then send the pass it returns as header X-Scan-Pass on every scan for ${SCAN_PASS_HOURS} hours.`,
     free_per_day: SCAN_FREE_PER_DAY,
     renews_at: renews.toISOString(),
     scan_pass: { buy: `POST ${SCAN_PASS_URL}`, terms: `GET ${SCAN_PASS_URL}`, lasts: `${SCAN_PASS_HOURS} hours, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`, send_as: 'header X-Scan-Pass: <pass>' },
@@ -3508,6 +3517,107 @@ export function transferredIn(logs, token, from, to) {
   }
   return sum;
 }
+
+==============================================================================
+=== FILE: worker-agent/agent-wallets.js
+==============================================================================
+
+// worker-agent/agent-wallets.js — which of our keys speaks for which agent (2026-10-21)
+//
+// Operator, 21.10.: the Venus health factor monitor (#302257) and the Venus yield ranking (#304493) are to act on
+// Venus from wallets of their own (Backup 1 and Backup 2), so that what they do on the chain is theirs and fits what
+// they say. Until then every agent's agentWallet was the provider 0x7380, and this worker knew that one key only.
+//
+// Nothing here names which wallet belongs to which agent. The ERC-8004 registry does: an agent's quotes are signed
+// with the key whose address is that agent's agentWallet on the chain, and a funded job is delivered with the key
+// whose address the job names as provider. So the code is right before the agentWallet moves and after it, and the
+// move itself is one transaction on the registry. A job funded to 0x7380 while the move happens is still delivered.
+//
+// The keys this worker may hold. Each one signs only quotes, submit() and, for the two Venus agents, their own work.
+
+import { privateKeyToAccount } from 'viem/accounts';
+
+export const KEY_NAMES = ['AGENT_PROVIDER_PRIVATE_KEY', 'BACKUP1_PRIVATE_KEY', 'BACKUP2_PRIVATE_KEY'];
+
+// Slug -> ERC-8004 token id, the same six as the cards (index.js OWN_CARDS + the DeFi agent).
+export const AGENT_ID_OF = {
+  'defi-agent': 363709,
+  'health-factor': 302257,
+  'grid-trader': 302258,
+  'yield-optimizer': 304493,
+  rebalancer: 304494,
+  'lp-placement': 310460,
+};
+
+const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+const TTL = 10 * 60 * 1000;
+const walletCache = new Map();   // id -> { wallet, at }
+
+const accountOf = (raw) => {
+  const key = String(raw || '').trim();
+  const hex = key.startsWith('0x') ? key : `0x${key}`;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hex)) return null;
+  try { return privateKeyToAccount(hex); } catch { return null; }
+};
+
+// Every key of ours this worker holds, the provider first.
+export function ourAccounts(env) {
+  const out = [];
+  for (const name of KEY_NAMES) { const a = accountOf(env?.[name]); if (a && !out.some((x) => x.address === a.address)) out.push(a); }
+  return out;
+}
+
+// The key whose address this is, or null when it is nobody's we hold.
+export function accountFor(env, address) {
+  const want = String(address || '').toLowerCase();
+  return ourAccounts(env).find((a) => a.address.toLowerCase() === want) || null;
+}
+
+async function rpcCall(to, data) {
+  let last;
+  for (const url of RPCS) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }), signal: AbortSignal.timeout(8000) });
+      const j = await r.json();
+      if (j.result && j.result.length >= 66) return j.result;
+      last = new Error(j.error?.message || 'empty answer');
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('no RPC answered');
+}
+
+// getAgentWallet(uint256) on the identity registry, ten minutes' cache. An unreadable registry falls back to the last
+// answer read; with none, null (the caller decides what that means).
+export async function agentWalletOf(id, { read = rpcCall, now = Date.now() } = {}) {
+  const hit = walletCache.get(id);
+  if (hit && now - hit.at < TTL) return hit.wallet;
+  try {
+    const word = await read(REGISTRY, '0x00339509' + BigInt(id).toString(16).padStart(64, '0'));
+    const wallet = '0x' + word.slice(26, 66);
+    if (!/^0x[0-9a-f]{40}$/.test(wallet) || /^0x0{40}$/.test(wallet)) throw new Error('no agentWallet set');
+    walletCache.set(id, { wallet, at: now });
+    return wallet;
+  } catch { return hit ? hit.wallet : null; }
+}
+
+// The key that speaks for an agent: the one whose address is its agentWallet. { account, wallet } on success,
+// { account: null, wallet, reason } when the registry names a wallet this worker does not hold (nothing is quoted —
+// a quote from another key is refused by every SDK buyer, and a flat quote would send a buyer's money to an address
+// that cannot deliver). An unreadable registry falls back to the provider key: a buyer checks the quote against the
+// registry itself, and a job funded to the provider is always delivered.
+export async function accountForAgent(env, slug, opts = {}) {
+  const id = AGENT_ID_OF[slug];
+  const fallback = accountOf(env?.AGENT_PROVIDER_PRIVATE_KEY);
+  if (!id) return { account: fallback, wallet: fallback?.address || null };
+  const wallet = await agentWalletOf(id, opts);
+  if (!wallet) return { account: fallback, wallet: fallback?.address || null, unread: true };
+  const account = accountFor(env, wallet);
+  if (!account) return { account: null, wallet, reason: `the agentWallet of #${id} is ${wallet}, a key this worker does not hold — nothing is quoted` };
+  return { account, wallet };
+}
+
+export const _clearWalletCache = () => walletCache.clear();
 
 ==============================================================================
 === FILE: worker-agent/agent-watch.js
@@ -7349,7 +7459,7 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
 import { bindSelf } from './self-fetch.js';
 import { v3BuyDepthUsd, readV3Pool } from './v3-depth.js';
 import { isHolderProof, holderWalletOf, useHolderPass, holderPassTerms, HOLDER_PASS } from './holder-pass.js';
-import { issueScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
+import { issueScanPass, checkScanPass, SCAN_PASS_PRICE_USD1, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_FREE_PER_DAY, SCAN_PASS_URL } from '../shared/scan-pass.js';
 // The pass in one clause, where a price is written (2026-10-16): cards, the agents' MCP tools. It covers the x402 route.
 const HOLDER_PRICE_NOTE = `or nothing for a wallet holding ${HOLDER_PASS.lineText} (holder pass over x402: a signature, no transaction — see holder_pass)`;
 // On every card that takes an escrow job (2026-10-16): Pokter hired the DeFi
@@ -7396,7 +7506,13 @@ import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js'
 import { healthFactor } from './venus.js';
 import { yieldPlan } from './yield.js';
 import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
-import { encodeFunctionData, keccak256, toBytes } from 'viem';
+import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
+import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
+import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
+import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+// A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
+// their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
+const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
@@ -9280,7 +9396,7 @@ export default {
             { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
           holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
-          provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+          provider_address: await cardProvider(slug),
           additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
           documentationUrl: 'https://brainonbnb.com/registry',
         });
@@ -9333,7 +9449,7 @@ export default {
         // Owner = the wallet whose transactions are the agent's work; agentWallet =
         // the provider key that signs quotes and deliveries (2026-10-04).
         owner: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
-        provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+        provider_address: await cardProvider('defi-agent'),
         source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
         additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],
         documentationUrl: 'https://brainonbnb.com/defi',
@@ -10677,6 +10793,59 @@ ${pageTail}`;
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
     }
 
+    // EVERY AGENT'S FINISHED JOBS, SETTLED (public-settle.js, 2026-10-21): what was released, to whom, by which transaction.
+    if (path === '/settle/public' && request.method === 'GET') {
+      note('settle:public');
+      const s = await readPublicSettle(env);
+      return json({
+        what: 'BOBAI settles the finished ERC-8183 jobs of every agent on BNB Chain, not only its own. The escrow releases a provider\'s $U only when somebody calls settle(jobId) on the EvaluatorRouter after the 7-day dispute window, and nearly nobody does. Once a day at 21:15 UTC this worker settles every job that is due: delivered, window over, paid by a client that is not the provider, at least 0.01 $U. The money goes to the provider the job names; we pay the gas (about a cent a job). Farms and self-hires are left out.',
+        rule: { min_budget_u: 0.01, client_not_provider: true, evaluator: ERC8183.router, per_provider_a_day: 10, per_client_a_day: 10, per_client_provider_pair_a_day: 3, providers_take_turns: true, a_day: 80, farms_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
+        code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-settle.js)',
+        ...s,
+      });
+    }
+    if (path === '/settle/public/seed' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({}));
+      const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+      let added = 0;
+      for (const c of Array.isArray(b.candidates) ? b.candidates : []) if (/^\d+$/.test(String(c.id)) && !cand[c.id]) { cand[c.id] = { provider: String(c.provider || '').toLowerCase(), added: 'seed' }; added++; }
+      await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(cand));
+      if (Array.isArray(b.farms)) await env.AGENT.put(FARMS_KEY, JSON.stringify(b.farms.map((f) => String(f).toLowerCase())));
+      return json({ ok: true, added, candidates: Object.keys(cand).length });
+    }
+
+    // WHAT THE TWO VENUS AGENTS DID (venus-work.js, 2026-10-21): every run, its actions and their transactions.
+    if (path === '/venus/work' && request.method === 'GET') {
+      note('venus:work');
+      return json({
+        what: 'The Venus health factor monitor (#302257) and the Venus yield ranking (#304493) at their own work on Venus, once a day at 05:00 UTC, each from its own agentWallet. The health factor keeper holds a small BNB-backed USDT loan at a health factor of 2.2 (repays under 2.09, borrows over 2.31); the yield router supplies the stablecoins of its wallet in tranches of 2 a day to the better-paying Venus market. Every action is simulated first and read back after.',
+        switched_on: env.VENUS_WORK === 'on',
+        code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/venus-work.js)',
+        log: await readVenusLog(env),
+      });
+    }
+
+    // THE DAY PASS A CALLER PAID FOR ON THE SCAN ITSELF (2026-10-21): brainonbnb.com answers the 51st scan with the
+    // pass's 402, buys the pass with the payment the caller repeats the scan with, and keeps it here under the caller's
+    // key (scanCallerKey — never the address), so that address scans on for the day through every data centre without
+    // sending anything. Only the site writes and reads it (the shared secret); a pass that does not check is not kept.
+    if (path === '/scan-pass/unlock' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (request.method === 'GET') {
+        const k = String(url.searchParams.get('for') || '');
+        if (!/^[0-9a-f]{32}$/.test(k)) return json({ error: 'for: the caller key, 32 hex' }, 400);
+        const pass = await env.AGENT.get('scanunlock:' + k);
+        return pass ? json({ pass }) : json({ pass: null }, 404);
+      }
+      const b = await request.json().catch(() => ({}));
+      const k = String(b.for || ''), c = await checkScanPass(env.HIT_SECRET, b.pass);
+      if (!/^[0-9a-f]{32}$/.test(k) || !c.ok) return json({ error: c.ok ? 'for: the caller key, 32 hex' : c.reason }, 400);
+      await env.AGENT.put('scanunlock:' + k, b.pass, { expirationTtl: Math.max(60, Math.floor((c.exp - Date.now()) / 1000)) });
+      note('sell:scanpass:unlock');
+      return json({ ok: true, until: new Date(c.exp).toISOString() });
+    }
+
     if (path === '/scan-pass' && (request.method === 'GET' || request.method === 'POST')) {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const proof = request.method === 'POST' ? (request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT')) : null;
@@ -10968,6 +11137,10 @@ ${pageTail}`;
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
+    // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
+    if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
+    // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
+    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
@@ -11084,7 +11257,8 @@ ${pageTail}`;
 // already delivered is skipped there.
 import { ERC8183 } from './hire.js';
 import { deliverJob, readJob } from './sell.js';
-import { providerAccount } from './submit.js';
+import { ourAccounts } from './agent-wallets.js';
+import { addCandidates } from './public-settle.js';
 
 const CURSOR_KEY = 'jobs:watch:id';
 const OPEN_KEY = 'jobs:watch:open';
@@ -11109,9 +11283,9 @@ const STUCK_FOR = 6 * 3600 * 1000;
 
 // rpc(method, params) — any eth_call-capable reader.
 export async function watchFundedJobs(env, rpc) {
-  const account = providerAccount(env);
-  if (!account) return { ok: false, error: 'no provider key' };
-  const me = account.address.toLowerCase();
+  // a job is ours when it names any of our keys as provider (agent-wallets.js, 2026-10-21)
+  const mine = new Set(ourAccounts(env).map((a) => a.address.toLowerCase()));
+  if (!mine.size) return { ok: false, error: 'no provider key' };
   const counter = Number(BigInt(await rpc('eth_call', [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'])));
   const stored = Number(await env.AGENT.get(CURSOR_KEY)) || 0;
   const from = stored ? stored + 1 : Math.max(1, counter - COLD_LOOKBACK);
@@ -11122,6 +11296,7 @@ export async function watchFundedJobs(env, rpc) {
   const toDeliver = new Set(Object.keys(retry));
   const nextOpen = {};
   const seen = [];
+  const others = [];
 
   // New ids since the last tick.
   for (let id = from; id <= to; id++) {
@@ -11133,7 +11308,8 @@ export async function watchFundedJobs(env, rpc) {
       if (stuck?.id !== id) await env.AGENT.put(STUCK_KEY, JSON.stringify({ id, since: Date.now() }), { expirationTtl: 60 * 60 * 24 * 7 });
       to = id - 1; break;
     }
-    if (String(job.provider).toLowerCase() !== me) continue;
+    // someone else's job: a candidate for the public settle (public-settle.js, 2026-10-21)
+    if (!mine.has(String(job.provider).toLowerCase())) { others.push({ ...job, id: String(id) }); continue; }
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
     else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
@@ -11164,6 +11340,7 @@ export async function watchFundedJobs(env, rpc) {
 
   // Writes only when something changed: the cursor moves about six times a
   // day, the two lists only when one of our jobs is involved.
+  if (others.length) await addCandidates(env, others).catch(() => {});
   if (to >= from && to !== stored) await env.AGENT.put(CURSOR_KEY, String(to));
   if (JSON.stringify(open) !== JSON.stringify(nextOpen)) await env.AGENT.put(OPEN_KEY, JSON.stringify(nextOpen));
   if (JSON.stringify(retry) !== JSON.stringify(nextRetry)) await env.AGENT.put(RETRY_KEY, JSON.stringify(nextRetry));
@@ -13732,6 +13909,8 @@ export const OWN_WALLETS = new Set([
   '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
   '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
   '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
+  '0xeac21928de023677a25eb925d1cb1b0786faf946', // Backup 1: agentWallet of the Venus health factor monitor #302257 (2026-10-21)
+  '0x497dac54fd7238027ecbbd194b353379a1d605f0', // Backup 2: agentWallet of the Venus yield ranking #304493 (2026-10-21)
   '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
   '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
   '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
@@ -13936,6 +14115,192 @@ export async function answerTask(task, rpcs) {
   const asked = task.fields?.length ? Object.fromEntries(task.fields.filter((f) => f in r.out).map((f) => [f, r.out[f]])) : r.out;
   return { json: Object.keys(asked).length ? asked : r.out, context: r.context };
 }
+
+==============================================================================
+=== FILE: worker-agent/public-settle.js
+==============================================================================
+
+// worker-agent/public-settle.js — BOBAI settles every agent's finished jobs, not only its own (2026-10-21)
+//
+// Operator, 21.10.: "$BOBAI a helper for all the other AI agents — it has to make sense, be effective and usable".
+// The ERC-8183 escrow on BNB Chain does not release itself: after the 7-day dispute window somebody has to call
+// settle(jobId) on the EvaluatorRouter, and nearly nobody does. Measured in the job census on 19.10.: 27,247 jobs
+// SUBMITTED, 27,211 of them past their window. 26,872 of those are one provider's (24,013 clients at 0.01 $U each — a
+// farm, not work; settling them would spend about 100 $ of gas on it; it stopped at job 56584). Of the rest, most are
+// an address hiring itself or a budget of a few wei. What is real: 56 jobs of 25 providers, 9.38 $U, delivered and
+// never paid — their $U sits in the escrow, and for Set and Earn their hires do not count, because a hire counts once
+// it is completed. Small, and every new hire on the kernel joins it. settle() is anyone's to call (on 20.10. a stranger settled three of ours), the
+// money goes to the provider the job names, and it costs 118,124 gas — about a cent at 0.1 gwei.
+//
+// So once a day this worker settles the jobs that are due, for everyone:
+//   the list     candidates in KV (settle:candidates): seeded from the census (scripts/public-settle-seed.mjs) and kept
+//                by the job watcher, which reads every new job of the kernel and adds the funded ones
+//   the rule     the same classify() as our own jobs (shared/own-jobs.js): SUBMITTED, window over, evaluator the
+//                router, at least 0.01 $U, client not the provider — not a known farm, nor a provider holding more
+//                than FARM_LINE of the candidates; at most PER_PROVIDER_DAY a provider a day, oldest first
+//   the money    simulated first, sent only when the simulation goes through, 0.1 gwei, at most MAX_PER_DAY a day, and
+//                never below RESERVE_BNB in the provider wallet (it pays for our own deliveries first)
+//   the record   every settle in KV (GET /settle/public): which job, whose, how much was released, the transaction
+// A job that is completed, expired, rejected or refunded leaves the list.
+
+import { createWalletClient, createPublicClient, http, fallback, parseEther, formatEther } from 'viem';
+import { bsc } from 'viem/chains';
+import { decodeJob, readDisputeWindow, ERC8183 } from './hire.js';
+import { classify } from '../shared/own-jobs.js';
+import { providerAccount } from './submit.js';
+
+export const CANDIDATES_KEY = 'settle:candidates';
+const LOG_KEY = 'settle:public:log';
+const TOTALS_KEY = 'settle:public:totals';
+const DAY_KEY = (day) => `settle:public:day:${day}`;
+export const MAX_PER_DAY = 80;
+export const FARM_LINE = 1000;             // a provider with more open candidates than this is a farm, not a worker
+export const PER_PROVIDER_DAY = 10;
+export const PER_CLIENT_DAY = 10;
+export const PER_PAIR_DAY = 3;
+export const SPIKE_LINE = 200;
+export const MIN_BUDGET_U = 0.01;
+export const FARMS_KEY = 'settle:farms';   // providers the census found farming (seeded); their jobs never enter the list
+export const RESERVE_BNB = parseEther('0.001');
+const GAS_PER_SETTLE = 130000n, GAS_PRICE = 100000000n;   // measured 118,124 (20.10., job 56982); 0.1 gwei
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+const JOB_CALL = (id) => '0xbf22c457' + BigInt(id).toString(16).padStart(64, '0');
+export const settleData = (id) => '0x39c2ebb9' + BigInt(id).toString(16).padStart(64, '0') + (64).toString(16).padStart(64, '0') + '0'.padStart(64, '0');
+
+// Which candidates to settle today, pure. jobs: [{ id, job }] read now; candidates: { id: { provider } }.
+// Returns { due: [ids], drop: [ids no longer worth keeping], farms: [providers left out] }.
+export function pickDue(jobs, candidates, { now, windowSec, router = ERC8183.router, max = MAX_PER_DAY, farmLine = FARM_LINE, knownFarms = [], perProvider = PER_PROVIDER_DAY, perClient = PER_CLIENT_DAY, perPair = PER_PAIR_DAY, spikeLine = SPIKE_LINE } = {}) {
+  const per = {};
+  for (const c of Object.values(candidates)) { const p = String(c.provider || '').toLowerCase(); per[p] = (per[p] || 0) + 1; }
+  const farms = [...new Set([...knownFarms.map((p) => p.toLowerCase()), ...Object.entries(per).filter(([, n]) => n > farmLine).map(([p]) => p)])];
+  const due = [], drop = [];
+  for (const { id, job } of jobs) {
+    if (!job) continue;   // unread this time: kept for the next day
+    const c = classify(job, { now, windowSec });
+    // finished, or past expiry without a delivery (OPEN never funded, FUNDED never delivered): nothing left to settle
+    if (['completed', 'closed'].includes(c.state) || (['OPEN', 'FUNDED'].includes(job.status) && now >= job.expired_at)) { drop.push(id); continue; }
+    if (farms.includes(String(job.provider).toLowerCase())) { drop.push(id); continue; }
+    if (c.state !== 'settleable') continue;
+    // only work somebody paid somebody else for: the router as evaluator, at least MIN_BUDGET_U, and a client that is
+    // not the provider (a job an address hires itself for releases its own money back to it — a test, not a payment)
+    if (String(job.evaluator).toLowerCase() !== String(router).toLowerCase() || !(Number(job.budget_u) >= MIN_BUDGET_U) || String(job.client).toLowerCase() === String(job.provider).toLowerCase()) { drop.push(id); continue; }
+    due.push(id);
+  }
+  // NOT TO BE MILKED (operator, 21.10.: "BOBAI's generosity must not be exploitable"). The gas is ours, so whoever can
+  // make jobs could make us pay for them, or crowd the real ones out of the day. So: providers take turns (one job
+  // each per round, oldest first within each), at most perProvider a provider, perClient a client and perPair one
+  // client->provider pair a day — the same pair over and over is how self-dealing looks — and at most max in all.
+  // More than spikeLine due in one day is not how this kernel looks: the day is capped as always and marked.
+  const info = Object.fromEntries(jobs.filter((x) => x.job).map((x) => [x.id, { p: String(x.job.provider).toLowerCase(), c: String(x.job.client).toLowerCase() }]));
+  const queues = {};
+  for (const id of due.sort((a, b) => Number(a) - Number(b))) (queues[info[id].p] ??= []).push(id);
+  const nP = {}, nC = {}, nPair = {}, fair = [];
+  for (let round = 0; fair.length < max && Object.values(queues).some((q) => q.length); round++) {
+    for (const p of Object.keys(queues).sort((a, b) => Number(queues[a][0] ?? Infinity) - Number(queues[b][0] ?? Infinity))) {
+      while (queues[p].length) {
+        const id = queues[p].shift(), { c } = info[id], pair = `${c}>${p}`;
+        if ((nP[p] || 0) >= perProvider) { queues[p] = []; break; }
+        if ((nC[c] || 0) >= perClient || (nPair[pair] || 0) >= perPair) continue;   // this one waits; try the provider's next
+        nP[p] = (nP[p] || 0) + 1; nC[c] = (nC[c] || 0) + 1; nPair[pair] = (nPair[pair] || 0) + 1;
+        fair.push(id);
+        break;
+      }
+      if (fair.length >= max) break;
+    }
+  }
+  return { due: fair, drop, farms, spike: due.length > spikeLine ? due.length : null };
+}
+
+// Add jobs the watcher saw that may still need a settle one day (open, funded or delivered — a job is usually read
+// at creation, before it is funded). One KV write, only when something is new.
+export async function addCandidates(env, jobs) {
+  const farms = new Set(JSON.parse((await env.AGENT.get(FARMS_KEY)) || '[]').map((p) => p.toLowerCase()));
+  const fresh = jobs.filter((j) => j && ['OPEN', 'FUNDED', 'SUBMITTED'].includes(j.status) && !farms.has(String(j.provider).toLowerCase()));
+  if (!fresh.length) return 0;
+  const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+  let n = 0;
+  for (const j of fresh) if (!cand[j.id]) { cand[j.id] = { provider: String(j.provider).toLowerCase(), added: new Date().toISOString().slice(0, 10) }; n++; }
+  if (n) await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(cand));
+  return n;
+}
+
+async function batchRead(ids, rpcUrl) {
+  const out = [];
+  const urls = rpcUrl ? [rpcUrl] : RPCS;
+  for (let i = 0; i < ids.length; i += 50) {
+    const part = ids.slice(i, i + 50);
+    const body = JSON.stringify(part.map((id, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call', params: [{ to: ERC8183.commerce, data: JOB_CALL(id) }, 'latest'] })));
+    let got = null;
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(20000) });
+        const j = await r.json();
+        if (Array.isArray(j)) { got = j; break; }
+      } catch { /* next node */ }
+    }
+    for (let k = 0; k < part.length; k++) {
+      const item = got && got.find((x) => x.id === k);
+      let job = null; try { job = item?.result ? decodeJob(item.result) : null; } catch { job = null; }
+      out.push({ id: part[k], job });
+    }
+  }
+  return out;
+}
+
+// The daily run. opts.rpcUrl: one node (a fork); opts.now: the time (tests).
+export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } = {}) {
+  const day = now.toISOString().slice(0, 10);
+  if (await env.AGENT.get(DAY_KEY(day))) return { skipped: 'ran today' };
+  const account = providerAccount(env);
+  if (!account) return { ok: false, error: 'no provider key' };
+  const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+  const ids = Object.keys(cand);
+  const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+  const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+  const windowSec = await readDisputeWindow(async (to, data) => pub.call({ to, data }).then((r) => r.data));
+  const jobs = await batchRead(ids, rpcUrl);
+  const knownFarms = JSON.parse((await env.AGENT.get(FARMS_KEY)) || '[]');
+  const { due, drop, farms, spike } = pickDue(jobs, cand, { now: Math.floor(now.getTime() / 1000), windowSec, knownFarms });
+  const byId = Object.fromEntries(jobs.map((x) => [x.id, x.job]));
+  const done = [];
+  let stopped = null;
+  for (const id of due) {
+    const bal = await pub.getBalance({ address: account.address });
+    if (bal < RESERVE_BNB + GAS_PER_SETTLE * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
+    const data = settleData(id);
+    try { await pub.call({ account, to: ERC8183.router, data }); }
+    catch (e) { done.push({ id, settled: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
+    try {
+      const hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: GAS_PRICE, gas: 250000n });
+      const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+      const j = byId[id];
+      done.push({ id, settled: rc.status === 'success', tx: hash, provider: j.provider, client: j.client, released_u: j.budget_u, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
+    } catch (e) { done.push({ id, settled: false, why: String(e.shortMessage || e.message).slice(0, 140) }); }
+  }
+  // the list: settled and finished jobs leave it
+  const left = { ...cand };
+  for (const id of drop) delete left[id];
+  for (const d of done) if (d.settled) delete left[d.id];
+  await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(left));
+  const ok = done.filter((d) => d.settled);
+  const prevLog = JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]');
+  await env.AGENT.put(LOG_KEY, JSON.stringify([...done.map((d) => ({ at: now.toISOString(), ...d })), ...prevLog].slice(0, 1000)));
+  const t = JSON.parse((await env.AGENT.get(TOTALS_KEY)) || '{"jobs":0,"released_u":0,"providers":[],"since":null}');
+  const providers = new Set([...t.providers, ...ok.map((d) => String(d.provider).toLowerCase())]);
+  const totals = { jobs: t.jobs + ok.length, released_u: Number((t.released_u + ok.reduce((s, d) => s + Number(d.released_u || 0), 0)).toFixed(4)), providers: [...providers], since: t.since || (ok.length ? now.toISOString() : null) };
+  await env.AGENT.put(TOTALS_KEY, JSON.stringify(totals));
+  // refused: the simulation said no (nothing sent — e.g. settled by someone else since the read); failed: sent and not done
+  const summary = { at: now.toISOString(), candidates: ids.length, due: due.length, settled: ok.length, refused: done.filter((d) => !d.settled && !d.tx).length, failed: done.filter((d) => !d.settled && d.tx).length, dropped: drop.length, farms, spike, stopped, left: Object.keys(left).length, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
+  await env.AGENT.put(DAY_KEY(day), JSON.stringify(summary), { expirationTtl: 60 * 60 * 72 });
+  await env.AGENT.put('settle:public:last', JSON.stringify(summary));
+  return { ok: true, ...summary, done };
+}
+
+export async function readPublicSettle(env) {
+  const [log, totals, last, cand] = await Promise.all([LOG_KEY, TOTALS_KEY, 'settle:public:last', CANDIDATES_KEY].map((k) => env.AGENT.get(k)));
+  return { totals: totals ? JSON.parse(totals) : null, last_run: last ? JSON.parse(last) : null, waiting: cand ? Object.keys(JSON.parse(cand)).length : 0, log: log ? JSON.parse(log).slice(0, 200) : [] };
+}
+export const publicSettleDue = (d) => d.getUTCHours() === 21 && d.getUTCMinutes() >= 15 && d.getUTCMinutes() < 30;
 
 ==============================================================================
 === FILE: worker-agent/pulse.js
@@ -15947,6 +16312,7 @@ const quoteWindow = async () => readDisputeWindow(async (to, data) => {
   return (await r.json()).result;
 });
 import { submitDeliverable, providerAccount } from './submit.js';
+import { accountFor, accountForAgent, ourAccounts } from './agent-wallets.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
 import { understoodReply, readHoldings, readTargets } from './understand.js';
@@ -16377,9 +16743,14 @@ export async function handleA2A(request, env, opts = {}) {
 
   const { data, text } = dataParts(body?.params?.message);
   const skill = String(data.skill || data.method || '').toLowerCase();
-  const account = providerAccount(env);
-  const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
+  // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it
+  // (agent-wallets.js, 2026-10-21), on the shared one the provider. A quote names the wallet of the agent whose
+  // service it sells, wherever it is asked for.
+  const self = opts.agent ? await accountForAgent(env, opts.agent) : { account: providerAccount(env) };
+  const account = self.account;
+  const provider = account?.address || self.wallet || env?.AGENT_PROVIDER_WALLET || null;
   const forced = AGENT_SERVICE[opts.agent] || null;
+  const sellerOf = (serviceId) => accountForAgent(env, SLUG_OF[serviceId]);
 
   // --- a task in plain words (2026-10-04) --------------------------------
   // Marketplaces test agents with text, not skills: Marque's "callable"
@@ -16436,7 +16807,7 @@ export async function handleA2A(request, env, opts = {}) {
   // description. Marketplaces on the BNB Agent SDK speak only this, so
   // without it none of our agents could be hired there.
   if (skill === 'negotiate-erc8183-job') {
-    if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
+    if (!ourAccounts(env).length) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
     if (elsewhere) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: elsewhere }));
@@ -16456,7 +16827,10 @@ export async function handleA2A(request, env, opts = {}) {
     }
     const cannot = await cannotPlan(service.id, extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {}));
     if (cannot) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${cannot} Nothing was quoted.` }));
-    const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
+    const seller = await sellerOf(service.id);
+    if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
@@ -16509,12 +16883,15 @@ export async function handleA2A(request, env, opts = {}) {
     }
     const cannot = await cannotPlan(service.id, extractParams(wanted, data.params || {}));
     if (cannot) return rpcOk(id, flatMessage({ accepted: false, reason: `${cannot} Nothing was quoted.` }));
+    const seller = await sellerOf(service.id);
+    if (!seller.account) return rpcOk(id, flatMessage({ accepted: false, reason: `${seller.reason}.` }));
+    const sellerAddress = seller.account.address;
     const req = jobRequirements(await quoteWindow());
     return rpcOk(id, flatMessage({
       // Flat dialect: a provider address and a price, which is everything a
       // buyer needs and is the half the other dialect leaves out.
       accepted: true,
-      provider,
+      provider: sellerAddress,
       price: service.price,
       price_display: service.price_display.replace("USD1", "$U"),
       currency: 'U',
@@ -16523,7 +16900,7 @@ export async function handleA2A(request, env, opts = {}) {
       deliverables: service.deliverables,
       needs: service.needs,
       estimated_completion_seconds: 120,
-      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs". Evaluator: ${ERC8183.router}; expiry at least ${Math.round(req.min_expiry_seconds_after_funding / 86400)} days after funding (see job_requirements).`,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${sellerAddress} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs". Evaluator: ${ERC8183.router}; expiry at least ${Math.round(req.min_expiry_seconds_after_funding / 86400)} days after funding (see job_requirements).`,
       chain_id: 56,
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
@@ -16568,11 +16945,12 @@ export async function handleA2A(request, env, opts = {}) {
 // trusts the caller — the job, its provider, evaluator and budget are read
 // from the chain.
 export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
-  const account = providerAccount(env);
-  if (!account) return { error: 'this agent cannot deliver: no provider key configured' };
+  if (!ourAccounts(env).length) return { error: 'this agent cannot deliver: no provider key configured' };
   const job = await readJob(jobId);
   if (!job) return { error: `job ${jobId} does not exist in the kernel` };
-  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+  // delivered by the key the job names as provider (agent-wallets.js, 2026-10-21): any of ours, never another's
+  const account = accountFor(env, job.provider);
+  if (!account) {
     return { error: `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.` };
   }
   if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
@@ -17460,6 +17838,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 
 import { ERC8183 } from './hire.js';
+import { accountFor } from './agent-wallets.js';
 
 // submit(uint256 jobId, bytes32 deliverable, bytes payload) — selector
 // 0x9e63798d. Not taken from documentation, which does not exist for this: the
@@ -17531,14 +17910,11 @@ const hexOf = (bytes) => '0x' + [...bytes].map((b) => b.toString(16).padStart(2,
  * or worse, succeeds against a job we were never paid for.
  */
 export async function submitDeliverable({ env, jobId, document, readJob }) {
-  const account = providerAccount(env);
-  if (!account) throw new Error('no provider key configured — this worker cannot deliver');
-
   const job = await readJob(jobId);
   if (!job) throw new Error(`job ${jobId} could not be read from the kernel`);
-  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
-    throw new Error(`job ${jobId} names ${job.provider} as provider, not us`);
-  }
+  // the key the job names as provider, any of ours (agent-wallets.js, 2026-10-21)
+  const account = accountFor(env, job.provider);
+  if (!account) throw new Error(`job ${jobId} names ${job.provider} as provider, not us`);
   if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
     return { already: true, job, note: 'This job already carries a deliverable on-chain.' };
   }
@@ -18520,6 +18896,270 @@ export async function readV3Pool(endpoints, pool, token, quote) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/venus-work.js
+==============================================================================
+
+// worker-agent/venus-work.js — the two Venus agents act on Venus, from wallets of their own (2026-10-21)
+//
+// Operator, 21.10.: "machen wir beides" — the Venus health factor monitor (#302257) and the Venus yield ranking
+// (#304493) advised and never acted, so a check that reads what an agent does on the chain found nothing of their
+// job there. Each now does its own job, small, with its own wallet (its agentWallet in the registry):
+//
+//   HEALTH FACTOR KEEPER (#302257, Backup 1). 0.02 BNB supplied as collateral, USDT borrowed against it, the health
+//   factor held at 2.2: below 2.09 it repays down to 2.2, above 2.31 it borrows up to 2.2 — what an agent that
+//   "watches and acts on loans" does. The borrowed USDT stays in the wallet, so a repay never has to buy anything.
+//   At most one action a day after the first (supply, enter the market, borrow). Never borrows past MAX_DEBT_USDT,
+//   never below HF 2.0 after the borrow, never more than nine tenths of what Venus would still lend.
+//
+//   YIELD ROUTER (#304493, Backup 2). Stablecoins in the wallet go to Venus in tranches of 2 a day, each tranche to
+//   whichever market pays more today among the coins the wallet holds (USDT, USDC — its own ranking, read from
+//   supplyRatePerBlock). Money already supplied is not moved: at this size a move never earns back its gas.
+//
+// Every action is simulated first and must return Venus's error code 0 (Compound-style markets report a refused
+// borrow or mint with a code, not a revert), is sent at 0.1 gwei, must be mined with status success, and its effect
+// is read back. Nothing runs unless VENUS_WORK is "on", and an agent acts only while the registry names this very
+// wallet as its agentWallet — before the move its actions would not be its own. One run per agent per UTC day.
+// Every run is written to KV venus:log (GET /venus/work).
+
+import { createPublicClient, createWalletClient, http, fallback, encodeFunctionData, decodeFunctionResult, parseAbi, parseEther, formatEther, formatUnits } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { bsc } from 'viem/chains';
+import { agentWalletOf } from './agent-wallets.js';
+
+export const UNITROLLER = '0xfD36E2c2a6789Db23113685031d7F16329158384';
+export const VBNB = '0xA07c5b74C9B40447a954e1466938b865b6BBea36';
+export const MARKETS = {
+  USDT: { vToken: '0xfD5840Cd36d94D7229439859C0112a4185BC0255', token: '0x55d398326f99059fF775485246999027B3197955' },
+  USDC: { vToken: '0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8', token: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' },
+};
+export const HEALTH = { agentId: 302257, key: 'BACKUP1_PRIVATE_KEY', collateralBnb: parseEther('0.02'), target: 2.2, band: 0.05, floorAfterBorrow: 2.0, maxDebtUsdt: parseEther('8') };
+export const YIELD = { agentId: 304493, key: 'BACKUP2_PRIVATE_KEY', tranche: parseEther('2') };
+const GAS_PRICE = 100000000n;   // 0.1 gwei
+const MIN_GAS_BNB = parseEther('0.0005');
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+const LOG_KEY = 'venus:log';
+
+const ABI = parseAbi([
+  'function mint() payable',
+  'function mint(uint256) returns (uint256)',
+  'function borrow(uint256) returns (uint256)',
+  'function repayBorrow(uint256) returns (uint256)',
+  'function redeem(uint256) returns (uint256)',
+  'function balanceOf(address) view returns (uint256)',
+  'function borrowBalanceStored(address) view returns (uint256)',
+  'function supplyRatePerBlock() view returns (uint256)',
+  'function allowance(address,address) view returns (uint256)',
+  'function approve(address,uint256) returns (bool)',
+  'function enterMarkets(address[]) returns (uint256[])',
+  'function checkMembership(address,address) view returns (bool)',
+  'function oracle() view returns (address)',
+  'function getUnderlyingPrice(address) view returns (uint256)',
+  'function markets(address) view returns (bool,uint256,bool)',
+  'function getAccountLiquidity(address) view returns (uint256,uint256,uint256)',
+]);
+
+// ── the decisions, pure ───────────────────────────────────────────────────────
+// s: { collateralSupplied, entered, debt (USDT wei), weighted (USD 1e18: collateral after the liquidation threshold),
+//      lendable (USD 1e18 Venus would still lend), usdtPrice (USD 1e18 per USDT), walletUsdt, walletBnb }
+// Returns the steps of this run, in order; [] when the position is where it should be.
+export function healthSteps(s, p = HEALTH) {
+  // First the position itself: the collateral supplied and counted. The borrow follows on the runner's next read.
+  const setup = [];
+  if (!s.collateralSupplied) {
+    if (s.walletBnb < p.collateralBnb + MIN_GAS_BNB) return [{ kind: 'wait', why: `needs ${formatEther(p.collateralBnb + MIN_GAS_BNB)} BNB to supply the collateral and pay gas; holds ${formatEther(s.walletBnb)}` }];
+    setup.push({ kind: 'supply', value: p.collateralBnb, why: 'supplies the collateral' });
+  }
+  if (!s.entered) setup.push({ kind: 'enter', why: 'makes the BNB count as collateral' });
+  if (setup.length) return setup;
+  // what the debt should be at the target, in USDT wei: weighted / target / price
+  const want = (weighted) => (weighted * 10n ** 18n * 1000n) / (BigInt(Math.round(p.target * 1000)) * s.usdtPrice);
+  if (s.debt === 0n) return [{ kind: 'borrow', amount: capBorrow(want(s.weighted), s, p), why: `opens the loan at health factor ${p.target}` }].filter((x) => x.amount > 0n);
+  const hf = Number((s.weighted * 10n ** 22n) / (s.debt * s.usdtPrice)) / 1e4;
+  if (hf < p.target * (1 - p.band)) {
+    const amount = s.debt - want(s.weighted);
+    const pay = amount > s.walletUsdt ? s.walletUsdt : amount;
+    return pay > 0n ? [{ kind: 'repay', amount: pay, why: `health factor ${hf.toFixed(3)} under ${(p.target * (1 - p.band)).toFixed(2)}: repays to ${p.target}${pay < amount ? ' (all the USDT the wallet holds)' : ''}` }] : [{ kind: 'wait', why: `health factor ${hf.toFixed(3)} is low and the wallet holds no USDT to repay with` }];
+  }
+  if (hf > p.target * (1 + p.band)) {
+    const amount = capBorrow(want(s.weighted) - s.debt, s, p);
+    return amount > 0n ? [{ kind: 'borrow', amount, why: `health factor ${hf.toFixed(3)} over ${(p.target * (1 + p.band)).toFixed(2)}: borrows to ${p.target}` }] : [];
+  }
+  return [];
+}
+function capBorrow(amount, s, p) {
+  let a = amount;
+  if (s.debt + a > p.maxDebtUsdt) a = p.maxDebtUsdt - s.debt;
+  const lendableUsdt = (s.lendable * 9n / 10n) * 10n ** 18n / s.usdtPrice;
+  if (a > lendableUsdt) a = lendableUsdt;
+  // never below the floor after the borrow
+  const maxAtFloor = (s.weighted * 10n ** 18n * 1000n) / (BigInt(Math.round(p.floorAfterBorrow * 1000)) * s.usdtPrice) - s.debt;
+  if (a > maxAtFloor) a = maxAtFloor;
+  return a > 0n ? a : 0n;
+}
+
+// w: { USDT: { wallet, apr }, USDC: { wallet, apr } } (wallet in wei, apr in % a year)
+export function yieldSteps(w, p = YIELD) {
+  const held = Object.entries(w).filter(([, x]) => x.wallet > 0n).sort((a, b) => b[1].apr - a[1].apr);
+  if (!held.length) return [];
+  const [coin, x] = held[0];
+  const amount = x.wallet < p.tranche ? x.wallet : p.tranche;
+  const others = Object.entries(w).filter(([c]) => c !== coin).map(([c, y]) => `${c} ${y.apr.toFixed(2)} %`).join(', ');
+  return [{ kind: 'deposit', coin, amount, why: `${formatUnits(amount, 18)} ${coin} to Venus v${coin} at ${x.apr.toFixed(2)} % a year, the best of what the wallet holds today (${others})` }];
+}
+
+// ── the chain ────────────────────────────────────────────────────────────────
+const accountOf = (raw) => {
+  const key = String(raw || '').trim();
+  const hex = key.startsWith('0x') ? key : `0x${key}`;
+  return /^0x[0-9a-fA-F]{64}$/.test(hex) ? privateKeyToAccount(hex) : null;
+};
+function clients(account, rpcUrl) {
+  const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+  return { pub: createPublicClient({ chain: bsc, transport }), wal: createWalletClient({ account, chain: bsc, transport }) };
+}
+const read = (pub, address, functionName, args = []) => pub.readContract({ address, abi: ABI, functionName, args });
+
+// Simulate (Venus's error code must be 0), send at 0.1 gwei, wait for success.
+async function act(pub, wal, account, { to, functionName, args = [], value = 0n, codeOk = true }) {
+  const data = encodeFunctionData({ abi: ABI, functionName, args });
+  const sim = await pub.call({ account, to, data, value });
+  if (codeOk && sim.data && sim.data !== '0x') {
+    const out = decodeFunctionResult({ abi: ABI, functionName, args, data: sim.data });
+    const code = Array.isArray(out) ? out.find((c) => c !== 0n) ?? 0n : (typeof out === 'bigint' ? out : 0n);
+    if (code !== 0n) throw new Error(`${functionName} would be refused by Venus with error code ${code}; nothing sent`);
+  }
+  const hash = await wal.sendTransaction({ to, data, value, gasPrice: GAS_PRICE });
+  const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+  if (rc.status !== 'success') throw new Error(`${functionName} reverted: ${hash}`);
+  return hash;
+}
+async function usdtPriceOf(pub) {
+  const oracle = await read(pub, UNITROLLER, 'oracle');
+  return read(pub, oracle, 'getUnderlyingPrice', [MARKETS.USDT.vToken]);   // USD 1e18 per USDT (18 decimals)
+}
+
+export async function readHealth(pub, me, rpcs = null) {
+  const [vbal, entered, debt, walletUsdt, walletBnb, liq, usdtPrice] = await Promise.all([
+    read(pub, VBNB, 'balanceOf', [me]), read(pub, UNITROLLER, 'checkMembership', [me, VBNB]),
+    read(pub, MARKETS.USDT.vToken, 'borrowBalanceStored', [me]), read(pub, MARKETS.USDT.token, 'balanceOf', [me]),
+    pub.getBalance({ address: me }), read(pub, UNITROLLER, 'getAccountLiquidity', [me]), usdtPriceOf(pub),
+  ]);
+  // weighted collateral on the liquidation threshold, as the health factor is (worker-agent/venus.js): read from the
+  // same module the paid answer uses, so the agent acts on the figure it sells
+  const { healthFactor } = await import('./venus.js');
+  // with nodes of its own (a fork), the block is theirs too: healthFactor would otherwise pin the public head
+  // (cacheTime 0: viem keeps the block number a few seconds, and right after an action that is the block before it)
+  const pos = vbal > 0n && entered ? await healthFactor(me, rpcs ? { rpcs, block: Number(await pub.getBlockNumber({ cacheTime: 0 })) } : {}) : null;
+  const weighted = pos?.collateral_after_haircut_usd != null ? BigInt(Math.round(pos.collateral_after_haircut_usd * 1e6)) * 10n ** 12n : 0n;
+  return { collateralSupplied: vbal > 0n, entered, debt, weighted, lendable: liq[1], usdtPrice, walletUsdt, walletBnb, hf: pos?.health_factor ?? null };
+}
+
+async function runHealth(env, pub, wal, account, log, rpcs) {
+  const me = account.address;
+  for (let round = 0; round < 3; round++) {
+    const s = await readHealth(pub, me, rpcs);
+    const steps = healthSteps(s);
+    if (!steps.length) { log.push({ agent: HEALTH.agentId, note: `health factor ${s.hf ?? '—'}: inside the band, nothing to do` }); return; }
+    for (const st of steps) {
+      if (st.kind === 'wait') { log.push({ agent: HEALTH.agentId, note: st.why }); return; }
+      let tx;
+      if (st.kind === 'supply') tx = await act(pub, wal, account, { to: VBNB, functionName: 'mint', value: st.value, codeOk: false });
+      else if (st.kind === 'enter') tx = await act(pub, wal, account, { to: UNITROLLER, functionName: 'enterMarkets', args: [[VBNB]] });
+      else if (st.kind === 'borrow') tx = await act(pub, wal, account, { to: MARKETS.USDT.vToken, functionName: 'borrow', args: [st.amount] });
+      else if (st.kind === 'repay') {
+        if ((await read(pub, MARKETS.USDT.token, 'allowance', [me, MARKETS.USDT.vToken])) < st.amount) await act(pub, wal, account, { to: MARKETS.USDT.token, functionName: 'approve', args: [MARKETS.USDT.vToken, 2n ** 256n - 1n], codeOk: false });
+        tx = await act(pub, wal, account, { to: MARKETS.USDT.vToken, functionName: 'repayBorrow', args: [st.amount] });
+      }
+      log.push({ agent: HEALTH.agentId, action: st.kind, amount: st.value != null ? `${formatEther(st.value)} BNB` : st.amount != null ? `${formatUnits(st.amount, 18)} USDT` : null, why: st.why || null, tx });
+    }
+    // after a borrow or repay the day's work is done; after the first supply/enter, read again for the borrow
+    if (steps.some((x) => x.kind === 'borrow' || x.kind === 'repay')) {
+      const after = await readHealth(pub, me, rpcs);
+      log.push({ agent: HEALTH.agentId, note: `health factor now ${after.hf}`, debt_usdt: formatUnits(after.debt, 18) });
+      return;
+    }
+  }
+}
+
+async function runYield(env, pub, wal, account, log) {
+  const me = account.address;
+  const w = {};
+  const blockSec = 0.75;   // only to rank the two: the same block count multiplies both rates
+  for (const [coin, m] of Object.entries(MARKETS)) {
+    const [wallet, rate] = await Promise.all([read(pub, m.token, 'balanceOf', [me]), read(pub, m.vToken, 'supplyRatePerBlock')]);
+    w[coin] = { wallet, apr: Number(rate) / 1e18 * (365 * 24 * 3600 / blockSec) * 100 };
+  }
+  const steps = yieldSteps(w);
+  if (!steps.length) { log.push({ agent: YIELD.agentId, note: 'every stablecoin of the wallet is supplied; nothing to do' }); return; }
+  for (const st of steps) {
+    const m = MARKETS[st.coin];
+    const before = await read(pub, m.vToken, 'balanceOf', [me]);
+    if ((await read(pub, m.token, 'allowance', [me, m.vToken])) < st.amount) await act(pub, wal, account, { to: m.token, functionName: 'approve', args: [m.vToken, 2n ** 256n - 1n], codeOk: false });
+    const tx = await act(pub, wal, account, { to: m.vToken, functionName: 'mint', args: [st.amount] });
+    const after = await read(pub, m.vToken, 'balanceOf', [me]);
+    if (after <= before) throw new Error(`the ${st.coin} deposit was mined but no v${st.coin} arrived: ${tx}`);
+    log.push({ agent: YIELD.agentId, action: 'deposit', amount: `${formatUnits(st.amount, 18)} ${st.coin}`, why: st.why, tx });
+  }
+}
+
+// The daily run. opts.rpcUrl: one node (a fork); opts.force: ignore the once-a-day mark (tests).
+export async function runVenusWork(env, { rpcUrl = null, now = new Date(), force = false } = {}) {
+  if (env.VENUS_WORK !== 'on') return { off: true };
+  const day = now.toISOString().slice(0, 10), out = [];
+  for (const [p, run] of [[HEALTH, runHealth], [YIELD, runYield]]) {
+    const log = [];
+    try {
+      const account = accountOf(env[p.key]);
+      if (!account) { out.push({ agent: p.agentId, note: `no ${p.key}` }); continue; }
+      const doneKey = `venus:done:${p.agentId}:${day}`;
+      if (!force && (await env.AGENT.get(doneKey))) continue;
+      const wallet = await agentWalletOf(p.agentId, rpcUrl ? { read: (to, data) => fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result) } : {});
+      if (String(wallet || '').toLowerCase() !== account.address.toLowerCase()) { out.push({ agent: p.agentId, note: `the registry names ${wallet} as agentWallet, not ${account.address}: nothing done` }); continue; }
+      const { pub, wal } = clients(account, rpcUrl);
+      await run(env, pub, wal, account, log, rpcUrl ? [rpcUrl] : null);
+      await env.AGENT.put(doneKey, '1', { expirationTtl: 60 * 60 * 36 });
+    } catch (e) { log.push({ agent: p.agentId, error: String(e.shortMessage || e.message || e).slice(0, 240) }); }
+    out.push(...log);
+  }
+  const stamped = out.map((x) => ({ at: now.toISOString(), ...x }));
+  try { const prev = JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]'); await env.AGENT.put(LOG_KEY, JSON.stringify([...stamped, ...prev].slice(0, 200))); } catch { /* the log is a record; the chain is the truth */ }
+  return { ok: true, log: stamped };
+}
+
+// THE WAY BACK: everything out of Venus into the agent's wallet. Health: the whole debt repaid (repayBorrow of the
+// maximum is Venus's "all of it", interest included — the wallet must hold that much USDT), then every vBNB redeemed.
+// Yield: every vUSDT and vUSDC redeemed. Run by hand (node scripts/venus-unwind.mjs <id> --confirm), never by the cron.
+export async function unwindVenus(env, agentId, { rpcUrl = null } = {}) {
+  const p = agentId === HEALTH.agentId ? HEALTH : agentId === YIELD.agentId ? YIELD : null;
+  if (!p) throw new Error(`#${agentId} is not one of the two Venus agents`);
+  const account = accountOf(env[p.key]);
+  if (!account) throw new Error(`no ${p.key}`);
+  const { pub, wal } = clients(account, rpcUrl), me = account.address, done = [];
+  if (p === HEALTH) {
+    const debt = await read(pub, MARKETS.USDT.vToken, 'borrowBalanceStored', [me]);
+    if (debt > 0n) {
+      const held = await read(pub, MARKETS.USDT.token, 'balanceOf', [me]);
+      if (held <= debt) throw new Error(`the debt is ${formatUnits(debt, 18)} USDT with interest and the wallet holds ${formatUnits(held, 18)}: send it the difference first`);
+      if ((await read(pub, MARKETS.USDT.token, 'allowance', [me, MARKETS.USDT.vToken])) < held) await act(pub, wal, account, { to: MARKETS.USDT.token, functionName: 'approve', args: [MARKETS.USDT.vToken, 2n ** 256n - 1n], codeOk: false });
+      done.push({ action: 'repay all', tx: await act(pub, wal, account, { to: MARKETS.USDT.vToken, functionName: 'repayBorrow', args: [2n ** 256n - 1n] }) });
+    }
+    const v = await read(pub, VBNB, 'balanceOf', [me]);
+    if (v > 0n) done.push({ action: 'redeem BNB', tx: await act(pub, wal, account, { to: VBNB, functionName: 'redeem', args: [v] }) });
+  } else {
+    for (const [coin, m] of Object.entries(MARKETS)) {
+      const v = await read(pub, m.vToken, 'balanceOf', [me]);
+      if (v > 0n) done.push({ action: `redeem ${coin}`, tx: await act(pub, wal, account, { to: m.vToken, functionName: 'redeem', args: [v] }) });
+    }
+  }
+  return { agent: p.agentId, wallet: me, done };
+}
+
+export async function readVenusLog(env) {
+  return JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]');
+}
+export const venusWorkDue = (d) => d.getUTCHours() === 5 && d.getUTCMinutes() < 15;
+
+==============================================================================
 === FILE: worker-agent/venus.js
 ==============================================================================
 
@@ -18946,6 +19586,9 @@ id = "<your-kv-namespace-id>"
 # since 2026-09-07) so the session can be revoked from the product; the route
 # that uses it fires only with SESSION_REVOKE_TOKEN, the other secret.
 [vars]
+# The two Venus agents at their own work (venus-work.js), switched on by the operator 2026-10-21. "off" stops both
+# before their next run; what they hold stays on Venus until node scripts/venus-unwind.mjs <id> --confirm.
+VENUS_WORK = "on"
 # mirrored from worker-lp (2026-10-07): the width and re-set mode the agent mints with, so the /defi card says it
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"

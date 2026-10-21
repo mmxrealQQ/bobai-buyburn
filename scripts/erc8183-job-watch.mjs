@@ -65,6 +65,8 @@ const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 // driven from, and the seller wallet our agents deliver with.
 const BUYER = '0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2';
 const SELLER = '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963';
+// and the two Venus agents' own agentWallets (worker-agent/agent-wallets.js, 2026-10-21)
+const SELLERS = new Set([SELLER, '0xEAC21928DE023677A25eb925D1cb1b0786FaF946', '0x497dAc54FD7238027Ecbbd194b353379a1D605F0'].map((a) => a.toLowerCase()));
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -140,7 +142,7 @@ if (process.argv.includes('--self-test')) {
     for (const id of ids) {
       const job = decodeJob(await call(KERNEL, SEL.getJob + word(id)));
       const c = classify(job, { now, windowSec });
-      const ours = job ? (job.client.toLowerCase() === BUYER.toLowerCase() ? 'buyer' : '') + (job.provider.toLowerCase() === SELLER.toLowerCase() ? ' seller' : '') : '';
+      const ours = job ? (job.client.toLowerCase() === BUYER.toLowerCase() ? 'buyer' : '') + (SELLERS.has(job.provider.toLowerCase()) ? ' seller' : '') : '';
       const snap = { status: job?.status || null, state: c.state, budget_u: job?.budget_u ?? null, submitted_at: job?.submitted_at ?? null, ends_at: c.ends_at ?? null };
       const out = recordTransition(rec.jobs, id, snap, at);
       rec.jobs = out.record;

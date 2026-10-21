@@ -564,10 +564,19 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     if (!c || c.name !== name || !(c.registrations || []).some((r) => r.agentId === id) || !(c.skills || []).some((s) => s.id === 'negotiate-erc8183-job')) cardBad.push(slug);
   }
   ok('Agents', 'each of our six agents has its own card matching its registration', cardBad.length === 0, cardBad.length ? `wrong or missing: ${cardBad.join(', ')}` : 'six cards');
-  // 2. BNB's standard hire: a signed quote naming the agentWallet.
-  const sq = (await getJ(`${AGENT}/defi-agent/a2a`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'health', parts: [{ kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: 'health check: plan for position 7575224', terms: { deliverables: 'plan', quality_standards: 'on-chain' } } }] } } }) })).body;
-  const env = sq?.result?.parts?.[0]?.data;
-  ok('Agents', 'a signed ERC-8183 quote comes back, naming the agentWallet', /^0x[0-9a-f]{64}$/i.test(env?.negotiation_hash || '') && /^0x[0-9a-f]{130}$/i.test(env?.provider_sig || '') && String(env?.provider_address || '').toLowerCase() === '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', env ? `provider ${env.provider_address}` : JSON.stringify(sq).slice(0, 120));
+  // 2. BNB's standard hire: a signed quote naming the agentWallet — the one the registry holds for that agent, read
+  // here (2026-10-21: the two Venus agents get wallets of their own; an SDK buyer refuses a quote from any other).
+  const QUOTED = { 'defi-agent': [363709, 'health check: plan for position 7575224'], 'health-factor': [302257, 'health check: health factor of 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A on Venus'], 'yield-optimizer': [304493, 'health check: best stablecoin yield on Venus'] };
+  const quoteBad = [];
+  for (const [slug, [id, task]] of Object.entries(QUOTED)) {
+    const sq = (await getJ(`${AGENT}/${slug}/a2a`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'health', parts: [{ kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: task, terms: { deliverables: 'plan', quality_standards: 'on-chain' } } }] } } }) })).body;
+    const env = sq?.result?.parts?.[0]?.data;
+    const word = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', data: '0x00339509' + BigInt(id).toString(16).padStart(64, '0') }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result).catch(() => null);
+    const wallet = word && word.length >= 66 ? '0x' + word.slice(26, 66) : null;
+    const good = /^0x[0-9a-f]{64}$/i.test(env?.negotiation_hash || '') && /^0x[0-9a-f]{130}$/i.test(env?.provider_sig || '') && !!wallet && String(env?.provider_address || '').toLowerCase() === wallet;
+    if (!good) quoteBad.push(`${slug}: quote ${env?.provider_address || JSON.stringify(sq).slice(0, 60)} vs agentWallet ${wallet}`);
+  }
+  ok('Agents', 'a signed ERC-8183 quote comes back from each agent, naming its agentWallet', quoteBad.length === 0, quoteBad.length ? quoteBad.join('; ') : 'DeFi agent, health factor, yield: each signed by its agentWallet');
   // 3. The funded-job watcher keeps up with the kernel.
   const watch = (await getJ(`${AGENT}/jobs/watch`)).body;
   const counterHex = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6', data: '0x50355d76' }, 'latest'] }) }).then((r) => r.json()).then((j) => j.result).catch(() => null);

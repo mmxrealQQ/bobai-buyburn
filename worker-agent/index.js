@@ -75,7 +75,11 @@ import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js'
 import { healthFactor } from './venus.js';
 import { yieldPlan } from './yield.js';
 import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
-import { encodeFunctionData, keccak256, toBytes } from 'viem';
+import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
+import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
+// A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
+// their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
+const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
@@ -1959,7 +1963,7 @@ export default {
             { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
           holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
-          provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+          provider_address: await cardProvider(slug),
           additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
           documentationUrl: 'https://brainonbnb.com/registry',
         });
@@ -2012,7 +2016,7 @@ export default {
         // Owner = the wallet whose transactions are the agent's work; agentWallet =
         // the provider key that signs quotes and deliveries (2026-10-04).
         owner: 'eip155:56:0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
-        provider_address: 'eip155:56:0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+        provider_address: await cardProvider('defi-agent'),
         source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
         additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],
         documentationUrl: 'https://brainonbnb.com/defi',

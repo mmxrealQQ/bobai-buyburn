@@ -88,13 +88,22 @@ export const IDENTITY_ABI = [
 // operate it". Since 2026-10-14 our six agents are owned by the DeFi wallet 0xbFAA and keep the provider 0x7380 as
 // their agentWallet, so the provider owns none of them — and a rail that asked only isAuthorizedOrOwner would have let
 // the provider rate our own agents, and stopped it answering ratings as them. Ours = owner/operator OR agentWallet.
+// Since 2026-10-21 two of them (#302257, #304493) get agentWallets of their own (Backup 1 and 2), so the provider is
+// neither owner nor agentWallet there: an agentWallet that is any of our agent wallets is ours too — or the provider
+// could rate those two, and the rails would stop answering ratings on them.
+export const OUR_AGENT_WALLETS = new Set([
+  '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // provider
+  '0xeac21928de023677a25eb925d1cb1b0786faf946', // Backup 1
+  '0x497dac54fd7238027ecbbd194b353379a1d605f0', // Backup 2
+]);
 export async function isOurAgent(publicClient, me, agentId) {
   const id = BigInt(agentId);
   const [authorized, wallet] = await Promise.all([
     publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'isAuthorizedOrOwner', args: [me, id] }),
     publicClient.readContract({ address: IDENTITY, abi: IDENTITY_ABI, functionName: 'getAgentWallet', args: [id] }).catch(() => null),
   ]);
-  return authorized === true || (!!wallet && wallet.toLowerCase() === String(me).toLowerCase());
+  const w = String(wallet || '').toLowerCase();
+  return authorized === true || (!!wallet && (w === String(me).toLowerCase() || (OUR_AGENT_WALLETS.has(String(me).toLowerCase()) && OUR_AGENT_WALLETS.has(w))));
 }
 
 // TWO KINDS OF CLAIM, AND THEY ARE NOT COMPARABLE.

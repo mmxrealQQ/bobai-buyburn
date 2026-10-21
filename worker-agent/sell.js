@@ -76,6 +76,7 @@ const quoteWindow = async () => readDisputeWindow(async (to, data) => {
   return (await r.json()).result;
 });
 import { submitDeliverable, providerAccount } from './submit.js';
+import { accountFor, accountForAgent, ourAccounts } from './agent-wallets.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
 import { understoodReply, readHoldings, readTargets } from './understand.js';
@@ -506,9 +507,14 @@ export async function handleA2A(request, env, opts = {}) {
 
   const { data, text } = dataParts(body?.params?.message);
   const skill = String(data.skill || data.method || '').toLowerCase();
-  const account = providerAccount(env);
-  const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
+  // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it
+  // (agent-wallets.js, 2026-10-21), on the shared one the provider. A quote names the wallet of the agent whose
+  // service it sells, wherever it is asked for.
+  const self = opts.agent ? await accountForAgent(env, opts.agent) : { account: providerAccount(env) };
+  const account = self.account;
+  const provider = account?.address || self.wallet || env?.AGENT_PROVIDER_WALLET || null;
   const forced = AGENT_SERVICE[opts.agent] || null;
+  const sellerOf = (serviceId) => accountForAgent(env, SLUG_OF[serviceId]);
 
   // --- a task in plain words (2026-10-04) --------------------------------
   // Marketplaces test agents with text, not skills: Marque's "callable"
@@ -565,7 +571,7 @@ export async function handleA2A(request, env, opts = {}) {
   // description. Marketplaces on the BNB Agent SDK speak only this, so
   // without it none of our agents could be hired there.
   if (skill === 'negotiate-erc8183-job') {
-    if (!account) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
+    if (!ourAccounts(env).length) return rpcErr(id, -32000, 'this agent cannot sign a quote: no provider key configured');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
     if (elsewhere) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: elsewhere }));
@@ -585,7 +591,10 @@ export async function handleA2A(request, env, opts = {}) {
     }
     const cannot = await cannotPlan(service.id, extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {}));
     if (cannot) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${cannot} Nothing was quoted.` }));
-    const q = await signedQuote({ data, service, account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
+    const seller = await sellerOf(service.id);
+    if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
@@ -638,12 +647,15 @@ export async function handleA2A(request, env, opts = {}) {
     }
     const cannot = await cannotPlan(service.id, extractParams(wanted, data.params || {}));
     if (cannot) return rpcOk(id, flatMessage({ accepted: false, reason: `${cannot} Nothing was quoted.` }));
+    const seller = await sellerOf(service.id);
+    if (!seller.account) return rpcOk(id, flatMessage({ accepted: false, reason: `${seller.reason}.` }));
+    const sellerAddress = seller.account.address;
     const req = jobRequirements(await quoteWindow());
     return rpcOk(id, flatMessage({
       // Flat dialect: a provider address and a price, which is everything a
       // buyer needs and is the half the other dialect leaves out.
       accepted: true,
-      provider,
+      provider: sellerAddress,
       price: service.price,
       price_display: service.price_display.replace("USD1", "$U"),
       currency: 'U',
@@ -652,7 +664,7 @@ export async function handleA2A(request, env, opts = {}) {
       deliverables: service.deliverables,
       needs: service.needs,
       estimated_completion_seconds: 120,
-      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs". Evaluator: ${ERC8183.router}; expiry at least ${Math.round(req.min_expiry_seconds_after_funding / 86400)} days after funding (see job_requirements).`,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${sellerAddress} as provider, set the budget to ${service.price} (${service.price_display.replace("USD1", "$U")}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs". Evaluator: ${ERC8183.router}; expiry at least ${Math.round(req.min_expiry_seconds_after_funding / 86400)} days after funding (see job_requirements).`,
       chain_id: 56,
       verifying_contract: ERC8183.commerce,
       payment_token: ERC8183.paymentToken,
@@ -697,11 +709,12 @@ export async function handleA2A(request, env, opts = {}) {
 // trusts the caller — the job, its provider, evaluator and budget are read
 // from the chain.
 export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
-  const account = providerAccount(env);
-  if (!account) return { error: 'this agent cannot deliver: no provider key configured' };
+  if (!ourAccounts(env).length) return { error: 'this agent cannot deliver: no provider key configured' };
   const job = await readJob(jobId);
   if (!job) return { error: `job ${jobId} does not exist in the kernel` };
-  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+  // delivered by the key the job names as provider (agent-wallets.js, 2026-10-21): any of ours, never another's
+  const account = accountFor(env, job.provider);
+  if (!account) {
     return { error: `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.` };
   }
   if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {

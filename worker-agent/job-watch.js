@@ -22,7 +22,7 @@
 // already delivered is skipped there.
 import { ERC8183 } from './hire.js';
 import { deliverJob, readJob } from './sell.js';
-import { providerAccount } from './submit.js';
+import { ourAccounts } from './agent-wallets.js';
 
 const CURSOR_KEY = 'jobs:watch:id';
 const OPEN_KEY = 'jobs:watch:open';
@@ -47,9 +47,9 @@ const STUCK_FOR = 6 * 3600 * 1000;
 
 // rpc(method, params) — any eth_call-capable reader.
 export async function watchFundedJobs(env, rpc) {
-  const account = providerAccount(env);
-  if (!account) return { ok: false, error: 'no provider key' };
-  const me = account.address.toLowerCase();
+  // a job is ours when it names any of our keys as provider (agent-wallets.js, 2026-10-21)
+  const mine = new Set(ourAccounts(env).map((a) => a.address.toLowerCase()));
+  if (!mine.size) return { ok: false, error: 'no provider key' };
   const counter = Number(BigInt(await rpc('eth_call', [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'])));
   const stored = Number(await env.AGENT.get(CURSOR_KEY)) || 0;
   const from = stored ? stored + 1 : Math.max(1, counter - COLD_LOOKBACK);
@@ -71,7 +71,7 @@ export async function watchFundedJobs(env, rpc) {
       if (stuck?.id !== id) await env.AGENT.put(STUCK_KEY, JSON.stringify({ id, since: Date.now() }), { expirationTtl: 60 * 60 * 24 * 7 });
       to = id - 1; break;
     }
-    if (String(job.provider).toLowerCase() !== me) continue;
+    if (!mine.has(String(job.provider).toLowerCase())) continue;
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
     else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();

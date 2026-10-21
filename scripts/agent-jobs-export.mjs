@@ -38,6 +38,9 @@ const idsOf = new Map(); // provider -> Set(agent ids)
 for (const [addr, list] of Object.entries(owners)) idsOf.set(addr.toLowerCase(), new Set(list.map((a) => Number(a.id))));
 const ourProvider = Object.values(own).map((a) => String(a.owner || '').toLowerCase()).find(Boolean);
 if (ourProvider) { const s = idsOf.get(ourProvider) || new Set(); Object.values(OUR_SERVICE).forEach((id) => s.add(id)); idsOf.set(ourProvider, s); }
+// The two Venus agents' own agentWallets (worker-agent/agent-wallets.js, 2026-10-21): a job funded to one of them is
+// that agent's alone.
+for (const [addr, id] of [['0xeac21928de023677a25eb925d1cb1b0786faf946', 302257], ['0x497dac54fd7238027ecbbd194b353379a1d605f0', 304493]]) idsOf.set(addr, new Set([id]));
 
 const agentOfJob = (j, ids) => {
   const named = [...String(j.desc || '').matchAll(/#(\d{1,7})\b/g)].map((m) => Number(m[1])).find((id) => ids.has(id));

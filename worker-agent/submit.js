@@ -33,6 +33,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 
 import { ERC8183 } from './hire.js';
+import { accountFor } from './agent-wallets.js';
 
 // submit(uint256 jobId, bytes32 deliverable, bytes payload) — selector
 // 0x9e63798d. Not taken from documentation, which does not exist for this: the
@@ -104,14 +105,11 @@ const hexOf = (bytes) => '0x' + [...bytes].map((b) => b.toString(16).padStart(2,
  * or worse, succeeds against a job we were never paid for.
  */
 export async function submitDeliverable({ env, jobId, document, readJob }) {
-  const account = providerAccount(env);
-  if (!account) throw new Error('no provider key configured — this worker cannot deliver');
-
   const job = await readJob(jobId);
   if (!job) throw new Error(`job ${jobId} could not be read from the kernel`);
-  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
-    throw new Error(`job ${jobId} names ${job.provider} as provider, not us`);
-  }
+  // the key the job names as provider, any of ours (agent-wallets.js, 2026-10-21)
+  const account = accountFor(env, job.provider);
+  if (!account) throw new Error(`job ${jobId} names ${job.provider} as provider, not us`);
   if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
     return { already: true, job, note: 'This job already carries a deliverable on-chain.' };
   }

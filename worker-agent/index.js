@@ -78,6 +78,7 @@ import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.j
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
+import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -3361,6 +3362,28 @@ ${pageTail}`;
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
     }
 
+    // EVERY AGENT'S FINISHED JOBS, SETTLED (public-settle.js, 2026-10-21): what was released, to whom, by which transaction.
+    if (path === '/settle/public' && request.method === 'GET') {
+      note('settle:public');
+      const s = await readPublicSettle(env);
+      return json({
+        what: 'BOBAI settles the finished ERC-8183 jobs of every agent on BNB Chain, not only its own. The escrow releases a provider\'s $U only when somebody calls settle(jobId) on the EvaluatorRouter after the 7-day dispute window, and nearly nobody does. Once a day at 21:15 UTC this worker settles every job that is due: delivered, window over, paid by a client that is not the provider, at least 0.01 $U. The money goes to the provider the job names; we pay the gas (about a cent a job). Farms and self-hires are left out.',
+        rule: { min_budget_u: 0.01, client_not_provider: true, evaluator: ERC8183.router, per_provider_a_day: 10, per_client_a_day: 10, per_client_provider_pair_a_day: 3, providers_take_turns: true, a_day: 80, farms_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
+        code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-settle.js)',
+        ...s,
+      });
+    }
+    if (path === '/settle/public/seed' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({}));
+      const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+      let added = 0;
+      for (const c of Array.isArray(b.candidates) ? b.candidates : []) if (/^\d+$/.test(String(c.id)) && !cand[c.id]) { cand[c.id] = { provider: String(c.provider || '').toLowerCase(), added: 'seed' }; added++; }
+      await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(cand));
+      if (Array.isArray(b.farms)) await env.AGENT.put(FARMS_KEY, JSON.stringify(b.farms.map((f) => String(f).toLowerCase())));
+      return json({ ok: true, added, candidates: Object.keys(cand).length });
+    }
+
     // WHAT THE TWO VENUS AGENTS DID (venus-work.js, 2026-10-21): every run, its actions and their transactions.
     if (path === '/venus/work' && request.method === 'GET') {
       note('venus:work');
@@ -3685,6 +3708,8 @@ ${pageTail}`;
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
     if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
+    // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
+    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));

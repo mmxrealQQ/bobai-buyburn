@@ -23,6 +23,7 @@
 import { ERC8183 } from './hire.js';
 import { deliverJob, readJob } from './sell.js';
 import { ourAccounts } from './agent-wallets.js';
+import { addCandidates } from './public-settle.js';
 
 const CURSOR_KEY = 'jobs:watch:id';
 const OPEN_KEY = 'jobs:watch:open';
@@ -60,6 +61,7 @@ export async function watchFundedJobs(env, rpc) {
   const toDeliver = new Set(Object.keys(retry));
   const nextOpen = {};
   const seen = [];
+  const others = [];
 
   // New ids since the last tick.
   for (let id = from; id <= to; id++) {
@@ -71,7 +73,8 @@ export async function watchFundedJobs(env, rpc) {
       if (stuck?.id !== id) await env.AGENT.put(STUCK_KEY, JSON.stringify({ id, since: Date.now() }), { expirationTtl: 60 * 60 * 24 * 7 });
       to = id - 1; break;
     }
-    if (!mine.has(String(job.provider).toLowerCase())) continue;
+    // someone else's job: a candidate for the public settle (public-settle.js, 2026-10-21)
+    if (!mine.has(String(job.provider).toLowerCase())) { others.push({ ...job, id: String(id) }); continue; }
     seen.push({ id, status: job.status });
     if (job.status === 'FUNDED') toDeliver.add(String(id));
     else if (job.status === 'OPEN' && (job.expired_at || 0) * 1000 > Date.now()) nextOpen[id] = Date.now();
@@ -102,6 +105,7 @@ export async function watchFundedJobs(env, rpc) {
 
   // Writes only when something changed: the cursor moves about six times a
   // day, the two lists only when one of our jobs is involved.
+  if (others.length) await addCandidates(env, others).catch(() => {});
   if (to >= from && to !== stored) await env.AGENT.put(CURSOR_KEY, String(to));
   if (JSON.stringify(open) !== JSON.stringify(nextOpen)) await env.AGENT.put(OPEN_KEY, JSON.stringify(nextOpen));
   if (JSON.stringify(retry) !== JSON.stringify(nextRetry)) await env.AGENT.put(RETRY_KEY, JSON.stringify(nextRetry));

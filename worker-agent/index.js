@@ -77,6 +77,7 @@ import { yieldPlan } from './yield.js';
 import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
+import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -3360,6 +3361,17 @@ ${pageTail}`;
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
     }
 
+    // WHAT THE TWO VENUS AGENTS DID (venus-work.js, 2026-10-21): every run, its actions and their transactions.
+    if (path === '/venus/work' && request.method === 'GET') {
+      note('venus:work');
+      return json({
+        what: 'The Venus health factor monitor (#302257) and the Venus yield ranking (#304493) at their own work on Venus, once a day at 05:00 UTC, each from its own agentWallet. The health factor keeper holds a small BNB-backed USDT loan at a health factor of 2.2 (repays under 2.09, borrows over 2.31); the yield router supplies the stablecoins of its wallet in tranches of 2 a day to the better-paying Venus market. Every action is simulated first and read back after.',
+        switched_on: env.VENUS_WORK === 'on',
+        code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/venus-work.js)',
+        log: await readVenusLog(env),
+      });
+    }
+
     // THE DAY PASS A CALLER PAID FOR ON THE SCAN ITSELF (2026-10-21): brainonbnb.com answers the 51st scan with the
     // pass's 402, buys the pass with the payment the caller repeats the scan with, and keeps it here under the caller's
     // key (scanCallerKey — never the address), so that address scans on for the day through every data centre without
@@ -3671,6 +3683,8 @@ ${pageTail}`;
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
+    // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
+    if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));

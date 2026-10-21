@@ -26,6 +26,9 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # since 2026-09-07) so the session can be revoked from the product; the route
 # that uses it fires only with SESSION_REVOKE_TOKEN, the other secret.
 [vars]
+# The two Venus agents at their own work (venus-work.js), switched on by the operator 2026-10-21. "off" stops both
+# before their next run; what they hold stays on Venus until node scripts/venus-unwind.mjs <id> --confirm.
+VENUS_WORK = "on"
 # mirrored from worker-lp (2026-10-07): the width and re-set mode the agent mints with, so the /defi card says it
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"

@@ -227,7 +227,7 @@ export async function runVenusWork(env, { rpcUrl = null, now = new Date(), force
 
 // THE WAY BACK: everything out of Venus into the agent's wallet. Health: the whole debt repaid (repayBorrow of the
 // maximum is Venus's "all of it", interest included — the wallet must hold that much USDT), then every vBNB redeemed.
-// Yield: every vUSDT and vUSDC redeemed. Run by hand (scripts/venus-work.mjs --unwind), never by the cron.
+// Yield: every vUSDT and vUSDC redeemed. Run by hand (node scripts/venus-unwind.mjs <id> --confirm), never by the cron.
 export async function unwindVenus(env, agentId, { rpcUrl = null } = {}) {
   const p = agentId === HEALTH.agentId ? HEALTH : agentId === YIELD.agentId ? YIELD : null;
   if (!p) throw new Error(`#${agentId} is not one of the two Venus agents`);

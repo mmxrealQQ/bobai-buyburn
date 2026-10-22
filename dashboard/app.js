@@ -1506,7 +1506,9 @@ fillLpYours();
   const CAMPAIGN = '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a'; // our Set and Earn wallet hired Marque's agents
   const MARQUE = ['0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00', '0x253f7ad5d52099c4a2293418a661e9974dfb5e84', '0x5aaf7b5b2170986c59279682bd714c475ae8c718', '0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6'];
   const w = (k, t) => { const e = document.querySelector('[data-ecwith="' + k + '"]'); if (e && t) e.textContent = '· ' + t; };
-  Promise.all([get('https://agent.brainonbnb.com/jobs/own'), get('https://agent.brainonbnb.com/buys')]).then(([o, b]) => {
+  // each record read once: the cards and the latest line below share them (2026-10-22)
+  const pBuys = get('https://agent.brainonbnb.com/buys'), pSettle = get('https://agent.brainonbnb.com/settle/public'), pVenus = get('https://agent.brainonbnb.com/venus/work');
+  Promise.all([get('https://agent.brainonbnb.com/jobs/own'), pBuys]).then(([o, b]) => {
     const paid = Object.values((o && o.jobs) || {}).filter((j) => j.client && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || ''));
     const from = (a) => paid.filter((j) => j.client.toLowerCase() === a).length;
     const x402 = ((b && b.payments) || []).filter((p) => !p.self_test && String(p.from).toLowerCase() === MANDATE).length;
@@ -1518,12 +1520,12 @@ fillLpYours();
   });
   // FOR EVERY AGENT ON BNB CHAIN (2026-10-21): what the job settler released to whom, what the Venus agents did, what
   // the pool scan pass costs — each from the agent worker's own record, in USD. Without an answer the card keeps its line.
-  get('https://agent.brainonbnb.com/settle/public').then((j) => {
+  pSettle.then((j) => {
     const t = j && j.totals;
     if (t && t.jobs > 0) set('settle', '$' + Number(t.released_u).toFixed(2) + ' released to ' + nf(t.providers.length) + (t.providers.length === 1 ? ' agent' : ' agents'));
     else if (j && j.waiting) set('settle', nf(j.waiting) + ' jobs watched · daily 21:15 UTC');
   });
-  get('https://agent.brainonbnb.com/venus/work').then((j) => {
+  pVenus.then((j) => {
     const acts = ((j && j.log) || []).filter((x) => x.tx).length;
     if (acts > 0) set('venus', nf(acts) + (acts === 1 ? ' action' : ' actions') + ' on Venus so far');
     else if (j && j.switched_on) set('venus', 'Switched on · daily 05:00 UTC');
@@ -1531,5 +1533,33 @@ fillLpYours();
   get('https://agent.brainonbnb.com/scan-pass').then((j) => {
     const p = j && String(j.price || '').match(/^(\d+(?:\.\d+)?) USD1/);
     if (p) set('pass', '50 free a day, then $' + Number(p[1]).toFixed(2) + ' a day');
+  });
+  // THE LATEST, IN ONE LINE (operator, 2026-10-22, "in block 04"): the newest thing the ecosystem did for others — a
+  // settle run, a Venus agent's action, an agent's payment (our tests left out) — with its time and its transaction.
+  // The same three records as the cards and as the terminal's ecosystem moments; nothing to tell, no line.
+  const latest = document.querySelector('[data-eclatest]');
+  if (latest) Promise.all([pSettle, pVenus, pBuys, get('/api/price')]).then(([st, vw, b, pr]) => {
+    const bnbUsd = (pr && +pr.bnb_usd) || 0, bobUsd = (pr && +pr.price_usd) || 0, d2 = (n) => Number(n).toFixed(2);
+    const amt = (a) => { const m = String(a || '').match(/^([\d.]+) (\w+)$/); return !m ? '' : m[2] === 'BNB' ? Number(m[1]).toFixed(4) + ' BNB' + (bnbUsd ? ' ($' + d2(m[1] * bnbUsd) + ')' : '') : d2(m[1]) + ' ' + m[2]; };
+    const what = (f) => f === 'scanpass' ? 'a pool scan day pass' : /^watch/.test(f || '') ? 'a pool watch' : /^answer:/.test(f || '') ? 'a ' + f.slice(7).replace(/_/g, ' ') + ' answer' : 'a paid answer';
+    const pl = (n, one) => nf(n) + ' ' + one + (n === 1 ? '' : 's');
+    const all = [];
+    const runs = {}; ((st && st.log) || []).filter((d) => d.settled && d.tx).forEach((d) => (runs[d.at] = runs[d.at] || []).push(d));
+    Object.entries(runs).forEach(([at, L]) => all.push({ t: Date.parse(at), href: '/settle', tx: L[0].tx,
+      text: 'Job Settler settled ' + pl(L.length, 'finished job') + ' of other agents: $' + d2(L.reduce((a, d) => a + (+d.released_u || 0), 0)) + ' to ' + pl(new Set(L.map((d) => String(d.provider).toLowerCase())).size, 'provider') }));
+    const vr = {}; ((vw && vw.log) || []).forEach((x) => (vr[x.at + ':' + x.agent] = vr[x.at + ':' + x.agent] || []).push(x));
+    Object.values(vr).forEach((L) => { const acts = L.filter((x) => x.tx); if (!acts.length) return;
+      const hf = L.map((x) => String(x.note || '').match(/^health factor now ([\d.]+)/)).find(Boolean);
+      const did = acts.map((x) => ({ supply: 'supplied', enter: 'switched on as collateral', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' }[x.action] || x.action) + (x.amount ? ' ' + amt(x.amount) : '')).join(', ');
+      all.push({ t: Date.parse(L[0].at), href: '/venus', tx: acts[acts.length - 1].tx, text: 'Venus agent #' + L[0].agent + ' ' + did + (hf ? ', health factor ' + d2(hf[1]) : '') }); });
+    ((b && b.payments) || []).filter((p) => !p.self_test && p.tx && p.at).forEach((p) => all.push({ t: Date.parse(p.at), href: '/registry', tx: p.tx,
+      text: 'An agent paid ' + (/BOBAI/i.test(p.asset || '') ? nf(+p.amount) + ' $BOBAI' + (bobUsd ? ' ($' + d2(p.amount * bobUsd) + ')' : '') : '$' + d2(p.amount)) + ' for ' + what(p.for) }));
+    const x = all.filter((e) => Number.isFinite(e.t)).sort((a, z) => z.t - a.t)[0];
+    if (!x) return;
+    const when = new Date(x.t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
+    latest.querySelector('.ec-lt-when').textContent = when;
+    const a = latest.querySelector('.ec-lt-what'); a.textContent = x.text; a.href = x.href;
+    const t = latest.querySelector('.ec-lt-tx'); t.href = 'https://bscscan.com/tx/' + x.tx;
+    latest.hidden = false;
   });
 })();

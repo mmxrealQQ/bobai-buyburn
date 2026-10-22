@@ -92,7 +92,7 @@
     $('n-wait').textContent = nf(j.waiting || 0);
     $('rc-last').innerHTML = l
       ? '<b>' + when(l.at) + '</b> · ' + nf(l.settled) + ' settled' + (l.refused ? ', ' + nf(l.refused) + ' already settled by someone else' : '') + (l.failed ? ', <span class="no">' + nf(l.failed) + ' failed</span>' : '')
-        + ' · gas ' + bnb(Number(l.gas_bnb) * 1e18, usd) + (l.stopped ? '<br><span class="no">Stopped: ' + esc(l.stopped) + '</span>' : '')
+        + ' · gas ' + bnb(Number(l.gas_bnb) * 1e18, usd) + (l.unread ? '<br><span class="no">' + nf(l.unread) + ' of ' + nf(l.candidates) + ' jobs could not be read from the chain; they wait for the next run.</span>' : '') + (l.stopped ? '<br><span class="no">Stopped: ' + esc(l.stopped) + '</span>' : '')
       : 'No run yet. The first runs at 21:15 UTC.';
     const rows = (j.log || []);
     $('rc-rows').innerHTML = rows.length ? rows.map((d) => d.settled

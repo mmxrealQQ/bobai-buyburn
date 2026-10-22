@@ -585,7 +585,18 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // 3b. Marque keeps listing our six agents only while they answered a probe in the last 24 h (2026-10-06: five had
   //     dropped off); the agent worker asks Marque to probe every 8 h. Each round must be fresh and every agent answer.
   const mp = watch?.marque_probe, mpAge = mp?.at ? (Date.now() - Date.parse(mp.at)) / 3600e3 : null, mpBad = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok).map(([k]) => '#' + k) : [];
-  ok('Agents', 'Marque probes all six agents (listing kept alive)', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpBad.length, mp ? `${mpAge.toFixed(1)} h ago, failing: ${mpBad.join(' ') || 'none'}` : 'no probe round yet');
+  // ONLY DISCOVERED IS NOT A FAULT (2026-10-22): since 21.10. Marque's probe only discovers (discoveryOnly: true,
+  // "message/send not validated") and answers ok:false for every agent, ours and others' alike — red every day while all
+  // six stayed listed (the listing has its own check below). Red here: a stale round, or an agent Marque could not even
+  // discover (unbound, down, an error) — the faults that are ours to fix.
+  const mpReal = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok && v.liveness !== 'discovered').map(([k, v]) => `#${k} ${v.liveness || v.detail || 'no answer'}`) : [];
+  ok('Agents', 'Marque probes all six agents every 8 h, each found', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpReal.length, mp ? `${mpAge.toFixed(1)} h ago · ${mpReal.length ? 'failing: ' + mpReal.join(', ') : mpBad.length ? `all found (Marque only discovers since 21.10., ${mpBad.length} not validated)` : 'all ok'}` : 'no probe round yet');
+  // THE VENUS AGENTS AT WORK (2026-10-22, venus-work.js): once a day at 05:00 UTC from their own wallets. The newest run
+  // within 26 h, no error in it, and the health factor agent's loan read back inside its band's floor and ceiling.
+  const vw = (await getJ(`${AGENT}/venus/work`)).body, vlog = vw?.log || [], vlast = vlog[0], vAge = vlast?.at ? (Date.now() - Date.parse(vlast.at)) / 3600e3 : null;
+  const vrun = vlog.filter((x) => x.at === vlast?.at), verr = vrun.filter((x) => x.error), vhf = vlog.map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
+  ok('Agents', 'the Venus agents worked in the last 26 h, without an error, health factor 1.8-3', !vw?.switched_on ? true : vAge != null && vAge < 26 && !verr.length && (!vhf || (+vhf[1] >= 1.8 && +vhf[1] <= 3)),
+    !vw?.switched_on ? 'switched off' : vlast ? `${vAge.toFixed(1)} h ago · ${vrun.filter((x) => x.tx).length} actions${verr.length ? ' · ERROR: ' + verr.map((x) => '#' + x.agent + ' ' + x.error).join('; ').slice(0, 160) : ''}${vhf ? ' · health factor ' + vhf[1] : ''}` : 'no run yet');
   // 3d. Settled by us (2026-10-14, own-jobs.js settleDue): the daily tick settles every job of ours whose dispute
   //     window is over. One that has lain settleable for more than two days means the settling stopped (or the provider
   //     may not settle it) — a hire that never counts as completed and $U left in escrow. And the tick itself must run.

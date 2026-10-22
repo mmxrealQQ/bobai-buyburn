@@ -169,7 +169,8 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
         if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have bought $BOBAI with it and held it in the income wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
-        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs })) });
+        // SWEEP_LIQ (2026-10-22): half of the $BOBAI half into the pool, LP burned — off until the operator's second go
+        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs, liquidity: env.SWEEP_LIQ === 'on' })) });
       } catch (e) {
         // A sweep that sent before it failed did act: saying otherwise would
         // hide its transactions from the record and from the day's counters.

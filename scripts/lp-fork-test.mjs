@@ -34,7 +34,7 @@ import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
   planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
-  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET,
+  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET, BOBAI_PAIR, DEAD,
 } from '../shared/lp-agent.js';
 import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
@@ -154,7 +154,7 @@ async function scenario(name, key, fn) {
   if (only && only !== key) return;
   const snap = await test.snapshot();
   console.log(`\n${name}`);
-  try { await fn(); } catch (e) { ok('the path ran to its end', false, String(e.shortMessage || e.message || e).slice(0, 300)); }
+  try { await fn(); } catch (e) { if (process.env.FORK_DEBUG) { const h = e.txs?.at(-1)?.hash; if (h) { const tr = await pub.request({ method: 'debug_traceTransaction', params: [h, { tracer: 'callTracer' }] }).catch((x) => String(x)); const walk = (c, d = 0) => { console.log(' '.repeat(d) + (c.type || '') + ' ' + (c.to || '') + ' ' + (c.input || '').slice(0, 10) + ' ' + (c.error || '') + ' ' + (c.revertReason || '') + ' gas ' + parseInt(c.gasUsed || '0', 16)); for (const x of c.calls || []) walk(x, d + 1); }; typeof tr === 'object' ? walk(tr) : console.log(tr); } } ok('the path ran to its end', false, String(e.shortMessage || e.message || e).slice(0, 300)); }
   await test.revert({ id: snap });
 }
 
@@ -342,6 +342,28 @@ await scenario('EVERY AI PAYMENT: HALF BUYS $BOBAI, HALF TO THE OPERATOR (2026-1
   ok('the operator received exactly half, in USD1 as it was paid', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} USD1 of ${Number(plan.amount) / 1e18}`);
   ok('$BOBAI for the other half arrived in the income wallet, at least the floor (half the quote less the 3% tax less 5%)', bobai1 - bobai0 >= (plan.bobaiOut / 2n * 97n * 95n) / 10000n && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI for half of a quote of ${(Number(plan.bobaiOut) / 1e18).toFixed(2)}`);
   ok('the DeFi wallet received nothing — its capital and record are untouched', lpBnb1 === lpBnb0, `${formatEther(lpBnb1 - lpBnb0)} BNB`);
+});
+
+await scenario('INCOME ALSO DEEPENS THE POOL (2026-10-22, plan c, switched on only here) — a bigger payment: half to the operator, of the $BOBAI half one half bought and held, the other half into the $BOBAI pool with LP to the dead address', 'sweepliq', async () => {
+  const src = INCOME_SOURCES.find((s) => s.key === 'x402');
+  await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.4') });
+  await test.setBalance({ address: src.wallet, value: parseEther('0.01') });
+  const RES = parseAbi(['function getReserves() view returns (uint112,uint112,uint32)']);
+  const usd0 = await bal(src.token, src.wallet), bobai0 = await bal(BOBAI, src.wallet), op0 = await bal(src.token, OPERATOR_WALLET), lp0 = await bal(BOBAI_PAIR, DEAD), wb0 = await bal(ADDR.WBNB, src.wallet);
+  const r0 = await pub.readContract({ address: BOBAI_PAIR, abi: RES, functionName: 'getReserves' });
+  const plan = await planSweep(pub, src);
+  ok('the plan sweeps the payment', !plan.no && plan.amount > 0n, plan.no || `${plan.summary.sweeping} USD1, about ${plan.summary.implied_usd} $ a unit`);
+  if (plan.no) return;
+  const txs = [], done = await executeSweep(pub, walletOf(src.wallet), src.wallet, plan, () => {}, { txs, liquidity: true });
+  const op1 = await bal(src.token, OPERATOR_WALLET), lp1 = await bal(BOBAI_PAIR, DEAD), bobai1 = await bal(BOBAI, src.wallet), usd1 = await bal(src.token, src.wallet), wb1 = await bal(ADDR.WBNB, src.wallet);
+  const r1 = await pub.readContract({ address: BOBAI_PAIR, abi: RES, functionName: 'getReserves' });
+  ok('the operator still receives exactly half, in USD1', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} of ${Number(plan.amount) / 1e18}`);
+  ok('the liquidity part ran: WBNB, two approvals, addLiquidity', !!done.liquidity && txs.some((t) => /add both to the \$BOBAI pool/.test(t.label)), txs.map((t) => t.label.split(' ').slice(0, 4).join(' ')).join(' · '));
+  ok('LP tokens were minted to the dead address (burned)', lp1 > lp0, `${done.liquidity?.lp_burned} LP to ${DEAD}`);
+  // depth is the product of the reserves (the buy itself takes $BOBAI out; the add puts both sides in)
+  ok('the pool got deeper: the product of its reserves grew', r1[0] * r1[1] > r0[0] * r0[1], `k ${(Number(r0[0]) * Number(r0[1]) / 1e36).toFixed(1)} -> ${(Number(r1[0]) * Number(r1[1]) / 1e36).toFixed(1)}`);
+  ok('$BOBAI was bought and held in the income wallet too (the hold half)', bobai1 > bobai0 && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI held; ${done.liquidity?.bobai_in} $BOBAI + ${done.liquidity?.wbnb_in} WBNB into the pool`);
+  ok('all the swept USD1 left the wallet; at most dust of WBNB stays', usd0 - usd1 === plan.amount && wb1 - wb0 < parseEther('0.0005'), `${Number(usd0 - usd1) / 1e18} USD1 · WBNB left ${formatEther(wb1 - wb0)}`);
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

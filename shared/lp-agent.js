@@ -151,6 +151,7 @@ export const ABI = {
     'function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
     'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
     'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable',
+    'function addLiquidity(address tokenA,address tokenB,uint256 amountADesired,uint256 amountBDesired,uint256 amountAMin,uint256 amountBMin,address to,uint256 deadline) returns (uint256,uint256,uint256)',
   ]),
   V3_ROUTER: parseAbi(['function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256 amountOut)']),
   // QuoterV2 answers through a revert it catches itself; as an eth_call it
@@ -701,20 +702,58 @@ export async function planSweep(pub, source, feed = null) {
 // (no swap, no fee) and half buys $BOBAI as above. The quote for the $BOBAI half is the plan's, halved.
 export const OPERATOR_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
 export const OPERATOR_SHARE_BPS = 5000n;
-export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
+// INCOME ALSO DEEPENS THE POOL (2026-10-22, operator: "c muessen wir auch angehen, aber logisch" - fork first, live only
+// with a second go). Bought and held, $BOBAI is one push and then sits; paired into the pool with LP burned, the same
+// money is depth every later trade meets. So, switched on (liquidity: true, worker-lp SWEEP_LIQ "on"), the $BOBAI half
+// of a sweep is split: half of it is bought and held as before, the other half becomes liquidity - half of that buys
+// $BOBAI, half becomes WBNB, both go into the $BOBAI/WBNB pair and the LP tokens are minted straight to the dead address.
+// Only when the liquidity part is worth at least SWEEP_LIQ_MIN_USD: the five extra transactions cost ~0.4 $ of gas at
+// 1 gwei (~3-4 % of a full 12.5 $ part); below the line it is all bought and held as before.
+export const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+export const DEAD = '0x000000000000000000000000000000000000dEaD';
+export const SWEEP_LIQ_MIN_USD = 10; // the sweep takes at most 50 units a run (its cap), so the liquidity part is at most ~12.5 $; 20 would never have been reached (fork, 22.10.)
+// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs)
+export function liquiditySplit(toBobai, usdPerUnit, decimals, on) {
+  const worth = Number(formatUnits(toBobai, decimals)) * (Number(usdPerUnit) || 0);
+  if (!on || !(worth / 2 >= SWEEP_LIQ_MIN_USD)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
+  const liq = toBobai / 2n;
+  return { hold: toBobai - liq, liq, liq_usd: Number((worth / 2).toFixed(2)) };
+}
+export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [], liquidity = false } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const holder = plan.source.wallet;
   const toOperator = (plan.amount * OPERATOR_SHARE_BPS) / 10000n, toBobai = plan.amount - toOperator;
-  const bobaiQuote = (plan.bobaiOut * toBobai) / plan.amount;
+  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity);
+  // ONE BUY FOR BOTH $BOBAI PARTS (fork, 22.10.: a second buy right after the first reverted): the held part and the
+  // pool's $BOBAI are bought together, the pool's share of what arrived is taken by proportion
+  const halfA = split.liq / 2n, halfB = split.liq - halfA, buyIn = split.hold + halfA;
+  const bobaiQuote = (plan.bobaiOut * buyIn) / plan.amount;
   const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
   await send(`send half of the ${plan.source.symbol} to the operator`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'transfer', args: [OPERATOR_WALLET, toOperator] });
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, toBobai] });
-  await send(`buy $BOBAI with the other half and hold it`, {
+  await send(split.liq ? 'buy $BOBAI with the other half (held, and the share for the pool)' : `buy $BOBAI with the other half and hold it`, {
     address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
-    args: [toBobai, bobaiBuyFloor(bobaiQuote), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
+    args: [buyIn, bobaiBuyFloor(bobaiQuote), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
   });
   const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
-  return { txs, sold: formatUnits(toBobai, plan.source.decimals), to_operator: formatUnits(toOperator, plan.source.decimals), operator: OPERATOR_WALLET, bobai_bought: formatEther(after > before ? after - before : 0n), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
+  const got = after > before ? after - before : 0n, bobaiIn = buyIn > 0n ? (got * halfA) / buyIn : 0n;
+  const out = { txs, sold: formatUnits(toBobai, plan.source.decimals), to_operator: formatUnits(toOperator, plan.source.decimals), operator: OPERATOR_WALLET, bobai_bought: formatEther(got - bobaiIn), bnb_worth: formatEther(plan.bnbOut), held_by: holder };
+  if (!split.liq) return out;
+  // the liquidity part: the rest becomes WBNB, both go into the pair, LP minted to the dead address
+  // quoted again now: the buy above went through the same income-token/WBNB pool and moved it (fork, 22.10.: the plan's
+  // quote, scaled, sat above what the pool now gave and the swap reverted)
+  const qB = (await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [halfB, [plan.source.token, ADDR.WBNB]]))[1];
+  const w0 = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [holder]);
+  // a fixed gas limit with room (fork, 22.10.: now and then the estimate was a hair short and the swap ran out of gas); only what is used is paid
+  await send('turn the rest into WBNB for the pool', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens', args: [halfB, (qB * 97n) / 100n, [plan.source.token, ADDR.WBNB], holder, deadline()], gas: 350000n });
+  const wbnbIn = (await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [holder])) - w0;
+  const lp0 = await read(pub, BOBAI_PAIR, ABI.ERC20, 'balanceOf', [DEAD]);
+  await send('approve $BOBAI for the pool', { address: ADDR.BOBAI, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, bobaiIn] });
+  await send('approve WBNB for the pool', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, wbnbIn] });
+  // loose minimums: the token's transfer tax and the pool's own rounding; what does not fit stays in the income wallet
+  await send('add both to the $BOBAI pool, LP to the dead address', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'addLiquidity', args: [ADDR.BOBAI, ADDR.WBNB, bobaiIn, wbnbIn, (bobaiIn * 85n) / 100n, (wbnbIn * 85n) / 100n, DEAD, deadline()], gas: 600000n });
+  const lp1 = await read(pub, BOBAI_PAIR, ABI.ERC20, 'balanceOf', [DEAD]);
+  return { ...out, liquidity: { usd: split.liq_usd, bobai_in: formatEther(bobaiIn), wbnb_in: formatEther(wbnbIn), lp_burned: formatEther(lp1 - lp0), pair: BOBAI_PAIR } };
 }
 
 // --------------------------------------------------------------------------

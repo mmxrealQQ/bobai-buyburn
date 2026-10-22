@@ -51,10 +51,11 @@ else {
 for (const [path, init] of [['/answer?service=health_factor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }], ['/scan-pass', { method: 'POST' }], ['/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pair: '0x6eadd4cb786898b3c6b2fb6d2ee0d2b4f01a7e1d', threshold_usd: 100 }) }]]) {
   const r = await fetch(origin + path, init).catch(() => null);
   const head = r?.headers.get('payment-required');
-  let acc = []; try { acc = JSON.parse(Buffer.from(head, 'base64').toString()).accepts || []; } catch {}
+  let acc = [], top = {}; try { top = JSON.parse(Buffer.from(head, 'base64').toString()); acc = top.accepts || []; } catch {}
   const last = acc[acc.length - 1] || {};
   say(r?.status === 402 && String(acc[0]?.asset).toLowerCase() === USD1.toLowerCase() && String(last.asset).toLowerCase() === U.toLowerCase() && last.extra?.assetTransferMethod === 'eip3009',
     `${path}: 402 offers $U by EIP-3009 last (${acc.length} ways), USD1 still first`);
+  say(String(top.asset).toLowerCase() === U.toLowerCase() && top.symbol === 'U' && top.network === 'eip155:56' && /^0x[0-9a-fA-F]{40}$/.test(top.payTo || ''), `${path}: the header names $U at the top (asset, symbol, network, payTo), as the one seller Marque counts live does`);
 }
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exit(fails ? 1 : 0);

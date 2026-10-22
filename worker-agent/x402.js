@@ -44,8 +44,15 @@ export const DEXTER_ASSET = {
 // are v1. A stock v2 client finds no amount — which is the likeliest reason no
 // facilitator payment has ever arrived. Both spellings are sent: v2's for the
 // clients that follow the spec, v1's for the ones already written against this.
+// THE ESCROW'S CURRENCY NAMED AT THE TOP (2026-10-22): the one x402 seller Marque counts live on BNB Chain names $U at
+// the top level of its PAYMENT-REQUIRED (asset, network, payTo, symbol) beside accepts[]; ours named it only inside
+// accepts[] (last, so accepts[0] stays USD1 for the clients that read only that) and Marque kept reading "bad_schema".
+// Named here when $U is offered; extra fields, the accepts[] order unchanged.
+const U_ASSET = '0xcE24439F2D9C6a2289F741120FE202248B666666';
 export function v2Shape(requirements, { url, description = null, mimeType = 'application/json' } = {}) {
+  const u = (requirements.accepts || []).find((a) => String(a.asset).toLowerCase() === U_ASSET.toLowerCase());
   return {
+    ...(u ? { asset: u.asset, network: u.network, payTo: u.payTo, symbol: 'U' } : {}),
     ...requirements,
     resource: { url, ...(description ? { description } : {}), mimeType },
     accepts: (requirements.accepts || []).map((a) => ({ ...a, amount: a.amount ?? a.maxAmountRequired })),

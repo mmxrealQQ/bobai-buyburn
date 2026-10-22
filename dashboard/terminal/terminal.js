@@ -1127,7 +1127,9 @@ const STAND_IN = { 'buy-kraken': 'cheer', 'buy-thunder': 'saber', 'buy-whale': '
   'burn-supernova': 'burn-apocalypse', 'burn-apocalypse': 'burn-mega', 'burn-mega': 'burn-big', 'burn-big': 'burn-nice', 'burn-nice': 'burn-small', 'burn-small': 'burn',
   think: 'coffee', hodl: 'saber', bull: 'dance', defi: 'build', 'defi-buy': 'defi', 'defi-cap': 'defi', laugh: 'giggle', shrug: 'walk', zen: 'think', popcorn: 'coffee', guitar: 'dance',
   // withheld as cut by the frame (temp/terminal/anim/cut.txt, 2026-09-27) until re-shot in the wide framing
-  burn: 'burn-nice', pushups: 'walk', liq: 'build' };
+  burn: 'burn-nice', pushups: 'walk', liq: 'build',
+  // the ecosystem's own moves (2026-10-22, run_1022.sh): until a take is reviewed and released, the move it stood in for
+  settle: 'build', hire: 'think', venus: 'think', paid: 'giggle' };
 function withClip(p) { let q = p; for (let n = 0; n < 8 && q && q !== 'idle' && flowPose(q) !== q; n++) q = STAND_IN[q]; return q && flowPose(q) === q ? q : p; }
 function setPose(p, hold = 2.4, urgent = true) {
   FACE.hop = 0;
@@ -1332,7 +1334,7 @@ function vidInit() {
   // ONE LIST, NOT SEVENTY QUESTIONS (2026-09-27): the deploy writes anim/clips.json with every clip it ships. Asking
   // for each possible clip cost ~70 requests per visit, and each missing one came back as the index page, whose
   // stylesheet hints the browser then chased relative to anim/. The per-clip question stays only as the fallback.
-  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', ...EXTRA_POSES, ...TIER_POSES]; // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
+  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', 'settle', 'hire', 'venus', 'paid', ...EXTRA_POSES, ...TIER_POSES]; // settle/hire/venus/paid: the ecosystem's moves (2026-10-22), known here, never his own idle moves // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
   // every take up to -v9 (2026-09-30: new waiting takes rest-v3..v6 and third takes of moves would have been ignored)
   const V = n => Array.from({ length: 8 }, (_, i) => n + '-v' + (i + 2));
   const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...Array.from({ length: 8 }, (_, i) => 'rest-s' + (i + 1)), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
@@ -2506,7 +2508,7 @@ const REACT_MORE = {
     return [`The creator share was paid out: ${t}.`, `The dev bot paid out ${t} of the creator share, right on schedule.`, `${t} out of the creator share. Builders get paid on BNB Chain too.`,
       `Creator share out: ${t}, on-chain like everything here.`, `The d38 wallet just sent out ${t} of the creator share.`]; },
   // his ecosystem at work for others (2026-10-22, ecoScene): the settler plays 'build', the Venus agents 'think', a
-  // payment 'giggle' — none of these lines names a move, every figure is the record's own
+  // payment 'giggle' (since 22.10. their own takes settle / venus / hire / paid, these as stand-ins) — none of these lines names a move, every figure is the record's own
   'eco-settle': x => { const c = x.c, j = plural(c.n, 'finished job'), a = plural(c.p, 'agent'), u = '$' + nf(c.u, 2), g = bnbF(c.gas);
     return [`I just settled ${j} for ${a} on BNB Chain. ${u} released to them, the gas was mine.`, `${j} of other agents, now settled: ${u} paid out of the escrow to ${a}.`,
       `Helping the neighbours: ${j} settled, ${u} released to ${a}. The gas, ${g}, was on me.`, `The escrow only pays when somebody calls settle. I called it for ${j}: ${u} to ${a}.`,
@@ -4284,19 +4286,19 @@ const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).jo
 function ecoScene(x) {
   const c = x.c, txs = c.txs || c.acts?.map(a => a.tx) || [];
   if (x.key === 'settle') {
-    boardScene(x.t, ECO_C, 'build', 'FOR EVERY AGENT ON BNB CHAIN', 'JOBS SETTLED', { head: 'THE ESCROW PAID THEM', rows: [['JOBS', nf(c.n), ECO_C], ['RELEASED', '$' + nf(c.u, 2)], ['AGENTS PAID', nf(c.p)], ['GAS WE PAID', bnbF(c.gas)]] }, 6.5);
+    boardScene(x.t, ECO_C, 'settle', 'FOR EVERY AGENT ON BNB CHAIN', 'JOBS SETTLED', { head: 'THE ESCROW PAID THEM', rows: [['JOBS', nf(c.n), ECO_C], ['RELEASED', '$' + nf(c.u, 2)], ['AGENTS PAID', nf(c.p)], ['GAS WE PAID', bnbF(c.gas)]] }, 6.5);
     logLine('SETTLE', ECO_C, ['settled ', [plural(c.n, 'finished job')], ' of other agents · ', ['$' + nf(c.u, 2)], ' released to ', plural(c.p, 'provider')], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   } else if (x.key === 'health' || x.key === 'yield') {
     const rows = c.acts.filter(a => a.amt).map(a => [a.did.toUpperCase(), a.amt, ECO_C]);
     if (c.hf) rows.push(['HEALTH FACTOR', nf(c.hf, 2)]);
-    boardScene(x.t, ECO_C, 'think', `BOBAI'S VENUS AGENT #${c.agent}`, x.key === 'health' ? 'HEALTH FACTOR KEPT' : 'SUPPLIED ON VENUS', { head: 'FROM ITS OWN WALLET', rows: rows.slice(0, 4) }, 6.5);
+    boardScene(x.t, ECO_C, 'venus', `BOBAI'S VENUS AGENT #${c.agent}`, x.key === 'health' ? 'HEALTH FACTOR KEPT' : 'SUPPLIED ON VENUS', { head: 'FROM ITS OWN WALLET', rows: rows.slice(0, 4) }, 6.5);
     logLine('VENUS', ECO_C, [`#${c.agent} `, [venusDid(c)], c.hf ? ` · health factor ${nf(c.hf, 2)}` : ''], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   } else if (x.key === 'hire') {
     const v = t => typeof t === 'number' ? nf(t, 2) : t;
-    boardScene(x.t, ECO_C, 'think', `${(HIRER[c.by] || 'AGENT').toUpperCase()} ASKED ${String(c.seller).toUpperCase()}`, 'SECOND OPINION', { head: `BOUGHT ON ${String(c.site).toUpperCase()}, ERC-8183`, rows: [['PAID', nf(c.price, 2) + ' $U', ECO_C], ['THEIRS', c.theirs != null ? v(c.theirs) : null], ['OURS', c.ours != null ? v(c.ours) : null], ['VERDICT', c.agrees === true ? 'SAME' : c.agrees === false ? 'DIFFERENT' : null]] }, 6.5);
+    boardScene(x.t, ECO_C, 'hire', `${(HIRER[c.by] || 'AGENT').toUpperCase()} ASKED ${String(c.seller).toUpperCase()}`, 'SECOND OPINION', { head: `BOUGHT ON ${String(c.site).toUpperCase()}, ERC-8183`, rows: [['PAID', nf(c.price, 2) + ' $U', ECO_C], ['THEIRS', c.theirs != null ? v(c.theirs) : null], ['OURS', c.ours != null ? v(c.ours) : null], ['VERDICT', c.agrees === true ? 'SAME' : c.agrees === false ? 'DIFFERENT' : null]] }, 6.5);
     logLine('HIRED', ECO_C, [`#${c.by} paid `, [c.seller], ` ${nf(c.price, 2)} $U`, c.theirs != null ? ` · theirs ${v(c.theirs)}` : '', c.ours != null ? ` · ours ${v(c.ours)}` : ''], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   } else if (x.key === 'paid') {
-    if (mode === 'live' && !REOPEN) setPose('giggle', 5);
+    if (mode === 'live' && !REOPEN) setPose('paid', 5);
     logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   }
   sayMore('eco-' + x.key, x);

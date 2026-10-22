@@ -24,5 +24,6 @@
 .rc-what i{font-style:normal;color:var(--muted,#a0a2c0)}
 .rc-tx{flex:0 0 auto;font-size:13px;color:var(--muted,#a0a2c0)}
 .rc-muted .rc-what{color:var(--muted,#a0a2c0)}
+.rc-note{margin:0 0 8px;font-size:13px;line-height:1.5;color:var(--muted,#a0a2c0)}
 .rc-empty{padding:6px 0;color:var(--muted,#a0a2c0);font-size:14px}
 @media (max-width:640px){.rc-nums{grid-template-columns:repeat(2,1fr)}.rc-card{padding:16px 14px}.rc-t{flex-basis:100%}.rc-n b{font-size:22px}}

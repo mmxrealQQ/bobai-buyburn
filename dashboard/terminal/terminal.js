@@ -2519,6 +2519,10 @@ const REACT_MORE = {
     return [`My Venus yield agent ${d}, into the better-paying market, from its own wallet.`, `On Venus just now: my yield agent ${d}. It does what it tells others to do.`,
       `My yield agent compared the Venus markets, then ${d}.`, `Practice what you sell: my yield agent ${d} on Venus.`,
       `Venus update from my yield agent: ${d}. Its stablecoins go where they earn more.`]; },
+  'eco-hire': x => { const c = x.c, who = HIRER[c.by] || 'agent', a = c.agrees === true ? ' Same reading.' : c.agrees === false ? ' Different reading, and that stays on the record.' : '', f = c.theirs != null ? ` ${c.seller} says ${typeof c.theirs === 'number' ? nf(c.theirs, 2) : c.theirs}${c.ours != null ? `, mine says ${typeof c.ours === 'number' ? nf(c.ours, 2) : c.ours}` : ''}.` : '';
+    return [`My ${who} paid ${c.seller} on ${c.site} ${nf(c.price, 2)} $U for a second opinion.${f}${a}`, `Agents hiring agents: my ${who} asked ${c.seller} for ${nf(c.price, 2)} $U.${f}${a}`,
+      `A second opinion, bought on chain: ${c.seller} checked my ${who}'s work.${f}${a}`, `My ${who} does not grade its own homework. ${c.seller} looked too.${f}${a}`,
+      `Through the escrow, ${nf(c.price, 2)} $U: ${c.seller} answered my ${who}.${f}${a}`]; },
   'eco-paid': x => { const c = x.c, u = ecoPaidUsd(c), w = paidWhat(c), b = /BOBAI/i.test(c.asset || '') ? ' Paid in $BOBAI, and it stays $BOBAI.' : ' Half of it buys $BOBAI at a sweep, held for good.';
     return [`An agent just paid me ${u} for ${w}.${b}`, `${u} in from another agent, for ${w}. Agents paying agents, on BNB Chain.`,
       `Paid by a machine: ${u} for ${w}.${b}`, `Another agent bought ${w} from me: ${u}.${b}`, `A customer with no hands: an agent paid ${u} for ${w}.`]; },
@@ -3605,12 +3609,12 @@ function paintLogs() {
 async function logs() {
   const N = NUMS(), have = x => Promise.resolve(x);
   // + what his ecosystem does for others (2026-10-22): the job settler's record, the Venus agents' log, the paid services
-  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
-    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys')])
+  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys, hires] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
+    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys'), getJSON(AG + '/hires')])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
   if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
-  if (settle) S.settle = settle; if (venus) S.venus = venus; if (buys) S.buys = buys;
+  if (settle) S.settle = settle; if (venus) S.venus = venus; if (buys) S.buys = buys; if (hires) S.hires = hires;
   if (nft && !EXACT._run) { EXACT._run = 1; setTimeout(async () => { for (const n of (S.nft?.drops || []).filter(d => d.ts * 1000 > Date.now() - 7 * 86400e3)) await exactBuyUsd(n); }, 6000); }
   // THE DEV WALLET'S OWN ADDS (2026-09-30, operator: "show them"): the manual runs from d38 (liq-runs.json, the same file
   // the Classic liquidity block reads) — the biggest liquidity of most weeks, and the film showed only the bot's small ones.
@@ -4257,6 +4261,9 @@ function ecoEvents() {
     const hf = L.map(x => String(x.note || '').match(/^health factor now ([\d.]+)/)).find(Boolean);
     ev.push({ id: 'ev' + k, t: Date.parse(L[0].at) + 2, kind: 'eco', key: who, c: { agent: L[0].agent, acts: acts.map(x => ({ did: VENUS_DID[x.action] || x.action, amt: venusAmt(x.amount), tx: x.tx })), hf: hf ? +hf[1] : null, debt: L.find(x => x.debt_usdt)?.debt_usdt } });
   }
+  // our agent asked an outside agent (2026-10-22, agent-hires.js): one moment per answer that came back with its figure
+  for (const r of S.hires?.log || []) if (r.job && r.status === 'answered' && r.delivered_at) ev.push({ id: 'eh' + r.job, t: Date.parse(r.delivered_at), kind: 'eco', key: 'hire',
+    c: { by: r.by, seller: r.seller_name, site: r.site || 'Marque', price: r.price_u, theirs: r.answer?.health_factor ?? (r.answer?.in_range != null ? (r.answer.in_range ? 'in range' : 'out of range') : null), ours: r.own?.hf ?? (r.own?.in_range != null ? (r.own.in_range ? 'in range' : 'out of range') : null), agrees: r.agrees, txs: (r.txs || []).map((t) => t.tx).filter(Boolean).slice(-1).concat(r.submit_tx ? [r.submit_tx] : []) } });
   // a stranger's payment; one agent paying for several answers within five minutes is one moment
   const pays = (S.buys?.payments || []).filter(p => !p.self_test && p.tx && p.at).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   for (const p of pays) {
@@ -4270,7 +4277,8 @@ function ecoEvents() {
 const paidWhat = c => c.n === 1 ? paidFor([...c.fors][0]) : c.fors.size === 1 && [...c.fors][0] === 'scanpass' ? `${nf(c.n)} pool scan day passes` : `${nf(c.n)} paid answers`;
 const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
 // one line for the chart's marks and the timeline's hover
-const ecoText = x => { const c = x.c; return x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
+const HIRER = { 302257: 'health factor agent', 304493: 'yield agent', 363709: 'DeFi agent' };
+const ecoText = x => { const c = x.c; return x.key === 'hire' ? `#${c.by} paid ${c.seller} ${nf(c.price, 2)} $U for a second opinion${c.agrees === true ? ': same reading' : c.agrees === false ? ': different reading' : ''}` : x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
   : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
 const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
 function ecoScene(x) {
@@ -4283,6 +4291,10 @@ function ecoScene(x) {
     if (c.hf) rows.push(['HEALTH FACTOR', nf(c.hf, 2)]);
     boardScene(x.t, ECO_C, 'think', `BOBAI'S VENUS AGENT #${c.agent}`, x.key === 'health' ? 'HEALTH FACTOR KEPT' : 'SUPPLIED ON VENUS', { head: 'FROM ITS OWN WALLET', rows: rows.slice(0, 4) }, 6.5);
     logLine('VENUS', ECO_C, [`#${c.agent} `, [venusDid(c)], c.hf ? ` · health factor ${nf(c.hf, 2)}` : ''], txs.slice(0, 2).map(h => ['tx', h]), x.t);
+  } else if (x.key === 'hire') {
+    const v = t => typeof t === 'number' ? nf(t, 2) : t;
+    boardScene(x.t, ECO_C, 'think', `${(HIRER[c.by] || 'AGENT').toUpperCase()} ASKED ${String(c.seller).toUpperCase()}`, 'SECOND OPINION', { head: `BOUGHT ON ${String(c.site).toUpperCase()}, ERC-8183`, rows: [['PAID', nf(c.price, 2) + ' $U', ECO_C], ['THEIRS', c.theirs != null ? v(c.theirs) : null], ['OURS', c.ours != null ? v(c.ours) : null], ['VERDICT', c.agrees === true ? 'SAME' : c.agrees === false ? 'DIFFERENT' : null]] }, 6.5);
+    logLine('HIRED', ECO_C, [`#${c.by} paid `, [c.seller], ` ${nf(c.price, 2)} $U`, c.theirs != null ? ` · theirs ${v(c.theirs)}` : '', c.ours != null ? ` · ours ${v(c.ours)}` : ''], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   } else if (x.key === 'paid') {
     if (mode === 'live' && !REOPEN) setPose('giggle', 5);
     logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);
@@ -4420,7 +4432,7 @@ window.__btPools = () => {
   const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(ASK_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
     .map(([p, l]) => [p, l, moveForLine(l, null)]).filter(([p, , m]) => m && m !== p);
   const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 },
-    c: { n: 3, u: 1.5, p: 2, gas: 0.0003, agent: 302257, acts: [{ did: 'borrowed', amt: '4.00 USDT', tx: '0x' }], hf: 2.2, asset: 'USD1', amount: 0.5, fors: new Set(['scanpass']), txs: [] } };
+    c: { by: 302257, seller: 'Keel', site: 'Marque', price: 0.05, theirs: 2.17, ours: 2.2, agrees: true, n: 3, u: 1.5, p: 2, gas: 0.0003, agent: 302257, acts: [{ did: 'borrowed', amt: '4.00 USDT', tx: '0x' }], hf: 2.2, asset: 'USD1', amount: 0.5, fors: new Set(['scanpass']), txs: [] } };
   const more = Object.fromEntries(Object.entries(REACT_MORE).map(([k, f]) => [k, f(SX)]));
   wrong.push(...Object.entries(more).flatMap(([k, L]) => L.map(l => [k, l, moveForLine(l, null)])).filter(([k, , m]) => m && !(k === 'nft' && m === 'nft')));
   return { reactMore: Object.fromEntries(Object.entries(more).map(([k, L]) => [k, L.length])), combo: n(COMBO), moodJokes: n(MOOD_JOKES), moodBuild: n(MOOD_BUILD), heads: n(MOOD_HEADS), who: n(MOOD_WHO), moveLines: n(MOVE_LINES), win: Object.fromEntries(Object.entries(WIN_LINES).map(([k, v]) => [k, v[1].length])),

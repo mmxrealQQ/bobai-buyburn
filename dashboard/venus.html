@@ -25,7 +25,7 @@
   <link rel="preload" href="styles.css?v=59" as="style">
   <link rel="stylesheet" href="styles.css?v=59">
   <link rel="stylesheet" href="home.css?v=1">
-  <link rel="stylesheet" href="record.css?v=2">
+  <link rel="stylesheet" href="record.css?v=3">
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -53,6 +53,12 @@
         <li><b>Venus Yield Ranking</b> <a href="/agent/304493">#304493</a> &middot; wallet <a href="https://bscscan.com/address/0x497dAc54FD7238027Ecbbd194b353379a1D605F0" target="_blank" rel="noopener">0x497d…05F0</a><br>Supplies its stablecoins in tranches of 2 a day to whichever of USDT and USDC pays more on Venus.</li>
       </ul>
       <div class="rc-live" id="rc-state">Reading the record…</div>
+    </div>
+
+    <div class="rc-card fi">
+      <div class="rc-k">Second opinions they buy</div>
+      <p class="rc-note">Each agent pays an outside agent on Marque, through the ERC-8183 escrow, to check its own reading — and the answer stands here beside it, whatever it says.</p>
+      <div id="rc-hires" class="rc-rows"><div class="rc-empty">Reading the record…</div></div>
     </div>
 
     <div class="rc-card fi">
@@ -112,6 +118,19 @@
       return '<div class="rc-row rc-muted"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' · ' + esc(x.note || '') + (x.debt_usdt ? ' · loan ' + nf(x.debt_usdt, 2) + ' USDT' : '') + '</span></div>';
     }).join('') : '<div class="rc-empty">Nothing yet. The first run is at 05:00 UTC.</div>';
   }).catch(() => { $('rc-state').textContent = 'The record could not be read just now. Try again in a minute.'; $('rc-rows').innerHTML = ''; });
+  // the second opinions (agent-hires.js, 2026-10-22): the Venus agents' hires, newest first
+  fetch('https://agent.brainonbnb.com/hires').then((r) => r.json()).then((j) => {
+    const rows = (j.log || []).filter((r) => r.job && NAME[r.by]);
+    const v = (x) => typeof x === 'number' ? nf(x, 2) : x;
+    $('rc-hires').innerHTML = rows.length ? rows.map((r) => {
+      const theirs = r.answer?.health_factor, ours = r.own?.hf, fund = (r.txs || []).at(-1)?.tx;
+      const verdict = r.agrees === true ? ' · <span class="ok">same reading</span>' : r.agrees === false ? ' · <span class="no">different reading</span>' : '';
+      const what = r.status === 'answered' ? (theirs != null ? ' · theirs ' + v(theirs) + (ours != null ? ', ours ' + v(ours) : '') + verdict : ' · answered') : ' · ' + esc(r.status);
+      return '<div class="rc-row"><span class="rc-t">' + when(r.at) + '</span><span class="rc-what"><b>' + esc(NAME[r.by]) + '</b> asked <b>' + esc(r.seller_name) + '</b> (' + esc(r.site || 'Marque') + ') · ' + nf(r.price_u, 2) + ' $U' + what
+        + (r.answer?.url && /^https:/.test(r.answer.url) ? ' · <a href="' + esc(r.answer.url) + '" target="_blank" rel="noopener">answer ↗</a>' : '') + '</span>'
+        + '<span class="rc-tx">' + (fund ? '<a href="https://bscscan.com/tx/' + esc(fund) + '" target="_blank" rel="noopener">tx ' + esc(String(fund).slice(0, 10)) + '…</a>' : '') + (r.submit_tx ? ' · <a href="https://bscscan.com/tx/' + esc(r.submit_tx) + '" target="_blank" rel="noopener">delivered ↗</a>' : '') + '</span></div>';
+    }).join('') : '<div class="rc-empty">None yet. They ask once a day at 05:30 UTC.</div>';
+  }).catch(() => { $('rc-hires').innerHTML = '<div class="rc-empty">The record could not be read just now.</div>'; });
 })();
 </script>
 </body>

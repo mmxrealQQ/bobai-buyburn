@@ -51,6 +51,12 @@
     </div>
 
     <div class="hp-card fi">
+      <div class="hp-k">Check any wallet &middot; no connect</div>
+      <form class="hp-chk-row" id="hp-chk" autocomplete="off"><input class="hp-in" id="hp-chk-in" placeholder="0x… a wallet address" spellcheck="false"> <button class="hp-btn" id="hp-chk-go" type="submit">Check</button></form>
+      <div class="hp-live" id="hp-chk-out" hidden></div>
+    </div>
+
+    <div class="hp-card fi">
       <div class="hp-k">1 &middot; Your wallet</div>
       <button class="hp-btn" id="hp-connect" type="button">Connect wallet</button>
       <div class="hp-live" id="hp-wallet" hidden></div>
@@ -108,6 +114,8 @@
 .hp-lab{display:block;margin:12px 0 6px;font-size:13px;color:var(--muted,#a0a2c0)}
 .hp-in{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#141216;color:#f3efe6;font:15px/1.4 Inter,sans-serif}
 textarea.hp-in{resize:vertical}
+.hp-chk-row{display:flex;gap:8px;align-items:center}
+.hp-chk-row .hp-btn{margin-top:0;flex:0 0 auto}
 #hp-go{margin-top:14px}
 .hp-raw{margin-top:12px;font-size:13px}
 .hp-raw summary{cursor:pointer;color:var(--muted,#a0a2c0)}
@@ -146,6 +154,25 @@ textarea.hp-in{resize:vertical}
     if (s && wallet && /address|wallet|account|position/i.test(JSON.stringify(s.needs)) && !$('hp-task').value) $('hp-task').value = 'for wallet ' + wallet;
   };
   $('hp-svc').addEventListener('change', needs);
+
+  // CHECK ANY WALLET, NO CONNECT (2026-10-22, operator: only an address field — read-only, it unlocks nothing): the
+  // balance, the place among every $BOBAI holder and the distance to the pass, from agent.brainonbnb.com/holders
+  $('hp-chk').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const a = $('hp-chk-in').value.trim(), out = $('hp-chk-out');
+    out.hidden = false;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { out.innerHTML = 'That is not a wallet address: 0x and 40 characters.'; return; }
+    out.textContent = 'Reading the chain…';
+    fetch(AGENT + '/holders?address=' + a).then((r) => r.json()).then((j) => {
+      const w = j.address;
+      if (!w) { out.textContent = 'The holder list could not be read just now. Try again in a minute.'; return; }
+      if (w.contract) { out.innerHTML = 'That address is a contract, not a wallet: it holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b>.'; return; }
+      if (!w.bobai) { out.innerHTML = 'This wallet holds no $BOBAI. ' + fmt(j.holders) + ' wallets do. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>'; return; }
+      out.innerHTML = 'Holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b> &middot; <b>#' + fmt(w.rank) + '</b> of ' + fmt(w.of) + ' holders.<br>'
+        + (w.holder_pass ? '<span class="ok">Holder pass: yes.</span> Connect this wallet below and the agents answer free, 20 a day.'
+          : 'Holder pass: <b>' + fmt(w.short_of_pass) + ' $BOBAI' + usd(w.short_of_pass) + '</b> short of 1,000,000. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>');
+    }).catch(() => { out.textContent = 'The holder list could not be read just now. Try again in a minute.'; });
+  });
 
   const call = async (data) => {
     for (const u of RPCS) {

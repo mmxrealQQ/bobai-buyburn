@@ -41,9 +41,17 @@ const probe = await post('/api/v1/builders/probe', { chainId: 56, tokenId, endpo
 console.log('callable    ', probe.j.ok ? `answered in ${probe.j.latencyMs} ms` : `NO (${probe.j.liveness}): ${probe.j.detail || JSON.stringify(probe.j).slice(0, 200)}`);
 const dec = await post('/api/v1/builders/declare', { claimToken, category });
 console.log('classified  ', dec.ok ? `declared ${category}` : `NO: ${dec.j.detail || JSON.stringify(dec.j).slice(0, 200)}`);
-const test = await post('/api/v1/builders/claim/test', { claimToken, endpoint, testId: TESTS[category], kind: /\/mcp\b/i.test(endpoint) ? 'mcp' : 'a2a' });
+// taskConsent (2026-10-22): Marque's own page sends it — the test invokes a real task on the endpoint, and without
+// the consent the test refuses ("Confirm that you control or have permission for this endpoint")
+const test = await post('/api/v1/builders/claim/test', { claimToken, endpoint, testId: TESTS[category], taskConsent: true, kind: /\/mcp\b/i.test(endpoint) ? 'mcp' : 'a2a' });
 if (!test.ok) console.log('tested       NO:', test.j.detail || JSON.stringify(test.j).slice(0, 300));
 else if (test.j.error) console.log(`tested       ${TESTS[category]}: no gradable answer (${String(test.j.error).slice(0, 300)})`);
 else console.log(`tested       ${TESTS[category]}: ${test.j.pass ? 'passed every field' : 'failed fields: ' + JSON.stringify((test.j.diffs || []).filter((d) => !d.pass)).slice(0, 600)}`);
+// --publish (2026-10-22): the builder page's last step, the owner listing published with its service — what binds the
+// listing to the endpoint again (the two Venus agents kept a stale service with the provider of before 21.10.)
+if (rawArgs.includes('--publish')) {
+  const pub = await post('/api/v1/builders/claim/publish', { claimToken, category, serviceKind: /\/mcp\b/i.test(endpoint) ? 'mcp' : 'a2a', endpoint });
+  console.log('published   ', pub.ok ? JSON.stringify(pub.j).slice(0, 300) : `NO: ${pub.j.detail || JSON.stringify(pub.j).slice(0, 300)}`);
+}
 const checks = await (await fetch(`${SITE}/api/v1/builders/checks?wallet=${account.address}&chainId=56&tokenId=${tokenId}`)).json().catch(() => null);
 console.log('checks      ', JSON.stringify(checks?.identities?.[0]?.checks ?? checks).slice(0, 700));

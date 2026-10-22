@@ -34,7 +34,7 @@ import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
   planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
-  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET, BOBAI_PAIR, DEAD,
+  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET, BOBAI_PAIR, DEAD, liquidityGasUsd, liquiditySplit,
 } from '../shared/lp-agent.js';
 import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
@@ -364,6 +364,27 @@ await scenario('INCOME ALSO DEEPENS THE POOL (2026-10-22, plan c, switched on on
   ok('the pool got deeper: the product of its reserves grew', r1[0] * r1[1] > r0[0] * r0[1], `k ${(Number(r0[0]) * Number(r0[1]) / 1e36).toFixed(1)} -> ${(Number(r1[0]) * Number(r1[1]) / 1e36).toFixed(1)}`);
   ok('$BOBAI was bought and held in the income wallet too (the hold half)', bobai1 > bobai0 && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI held; ${done.liquidity?.bobai_in} $BOBAI + ${done.liquidity?.wbnb_in} WBNB into the pool`);
   ok('all the swept USD1 left the wallet; at most dust of WBNB stays', usd0 - usd1 === plan.amount && wb1 - wb0 < parseEther('0.0005'), `${Number(usd0 - usd1) / 1e18} USD1 · WBNB left ${formatEther(wb1 - wb0)}`);
+});
+
+await scenario('INCOME ALSO DEEPENS THE POOL, AT TODAY\'S SIZE (22.10. evening: the line is the gas, not 10 $) — a sweep like the one of 21.10. (~3.40 $): half to the operator, and of the $BOBAI half a part into the pool when the gas is at most 5 % of it', 'sweepsmall', async () => {
+  const src = INCOME_SOURCES.find((s) => s.key === 'x402');
+  await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.0047') });
+  await test.setBalance({ address: src.wallet, value: parseEther('0.01') });
+  const op0 = await bal(src.token, OPERATOR_WALLET), lp0 = await bal(BOBAI_PAIR, DEAD);
+  const plan = await planSweep(pub, src);
+  ok('the plan sweeps the small payment', !plan.no && plan.amount > 0n, plan.no || `${plan.summary.sweeping} USD1`);
+  if (plan.no) return;
+  // anvil answers eth_gasPrice with its own default (~1 gwei); the live chain's price is what the worker will read
+  const liveGas = await createPublicClient({ chain: bsc, transport: http('https://bsc-dataseed.binance.org') }).getGasPrice();
+  const pubLive = new Proxy(pub, { get: (t, k) => (k === 'getGasPrice' ? async () => liveGas : t[k]) });
+  const gasUsd = await liquidityGasUsd(pubLive, plan);
+  const want = liquiditySplit(plan.amount - plan.amount / 2n, plan.summary.implied_usd, src.decimals, true, gasUsd);
+  const txs = [], done = await executeSweep(pubLive, walletOf(src.wallet), src.wallet, plan, () => {}, { txs, liquidity: true });
+  ok('at the live gas price the pool part of a 3.40 $ sweep goes in', want.liq > 0n, `live gas ${Number(liveGas) / 1e9} gwei`);
+  const op1 = await bal(src.token, OPERATOR_WALLET), lp1 = await bal(BOBAI_PAIR, DEAD);
+  ok('the operator still receives exactly half', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} of ${Number(plan.amount) / 1e18}`);
+  ok('the gas line was read and the pool part followed it', gasUsd > 0 && (want.liq > 0n) === !!done.liquidity, `gas of the pool part ${gasUsd?.toFixed(4)} $, line ${(gasUsd / 0.05).toFixed(2)} $, pool part ${want.liq_usd} $ -> ${done.liquidity ? 'into the pool' : 'held'}`);
+  if (done.liquidity) ok('LP of the small part burned', lp1 > lp0, `${done.liquidity.lp_burned} LP`);
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

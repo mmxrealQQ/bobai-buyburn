@@ -2887,7 +2887,8 @@ ${pageTail}`;
         const s = e.steps || {}; const parts = [];
         for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(x.to_operator != null
           // since 2026-10-14: half to the operator in the coin paid, half bought $BOBAI held in the income wallet
-          ? `swept ${f(Number(x.sold) + Number(x.to_operator), 2)} ${x.token || ''}: half to the operator, half bought ${f(x.bobai_bought, 0)} $BOBAI, held`
+          // since 2026-10-22 (SWEEP_LIQ): a share of the $BOBAI half may go into the $BOBAI pool, LP burned
+          ? `swept ${f(Number(x.sold) + Number(x.to_operator), 2)} ${x.token || ''}: half to the operator, half bought ${f(x.bobai_bought, 0)} $BOBAI, held${x.liquidity ? `, and ${f(x.liquidity.bobai_in, 0)} $BOBAI + ${f(x.liquidity.wbnb_in, 6)} WBNB added to the $BOBAI pool, LP burned` : ''}`
           : `swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}${Number(s.collect.to_operator_bnb) > 0 ? `, ${f(s.collect.to_operator_bnb, 5)} BNB paid out to the operator` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);

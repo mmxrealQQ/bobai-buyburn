@@ -340,11 +340,16 @@ if (SELF) {
     const x = INCOME_SOURCES.filter((s0) => s0.wallet.toLowerCase() === '0x690e950214980bc329823a2db2fd90c06bd54de4');
     is('the x402 wallet is swept for USD1, USDC and $U, with its own key, each once', x.length === 3 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === '$U,USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
     // c (2026-10-22): the sweep's liquidity part — off unless switched on, and only from SWEEP_LIQ_MIN_USD of liquidity on
-    { const E = 10n ** 18n, f = (n, on) => liquiditySplit(n * E, 1, 18, on);
-      is('liquidity off: the whole $BOBAI half is bought and held', f(1000n, false).liq === 0n && f(1000n, false).hold === 1000n * E);
-      is(`liquidity on, under ${SWEEP_LIQ_MIN_USD} $ of liquidity: still all held`, f(2n * BigInt(SWEEP_LIQ_MIN_USD) - 1n, true).liq === 0n);
-      is(`liquidity on, from ${SWEEP_LIQ_MIN_USD} $: half held, half liquidity, nothing lost`, f(2n * BigInt(SWEEP_LIQ_MIN_USD), true).liq === BigInt(SWEEP_LIQ_MIN_USD) * E && f(101n, true).liq + f(101n, true).hold === 101n * E);
-      is('liquidity on, no price read: all held', liquiditySplit(1000n * E, null, 18, true).liq === 0n); }
+    // 22.10. evening: the line is the gas (at most LIQ_MAX_GAS_SHARE of the pool part), never under SWEEP_LIQ_MIN_USD
+    { const E = 10n ** 18n, C = E / 100n, f = (cents, on, gas) => liquiditySplit(BigInt(cents) * C, 1, 18, on, gas);
+      is('liquidity off: the whole $BOBAI half is bought and held', f(100000, false, 0.02).liq === 0n && f(100000, false, 0.02).hold === 1000n * E);
+      is('the 21.10. sweep (1.70 $ to $BOBAI, gas 0.02 $): 0.85 $ into the pool, 0.85 $ held', f(170, true, 0.02).liq === 85n * C && f(170, true, 0.02).hold === 85n * C);
+      is('gas 0.02 $: a pool part of 0.39 $ is held (gas would be over 5 %), 0.40 $ goes in', f(78, true, 0.02).liq === 0n && f(80, true, 0.02).liq === 40n * C);
+      is('gas 1 $ (expensive day): even 10 $ of pool part is held', f(2000, true, 1).liq === 0n);
+      is(`dust: under ${SWEEP_LIQ_MIN_USD} $ of pool part is held however cheap the gas`, f(48, true, 0.0001).liq === 0n);
+      is('no gas price read: all held', f(100000, true, null).liq === 0n && f(100000, true, NaN).liq === 0n);
+      is('liquidity on, no token price read: all held', liquiditySplit(1000n * E, null, 18, true, 0.02).liq === 0n);
+      is('nothing lost in the split', f(101, true, 0.001).liq + f(101, true, 0.001).hold === 101n * C); }
   }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));

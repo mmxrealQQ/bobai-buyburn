@@ -711,19 +711,37 @@ export const OPERATOR_SHARE_BPS = 5000n;
 // 1 gwei (~3-4 % of a full 12.5 $ part); below the line it is all bought and held as before.
 export const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 export const DEAD = '0x000000000000000000000000000000000000dEaD';
-export const SWEEP_LIQ_MIN_USD = 10; // the sweep takes at most 50 units a run (its cap), so the liquidity part is at most ~12.5 $; 20 would never have been reached (fork, 22.10.)
-// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs)
-export function liquiditySplit(toBobai, usdPerUnit, decimals, on) {
+// THE LINE IS THE GAS, NOT A FIXED SUM (operator's go, 22.10. evening): a fixed 10 $ was set for 1 gwei, but BSC runs at
+// 0.05 gwei and the income is a few dollars a sweep (3.40 $ on 21.10.) — 10 $ would never have been reached. So the
+// pool part is made only when the gas of its extra transactions (LIQ_GAS_UNITS at today's price) is at most
+// LIQ_MAX_GAS_SHARE of it, and never under SWEEP_LIQ_MIN_USD (dust). No gas price or no BNB price read: all held.
+export const SWEEP_LIQ_MIN_USD = 0.25;
+export const LIQ_GAS_UNITS = 450000n;   // the extra swap, two approves and addLiquidity, as used on the fork (~380k), with room
+export const LIQ_MAX_GAS_SHARE = 0.05;
+// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs). gasUsd: what LIQ_GAS_UNITS cost now, in dollars.
+export function liquiditySplit(toBobai, usdPerUnit, decimals, on, gasUsd) {
   const worth = Number(formatUnits(toBobai, decimals)) * (Number(usdPerUnit) || 0);
-  if (!on || !(worth / 2 >= SWEEP_LIQ_MIN_USD)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
+  const line = Math.max(SWEEP_LIQ_MIN_USD, Number(gasUsd) / LIQ_MAX_GAS_SHARE);
+  if (!on || !(Number(gasUsd) > 0) || !(worth / 2 >= line)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
   const liq = toBobai / 2n;
   return { hold: toBobai - liq, liq, liq_usd: Number((worth / 2).toFixed(2)) };
+}
+// what LIQ_GAS_UNITS cost now in dollars, from the plan's own price (its income token in BNB and in dollars); null when unread
+export async function liquidityGasUsd(pub, plan) {
+  try {
+    const price = await gasPriceNow(pub, GAS_BUMP_PLAIN);
+    const units = Number(formatUnits(plan.amount, plan.source.decimals)), bnb = Number(formatEther(plan.bnbOut));
+    const usdPerBnb = bnb > 0 ? (units * Number(plan.summary?.implied_usd)) / bnb : NaN;
+    const usd = Number(formatEther(LIQ_GAS_UNITS * price)) * usdPerBnb;
+    return Number.isFinite(usd) && usd > 0 ? usd : null;
+  } catch { return null; }
 }
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [], liquidity = false } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const holder = plan.source.wallet;
   const toOperator = (plan.amount * OPERATOR_SHARE_BPS) / 10000n, toBobai = plan.amount - toOperator;
-  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity);
+  const gasUsd = liquidity ? await liquidityGasUsd(pub, plan) : null;
+  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity, gasUsd);
   // ONE BUY FOR BOTH $BOBAI PARTS (fork, 22.10.: a second buy right after the first reverted): the held part and the
   // pool's $BOBAI are bought together, the pool's share of what arrived is taken by proportion
   const halfA = split.liq / 2n, halfB = split.liq - halfA, buyIn = split.hold + halfA;

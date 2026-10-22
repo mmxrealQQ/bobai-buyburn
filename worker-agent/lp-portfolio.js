@@ -28,7 +28,7 @@ export function stepWords(name, s) {
   switch (name) {
     case 'sweep': return { what: s.to_operator != null
       // since 2026-10-14 a sweep no longer feeds the position: half to the operator, half buys $BOBAI held where it was earned
-      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held`
+      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held${s.liquidity ? `, and $${n(s.liquidity.usd).toFixed(2)} added to the $BOBAI pool, LP burned` : ''}`
       : `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
     case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}${n(s.to_operator_bnb) > 0 ? `, ${r5(s.to_operator_bnb)} BNB paid out to the operator` : ''}` };
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };

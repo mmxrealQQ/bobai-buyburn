@@ -69,6 +69,10 @@ LP_LADDER = "1"
 # around the price with one trade back to the mix; "one-sided" or empty = beside the price, no trade.
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"
+# SWEEP_LIQ (operator's second go, 2026-10-22 evening): of every sweep, half still goes to the operator; of the $BOBAI
+# half, half is bought and held and half goes into the $BOBAI/WBNB pair with LP to the dead address — only when the gas
+# of the pool part is at most 5 % of it (shared/lp-agent.js liquiditySplit). Anything but "on" = all held, as before.
+SWEEP_LIQ = "on"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

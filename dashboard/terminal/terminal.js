@@ -2497,6 +2497,13 @@ const REACT_MORE = {
     // SINCE 2026-10-14 the sweep sends half to the operator and buys $BOBAI with the other half, held (shared/lp-agent.js
     // executeSweep); these lines still said the money went into the DeFi agent's pool (found 2026-10-18)
     if (s.to_operator != null) { const t = s.token || '', all = nf((+s.sold || 0) + (+s.to_operator || 0), 2), half = nf(+s.sold || 0, 2), op = nf(+s.to_operator || 0, 2), b = +s.bobai_bought > 0 ? bobaiAmt(s.bobai_bought) : '$BOBAI';
+      /* SINCE 2026-10-22 (SWEEP_LIQ) a share of the $BOBAI half may go into the $BOBAI pool with the LP burned */
+      if (s.liquidity) { const lq = '$' + nf(+s.liquidity.usd || 0, 2);
+        return [`Agents paid my services ${all} ${t}. Half went to the operator; the rest bought ${b} I keep, and ${lq} went into the $BOBAI pool for good.`,
+          `Payday: ${b} bought and held, plus ${lq} of new depth in the $BOBAI pool. The LP is burned, nobody can pull it.`,
+          `What agents paid me now makes the $BOBAI pool deeper: ${lq} added, LP burned. ${b} held too.`,
+          `${all} ${t} from my agent services: ${op} ${t} to the operator, ${b} held, ${lq} locked into the $BOBAI pool.`,
+          `The till is swept. ${lq} of it is now $BOBAI liquidity that stays forever, and ${b} sits in my wallet.`]; }
       return [`Agents paid my services ${all} ${t}. Half of it just bought ${b}, held for good. The other half is the operator's pay.`,
         `Payday from my agent services: ${b}, bought with half of ${all} ${t}. Never sold.`,
         `The services' till is swept: ${half} ${t} became ${b}, held. ${op} ${t} went to the operator.`,

@@ -18,7 +18,7 @@
 .rc-rows{display:flex;flex-direction:column}
 .rc-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:10px 0;border-top:1px solid rgba(255,255,255,.07);font-size:14px;line-height:1.5}
 .rc-row:first-child{border-top:0}
-.rc-t{flex:0 0 132px;color:var(--muted,#a0a2c0);font-size:13px;font-variant-numeric:tabular-nums}
+.rc-t{flex:0 0 156px;white-space:nowrap;color:var(--muted,#a0a2c0);font-size:13px;font-variant-numeric:tabular-nums}
 .rc-what{flex:1 1 280px;min-width:0;overflow-wrap:anywhere}
 .rc-what b{color:#f3efe6}
 .rc-what i{font-style:normal;color:var(--muted,#a0a2c0)}

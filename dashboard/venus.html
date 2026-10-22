@@ -25,7 +25,7 @@
   <link rel="preload" href="styles.css?v=59" as="style">
   <link rel="stylesheet" href="styles.css?v=59">
   <link rel="stylesheet" href="home.css?v=1">
-  <link rel="stylesheet" href="record.css?v=1">
+  <link rel="stylesheet" href="record.css?v=2">
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -83,7 +83,7 @@
   const nf = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
   const when = (iso) => String(iso || '').slice(0, 16).replace('T', ' ') + ' UTC';
   const NAME = { 302257: 'Health Factor Monitor', 304493: 'Yield Ranking' };
-  const VERB = { supply: 'supplied', enter: 'entered the market with', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' };
+  const VERB = { supply: 'supplied', enter: 'switched its BNB on as collateral', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' };
   const price = fetch('/api/price').then((r) => r.json()).then((p) => +p.bnb_usd || 0).catch(() => 0);
   // "0.02 BNB" -> "0.02 BNB ($14.83)"; stablecoins as they are, rounded
   const amt = (s, usd) => {
@@ -106,7 +106,7 @@
       : last ? 'Last run <b>' + when(last.at) + '</b>. Next at 05:00 UTC.' : 'Switched on. The first run is at 05:00 UTC.';
     $('rc-rows').innerHTML = log.length ? log.map((x) => {
       const who = '<b>' + esc(NAME[x.agent] || '#' + x.agent) + '</b>';
-      if (x.tx) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' ' + esc(VERB[x.action] || x.action) + ' ' + amt(x.amount, usd) + (x.why ? ' <i>· ' + esc(x.why) + '</i>' : '') + '</span>'
+      if (x.tx) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' ' + esc(VERB[x.action] || x.action) + (x.amount ? ' ' + amt(x.amount, usd) : '') + (x.why ? ' <i>· ' + esc(x.why) + '</i>' : '') + '</span>'
         + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(x.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(x.tx).slice(0, 10)) + '…</a></span></div>';
       if (x.error) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' <span class="no">stopped: ' + esc(x.error) + '</span></span></div>';
       return '<div class="rc-row rc-muted"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' · ' + esc(x.note || '') + (x.debt_usdt ? ' · loan ' + nf(x.debt_usdt, 2) + ' USDT' : '') + '</span></div>';

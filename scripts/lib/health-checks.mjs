@@ -664,12 +664,14 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     const notListed = ['363709', '302257', '302258', '304493', '304494', '310460'].filter((id) => !mq.some((a) => String(a.agentId) === id && a.listedOnMarque && a.quality?.passed === 5));
     ok('Agents', 'all six agents listed on Marque, 5/5', mq.length > 0 && !notListed.length, notListed.length ? `not listed or under 5/5: #${notListed.join(', #')} — ${mq.filter((a) => notListed.includes(String(a.agentId))).map((a) => (a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ')).join(' | ').slice(0, 160)}` : 'six of six');
     // asked twice when the first answer is empty (15 Oct: one run read none of the seven, the next all seven)
-    const readReg = async () => (await getJ('https://registry.modelcontextprotocol.io/v0/servers?search=com.brainonbnb')).body?.servers || [];
+    // 22 Oct: the registry took 12-39 s to answer this search and the 30 s read came back empty — read as "all seven
+    // missing" while all seven were there. Now 60 s, and a registry that does not answer is said as unread, not missing.
+    const readReg = async () => { const r = await fetch('https://registry.modelcontextprotocol.io/v0/servers?search=com.brainonbnb', { signal: AbortSignal.timeout(60000) }).then((x) => x.json()).catch(() => null); return Array.isArray(r?.servers) ? r.servers : null; };
     let reg = await readReg();
-    if (!reg.length) { await new Promise((r) => setTimeout(r, 4000)); reg = await readReg(); }
-    const latest = new Set(reg.filter((x) => x._meta?.['io.modelcontextprotocol.registry/official']?.isLatest).map((x) => x.server.name));
+    if (!reg?.length) { await new Promise((r) => setTimeout(r, 4000)); reg = await readReg(); }
+    const latest = new Set((reg || []).filter((x) => x._meta?.['io.modelcontextprotocol.registry/official']?.isLatest).map((x) => x.server.name));
     const missing = ['bobai', 'defi-agent', 'health-factor', 'grid-trader', 'yield-optimizer', 'rebalancer', 'lp-placement'].filter((n) => !latest.has('com.brainonbnb/' + n));
-    ok('Agents', 'the site and the six agents in the official MCP registry', !missing.length, missing.length ? `missing: ${missing.join(', ')}` : `${latest.size} entries`);
+    ok('Agents', 'the site and the six agents in the official MCP registry', reg === null || !missing.length, reg === null ? 'the registry did not answer in 60 s, twice — not read this time (its own outage, nothing of ours)' : missing.length ? `missing: ${missing.join(', ')}` : `${latest.size} entries`);
     const ps = (await getJ(`${SITE}/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82`, { headers: { 'user-agent': 'bobai-smoke-test' } })).body;
     ok('Agents', 'the pool scan ends with the paid watch on its pool', !!ps?.watch_this_pool?.buy?.body?.token, ps?.watch_this_pool ? `depthBelowUsd ${ps.watch_this_pool.buy.body.depthBelowUsd}` : 'no offer');
   }

@@ -52,7 +52,7 @@ const ANSWER_NAMES = {
 };
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
-  'https://agent.brainonbnb.com/scan-pass',   // the pool scan past 50 free a day (2026-10-18)
+  'https://agent.brainonbnb.com/scan-pass',   // the pool scan past 1,000 free a day (2026-10-18)
   ...ANSWER_IDS.map((id) => `https://agent.brainonbnb.com/answer?service=${id}`),
   // a voluntary tip (2026-09-26): it answers 402 like the others, at the amount the tipper names
   'https://agent.brainonbnb.com/tip',
@@ -109,9 +109,9 @@ takes whichever it can execute:
 | Endpoint | Description | Price |
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price}, or half in $BOBAI |
-| \`POST /scan-pass\` | Pool scan day pass: bsc_pool_scan at brainonbnb.com is free for 50 scans per caller and UTC day; the pass carries on for 24 hours (up to 2,000 scans), sent as header \`X-Scan-Pass\`. Free with the $BOBAI holder pass. | 0.50 USD1, or half in $BOBAI |
+| \`POST /scan-pass\` | Pool scan day pass: bsc_pool_scan at brainonbnb.com is free for 1,000 scans per caller and UTC day; the pass carries on for 24 hours (up to 2,000 scans), sent as header \`X-Scan-Pass\`. Free with the $BOBAI holder pass. | 0.50 USD1, or half in $BOBAI |
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1, or half in $BOBAI (0.05 USD) |`).join('\n')}
-| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free (the pool scan: 50 a caller a day). Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free (the pool scan: 1,000 a caller a day). Like all our income, half of it buys $BOBAI that is held and never sold, half is the operator's revenue. | you choose |
 
 POST any of them once **without** payment and it answers 402 with the price (a GET reads the same terms with 200),
 the payment options and the inputs it needs. That call is free and is the

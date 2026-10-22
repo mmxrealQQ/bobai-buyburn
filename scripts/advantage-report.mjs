@@ -96,7 +96,7 @@ async function getJson(m, url, timeoutMs = 60000) {
   // Calls into our own worker carry its secret, so /hire files them as our
   // quote runs and not as outside callers on the public track record
   // (2026-09-18: they never did, and were counted as strangers).
-  // …and on brainonbnb.com too (2026-10-18): the pool scan is free for 50 scans a caller a day, and a day of our own
+  // …and on brainonbnb.com too (2026-10-18): the pool scan is free for 1,000 scans a caller a day, and a day of our own
   // checks from this address had used them — task 2 was measured against the 429 and reported "did not answer". The
   // secret only keeps our run out of that count; the answer is the one any caller gets.
   const own = ownTestHeaders();

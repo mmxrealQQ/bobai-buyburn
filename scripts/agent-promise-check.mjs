@@ -8,7 +8,7 @@
 //   - "1000 USD of 0x… and 1000 USD of 0x… to 70/30" is two holdings of 1000 and a 70/30 target (was 500/500, no target);
 //     "I earn 2% on USDT" keeps the rate and the market (was dropped)
 //   - the per-agent MCP paid tools carry the holder pass terms they promise "in the reply"
-//   - every text that called the pool scan free without end names the 50 a day (llms.txt, skill.md, the grid trader's
+//   - every text that called the pool scan free without end names the 1,000 a day (llms.txt, skill.md, the grid trader's
 //     MCP tool, the watch's free alternative); the tip no longer says "everything else here is free", and says where the
 //     money goes as the sweep does it; the root card's holder pass names the scan day pass; the catalogue says POST → 402
 //
@@ -61,7 +61,7 @@ const mcp = async (slug, method, params) => (await (await fetch(`${AGENT}/${slug
   check(!!sc?.holder_pass?.how && sc.payment_required, 'a per-agent MCP paid tool carries the holder pass terms it promises', sc ? Object.keys(sc).join(',') : 'no answer');
   const l = await mcp('grid-trader', 'tools/list', {});
   const ps = (l?.result?.tools || []).find((x) => x.name === 'bsc_pool_scan');
-  check(/50 scans per caller/.test(ps?.description || '') && !/lays the grid/.test(ps?.description || ''), 'the grid trader\'s bsc_pool_scan names the 50 a day', ps?.description?.slice(-120));
+  check(/1,000 scans per caller/.test(ps?.description || '') && !/lays the grid/.test(ps?.description || ''), 'the grid trader\'s bsc_pool_scan names the 1,000 a day', ps?.description?.slice(-120));
   const tip = await (await fetch(`${AGENT}/tip?usd=1`)).json().catch(() => ({}));
   check(!/Everything else here is free/.test(tip.what || '') && /half of it buys \$BOBAI/.test(tip.where_it_goes || ''), 'the tip says what is free and where money goes as the sweep does it', tip.where_it_goes);
   const card = await (await fetch(`${AGENT}/.well-known/agent-card.json`)).json().catch(() => ({}));
@@ -69,13 +69,13 @@ const mcp = async (slug, method, params) => (await (await fetch(`${AGENT}/${slug
   check(/"task"/.test((card.skills || []).find((s) => s.id === 'negotiate')?.description || ''), 'the root card says what negotiate reads');
   const llms = await (await fetch(`${SITE}/llms.txt?r=${Date.now()}`)).text();
   check(!/Both are free, need no key/.test(llms) && !/The only recurring charge here/.test(llms), 'llms.txt: no "both are free" and no "only recurring charge"');
-  check(/26 free tools \(the count is pinned against tools\/list by a check; `bsc_pool_scan` free for 50 scans/.test(llms) && /pool scan day pass \(1 a day\)/.test(llms), 'llms.txt: the 50 a day beside the tool count, the day pass under the holder pass');
+  check(/26 free tools \(the count is pinned against tools\/list by a check; `bsc_pool_scan` free for 1,000 scans/.test(llms) && /pool scan day pass \(1 a day\)/.test(llms), 'llms.txt: the 50 a day beside the tool count, the day pass under the holder pass');
   const skill = await (await fetch(`${SITE}/skill.md?r=${Date.now()}`)).text();
-  check(/free \(the pool scan 50 a caller a day, then a day pass\)/.test(skill), 'skill.md: the heading names the 50 a day');
+  check(/free \(the pool scan 1,000 a caller a day, then a day pass\)/.test(skill), 'skill.md: the heading names the 1,000 a day');
   const cat = await (await fetch(`${AGENT}/.well-known/x402`, { headers: { accept: 'text/markdown' } })).text();
   check(!/Call any of them once \*\*without\*\*/.test(cat), 'the catalogue says which call answers 402');
   const w = await (await fetch(`${AGENT}/watch`)).json().catch(() => ({}));
-  check(/50 scans per caller a day/.test(w.free_alternative || ''), 'the watch\'s free alternative names the 50 a day', w.free_alternative);
+  check(/1,000 scans per caller a day/.test(w.free_alternative || ''), 'the watch\'s free alternative names the 1,000 a day', w.free_alternative);
 }
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

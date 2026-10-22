@@ -17,7 +17,7 @@ export const HOLDER_PASS = {
   line: 1000000n * 10n ** 18n,
   lineText: '1,000,000 $BOBAI',
   // per wallet and UTC day: an answer is one reading, a watch runs 30 days
-  allowance: { answer: 20, watch: 2, scanpass: 1 },   // scanpass: the pool scan's day pass past 50 free a day (2026-10-18)
+  allowance: { answer: 20, watch: 2, scanpass: 1 },   // scanpass: the pool scan's day pass past 1,000 free a day (2026-10-18)
   proofWindowMs: 10 * 60 * 1000,
   proofFutureMs: 2 * 60 * 1000,
 };

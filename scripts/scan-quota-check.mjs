@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/scan-quota-check.mjs — 50 free pool scans a caller a day, then the day pass (2026-10-18)
+// scripts/scan-quota-check.mjs — 1,000 free pool scans a caller a day, then the day pass (2026-10-18)
 //
 // Operator, 18.10.: volume and profit for $BOBAI through the tools — option 1, 50 a day. The pool scan stays free for 50
 // scans per caller and UTC day; the 51st is refused (429, code free_limit, how to carry on); a day pass bought at

@@ -1532,7 +1532,7 @@ fillLpYours();
   });
   get('https://agent.brainonbnb.com/scan-pass').then((j) => {
     const p = j && String(j.price || '').match(/^(\d+(?:\.\d+)?) USD1/);
-    if (p) set('pass', '50 free a day, then $' + Number(p[1]).toFixed(2) + ' a day');
+    if (p) set('pass', '1,000 free a day, then $' + Number(p[1]).toFixed(2) + ' a day');
   });
   // THE LATEST, IN ONE LINE (operator, 2026-10-22, "in block 04"): the newest thing the ecosystem did for others — a
   // settle run, a Venus agent's action, an agent's payment (our tests left out) — with its time and its transaction.

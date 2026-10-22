@@ -9,7 +9,7 @@
 //
 //   node scripts/pool-scan-offer-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
-const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 const FIELDS = ['address', 'quotable', 'price', 'pool', 'tradeCost', 'onePercentDepth', 'sellability', 'tax', 'lp'];

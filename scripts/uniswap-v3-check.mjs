@@ -10,7 +10,7 @@
 //
 //   node scripts/uniswap-v3-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
-const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const UNI = '0xdb1d10011ad0ff90774d0c6bb92e5c5c8b4461f7';
 // BTW/USDT 0.3% (~$369k), 72% of BTW's liquidity on 19.10. — the first pin, 贵州茅台, thinned out to ~$12k over five

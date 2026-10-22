@@ -1103,7 +1103,7 @@ const WATCH_TOOL = {
     + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
     + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
     + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
-    + 'call is free. Measuring a pool once is free too — 50 scans per caller a day, a day pass past that: use bsc_pool_scan at '
+    + 'call is free. Measuring a pool once is free too — 1,000 scans per caller a day, a day pass past that: use bsc_pool_scan at '
     + 'https://brainonbnb.com/mcp for that. This tool is only worth paying for because somebody '
     + 'has to still be running in an hour.',
   inputSchema: {
@@ -1461,7 +1461,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
-        what: 'A voluntary tip. It buys and unlocks nothing: the free measurements stay free (the pool scan 50 a caller a day) and the paid answers, the pool watch and the scan day pass keep their price whether you tip or not.',
+        what: 'A voluntary tip. It buys and unlocks nothing: the free measurements stay free (the pool scan 1,000 a caller a day) and the paid answers, the pool watch and the scan day pass keep their price whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
         how: `${payWays({ amount: String(amt.usd), payTo })}.`,
         where_it_goes: "The x402 wallet of BOBAI's agent services; at the next sweep half of it buys $BOBAI, held in that wallet and never sold, and half is the operator's revenue — like every payment here.",
@@ -1479,14 +1479,14 @@ async function tipRoute(env, ctx, payTo, q, proof) {
   } };
 }
 
-// THE POOL SCAN DAY PASS (shared/scan-pass.js, 2026-10-18): the pool scan at brainonbnb.com is free for 50 scans per
+// THE POOL SCAN DAY PASS (shared/scan-pass.js, 2026-10-18): the pool scan at brainonbnb.com is free for 1,000 scans per
 // caller and UTC day; past that this pass carries on for a day. Sold like the watch — USD1 by EIP-3009 or transfer,
 // USDC by standard x402, half in $BOBAI, nothing with the holder pass — and handed back as a string the site checks
 // with the secret both workers share.
 async function purchaseScanPass(env, ctx, payTo, proof) {
   const usd = Number(SCAN_PASS_PRICE_USD1) / 1e18;
   const bobai = await bobaiForUsd(usd * BOBAI_SHARE).catch(() => null);
-  const what = `Pool scan day pass: ${SCAN_PASS_HOURS} hours of bsc_pool_scan past the ${SCAN_FREE_PER_DAY} free a day, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`;
+  const what = `Pool scan day pass: ${SCAN_PASS_HOURS} hours of bsc_pool_scan past the ${SCAN_FREE_PER_DAY.toLocaleString('en-US')} free a day, up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans`;
   if (!proof) {
     const resource = SCAN_PASS_URL;
     const requirements = {
@@ -1513,7 +1513,7 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: what })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
-        what: `${what}. The first ${SCAN_FREE_PER_DAY} scans every UTC day stay free without it.`,
+        what: `${what}. The first ${SCAN_FREE_PER_DAY.toLocaleString('en-US')} scans every UTC day stay free without it.`,
         price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) or in $U by EIP-3009 (the last entry) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
         how: `${payWays({ amount: fmtUsd1(SCAN_PASS_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}. POST this URL with no body.`,
         use: 'The answer carries the pass; send it as header X-Scan-Pass on every pool scan (https://brainonbnb.com/api/pool-scan or the MCP tool bsc_pool_scan at https://brainonbnb.com/mcp).',
@@ -1604,7 +1604,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (1,000 scans per caller a day), no watching',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -3126,7 +3126,7 @@ ${pageTail}`;
         'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },
         'health-factor': { name: 'venus_health_factor', description: 'Health factor monitoring, the free half: the Venus health factor of a BNB Chain account right now, computed market by market from the Comptroller and cross-checked against the protocol’s own getAccountLiquidity; health_factor at the top. Give the account. The paid half adds the collateral drawdown that would liquidate it and a stress table.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'The Venus account (0x…)' } }, required: ['address'], additionalProperties: false }, annotations: RO },
         'yield-optimizer': { name: 'venus_supply_rates', description: 'Yield optimisation, the free half: the supply rate of every Venus market on BNB Chain now, read from each market’s contract, best first (the paid answer cross-checks every rate against the market’s own rate model); venus_usdt_rate_pct at the top. The paid half says whether moving YOUR deposit pays for itself.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: RO },
-        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half adds what a grid cycle costs on this pool and the spacing that breaks even. Free for 50 scans per caller and UTC day; past that a day pass carries on (POST https://agent.brainonbnb.com/scan-pass, 0.50 USD1 or half that in $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
+        'grid-trader': { name: 'bsc_pool_scan', description: 'Grid trading, the free half: what a trade in any BSC token’s pool really costs — depth, price impact at sizes, and the transfer tax measured from executed trades. The paid half adds what a grid cycle costs on this pool and the spacing that breaks even. Free for 1,000 scans per caller and UTC day; past that a day pass carries on (POST https://agent.brainonbnb.com/scan-pass, 0.50 USD1 or half that in $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/pool-scan' },
         rebalancer: { name: 'pancakeswap_best_route', description: 'Portfolio rebalancing, the free half: which PancakeSwap pool a swap of one token should go through at your size, and what it costs. The paid half prices a whole rebalance against the pools that would execute it.', inputSchema: { type: 'object', properties: { address: TOKEN, usd: { type: 'number', description: 'Trade size in USD' } }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/best-route' },
         'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half plans the position: the tier and the range to put it in. It signs and moves nothing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
       }[mcpSlug];
@@ -3460,7 +3460,7 @@ ${pageTail}`;
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         holder_pass: holderPassTerms(),   // hold the $BOBAI line, watch without paying (holder-pass.js, 2026-10-16)
-        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (50 scans per caller a day), no watching',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment (1,000 scans per caller a day), no watching',
         catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
       });
     }

@@ -10,7 +10,7 @@
 //
 //   node scripts/pool-scan-indexed-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
-const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 // token, the quote its main pool trades against, and its kind — PancakeSwap V2 and V3 both, each found 18.10.
 const CASES = [

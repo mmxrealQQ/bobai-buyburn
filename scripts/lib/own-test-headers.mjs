@@ -1,4 +1,4 @@
-// Our own checkers are not callers (2026-10-18): the pool scan is free for 50 scans per caller and UTC day, and a day of
+// Our own checkers are not callers (2026-10-18): the pool scan is free for 1,000 scans per caller and UTC day, and a day of
 // checker runs from one address used them up (CAKE answered 429 to uniswap-v3-check). A checker sends the shared secret
 // the workers already know; the site lets such a request through uncounted (scanAllowance in dashboard/_worker.js).
 import fs from 'node:fs';

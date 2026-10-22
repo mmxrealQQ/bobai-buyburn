@@ -14,7 +14,7 @@
 import { registerHooks } from 'node:module';
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
 registerHooks({ load(url, c, n) { return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? n(url, { ...c, format: 'module' }) : n(url, c); } });
-const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 let pass = 0, fail = 0;
 const check = (ok, what, detail = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${detail ? ' — ' + detail : ''}`); };

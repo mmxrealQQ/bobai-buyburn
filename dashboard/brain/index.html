@@ -153,7 +153,7 @@
           {
             "@type": "Question",
             "name": "Can my own AI agent use these tools?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Yes. The MCP server at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 50 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the holder pass."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes. The MCP server at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 1,000 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the holder pass."}
           },
           {
             "@type": "Question",
@@ -240,7 +240,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792650653163">
+<link rel="stylesheet" href="brain/brain.css?v=1792658229151">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1792643248">
@@ -863,7 +863,7 @@
         <a class="ec" href="/scanner">
           <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><h3>Pool Scan Pass</h3></div>
           <p>Any bot pays on the scan itself, by x402.</p>
-          <span class="ec-live" data-eclive="pass">50 free a day, then a day pass</span>
+          <span class="ec-live" data-eclive="pass">1,000 free a day, then a day pass</span>
           <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
         </a>
       </div>
@@ -1320,7 +1320,7 @@
         <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
       </details>
       <details class="faq-item"><summary>Can my own AI agent use these tools?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Yes. The <a href="/mcp">MCP server</a> at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 50 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow — see <a href="/services">Agent Services</a>. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the <a href="/pass">holder pass</a>.</div>
+        <div class="faq-body">Yes. The <a href="/mcp">MCP server</a> at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 1,000 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow — see <a href="/services">Agent Services</a>. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the <a href="/pass">holder pass</a>.</div>
       </details>
       <details class="faq-item"><summary>What is the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the <a href="#giggle">Giggle Academy block</a>.</div>
@@ -1364,13 +1364,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=122" defer></script>
+<script src="app.js?v=123" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1792643248')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792650653164" defer></script>
-<script src="brain/cards.js?v=1792650653164" defer></script>
-<script src="brain/hero.js?v=1792650653164" defer></script>
+<script src="brain/brain.js?v=1792658229151" defer></script>
+<script src="brain/cards.js?v=1792658229151" defer></script>
+<script src="brain/hero.js?v=1792658229151" defer></script>
 </body></html>

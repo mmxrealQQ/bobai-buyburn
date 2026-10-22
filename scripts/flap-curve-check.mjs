@@ -11,7 +11,7 @@
 //
 //   node scripts/flap-curve-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
-const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 50 free scans a day
+const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const PORTAL = '0xe2ce6ab80874fa9fa2aae65d277dd6b8e65c9de0';
 // flap.sh tokens seen on the curve 18.10.; the first still tradable is used (curves graduate or empty)

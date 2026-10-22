@@ -1100,6 +1100,7 @@ window.__btTestBurnLive = (gap = 12, talk = false) => {
   setTimeout(() => { enqueue({ ...r, id: 'test-b' + Date.now() }); for (const e of after) enqueue({ ...e, id: 'test-a' + Date.now() + e.id }); }, gap * 1000);
   return after.map(e => e.kind + ':' + (e.key || '')).join(',') || 'run only';
 };
+window.__btTestEco = (key, c) => { run({ kind: 'eco', id: 'test-e' + Date.now(), t: Date.now(), key, c: { ...c, fors: new Set(c.fors || []) } }, false); return true; }; // a pretend ecosystem moment, this browser only (qa/eco1022.mjs)
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
 window.__btTestNft = () => { const n = S.nft?.drops?.[0]; if (!n) return false; const x = { id: 'test-n' + Date.now(), t: Date.now(), kind: 'nft', n }; events.push(x); enqueue(x); return true; }; // a fresh minted buy, as it stands once its NFT is in (tlclick.mjs)
@@ -2504,6 +2505,23 @@ const REACT_MORE = {
   dev: x => { const t = bnbF(+x.d.availableBnb);
     return [`The creator share was paid out: ${t}.`, `The dev bot paid out ${t} of the creator share, right on schedule.`, `${t} out of the creator share. Builders get paid on BNB Chain too.`,
       `Creator share out: ${t}, on-chain like everything here.`, `The d38 wallet just sent out ${t} of the creator share.`]; },
+  // his ecosystem at work for others (2026-10-22, ecoScene): the settler plays 'build', the Venus agents 'think', a
+  // payment 'giggle' — none of these lines names a move, every figure is the record's own
+  'eco-settle': x => { const c = x.c, j = plural(c.n, 'finished job'), a = plural(c.p, 'agent'), u = '$' + nf(c.u, 2), g = bnbF(c.gas);
+    return [`I just settled ${j} for ${a} on BNB Chain. ${u} released to them, the gas was mine.`, `${j} of other agents, now settled: ${u} paid out of the escrow to ${a}.`,
+      `Helping the neighbours: ${j} settled, ${u} released to ${a}. The gas, ${g}, was on me.`, `The escrow only pays when somebody calls settle. I called it for ${j}: ${u} to ${a}.`,
+      `${a} on BNB Chain just got their pay: ${u} for ${j}, settled by me.`]; },
+  'eco-health': x => { const c = x.c, d = venusDid(c), h = c.hf ? ` Health factor ${nf(c.hf, 2)}.` : '';
+    return [`My Venus health factor agent ${d}, from its own wallet.${h}`, `On Venus just now: my health factor agent ${d}.${h} It does what it advises.`,
+      `My health factor agent keeps its own loan safe on Venus: ${d}.${h}`, `Practice what you sell: my health factor agent ${d} on Venus.${h}`,
+      `Venus update from my health factor agent: ${d}.${h} Every step simulated first.`]; },
+  'eco-yield': x => { const d = venusDid(x.c);
+    return [`My Venus yield agent ${d}, into the better-paying market, from its own wallet.`, `On Venus just now: my yield agent ${d}. It does what it tells others to do.`,
+      `My yield agent compared the Venus markets, then ${d}.`, `Practice what you sell: my yield agent ${d} on Venus.`,
+      `Venus update from my yield agent: ${d}. Its stablecoins go where they earn more.`]; },
+  'eco-paid': x => { const c = x.c, u = ecoPaidUsd(c), w = paidWhat(c), b = /BOBAI/i.test(c.asset || '') ? ' Paid in $BOBAI, and it stays $BOBAI.' : ' Half of it buys $BOBAI at a sweep, held for good.';
+    return [`An agent just paid me ${u} for ${w}.${b}`, `${u} in from another agent, for ${w}. Agents paying agents, on BNB Chain.`,
+      `Paid by a machine: ${u} for ${w}.${b}`, `Another agent bought ${w} from me: ${u}.${b}`, `A customer with no hands: an agent paid ${u} for ${w}.`]; },
   nft: x => { const n = x.n || {}, t = TIERS[n.tier] || 'Buy Drops', u = $buy(nUsd(n), n);
     return [`NFT #${n.tokenId} is minted: ${t}, for that ${u} buy. Straight to the buyer's wallet.`, `Fresh NFT, #${n.tokenId}, ${t}. The ${u} buy earned it.`, `Minted! #${n.tokenId}, a ${t} NFT, on its way to the buyer.`,
       `The ${u} buy got its NFT: #${n.tokenId}, ${t}.`, `NFT #${n.tokenId} (${t}) just left the minter. Capped supply, every one on-chain.`]; },
@@ -3491,7 +3509,7 @@ function boost3() {
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;
 const pctOf = k => (D[k] && D[k].pct != null ? D[k].pct : 0) + '%';
-const S = { hist: [], taxSw: new Map(), dev: [], price: 0, bnbP: 0, bobP: 0, queued: 0, walletBnb: 0, lastRunBnb: 0.07, burns: [], liq: [], man: [], lp: null, nft: null, block: 0, token0IsBobai: true };
+const S = { hist: [], taxSw: new Map(), dev: [], price: 0, bnbP: 0, bobP: 0, queued: 0, walletBnb: 0, lastRunBnb: 0.07, burns: [], liq: [], man: [], lp: null, nft: null, block: 0, token0IsBobai: true, settle: null, venus: null, buys: null };
 // The homepage's last read when it is fresh (it refreshes every 30 s); a read of our own otherwise.
 async function chain() {
   const n = NUMS().chain;
@@ -3586,10 +3604,13 @@ function paintLogs() {
 }
 async function logs() {
   const N = NUMS(), have = x => Promise.resolve(x);
-  const [burns, liq, lp, nft, dev, man, pf] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio')] /* the DeFi figures' one model (defiNow) */)
+  // + what his ecosystem does for others (2026-10-22): the job settler's record, the Venus agents' log, the paid services
+  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
+    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys')])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
   if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
+  if (settle) S.settle = settle; if (venus) S.venus = venus; if (buys) S.buys = buys;
   if (nft && !EXACT._run) { EXACT._run = 1; setTimeout(async () => { for (const n of (S.nft?.drops || []).filter(d => d.ts * 1000 > Date.now() - 7 * 86400e3)) await exactBuyUsd(n); }, 6000); }
   // THE DEV WALLET'S OWN ADDS (2026-09-30, operator: "show them"): the manual runs from d38 (liq-runs.json, the same file
   // the Classic liquidity block reads) — the biggest liquidity of most weeks, and the film showed only the bot's small ones.
@@ -3643,6 +3664,7 @@ function buildEvents() {
   const dropped = new Set((S.nft?.drops || []).map(n => (n.buyTx || '').toLowerCase()).filter(Boolean));
   for (const x of S.hist) if (isAlert(x) && !(x.buy && dropped.has(x.tx.toLowerCase()))) ev.push(x);
   for (const d of S.dev) if (+d.availableBnb > 0) ev.push({ id: 'v' + d.time, t: Date.parse(d.time), kind: 'dev', d });
+  ev.push(...ecoEvents());
   return ev.filter(x => Number.isFinite(x.t)).sort((a, b) => a.t - b.t);
 }
 
@@ -3704,6 +3726,8 @@ function run(x, fast) {
     floatAt(D.creator.pos, '-' + bnbF(tot), D.creator.c);
     logLine('d38', D.creator.c, ['dev bot paid out ', [bnbF(tot)], ' of the creator share'], [], x.t); // no split to builders: those are personal payouts
     sayMore('dev', x);
+  } else if (x.kind === 'eco') {
+    ecoScene(x);
   } else if (x.kind === 'nftcard') {
     nftReveal(x.n); sayMore('nft', x);
     logLine('NFT', '#a78bfa', [`${$buy(nUsd(x.n), x.n)} buy → NFT `, ['#' + x.n.tokenId], ` ${TIERS[x.n.tier] || ''}`], [['mint', x.n.mintTx || x.n.tx]]);
@@ -4205,6 +4229,67 @@ function defiScene(x, fast) {
   D.defi.boost = 1; hitDest('defi');
 }
 
+// HE TELLS WHAT HIS ECOSYSTEM DOES FOR OTHERS (operator, 2026-10-21: "BOBAI should tell in the terminal when his ecosystem
+// does something worth telling on the chain — make him more intelligent"). Three records of the agent worker, each an
+// event like a burn: the job settler's daily run (finished ERC-8183 jobs of other agents, settled, gas ours), the two
+// Venus agents' actions from their own wallets, and a payment from an agent that is not ours (our test buys are left
+// out). Every figure is the record's own, every action links its transaction; a run that did nothing is not told.
+const ECO_C = '#bef264'; // lime: no other mark or station has it (liquidity is teal, a buy emerald)
+const plural = (n, one, many = one + 's') => `${nf(n)} ${n === 1 ? one : many}`;
+const VENUS_AGENT = { 302257: 'health', 304493: 'yield' };
+const VENUS_DID = { supply: 'supplied', enter: 'switched on as collateral', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' };
+// "0.02 BNB" with its dollars; a stablecoin amount as it is
+const venusAmt = a => { const m = String(a || '').match(/^([\d.]+) (\w+)$/); return !m ? '' : m[2] === 'BNB' ? bnbF(+m[1]) : `${nf(+m[1], 2)} ${m[2]}`; };
+const paidFor = f => f === 'scanpass' ? 'a pool scan day pass' : /^watch/.test(f || '') ? 'a pool watch' : /^answer:/.test(f || '') ? `a ${f.slice(7).replace(/_/g, ' ')} answer` : 'a paid answer';
+const paidUsd = p => /BOBAI/i.test(p.asset || '') ? bobaiAmt(+p.amount) : '$' + nf(+p.amount, 2);
+function ecoEvents() {
+  const ev = [];
+  // the settler: one event per daily run, only the jobs it settled
+  const runs = new Map();
+  for (const d of S.settle?.log || []) if (d.settled && d.tx) { if (!runs.has(d.at)) runs.set(d.at, []); runs.get(d.at).push(d); }
+  for (const [at, L] of runs) ev.push({ id: 'es' + at, t: Date.parse(at), kind: 'eco', key: 'settle',
+    c: { n: L.length, u: L.reduce((a, d) => a + (+d.released_u || 0), 0), p: new Set(L.map(d => String(d.provider).toLowerCase())).size, gas: L.reduce((a, d) => a + (+d.gas_wei || 0), 0) / 1e18, txs: L.map(d => d.tx) } });
+  // the Venus agents: one event per agent per run, its actions with transactions and the health factor read after
+  const vr = new Map();
+  for (const x of S.venus?.log || []) { const k = x.at + ':' + x.agent; if (!vr.has(k)) vr.set(k, []); vr.get(k).push(x); }
+  for (const [k, L] of vr) {
+    const acts = L.filter(x => x.tx), who = VENUS_AGENT[L[0].agent]; if (!acts.length || !who) continue;
+    const hf = L.map(x => String(x.note || '').match(/^health factor now ([\d.]+)/)).find(Boolean);
+    ev.push({ id: 'ev' + k, t: Date.parse(L[0].at) + 2, kind: 'eco', key: who, c: { agent: L[0].agent, acts: acts.map(x => ({ did: VENUS_DID[x.action] || x.action, amt: venusAmt(x.amount), tx: x.tx })), hf: hf ? +hf[1] : null, debt: L.find(x => x.debt_usdt)?.debt_usdt } });
+  }
+  // a stranger's payment; one agent paying for several answers within five minutes is one moment
+  const pays = (S.buys?.payments || []).filter(p => !p.self_test && p.tx && p.at).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  for (const p of pays) {
+    const last = ev[ev.length - 1], t = Date.parse(p.at);
+    if (last?.key === 'paid' && last.c.from === String(p.from).toLowerCase() && last.c.asset === p.asset && t - last.t < 5 * 60e3) { last.c.n++; last.c.amount += +p.amount; last.c.txs.push(p.tx); last.c.fors.add(p.for); continue; }
+    ev.push({ id: 'ep' + p.tx, t, kind: 'eco', key: 'paid', c: { from: String(p.from).toLowerCase(), asset: p.asset, amount: +p.amount, n: 1, txs: [p.tx], fors: new Set([p.for]) } });
+  }
+  return ev;
+}
+// what was paid for, in words: one thing by its name, several by their count
+const paidWhat = c => c.n === 1 ? paidFor([...c.fors][0]) : c.fors.size === 1 && [...c.fors][0] === 'scanpass' ? `${nf(c.n)} pool scan day passes` : `${nf(c.n)} paid answers`;
+const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
+// one line for the chart's marks and the timeline's hover
+const ecoText = x => { const c = x.c; return x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
+  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
+const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
+function ecoScene(x) {
+  const c = x.c, txs = c.txs || c.acts?.map(a => a.tx) || [];
+  if (x.key === 'settle') {
+    boardScene(x.t, ECO_C, 'build', 'FOR EVERY AGENT ON BNB CHAIN', 'JOBS SETTLED', { head: 'THE ESCROW PAID THEM', rows: [['JOBS', nf(c.n), ECO_C], ['RELEASED', '$' + nf(c.u, 2)], ['AGENTS PAID', nf(c.p)], ['GAS WE PAID', bnbF(c.gas)]] }, 6.5);
+    logLine('SETTLE', ECO_C, ['settled ', [plural(c.n, 'finished job')], ' of other agents · ', ['$' + nf(c.u, 2)], ' released to ', plural(c.p, 'provider')], txs.slice(0, 2).map(h => ['tx', h]), x.t);
+  } else if (x.key === 'health' || x.key === 'yield') {
+    const rows = c.acts.filter(a => a.amt).map(a => [a.did.toUpperCase(), a.amt, ECO_C]);
+    if (c.hf) rows.push(['HEALTH FACTOR', nf(c.hf, 2)]);
+    boardScene(x.t, ECO_C, 'think', `BOBAI'S VENUS AGENT #${c.agent}`, x.key === 'health' ? 'HEALTH FACTOR KEPT' : 'SUPPLIED ON VENUS', { head: 'FROM ITS OWN WALLET', rows: rows.slice(0, 4) }, 6.5);
+    logLine('VENUS', ECO_C, [`#${c.agent} `, [venusDid(c)], c.hf ? ` · health factor ${nf(c.hf, 2)}` : ''], txs.slice(0, 2).map(h => ['tx', h]), x.t);
+  } else if (x.key === 'paid') {
+    if (mode === 'live' && !REOPEN) setPose('giggle', 5);
+    logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);
+  }
+  sayMore('eco-' + x.key, x);
+}
+
 // ---------- BOBAI meets the builders who visit (2026-09-25) ----------
 // Tap or click him: he answers with something true about his work right now, a line about building on BNB, a joke, or one of his moves.
 // Never twice the same kind in a row; the chain's own scenes always go first.
@@ -4334,7 +4419,8 @@ window.__btPools = () => {
   const n = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, (Array.isArray(v) ? v : v.lines || v[1] || []).length]));
   const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(ASK_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
     .map(([p, l]) => [p, l, moveForLine(l, null)]).filter(([p, , m]) => m && m !== p);
-  const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 } };
+  const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 },
+    c: { n: 3, u: 1.5, p: 2, gas: 0.0003, agent: 302257, acts: [{ did: 'borrowed', amt: '4.00 USDT', tx: '0x' }], hf: 2.2, asset: 'USD1', amount: 0.5, fors: new Set(['scanpass']), txs: [] } };
   const more = Object.fromEntries(Object.entries(REACT_MORE).map(([k, f]) => [k, f(SX)]));
   wrong.push(...Object.entries(more).flatMap(([k, L]) => L.map(l => [k, l, moveForLine(l, null)])).filter(([k, , m]) => m && !(k === 'nft' && m === 'nft')));
   return { reactMore: Object.fromEntries(Object.entries(more).map(([k, L]) => [k, L.length])), combo: n(COMBO), moodJokes: n(MOOD_JOKES), moodBuild: n(MOOD_BUILD), heads: n(MOOD_HEADS), who: n(MOOD_WHO), moveLines: n(MOVE_LINES), win: Object.fromEntries(Object.entries(WIN_LINES).map(([k, v]) => [k, v[1].length])),
@@ -4861,7 +4947,7 @@ cxEl.innerHTML = `<div class="cx-h"><div class="cx-t"><b>$BOBAI</b><span>/ BNB �
   <div class="cx-tf"><button type="button" data-tf="1H">1H</button><button type="button" data-tf="6H">6H</button><button type="button" data-tf="24H" class="on">24H</button></div>
   <button type="button" class="cx-x" aria-label="Close the chart">×</button></div>
   <div class="cx-s"></div><div class="cx-c"><canvas></canvas><div class="cx-o"></div></div>
-  <div class="cx-k"><span style="--k:${BUYC}">▲ BUY</span><span style="--k:${SELLC}">▼ SELL</span><span style="--k:${D.burnA.c}">◆ BOBAI BURNED</span><span style="--k:#F0B90B">◆ BOBAI SWAP</span><span style="--k:${D.liq.c}">● LIQUIDITY ADDED</span><span style="--k:${D.defi.c}">● DEFI AGENT</span><span style="--k:${D.creator.c}">■ PAYOUT</span><span style="--k:#a78bfa">★ NFT DROP</span><em class="cx-say"></em></div>`;
+  <div class="cx-k"><span style="--k:${BUYC}">▲ BUY</span><span style="--k:${SELLC}">▼ SELL</span><span style="--k:${D.burnA.c}">◆ BOBAI BURNED</span><span style="--k:#F0B90B">◆ BOBAI SWAP</span><span style="--k:${D.liq.c}">● LIQUIDITY ADDED</span><span style="--k:${D.defi.c}">● DEFI AGENT</span><span style="--k:${D.creator.c}">■ PAYOUT</span><span style="--k:#a78bfa">★ NFT DROP</span><span style="--k:${ECO_C}">● ECOSYSTEM</span><em class="cx-say"></em></div>`;
 win.appendChild(cxEl);
 const cxCv = cxEl.querySelector('canvas'), cxG = cxCv.getContext('2d');
 const cxOpen = document.createElement('button'); cxOpen.type = 'button'; cxOpen.className = 'chart-open'; cxOpen.textContent = 'OPEN CHART ⤢';
@@ -4893,6 +4979,7 @@ function cxMarks(cs, span) {
     if (x.kind === 'trade' && x.ours && events.some(y => y.kind === 'run' && Math.abs(y.t - x.t) < 5 * 60e3)) continue;
     const k = x.kind === 'run' ? ['◆', D.burnA.c, `BOBAI bought & burned ${cmp(x.e.bobaiBurned)} BOBAI · ${$amt(burnUsd(x.e))}`] : x.kind === 'liq' ? ['●', D.liq.c, x.l.dev ? `dev wallet added ${bnbR(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))} + ${cmp(x.l.bobai)} BOBAI, LP burned` : `liquidity added: ${bnbR(x.l.bnb)} · ${$amt(x.l.bnb * bnbUsdAt(x.t))}, LP burned`]
       : x.kind === 'defi' ? ['●', D.defi.c, `DeFi agent ${x.step}`] : x.kind === 'dev' ? ['■', D.creator.c, `dev bot paid out ${bnbF(+x.d.availableBnb)} · ${$amt(+x.d.availableBnb * bnbUsdAt(x.t))} of the creator share`] : x.kind === 'nft' ? ['★', '#a78bfa', `${$buy(nUsd(x.n), x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}, NFT #${x.n.tokenId} dropped`]
+      : x.kind === 'eco' ? ['●', ECO_C, ecoText(x)]
       : x.kind === 'trade' ? (x.ours ? ['◆', '#F0B90B', `BOBAI ${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}`] : [x.buy ? '▲' : '▼', x.buy ? BUYC : SELLC, `${x.buy ? 'buy' : 'sell'} ${tradeAmt(x)}`]) : null;
     if (!k) continue;
     const i = cs.findIndex(c => c.t >= x.t); out.push({ i: i < 0 ? cs.length - 1 : i, g: k[0], c: k[1], txt: k[2], t: x.t });
@@ -5189,7 +5276,7 @@ function setWin(k) {
 document.querySelectorAll('#bt .tlw button').forEach(b => b.onclick = () => setWin(b.dataset.w));
 let tlMouse = -1;
 let liveSince = Date.now(), events = [], mode = 'intro', from = 0, cursor = 0, rStart = 0, playhead = 0, nextAt = 0, hover = null;
-const evColor = x => x.kind === 'run' ? D.burnA.c : x.kind === 'liq' ? D.liq.c : x.kind === 'defi' ? D.defi.c : x.kind === 'dev' ? D.creator.c : x.kind === 'trade' ? (x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC) : '#a78bfa';
+const evColor = x => x.kind === 'run' ? D.burnA.c : x.kind === 'liq' ? D.liq.c : x.kind === 'defi' ? D.defi.c : x.kind === 'dev' ? D.creator.c : x.kind === 'eco' ? ECO_C : x.kind === 'trade' ? (x.ours ? '#F0B90B' : x.buy ? BUYC : SELLC) : '#a78bfa';
 // lanes = wallets: 1ce (splits + liquidity), d38 (creator payouts), bFAA (DeFi agent), the NFT drops, the pool's swaps
 const LANES = ['1ce', 'd38', 'DEFI', 'NFT', 'SWAPS'];
 const lane = x => x.kind === 'liq' && x.l?.dev ? 1 : ({ run: 0, liq: 0, dev: 1, defi: 2, nft: 3, trade: 4 })[x.kind]; // a dev add is d38's
@@ -5341,7 +5428,7 @@ function drawTl(now) {
     // timeline is 739 px and had no key at 760) — what does not fit beside the price leaves, BUY / SELL / BURN stay
     if (w > 520) {
       tx.textAlign = 'right'; tx.font = '700 8px ' + mono; let kx = x1 - 24; // clear of the gold now-line and its ring
-      const keys = [['★', '#a78bfa', 'NFT', 3], ['■', D.creator.c, 'PAYOUT', 1], ['●', D.defi.c, 'DEFI', 4], ['●', D.liq.c, 'LIQUIDITY', 5], ['◆', '#F0B90B', 'BOBAI SWAP', 2], ['◆', D.burnA.c, 'BURN', 9], ['▼', SELLC, 'SELL', 9], ['▲', BUYC, 'BUY', 9]];
+      const keys = [['●', ECO_C, 'ECOSYSTEM', 2], ['★', '#a78bfa', 'NFT', 3], ['■', D.creator.c, 'PAYOUT', 1], ['●', D.defi.c, 'DEFI', 4], ['●', D.liq.c, 'LIQUIDITY', 5], ['◆', '#F0B90B', 'BOBAI SWAP', 2], ['◆', D.burnA.c, 'BURN', 9], ['▼', SELLC, 'SELL', 9], ['▲', BUYC, 'BUY', 9]];
       const kw = k => tx.measureText(k[2]).width + 3 + tx.measureText(k[0]).width + 10;
       while (keys.reduce((a, k) => a + kw(k), 0) > kx - left) { const lo = keys.reduce((m, k) => k[3] < m[3] ? k : m); if (lo[3] >= 9) break; keys.splice(keys.indexOf(lo), 1); }
       window.__btTlKey = keys.map(k => [k[0], k[1], k[2]]); // marks.mjs: the key the timeline drew
@@ -5382,6 +5469,7 @@ function describe(x) {
     return `bot split ${bnbAmt(x.e.totalBnb, x.t)}: burned ${cmp(x.e.bobaiBurned)} BOBAI (${$amt(burnUsd(x.e))}) + ${cmp(bobOf(x.e))} BOB${x.l ? ', added liquidity' : ''}${fed.length ? ', fed ' + fed.join(' and ') : ''}`; }
   if (x.kind === 'liq') return x.l.dev ? `dev wallet d38 added ${bnbAmt(x.l.bnb, x.t)} + ${bobaiAmt(x.l.bobai)} to the pool, LP burned` : `added ${bnbAmt(x.l.bnb, x.t)} of liquidity, LP burned`;
   if (x.kind === 'defi') return `DeFi agent ${x.step}`;
+  if (x.kind === 'eco') return ecoText(x);
   { const u = nUsd(x.n), r = bnbUsdAt(x.t); return `${$buy(u, x.n)} ${TIERS[x.n.tier] ? TIERS[x.n.tier].toLowerCase() : 'buy'}${r ? ' (' + bnbF(u / r) + ')' : ''} dropped NFT #${x.n.tokenId}`; }
 }
 // THE CANDLE UNDER THE MOUSE (2026-09-30, operator: "show it when the mouse is over the candle, not only on the green

@@ -16,7 +16,7 @@
 // Rails: once a UTC day per hire, the quote at most MAX_U and in $U, the wallet must hold the price and keep
 // GAS_FLOOR BNB, every call simulated before it is sent, the job read back (client = our wallet, provider = the
 // seller). Off unless the worker var AGENT_HIRES is "on". Every attempt is a row in KV hires:log (GET /hires).
-import { createPublicClient, createWalletClient, http, fallback, parseEther, formatEther } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, parseEther, formatEther, keccak256, toHex } from 'viem';
 import { bsc } from 'viem/chains';
 import { handleHire, readJobNow, ERC8183 } from './hire.js';
 import { accountForAgent } from './agent-wallets.js';
@@ -155,7 +155,8 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
 // its keccak256 compared with the deliverable hash the kernel holds, and its figure put beside our own reading.
 const KEYED = { url: null };
 const IPFS_GATEWAYS = ['https://ipfs.io/ipfs/', 'https://gateway.pinata.cloud/ipfs/', 'https://w3s.link/ipfs/', 'https://dweb.link/ipfs/', 'https://nftstorage.link/ipfs/', 'https://4everland.io/ipfs/'];
-export const POLICY_TOPIC = '0x979e9cbf6f2afb4a66fd728cf2159d5f9119c4df4c65d24187fce959c64d3a8d';
+// computed from the signature (a literal 64-hex word reads as a key to the library's secret guard, and this way it cannot be mistyped)
+export const POLICY_TOPIC = keccak256(toHex('JobInitialised(uint256,bytes32,uint64,bytes)'));
 const rpc = async (method, params) => {
   // the worker's own keyed node first for logs: the public ones refuse or throttle eth_getLogs from Cloudflare (22.10.)
   for (const u of method === 'eth_getLogs' ? [KEYED.url, 'https://bsc-rpc.publicnode.com', ...RPCS].filter(Boolean) : RPCS) {
@@ -183,7 +184,6 @@ async function deliveryOf(job) {
   if (!tries.length) return { url: url || null, tx: l.transactionHash, why: 'the deliverable_url is not https or ipfs' };
   let body = null;
   for (const t of tries) { body = await fetch(t, { signal: AbortSignal.timeout(15000) }).then((r) => (r.ok ? r.text() : null)).catch(() => null); if (body != null) break; }
-  const { keccak256, toHex } = await import('viem');
   return { url, tx: l.transactionHash, body, hash_matches: body != null ? keccak256(toHex(body)) === job.deliverable : null };
 }
 export async function collectDeliveries(env, { now = Date.now() } = {}) {

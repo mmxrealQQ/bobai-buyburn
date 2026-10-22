@@ -44,7 +44,7 @@ txt: https://brainonbnb.com/code/buyback-bot.txt
 DeFi Agent — a PancakeSwap V3 range that runs itself
 ----------------------------------------------------
 A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
-17 files, 7254 lines
+17 files, 7322 lines
 needs:
   - A wallet that holds the position
       ours: one BSC wallet used for nothing else
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-62 files, 20303 lines
+63 files, 20614 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots
@@ -314,7 +314,7 @@ txt: https://brainonbnb.com/code/agent-service.txt
 The Census — reading a whole registry
 -------------------------------------
 Every agent id on BNB Chain, and every job they were ever paid for.
-7 files, 4736 lines
+7 files, 4827 lines
 needs:
   - Node 18+ and time
       ours: about three hours for the registry, twenty minutes for the jobs

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 63 files, 20614 lines.
+# one fetch. 66 files, 20985 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -351,6 +351,80 @@ export const TRUST_REGISTRIES = {
 
 export const registrations = () =>
   PROOF_IDS.map((agentId) => ({ agentId, agentRegistry: AGENT_REGISTRY }));
+
+==============================================================================
+=== FILE: shared/job-board.js
+==============================================================================
+
+// shared/job-board.js — who gets hired on BNB Chain, ranked from the ERC-8183 escrow itself (2026-10-22)
+//
+// Operator, 22.10.: "make the ecosystem the most active and #1 on BNB Chain" — and, always, "without fake". No board
+// anywhere ranks the agents that actually get hired and paid on BNB Chain's escrow kernel, so this one does, from the
+// chain alone, with every rule written here once and used by the worker, the seed script and the check alike.
+//
+//   ACTIVE      work delivered in the last 30 days (the job's own submitted_at) for a client who put money in escrow:
+//               SUBMITTED or COMPLETED, budget above zero. SUBMITTED is delivered and not yet released, and is shown
+//               apart from paid; it is never added to paid.
+//   NOT WORK    a client that is the provider itself; and for our own providers, any client that is one of our wallets
+//               (we know our wallets, nobody else's — so the stricter rule applies to us, not to them).
+//   THE FARM    one campaign address holds 98.5 % of every job the kernel ever minted, at a cent each, and its last
+//               delivery was 2026-06-23. It is shown on its own line with its census figures, never in the ranking:
+//               counted in, it would describe that one campaign rather than the market around it.
+//   RANK        jobs paid in 30 days (the escrow released: the strongest fact the chain holds — a delivery a client
+//               never accepted, or one client hiring the same agent twelve times, does not move it), then distinct
+//               paying clients in 30 days, then delivered in 30 days, then paid ever. The clients stand beside it on
+//               every row: an agent paid often by few is not the same as one paid by many, and the page says which.
+
+export const WINDOW_DAYS = 30;
+export const STATUS = { O: 'OPEN', F: 'FUNDED', S: 'SUBMITTED', C: 'COMPLETED', R: 'REJECTED', E: 'EXPIRED' };
+const CODE = Object.fromEntries(Object.entries(STATUS).map(([k, v]) => [v, k]));
+
+// A job as stored: [provider, client, status letter, budget in $U, submitted_at, expired_at], addresses lower-case.
+export const pack = (j) => [String(j.provider).toLowerCase(), String(j.client).toLowerCase(), CODE[j.status] || '?', Number(j.budget_u ?? Number(BigInt(j.budget || 0)) / 1e18), Number(j.submitted_at) || 0, Number(j.expired_at) || 0];
+
+// Still able to change: read again on the next run. An OPEN job past its expiry can never be funded.
+export const live = (r, now) => r[2] === 'F' || r[2] === 'S' || (r[2] === 'O' && r[5] > now);
+
+// records: { id: packed }; ours: Set of our wallets; names: { provider: [{ id, name }] }; farms: [provider];
+// now: unix seconds. Returns the board, pure.
+export function buildBoard(records, { ours = new Set(), names = {}, farms = [], now = Math.floor(Date.now() / 1000), windowDays = WINDOW_DAYS, top = 25 } = {}) {
+  const farmSet = new Set(farms.map((f) => String(f).toLowerCase()));
+  const since = now - windowDays * 86400;
+  const per = {};
+  let delivered = 0, paid = 0, paidU = 0;
+  const clientsAll = new Set(), providersActive = new Set();
+  for (const r of Object.values(records)) {
+    const [p, c, s, b, t] = r;
+    if (farmSet.has(p)) continue;
+    if (!(b > 0) || (s !== 'S' && s !== 'C')) continue;              // funded and delivered, nothing else is work
+    if (c === p) continue;                                           // an address hiring itself
+    const own = ours.has(p);
+    if (own && ours.has(c)) continue;                                // our wallets hiring our agents: a test
+    const x = (per[p] ??= { provider: p, ours: own, delivered_30d: 0, paid_30d: 0, clients_30d: new Set(), paid_ever: 0, paid_ever_u: 0, clients_ever: new Set(), last_delivery: 0 });
+    x.clients_ever.add(c);
+    if (s === 'C') { x.paid_ever++; x.paid_ever_u += b; }
+    if (t > x.last_delivery) x.last_delivery = t;
+    if (t >= since) {
+      x.delivered_30d++; x.clients_30d.add(c); delivered++; clientsAll.add(c); providersActive.add(p);
+      if (s === 'C') { x.paid_30d++; paid++; paidU += b; }
+    }
+  }
+  const rows = Object.values(per)
+    .map((x) => ({ ...x, clients_30d: x.clients_30d.size, clients_ever: x.clients_ever.size, paid_ever_u: Number(x.paid_ever_u.toFixed(4)), agents: names[x.provider] || [] }))
+    .sort((a, b) => b.paid_30d - a.paid_30d || b.clients_30d - a.clients_30d || b.delivered_30d - a.delivered_30d || b.paid_ever - a.paid_ever || a.provider.localeCompare(b.provider))
+    .map((x, i) => ({ rank: i + 1, ...x }));
+  const active = rows.filter((x) => x.delivered_30d > 0);
+  // the leader by the other measure, named on the page beside the ranking
+  const byClients = [...rows].sort((a, b) => b.clients_30d - a.clients_30d || b.paid_30d - a.paid_30d)[0] || null;
+  return {
+    most_clients_30d: byClients && byClients.clients_30d ? { provider: byClients.provider, agents: byClients.agents, ours: byClients.ours, clients_30d: byClients.clients_30d, rank: byClients.rank } : null,
+    window_days: windowDays,
+    totals_30d: { delivered, paid, paid_u: Number(paidU.toFixed(4)), providers: providersActive.size, paying_clients: clientsAll.size },
+    ranking: rows.slice(0, top),
+    ours: rows.filter((x) => x.ours),
+    active_providers: active.length,
+  };
+}
 
 ==============================================================================
 === FILE: shared/job-summary.js
@@ -1193,19 +1267,37 @@ export const OPERATOR_SHARE_BPS = 5000n;
 // 1 gwei (~3-4 % of a full 12.5 $ part); below the line it is all bought and held as before.
 export const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 export const DEAD = '0x000000000000000000000000000000000000dEaD';
-export const SWEEP_LIQ_MIN_USD = 10; // the sweep takes at most 50 units a run (its cap), so the liquidity part is at most ~12.5 $; 20 would never have been reached (fork, 22.10.)
-// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs)
-export function liquiditySplit(toBobai, usdPerUnit, decimals, on) {
+// THE LINE IS THE GAS, NOT A FIXED SUM (operator's go, 22.10. evening): a fixed 10 $ was set for 1 gwei, but BSC runs at
+// 0.05 gwei and the income is a few dollars a sweep (3.40 $ on 21.10.) — 10 $ would never have been reached. So the
+// pool part is made only when the gas of its extra transactions (LIQ_GAS_UNITS at today's price) is at most
+// LIQ_MAX_GAS_SHARE of it, and never under SWEEP_LIQ_MIN_USD (dust). No gas price or no BNB price read: all held.
+export const SWEEP_LIQ_MIN_USD = 0.25;
+export const LIQ_GAS_UNITS = 450000n;   // the extra swap, two approves and addLiquidity, as used on the fork (~380k), with room
+export const LIQ_MAX_GAS_SHARE = 0.05;
+// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs). gasUsd: what LIQ_GAS_UNITS cost now, in dollars.
+export function liquiditySplit(toBobai, usdPerUnit, decimals, on, gasUsd) {
   const worth = Number(formatUnits(toBobai, decimals)) * (Number(usdPerUnit) || 0);
-  if (!on || !(worth / 2 >= SWEEP_LIQ_MIN_USD)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
+  const line = Math.max(SWEEP_LIQ_MIN_USD, Number(gasUsd) / LIQ_MAX_GAS_SHARE);
+  if (!on || !(Number(gasUsd) > 0) || !(worth / 2 >= line)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
   const liq = toBobai / 2n;
   return { hold: toBobai - liq, liq, liq_usd: Number((worth / 2).toFixed(2)) };
+}
+// what LIQ_GAS_UNITS cost now in dollars, from the plan's own price (its income token in BNB and in dollars); null when unread
+export async function liquidityGasUsd(pub, plan) {
+  try {
+    const price = await gasPriceNow(pub, GAS_BUMP_PLAIN);
+    const units = Number(formatUnits(plan.amount, plan.source.decimals)), bnb = Number(formatEther(plan.bnbOut));
+    const usdPerBnb = bnb > 0 ? (units * Number(plan.summary?.implied_usd)) / bnb : NaN;
+    const usd = Number(formatEther(LIQ_GAS_UNITS * price)) * usdPerBnb;
+    return Number.isFinite(usd) && usd > 0 ? usd : null;
+  } catch { return null; }
 }
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [], liquidity = false } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const holder = plan.source.wallet;
   const toOperator = (plan.amount * OPERATOR_SHARE_BPS) / 10000n, toBobai = plan.amount - toOperator;
-  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity);
+  const gasUsd = liquidity ? await liquidityGasUsd(pub, plan) : null;
+  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity, gasUsd);
   // ONE BUY FOR BOTH $BOBAI PARTS (fork, 22.10.: a second buy right after the first reverted): the held part and the
   // pool's $BOBAI are bought together, the pool's share of what arrived is taken by proportion
   const halfA = split.liq / 2n, halfB = split.liq - halfA, buyIn = split.hold + halfA;
@@ -7699,6 +7791,143 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/holders.js
+==============================================================================
+
+// worker-agent/holders.js — every $BOBAI holder, kept by the worker from the chain (2026-10-22)
+//
+// Operator, 22.10.: "build it so it is a real advantage for $BOBAI and the ecosystem". Nothing anywhere counted
+// $BOBAI's holders (the terminal's "Holders" were the NFT's). This is the one source: every address that holds
+// $BOBAI, its balance, and whether it is a person or a contract — the pool, the burn address, routers and lockers are
+// contracts and never counted as holders. Our own wallets are wallets like any other (operator, 22.10.: "treated like a
+// normal wallet"), in the count and in the crossings, unmarked.
+//
+//   the seed     scripts/holders-seed.mjs: every address that ever appeared in a Transfer since the deployment
+//                (block 88,987,679, 2026-03-27 06:35 UTC), each balance read with balanceOf at one block
+//   the tick     every quarter hour: the Transfer logs since the last block, applied; a new address is asked once
+//                whether it has code. A person crossing 1,000,000 $BOBAI is recorded as a crossing (with its tx).
+//   the day      at the first tick of a UTC day, one point of history: holders, 1M+ holders, the bands
+//
+//   holders:state     { block, bal: { addr: wei string }, code: { addr: 1 } }
+//   holders:history   [{ day, holders, holders_1m, bands }] (a year)
+//   holders:crossings [{ at, address, balance, block, tx }] (the last 100)
+
+export const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const STATE = 'holders:state', HISTORY = 'holders:history', CROSSINGS = 'holders:crossings';
+export const PASS_LINE = 10n ** 6n * 10n ** 18n;   // 1,000,000 $BOBAI, the holder pass (holder-pass.js)
+const E18 = 10n ** 18n;
+export const BANDS = [[1e6, null], [5e5, 1e6], [1e5, 5e5], [1e4, 1e5], [0, 1e4]];
+const MAX_BLOCKS_A_TICK = 20000, CHUNK = 5000, CONFIRMATIONS = 3;
+const DEAD = /^0x0{36}dead$|^0x0{40}$/i;
+
+const toUnits = (wei) => Number(BigInt(wei) / 10n ** 14n) / 1e4;
+
+// pure: the holders view of a state (pinned in scripts/holders-check.mjs)
+export function summarize(state) {
+  const people = [];
+  for (const [a, w] of Object.entries(state.bal || {})) {
+    if (BigInt(w) <= 0n || state.code?.[a] || DEAD.test(a)) continue;
+    people.push([a, BigInt(w)]);
+  }
+  people.sort((x, y) => (y[1] > x[1] ? 1 : y[1] < x[1] ? -1 : 0));
+  const bands = BANDS.map(([lo, hi]) => ({ from: lo, to: hi, holders: people.filter(([, w]) => w >= BigInt(lo) * E18 && (hi == null || w < BigInt(hi) * E18)).length }));
+  return { holders: people.length, holders_1m: people.filter(([, w]) => w >= PASS_LINE).length, bands, people };
+}
+
+// pure: apply decoded transfers [{ from, to, value (bigint), block, tx }] to a balance map; returns the crossings of
+// the pass line by people (not contracts) — counted only upward, once per transfer that carries it over
+export function applyTransfers(bal, transfers, isContract = () => false) {
+  const crossed = [];
+  for (const t of transfers) {
+    for (const [a, d] of [[t.from, -t.value], [t.to, t.value]]) {
+      const before = BigInt(bal[a] || '0'), after = before + d;
+      bal[a] = String(after);
+      if (d > 0n && before < PASS_LINE && after >= PASS_LINE && !isContract(a) && !DEAD.test(a)) crossed.push({ address: a, balance: toUnits(after), block: t.block, tx: t.tx });
+    }
+  }
+  return crossed;
+}
+
+const rpcOf = (env) => async (body) => {
+  const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com'].filter(Boolean);
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());
+      if (Array.isArray(body) ? Array.isArray(r) && body.every((_, i) => r.some((y) => y.id === i && y.result !== undefined)) : r.result !== undefined) return r;
+    } catch { /* next */ }
+  }
+  return null;
+};
+
+export async function holdersTick(env, { now = new Date() } = {}) {
+  const state = JSON.parse((await env.AGENT.get(STATE)) || 'null');
+  if (!state) return { ok: false, error: 'not seeded' };
+  const rpc = rpcOf(env);
+  const headR = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] });
+  if (!headR) return { ok: false, error: 'no block number' };
+  const head = Number(headR.result) - CONFIRMATIONS;
+  const until = Math.min(head, state.block + MAX_BLOCKS_A_TICK);
+  const transfers = [];
+  for (let b = state.block + 1; b <= until; b += CHUNK) {
+    const to = Math.min(until, b + CHUNK - 1);
+    const r = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: BOBAI, topics: [TRANSFER], fromBlock: '0x' + b.toString(16), toBlock: '0x' + to.toString(16) }] });
+    if (!r) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
+    for (const l of r.result) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
+  }
+  // a new address: asked once whether it has code
+  const fresh = [...new Set(transfers.flatMap((t) => [t.from, t.to]))].filter((a) => !(a in state.bal) && !(a in (state.code || {})));
+  state.code ||= {};
+  for (let i = 0; i < fresh.length; i += 50) {
+    const part = fresh.slice(i, i + 50);
+    const r = await rpc(part.map((a, j) => ({ jsonrpc: '2.0', id: j, method: 'eth_getCode', params: [a, 'latest'] })));
+    if (!r) return { ok: false, error: 'code unread; nothing applied, read again next tick' };
+    for (const x of r) if (x.result && x.result !== '0x') state.code[part[x.id]] = 1;
+  }
+  const crossed = applyTransfers(state.bal, transfers, (a) => !!state.code[a]);
+  for (const [a, w] of Object.entries(state.bal)) if (w === '0') delete state.bal[a];
+  state.block = until;
+  state.at = now.toISOString();
+  await env.AGENT.put(STATE, JSON.stringify(state));
+  if (crossed.length) {
+    const prev = JSON.parse((await env.AGENT.get(CROSSINGS)) || '[]');
+    await env.AGENT.put(CROSSINGS, JSON.stringify([...crossed.map((c) => ({ at: now.toISOString(), ...c })), ...prev].slice(0, 100)));
+  }
+  const day = now.toISOString().slice(0, 10);
+  const hist = JSON.parse((await env.AGENT.get(HISTORY)) || '[]');
+  if (!hist.length || hist[hist.length - 1].day !== day) {
+    const s = summarize(state);
+    hist.push({ day, block: state.block, holders: s.holders, holders_1m: s.holders_1m, bands: s.bands.map((x) => x.holders) });
+    await env.AGENT.put(HISTORY, JSON.stringify(hist.slice(-366)));
+  }
+  return { ok: true, block: state.block, transfers: transfers.length, new_addresses: fresh.length, crossed: crossed.length, behind: head - until };
+}
+
+export async function seedHolders(env, body) {
+  if (!body || !Number(body.block) || typeof body.bal !== 'object') return { ok: false, error: 'block and bal required' };
+  await env.AGENT.put(STATE, JSON.stringify({ block: Number(body.block), bal: body.bal, code: body.code || {}, at: new Date().toISOString(), seeded_at: new Date().toISOString() }));
+  return { ok: true, block: Number(body.block), addresses: Object.keys(body.bal).length, contracts: Object.keys(body.code || {}).length };
+}
+
+// GET /holders[?address=0x…]
+export async function readHolders(env, address = null) {
+  const [state, hist, crossings] = await Promise.all([STATE, HISTORY, CROSSINGS].map(async (k) => JSON.parse((await env.AGENT.get(k)) || 'null')));
+  if (!state) return null;
+  const s = summarize(state);
+  const out = {
+    block: state.block, read_at: state.at, holders: s.holders, holders_1m: s.holders_1m,
+    bands: s.bands, top: s.people.slice(0, 25).map(([a, w], i) => ({ rank: i + 1, address: a, bobai: toUnits(w) })),
+    history: (hist || []).slice(-90), crossings_1m: (crossings || []).slice(0, 20),
+  };
+  if (address) {
+    const a = String(address).toLowerCase(), w = BigInt(state.bal[a] || '0');
+    const idx = s.people.findIndex(([x]) => x === a);
+    out.address = { address: a, bobai: toUnits(w), rank: idx >= 0 ? idx + 1 : null, of: s.holders, contract: !!state.code?.[a], holder_pass: w >= PASS_LINE, short_of_pass: w >= PASS_LINE ? 0 : toUnits(PASS_LINE - w) };
+  }
+  return out;
+}
+
+==============================================================================
 === FILE: worker-agent/index.js
 ==============================================================================
 
@@ -7784,6 +8013,8 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
+import { holdersTick, seedHolders, readHolders } from './holders.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -9585,6 +9816,14 @@ export default {
         const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];
         list.unshift({ at: new Date().toISOString(), ua: (req.headers.get('user-agent') || '').slice(0, 120), body: raw.slice(0, 1500) });
         await env.AGENT.put(key, JSON.stringify(list.slice(0, 10)), { expirationTtl: 259200 });
+        // the rest, apart (2026-10-22): Marque's probe every 13 minutes and Mandate's daily calls pushed Pokter's price
+        // request out of the ten within the hour, and its sweep marked two agents "seller-declined" with no copy left
+        if (!/marque-quote-probe|mandatemarkets/i.test(raw)) {
+          const k2 = `a2a-seen-other:${slug}`;
+          const l2 = (await env.AGENT.get(k2, 'json').catch(() => null)) || [];
+          l2.unshift(list[0]);
+          await env.AGENT.put(k2, JSON.stringify(l2.slice(0, 10)), { expirationTtl: 604800 });
+        }
       })().catch(() => {}));
     };
 
@@ -10590,7 +10829,8 @@ ${pageTail}`;
         const s = e.steps || {}; const parts = [];
         for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(x.to_operator != null
           // since 2026-10-14: half to the operator in the coin paid, half bought $BOBAI held in the income wallet
-          ? `swept ${f(Number(x.sold) + Number(x.to_operator), 2)} ${x.token || ''}: half to the operator, half bought ${f(x.bobai_bought, 0)} $BOBAI, held`
+          // since 2026-10-22 (SWEEP_LIQ): a share of the $BOBAI half may go into the $BOBAI pool, LP burned
+          ? `swept ${f(Number(x.sold) + Number(x.to_operator), 2)} ${x.token || ''}: half to the operator, half bought ${f(x.bobai_bought, 0)} $BOBAI, held${x.liquidity ? `, and ${f(x.liquidity.bobai_in, 0)} $BOBAI + ${f(x.liquidity.wbnb_in, 6)} WBNB added to the $BOBAI pool, LP burned` : ''}`
           : `swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}${Number(s.collect.to_operator_bnb) > 0 ? `, ${f(s.collect.to_operator_bnb, 5)} BNB paid out to the operator` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
@@ -11147,6 +11387,42 @@ ${pageTail}`;
         log: await readHires(env),
       });
     }
+    // WHO GETS HIRED ON BNB CHAIN (job-board.js, 2026-10-22): every provider of the ERC-8183 escrow, ranked by work
+    // delivered for paying clients in 30 days, read from the chain once a day at 21:45 UTC.
+    // EVERY $BOBAI HOLDER (holders.js, 2026-10-22): the count, the 1M+ holders, the bands, the history and the
+    // wallets that crossed 1,000,000 — kept from the chain every quarter hour. ?address= adds one wallet's place.
+    if (path === '/holders' && request.method === 'GET') {
+      note('holders');
+      const a = url.searchParams.get('address');
+      if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) return json({ error: 'address must be 0x and 40 hex characters' }, 400);
+      const h = await readHolders(env, a);
+      return json({ what: 'Every wallet that holds $BOBAI, from the chain: Transfer logs since the deployment (2026-03-27), balances read with balanceOf, kept up to date every 15 minutes. Holders are people: the pool, the burn address and every contract are left out. 1M+ = the holder pass (1,000,000 $BOBAI).', ...(h || { note: 'not seeded yet' }) }, 200, { 'Cache-Control': 'public, max-age=120' });
+    }
+    if (path === '/holders/seed' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await seedHolders(env, await request.json().catch(() => null)));
+    }
+    if (path === '/holders/tick' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await holdersTick(env));
+    }
+    if (path === '/jobs/board' && request.method === 'GET') {
+      note('jobs:board');
+      const b = await readJobBoard(env);
+      return json({
+        what: 'Every agent that gets hired on the ERC-8183 escrow kernel on BNB Chain, ranked by work delivered in the last 30 days for a client who put money in escrow (SUBMITTED or COMPLETED, budget above zero, by the job\'s own submitted_at). Paid means the escrow released (COMPLETED); delivered and not yet released is shown apart, never added to paid. Left out: an address hiring itself, and for our own agents any client that is one of our wallets. One campaign address that holds nearly every job ever minted (98.5 % at the census of 2026-10-19), at a cent each, is shown on its own line, never in the ranking. Read from the chain once a day at 21:45 UTC, after the public settle.',
+        kernel: ERC8183.commerce,
+        payment_token: '$U (United Stables) 0xcE24439F2D9C6a2289F741120FE202248B666666',
+        code: 'https://brainonbnb.com/code/agent-service.txt (shared/job-board.js, worker-agent/job-board.js)',
+        page: 'https://brainonbnb.com/jobs',
+        ...(b || { measured_at: null, note: 'not read yet; the first run is at 21:45 UTC' }),
+      }, 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+    if ((path === '/jobs/board/seed' || path === '/jobs/board/run') && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (path === '/jobs/board/seed') return json(await seedJobBoard(env, await request.json().catch(() => null)));
+      return json(await runJobBoard(env));
+    }
     if (path === '/venus/work' && request.method === 'GET') {
       note('venus:work');
       return json({
@@ -11474,8 +11750,12 @@ ${pageTail}`;
     if (agentHiresDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(hireContext(env).then((c) => runAgentHires(env, { ctx: c })).catch(() => {}));
     // and the answers they bought, picked up from the chain once the sellers submit (every quarter hour; only open hires)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).catch(() => {}));
+    // every $BOBAI holder, kept from the Transfer logs (holders.js, 2026-10-22)
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
+    // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
+    if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
@@ -11563,6 +11843,98 @@ ${pageTail}`;
     })().catch(() => {}));
   },
 };
+
+==============================================================================
+=== FILE: worker-agent/job-board.js
+==============================================================================
+
+// worker-agent/job-board.js — the job board, kept fresh by the worker (2026-10-22)
+//
+// The ranking itself is shared/job-board.js. This file keeps its input current without the 25-minute offline census:
+// the census seeds every job that is not the farm's (scripts/job-board-seed.mjs, ~860 jobs), and once a day at 21:45
+// UTC — after the public settle, so the jobs it released read COMPLETED — the worker reads every job minted since
+// (the kernel mints about six a day) and every stored job that can still change (open, funded, delivered: ~500),
+// 50 to a JSON-RPC batch, and writes the board. A job no node would read keeps its last state and is counted in
+// the run's `unread`; the cursor stops before the first unread new id, so it is read again the next day.
+//
+//   jobboard:jobs   { id: packed job }  (shared/job-board.js pack)
+//   jobboard:meta   { cursor, farms, farm, names, seeded_at }
+//   jobboard:board  what GET /jobs/board serves
+
+import { buildBoard, pack, live } from '../shared/job-board.js';
+import { batchRead } from './public-settle.js';
+import { ERC8183 } from './hire.js';
+import { OWN_WALLETS } from './own-wallets.js';
+
+const JOBS_KEY = 'jobboard:jobs', META_KEY = 'jobboard:meta', BOARD_KEY = 'jobboard:board';
+const MAX_NEW = 1500;   // a burst of new jobs is read over several days
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+
+export const jobBoardDue = (d) => d.getUTCHours() === 21 && d.getUTCMinutes() >= 45;
+
+async function jobCounter() {
+  for (const u of RPCS) {
+    try {
+      const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: ERC8183.commerce, data: '0x50355d76' }, 'latest'] }), signal: AbortSignal.timeout(15000) });
+      const j = await r.json();
+      if (j.result && j.result !== '0x') return Number(BigInt(j.result));
+    } catch { /* next node */ }
+  }
+  return null;
+}
+
+// body: { jobs: { id: packed }, cursor, farms, farm, names } from the census.
+export async function seedJobBoard(env, body) {
+  const jobs = body && typeof body.jobs === 'object' ? body.jobs : null;
+  if (!jobs || !Number(body.cursor)) return { ok: false, error: 'jobs and cursor required' };
+  await env.AGENT.put(JOBS_KEY, JSON.stringify(jobs));
+  await env.AGENT.put(META_KEY, JSON.stringify({ cursor: Number(body.cursor), farms: (body.farms || []).map((f) => String(f).toLowerCase()), farm: body.farm || null, names: body.names || {}, seeded_at: new Date().toISOString(), census_at: body.census_at || null }));
+  return { ok: true, jobs: Object.keys(jobs).length, cursor: Number(body.cursor) };
+}
+
+export async function runJobBoard(env, { now = new Date() } = {}) {
+  const meta = JSON.parse((await env.AGENT.get(META_KEY)) || 'null');
+  if (!meta) return { ok: false, error: 'not seeded' };
+  const jobs = JSON.parse((await env.AGENT.get(JOBS_KEY)) || '{}');
+  const sec = Math.floor(now.getTime() / 1000);
+  const counter = await jobCounter();
+  if (!counter) return { ok: false, error: 'the job counter could not be read' };
+  const to = Math.min(counter, meta.cursor + MAX_NEW);
+  const fresh = [];
+  for (let id = meta.cursor + 1; id <= to; id++) fresh.push(String(id));
+  const again = Object.keys(jobs).filter((id) => live(jobs[id], sec));
+  // the keyed node first (public nodes answer a run of 50-call batches with rate-limit errors: 500 of 528 unread on
+  // the first run, 22.10.), then whatever it left unread from the public ones
+  let read = env.BSC_RPC_KEYED_URL_2 ? await batchRead([...fresh, ...again], env.BSC_RPC_KEYED_URL_2) : await batchRead([...fresh, ...again]);
+  const missed = read.filter((x) => !x.job).map((x) => x.id);
+  if (missed.length && env.BSC_RPC_KEYED_URL_2) {
+    const got = Object.fromEntries((await batchRead(missed)).map((x) => [x.id, x.job]));
+    read = read.map((x) => (x.job ? x : { id: x.id, job: got[x.id] || null }));
+  }
+  const farms = new Set(meta.farms || []);
+  let unreadNew = 0, unreadOld = 0, changed = 0, farmNew = 0;
+  for (const { id, job } of read) {
+    const isNew = Number(id) > meta.cursor;
+    if (!job) { if (isNew) unreadNew++; else unreadOld++; continue; }
+    if (farms.has(String(job.provider).toLowerCase())) { if (isNew) farmNew++; continue; }
+    const p = pack(job);
+    if (!jobs[id] || jobs[id][2] !== p[2]) changed++;
+    jobs[id] = p;
+  }
+  // the cursor moves only over ids that were read: an unread new id is read again tomorrow
+  const firstUnread = read.find((x) => !x.job && Number(x.id) > meta.cursor);
+  const cursor = firstUnread ? Number(firstUnread.id) - 1 : to;
+  const board = buildBoard(jobs, { ours: OWN_WALLETS, names: meta.names, farms: meta.farms, now: sec });
+  const run = { at: now.toISOString(), job_counter: counter, read_through: cursor, new_read: fresh.length - unreadNew, reread: again.length - unreadOld, unread: unreadNew + unreadOld, changed, farm_new: farmNew };
+  await env.AGENT.put(JOBS_KEY, JSON.stringify(jobs));
+  await env.AGENT.put(META_KEY, JSON.stringify({ ...meta, cursor, farm_new: (meta.farm_new || 0) + farmNew }));
+  await env.AGENT.put(BOARD_KEY, JSON.stringify({ measured_at: now.toISOString(), run, jobs_held: Object.keys(jobs).length, farm: meta.farm ? { ...meta.farm, new_since_census: (meta.farm_new || 0) + farmNew } : null, census_at: meta.census_at, ...board }));
+  return { ok: true, ...run };
+}
+
+export async function readJobBoard(env) {
+  return JSON.parse((await env.AGENT.get(BOARD_KEY)) || 'null');
+}
 
 ==============================================================================
 === FILE: worker-agent/job-watch.js
@@ -12460,7 +12832,7 @@ export function stepWords(name, s) {
   switch (name) {
     case 'sweep': return { what: s.to_operator != null
       // since 2026-10-14 a sweep no longer feeds the position: half to the operator, half buys $BOBAI held where it was earned
-      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held`
+      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held${s.liquidity ? `, and $${n(s.liquidity.usd).toFixed(2)} added to the $BOBAI pool, LP burned` : ''}`
       : `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
     case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}${n(s.to_operator_bnb) > 0 ? `, ${r5(s.to_operator_bnb)} BNB paid out to the operator` : ''}` };
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
@@ -16793,6 +17165,10 @@ async function cannotPlan(serviceId, params = {}) {
   return null;
 }
 
+// The two plans that take a token start from WBNB when the buyer named none (2026-10-22), in the quote and the delivery.
+export const WBNB_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+export const TOKEN_DEFAULTS_TO_WBNB = new Set(['grid_plan', 'lp_tier_plan']);
+export const WBNB_NOTE = `No token was named: the plan is for WBNB (${WBNB_TOKEN}), BNB Chain's own coin.`;
 export function missingInput(serviceId, params = {}) {
   const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
   const p = params || {};
@@ -17166,15 +17542,20 @@ export async function handleA2A(request, env, opts = {}) {
     // two services that can read the hiring wallet instead (the Venus health
     // factor, the position plan) are quoted; deliverJob falls back to it.
     const need = missingInput(service.id, extractParams([data.task_description, data.terms?.deliverables].filter(Boolean).join(' '), data.params || {}));
-    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan') {
+    // NO TOKEN NAMED: THE PLAN IS FOR WBNB (operator's go, 2026-10-22). Pokter asks every agent for a price with a
+    // generic brief; the grid planner and the fee tier agent declined it and showed as not hireable there. The x402 path
+    // already plans WBNB when nothing is named; now the escrow quote does the same, and says so in the signed terms.
+    const wbnbDefault = !!need && TOKEN_DEFAULTS_TO_WBNB.has(service.id);
+    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan' && !wbnbDefault) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
     }
-    const cannot = await cannotPlan(service.id, extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {}));
+    const asked = extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {});
+    const cannot = await cannotPlan(service.id, wbnbDefault ? { ...asked, token: WBNB_TOKEN } : asked);
     if (cannot) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${cannot} Nothing was quoted.` }));
     // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
     const seller = await sellerOf(service.id);
     if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
-    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : null });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
@@ -17384,6 +17765,9 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     } else if (service.id === 'health_factor' && missingInput(service.id, params)) {
       // no account named (2026-10-05): the wallet that paid is the one read, and the document says so
       result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client} — no account was named in the task`;
+    } else if (TOKEN_DEFAULTS_TO_WBNB.has(service.id) && missingInput(service.id, params)) {
+      // no token named (2026-10-22): the quote said WBNB, so WBNB is planned, and the document says so
+      result = await doWork(service.id, { ...params, token: WBNB_TOKEN }, env); result.read_for = WBNB_NOTE;
     } else result = await doWork(service.id, params, env);
   } catch (e) {
     // A job we cannot do is not delivered and not charged for. The buyer's
@@ -18047,7 +18431,9 @@ const MAX_DESCRIPTION_BYTES = 4096;
 // `service` decides price and names itself in the deliverables, so the job
 // the buyer anchors says which of our agents was hired (they share one
 // provider address). `account` is the provider's viem account.
-export async function signedQuote({ data, service, account, chainId, verifyingContract, currency, now = Math.floor(Date.now() / 1000) }) {
+// `note` (2026-10-22): a sentence the seller adds in front of the deliverables, e.g. which token a plan is made for
+// when the brief named none — part of the signed terms the buyer anchors on chain.
+export async function signedQuote({ data, service, account, chainId, verifyingContract, currency, note = null, now = Math.floor(Date.now() / 1000) }) {
   const task = data?.task_description;
   const t = data?.terms;
   if (typeof task !== 'string' || !t || typeof t !== 'object' || Array.isArray(t) || typeof t.deliverables !== 'string') {
@@ -18065,7 +18451,7 @@ export async function signedQuote({ data, service, account, chainId, verifyingCo
   const requestHash = keccakOfText(canonicalJson(request));
 
   const responseTerms = termsDict({
-    deliverables: `service ${service.id} — ${t.deliverables}`,
+    deliverables: `service ${service.id} — ${note ? `${note} ` : ''}${t.deliverables}`,
     quality_standards: t.quality_standards,
     success_criteria: t.success_criteria ?? null,
     price: String(service.price),

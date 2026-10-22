@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7322 lines.
+# one fetch. 17 files, 7370 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -356,11 +356,16 @@ if (SELF) {
     const x = INCOME_SOURCES.filter((s0) => s0.wallet.toLowerCase() === '0x690e950214980bc329823a2db2fd90c06bd54de4');
     is('the x402 wallet is swept for USD1, USDC and $U, with its own key, each once', x.length === 3 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === '$U,USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
     // c (2026-10-22): the sweep's liquidity part — off unless switched on, and only from SWEEP_LIQ_MIN_USD of liquidity on
-    { const E = 10n ** 18n, f = (n, on) => liquiditySplit(n * E, 1, 18, on);
-      is('liquidity off: the whole $BOBAI half is bought and held', f(1000n, false).liq === 0n && f(1000n, false).hold === 1000n * E);
-      is(`liquidity on, under ${SWEEP_LIQ_MIN_USD} $ of liquidity: still all held`, f(2n * BigInt(SWEEP_LIQ_MIN_USD) - 1n, true).liq === 0n);
-      is(`liquidity on, from ${SWEEP_LIQ_MIN_USD} $: half held, half liquidity, nothing lost`, f(2n * BigInt(SWEEP_LIQ_MIN_USD), true).liq === BigInt(SWEEP_LIQ_MIN_USD) * E && f(101n, true).liq + f(101n, true).hold === 101n * E);
-      is('liquidity on, no price read: all held', liquiditySplit(1000n * E, null, 18, true).liq === 0n); }
+    // 22.10. evening: the line is the gas (at most LIQ_MAX_GAS_SHARE of the pool part), never under SWEEP_LIQ_MIN_USD
+    { const E = 10n ** 18n, C = E / 100n, f = (cents, on, gas) => liquiditySplit(BigInt(cents) * C, 1, 18, on, gas);
+      is('liquidity off: the whole $BOBAI half is bought and held', f(100000, false, 0.02).liq === 0n && f(100000, false, 0.02).hold === 1000n * E);
+      is('the 21.10. sweep (1.70 $ to $BOBAI, gas 0.02 $): 0.85 $ into the pool, 0.85 $ held', f(170, true, 0.02).liq === 85n * C && f(170, true, 0.02).hold === 85n * C);
+      is('gas 0.02 $: a pool part of 0.39 $ is held (gas would be over 5 %), 0.40 $ goes in', f(78, true, 0.02).liq === 0n && f(80, true, 0.02).liq === 40n * C);
+      is('gas 1 $ (expensive day): even 10 $ of pool part is held', f(2000, true, 1).liq === 0n);
+      is(`dust: under ${SWEEP_LIQ_MIN_USD} $ of pool part is held however cheap the gas`, f(48, true, 0.0001).liq === 0n);
+      is('no gas price read: all held', f(100000, true, null).liq === 0n && f(100000, true, NaN).liq === 0n);
+      is('liquidity on, no token price read: all held', liquiditySplit(1000n * E, null, 18, true, 0.02).liq === 0n);
+      is('nothing lost in the split', f(101, true, 0.001).liq + f(101, true, 0.001).hold === 101n * C); }
   }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -1129,7 +1134,7 @@ import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
   planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
-  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET, BOBAI_PAIR, DEAD,
+  planSweep, executeSweep, INCOME_SOURCES, OPERATOR_WALLET, BOBAI_PAIR, DEAD, liquidityGasUsd, liquiditySplit,
 } from '../shared/lp-agent.js';
 import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
@@ -1459,6 +1464,27 @@ await scenario('INCOME ALSO DEEPENS THE POOL (2026-10-22, plan c, switched on on
   ok('the pool got deeper: the product of its reserves grew', r1[0] * r1[1] > r0[0] * r0[1], `k ${(Number(r0[0]) * Number(r0[1]) / 1e36).toFixed(1)} -> ${(Number(r1[0]) * Number(r1[1]) / 1e36).toFixed(1)}`);
   ok('$BOBAI was bought and held in the income wallet too (the hold half)', bobai1 > bobai0 && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI held; ${done.liquidity?.bobai_in} $BOBAI + ${done.liquidity?.wbnb_in} WBNB into the pool`);
   ok('all the swept USD1 left the wallet; at most dust of WBNB stays', usd0 - usd1 === plan.amount && wb1 - wb0 < parseEther('0.0005'), `${Number(usd0 - usd1) / 1e18} USD1 · WBNB left ${formatEther(wb1 - wb0)}`);
+});
+
+await scenario('INCOME ALSO DEEPENS THE POOL, AT TODAY\'S SIZE (22.10. evening: the line is the gas, not 10 $) — a sweep like the one of 21.10. (~3.40 $): half to the operator, and of the $BOBAI half a part into the pool when the gas is at most 5 % of it', 'sweepsmall', async () => {
+  const src = INCOME_SOURCES.find((s) => s.key === 'x402');
+  await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.0047') });
+  await test.setBalance({ address: src.wallet, value: parseEther('0.01') });
+  const op0 = await bal(src.token, OPERATOR_WALLET), lp0 = await bal(BOBAI_PAIR, DEAD);
+  const plan = await planSweep(pub, src);
+  ok('the plan sweeps the small payment', !plan.no && plan.amount > 0n, plan.no || `${plan.summary.sweeping} USD1`);
+  if (plan.no) return;
+  // anvil answers eth_gasPrice with its own default (~1 gwei); the live chain's price is what the worker will read
+  const liveGas = await createPublicClient({ chain: bsc, transport: http('https://bsc-dataseed.binance.org') }).getGasPrice();
+  const pubLive = new Proxy(pub, { get: (t, k) => (k === 'getGasPrice' ? async () => liveGas : t[k]) });
+  const gasUsd = await liquidityGasUsd(pubLive, plan);
+  const want = liquiditySplit(plan.amount - plan.amount / 2n, plan.summary.implied_usd, src.decimals, true, gasUsd);
+  const txs = [], done = await executeSweep(pubLive, walletOf(src.wallet), src.wallet, plan, () => {}, { txs, liquidity: true });
+  ok('at the live gas price the pool part of a 3.40 $ sweep goes in', want.liq > 0n, `live gas ${Number(liveGas) / 1e9} gwei`);
+  const op1 = await bal(src.token, OPERATOR_WALLET), lp1 = await bal(BOBAI_PAIR, DEAD);
+  ok('the operator still receives exactly half', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} of ${Number(plan.amount) / 1e18}`);
+  ok('the gas line was read and the pool part followed it', gasUsd > 0 && (want.liq > 0n) === !!done.liquidity, `gas of the pool part ${gasUsd?.toFixed(4)} $, line ${(gasUsd / 0.05).toFixed(2)} $, pool part ${want.liq_usd} $ -> ${done.liquidity ? 'into the pool' : 'held'}`);
+  if (done.liquidity) ok('LP of the small part burned', lp1 > lp0, `${done.liquidity.lp_burned} LP`);
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);
@@ -2823,19 +2849,37 @@ export const OPERATOR_SHARE_BPS = 5000n;
 // 1 gwei (~3-4 % of a full 12.5 $ part); below the line it is all bought and held as before.
 export const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 export const DEAD = '0x000000000000000000000000000000000000dEaD';
-export const SWEEP_LIQ_MIN_USD = 10; // the sweep takes at most 50 units a run (its cap), so the liquidity part is at most ~12.5 $; 20 would never have been reached (fork, 22.10.)
-// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs)
-export function liquiditySplit(toBobai, usdPerUnit, decimals, on) {
+// THE LINE IS THE GAS, NOT A FIXED SUM (operator's go, 22.10. evening): a fixed 10 $ was set for 1 gwei, but BSC runs at
+// 0.05 gwei and the income is a few dollars a sweep (3.40 $ on 21.10.) — 10 $ would never have been reached. So the
+// pool part is made only when the gas of its extra transactions (LIQ_GAS_UNITS at today's price) is at most
+// LIQ_MAX_GAS_SHARE of it, and never under SWEEP_LIQ_MIN_USD (dust). No gas price or no BNB price read: all held.
+export const SWEEP_LIQ_MIN_USD = 0.25;
+export const LIQ_GAS_UNITS = 450000n;   // the extra swap, two approves and addLiquidity, as used on the fork (~380k), with room
+export const LIQ_MAX_GAS_SHARE = 0.05;
+// pure: how the $BOBAI half splits (pinned in scripts/lp-agent.mjs). gasUsd: what LIQ_GAS_UNITS cost now, in dollars.
+export function liquiditySplit(toBobai, usdPerUnit, decimals, on, gasUsd) {
   const worth = Number(formatUnits(toBobai, decimals)) * (Number(usdPerUnit) || 0);
-  if (!on || !(worth / 2 >= SWEEP_LIQ_MIN_USD)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
+  const line = Math.max(SWEEP_LIQ_MIN_USD, Number(gasUsd) / LIQ_MAX_GAS_SHARE);
+  if (!on || !(Number(gasUsd) > 0) || !(worth / 2 >= line)) return { hold: toBobai, liq: 0n, liq_usd: 0 };
   const liq = toBobai / 2n;
   return { hold: toBobai - liq, liq, liq_usd: Number((worth / 2).toFixed(2)) };
+}
+// what LIQ_GAS_UNITS cost now in dollars, from the plan's own price (its income token in BNB and in dollars); null when unread
+export async function liquidityGasUsd(pub, plan) {
+  try {
+    const price = await gasPriceNow(pub, GAS_BUMP_PLAIN);
+    const units = Number(formatUnits(plan.amount, plan.source.decimals)), bnb = Number(formatEther(plan.bnbOut));
+    const usdPerBnb = bnb > 0 ? (units * Number(plan.summary?.implied_usd)) / bnb : NaN;
+    const usd = Number(formatEther(LIQ_GAS_UNITS * price)) * usdPerBnb;
+    return Number.isFinite(usd) && usd > 0 ? usd : null;
+  } catch { return null; }
 }
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [], liquidity = false } = {}) {
   const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const holder = plan.source.wallet;
   const toOperator = (plan.amount * OPERATOR_SHARE_BPS) / 10000n, toBobai = plan.amount - toOperator;
-  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity);
+  const gasUsd = liquidity ? await liquidityGasUsd(pub, plan) : null;
+  const split = liquiditySplit(toBobai, plan.summary?.implied_usd, plan.source.decimals, liquidity, gasUsd);
   // ONE BUY FOR BOTH $BOBAI PARTS (fork, 22.10.: a second buy right after the first reverted): the held part and the
   // pool's $BOBAI are bought together, the pool's share of what arrived is taken by proportion
   const halfA = split.liq / 2n, halfB = split.liq - halfA, buyIn = split.hold + halfA;
@@ -5231,7 +5275,7 @@ export function stepWords(name, s) {
   switch (name) {
     case 'sweep': return { what: s.to_operator != null
       // since 2026-10-14 a sweep no longer feeds the position: half to the operator, half buys $BOBAI held where it was earned
-      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held`
+      ? `swept income: half to the operator, half bought ${Math.round(n(s.bobai_bought)).toLocaleString('en-US')} $BOBAI, held${s.liquidity ? `, and $${n(s.liquidity.usd).toFixed(2)} added to the $BOBAI pool, LP burned` : ''}`
       : `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
     case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}${n(s.to_operator_bnb) > 0 ? `, ${r5(s.to_operator_bnb)} BNB paid out to the operator` : ''}` };
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
@@ -7296,6 +7340,10 @@ LP_LADDER = "1"
 # around the price with one trade back to the mix; "one-sided" or empty = beside the price, no trade.
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"
+# SWEEP_LIQ (operator's second go, 2026-10-22 evening): of every sweep, half still goes to the operator; of the $BOBAI
+# half, half is bought and held and half goes into the $BOBAI/WBNB pair with LP to the dead address — only when the gas
+# of the pool part is at most 5 % of it (shared/lp-agent.js liquiditySplit). Anything but "on" = all held, as before.
+SWEEP_LIQ = "on"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

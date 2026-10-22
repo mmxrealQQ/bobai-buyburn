@@ -29,6 +29,9 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # The two Venus agents at their own work (venus-work.js), switched on by the operator 2026-10-21. "off" stops both
 # before their next run; what they hold stays on Venus until node scripts/venus-unwind.mjs <id> --confirm.
 VENUS_WORK = "on"
+# Our agents hire outside agents for their own work (agent-hires.js), switched on by the operator 2026-10-22 ("a vom
+# Relayer"): once a day at 05:30 UTC, Keel for #302257, Sluicegate for #304493, Bound for #363709. "off" stops it.
+AGENT_HIRES = "on"
 # mirrored from worker-lp (2026-10-07): the width and re-set mode the agent mints with, so the /defi card says it
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"

@@ -78,6 +78,7 @@ import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.j
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
+import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
@@ -1845,6 +1846,16 @@ export async function freeHalf(slug, a = {}, env, { defaultOwn = false, text = '
   return null;
 }
 
+// What each hiring agent read itself, to stand beside the outside answer: the health factor of the Venus loan from
+// this morning's run, and the DeFi agent's position id (agent-hires.js).
+async function hireContext(env) {
+  const vlog = await readVenusLog(env).catch(() => []);
+  const hf = (vlog || []).map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
+  const pf = await env.SELF.fetch('https://agent.brainonbnb.com/lp/portfolio').then((r) => r.json()).catch(() => null);
+  const position = pf?.position?.position ?? String(JSON.stringify(pf || {}).match(/"position":"?(\d+)/)?.[1] || '');
+  return { 302257: { own: hf ? { hf: Number(hf[1]) } : null }, 363709: { position, own: pf?.pool ? { in_range: pf.pool.in_range } : null } };
+}
+
 export default {
   async fetch(request, env, ctx) {
     bindSelf(env);
@@ -3405,6 +3416,33 @@ ${pageTail}`;
     }
 
     // WHAT THE TWO VENUS AGENTS DID (venus-work.js, 2026-10-21): every run, its actions and their transactions.
+    // the operator's hand on it (2026-10-22): ?dry=1 plans every hire (quote, wallet, balances) and sends nothing;
+    // without it runs the day's hires now, the same rails as the 05:30 run (once a day per hire), even while switched off
+    if (path === '/hires/run' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (url.searchParams.get('reparse') === '1') { // an answer read wrongly is read again from its url (2026-10-22, Keel's nested JSON)
+        const list = await readHires(env);
+        await env.AGENT.put('hires:log', JSON.stringify(list.map((r) => (r.job && r.answer ? { ...r, status: 'funded, delivering' } : r))));
+      }
+      if (url.searchParams.get('collect') === '1' || url.searchParams.get('reparse') === '1') return json({ collected_open: await collectDeliveries(env), log: (await readHires(env)).slice(0, 6) });
+      const dry = url.searchParams.get('dry') === '1', only = url.searchParams.get('by');
+      const c = await hireContext(env);
+      const { hireOnce } = await import('./agent-hires.js');
+      const out = [];
+      for (const h of HIRES.filter((x) => !only || String(x.by) === only)) out.push(await hireOnce(env, h, { ctx: c[h.by] || {}, dry }).catch((e) => ({ by: h.by, error: String(e.message || e) })));
+      return json({ dry, out });
+    }
+    if (path === '/hires' && request.method === 'GET') {
+      note('hires');
+      return json({
+        what: 'Our agents hiring outside agents for their own work, once a day after the Venus run (05:30 UTC), each from its own ERC-8004 agentWallet through the ERC-8183 escrow, at the price the seller quotes and signs. An agent hires only where it holds something an outside agent can check, and the answer stands beside its own reading: the Venus health factor monitor (it holds a small Venus loan) asks Keel; the Venus yield ranking (it holds stablecoins on Venus) asks Sluicegate; the DeFi agent (it runs our CAKE/BNB position) asks Bound. The other three hold nothing of their own and hire nobody.',
+        switched_on: env.AGENT_HIRES === 'on',
+        hires: HIRES.map((h) => ({ by: h.by, seller: h.seller, seller_name: h.sellerName, site: h.site })),
+        rails: 'once a UTC day per hire, at most 0.15 $U a quote, in $U only, every call simulated before it is sent, the job read back on chain; settled after the 7-day dispute window by the public settle',
+        code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/agent-hires.js)',
+        log: await readHires(env),
+      });
+    }
     if (path === '/venus/work' && request.method === 'GET') {
       note('venus:work');
       return json({
@@ -3728,6 +3766,10 @@ ${pageTail}`;
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
     if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
+    // Our agents hire outside agents for their own work, after the Venus run (agent-hires.js, 2026-10-22; off unless AGENT_HIRES is "on")
+    if (agentHiresDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(hireContext(env).then((c) => runAgentHires(env, { ctx: c })).catch(() => {}));
+    // and the answers they bought, picked up from the chain once the sellers submit (every quarter hour; only open hires)
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).

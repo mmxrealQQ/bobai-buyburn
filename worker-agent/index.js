@@ -1882,6 +1882,14 @@ export default {
         const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];
         list.unshift({ at: new Date().toISOString(), ua: (req.headers.get('user-agent') || '').slice(0, 120), body: raw.slice(0, 1500) });
         await env.AGENT.put(key, JSON.stringify(list.slice(0, 10)), { expirationTtl: 259200 });
+        // the rest, apart (2026-10-22): Marque's probe every 13 minutes and Mandate's daily calls pushed Pokter's price
+        // request out of the ten within the hour, and its sweep marked two agents "seller-declined" with no copy left
+        if (!/marque-quote-probe|mandatemarkets/i.test(raw)) {
+          const k2 = `a2a-seen-other:${slug}`;
+          const l2 = (await env.AGENT.get(k2, 'json').catch(() => null)) || [];
+          l2.unshift(list[0]);
+          await env.AGENT.put(k2, JSON.stringify(l2.slice(0, 10)), { expirationTtl: 604800 });
+        }
       })().catch(() => {}));
     };
 

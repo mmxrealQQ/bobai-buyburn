@@ -490,7 +490,14 @@ export const AGENT_SERVICE = {
 // wording still gets this agent's quote.
 const SLUG_OF = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
 const ownSentence = (s) => `I sell one thing on BNB Chain: ${s.name}. ${String(s.deliverables).match(/^.*?\.(?=\s|$)/)?.[0] || s.deliverables} Hireable over ERC-8183 for ${s.price_display} with a signed quote (skill negotiate-erc8183-job), or per answer over x402 at https://agent.brainonbnb.com/answer?service=${s.id}.`;
+// A PRICE CHECK IS NOT A TASK (2026-10-22): Marque asks every listed agent for its price with skill "negotiate", task
+// "marque-quote-probe: price check for a <its category> task. No job will be created from this quote", deliverables
+// "price quote only". It files the fee tier agent (#310460) and the DeFi agent (#363709) under "rebalancing", so the
+// probe read as a rebalance and both answered "ask the rebalancer" — no quote, and Marque showed them as not hireable
+// (no_quote / expired_or_unproven). Asked only for a price, an agent's own endpoint names its own.
+const priceCheckOnly = (data) => /quote-probe|price check|price quote only/i.test([data?.task_description, data?.task, data?.terms?.deliverables].filter((v) => typeof v === 'string').join(' '));
 function misdirected(forced, wanted, data) {
+  if (priceCheckOnly(data)) return null;
   const guessed = pickService(wanted, data?.service);
   if (!forced || !guessed || guessed.id === forced) return null;
   const there = `https://agent.brainonbnb.com/${SLUG_OF[guessed.id]}/a2a`;

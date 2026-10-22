@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7743 lines.
+# one fetch. 6 files, 7754 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6797,13 +6797,24 @@ export { flagsCard, verdictCard };
     .ec-also em{font-style:normal;opacity:.6}
     .ec-also:hover{color:var(--gold)}
     /* WORKS WITH US (operator, 2026-10-20): the three agent marketplaces we trade with, one figure each, from the chain */
-    .ec-with{color:inherit;text-decoration:none;transition:color .2s}
+    .ec-with{display:inline-flex;align-items:center;gap:7px;color:inherit;text-decoration:none;transition:color .2s}
+    /* their own icons (2026-10-22, operator: "nicer, and more appreciative"), self-hosted like the ones above */
+    .ec-with-ico{width:18px;height:18px;border-radius:5px;flex:none}
     .ec-with b{font-weight:600;color:var(--text,inherit)}
     .ec-with:hover,.ec-with:hover b{color:var(--gold)}
     .ec-more+.ec-more{margin-top:8px}
     /* FOR EVERY AGENT ON BNB CHAIN (operator, 2026-10-21, variant B): three cards of what BOBAI does for other agents */
     .ec-every{margin-top:22px}
     .ec-every-h{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;font-weight:600}
+    /* the latest of the three (2026-10-22): one line under the cards, the same lime as the terminal's ecosystem marks */
+    .ec-latest{margin:12px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:14px;line-height:1.5;color:var(--muted,#a0a2c0)}
+    .ec-latest[hidden]{display:none}
+    .ec-lt-dot{width:8px;height:8px;border-radius:50%;background:#bef264;box-shadow:0 0 8px rgba(190,242,100,.6);align-self:center;flex:none}
+    .ec-lt-k{font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:12px;color:#bef264}
+    .ec-lt-when{font-variant-numeric:tabular-nums}
+    .ec-latest a{color:var(--gold,#f0b90b);text-decoration:none}
+    .ec-latest a:hover{text-decoration:underline}
+    .ec-lt-what{color:#f3efe6!important;min-width:0;overflow-wrap:anywhere}
     .ecg.ecg3{grid-template-columns:repeat(3,minmax(0,1fr))}
     /* FIVE IN ONE ROW (operator, 2026-10-19: "viel einfacher, viel weniger, dafür das wichtigste"): a card is its name,
        one sentence, one live figure and one button; the green dot says it is live, so the word LIVE goes */

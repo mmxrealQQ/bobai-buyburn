@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7245 lines.
+# one fetch. 17 files, 7254 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -354,7 +354,7 @@ if (SELF) {
   // The x402 wallet is swept for both coins it is paid in (2026-09-24, the operator's go).
   {
     const x = INCOME_SOURCES.filter((s0) => s0.wallet.toLowerCase() === '0x690e950214980bc329823a2db2fd90c06bd54de4');
-    is('the x402 wallet is swept for USD1 and for USDC, with its own key, each once', x.length === 2 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === 'USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
+    is('the x402 wallet is swept for USD1, USDC and $U, with its own key, each once', x.length === 3 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === '$U,USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
   }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -2174,6 +2174,15 @@ export const INCOME_SOURCES = [
     wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
     token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
     earns: 'USDC paid by agents through standard x402, settled by worker-lp',
+  },
+  // The same wallet, $U (2026-10-22, the operator's go "x402 in $U annehmen"): worker-agent settles EIP-3009 payments
+  // in United Stables into this wallet now; a sweep that knew only USD1 and USDC would leave them there, and "half of
+  // every payment buys $BOBAI" would not hold for them.
+  {
+    key: 'x402-u', name: 'x402 service ($U)', keyEnv: 'X402_PRIVATE_KEY',
+    wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+    token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
+    earns: '$U paid by agents by EIP-3009 x402, settled by worker-agent',
   },
   {
     key: 'provider', name: 'agent provider', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',

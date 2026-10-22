@@ -81,6 +81,7 @@ import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
+import { holdersTick, seedHolders, readHolders } from './holders.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -3455,6 +3456,23 @@ ${pageTail}`;
     }
     // WHO GETS HIRED ON BNB CHAIN (job-board.js, 2026-10-22): every provider of the ERC-8183 escrow, ranked by work
     // delivered for paying clients in 30 days, read from the chain once a day at 21:45 UTC.
+    // EVERY $BOBAI HOLDER (holders.js, 2026-10-22): the count, the 1M+ holders, the bands, the history and the
+    // wallets that crossed 1,000,000 — kept from the chain every quarter hour. ?address= adds one wallet's place.
+    if (path === '/holders' && request.method === 'GET') {
+      note('holders');
+      const a = url.searchParams.get('address');
+      if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) return json({ error: 'address must be 0x and 40 hex characters' }, 400);
+      const h = await readHolders(env, a);
+      return json({ what: 'Every wallet that holds $BOBAI, from the chain: Transfer logs since the deployment (2026-03-27), balances read with balanceOf, kept up to date every 15 minutes. Holders are people: the pool, the burn address and every contract are left out, and our own wallets are counted apart. 1M+ = the holder pass (1,000,000 $BOBAI).', ...(h || { note: 'not seeded yet' }) }, 200, { 'Cache-Control': 'public, max-age=120' });
+    }
+    if (path === '/holders/seed' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await seedHolders(env, await request.json().catch(() => null)));
+    }
+    if (path === '/holders/tick' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await holdersTick(env));
+    }
     if (path === '/jobs/board' && request.method === 'GET') {
       note('jobs:board');
       const b = await readJobBoard(env);
@@ -3799,6 +3817,8 @@ ${pageTail}`;
     if (agentHiresDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(hireContext(env).then((c) => runAgentHires(env, { ctx: c })).catch(() => {}));
     // and the answers they bought, picked up from the chain once the sellers submit (every quarter hour; only open hires)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).catch(() => {}));
+    // every $BOBAI holder, kept from the Transfer logs (holders.js, 2026-10-22)
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)

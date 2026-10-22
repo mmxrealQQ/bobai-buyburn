@@ -102,7 +102,7 @@ export async function addCandidates(env, jobs) {
   return n;
 }
 
-async function batchRead(ids, rpcUrl) {
+export async function batchRead(ids, rpcUrl) {
   const out = [];
   const urls = rpcUrl ? [rpcUrl] : RPCS;
   for (let i = 0; i < ids.length; i += 50) {
@@ -113,7 +113,9 @@ async function batchRead(ids, rpcUrl) {
       try {
         const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(20000) });
         const j = await r.json();
-        if (Array.isArray(j)) { got = j; break; }
+        // a node that rate-limits a batch answers with an array too — one error for all (21.10.: binance and defibit
+        // did, the whole run read nothing and settled nothing); only an answer for every call counts, else next node
+        if (Array.isArray(j) && part.every((_, k) => j.some((x) => x.id === k && x.result))) { got = j; break; }
       } catch { /* next node */ }
     }
     for (let k = 0; k < part.length; k++) {
@@ -168,7 +170,7 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
   const totals = { jobs: t.jobs + ok.length, released_u: Number((t.released_u + ok.reduce((s, d) => s + Number(d.released_u || 0), 0)).toFixed(4)), providers: [...providers], since: t.since || (ok.length ? now.toISOString() : null) };
   await env.AGENT.put(TOTALS_KEY, JSON.stringify(totals));
   // refused: the simulation said no (nothing sent — e.g. settled by someone else since the read); failed: sent and not done
-  const summary = { at: now.toISOString(), candidates: ids.length, due: due.length, settled: ok.length, refused: done.filter((d) => !d.settled && !d.tx).length, failed: done.filter((d) => !d.settled && d.tx).length, dropped: drop.length, farms, spike, stopped, left: Object.keys(left).length, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
+  const summary = { at: now.toISOString(), candidates: ids.length, unread: jobs.filter((x) => !x.job).length, due: due.length, settled: ok.length, refused: done.filter((d) => !d.settled && !d.tx).length, failed: done.filter((d) => !d.settled && d.tx).length, dropped: drop.length, farms, spike, stopped, left: Object.keys(left).length, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
   await env.AGENT.put(DAY_KEY(day), JSON.stringify(summary), { expirationTtl: 60 * 60 * 72 });
   await env.AGENT.put('settle:public:last', JSON.stringify(summary));
   return { ok: true, ...summary, done };

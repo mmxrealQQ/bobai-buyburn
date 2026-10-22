@@ -47,6 +47,21 @@
 
 Nothing above is a roadmap — it is all live, or finished and still public.
 
+## Deployed on BNB Smart Chain
+
+Everything here runs on **BNB Smart Chain mainnet (chain ID 56)** and nowhere else. The workers read and write it through BSC RPC nodes (`bsc-dataseed.binance.org`, `bsc-rpc.publicnode.com` — e.g. [`shared/lp-agent.js`](shared/lp-agent.js), [`worker-agent/job-board.js`](worker-agent/job-board.js); viem's `chain: bsc` in [`worker-agent/`](worker-agent/)).
+
+| What | Contract on BSC (56) |
+|---|---|
+| $BOBAI token (BEP-20, ownership renounced) | [`0x245c386dcfed896f5c346107596141e5edcbffff`](https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff) |
+| $BOBAI/WBNB pair (PancakeSwap V2, LP burned) | [`0x6eadd4cb786898b34929444988380ed0cc6fd9a6`](https://bscscan.com/address/0x6eadd4cb786898b34929444988380ed0cc6fd9a6) |
+| $BOBAI buy-drop NFT (renounced) | [`0xd56226b3b8297a57f4361fca28aa43babdc9789d`](https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d) |
+| ERC-8004 identity registry (our agents are registered here) | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
+| ERC-8183 escrow kernel (our agents are hired and paid here, in $U) | [`0xEa4DAa3100A767e86FDed867729ae7446476EBA6`](https://bscscan.com/address/0xEa4DAa3100A767e86FDed867729ae7446476EBA6) |
+| Our agents' provider wallet | [`0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963`](https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963) |
+
+Who gets hired on BNB Chain's escrow, ranked from the chain every day: [brainonbnb.com/jobs](https://brainonbnb.com/jobs).
+
 ## Our agents on the ERC-8004 registry (BNB Smart Chain, chain 56)
 
 Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` · domain proof at [brainonbnb.com/.well-known/agent-registration.json](https://brainonbnb.com/.well-known/agent-registration.json)

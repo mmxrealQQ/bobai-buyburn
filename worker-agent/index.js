@@ -3463,7 +3463,7 @@ ${pageTail}`;
       const a = url.searchParams.get('address');
       if (a && !/^0x[0-9a-fA-F]{40}$/.test(a)) return json({ error: 'address must be 0x and 40 hex characters' }, 400);
       const h = await readHolders(env, a);
-      return json({ what: 'Every wallet that holds $BOBAI, from the chain: Transfer logs since the deployment (2026-03-27), balances read with balanceOf, kept up to date every 15 minutes. Holders are people: the pool, the burn address and every contract are left out, and our own wallets are counted apart. 1M+ = the holder pass (1,000,000 $BOBAI).', ...(h || { note: 'not seeded yet' }) }, 200, { 'Cache-Control': 'public, max-age=120' });
+      return json({ what: 'Every wallet that holds $BOBAI, from the chain: Transfer logs since the deployment (2026-03-27), balances read with balanceOf, kept up to date every 15 minutes. Holders are people: the pool, the burn address and every contract are left out. 1M+ = the holder pass (1,000,000 $BOBAI).', ...(h || { note: 'not seeded yet' }) }, 200, { 'Cache-Control': 'public, max-age=120' });
     }
     if (path === '/holders/seed' && request.method === 'POST') {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);

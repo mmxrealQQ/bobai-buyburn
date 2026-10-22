@@ -3,7 +3,8 @@
 // Operator, 22.10.: "build it so it is a real advantage for $BOBAI and the ecosystem". Nothing anywhere counted
 // $BOBAI's holders (the terminal's "Holders" were the NFT's). This is the one source: every address that holds
 // $BOBAI, its balance, and whether it is a person or a contract — the pool, the burn address, routers and lockers are
-// contracts and never counted as holders; our own wallets are counted apart.
+// contracts and never counted as holders. Our own wallets hold $BOBAI and count as holders like anyone (operator,
+// 22.10.), unmarked; only a crossing of the pass line by one of them is never recorded as a new holder.
 //
 //   the seed     scripts/holders-seed.mjs: every address that ever appeared in a Transfer since the deployment
 //                (block 88,987,679, 2026-03-27 06:35 UTC), each balance read with balanceOf at one block
@@ -30,14 +31,14 @@ const toUnits = (wei) => Number(BigInt(wei) / 10n ** 14n) / 1e4;
 
 // pure: the holders view of a state (pinned in scripts/holders-check.mjs)
 export function summarize(state) {
-  const people = [], ours = [];
+  const people = [];
   for (const [a, w] of Object.entries(state.bal || {})) {
     if (BigInt(w) <= 0n || state.code?.[a] || DEAD.test(a)) continue;
-    (OWN_WALLETS.has(a) ? ours : people).push([a, BigInt(w)]);
+    people.push([a, BigInt(w)]);
   }
   people.sort((x, y) => (y[1] > x[1] ? 1 : y[1] < x[1] ? -1 : 0));
   const bands = BANDS.map(([lo, hi]) => ({ from: lo, to: hi, holders: people.filter(([, w]) => w >= BigInt(lo) * E18 && (hi == null || w < BigInt(hi) * E18)).length }));
-  return { holders: people.length, holders_1m: people.filter(([, w]) => w >= PASS_LINE).length, ours: ours.length, bands, people };
+  return { holders: people.length, holders_1m: people.filter(([, w]) => w >= PASS_LINE).length, bands, people };
 }
 
 // pure: apply decoded transfers [{ from, to, value (bigint), block, tx }] to a balance map; returns the crossings of
@@ -120,14 +121,14 @@ export async function readHolders(env, address = null) {
   if (!state) return null;
   const s = summarize(state);
   const out = {
-    block: state.block, read_at: state.at, holders: s.holders, holders_1m: s.holders_1m, our_wallets_not_counted: s.ours,
+    block: state.block, read_at: state.at, holders: s.holders, holders_1m: s.holders_1m,
     bands: s.bands, top: s.people.slice(0, 25).map(([a, w], i) => ({ rank: i + 1, address: a, bobai: toUnits(w) })),
     history: (hist || []).slice(-90), crossings_1m: (crossings || []).slice(0, 20),
   };
   if (address) {
     const a = String(address).toLowerCase(), w = BigInt(state.bal[a] || '0');
     const idx = s.people.findIndex(([x]) => x === a);
-    out.address = { address: a, bobai: toUnits(w), rank: idx >= 0 ? idx + 1 : null, of: s.holders, contract: !!state.code?.[a], ours: OWN_WALLETS.has(a), holder_pass: w >= PASS_LINE, short_of_pass: w >= PASS_LINE ? 0 : toUnits(PASS_LINE - w) };
+    out.address = { address: a, bobai: toUnits(w), rank: idx >= 0 ? idx + 1 : null, of: s.holders, contract: !!state.code?.[a], holder_pass: w >= PASS_LINE, short_of_pass: w >= PASS_LINE ? 0 : toUnits(PASS_LINE - w) };
   }
   return out;
 }

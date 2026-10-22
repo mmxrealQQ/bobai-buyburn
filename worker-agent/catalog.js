@@ -112,7 +112,7 @@ export const CAPABILITIES = {
       name: 'pool watch',
       where: 'POST https://agent.brainonbnb.com/watch',
       what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold (paid, depth only; the free rug watch covers rug signals)`,
-      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 or USDC, or half that in $BOBAI at the 402’s quote`,
+      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1, USDC or $U, or half that in $BOBAI at the 402’s quote`,
       why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
     },
     {
@@ -120,7 +120,7 @@ export const CAPABILITIES = {
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
       example: 'https://agent.brainonbnb.com/example?service=health_factor',
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
-      price: '0.10 USD1 per answer, or half that in $BOBAI at the 402’s quote',
+      price: '0.10 USD1, USDC or $U per answer, or half that ($0.05) in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
     },
   ],

@@ -57,5 +57,17 @@ for (const [path, init] of [['/answer?service=health_factor', { method: 'POST', 
     `${path}: 402 offers $U by EIP-3009 last (${acc.length} ways), USD1 still first`);
   say(String(top.asset).toLowerCase() === U.toLowerCase() && top.symbol === 'U' && top.network === 'eip155:56' && /^0x[0-9a-fA-F]{40}$/.test(top.payTo || ''), `${path}: the header names $U at the top (asset, symbol, network, payTo), as the one seller Marque counts live does`);
 }
+// b (2026-10-22): every card says "$0.05 in $BOBAI", and the 402 it points at really carries that $BOBAI entry, worth half
+const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const px = await fetch('https://brainonbnb.com/api/price').then((r) => r.json()).catch(() => ({}));
+for (const [slug, svc] of [['health-factor', 'health_factor'], ['grid-trader', 'grid_plan'], ['yield-optimizer', 'yield_plan'], ['rebalancer', 'rebalance_plan'], ['lp-placement', 'lp_tier_plan'], ['defi-agent', 'lp_position_plan']]) {
+  const card = await fetch(`${origin}/${slug}/.well-known/agent-card.json?r=${Date.now()}`).then((r) => r.json()).catch(() => null);
+  const sk = (card?.skills || []).find((k) => k.id === svc);
+  const r = await fetch(`${origin}/answer?service=${svc}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+  let acc = []; try { acc = JSON.parse(Buffer.from(r.headers.get('payment-required'), 'base64').toString()).accepts || []; } catch {}
+  const b = acc.find((x) => String(x.asset).toLowerCase() === BOBAI);
+  const usd = b && px.price_usd ? Number(BigInt(b.maxAmountRequired || b.amount) / 10n ** 15n) / 1000 * px.price_usd : null;
+  say(/\$0\.05 in \$BOBAI/.test(sk?.price || '') && sk?.pay_in_bobai?.price_usd === 0.05 && usd != null && usd > 0.035 && usd < 0.06, `${slug}: the card says $0.05 in $BOBAI and its 402 carries it (${usd == null ? 'no $BOBAI entry' : '≈$' + usd.toFixed(3) + ' must arrive'})`);
+}
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exit(fails ? 1 : 0);

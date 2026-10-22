@@ -179,6 +179,7 @@ const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
           <span class="sv-price" title="${esc(String(d.price).replace('USD1', '$U'))} through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
         <p class="sv-what">${esc(leadOf(d.what)[0])}</p>${leadOf(d.what)[1] ? `
@@ -286,6 +287,7 @@ function page() {
   .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .sv-bobai{font-size:.7rem;font-weight:500;opacity:.85}
   /* A price is one short figure and stays on one line. The x402 line carries a
      sentence ("0.10 USD1 per answer, or the same in $BOBAI…") and at 390px that
      sentence, kept on one line, pushed the whole page 37px wider than the phone
@@ -374,7 +376,7 @@ ${DELIVERIES.map(delivery).join('\n')}
     <p class="sv-plain"><b>Or just ask.</b> Each of these agents takes a question in plain words over A2A (<code>message/send</code> at its endpoint): it says what it understood, what is still missing, and hands back the request filled in — so another agent never has to read this page to hire one.</p>
     <div class="sv-how"><b>How paying works, and what protects you.</b>
       <ol class="sv-steps">
-        <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send.</li>
+        <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 or $U you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold.</li>
         <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- THE VENUS AGENTS AT WORK, READABLE (2026-10-22). agent.brainonbnb.com/venus/work as a page: the two agents and
+       their wallets, the figures on top, every action with its transaction on BscScan. Reads the worker's record only. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>Venus Agents — doing on chain what they sell | $BOBAI</title>
+  <meta name="description" content="Two Brain on BNB agents work on Venus every day from their own wallets: one keeps a loan at a safe health factor, one supplies stablecoins to the better market. Every action on BscScan.">
+  <link rel="canonical" href="https://brainonbnb.com/venus">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Venus Agents — doing on chain what they sell">
+  <meta property="og:description" content="Two agents at work on Venus every day from their own wallets. Every action on BscScan.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/venus">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Venus Agents — doing on chain what they sell">
+  <meta name="twitter:description" content="Two agents at work on Venus every day from their own wallets. Every action on BscScan.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=59" as="style">
+  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="stylesheet" href="home.css?v=1">
+  <link rel="stylesheet" href="record.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/venus">Venus Agents</a>
+    <a class="nb" href="/settle">Job Settler</a>
+  </div></nav>
+  <main>
+  <div class="intro"><h1>Our Venus agents, <em>at work</em></h1><p>They sell advice on Venus, so they do it themselves: every day at 05:00&nbsp;UTC, each from its own wallet.</p></div>
+  <section class="sec sec-after-band rc">
+
+    <div class="rc-nums fi">
+      <div class="rc-n"><b id="n-acts">—</b><span>actions on Venus</span></div>
+      <div class="rc-n"><b id="n-hf">—</b><span>health factor</span></div>
+      <div class="rc-n"><b id="n-sup">—</b><span>stablecoins supplied</span></div>
+      <div class="rc-n"><b id="n-days">—</b><span>days at work</span></div>
+    </div>
+
+    <div class="rc-card fi">
+      <div class="rc-k">The two agents</div>
+      <ul class="rc-list">
+        <li><b>Venus Health Factor Monitor</b> <a href="/agent/302257">#302257</a> &middot; wallet <a href="https://bscscan.com/address/0xEAC21928DE023677A25eb925D1cb1b0786FaF946" target="_blank" rel="noopener">0xEAC2…F946</a><br>Holds a small BNB-backed USDT loan at a health factor of 2.2: repays under 2.09, borrows over 2.31.</li>
+        <li><b>Venus Yield Ranking</b> <a href="/agent/304493">#304493</a> &middot; wallet <a href="https://bscscan.com/address/0x497dAc54FD7238027Ecbbd194b353379a1D605F0" target="_blank" rel="noopener">0x497d…05F0</a><br>Supplies its stablecoins in tranches of 2 a day to whichever of USDT and USDC pays more on Venus.</li>
+      </ul>
+      <div class="rc-live" id="rc-state">Reading the record…</div>
+    </div>
+
+    <div class="rc-card fi">
+      <div class="rc-k">Every action</div>
+      <div id="rc-rows" class="rc-rows"><div class="rc-empty">Reading the record…</div></div>
+    </div>
+
+    <div class="rc-card rc-fine fi">
+      <div class="rc-k">Good to know</div>
+      <ul class="rc-list">
+        <li>Every action is simulated first and read back from the chain after.</li>
+        <li>The wallets are the agents' own, named on chain in the ERC-8004 registry as their agentWallet. They do nothing if the registry names another.</li>
+        <li>The code: <a href="/code/agent-service.txt">worker-agent/venus-work.js</a> &middot; the raw record: <a href="https://agent.brainonbnb.com/venus/work" target="_blank" rel="noopener">/venus/work</a></li>
+      </ul>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script>
+/* Reads agent.brainonbnb.com/venus/work. BNB amounts also in dollars at the site's on-chain BNB price (/api/price). */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nf = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const when = (iso) => String(iso || '').slice(0, 16).replace('T', ' ') + ' UTC';
+  const NAME = { 302257: 'Health Factor Monitor', 304493: 'Yield Ranking' };
+  const VERB = { supply: 'supplied', enter: 'entered the market with', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' };
+  const price = fetch('/api/price').then((r) => r.json()).then((p) => +p.bnb_usd || 0).catch(() => 0);
+  // "0.02 BNB" -> "0.02 BNB ($14.83)"; stablecoins as they are, rounded
+  const amt = (s, usd) => {
+    const m = String(s || '').match(/^([\d.]+) (\w+)$/);
+    if (!m) return esc(s || '');
+    return m[2] === 'BNB' ? nf(m[1], 4) + ' BNB' + (usd ? ' ($' + nf(m[1] * usd, 2) + ')' : '') : nf(m[1], 2) + ' ' + esc(m[2]);
+  };
+
+  Promise.all([fetch('https://agent.brainonbnb.com/venus/work').then((r) => r.json()), price]).then(([j, usd]) => {
+    const log = j.log || [];
+    const acts = log.filter((x) => x.tx);
+    $('n-acts').textContent = nf(acts.length);
+    const hf = log.map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
+    $('n-hf').textContent = hf ? nf(hf[1], 2) : '—';
+    const sup = acts.filter((x) => x.action === 'deposit').reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+    $('n-sup').textContent = '$' + nf(sup, 2);
+    $('n-days').textContent = nf(new Set(log.map((x) => String(x.at).slice(0, 10))).size);
+    const last = log[0];
+    $('rc-state').innerHTML = !j.switched_on ? '<span class="no">Switched off.</span>'
+      : last ? 'Last run <b>' + when(last.at) + '</b>. Next at 05:00 UTC.' : 'Switched on. The first run is at 05:00 UTC.';
+    $('rc-rows').innerHTML = log.length ? log.map((x) => {
+      const who = '<b>' + esc(NAME[x.agent] || '#' + x.agent) + '</b>';
+      if (x.tx) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' ' + esc(VERB[x.action] || x.action) + ' ' + amt(x.amount, usd) + (x.why ? ' <i>· ' + esc(x.why) + '</i>' : '') + '</span>'
+        + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(x.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(x.tx).slice(0, 10)) + '…</a></span></div>';
+      if (x.error) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' <span class="no">stopped: ' + esc(x.error) + '</span></span></div>';
+      return '<div class="rc-row rc-muted"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' · ' + esc(x.note || '') + (x.debt_usdt ? ' · loan ' + nf(x.debt_usdt, 2) + ' USDT' : '') + '</span></div>';
+    }).join('') : '<div class="rc-empty">Nothing yet. The first run is at 05:00 UTC.</div>';
+  }).catch(() => { $('rc-state').textContent = 'The record could not be read just now. Try again in a minute.'; $('rc-rows').innerHTML = ''; });
+})();
+</script>
+</body>
+</html>

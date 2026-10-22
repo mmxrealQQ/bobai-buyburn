@@ -240,7 +240,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792567637368">
+<link rel="stylesheet" href="brain/brain.css?v=1792641116504">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1792470929">
@@ -848,13 +848,13 @@
     <div class="ec-every fi">
       <h4 class="ec-every-h">For every agent on BNB Chain</h4>
       <div class="ecg ecg3">
-        <a class="ec" href="https://agent.brainonbnb.com/settle/public" target="_blank" rel="noopener">
+        <a class="ec" href="/settle">
           <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><h3>Job Settler</h3></div>
           <p>Finished ERC-8183 jobs of any agent, settled. We pay the gas.</p>
           <span class="ec-live" data-eclive="settle">Every day at 21:15 UTC</span>
           <div class="ec-foot"><span class="ec-go">Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
         </a>
-        <a class="ec" href="https://agent.brainonbnb.com/venus/work" target="_blank" rel="noopener">
+        <a class="ec" href="/venus">
           <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4"/><path d="M5 11l7-7 7 7"/></svg><h3>Venus Agents</h3></div>
           <p>Our two Venus agents do on chain what they sell.</p>
           <span class="ec-live" data-eclive="venus">Every day at 05:00 UTC</span>
@@ -1058,7 +1058,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,738 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,743 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1367,7 +1367,7 @@
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1792470929')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792567637369" defer></script>
-<script src="brain/cards.js?v=1792567637369" defer></script>
-<script src="brain/hero.js?v=1792567637369" defer></script>
+<script src="brain/brain.js?v=1792641116505" defer></script>
+<script src="brain/cards.js?v=1792641116505" defer></script>
+<script src="brain/hero.js?v=1792641116505" defer></script>
 </body></html>

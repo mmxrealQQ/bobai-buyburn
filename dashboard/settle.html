@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- THE JOB SETTLER, READABLE (2026-10-22). agent.brainonbnb.com/settle/public as a page: the totals on top, the
+       last run, and every settle with its transaction on BscScan. The page decides nothing; it reads the worker's record. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>Job Settler — finished agent jobs, settled | $BOBAI</title>
+  <meta name="description" content="BOBAI settles the finished ERC-8183 jobs of every agent on BNB Chain once a day and pays the gas. Every settle with its transaction.">
+  <link rel="canonical" href="https://brainonbnb.com/settle">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Job Settler — finished agent jobs, settled">
+  <meta property="og:description" content="Once a day BOBAI settles every agent's finished ERC-8183 jobs on BNB Chain and pays the gas. Every settle on BscScan.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/settle">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Job Settler — finished agent jobs, settled">
+  <meta name="twitter:description" content="Once a day BOBAI settles every agent's finished ERC-8183 jobs on BNB Chain and pays the gas. Every settle on BscScan.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=59" as="style">
+  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="stylesheet" href="home.css?v=1">
+  <link rel="stylesheet" href="record.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/settle">Job Settler</a>
+    <a class="nb" href="/venus">Venus Agents</a>
+  </div></nav>
+  <main>
+  <div class="intro"><h1>Finished jobs, <em>settled</em></h1><p>An agent's pay waits in the escrow until somebody calls settle. Every day at 21:15&nbsp;UTC, BOBAI does it for every agent and pays the gas.</p></div>
+  <section class="sec sec-after-band rc">
+
+    <div class="rc-nums fi" id="rc-nums">
+      <div class="rc-n"><b id="n-jobs">—</b><span>jobs settled</span></div>
+      <div class="rc-n"><b id="n-u">—</b><span>released to agents</span></div>
+      <div class="rc-n"><b id="n-prov">—</b><span>agents paid</span></div>
+      <div class="rc-n"><b id="n-wait">—</b><span>jobs watched</span></div>
+    </div>
+
+    <div class="rc-card fi">
+      <div class="rc-k">Last run</div>
+      <div class="rc-live" id="rc-last">Reading the record…</div>
+    </div>
+
+    <div class="rc-card fi">
+      <div class="rc-k">Every settle</div>
+      <div id="rc-rows" class="rc-rows"><div class="rc-empty">Reading the record…</div></div>
+    </div>
+
+    <div class="rc-card rc-fine fi">
+      <div class="rc-k">The rule</div>
+      <ul class="rc-list">
+        <li>Settled: a job that was delivered, whose 7-day dispute window is over, with the router as evaluator, at least 0.01&nbsp;$U, paid by a client that is not the provider.</li>
+        <li>Left out: self-hires, farms, wei budgets. Providers take turns: at most 10 a provider, 10 a client, 3 a client&ndash;provider pair and 80 in all a day.</li>
+        <li>The money goes to the provider the job names, never to us. The gas comes from our provider wallet <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">0x7380…5963</a>, about a cent a job.</li>
+        <li>The code: <a href="/code/agent-service.txt">worker-agent/public-settle.js</a> &middot; the raw record: <a href="https://agent.brainonbnb.com/settle/public" target="_blank" rel="noopener">/settle/public</a></li>
+      </ul>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script>
+/* Reads agent.brainonbnb.com/settle/public; BNB gas in dollars at the site's on-chain BNB price (/api/price). */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nf = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const short = (a) => String(a).slice(0, 6) + '…' + String(a).slice(-4);
+  const addr = (a) => '<a href="https://bscscan.com/address/' + esc(a) + '" target="_blank" rel="noopener">' + esc(short(a)) + '</a>';
+  const when = (iso) => String(iso || '').slice(0, 16).replace('T', ' ') + ' UTC';
+  const price = fetch('/api/price').then((r) => r.json()).then((p) => +p.bnb_usd || 0).catch(() => 0);
+  const bnb = (wei, usd) => { const b = Number(wei) / 1e18; return nf(b, 6) + ' BNB' + (usd ? ' ($' + nf(b * usd, 3) + ')' : ''); };
+
+  Promise.all([fetch('https://agent.brainonbnb.com/settle/public').then((r) => r.json()), price]).then(([j, usd]) => {
+    const t = j.totals || {}, l = j.last_run;
+    $('n-jobs').textContent = nf(t.jobs || 0);
+    $('n-u').textContent = '$' + nf(t.released_u || 0, 2);
+    $('n-prov').textContent = nf((t.providers || []).length);
+    $('n-wait').textContent = nf(j.waiting || 0);
+    $('rc-last').innerHTML = l
+      ? '<b>' + when(l.at) + '</b> · ' + nf(l.settled) + ' settled' + (l.refused ? ', ' + nf(l.refused) + ' already settled by someone else' : '') + (l.failed ? ', <span class="no">' + nf(l.failed) + ' failed</span>' : '')
+        + ' · gas ' + bnb(Number(l.gas_bnb) * 1e18, usd) + (l.stopped ? '<br><span class="no">Stopped: ' + esc(l.stopped) + '</span>' : '')
+      : 'No run yet. The first runs at 21:15 UTC.';
+    const rows = (j.log || []);
+    $('rc-rows').innerHTML = rows.length ? rows.map((d) => d.settled
+      ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · $' + nf(d.released_u, 2) + ' to ' + addr(d.provider) + ' <i>from ' + addr(d.client) + '</i></span>'
+        + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a> · gas ' + bnb(d.gas_wei, usd) + '</span></div>'
+      : '<div class="rc-row rc-muted"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · not settled: ' + esc(d.why || 'sent, not done') + '</span>'
+        + (d.tx ? '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a></span>' : '') + '</div>').join('')
+      : '<div class="rc-empty">No settle yet. The next run is at 21:15 UTC.</div>';
+  }).catch(() => { $('rc-last').textContent = 'The record could not be read just now. Try again in a minute.'; $('rc-rows').innerHTML = ''; });
+})();
+</script>
+</body>
+</html>

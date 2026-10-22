@@ -138,6 +138,14 @@ import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, su
 // origin — a preview deployment, a workers.dev hostname — would be describing
 // an agent that does not exist.
 const SELF_ORIGIN = 'https://agent.brainonbnb.com';
+// one brief per service that its agent quotes as it stands (card examples; scripts/quote-examples-check.mjs signs each)
+export const QUOTE_EXAMPLES = {
+  health_factor: 'Health factor of the Venus position of 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, its liquidation distance and the repay that restores 2.0',
+  grid_plan: 'Grid plan for WBNB/USDT (token 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c): 1000 USD capital, 10 levels',
+  yield_plan: 'Best stablecoin yield on Venus for 1000 USDT',
+  rebalance_plan: 'Rebalance my holdings to 50/50: [{"token":"0x55d398326f99059fF775485246999027B3197955","usd":600},{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":400}]',
+  lp_tier_plan: 'Which PancakeSwap fee tier is paying its liquidity providers best for CAKE (token 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82)',
+};
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -1959,10 +1967,14 @@ export default {
           defaultInputModes: ['application/json', 'text/plain'],
           defaultOutputModes: ['application/json'],
           skills: [
-            { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category] },
+            // NAMED FOR THE WORK, WITH A BRIEF TO START FROM (2026-10-22): Pokter asks every agent for a price from its
+            // card's examples and shows a skill called "Negotiate an ERC-8183 job" as plumbing. Without an example the
+            // rebalancer and the fee tier agent were sent a brief they could not quote (no holdings, no token) and Pokter
+            // marked them seller-declined. Each example below is quoted and signed by its agent as it stands (quote-examples-check).
+            { id: 'negotiate-erc8183-job', name: `Quote: ${s.name}`, description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [] },
             NOTIFY_FUNDED_SKILL,
             { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
-            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
           holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           provider_address: await cardProvider(slug),
@@ -2000,7 +2012,7 @@ export default {
         defaultInputModes: ['application/json', 'text/plain'],
         defaultOutputModes: ['application/json'],
         skills: [
-          { id: 'negotiate-erc8183-job', name: 'Negotiate an ERC-8183 job', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
+          { id: 'negotiate-erc8183-job', name: 'Quote: the DeFi agent on your PancakeSwap V3 position', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
           NOTIFY_FUNDED_SKILL,
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'] },
           { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `0.10 $U (ERC-8183 escrow) or 0.10 USD1 per answer (x402), ${HOLDER_PRICE_NOTE}`, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },

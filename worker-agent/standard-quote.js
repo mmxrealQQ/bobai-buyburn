@@ -70,7 +70,9 @@ const MAX_DESCRIPTION_BYTES = 4096;
 // `service` decides price and names itself in the deliverables, so the job
 // the buyer anchors says which of our agents was hired (they share one
 // provider address). `account` is the provider's viem account.
-export async function signedQuote({ data, service, account, chainId, verifyingContract, currency, now = Math.floor(Date.now() / 1000) }) {
+// `note` (2026-10-22): a sentence the seller adds in front of the deliverables, e.g. which token a plan is made for
+// when the brief named none — part of the signed terms the buyer anchors on chain.
+export async function signedQuote({ data, service, account, chainId, verifyingContract, currency, note = null, now = Math.floor(Date.now() / 1000) }) {
   const task = data?.task_description;
   const t = data?.terms;
   if (typeof task !== 'string' || !t || typeof t !== 'object' || Array.isArray(t) || typeof t.deliverables !== 'string') {
@@ -88,7 +90,7 @@ export async function signedQuote({ data, service, account, chainId, verifyingCo
   const requestHash = keccakOfText(canonicalJson(request));
 
   const responseTerms = termsDict({
-    deliverables: `service ${service.id} — ${t.deliverables}`,
+    deliverables: `service ${service.id} — ${note ? `${note} ` : ''}${t.deliverables}`,
     quality_standards: t.quality_standards,
     success_criteria: t.success_criteria ?? null,
     price: String(service.price),

@@ -220,6 +220,10 @@ async function cannotPlan(serviceId, params = {}) {
   return null;
 }
 
+// The two plans that take a token start from WBNB when the buyer named none (2026-10-22), in the quote and the delivery.
+export const WBNB_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+export const TOKEN_DEFAULTS_TO_WBNB = new Set(['grid_plan', 'lp_tier_plan']);
+export const WBNB_NOTE = `No token was named: the plan is for WBNB (${WBNB_TOKEN}), BNB Chain's own coin.`;
 export function missingInput(serviceId, params = {}) {
   const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
   const p = params || {};
@@ -593,15 +597,20 @@ export async function handleA2A(request, env, opts = {}) {
     // two services that can read the hiring wallet instead (the Venus health
     // factor, the position plan) are quoted; deliverJob falls back to it.
     const need = missingInput(service.id, extractParams([data.task_description, data.terms?.deliverables].filter(Boolean).join(' '), data.params || {}));
-    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan') {
+    // NO TOKEN NAMED: THE PLAN IS FOR WBNB (operator's go, 2026-10-22). Pokter asks every agent for a price with a
+    // generic brief; the grid planner and the fee tier agent declined it and showed as not hireable there. The x402 path
+    // already plans WBNB when nothing is named; now the escrow quote does the same, and says so in the signed terms.
+    const wbnbDefault = !!need && TOKEN_DEFAULTS_TO_WBNB.has(service.id);
+    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan' && !wbnbDefault) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
     }
-    const cannot = await cannotPlan(service.id, extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {}));
+    const asked = extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {});
+    const cannot = await cannotPlan(service.id, wbnbDefault ? { ...asked, token: WBNB_TOKEN } : asked);
     if (cannot) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${cannot} Nothing was quoted.` }));
     // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
     const seller = await sellerOf(service.id);
     if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
-    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken });
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : null });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
@@ -811,6 +820,9 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     } else if (service.id === 'health_factor' && missingInput(service.id, params)) {
       // no account named (2026-10-05): the wallet that paid is the one read, and the document says so
       result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client} — no account was named in the task`;
+    } else if (TOKEN_DEFAULTS_TO_WBNB.has(service.id) && missingInput(service.id, params)) {
+      // no token named (2026-10-22): the quote said WBNB, so WBNB is planned, and the document says so
+      result = await doWork(service.id, { ...params, token: WBNB_TOKEN }, env); result.read_for = WBNB_NOTE;
     } else result = await doWork(service.id, params, env);
   } catch (e) {
     // A job we cannot do is not delivered and not charged for. The buyer's

@@ -3,8 +3,8 @@
 // Operator, 22.10.: "build it so it is a real advantage for $BOBAI and the ecosystem". Nothing anywhere counted
 // $BOBAI's holders (the terminal's "Holders" were the NFT's). This is the one source: every address that holds
 // $BOBAI, its balance, and whether it is a person or a contract — the pool, the burn address, routers and lockers are
-// contracts and never counted as holders. Our own wallets hold $BOBAI and count as holders like anyone (operator,
-// 22.10.), unmarked; only a crossing of the pass line by one of them is never recorded as a new holder.
+// contracts and never counted as holders. Our own wallets are wallets like any other (operator, 22.10.: "treated like a
+// normal wallet"), in the count and in the crossings, unmarked.
 //
 //   the seed     scripts/holders-seed.mjs: every address that ever appeared in a Transfer since the deployment
 //                (block 88,987,679, 2026-03-27 06:35 UTC), each balance read with balanceOf at one block
@@ -15,8 +15,6 @@
 //   holders:state     { block, bal: { addr: wei string }, code: { addr: 1 } }
 //   holders:history   [{ day, holders, holders_1m, bands }] (a year)
 //   holders:crossings [{ at, address, balance, block, tx }] (the last 100)
-
-import { OWN_WALLETS } from './own-wallets.js';
 
 export const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -42,14 +40,14 @@ export function summarize(state) {
 }
 
 // pure: apply decoded transfers [{ from, to, value (bigint), block, tx }] to a balance map; returns the crossings of
-// the pass line by people (not contracts, not ours) — counted only upward, once per transfer that carries it over
+// the pass line by people (not contracts) — counted only upward, once per transfer that carries it over
 export function applyTransfers(bal, transfers, isContract = () => false) {
   const crossed = [];
   for (const t of transfers) {
     for (const [a, d] of [[t.from, -t.value], [t.to, t.value]]) {
       const before = BigInt(bal[a] || '0'), after = before + d;
       bal[a] = String(after);
-      if (d > 0n && before < PASS_LINE && after >= PASS_LINE && !isContract(a) && !OWN_WALLETS.has(a) && !DEAD.test(a)) crossed.push({ address: a, balance: toUnits(after), block: t.block, tx: t.tx });
+      if (d > 0n && before < PASS_LINE && after >= PASS_LINE && !isContract(a) && !DEAD.test(a)) crossed.push({ address: a, balance: toUnits(after), block: t.block, tx: t.tx });
     }
   }
   return crossed;

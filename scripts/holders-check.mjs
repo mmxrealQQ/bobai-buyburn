@@ -22,7 +22,7 @@ const crossed = applyTransfers(bal, [
   { from: '0xc', to: '0xnewcontract', value: 2n * PASS_LINE, block: 3, tx: '0x3' },
   { from: PAIR, to: '0x15ba17075ef5e0736292b030e3715d9100fe3d38', value: 2n * PASS_LINE, block: 3, tx: '0x4' },
 ], (a) => a === PAIR || a === '0xnewcontract');
-pin('a person crossing 1M is recorded once, with its tx; one already over, a contract and our own wallet are not', crossed.length === 1 && crossed[0].address === '0xb' && crossed[0].tx === '0x1', crossed.length === 4);
+pin('a wallet crossing 1M is recorded once, with its tx — ours like any other; one already over and a contract are not', crossed.length === 2 && crossed[0].address === '0xb' && crossed[0].tx === '0x1' && crossed[1].address === '0x15ba17075ef5e0736292b030e3715d9100fe3d38', crossed.length === 4);
 pin('balances move both ways', BigInt(bal['0xb']) === 1000001n * E && BigInt(bal[PAIR]) === BigInt(w(1e8)) - 7n * E - 2n * PASS_LINE, false);
 if (process.argv.includes('--live')) {
   const j = await fetch('https://agent.brainonbnb.com/holders?address=0x1afa57').then((r) => r.json()).catch(() => ({}));

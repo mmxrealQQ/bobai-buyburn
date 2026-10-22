@@ -317,15 +317,13 @@ function topicToAddr(topic) {
 
 // Addresses we never want to alert ON. A wallet→pair transfer is a sell and is
 // worth an alert; the pair and the dead address themselves are not holders and
-// must never end up on the tracked list.
+// must never end up on the tracked list. Our own wallets are NOT on this list
+// (operator, 2026-10-22: "even at 1M, 5M, 10M it must be treated like a normal
+// wallet"): they cross the 5M / 10M lines and are watched like anyone's.
 const WHALE_NEVER_TRACK = new Set([
   BOBAI_PAIR.toLowerCase(),
   DEAD.toLowerCase(),
   BOBAI_TOKEN.toLowerCase(),                    // BOBAI contract
-  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot (3% tax recipient — 100% of tax routes here)
-  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot (= creator wallet)
-  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // WC26 prize pool wallet
-  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // dev personal wallet (dev-buyback share)
   '0x0000000000000000000000000000000000000000', // null
 ]);
 

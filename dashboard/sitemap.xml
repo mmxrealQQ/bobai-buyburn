@@ -31,6 +31,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://brainonbnb.com/jobs</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://brainonbnb.com/settle</loc>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>

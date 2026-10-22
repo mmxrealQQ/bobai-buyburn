@@ -27,3 +27,10 @@
 .rc-note{margin:0 0 8px;font-size:13px;line-height:1.5;color:var(--muted,#a0a2c0)}
 .rc-empty{padding:6px 0;color:var(--muted,#a0a2c0);font-size:14px}
 @media (max-width:640px){.rc-nums{grid-template-columns:repeat(2,1fr)}.rc-card{padding:16px 14px}.rc-t{flex-basis:100%}.rc-n b{font-size:22px}}
+/* The job board (2026-10-22): /jobs. One row per agent: rank, who, the figures. */
+.jb-rank{flex:0 0 34px;font:700 15px/1.5 'Space Grotesk',Inter,sans-serif;color:var(--muted,#a0a2c0);font-variant-numeric:tabular-nums}
+.jb-ours .jb-rank,.jb-ours .rc-what b{color:var(--gold,#f0b90b)}
+.jb-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(240,185,11,.4);font-size:11px;color:var(--gold,#f0b90b);vertical-align:1px}
+.jb-figs{flex:0 0 auto;display:flex;gap:14px;font-size:13px;color:var(--muted,#a0a2c0);font-variant-numeric:tabular-nums}
+.jb-figs b{color:#f3efe6;font-weight:600}
+@media (max-width:640px){.jb-figs{flex-basis:100%;padding-left:48px;flex-wrap:wrap;gap:4px 12px}}

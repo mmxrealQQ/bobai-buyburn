@@ -80,6 +80,7 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -3443,6 +3444,25 @@ ${pageTail}`;
         log: await readHires(env),
       });
     }
+    // WHO GETS HIRED ON BNB CHAIN (job-board.js, 2026-10-22): every provider of the ERC-8183 escrow, ranked by work
+    // delivered for paying clients in 30 days, read from the chain once a day at 21:45 UTC.
+    if (path === '/jobs/board' && request.method === 'GET') {
+      note('jobs:board');
+      const b = await readJobBoard(env);
+      return json({
+        what: 'Every agent that gets hired on the ERC-8183 escrow kernel on BNB Chain, ranked by work delivered in the last 30 days for a client who put money in escrow (SUBMITTED or COMPLETED, budget above zero, by the job\'s own submitted_at). Paid means the escrow released (COMPLETED); delivered and not yet released is shown apart, never added to paid. Left out: an address hiring itself, and for our own agents any client that is one of our wallets. One campaign address that holds nearly every job ever minted (98.5 % at the census of 2026-10-19), at a cent each, is shown on its own line, never in the ranking. Read from the chain once a day at 21:45 UTC, after the public settle.',
+        kernel: ERC8183.commerce,
+        payment_token: '$U (United Stables) 0xcE24439F2D9C6a2289F741120FE202248B666666',
+        code: 'https://brainonbnb.com/code/agent-service.txt (shared/job-board.js, worker-agent/job-board.js)',
+        page: 'https://brainonbnb.com/jobs',
+        ...(b || { measured_at: null, note: 'not read yet; the first run is at 21:45 UTC' }),
+      }, 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+    if ((path === '/jobs/board/seed' || path === '/jobs/board/run') && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (path === '/jobs/board/seed') return json(await seedJobBoard(env, await request.json().catch(() => null)));
+      return json(await runJobBoard(env));
+    }
     if (path === '/venus/work' && request.method === 'GET') {
       note('venus:work');
       return json({
@@ -3772,6 +3792,8 @@ ${pageTail}`;
     if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
+    // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
+    if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
     ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));

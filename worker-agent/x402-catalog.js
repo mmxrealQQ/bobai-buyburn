@@ -77,7 +77,7 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 - **Pay to**: \`${payTo}\`
 - **Header**: \`PAYMENT-SIGNATURE\` (x402 v2) on every resource; \`/answer\` and \`/tip\` also read \`X-PAYMENT\` (the v1 header)
 
-Three ways to pay the same price into the same wallet, and a fourth at half the
+Four ways to pay the same price into the same wallet, and one at half the
 price in $BOBAI, advertised side by side in every 402 in this order. A client
 takes whichever it can execute:
 
@@ -94,10 +94,15 @@ takes whichever it can execute:
 3. **Direct transfer** (accepts[2]) — send USD1 yourself, then repeat the
    request with the transaction hash in \`PAYMENT-SIGNATURE\`. Needs no
    facilitator and no signature support, which is why it exists.
-4. **$BOBAI at half price** (the last entry of a per-answer 402) — a direct
+4. **$BOBAI at half price** (after the direct transfer, when a quote is at hand) — a direct
    transfer of $BOBAI worth half the USD1 price, quoted at the moment of the
    402, then the transaction hash in \`PAYMENT-SIGNATURE\`. What arrives is
    held as $BOBAI and never sold.
+5. **$U by EIP-3009** (the last entry), the same price in United Stables
+   (\`0xcE24439F2D9C6a2289F741120FE202248B666666\`, the ERC-8183 escrow's
+   currency): sign \`TransferWithAuthorization\` under its domain ("United
+   Stables", "1") exactly as for USD1; we settle it and pay its gas. Half of it
+   buys $BOBAI at the daily sweep, like USD1 and USDC.
 
 ## Paid resources
 

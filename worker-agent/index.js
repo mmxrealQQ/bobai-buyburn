@@ -45,7 +45,7 @@ const NOTIFY_FUNDED_SKILL = {
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
-import { eip3009Accepts, isEip3009, settleEip3009 } from './x402-eip3009.js';
+import { eip3009Accepts, isEip3009, settleEip3009, U } from './x402-eip3009.js';
 import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
@@ -1167,9 +1167,9 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     // is then read like any direct USD1 transfer and claimed once.
     const st = await settleEip3009(env, inner, { payTo, price });
     if (!st.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: st.stage, reason: st.reason, ...(st.tx ? { tx: st.tx } : {}) } };
-    tx = st.tx;
-    check = await verifyPayment(env, tx, payTo, price);
-    for (let i = 0; i < 2 && !check.ok; i++) { await new Promise((r) => setTimeout(r, 1500)); check = await verifyPayment(env, tx, payTo, price); }
+    tx = st.tx; asset = st.label || 'USD1'; // USD1 or $U (2026-10-22): the token the signature was made for
+    check = await verifyPayment(env, tx, payTo, price, st.asset, st.label);
+    for (let i = 0; i < 2 && !check.ok; i++) { await new Promise((r) => setTimeout(r, 1500)); check = await verifyPayment(env, tx, payTo, price, st.asset, st.label); }
     // Our own receipt said success; a receipt endpoint a block behind must not
     // turn a settled payment into a refused one.
     if (!check.ok) check = { ok: true, paid: st.value, from: st.from };
@@ -1242,7 +1242,7 @@ const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service 
 // half of a 0.05 buy. Every paid reply says what happens to its money and where to follow it; GET /buys maps each payment
 // to the sweep that bought $BOBAI with it, or says it is still waiting and why.
 const BUYS_URL = `${SELF_ORIGIN}/buys`;
-const SWEEP_SOURCE = { USD1: 'x402', USDC: 'x402-usdc' };
+const SWEEP_SOURCE = { USD1: 'x402', USDC: 'x402-usdc', '$U': 'x402-u' }; // $U since 2026-10-22 (EIP-3009)
 function paymentFate(pay) {
   if (pay.holder) return { your_payment: 'Nothing was paid (holder pass): your $BOBAI stays in your wallet.', follow: BUYS_URL };
   const follow = `${BUYS_URL}?tx=${pay.tx}`;
@@ -1338,6 +1338,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
           description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
+        // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
+        eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource, asset: U }),
       ],
     };
     return {
@@ -1450,6 +1452,8 @@ async function tipRoute(env, ctx, payTo, q, proof) {
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
+        // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
+        eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource, asset: U }),
       ],
     };
     return {
@@ -1500,6 +1504,8 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
           description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
+        // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
+        eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource, asset: U }),
       ],
     };
     return {
@@ -1508,7 +1514,7 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
       body: {
         error: 'payment required',
         what: `${what}. The first ${SCAN_FREE_PER_DAY} scans every UTC day stay free without it.`,
-        price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) or in $U by EIP-3009 (the last entry) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
         how: `${payWays({ amount: fmtUsd1(SCAN_PASS_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}. POST this URL with no body.`,
         use: 'The answer carries the pass; send it as header X-Scan-Pass on every pool scan (https://brainonbnb.com/api/pool-scan or the MCP tool bsc_pool_scan at https://brainonbnb.com/mcp).',
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(usd * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
@@ -1575,6 +1581,8 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
+        // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
+        eip3009Accepts({ payTo, amountAtomic: WATCH_PRICE_USD1.toString(), description: `Pool watch for ${WATCH_DAYS} days`, resource, asset: U }),
       ],
     };
     return {
@@ -1589,7 +1597,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // USDC, the other two in USD1 — a client that budgets off a one-asset
         // sentence holds the wrong token for the other route. In accepts[]
         // order since 2026-10-05 (payWays). This POST reads PAYMENT-SIGNATURE only.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) or in $U by EIP-3009 (the last entry) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
         how: `${payWays({ amount: fmtUsd1(WATCH_PRICE_USD1), payTo, headers: 'PAYMENT-SIGNATURE', direct: `${fmtUsd1(WATCH_PRICE_USD1)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })}.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(WATCH_PRICE_USD1)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold.' } } : {}),
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair or V3 pool (0x…); left out, its V2 pair is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },

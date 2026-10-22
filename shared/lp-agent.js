@@ -91,6 +91,15 @@ export const INCOME_SOURCES = [
     token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
     earns: 'USDC paid by agents through standard x402, settled by worker-lp',
   },
+  // The same wallet, $U (2026-10-22, the operator's go "x402 in $U annehmen"): worker-agent settles EIP-3009 payments
+  // in United Stables into this wallet now; a sweep that knew only USD1 and USDC would leave them there, and "half of
+  // every payment buys $BOBAI" would not hold for them.
+  {
+    key: 'x402-u', name: 'x402 service ($U)', keyEnv: 'X402_PRIVATE_KEY',
+    wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+    token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
+    earns: '$U paid by agents by EIP-3009 x402, settled by worker-agent',
+  },
   {
     key: 'provider', name: 'agent provider', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',
     wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',

@@ -3758,6 +3758,17 @@ export default {
       return new Response(JSON.stringify({ ok: !!sent, went_out_as: sent || null, photo_refused: lastPhotoRefusal, caption: lastCaption, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
+    // THE GATE, ASKED LIVE (2026-10-23): claims one throwaway key twice and releases it — [true, false] proves the
+    // Durable Object answers and refuses a second claim. Operator only (the broadcast secret); sends nothing.
+    if (url.pathname === '/gate-check' && request.method === 'POST') {
+      if (!env.BROADCAST_SECRET || (request.headers.get('x-broadcast-secret') || '') !== env.BROADCAST_SECRET) return new Response('{"ok":false,"error":"unauthorized"}', { status: 401 });
+      const k = 'selftest-' + Date.now();
+      const first = await claimAlert(env, 'check', k), second = await claimAlert(env, 'check', k);
+      await releaseAlert(env, 'check', k);
+      const third = await claimAlert(env, 'check', k);
+      await releaseAlert(env, 'check', k);
+      return new Response(JSON.stringify({ ok: first === true && second === false && third === true, bound: !!env.GATE, claims: [first, second, third] }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/broadcast' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';
       const want = env.BROADCAST_SECRET || '';

@@ -2,7 +2,7 @@
 // Cron every minute: detects BOBAI buys ≥ $100 on PancakeSwap, rolls a rarity
 // per the drop matrix, and mints a BobaiBuyDrops NFT to the buyer wallet.
 
-import { createPublicClient, createWalletClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, http, parseAbi, encodeFunctionData, keccak256 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 
@@ -84,6 +84,7 @@ async function rpcCall(method, params) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        signal: AbortSignal.timeout(15000),   // a node that hangs must not hold the run (and its lock)
       });
       const d = await r.json();
       if (d.result !== undefined && d.result !== null) return d.result;
@@ -356,9 +357,13 @@ export class MintGate {
     }
     const k = u.searchParams.get('k');
     if (!k) return new Response('{"error":"no key"}', { status: 400 });
-    if (u.pathname === '/minted') return Response.json({ minted: (await s.get('m:' + k)) || null });
+    if (u.pathname === '/minted') return Response.json({ minted: (await s.get('m:' + k)) || null, pending: (await s.get('p:' + k)) || null });
+    // a mint signed and about to be sent (its hash known before the broadcast): kept until the receipt says how it went
+    if (u.pathname === '/pending') { await s.put('p:' + k, { ...(await request.json()), at: now }); return Response.json({ pending: true }); }
+    if (u.pathname === '/unpending') { await s.delete('p:' + k); return Response.json({ unpending: true }); }
     if (u.pathname === '/mark') {
       await s.put('m:' + k, { mintTx: u.searchParams.get('tx') || null, at: now });
+      await s.delete('p:' + k);
       if (Math.random() < 0.02) {
         const all = await s.list({ prefix: 'm:' });
         const old = [...all].filter(([, v]) => now - (v?.at || 0) >= MARK_KEEP_MS).map(([key]) => key);
@@ -378,7 +383,12 @@ export async function lockRun(env) {
 }
 export async function unlockRun(env, run) { const g = gateOf(env); if (!g || !run) return; try { await g.fetch(`https://gate/unlock?run=${run}`); } catch { /* the lease runs out */ } }
 // the mint already made for this buy ({ mintTx, at }), null if none; throws when the gate cannot be asked
-export async function mintedFor(env, buyTx) { const g = gateOf(env); if (!g) return null; return (await (await g.fetch(`https://gate/minted?k=${String(buyTx).toLowerCase()}`)).json()).minted; }
+export async function mintedFor(env, buyTx) { return (await gateStateOf(env, buyTx)).minted; }
+// { minted, pending }: pending = a mint signed and sent (or about to be) whose receipt has not been seen -
+// { mintTx, nonce, serialized, tier, rarity, buyer, at }. Throws when the gate cannot be asked.
+export async function gateStateOf(env, buyTx) { const g = gateOf(env); if (!g) return { minted: null, pending: null }; const j = await (await g.fetch(`https://gate/minted?k=${String(buyTx).toLowerCase()}`)).json(); return { minted: j.minted || null, pending: j.pending || null }; }
+export async function setPending(env, buyTx, p) { const g = gateOf(env); if (!g) return; const r = await g.fetch(`https://gate/pending?k=${String(buyTx).toLowerCase()}`, { method: 'POST', body: JSON.stringify(p) }); if (!r.ok) throw new Error('gate refused the pending mint'); }
+export async function clearPending(env, buyTx) { const g = gateOf(env); if (!g) return; await g.fetch(`https://gate/unpending?k=${String(buyTx).toLowerCase()}`); }
 export async function markMinted(env, buyTx, mintTx) { const g = gateOf(env); if (!g) return; await g.fetch(`https://gate/mark?k=${String(buyTx).toLowerCase()}&tx=${mintTx}`); }
 
 // ===== Main scheduled handler =====
@@ -580,7 +590,9 @@ const mintWorker = {
         const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
         buyer = (tx?.from || '').toLowerCase();
       }
-      if (!buyer || IGNORED_WALLETS.has(buyer)) { processed.add(txHash); continue; }
+      // no buyer read (every node failed): tried again next run, not given up - an RPC outage is not the buyer's fault
+      if (!buyer) { console.error(`[scan] buyer of ${txHash} unreadable, retry next run`); bailed = true; break outer; }
+      if (IGNORED_WALLETS.has(buyer)) { processed.add(txHash); continue; }
 
       // Roll rarity within THIS tier, weighted by remaining cell slots.
       const remaining = CELL_CAP[tier].map((cap, i) => cap - cellMinted[tier][i]);
@@ -594,10 +606,12 @@ const mintWorker = {
       }
 
       // Mint — unless the gate already holds a mint for this buy (an earlier run's, KV not yet showing it)
-      let already;
-      try { already = await mintedFor(env, txHash); }
+      let already, gatePending;
+      try { ({ minted: already, pending: gatePending } = await gateStateOf(env, txHash)); }
       catch (e) { console.error(`[gate] could not ask about ${txHash}: ${e.message || e} — retry next run`); bailed = true; break outer; }
       if (already) { console.log(`[skip] buy ${txHash} was minted already (${already.mintTx}) — not again`); processed.add(txHash); continue; }
+      // what is minted is what the pending mint carried, not a fresh roll (a later run picks up an earlier run's mint)
+      let mTier = tier, mRarity = rarity, mBuyer = buyer;
       try {
         // THE MINT HAS TO HAVE HAPPENED (2026-09-18). The hash was taken for the
         // mint: a transaction that reverted was written into the drop ledger as
@@ -605,23 +619,38 @@ const mintWorker = {
         // failure like any other and goes the way of the catch below. A mint
         // whose receipt did not come in time is NOT sent again: its hash is
         // kept, and the next run asks the chain about it first.
-        let mintTxHash = pendingMints[txHash] || null;
-        if (mintTxHash) {
+        // THE PENDING MINT LIVES IN THE GATE (2026-10-23 review): in KV alone a run reading it stale minted again. The
+        // transaction is signed here, its hash stored in the gate, and only then broadcast; every run asks the gate first.
+        const pend = gatePending || (pendingMints[txHash] ? { mintTx: pendingMints[txHash] } : null);
+        let mintTxHash = pend ? pend.mintTx : null;
+        if (pend) {
+          if (pend.tier != null) { mTier = pend.tier; mRarity = pend.rarity; mBuyer = pend.buyer || buyer; }
           const rc = await publicClient.getTransactionReceipt({ hash: mintTxHash }).catch(() => null);
-          if (!rc) throw new Error(`the mint transaction ${mintTxHash} is still not mined`);
-          if (rc.status !== 'success') { delete pendingMints[txHash]; await savePending(); mintTxHash = null; }
+          if (rc && rc.status !== 'success') { await clearPending(env, txHash); delete pendingMints[txHash]; await savePending(); mintTxHash = null; mTier = tier; mRarity = rarity; mBuyer = buyer; }
+          else if (!rc) {
+            // not mined: still in a mempool, or never got out. A nonce the relayer has used since cannot carry it any more
+            // (cleared, minted afresh); a nonce still open gets the same signed transaction again (same hash, idempotent).
+            const seen = await publicClient.getTransaction({ hash: mintTxHash }).catch(() => null);
+            if (!seen && pend.nonce != null) {
+              const used = await publicClient.getTransactionCount({ address: account.address, blockTag: 'latest' });
+              if (used > pend.nonce) { console.log(`[mint] ${mintTxHash} can never be mined (nonce ${pend.nonce} used since) - minting afresh`); await clearPending(env, txHash); delete pendingMints[txHash]; await savePending(); mintTxHash = null; mTier = tier; mRarity = rarity; mBuyer = buyer; }
+              else if (pend.serialized) await publicClient.sendRawTransaction({ serializedTransaction: pend.serialized }).catch(() => {});
+            }
+            if (mintTxHash) throw new Error(`the mint transaction ${mintTxHash} is still not mined`);
+          }
         }
         if (!mintTxHash) {
-          mintTxHash = await wallet.writeContract({
-            address: contract,
-            abi: NFT_ABI,
-            functionName: 'mintTo',
-            args: [buyer, tier, rarity],
-          });
+          const req = await wallet.prepareTransactionRequest({ account, to: contract, data: encodeFunctionData({ abi: NFT_ABI, functionName: 'mintTo', args: [buyer, tier, rarity] }) });
+          const serialized = await wallet.signTransaction(req);
+          mintTxHash = keccak256(serialized);
+          // the gate holds it BEFORE it leaves: a run cut off after the broadcast cannot lead to a second mint
+          await setPending(env, txHash, { mintTx: mintTxHash, nonce: req.nonce, serialized, tier, rarity, buyer });
           pendingMints[txHash] = mintTxHash;
           await savePending();
+          await publicClient.sendRawTransaction({ serializedTransaction: serialized });
           const mintRc = await publicClient.waitForTransactionReceipt({ hash: mintTxHash, timeout: 45000 });
           if (mintRc.status !== 'success') {
+            await clearPending(env, txHash);
             delete pendingMints[txHash];
             await savePending();
             throw new Error(`the mint transaction ${mintTxHash} reverted`);
@@ -629,20 +658,21 @@ const mintWorker = {
         }
         delete pendingMints[txHash];
         await savePending();
-        // marked at once, before anything else can fail: this buy is never minted again
-        await markMinted(env, txHash, mintTxHash).catch((e) => console.error(`[gate] mark failed for ${txHash}: ${e.message || e}`));
+        // marked at once, before anything else can fail: this buy is never minted again. A mark that fails leaves the
+        // pending entry in the gate, so the next run finds the mined mint there and marks it - never a second mint.
+        await markMinted(env, txHash, mintTxHash).catch((e) => console.error(`[gate] mark failed for ${txHash}: ${e.message || e} - the pending entry stands`));
         const blockNum = parseInt(log.blockNumber, 16);
-        console.log(`[MINT] $${usd.toFixed(0)} → tier=${tier} rarity=${RARITY_NAME[rarity]} to=${buyer} mintTx=${mintTxHash} buyTx=${txHash}`);
+        console.log(`[MINT] $${usd.toFixed(0)} → tier=${mTier} rarity=${RARITY_NAME[mRarity]} to=${mBuyer} mintTx=${mintTxHash} buyTx=${txHash}`);
         processed.add(txHash);
-        mintedArr[tier]++;
-        cellMinted[tier][rarity]++; // local: keep later mints this run within caps
+        mintedArr[mTier]++;
+        cellMinted[mTier][mRarity]++; // local: keep later mints this run within caps
         mintedThisRun++;
-        // Persist drop for dashboard (KV-backed, avoids RPC archive limits)
+        // Persist drop for dashboard (KV-backed, avoids RPC archive limits) — what was minted, once per mint transaction
         try {
           const dropsRaw = await env.KV.get('recent_drops');
           const drops = dropsRaw ? JSON.parse(dropsRaw) : [];
-          drops.unshift({
-            to: buyer, tier, rarity,
+          if (!drops.some((d) => String(d.mintTx).toLowerCase() === String(mintTxHash).toLowerCase())) drops.unshift({
+            to: mBuyer, tier: mTier, rarity: mRarity,
             // with cents (2026-09-30, operator: the TG alert said $249.62, this log kept 250 — the Brain Terminal read a
             // HUGE BUY out of a BIG one). The same sum TG counts: WBNB in per tx x Chainlink BNB/USD
             usd: Math.round(usd * 100) / 100,

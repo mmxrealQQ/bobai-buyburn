@@ -6,7 +6,7 @@
 //              a stranger's unlock frees nothing; a crashed run's lease runs out
 //   the mark   a minted buy is marked with its mint tx and read back in any case; the run asks before it mints and
 //              marks right after the receipt; a gate that cannot be asked means no mint this run (a late NFT, never two)
-// Offline, in memory. Part of self-tests.mjs.   node scripts/nft-mint-gate-check.mjs
+// Offline, in memory. Part of self-tests.mjs.   node scripts/nft-mint-gate-regressions.mjs
 import path from 'node:path'; import fs from 'node:fs'; import { pathToFileURL } from 'node:url';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const M = await import(pathToFileURL(path.join(ROOT, 'worker-nft-mint', 'index.js')).href);
@@ -18,7 +18,7 @@ const mem = new Map();
 const storage = { get: async (k) => mem.get(k), put: async (k, v) => { mem.set(k, structuredClone(v)); }, delete: async (k) => { (Array.isArray(k) ? k : [k]).forEach((x) => mem.delete(x)); }, list: async ({ prefix = '' } = {}) => new Map([...mem].filter(([k]) => k.startsWith(prefix))) };
 const gate = new M.MintGate({ storage });
 let chain = Promise.resolve();
-const stub = { fetch: (u) => { const run = chain.then(() => gate.fetch(new Request(u))); chain = run.catch(() => {}); return run; } };
+const stub = { fetch: (u, init) => { const run = chain.then(() => gate.fetch(new Request(u, init))); chain = run.catch(() => {}); return run; } };
 const env = { MINT_GATE: { idFromName: () => 'mint', get: () => stub } };
 
 // the lock
@@ -64,12 +64,31 @@ let threw = false; try { await M.mintedFor(failing, BUY); } catch { threw = true
 is('asking a gate that is down throws (the run then bails and retries; it never mints blind)', threw);
 is('no gate bound (a local run): every buy reads as not minted, the run is not locked', (await M.mintedFor({}, BUY)) === null && (await M.lockRun({})).ok);
 
+// the pending mint (2026-10-23 review): kept in the gate before the broadcast, read back with everything a later run
+// needs, cleared by the mark
+const B2 = '0x' + 'b'.repeat(64);
+await M.setPending(env, B2, { mintTx: '0xfeed', nonce: 7, serialized: '0x02ab', tier: 3, rarity: 1, buyer: '0x' + 'c'.repeat(40) });
+const st = await M.gateStateOf(env, B2.toUpperCase().replace('0X', '0x'));
+is('a pending mint is held in the gate with its hash, nonce, signed bytes, tier, rarity and buyer', st.minted === null && st.pending?.mintTx === '0xfeed' && st.pending.nonce === 7 && st.pending.serialized === '0x02ab' && st.pending.tier === 3 && st.pending.rarity === 1);
+await M.markMinted(env, B2, '0xfeed');
+const st2 = await M.gateStateOf(env, B2);
+is('the mark clears it: minted, nothing pending', st2.minted?.mintTx === '0xfeed' && st2.pending === null);
+await M.setPending(env, B2 + '1', { mintTx: '0xbeef', nonce: 8 });
+await M.clearPending(env, B2 + '1');
+is('a reverted or dead pending mint can be cleared', (await M.gateStateOf(env, B2 + '1')).pending === null);
+
 // the run asks before it mints, marks right after the receipt, and bails when the gate cannot be asked
 const src = fs.readFileSync(path.join(ROOT, 'worker-nft-mint', 'index.js'), 'utf8');
 const body = src.slice(src.indexOf('async runMint(env)'));
-const iAsk = body.indexOf('await mintedFor(env, txHash)'), iSend = body.indexOf("functionName: 'mintTo'"), iRc = body.indexOf('waitForTransactionReceipt({ hash: mintTxHash'), iMark = body.indexOf('await markMinted(env, txHash, mintTxHash)'), iDrop = body.indexOf("env.KV.put('recent_drops'");
+const iAsk = body.indexOf('await gateStateOf(env, txHash)'), iSend = body.indexOf("functionName: 'mintTo'"), iRc = body.indexOf('waitForTransactionReceipt({ hash: mintTxHash'), iMark = body.indexOf('await markMinted(env, txHash, mintTxHash)'), iDrop = body.indexOf("env.KV.put('recent_drops'");
 is('in the run: ask the gate, then mint, then the receipt, then the mark, then the drop ledger', iAsk > 0 && iAsk < iSend && iSend < iRc && iRc < iMark && iMark < iDrop, JSON.stringify({ iAsk, iSend, iRc, iMark, iDrop }));
 is('a gate that cannot be asked about a buy stops the scan there (bailed, retried next run)', /catch \(e\) \{ console\.error\(`\[gate\] could not ask about[^]*?bailed = true; break outer; \}/.test(body));
+const iSet = body.indexOf('await setPending(env, txHash'), iRaw = body.indexOf('await publicClient.sendRawTransaction({ serializedTransaction: serialized })');
+is('the mint is signed first, its hash stored in the gate, and only then broadcast', body.indexOf('wallet.signTransaction(req)') < iSet && iSet > 0 && iSet < iRaw && !/wallet\.writeContract\(/.test(body));
+const iPend = body.indexOf('const pend = gatePending'), iNew = body.indexOf('if (!mintTxHash) {', iPend);
+is('a pending mint from an earlier run is looked at before any new one: mined -> recorded, reverted or its nonce used since -> cleared and minted afresh, still open -> the same signed bytes again, not a new mint', iPend > 0 && iPend < iNew && iNew < iSet && /if \(used > pend\.nonce\)[^\n]*clearPending/.test(body) && /sendRawTransaction\(\{ serializedTransaction: pend\.serialized \}\)/.test(body) && /if \(mintTxHash\) throw new Error\(`the mint transaction \$\{mintTxHash\} is still not mined`\)/.test(body));
+is('the ledger records what was minted (the pending mint\'s tier, rarity, buyer), once per mint transaction', /to: mBuyer, tier: mTier, rarity: mRarity/.test(body) && /if \(!drops\.some\(\(d\) => String\(d\.mintTx\)\.toLowerCase\(\) === String\(mintTxHash\)\.toLowerCase\(\)\)\)/.test(body) && /mTier = pend\.tier; mRarity = pend\.rarity; mBuyer = pend\.buyer/.test(body));
+is('a buyer that cannot be read is retried, not given up', /if \(!buyer\) \{[^\n]*bailed = true; break outer; \}/.test(body));
 is('a buy already marked is skipped and marked processed, never minted', /if \(already\) \{[^\n]*processed\.add\(txHash\); continue; \}/.test(body));
 const toml = fs.readFileSync(path.join(ROOT, 'worker-nft-mint', 'wrangler.toml'), 'utf8');
 is('the worker binds the gate (MINT_GATE -> MintGate, with its migration)', /name = "MINT_GATE"\s+class_name = "MintGate"/.test(toml) && /new_sqlite_classes = \["MintGate"\]/.test(toml));

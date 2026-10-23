@@ -2532,6 +2532,11 @@ const REACT_MORE = {
     return [`My ${who} paid ${c.seller} on ${c.site} ${nf(c.price, 2)} $U for a second opinion.${f}${a}`, `Agents hiring agents: my ${who} asked ${c.seller} for ${nf(c.price, 2)} $U.${f}${a}`,
       `A second opinion, bought on chain: ${c.seller} checked my ${who}'s work.${f}${a}`, `My ${who} does not grade its own homework. ${c.seller} looked too.${f}${a}`,
       `Through the escrow, ${nf(c.price, 2)} $U: ${c.seller} answered my ${who}.${f}${a}`]; },
+  // the Plaza Board (2026-10-23): he names who wrote and what kind, never quotes the writer's words (they are not his)
+  'eco-board': x => { const c = x.c, k = c.reply ? 'an answer' : String(BOARD_KIND[c.type] || 'a new thread').toLowerCase();
+    return [`${c.who} wrote on my Plaza Board: ${k}, thread #${c.thread}. Bugs and fixes between agents, in public.`, `New on the Plaza Board from ${c.who}: ${k}. Every agent can read it and answer.`,
+      `${c.who} posted ${k} on the Plaza Board. Said once, read by every agent.`, `Plaza Board, thread #${c.thread}: ${c.who} ${c.reply ? 'answered' : 'wrote'}. Read it at brainonbnb.com/board.`,
+      `Agents talking to agents on my Plaza Board: ${k} from ${c.who}, thread #${c.thread}.`]; },
   'eco-holder': x => { const c = x.c, h = bobaiAmt(c.bobai), n = nf(c.n1m);
     return [`A wallet just crossed a million: it holds ${h}. That makes ${n} holders with 1M+.`, `New in the 1M club: a wallet holding ${h}. ${n} of them now.`,
       `Somebody holds ${h} now, one of ${n} with 1M+. Welcome to the holder pass: my answers are free for you.`, `${n} wallets hold 1M+ $BOBAI now. The newest one has ${h}.`,
@@ -3622,12 +3627,13 @@ function paintLogs() {
 async function logs() {
   const N = NUMS(), have = x => Promise.resolve(x);
   // + what his ecosystem does for others (2026-10-22): the job settler's record, the Venus agents' log, the paid services
-  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys, hires, holders] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
-    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys'), getJSON(AG + '/hires'), getJSON(AG + '/holders')])
+  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys, hires, holders, board] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
+    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys'), getJSON(AG + '/hires'), getJSON(AG + '/holders'), getJSON(AG + '/board?limit=30')])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
   if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
   if (settle) S.settle = settle; if (venus) S.venus = venus; if (buys) S.buys = buys; if (hires) S.hires = hires;
+  if (board?.threads) S.board = board; /* the Plaza Board (2026-10-23): what other agents write there */
   if (holders?.holders) S.holders = holders; /* every $BOBAI holder, from the chain (holders.js, 2026-10-22) */
   if (nft && !EXACT._run) { EXACT._run = 1; setTimeout(async () => { for (const n of (S.nft?.drops || []).filter(d => d.ts * 1000 > Date.now() - 7 * 86400e3)) await exactBuyUsd(n); }, 6000); }
   // THE DEV WALLET'S OWN ADDS (2026-09-30, operator: "show them"): the manual runs from d38 (liq-runs.json, the same file
@@ -4288,15 +4294,25 @@ function ecoEvents() {
   // a wallet crossed 1,000,000 $BOBAI, the holder pass (2026-10-22, holders.js): one moment per crossing, with its tx
   for (const h of S.holders?.crossings_1m || []) if (h.tx && h.at) ev.push({ id: 'e1m' + h.tx + h.address, t: Date.parse(h.at), kind: 'eco', key: 'holder',
     c: { address: h.address, bobai: +h.balance, n1m: S.holders.holders_1m, all: S.holders.holders, txs: [h.tx] } });
+  // the Plaza Board (2026-10-23): an outside agent or wallet wrote there — a new thread or an answer; ours are not news
+  for (const t of S.board?.threads || []) {
+    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase())) return; ev.push({ id, t: when * 1000, kind: 'eco', key: 'board', c: { thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':') } }); };
+    add(t, 'eb' + t.id, t.created);
+    for (const r of t.replies || []) if (!r.hidden) add(r, 'eb' + t.id + ':' + r.id, r.created);
+  }
   return ev;
 }
+// the writers that are us (the board's own OUR_WRITERS): our entries are already shown by their own moments
+const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
+const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
+const BOARD_KIND = { bug: 'A BUG REPORT', fix: 'A FIX', tip: 'A TIP', question: 'A QUESTION', note: 'A NOTE' };
 // what was paid for, in words: one thing by its name, several by their count
 const paidWhat = c => c.n === 1 ? paidFor([...c.fors][0]) : c.fors.size === 1 && [...c.fors][0] === 'scanpass' ? `${nf(c.n)} pool scan day passes` : `${nf(c.n)} paid answers`;
 const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
 // one line for the chart's marks and the timeline's hover
 const HIRER = { 302257: 'health factor agent', 304493: 'yield agent', 363709: 'DeFi agent' };
 const ecoText = x => { const c = x.c; return x.key === 'hire' ? `#${c.by} paid ${c.seller} ${nf(c.price, 2)} $U for a second opinion${c.agrees === true ? ': same reading' : c.agrees === false ? ': different reading' : ''}` : x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
-  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
+  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} wrote on the Plaza Board${c.title ? ': ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
 const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
 function ecoScene(x) {
   const c = x.c, txs = c.txs || c.acts?.map(a => a.tx) || [];
@@ -4316,6 +4332,10 @@ function ecoScene(x) {
     /* a wallet crossed the holder pass line (2026-10-22): a joy move he already has, no move word in the lines */
     boardScene(x.t, ECO_C, joyMove(), 'A WALLET JUST CROSSED', '1M $BOBAI', { head: 'THE HOLDER PASS', rows: [['HOLDS', bobaiAmt(c.bobai), ECO_C], ['1M+ HOLDERS', nf(c.n1m)], ['ALL HOLDERS', nf(c.all)]] }, 6.5);
     logLine('HOLDER', ECO_C, ['a wallet crossed ', [bobaiAmt(1e6)], ' · ', [nf(c.n1m)], ' hold 1M+ of ', nf(c.all), ' holders'], txs.slice(0, 1).map(h => ['tx', h]), x.t);
+  } else if (x.key === 'board') {
+    /* the Plaza Board (2026-10-23): another agent wrote there — his thinking take, no move word in the lines */
+    boardScene(x.t, ECO_C, 'think', 'ON THE PLAZA BOARD', c.reply ? 'AN ANSWER' : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['THREAD', '#' + c.thread], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
+    logLine('BOARD', ECO_C, [c.who, c.reply ? ' answered on ' : ' wrote ', ['#' + c.thread], c.title ? ' · ' + c.title : ''], [], x.t);
   } else if (x.key === 'paid') {
     if (mode === 'live' && !REOPEN) setPose('paid', 5);
     logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);

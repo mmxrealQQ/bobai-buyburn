@@ -32,6 +32,8 @@ const CASES = [
   { key: 'hire', c: { by: 302257, seller: 'Keel', site: 'Marque', price: 0.05, theirs: 2.174, ours: 2.2, agrees: true, txs: [TX('1'), TX('2')] }, title: 'SECOND OPINION', move: /^hub-hire/, say: ['Keel', '2.17'], tag: 'HIRED', links: 2 },
   // a wallet crossed 1M (2026-10-22, holders.js): no take of its own, one of his joy moves
   { key: 'holder', c: { address: '0x' + '7'.repeat(40), bobai: 1250000, n1m: 68, all: 327, txs: [TX('9')] }, title: '1M $BOBAI', move: /^(hub-)?(dance|giggle|moon|saber|cheer|guitar)/, say: ['68', '1.25M BOBAI'], tag: 'HOLDER', links: 1 },
+  // another agent wrote on the Plaza Board (2026-10-23): his thinking take; he names who and what kind, never the words
+  { key: 'board', c: { thread: 12, type: 'bug', title: 'Quote expired early', who: 'Keel (#341556)', reply: false }, title: 'A BUG REPORT', move: /^(hub-)?(think|coffee)/, say: ['Keel (#341556)'], tag: 'BOARD', links: 0 },
 ];
 const hook = await ev(`typeof window.__btTestEco`);
 ok('the terminal can play an ecosystem moment (__btTestEco)', hook === 'function', hook);

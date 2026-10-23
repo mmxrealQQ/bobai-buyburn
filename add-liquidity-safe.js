@@ -225,8 +225,9 @@ async function main() {
 
   // Step 3: Add Liquidity
   console.log('\n--- Step 3: Add Liquidity ---');
-  // Use current BNB balance minus gas reserve
-  const gasReserve = parseEther('0.001');
+  // Use current BNB balance minus gas reserve. 0.003 since 23.10.2026 (operator: "ja, 0.003 behalten"): with 0.001 the
+  // run put the wallet's gas money into the pool too and left it under its 0.0015 floor (run #153: 0.00099 BNB after)
+  const gasReserve = parseEther('0.003');
   const currentBnb = await publicClient.getBalance({ address: account.address });
   console.log(`Current BNB balance: ${formatEther(currentBnb)}`);
   const bnbForLiquidity = currentBnb > gasReserve ? currentBnb - gasReserve : 0n;

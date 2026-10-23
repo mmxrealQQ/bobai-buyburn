@@ -311,6 +311,10 @@ console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a th
       ok('it says so before it sends', /Min BOBAI accepted: [0-9.]+ \(95%\)/.test(said) && /Min BNB accepted:   [0-9.]+ \(95%\)/.test(said) && !/accepted: 0 /.test(said));
       const deadLp1 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
       ok('both receipts are success, the dead address holds the LP the record names, the wallet none — and the 808.41 BOBAI it keeps', rc.status === 'success' && burnRc.status === 'success' && deadLp1 - deadLp0 === parseEther(rec.lp) && (await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [acct.address] })) === 0n && (await tok(BOBAI, acct.address)) >= parseEther('808.41'));
+      // its gas money stays (2026-10-23, operator: "0.003 behalten"): run #153 put all but 0.001 into the pool and left
+      // the wallet under its 0.0015 floor; now 0.003 is held back, less only the gas of the burn after the add
+      const cur = said.match(/Current BNB balance: ([0-9.]+)/)?.[1], offered = said.match(/BNB for liquidity:\s+([0-9.]+)/)?.[1];
+      ok('the wallet keeps its gas money: the BNB offered to the pool is its balance less exactly 0.003, and the add sent no more', cur && offered && parseEther(cur) - parseEther(offered) === parseEther('0.003') && tx.value === parseEther(offered), `${cur} - ${offered}`);
     }
     ok('the real dashboard/liq-runs.json was not touched by any of it', fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8') === realRuns);
   }

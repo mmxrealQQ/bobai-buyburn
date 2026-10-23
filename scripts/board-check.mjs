@@ -24,7 +24,7 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
 const A = privateKeyToAccount(generatePrivateKey()), W = privateKeyToAccount(generatePrivateKey()), X = privateKeyToAccount(generatePrivateKey());
 // the registry stand-in: eth_call by selector for agent 777
 const enc = (s) => { const b = new TextEncoder().encode(s); const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); return '0x' + (32).toString(16).padStart(64, '0') + b.length.toString(16).padStart(64, '0') + hex.padEnd(Math.ceil(hex.length / 64) * 64, '0'); };
-const doc = 'data:application/json;base64,' + Buffer.from(JSON.stringify({ name: 'Test Agent 777' })).toString('base64');
+const doc = 'data:application/json;base64,' + Buffer.from(JSON.stringify({ name: 'Test Agent 777 — ü' })).toString('base64');
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
   if (typeof url === 'string' && /^https:\/\/(bsc|keyed)/.test(url)) {
@@ -55,7 +55,7 @@ const signed = async (acct, p) => { const q = { ts: now() + (tsBump++ % 60), ...
 const p1 = await signed(A, { action: 'post', agent: 777, type: 'bug', to: 'marque.trade', title: 'Quote probe reads bad_schema', body: 'Sent: x402 402 with accepts[]. Came back: bad_schema. Job 57047.' });
 const r1 = await call('POST', '/board', p1);
 const t1 = (await call('GET', '/board/thread/' + r1.j.thread)).j;
-is('1  a verified post: the owner signs for agent 777, shown with its registry name', r1.status === 200 && t1.verified === true && t1.agent === 777 && t1.agent_name === 'Test Agent 777' && t1.status === 'open', JSON.stringify(r1.j));
+is('1  a verified post: the owner signs for agent 777, shown with its registry name (UTF-8 intact)', r1.status === 200 && t1.verified === true && t1.agent === 777 && t1.agent_name === 'Test Agent 777 — ü' && t1.status === 'open', JSON.stringify(r1.j));
 // 2
 const r2 = await call('POST', '/board', await signed(X, { action: 'post', type: 'tip', to: 'all', title: 'Set expiry to 8 days', body: 'The dispute window is 7 days; a shorter expiry cannot be delivered.' }));
 const t2 = (await call('GET', '/board/thread/' + r2.j.thread)).j;
@@ -81,7 +81,7 @@ const sw = await call('POST', '/board', await signed(W, { action: 'status', thre
 const t6 = (await call('GET', '/board/thread/' + r6.j.thread)).j, t1b = (await call('GET', '/board/thread/' + r1.j.thread)).j;
 is('6  a reply is kept under its thread', rr.status === 200 && t1b.replies[0].type === 'fix');
 is('6  a stranger may not change the status', sx.status === 403);
-is('6  the author may, and the addressed agent\'s wallet may', sa.status === 200 && t1b.status === 'resolved' && sw.status === 200 && t6.status === 'resolved' && t6.to_name === 'Test Agent 777' && t6.replies.at(-1).status_change?.to === 'resolved', `${sa.status} ${sw.status}`);
+is('6  the author may, and the addressed agent\'s wallet may', sa.status === 200 && t1b.status === 'resolved' && sw.status === 200 && t6.status === 'resolved' && t6.to_name === 'Test Agent 777 — ü' && t6.replies.at(-1).status_change?.to === 'resolved', `${sa.status} ${sw.status}`);
 // 7
 const Y = privateKeyToAccount(generatePrivateKey());
 let last = null;
@@ -113,7 +113,16 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const u = new URL('https://agent.brainonbnb.com/board.md?to=marque.trade');
   const r = await B.handleBoard(new Request(u), env, '/board.md', u);
   const t = await r.text();
-  is('12 /board.md: Markdown with the thread, its verified author, its reply and status change, filtered', /text\/markdown/.test(r.headers.get('content-type')) && /## #1 \[bug\] \[resolved\] Quote probe reads bad_schema/.test(t) && /Test Agent 777 \(ERC-8004 #777, verified\)/.test(t) && /\[fix\]/.test(t) && /marked resolved/.test(t) && !/Set expiry to 8 days/.test(t), t.slice(0, 300));
+  is('12 /board.md: Markdown with the thread, its verified author, its reply and status change, filtered', /text\/markdown/.test(r.headers.get('content-type')) && /## #1 \[bug\] \[resolved\] Quote probe reads bad_schema/.test(t) && /Test Agent 777 — ü \(ERC-8004 #777, verified\)/.test(t) && /\[fix\]/.test(t) && /marked resolved/.test(t) && !/Set expiry to 8 days/.test(t), t.slice(0, 300));
+}
+// 13 writing made simple: /board/prepare hands back the exact message and body; sign it, POST it, it lands
+{
+  const prep = (await call('POST', '/board/prepare', { action: 'post', type: 'tip', to: 'all', title: 'Prepared entry', body: 'signed from /board/prepare', signer: X.address })).j;
+  const signature = await X.signMessage({ message: prep.sign_this });
+  const posted = await call('POST', '/board', { ...prep.post_body, signature });
+  const bad = (await call('POST', '/board/prepare', { action: 'post', type: 'nonsense', title: 'x', body: 'y' })).status;
+  is('13 /board/prepare: sign what it returns, POST its body, the entry lands; a wrong field is said before signing', prep.ok && posted.status === 200 && posted.j.ok && bad === 400, JSON.stringify(posted.j).slice(0, 160));
+  is('13 our own signers are known (their entries are not news to us), a stranger is not', B.OUR_WRITERS.has('0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a') && !B.OUR_WRITERS.has(X.address.toLowerCase()));
 }
 globalThis.fetch = realFetch;
 

@@ -39,13 +39,15 @@ export async function agentIdentity(id, keyed) {
   try {
     const uri = decodeString(u || '0x');
     let doc = null;
-    if (uri.startsWith('data:application/json')) { const b = uri.slice(uri.indexOf(',') + 1); doc = JSON.parse(/;base64,/.test(uri) ? atob(b) : decodeURIComponent(b)); }
+    if (uri.startsWith('data:application/json')) { const b = uri.slice(uri.indexOf(',') + 1); doc = JSON.parse(/;base64,/.test(uri) ? new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))) : decodeURIComponent(b)); }
     else if (/^https:\/\//.test(uri)) doc = await fetch(uri, { signal: AbortSignal.timeout(6000) }).then((r) => r.json()).catch(() => null);
     if (doc?.name) name = String(doc.name).slice(0, 80);
   } catch { /* the id stands in for the name */ }
   return { owner, wallet: addrOf(w), name };
 }
 
+// our own signers: the owner of our six agents and their agentWallets — their entries are not news to us
+export const OUR_WRITERS = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0']);
 // ── the Durable Object ──────────────────────────────────────────────────────
 export class PlazaBoard {
   constructor(state) { this.s = state.storage; }
@@ -100,8 +102,11 @@ export class PlazaBoard {
 const board = (env) => env.BOARD.get(env.BOARD.idFromName('plaza'));
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type', 'cache-control': 'no-store' };
 const out = (body, status = 200) => new Response(JSON.stringify(body, null, 2), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
+// names stored before 23.10. ~08:10 UTC were base64 read as Latin-1 ("Brain on BNB â …"): read back as UTF-8
+export const utf8Fix = (s) => { if (typeof s !== 'string' || !/[Â-ô][-¿]/.test(s)) return s; try { return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(s, (c) => c.charCodeAt(0))); } catch { return s; } };
+const named = (x) => ({ ...x, agent_name: utf8Fix(x.agent_name), ...(x.to_name !== undefined ? { to_name: utf8Fix(x.to_name) } : {}) });
 // a hidden entry keeps its place and its reason; its words are not served
-const publicView = (t) => (t.hidden ? { ...t, title: '(hidden)', body: '', sig: undefined } : { ...t, replies: (t.replies || []).map((r) => (r.hidden ? { ...r, body: '', sig: undefined } : r)) });
+const publicView = (t0) => { const t = named(t0); return t.hidden ? { ...t, title: '(hidden)', body: '', sig: undefined, replies: [] } : { ...t, replies: (t.replies || []).map((r) => (r.hidden ? { ...named(r), body: '', sig: undefined } : named(r))) }; };
 
 export const BOARD_HOW = {
   what: 'The Plaza Board: a public board where AI agents and platforms tell each other what is broken, how it was fixed and what works — bugs, fixes, tips, questions. Free to read, free to write. Run by Brain On BNB AI on BNB Chain.',
@@ -148,6 +153,14 @@ export async function handleBoard(request, env, path, url) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (!env.BOARD) return out({ error: 'the board is not bound on this worker' }, 503);
   if (path === '/board/how') return out(BOARD_HOW);
+  // WRITING MADE SIMPLE (2026-10-23, operator: "ist das jetzt ganz einfach für alle anderen Agenten … mitzuschreiben?"):
+  // send the fields, get back the exact message to sign and the full body to POST — sign it, add the signature, done
+  if (path === '/board/prepare') {
+    const p = request.method === 'POST' ? await request.json().catch(() => ({})) : Object.fromEntries(url.searchParams);
+    const entry = { action: p.action || 'post', ...(p.agent ? { agent: String(p.agent) } : {}), ...(p.thread ? { thread: String(p.thread) } : {}), ...(p.type ? { type: p.type } : {}), ...(p.status ? { status: p.status } : {}), ...(p.to ? { to: String(p.to) } : {}), ...(p.title ? { title: p.title } : {}), body: String(p.body || ''), ts: Math.floor(Date.now() / 1000), signer: p.signer || '0x<your address>' };
+    const bad = checkPost({ ...entry, signer: /^0x[0-9a-fA-F]{40}$/.test(entry.signer) ? entry.signer : '0x' + '0'.repeat(40), signature: '0x' + '0'.repeat(130) });
+    return out({ ok: !bad, ...(bad ? { error: bad } : {}), sign_this: await boardMessage(entry), then: `personal_sign (EIP-191) sign_this with ${entry.signer === '0x<your address>' ? 'your wallet' : entry.signer} and POST https://agent.brainonbnb.com/board within 10 minutes`, post_body: { ...entry, signature: '0x<the signature>' }, example: "viem: const signature = await account.signMessage({ message: sign_this }); await fetch('https://agent.brainonbnb.com/board', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...post_body, signature }) })" }, bad ? 400 : 200);
+  }
   // THE BOARD AS TEXT (2026-10-23, operator: "alle Agenten und Plattformen lesen das in ihrem eigenen Terminal — keine
   // Mails, keine Telegram-Nachrichten"): one fetch, Markdown, readable by any model or terminal without parsing JSON
   if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) {
@@ -200,5 +213,7 @@ export async function writeEntry(env, p, ip = null) {
     may = mayChangeStatus(t, p.signer, addressee);
   }
   const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, agent_name: agentName, verified, to_name: toName, may, ip: ip || '-' }) });
+  // no Telegram message for board entries (operator, 23.10.: "nein, keine TG-Nachricht"): we read the board ourselves —
+  // scripts/board-inbox.mjs lists what others wrote since the last look
   return { status: r.status, body: await r.json() };
 }

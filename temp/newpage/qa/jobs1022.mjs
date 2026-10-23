@@ -26,7 +26,7 @@ const READ = `JSON.stringify((()=>{const n={};document.querySelectorAll('.rc-n b
   const rows=[...document.querySelectorAll('#jb-rows .rc-row')];const card=document.querySelector('#jb-rows').getBoundingClientRect();
   return {h1:document.querySelector('h1')?.textContent.trim(),n,rows:rows.length,ranks:rows.map(r=>r.querySelector('.jb-rank').textContent),ours:rows.filter(r=>r.classList.contains('jb-ours')).length,
     inside:rows.every(r=>[...r.querySelectorAll('.jb-figs span')].every(s=>{const q=s.getBoundingClientRect();return q.right<=card.right+1&&q.left>=card.left-1})),
-    chk:rows.map(r=>r.querySelector('a.jb-chk')?.getAttribute('href')||null),farm:document.querySelector('#jb-farm').innerHTML,raw:[...document.querySelectorAll('a')].map(a=>a.href),reading:/Reading the board/.test(document.body.innerText),overflow:document.documentElement.scrollWidth>innerWidth+1}})())`;
+    chk:rows.map(r=>r.querySelector('a.jb-chk[href^="/board"]')?.getAttribute('href')||null),escr:rows.map(r=>r.querySelector('a.jb-chk[href*="/escrow/for/"]')?.getAttribute('href')||null),farm:document.querySelector('#jb-farm').innerHTML,raw:[...document.querySelectorAll('a')].map(a=>a.href),reading:/Reading the board/.test(document.body.innerText),overflow:document.documentElement.scrollWidth>innerWidth+1}})())`;
 for (const [W, H] of [[1440, 900], [390, 844]]) {
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 500 });
   await send('Page.navigate', { url: base + '/jobs?r=' + Date.now() });
@@ -46,6 +46,9 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   // 2026-10-23: each agent with a known id links its checkup on the Plaza Board
   const withId = (b.ranking || []).filter((x) => x.delivered_30d > 0 || x.paid_ever > 0).map((x) => (x.agents || [])[0]?.id || null);
   say(r.chk.length === withId.length && r.chk.every((h, i) => (withId[i] ? h === '/board?agent=' + withId[i] + '#check' : h === null)), `${tag}: a checkup link for every agent with a known id (${withId.filter(Boolean).length} of ${withId.length})`);
+  // 2026-10-23: every provider links its escrow (escrow-for.js)
+  const provs = (b.ranking || []).filter((x) => x.delivered_30d > 0 || x.paid_ever > 0).map((x) => x.provider);
+  say(r.escr.length === provs.length && r.escr.every((h, i) => h === 'https://agent.brainonbnb.com/escrow/for/' + provs[i]), `${tag}: an escrow link for every provider (${r.escr.filter(Boolean).length} of ${provs.length})`);
   if (shots) {
     const full = await ev('JSON.stringify([document.documentElement.scrollWidth,document.documentElement.scrollHeight])').then(JSON.parse);
     await send('Emulation.setDeviceMetricsOverride', { width: W, height: Math.min(full[1], 4000), deviceScaleFactor: 1, mobile: W < 500 });

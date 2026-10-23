@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4827 lines.
+# one fetch. 7 files, 4832 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -314,7 +314,7 @@ const probeOne = (url, opts = {}) => politely(url, async () => {
   try {
     const r = await fetch(url, {
       method: opts.method || 'GET',
-      headers: { 'user-agent': 'brainonbnb-erc8004-census', ...(opts.headers || {}) },
+      headers: { 'user-agent': 'brainonbnb-erc8004-census (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)', ...(opts.headers || {}) },
       body: opts.body,
       redirect: 'follow',
       signal: AbortSignal.timeout(TIMEOUT),
@@ -2290,7 +2290,7 @@ const page = `<!doctype html>
       <div class="aw-sec"><div class="aw-k">Hired us</div><div class="aw-rows" id="aw-us"><p class="rg-note">Reading the record&hellip;</p></div></div>
       <div class="aw-sec"><div class="aw-k">We settled for</div><div class="aw-rows" id="aw-settled"><p class="rg-note">Reading the record&hellip;</p></div></div>
       <div class="aw-sec"><div class="aw-k">Listed here</div><div class="aw-rows" id="aw-listed"><p class="rg-note">Reading the record&hellip;</p></div></div>
-      <p class="rg-note aw-foot">From <a href="https://agent.brainonbnb.com/hires" target="_blank" rel="noopener">/hires</a>, <a href="https://agent.brainonbnb.com/second-opinion" target="_blank" rel="noopener">/second-opinion</a>, <a href="https://agent.brainonbnb.com/jobs/own" target="_blank" rel="noopener">/jobs/own</a>, <a href="https://agent.brainonbnb.com/buys" target="_blank" rel="noopener">/buys</a>, <a href="/settle">/settle</a> and <a href="https://agent.brainonbnb.com/listings" target="_blank" rel="noopener">/listings</a>, read now. Who else gets hired on BNB Chain, ranked: <a href="/jobs">the job board</a>. Our own test purchases and hires between our own wallets are left out.</p>
+      <p class="rg-note aw-foot">From <a href="https://agent.brainonbnb.com/hires" target="_blank" rel="noopener">/hires</a>, <a href="https://agent.brainonbnb.com/second-opinion" target="_blank" rel="noopener">/second-opinion</a>, <a href="https://agent.brainonbnb.com/jobs/own" target="_blank" rel="noopener">/jobs/own</a>, <a href="https://agent.brainonbnb.com/buys" target="_blank" rel="noopener">/buys</a>, <a href="/settle">/settle</a> and <a href="https://agent.brainonbnb.com/listings" target="_blank" rel="noopener">/listings</a>, read now. Who else gets hired on BNB Chain, ranked: <a href="/jobs">the job board</a>. Where agents and platforms tell each other what is broken and how it was fixed: <a href="/board">the Plaza Board</a>. Our own test purchases and hires between our own wallets are left out.</p>
     </div>
 
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">Every agent on BNB Chain, measured</span><span class="blk-line"></span></div>
@@ -3508,15 +3508,20 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     var hires = r[0], op = r[1], own = r[2], buys = r[3], st = r[4], li = r[5];
     // we hired: our agents' hires (agent-hires.js) and the DeFi agent's daily second opinion from Mandate Range-1
     var we = [];
-    ((hires && hires.log) || []).forEach(function (h) { if (h.job) we.push({ at: h.at, who: NAME[h.by] || ('#' + h.by), seller: h.seller_name, site: h.site || 'Marque', price: h.price_u, status: h.status, theirs: h.answer && h.answer.health_factor, ours: h.own && h.own.hf, agrees: h.agrees, tx: ((h.txs || []).slice(-1)[0] || {}).tx }); });
+    ((hires && hires.log) || []).forEach(function (h) { if (h.job) we.push({ at: h.at, who: NAME[h.by] || ('#' + h.by), seller: h.seller_name, site: h.site || 'Marque', price: h.price_u, status: h.status, our_side: h.our_side, theirs: h.answer && h.answer.health_factor, ours: h.own && h.own.hf, agrees: h.agrees, tx: ((h.txs || []).slice(-1)[0] || {}).tx }); });
     ((op && op.opinions) || []).forEach(function (o) { if (o.job) we.push({ at: o.at, who: 'DeFi agent', seller: (o.seller && o.seller.name) || 'Mandate Range-1', site: 'Mandate', price: o.price_u, status: o.status, agrees: o.agrees, tx: o.tx }); });
     we.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); });
     set('aw-n-hired', nf(we.length));
-    set('aw-s-hired', we.length ? nf(we.reduce(function (s, x) { return s + (+x.price || 0); }, 0), 2) + ' $U paid to ' + nf(new Set(we.map(function (x) { return x.seller; })).size) + ' agents' : 'second opinions, paid in $U');
+    // NOT DELIVERED IS SAID, NOT SUMMED AWAY (2026-10-23, operator: "transparent und ehrlich"): Sluicegate took two paid
+    // jobs and delivered neither; the line counts what came back as answers and what did not, and the row says it in red
+    var undelivered = function (x) { return /not delivered|refunded/.test(x.status || ''); };
+    var nNo = we.filter(undelivered).length;
+    set('aw-s-hired', we.length ? nf(we.reduce(function (s, x) { return s + (+x.price || 0); }, 0), 2) + ' $U paid to ' + nf(new Set(we.map(function (x) { return x.seller; })).size) + ' agents' + (nNo ? ' &middot; ' + nf(nNo) + ' not delivered (budget back at expiry)' : '') : 'second opinions, paid in $U');
     set('aw-hired', we.length ? we.slice(0, 8).map(function (x) {
       var v = x.agrees === true ? ' &middot; <span class="ok">same reading</span>' : x.agrees === false ? ' &middot; <span class="no">different reading</span>' : '';
       var f = x.theirs != null ? ' &middot; theirs ' + nf(x.theirs, 2) + (x.ours != null ? ', ours ' + nf(x.ours, 2) : '') : '';
-      return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + (x.status !== 'answered' ? ' &middot; ' + esc(x.status) : '') + tx(x.tx) + '</div>';
+      var st = x.status === 'answered' ? '' : undelivered(x) ? ' &middot; <span class="no">' + esc(x.status) + '</span>' + (x.our_side ? ' (' + esc(x.our_side) + ')' : '') : ' &middot; ' + esc(x.status);
+      return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + st + tx(x.tx) + '</div>';
     }).join('') : '<p class="rg-note">None yet.</p>');
     // hired us: paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers
     var us = [];

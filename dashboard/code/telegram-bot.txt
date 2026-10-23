@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5743 lines.
+# one fetch. 12 files, 5762 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3138,7 +3138,11 @@ async function postWhaleAlert(data, official = true) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const text = renderWhaleAlert(data);
   if (!text) return false;
+  // one alert per move (2026-10-23), as the buy alert: two overlapping ticks rescan the same blocks from the same cursor
+  const gateKey = `${data.txHash}:${data.kind}:${data.from || ''}:${data.to || ''}`;
+  if (!(await claimAlert(WHALE_ENV, 'whale', gateKey))) return true;   // another tick told it
   const ok = await tgSend(text);
+  if (!ok) { await releaseAlert(WHALE_ENV, 'whale', gateKey); return false; }
   if (official && whaleAlertIsPublic(data)) await tgSend(text, TG_CHAT_ID);
   return ok;
 }
@@ -4440,6 +4444,17 @@ export default {
       return new Response(JSON.stringify({ ok: !!sent, went_out_as: sent || null, photo_refused: lastPhotoRefusal, caption: lastCaption, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
+    // THE GATE, ASKED LIVE (2026-10-23): claims one throwaway key twice and releases it — [true, false] proves the
+    // Durable Object answers and refuses a second claim. Operator only (the broadcast secret); sends nothing.
+    if (url.pathname === '/gate-check' && request.method === 'POST') {
+      if (!env.BROADCAST_SECRET || (request.headers.get('x-broadcast-secret') || '') !== env.BROADCAST_SECRET) return new Response('{"ok":false,"error":"unauthorized"}', { status: 401 });
+      const k = 'selftest-' + Date.now();
+      const first = await claimAlert(env, 'check', k), second = await claimAlert(env, 'check', k);
+      await releaseAlert(env, 'check', k);
+      const third = await claimAlert(env, 'check', k);
+      await releaseAlert(env, 'check', k);
+      return new Response(JSON.stringify({ ok: first === true && second === false && third === true, bound: !!env.GATE, claims: [first, second, third] }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/broadcast' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';
       const want = env.BROADCAST_SECRET || '';
@@ -5764,7 +5779,11 @@ export default {
 
       // Only alert if burn increased by at least 1000 BOBAI (avoid spam from rounding)
       if (currentBurned > lastBurned + 1000) {
-        const sent = await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice);
+        // one alert per burn total (2026-10-23): two overlapping ticks read the same old last_burned
+        const burnKey = String(Math.floor(currentBurned));
+        const mine = await claimAlert(env, 'burn', burnKey);
+        const sent = mine ? await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice) : true;
+        if (mine && !sent) await releaseAlert(env, 'burn', burnKey);
         // A BURN THAT CANNOT BE TOLD IS WRITTEN DOWN ONCE (2026-10-09): `burn_stuck_since` is set the first tick an
         // owed alert does not go out (no price, Telegram refused) and removed once one does — a write only on a
         // failure and on the recovery. /health serves it; the health check is red when it is over an hour old.

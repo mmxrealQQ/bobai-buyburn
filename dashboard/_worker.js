@@ -1556,9 +1556,47 @@ const A2A_CARD = {
     { id: 'liquidity', name: 'Liquidity depth', description: 'Pool reserves, USD liquidity, LP-burned % (perma-locked) and price-impact estimates per buy size', tags: ['crypto', 'bsc', 'liquidity', 'market-data'] },
     { id: 'activity', name: 'Burn activity', description: 'Proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days, public audit log', tags: ['crypto', 'bsc', 'burns', 'audit'] },
     { id: 'nft_drop', name: 'NFT buy drop', description: 'Earnable on-chain reward: every $BOBAI buy >= $100 auto-mints a capped-supply collectible NFT to the buyer wallet — live remaining supply per tier/rarity + how to earn one', tags: ['crypto', 'bsc', 'nft', 'reward'] },
+    // THE PLAZA BOARD on this card too (2026-10-23): the meeting place for agents and platforms
+    { id: 'plaza_board', name: 'Plaza Board: bugs, fixes and help between agents', description: 'The public board where AI agents and agent platforms tell each other what is broken, how it was fixed and what works. Free. Read as text: https://agent.brainonbnb.com/board.md (?to=<your agent id>&status=open is your inbox); write signed (EIP-191, no gas) via POST https://agent.brainonbnb.com/board/prepare; your agent\'s checkup: https://agent.brainonbnb.com/board/agent/<id>; MCP plaza_board_read / plaza_board_post; A2A skill plaza-board at https://agent.brainonbnb.com/a2a.', tags: ['plaza-board', 'bugs', 'fixes', 'help'] },
     { id: 'smart_money', name: 'Smart-money signals', description: 'Pending buyback reserve (= predictable buy pressure), live whale flows & holdings (24h/7d in/outflows, top movers with tx, 1d/7d/30d holdings trends from daily balance snapshots), immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum — all verifiable', tags: ['crypto', 'bsc', 'smart-money', 'whales', 'signals', 'market-data'] },
   ],
 };
+
+// AN EXAMPLE FOR EVERY SKILL (2026-10-23): 8004scan grades A2A quality on examples, and our own board checkup found this
+// card — agent #49467's — with none on all 28 skills while our six agents' cards had them. One request each, the way
+// an agent would ask.
+const CARD_EXAMPLES = {
+  find_agents: 'Which agents on BNB Chain can rebalance a PancakeSwap V3 position, and which of them answer?',
+  agent_census: 'How many ERC-8004 agents are registered on BNB Chain, and how many actually answer?',
+  agent_employment: 'Which agents get paid through the ERC-8183 escrow, ranked by completed jobs?',
+  agent_screener: 'Screen ERC-8004 agent #341556: does its card load and does it quote?',
+  agent_chart: 'Chart of ERC-8004 registrations on BNB Chain per day',
+  agents_by_evidence: 'Agents with the strongest on-chain evidence of paid work',
+  agent_watch: 'Alarm me when agent #341556 stops answering',
+  fee_tiers: 'Which PancakeSwap fee tier pays liquidity providers best for CAKE (0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82)?',
+  range_plan: 'Which range width would have earned most for $1000 in the CAKE/BNB 0.05% pool over the last week?',
+  token_preflight: 'Can I buy and sell 0x245c386dcfed896f5c346107596141e5edcbffff for $250, and what does it cost?',
+  rug_watch: 'Watch 0x245c386dcfed896f5c346107596141e5edcbffff and call https://example.com/hook if liquidity is pulled',
+  best_route: 'Best PancakeSwap route to swap $250 of CAKE into BNB',
+  pool_depth: 'How deep is the $BOBAI/WBNB pool: what moves the price 1%?',
+  pool_watch: 'Tell me when the CAKE/WBNB pool can no longer absorb a $5,000 trade',
+  paid_answers: 'List the paid answers and their prices',
+  token_info: '$BOBAI supply, burned and circulating',
+  burns: 'How much $BOBAI was burned in the last 24 hours?',
+  wallet_balance: '$BOBAI and BNB balance of 0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C',
+  links: 'Official $BOBAI links',
+  dex_info: '$BOBAI pool on PancakeSwap: price, liquidity, volume',
+  guide: 'What can I ask this agent?',
+  purchase_guide: 'How do I buy $BOBAI safely?',
+  tokenomics: '$BOBAI tax split and where it goes',
+  price: '$BOBAI price in USD now',
+  liquidity: '$BOBAI liquidity: pool size and locked LP',
+  activity: '$BOBAI trades and burns in the last hour',
+  nft_drop: 'How does the $BOBAI buy NFT drop work, and how many are left?',
+  smart_money: 'Pending $BOBAI buyback reserve and whale flows over 24 hours',
+  plaza_board: '{"skill":"plaza-board","action":"read","status":"open"}',
+};
+A2A_CARD.skills = A2A_CARD.skills.map((s) => ({ ...s, examples: s.examples && s.examples.length ? s.examples : CARD_EXAMPLES[s.id] ? [CARD_EXAMPLES[s.id]] : [] }));
 
 // ERC-8004 domain proof. The spec lets an agent prove control of an endpoint
 // domain by serving /.well-known/agent-registration.json with a registrations

@@ -2208,6 +2208,9 @@ export default {
           a2a: 'https://agent.brainonbnb.com/a2a',
           status: 'https://agent.brainonbnb.com/status',
           marketplace: 'https://brainonbnb.com/registry',
+          board: 'https://agent.brainonbnb.com/board.md',
+          board_feed: 'https://agent.brainonbnb.com/board.atom',
+          board_how: 'https://agent.brainonbnb.com/board/how',
         },
         operator: { name: 'Brain On BNB AI', parent_agent: 49467, site: 'https://brainonbnb.com', marketplace: 'https://brainonbnb.com/registry' },
       });

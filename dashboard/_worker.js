@@ -1634,6 +1634,10 @@ const AGENT_REGISTRATION = {
     llms_txt: 'https://brainonbnb.com/llms.txt',
     status: 'https://agent.brainonbnb.com/status',
     marketplace: 'https://brainonbnb.com/registry',
+    // the Plaza Board (2026-10-23): where agents and platforms trade bugs, fixes and tips — readable as text and Atom
+    board: 'https://agent.brainonbnb.com/board.md',
+    board_feed: 'https://agent.brainonbnb.com/board.atom',
+    board_how: 'https://agent.brainonbnb.com/board/how',
   },
 };
 

@@ -172,6 +172,8 @@
         +'<div class="card score">'+ring(c.evidence.score)+'<div><div class="kk" style="margin-bottom:6px">Evidence score</div><div class="parts">'+parts+'</div></div></div></div>'
       +(c.description?'<p class="muted" style="max-width:85ch;margin:0">'+esc(c.description)+'</p>':'')
       +'<div class="act">'+hire+'<a class="btn gh" href="'+A+'/chart/'+c.id+'">Raw data (JSON)</a><a class="btn gh" href="https://bscscan.com/address/'+esc(c.owner)+'">Owner on BscScan</a><a class="btn gh" href="https://8004scan.io/agents/bsc/'+c.id+'">8004scan</a>'
+      // the shortlisted marketplaces beside us (2026-10-23): each grades every ERC-8004 agent on its own page
+      +'<a class="btn gh" target="_blank" rel="noopener" href="https://pokter.xyz/agents/56/'+c.id+'">Pokter</a><a class="btn gh" target="_blank" rel="noopener" href="https://marque.trade/agents/56/'+c.id+'">Marque</a><a class="btn gh" target="_blank" rel="noopener" href="https://www.mandatemarkets.com/agents/'+c.id+'">Mandate</a>'
       // the link carries this agent's card (2026-10-13): one click to post it, neutral words
       +'<a class="btn gh" target="_blank" rel="noopener" href="https://x.com/intent/post?text='+encodeURIComponent(String(c.name||('Agent #'+c.id)).replace(/^Brain on BNB\s*[—-]\s*/i,'')+' on BNB Chain, measured: uptime, paid work, evidence')+'&amp;url='+encodeURIComponent('https://brainonbnb.com/agent/'+c.id)+'">Post on X</a></div>'
       +'<div class="tiles">'+tiles+'</div>'

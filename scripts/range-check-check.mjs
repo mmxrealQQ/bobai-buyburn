@@ -63,5 +63,13 @@ const lpSrc = fs.readFileSync(path.join(ROOT, 'worker-agent', 'lp-service.js'), 
 const sellSrc = fs.readFileSync(path.join(ROOT, 'worker-agent', 'sell.js'), 'utf8');
 is('5  the DeFi agent: not a WBNB pair = the range check, not a decline', /if \(!facts\.against_wbnb\) \{\s*const rc = await lpRangeCheck/.test(lpSrc) && !/is not against WBNB\. The DeFi agent plans only WBNB pairs/.test(sellSrc));
 
+// 6 (2026-10-23, SafeHire): the shared /a2a answers a request that names one of our agents as that agent
+const named = sell.ownAgentNamed || (() => null);
+const sh = { skill: 'negotiate', service: 'lp_position_plan', task_description: JSON.stringify({ erc8004_token_id: 363709, schema_version: 'safehire-external-hire-v2', task_input: { mode: 'quote_preview' } }) };
+is('6  a token id inside a JSON task names our agent', named(sh) === 'defi-agent' && named({ request: { task_description: JSON.stringify({ erc8004_token_id: 302258 }) } }) === 'grid-trader');
+is('6  a service only one agent sells names it; nothing named = null', named({ service: 'health_factor' }) === 'health-factor' && named({ skill: 'list' }) === null);
+const catSrc = fs.readFileSync(path.join(ROOT, 'worker-agent', 'catalog.js'), 'utf8');
+is('6  the ids agree with catalog.js SOLD_BY', Object.entries(sell.OWN_AGENT_BY_ID || {}).length === 6 && Object.entries(sell.OWN_AGENT_BY_ID || {}).every(([id, slug]) => new RegExp(`slug: '${slug}', agent: ${id}`).test(catSrc)));
+
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

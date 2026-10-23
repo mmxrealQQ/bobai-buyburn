@@ -532,6 +532,23 @@ function misdirected(forced, wanted, data) {
   return `This agent sells ${forced} (${SERVICES[forced].name}). What you describe is ${guessed.id} (${guessed.name}): ask ${there} for it over the ERC-8183 escrow, or buy it per answer over x402 at https://agent.brainonbnb.com/answer?service=${guessed.id}.`;
 }
 
+// ONE OF OURS, NAMED ON THE SHARED ENDPOINT (2026-10-23): SafeHire asks every listed agent at /a2a with its ERC-8004
+// token id inside a JSON task ({"erc8004_token_id":363709,…}) and skill "negotiate" + service. The DeFi agent's was
+// answered "ask /defi-agent/a2a" and the other five were quoted by the shared provider rather than by the agent named.
+// A request that names one of our agents — by token id, or by a service only one agent sells — is answered as that
+// agent's own endpoint answers it. Ids as in catalog.js SOLD_BY (pinned by scripts/range-check-check.mjs).
+export const OWN_AGENT_BY_ID = { 302257: 'health-factor', 302258: 'grid-trader', 304493: 'yield-optimizer', 304494: 'rebalancer', 310460: 'lp-placement', 363709: 'defi-agent' };
+export function ownAgentNamed(data = {}) {
+  const tryJson = (s) => { try { return typeof s === 'string' && s.trim().startsWith('{') ? JSON.parse(s) : null; } catch { return null; } };
+  const inner = [data, data.request, tryJson(data.task_description), tryJson(data.request?.task_description), tryJson(data.task)].filter((x) => x && typeof x === 'object');
+  for (const o of inner) {
+    const tid = String(o.erc8004_token_id ?? o.agent_id ?? o.agentId ?? o.token_id ?? '');
+    if (OWN_AGENT_BY_ID[tid]) return OWN_AGENT_BY_ID[tid];
+  }
+  for (const o of inner) if (typeof o.service === 'string' && SLUG_OF[o.service]) return SLUG_OF[o.service];
+  return null;
+}
+
 export async function handleA2A(request, env, opts = {}) {
   let body;
   try { body = await request.json(); } catch { return rpcErr(null, -32700, 'not JSON'); }
@@ -541,6 +558,7 @@ export async function handleA2A(request, env, opts = {}) {
   }
 
   const { data, text } = dataParts(body?.params?.message);
+  if (!opts.agent) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
   const skill = String(data.skill || data.method || '').toLowerCase();
   // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it
   // (agent-wallets.js, 2026-10-21), on the shared one the provider. A quote names the wallet of the agent whose

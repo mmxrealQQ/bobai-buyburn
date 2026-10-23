@@ -22,7 +22,7 @@
 //
 //   POST /run            (X-Broadcast-Secret)  run now, answer as JSON
 //   POST /run?notify=1   (X-Broadcast-Secret)  … and send the Telegram message
-import { runHealth, runLight, readBuybackLook, buybackWalletVerdict, msToSecondLook } from '../scripts/lib/health-checks.mjs';
+import { runHealth, runLightFull, dispatchNote, readBuybackLook, buybackWalletVerdict, msToSecondLook } from '../scripts/lib/health-checks.mjs';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -123,9 +123,21 @@ async function buybackSecondLook(env, prior, { notify }) {
 // the bot's /broadcast; when that fails (the bot is what broke), an e-mail through Resend is the second way, if its
 // secrets are set (RESEND_API_KEY, ALERT_EMAIL_TO); without them it is logged and skipped.
 export const LIGHT_CRON = '40 * * * *';
-export function renderLightMessage(failing, at) {
+export function renderLightMessage(failing, at, note = '') {
   return [`🚨 <b>Health ${at} UTC</b> · hourly look: ${failing.length} FAILING (twice, a minute apart)`, '',
-    ...failing.map((r) => `❌ <b>${esc(r.area)}</b> · ${esc(r.name)}${r.detail ? `\n     <i>${esc(String(r.detail).slice(0, 160))}</i>` : ''}`)].join('\n');
+    ...failing.map((r) => `❌ <b>${esc(r.area)}</b> · ${esc(r.name)}${r.detail ? `\n     <i>${esc(String(r.detail).slice(0, 160))}</i>` : ''}`),
+    ...(note ? ['', esc(note)] : [])].join('\n');
+}
+// EVERY RED LOOK IS KEPT (2026-10-23): the red of 23.10. 03:40 UTC could not be read back afterwards — the message
+// lived only in Telegram. The last 50 red looks, with the heartbeat ages and how late the look was started, in the
+// agent worker's KV (health:light-log). Read: wrangler kv key get health:light-log --remote.
+export const LIGHT_LOG_KEY = 'health:light-log';
+async function keepLightLog(env, entry) {
+  if (!env.AGENT) return;
+  try {
+    const prev = JSON.parse((await env.AGENT.get(LIGHT_LOG_KEY)) || '[]');
+    await env.AGENT.put(LIGHT_LOG_KEY, JSON.stringify([entry, ...prev].slice(0, 50)));
+  } catch (e) { console.log('[HEALTH] light log not kept:', e && e.message || e); }
 }
 async function sendOperator(env, text) {
   const r = await env.TG.fetch('https://tg/broadcast', {
@@ -145,13 +157,18 @@ export async function emailFallback(env, text, doFetch = fetch) {
   }).catch((e) => ({ ok: false, status: 0, e }));
   return r && r.ok ? 'sent' : `refused (${r && r.status})`;
 }
-async function lightRun(env, { notify, pauseMs = 60000 }) {
-  const once = async () => { try { return await runLight({ tgFetch: (url, init) => env.TG.fetch(url, init) }); } catch (e) { return [{ area: 'Health', name: 'the hourly look itself completed', good: false, detail: e && e.message || String(e) }]; } };
+async function lightRun(env, { notify, pauseMs = 60000, scheduledTime = null }) {
+  // how late Cloudflare started this look (0 when run by hand)
+  const lookLateMin = scheduledTime ? Math.max(0, (Date.now() - scheduledTime) / 6e4) : 0;
+  let ages = {};
+  const once = async () => { try { const r = await runLightFull({ tgFetch: (url, init) => env.TG.fetch(url, init) }); ages = r.ages; return r.results; } catch (e) { return [{ area: 'Health', name: 'the hourly look itself completed', good: false, detail: e && e.message || String(e) }]; } };
   const first = await once();
   let failing = first.filter((r) => !r.good);
   if (failing.length) { await new Promise((r) => setTimeout(r, pauseMs)); failing = failedTwice(first, await once()); }
   if (!failing.length) { console.log('[HEALTH] hourly look: all green'); return { checks: first.length, failing: [], sent: null }; }
-  const text = renderLightMessage(failing, new Date().toISOString().slice(0, 16).replace('T', ' '));
+  const note = dispatchNote(failing, ages, lookLateMin);
+  const text = renderLightMessage(failing, new Date().toISOString().slice(0, 16).replace('T', ' '), note);
+  if (notify) await keepLightLog(env, { at: new Date().toISOString(), look_late_min: +lookLateMin.toFixed(1), ages, failing: failing.map((r) => ({ name: r.name, detail: r.detail })), note });
   let sent = null, fallback = null;
   // ONCE PER PROBLEM, NOT EVERY HOUR (2026-10-09): a red that lasts was sent at every hourly look — up to 24 messages.
   // The same failing set is told again only after 6 h; a new or different red is told at once. Kept in the edge cache
@@ -173,7 +190,7 @@ async function lightRun(env, { notify, pauseMs = 60000 }) {
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event && event.cron === LIGHT_CRON) { ctx.waitUntil(lightRun(env, { notify: true })); return; }
+    if (event && event.cron === LIGHT_CRON) { ctx.waitUntil(lightRun(env, { notify: true, scheduledTime: event.scheduledTime })); return; }
     ctx.waitUntil(morningRun(env, { notify: true, secondLook: true, scheduled: true }));
   },
   async fetch(request, env) {

@@ -295,8 +295,32 @@ export function lightVerdicts(tg, logs, now = Date.now()) {
   return out;
 }
 export async function runLight({ tgFetch = fetch } = {}) {
+  return (await runLightFull({ tgFetch })).results;
+}
+// The same look, with each bot's heartbeat age in minutes (null = none): the three crons that tick on their own —
+// the Telegram bot (heartbeat every tenth minute), the buyback bot (every ten minutes), the dev buyback (hourly).
+export async function runLightFull({ tgFetch = fetch, now = Date.now() } = {}) {
   const [t, l] = await Promise.all([getJson(`${TG_BOT}/health`, undefined, tgFetch), getJson(`${LOGS}/health`)]);
-  return lightVerdicts(t.json || (t.error ? { error: t.error } : null), l.json || null);
+  const tg = t.json || (t.error ? { error: t.error } : null), logs = l.json || null;
+  const min = (iso) => (iso ? Math.round((now - Date.parse(iso)) / 6e4) : null);
+  return { results: lightVerdicts(tg, logs, now), ages: { tg: tg && typeof tg.age_seconds === 'number' ? Math.round(tg.age_seconds / 60) : null, buyback: min(logs && logs.buyback), dev: min(logs && logs.devBuyback) } };
+}
+
+// IS IT US OR CLOUDFLARE (2026-10-23). On 23.10. the hourly look went red at 03:40 UTC while every bot was healthy:
+// Cloudflare started cron ticks up to 13 minutes late (the buyback bot's 03:50 tick ran at 04:03, its 04:00 tick at
+// 04:05:59). A late heartbeat reads the same whether a bot is stuck or its tick was not started. Two witnesses tell
+// them apart: how late Cloudflare started this look itself (scheduledTime vs now), and whether every bot is late
+// together (each against its own rhythm: TG 10 min, buyback 10 min, dev buyback 60 min) or only one. Pure.
+export const LATE_RHYTHM_MIN = { tg: 10, buyback: 10, dev: 60 };
+export function dispatchNote(failing, ages = {}, lookLateMin = 0) {
+  const beats = (failing || []).filter((r) => /cron alive|ran recently/.test(r.name));
+  if (!beats.length) return '';
+  const late = Object.keys(LATE_RHYTHM_MIN).filter((k) => ages[k] == null || ages[k] > LATE_RHYTHM_MIN[k] + 2);
+  const said = (k) => `${{ tg: 'TG bot', buyback: 'buyback', dev: 'dev buyback' }[k]} ${ages[k] == null ? 'none' : ages[k] + ' min'}`;
+  const all = Object.keys(LATE_RHYTHM_MIN).map(said).join(', ');
+  if (lookLateMin >= 2 || late.length === Object.keys(LATE_RHYTHM_MIN).length)
+    return `☁️ Likely Cloudflare, not a stuck bot: ${lookLateMin >= 2 ? `this look itself was started ${Math.round(lookLateMin)} min late` : 'every bot is late together'} (last ticks: ${all}).`;
+  return `🔎 Only ${late.map(said).join(' and ')} — the other bots tick on time, so look at ${late.length === 1 ? 'this one' : 'these'} (last ticks: ${all}).`;
 }
 
 // `rpc`: explicit, so the gas section reads the same node the bots spend

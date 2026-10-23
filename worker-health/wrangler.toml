@@ -17,3 +17,8 @@ service = "bobai-tg-bot"
 
 # Secret: BROADCAST_SECRET (the same one the bot's /broadcast asks for).
 # Optional (2026-10-09, not set yet): RESEND_API_KEY + ALERT_EMAIL_TO, the e-mail way when /broadcast fails.
+
+# Every red hourly look is kept (2026-10-23): key health:light-log in the agent worker's namespace
+[[kv_namespaces]]
+binding = "AGENT"
+id = "ebebebbecec1485aa74ef1f14417c120"

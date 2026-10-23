@@ -25,6 +25,17 @@ import { deliverJob, readJob } from './sell.js';
 import { ourAccounts } from './agent-wallets.js';
 import { addCandidates } from './public-settle.js';
 
+export function refusedMessage(jobId, reason) {
+  return `🔴 <b>We did not deliver a paid job</b>: ${jobId} — ${String(reason).replace(/^could not complete job \d+: /, '').slice(0, 300)}\nThe buyer's budget returns at expiry. https://agent.brainonbnb.com/jobs/watch`;
+}
+async function tellRefused(env, jobId, reason) {
+  if (!env.TG || !env.BROADCAST_SECRET) return false;
+  try {
+    const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text: refusedMessage(jobId, reason) }) }).then((x) => x.json());
+    return r?.ok === true;
+  } catch { return false; }
+}
+
 const CURSOR_KEY = 'jobs:watch:id';
 const OPEN_KEY = 'jobs:watch:open';
 const RETRY_KEY = 'jobs:watch:retry';
@@ -101,6 +112,9 @@ export async function watchFundedJobs(env, rpc) {
     const old = JSON.parse((await env.AGENT.get(REFUSED_KEY)) || '{}');
     const all = Object.entries({ ...old, ...refusedNow }).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 20);
     if (Object.keys(refusedNow).some((k) => old[k]?.reason !== refusedNow[k].reason)) await env.AGENT.put(REFUSED_KEY, JSON.stringify(Object.fromEntries(all)));
+    // A PAID JOB WE DID NOT DELIVER IS TOLD (2026-10-23): Marque job 57037, a real buyer's grid, was refused on 20.10.
+    // and nobody saw it for three days. The operator gets one private Telegram message per newly refused job.
+    for (const k of Object.keys(refusedNow).filter((x) => !old[x])) await tellRefused(env, k, refusedNow[k].reason);
   }
 
   // Writes only when something changed: the cursor moves about six times a

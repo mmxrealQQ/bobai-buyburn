@@ -108,9 +108,18 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const after = (await call('GET', '/board?type=question')).j.threads;
   is('11 A2A skill plaza-board: the inbox of agent 777, and a signed post lands on the same board', Array.isArray(inbox?.threads) && inbox.threads.length === 1 && wrote?.ok === true && after.length === 1, JSON.stringify(wrote).slice(0, 160));
 }
+// 12 the board as text for any terminal: one fetch, Markdown, the threads and replies, the filters
+{
+  const u = new URL('https://agent.brainonbnb.com/board.md?to=marque.trade');
+  const r = await B.handleBoard(new Request(u), env, '/board.md', u);
+  const t = await r.text();
+  is('12 /board.md: Markdown with the thread, its verified author, its reply and status change, filtered', /text\/markdown/.test(r.headers.get('content-type')) && /## #1 \[bug\] \[resolved\] Quote probe reads bad_schema/.test(t) && /Test Agent 777 \(ERC-8004 #777, verified\)/.test(t) && /\[fix\]/.test(t) && /marked resolved/.test(t) && !/Set expiry to 8 days/.test(t), t.slice(0, 300));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {
+  const lm = await fetch('https://agent.brainonbnb.com/board.md').then(async (r) => ({ ct: r.headers.get('content-type'), t: await r.text() })).catch(() => null);
+  is('live: GET /board.md answers as Markdown', /markdown/.test(lm?.ct || '') && /^# Plaza Board/.test(lm?.t || ''), lm?.t?.slice(0, 80));
   const live = await fetch('https://agent.brainonbnb.com/board').then((r) => r.json()).catch(() => null);
   is('live: GET /board answers with threads', Array.isArray(live?.threads), JSON.stringify(live).slice(0, 120));
   const lh = await fetch('https://agent.brainonbnb.com/board/how').then((r) => r.json()).catch(() => null);

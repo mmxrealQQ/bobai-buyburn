@@ -24,7 +24,11 @@ import { accountForAgent } from './agent-wallets.js';
 export const HIRES = [
   { by: 302257, slug: 'health-factor', seller: 341556, sellerName: 'Keel', site: 'Marque',
     task: (w) => `Venus health factor of ${w} on BNB Chain: health factor, liquidation price and the repay that restores a safe level` },
+  // PAUSED 23.10. (operator: "ja, 1"): Sluicegate accepted job 57047 (22.10.) and job 57055 (23.10.) — "delivery
+  // started" — and submitted neither; Keel and Bound deliver within minutes. Nothing more is paid to it; both budgets
+  // come back through claimRefund at expiry (refundUndelivered).
   { by: 304493, slug: 'yield-optimizer', seller: 341555, sellerName: 'Sluicegate', site: 'Marque',
+    paused: 'accepted jobs 57047 (22 Oct) and 57055 (23 Oct) and delivered neither',
     task: (w) => `Best stablecoin yield on Venus on BNB Chain for the USDC and USDT of wallet ${w}: which market pays more today` },
   // Plinth keeper (#363619, 0.01 $U) was hired once on 22.10. (job 57045) and answered that it cannot read PancakeSwap
   // positions at all: paying it daily would buy nothing. Bound is Marque's own rebalancing reference (warranted MCS-REB-1).
@@ -190,7 +194,8 @@ export async function collectDeliveries(env, { now = Date.now() } = {}) {
   KEYED.url = env.BSC_RPC_KEYED_URL_2 || null;
   const list = await readHires(env);
   // (the first three rows, 22.10. ~07:5x UTC, were written 'answered' at funding: an answer without a url is still open)
-  const open = list.filter((r) => r.job && (/delivering|not told/.test(r.status) || (r.status === 'answered' && !r.answer?.url)) && now - Date.parse(r.at) < 3 * 86400e3);
+  // open until the job's expiry (8+ days): a seller that delivers late is still read (2026-10-23, was 3 days)
+  const open = list.filter((r) => r.job && (/delivering|not told|not delivered$/.test(r.status) || (r.status === 'answered' && !r.answer?.url)) && now - Date.parse(r.at) < 10 * 86400e3);
   for (const r of open) {
     const job = await readJobNow(r.job).catch(() => null);
     if (!job || !['SUBMITTED', 'COMPLETED'].includes(job.status)) continue;
@@ -207,12 +212,59 @@ export async function collectDeliveries(env, { now = Date.now() } = {}) {
   return open.length;
 }
 
+// NOT DELIVERED, SAID AND REFUNDED (2026-10-23, operator: "ja, 1 — und dann publizieren, dass er nicht liefert").
+// Sluicegate accepted two funded jobs and submitted neither, and nothing ever asked for the budgets back. Every quarter
+// hour each funded hire is read: a job still FUNDED a day after funding is published as "accepted, not delivered" (the
+// /hires record, which /venus and Brain Plaza show); once the kernel's expiry has passed, the hiring agent's own wallet
+// calls claimRefund — simulated first, the receipt checked, the job read back as EXPIRED — and the row says
+// "not delivered, budget refunded" with the transaction. Pure part (undeliveredStep) pinned by agent-hires-check.
+export const NOT_DELIVERED = 'accepted, not delivered';
+export const REFUNDED = 'not delivered, budget refunded';
+export function undeliveredStep(row, job, now = Date.now()) {
+  if (!row?.job || !job || [REFUNDED].includes(row.status)) return null;
+  if (!/delivering|not told|not delivered$/.test(row.status || '')) return null;
+  if (job.status === 'EXPIRED') return 'mark-refunded';
+  if (job.status !== 'FUNDED') return null;
+  if (job.expired_at && now > job.expired_at * 1000 + 60e3) return 'refund';
+  if (now - Date.parse(row.at) > 86400e3 && row.status !== NOT_DELIVERED) return 'mark-undelivered';
+  return null;
+}
+const CLAIM_REFUND = (jobId) => '0x5b7baf64' + BigInt(jobId).toString(16).padStart(64, '0');
+export async function refundUndelivered(env, { now = Date.now(), dry = false } = {}) {
+  const list = await readHires(env);
+  const out = [];
+  for (const r of list.filter((x) => x.job && /delivering|not told|not delivered$/.test(x.status || ''))) {
+    const job = await readJobNow(r.job).catch(() => null);
+    const step = undeliveredStep(r, job, now);
+    if (!step) continue;
+    if (step === 'mark-undelivered') { if (!dry) await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at }); out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-refunded') { if (!dry) await log(env, { ...r, status: REFUNDED }); out.push({ job: r.job, step }); continue; }
+    const h = HIRES.find((x) => x.by === r.by);
+    const self = h ? await accountForAgent(env, h.slug) : { account: null };
+    if (!self.account || self.account.address.toLowerCase() !== String(job.client).toLowerCase()) { out.push({ job: r.job, step, error: 'the client wallet\'s key is not here' }); continue; }
+    const transport = fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+    const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account: self.account, chain: bsc, transport });
+    try {
+      await pub.call({ account: self.account, to: ERC8183.commerce, data: CLAIM_REFUND(r.job) });
+      if (dry) { out.push({ job: r.job, step, simulated: true }); continue; }
+      const hash = await wal.sendTransaction({ to: ERC8183.commerce, data: CLAIM_REFUND(r.job), gasPrice: GAS_PRICE });
+      const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+      const after = await readJobNow(r.job).catch(() => null);
+      const ok = rc.status === 'success' && after?.status === 'EXPIRED';
+      await log(env, { ...r, status: ok ? REFUNDED : r.status, refund_tx: hash, refund_ok: ok });
+      out.push({ job: r.job, step, tx: hash, ok });
+    } catch (e) { out.push({ job: r.job, step, error: String(e.shortMessage || e.message || e).slice(0, 160) }); }
+  }
+  return out;
+}
+
 // The day's hires, after the Venus agents' 05:00 run (their own reading is fresh). Off unless AGENT_HIRES is "on".
 export const agentHiresDue = (d) => d.getUTCHours() === 5 && d.getUTCMinutes() >= 30 && d.getUTCMinutes() < 45;
 export async function runAgentHires(env, { ctx = {}, dry = false } = {}) {
   if (env.AGENT_HIRES !== 'on' && !dry) return { off: true };
   const out = [];
   for (const h of HIRES) {
+    if (h.paused) { out.push({ by: h.by, seller: h.seller, seller_name: h.sellerName, status: 'paused', reason: h.paused }); continue; }
     try { out.push(await hireOnce(env, h, { ctx: ctx[h.by] || {}, dry })); }
     catch (e) { out.push(await log(env, { at: new Date().toISOString(), by: h.by, seller: h.seller, seller_name: h.sellerName, status: 'failed', reason: String(e.message || e).slice(0, 200) })); }
   }

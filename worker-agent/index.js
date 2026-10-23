@@ -78,7 +78,7 @@ import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.j
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
-import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries } from './agent-hires.js';
+import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refundUndelivered } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 import { holdersTick, seedHolders, readHolders } from './holders.js';
@@ -3450,7 +3450,7 @@ ${pageTail}`;
       return json({
         what: 'Our agents hiring outside agents for their own work, once a day after the Venus run (05:30 UTC), each from its own ERC-8004 agentWallet through the ERC-8183 escrow, at the price the seller quotes and signs. An agent hires only where it holds something an outside agent can check, and the answer stands beside its own reading: the Venus health factor monitor (it holds a small Venus loan) asks Keel; the Venus yield ranking (it holds stablecoins on Venus) asks Sluicegate; the DeFi agent (it runs our CAKE/BNB position) asks Bound. The other three hold nothing of their own and hire nobody.',
         switched_on: env.AGENT_HIRES === 'on',
-        hires: HIRES.map((h) => ({ by: h.by, seller: h.seller, seller_name: h.sellerName, site: h.site })),
+        hires: HIRES.map((h) => ({ by: h.by, seller: h.seller, seller_name: h.sellerName, site: h.site, ...(h.paused ? { paused: h.paused } : {}) })),
         rails: 'once a UTC day per hire, at most 0.15 $U a quote, in $U only, every call simulated before it is sent, the job read back on chain; settled after the 7-day dispute window by the public settle',
         code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/agent-hires.js)',
         log: await readHires(env),
@@ -3818,7 +3818,8 @@ ${pageTail}`;
     // Our agents hire outside agents for their own work, after the Venus run (agent-hires.js, 2026-10-22; off unless AGENT_HIRES is "on")
     if (agentHiresDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(hireContext(env).then((c) => runAgentHires(env, { ctx: c })).catch(() => {}));
     // and the answers they bought, picked up from the chain once the sellers submit (every quarter hour; only open hires)
-    if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).catch(() => {}));
+    // a delivery first, then what was not delivered: said after a day, refunded after the expiry (2026-10-23)
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).then(() => refundUndelivered(env)).catch(() => {}));
     // every $BOBAI holder, kept from the Transfer logs (holders.js, 2026-10-22)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)

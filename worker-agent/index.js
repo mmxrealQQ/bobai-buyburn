@@ -90,6 +90,7 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refundUndelivered } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runPublicRefund, readPublicRefund } from './public-refund.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 import { holdersTick, seedHolders, readHolders } from './holders.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
@@ -3436,12 +3437,19 @@ ${pageTail}`;
     // EVERY AGENT'S FINISHED JOBS, SETTLED (public-settle.js, 2026-10-21): what was released, to whom, by which transaction.
     if (path === '/settle/public' && request.method === 'GET') {
       note('settle:public');
-      const s = await readPublicSettle(env);
+      const [s, refunds] = await Promise.all([readPublicSettle(env), readPublicRefund(env)]);
       return json({
         what: 'BOBAI settles the finished ERC-8183 jobs of every agent on BNB Chain, not only its own. The escrow releases a provider\'s $U only when somebody calls settle(jobId) on the EvaluatorRouter after the 7-day dispute window, and nearly nobody does. Once a day at 21:15 UTC this worker settles every job that is due: delivered, window over, paid by a client that is not the provider, at least 0.01 $U. The money goes to the provider the job names; we pay the gas (about a cent a job). Farms and self-hires are left out.',
         rule: { min_budget_u: 0.01, client_not_provider: true, evaluator: ERC8183.router, per_provider_a_day: 10, per_client_a_day: 10, per_client_provider_pair_a_day: 3, providers_take_turns: true, a_day: 80, farms_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
         code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-settle.js)',
         ...s,
+        // the other half (2026-10-23): a funded job nobody delivered gets its budget back to the client after expiry
+        refunds: {
+          what: 'BOBAI also returns the money of jobs nobody delivered, for every client. A funded ERC-8183 job that is never delivered keeps the client\'s $U in the escrow after its expiry until somebody calls claimRefund(jobId) on the kernel. Right after the settle, this worker calls it for every job that is due: funded, expired, at least 0.01 $U, a client that is not the provider. The whole budget goes to the job\'s client; we pay the gas (about half a cent a job). Farms, self-hires and our own hires are left out.',
+          rule: { min_budget_u: 0.01, client_not_provider: true, per_client_a_day: 5, per_client_provider_pair_a_day: 3, a_day: 40, farms_left_out: true, own_hires_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
+          code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-refund.js)',
+          ...refunds,
+        },
       });
     }
     if (path === '/settle/public/seed' && request.method === 'POST') {
@@ -3852,7 +3860,9 @@ ${pageTail}`;
     // our agents answer what is addressed to them on the Plaza Board, with the chain's word on every job named (2026-10-23)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(import('./board.js').then((m) => m.answerPending(env)).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
-    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
+    // then the budgets of jobs nobody delivered returned to their clients (public-refund.js, 2026-10-23) — after the
+    // settle, never beside it: both send from the provider wallet, and two runs at once would race for its nonce
+    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}).then(() => runPublicRefund(env)).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
     if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).

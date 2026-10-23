@@ -162,6 +162,8 @@ section('Free surface');
       pancakeswap_best_route: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', usd: 250 },
       // Same token and size as the route above: the preflight is built from it.
       bsc_token_preflight: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', usd: 250 },
+      // our provider wallet: it has jobs as provider, so the answer carries rows, not only zeros (2026-10-23)
+      erc8183_escrow_status: { address: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963' },
     };
     const args = WITH_ARGS[t.name] || {};
     const ask = () => fetch(`${SITE}/mcp`, {

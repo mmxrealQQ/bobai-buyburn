@@ -3435,6 +3435,13 @@ ${pageTail}`;
     }
 
     // EVERY AGENT'S FINISHED JOBS, SETTLED (public-settle.js, 2026-10-21): what was released, to whom, by which transaction.
+    // one address's escrow at a glance (escrow-for.js, 2026-10-23): its jobs, what waits, what the settle and refund did
+    const escrowFor = path.match(/^\/escrow\/for\/(0x[0-9a-fA-F]{40})$/);
+    if (escrowFor && request.method === 'GET') {
+      note('escrow:for');
+      const { readEscrowFor } = await import('./escrow-for.js');
+      return json(await readEscrowFor(env, escrowFor[1]));
+    }
     if (path === '/settle/public' && request.method === 'GET') {
       note('settle:public');
       const [s, refunds] = await Promise.all([readPublicSettle(env), readPublicRefund(env)]);

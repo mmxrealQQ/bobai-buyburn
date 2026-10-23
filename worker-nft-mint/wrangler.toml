@@ -14,3 +14,12 @@ id = "9e9ca186585b4b8c9e938905a2c544a7"
 NFT_CONTRACT_ADDRESS = "0xd56226b3b8297a57f4361fca28aa43babdc9789d"
 # Activation block (first block to watch from). Set via `wrangler deploy` or fix in code.
 # If unset, worker uses "current block" on first run and persists in KV.
+
+# One run at a time, one NFT per buy (2026-10-23: buy 0x7380aa63… was minted twice by two overlapping runs)
+[[durable_objects.bindings]]
+name = "MINT_GATE"
+class_name = "MintGate"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MintGate"]

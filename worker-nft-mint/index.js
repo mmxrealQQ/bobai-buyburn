@@ -328,9 +328,62 @@ async function getCellMinted(env, contract, publicClient) {
   return counts;
 }
 
+// ===== One run at a time, one NFT per buy (2026-10-23) =====
+// Operator, 23.10.: "the whale buy of 16:46 shows twice in the terminal, with two NFTs — it was one buy". It was minted
+// twice: #209 and #210 for buy 0x7380aa63…, same block, three seconds apart. The cron fires every minute and a run can
+// last longer (it waits up to 45 s for each mint's receipt), so two runs overlapped; both read processed_txs and
+// mint_pending from KV before either wrote them, and both minted. KV is eventually consistent, so even a run that starts
+// after another has finished can read the old list. Two guards in a Durable Object, which is consistent:
+//   the lock    a run holds a lease (LOCK_MS) and a second run that finds it held does nothing this minute
+//   the mark    every minted buy is marked with its mint transaction; a buy already marked is never minted again
+// A gate that cannot be asked means no mint this minute (the next run tries again) — a late NFT, never a second one.
+const LOCK_MS = 15 * 60 * 1000;          // the longest a scheduled run can live; a crashed run frees it by then
+const MARK_KEEP_MS = 60 * 86400 * 1000;  // marks kept 60 days, far past any rescan of the chain
+export class MintGate {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    const u = new URL(request.url), now = Date.now(), s = this.state.storage;
+    if (u.pathname === '/lock') {
+      const until = await s.get('lock');
+      if (until && until > now) return Response.json({ locked: false, until });
+      const run = u.searchParams.get('run') || String(now);
+      await s.put('lock', now + LOCK_MS); await s.put('lock_run', run);
+      return Response.json({ locked: true, run });
+    }
+    if (u.pathname === '/unlock') {
+      if ((await s.get('lock_run')) === u.searchParams.get('run')) { await s.delete('lock'); await s.delete('lock_run'); }
+      return Response.json({ unlocked: true });
+    }
+    const k = u.searchParams.get('k');
+    if (!k) return new Response('{"error":"no key"}', { status: 400 });
+    if (u.pathname === '/minted') return Response.json({ minted: (await s.get('m:' + k)) || null });
+    if (u.pathname === '/mark') {
+      await s.put('m:' + k, { mintTx: u.searchParams.get('tx') || null, at: now });
+      if (Math.random() < 0.02) {
+        const all = await s.list({ prefix: 'm:' });
+        const old = [...all].filter(([, v]) => now - (v?.at || 0) >= MARK_KEEP_MS).map(([key]) => key);
+        if (old.length) await s.delete(old.slice(0, 128));
+      }
+      return Response.json({ marked: true });
+    }
+    return new Response('{"error":"unknown"}', { status: 404 });
+  }
+}
+const gateOf = (env) => (env && env.MINT_GATE ? env.MINT_GATE.get(env.MINT_GATE.idFromName('mint')) : null);
+// { ok, run } — ok false: another run holds the lock, or the gate could not be asked. No gate bound (a local run): ok.
+export async function lockRun(env) {
+  const g = gateOf(env); if (!g) return { ok: true, run: null };
+  try { const run = String(Date.now()) + Math.random().toString(36).slice(2, 8); const j = await (await g.fetch(`https://gate/lock?run=${run}`)).json(); return { ok: !!j.locked, run, until: j.until }; }
+  catch (e) { return { ok: false, error: String(e.message || e) }; }
+}
+export async function unlockRun(env, run) { const g = gateOf(env); if (!g || !run) return; try { await g.fetch(`https://gate/unlock?run=${run}`); } catch { /* the lease runs out */ } }
+// the mint already made for this buy ({ mintTx, at }), null if none; throws when the gate cannot be asked
+export async function mintedFor(env, buyTx) { const g = gateOf(env); if (!g) return null; return (await (await g.fetch(`https://gate/minted?k=${String(buyTx).toLowerCase()}`)).json()).minted; }
+export async function markMinted(env, buyTx, mintTx) { const g = gateOf(env); if (!g) return; await g.fetch(`https://gate/mark?k=${String(buyTx).toLowerCase()}&tx=${mintTx}`); }
+
 // ===== Main scheduled handler =====
 
-export default {
+const mintWorker = {
   // Public read-only endpoint so dashboards can fetch the drop ledger
   // without depending on RPC archive providers (publicnode now needs a token
   // for wide block ranges). Worker writes drops to KV on each mint;
@@ -395,6 +448,12 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
+    const lock = await lockRun(env);
+    if (!lock.ok) { console.log(`[lock] another run holds the mint lock${lock.until ? ' until ' + new Date(lock.until).toISOString() : ''}${lock.error ? ' (gate: ' + lock.error + ')' : ''} — nothing this minute`); return; }
+    try { await mintWorker.runMint(env); } finally { await unlockRun(env, lock.run); }
+  },
+
+  async runMint(env) {
     if (!env.NFT_RELAYER_PRIVATE_KEY) { console.error('FATAL: NFT_RELAYER_PRIVATE_KEY missing'); return; }
     if (!env.NFT_CONTRACT_ADDRESS)    { console.error('FATAL: NFT_CONTRACT_ADDRESS missing'); return; }
 
@@ -534,7 +593,11 @@ export default {
         continue;
       }
 
-      // Mint
+      // Mint — unless the gate already holds a mint for this buy (an earlier run's, KV not yet showing it)
+      let already;
+      try { already = await mintedFor(env, txHash); }
+      catch (e) { console.error(`[gate] could not ask about ${txHash}: ${e.message || e} — retry next run`); bailed = true; break outer; }
+      if (already) { console.log(`[skip] buy ${txHash} was minted already (${already.mintTx}) — not again`); processed.add(txHash); continue; }
       try {
         // THE MINT HAS TO HAVE HAPPENED (2026-09-18). The hash was taken for the
         // mint: a transaction that reverted was written into the drop ledger as
@@ -566,6 +629,8 @@ export default {
         }
         delete pendingMints[txHash];
         await savePending();
+        // marked at once, before anything else can fail: this buy is never minted again
+        await markMinted(env, txHash, mintTxHash).catch((e) => console.error(`[gate] mark failed for ${txHash}: ${e.message || e}`));
         const blockNum = parseInt(log.blockNumber, 16);
         console.log(`[MINT] $${usd.toFixed(0)} → tier=${tier} rarity=${RARITY_NAME[rarity]} to=${buyer} mintTx=${mintTxHash} buyTx=${txHash}`);
         processed.add(txHash);
@@ -636,3 +701,4 @@ export default {
     console.log(`[done] scanned to ${scannedTo} (head ${safeHead}), mints this run: ${mintedThisRun}${bailed ? ' (BAILED — remaining range retried next run)' : ''}`);
   },
 };
+export default mintWorker;

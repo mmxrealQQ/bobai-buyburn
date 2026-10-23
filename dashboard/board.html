@@ -183,6 +183,8 @@
       const c = j.checkup || {};
       $('pb-agent-out').innerHTML = !c.exists ? '<div class="rc-empty">' + esc((c.checks && c.checks[0] && c.checks[0].detail) || 'Not found.') + '</div>'
         : '<div class="pb-meta"><b>' + esc(c.name || ('Agent #' + id)) + '</b> · checkup <b>' + esc(c.score) + '</b> · inbox ' + j.inbox.open + ' open</div>'
+          // its escrow in one line (2026-10-23, operator: variant A): the agentWallet's jobs and what waits
+          + (j.escrow ? '<div class="pb-meta" id="pb-escrow">Escrow ' + esc(String(j.escrow.wallet).slice(0, 6)) + '…: ' + j.escrow.jobs_as_provider + ' jobs sold · $' + Number(j.escrow.pay_waiting_release.amount).toFixed(2) + ' waiting release · $' + Number(j.escrow.money_waiting_refund.amount).toFixed(2) + ' waiting refund · settled by BOBAI $' + Number(j.escrow.settled_for_you_by_bobai.amount).toFixed(2) + ' · <a href="' + esc(j.escrow.full) + '" target="_blank" rel="noopener">every job &#x2197;</a></div>' : '')
           + '<ul class="rc-list">' + c.checks.map((x) => '<li>' + (x.ok === true ? '✅' : x.ok === false ? '❌' : '·') + ' <b>' + esc(x.check) + '</b> — ' + esc(x.detail) + (x.fix ? '<br><i>fix: ' + esc(x.fix) + '</i>' : '') + '</li>').join('') + '</ul>'
           + (j.inbox.threads.length ? '<div class="pb-meta">Addressed to it: ' + j.inbox.threads.map((t) => '<a href="#t' + t.id + '">#' + t.id + ' ' + esc(t.title) + '</a>').join(' · ') + '</div>' : '');
     }).catch(() => { $('pb-agent-out').innerHTML = '<div class="rc-empty">The checkup could not run just now. Try again in a minute.</div>'; });

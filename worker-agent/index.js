@@ -1366,7 +1366,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   // The input is looked at BEFORE the payment is (sell.js, missingInput): a
   // request that cannot be worked is told so with its money untouched.
-  let wanted = extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  // the buyer's numbers in a sentence (levels, capital, bounds; understand.js) under what it named as fields (2026-10-23)
+  let wanted = { ...understand(service, String(body?.task || body?.inputs?.task || '')), ...extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId }) };
   // A hire button that pays and names nothing (2026-10-14, Mandate's "Hire for $0.10"): the paying wallet is the input,
   // as the escrow path does it since 2026-10-04 (sell.js deliverJob) — the DeFi agent plans for the payer's position or
   // its own (lpDefaultTarget), the health factor reads the payer's account
@@ -1398,7 +1399,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
-  const params = target ? wanted : extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId });
+  const params = target ? wanted : { ...understand(service, String(body?.task || body?.inputs?.task || '')), ...extractParams(String(body?.task || body?.inputs?.task || ''), { ...bareFields(body), ...(body?.inputs || {}), ...(body?.params || {}), service: serviceId }) };
   let result;
   try {
     result = await doWork(serviceId, params, env);

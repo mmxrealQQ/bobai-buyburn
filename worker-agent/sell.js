@@ -79,7 +79,7 @@ import { submitDeliverable, providerAccount } from './submit.js';
 import { accountFor, accountForAgent, ourAccounts } from './agent-wallets.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
-import { understoodReply, readHoldings, readTargets } from './understand.js';
+import { understoodReply, understand, readHoldings, readTargets } from './understand.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -852,7 +852,10 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   })();
   const fromChain = extractParams(humanText, {});
   const asked = extractParams(String(text || ''), data.params || data);
-  const params = { ...asked, ...fromChain, service: service.id };
+  // THE BUYER'S NUMBERS, READ (2026-10-23): "a 45-level grid … between 500 and 5500 with 5000 USDT" (Marque job 57037)
+  // was planned with the defaults — extractParams reads addresses and positions, not levels, capital or bounds. The A2A
+  // reading (understand.js) does, and goes under what the job and the buyer named explicitly.
+  const params = { ...understand(service, humanText), ...asked, ...fromChain, service: service.id };
   let result;
   try {
     // THE DEFI AGENT WITHOUT A POSITION NAMED (2026-10-04). A marketplace

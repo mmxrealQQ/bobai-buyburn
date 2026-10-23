@@ -7,7 +7,8 @@
 
 const ADDR = /0x[a-fA-F0-9]{40}/g;
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
-const usd = (t) => { const m = String(t).match(/\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?/) || String(t).match(/([\d,]+(?:\.\d+)?)\s*(?:usd|dollars?)\b/i); if (!m) return null; const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1); return v > 0 ? v : null; };
+// "with 5000 USDT" is dollars too (2026-10-23: Marque job 57037 named its capital in USDT and was planned at $1,000)
+const usd = (t) => { const m = String(t).match(/\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?/) || String(t).match(/([\d,]+(?:\.\d+)?)\s*(?:usd[tc1]?|busd|fdusd|dollars?)\b/i); if (!m) return null; const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1); return v > 0 ? v : null; };
 
 // "$600 CAKE (0x…)", "1000 USD of 0x…", "0x… worth 1k": each address with the dollar figure written beside it (2026-10-18:
 // an outside review wrote "1000 USD of 0x… and 1000 USD of 0x…" and was understood as 500 each)
@@ -66,7 +67,15 @@ export function understand(service, text = '') {
     const v = named(t, 'from') || t.match(/\b(?:from|out of|holding|hold|in)\s+(v[A-Z]{2,8}|[A-Z]{3,6})\b/)?.[1];
     if (v && !/^(USD|BSC|VENUS)$/i.test(v)) p.from = v;
   }
-  if (need.includes('levels')) { const m = t.match(/(\d{1,3})\s*(?:levels?|grids?|steps?)/i); if (m) p.levels = Number(m[1]); }
+  if (need.includes('levels')) { const m = t.match(/(\d{1,3})\s*[- ]?\s*(?:levels?|grids?|steps?)/i); if (m) p.levels = Number(m[1]); }
+  // AN EXPLICIT RANGE AND A STOP (2026-10-23): "between 500 and 5500 … stop below 400" (Marque job 57037) is a grid
+  // with fixed bounds, not a ± band around the price; the stop is kept and reported, not traded
+  if (need.includes('bandPct')) {
+    const r = t.match(/between\s+\$?\s?([\d,]+(?:\.\d+)?)\s+and\s+\$?\s?([\d,]+(?:\.\d+)?)/i) || t.match(/from\s+\$?\s?([\d,]+(?:\.\d+)?)\s+to\s+\$?\s?([\d,]+(?:\.\d+)?)/i);
+    if (r) { const a = parseFloat(r[1].replace(/,/g, '')), b = parseFloat(r[2].replace(/,/g, '')); if (a > 0 && b > a) { p.lowerPrice = a; p.upperPrice = b; } }
+    const s = t.match(/stop(?:-loss)?\s+(?:below|under|at)\s+\$?\s?([\d,]+(?:\.\d+)?)/i);
+    if (s) p.stopPrice = parseFloat(s[1].replace(/,/g, ''));
+  }
   if (need.includes('bandPct')) { const m = t.match(/(?:band|range)\D{0,12}(\d{1,2}(?:\.\d+)?)\s*%|(\d{1,2}(?:\.\d+)?)\s*%\s*(?:band|range|either side|each side|on (?:each|either|both) sides?|above and below)|±\s*(\d{1,2}(?:\.\d+)?)\s*%/i); if (m) p.bandPct = Number(m[1] || m[2] || m[3]); }
   if (need.includes('holdings')) {
     // "$600 CAKE (0x…) and $400 WBNB (0x…)": each address with the dollar figure written just before it

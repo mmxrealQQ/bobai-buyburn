@@ -118,8 +118,11 @@ export async function gridPlan(input = {}) {
   // the levels have to be a percentage apart — evenly spaced dollars would make
   // the bottom of the range earn several times what the top earns, on the same
   // capital, and no explanation of the result would make sense.
-  const low = price * (1 - bandPct / 100);
-  const high = price * (1 + bandPct / 100);
+  // the buyer's own bounds when it names them ("between 500 and 5500", 2026-10-23), else ± bandPct around the price
+  const lo = Number(input.lowerPrice), hi = Number(input.upperPrice);
+  const fixed = lo > 0 && hi > lo;
+  const low = fixed ? lo : price * (1 - bandPct / 100);
+  const high = fixed ? hi : price * (1 + bandPct / 100);
   const ratio = Math.pow(high / low, 1 / (levels - 1));
   const spacingPct = (ratio - 1) * 100;
 
@@ -159,7 +162,7 @@ export async function gridPlan(input = {}) {
 
   const warnings = [];
   if (!viable) {
-    warnings.push(`At ${levels} levels across ±${bandPct}% the spacing is ${spacingPct.toFixed(3)}% and one round trip costs ${roundTripPct.toFixed(3)}%. Every completed cycle loses ${Math.abs(netPerCyclePct).toFixed(3)}%. This grid cannot be tuned into profit — it needs fewer levels, a wider band, or a deeper pool.`);
+    warnings.push(`At ${levels} levels across ${fixed ? `${+low.toPrecision(6)}–${+high.toPrecision(6)}` : `±${bandPct}%`} the spacing is ${spacingPct.toFixed(3)}% and one round trip costs ${roundTripPct.toFixed(3)}%. Every completed cycle loses ${Math.abs(netPerCyclePct).toFixed(3)}%. This grid cannot be tuned into profit — it needs fewer levels, a wider band, or a deeper pool.`);
   }
   if (shareOfDepth != null && shareOfDepth > 0.25) {
     warnings.push(`Each fill is ${(shareOfDepth * 100).toFixed(0)}% of the size that moves this pool 1%. Fills of that size move the price against the next fill, and the cost figures here do not model a grid trading against itself.`);
@@ -167,6 +170,7 @@ export async function gridPlan(input = {}) {
   if (scan.tax?.buyPct === null || scan.tax?.sellPct === null) {
     warnings.push('No transfer tax could be established for this token, so the costs above exclude it. If it charges one, every figure here is optimistic by twice that rate.');
   }
+  if (fixed && (price < low || price > high)) warnings.push(`The price now (${+price.toPrecision(6)}) is outside the bounds named (${+low.toPrecision(6)}–${+high.toPrecision(6)}): every level starts on one side.`);
   if (scan.pool?.partialMarket) {
     warnings.push('Only part of this token\'s liquidity sits in the pool that was read, so real costs may be lower than shown.');
   }
@@ -184,7 +188,8 @@ export async function gridPlan(input = {}) {
       source: scan.tax?.source,
     },
     grid: {
-      levels, band_pct: bandPct, capital_usd: capitalUsd,
+      levels, ...(fixed ? { range: 'the bounds the buyer named' } : { band_pct: bandPct }), capital_usd: capitalUsd,
+      ...(Number(input.stopPrice) > 0 ? { stop_below: Number(input.stopPrice), stop_note: 'named by the buyer; a stop is an order the grid does not place — it is reported, not planned' } : {}),
       lower_price: +low.toPrecision(8), upper_price: +high.toPrecision(8),
       spacing_pct: +spacingPct.toFixed(4),
       capital_per_level_usd: +perLevelUsd.toFixed(2),

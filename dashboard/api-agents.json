@@ -411,7 +411,7 @@
     {
       "id": 304494,
       "name": "Brain on BNB — Portfolio Rebalance Pricer",
-      "description": "The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.",
+      "description": "The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool. For liquidity it rebalances ranges: a range check of every PancakeSwap V3 position a wallet holds, any pair — in range or not, the room to each edge, and the same width re-centred on today's price, aligned to the pool's tick spacing.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"

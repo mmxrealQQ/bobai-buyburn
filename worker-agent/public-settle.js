@@ -127,6 +127,19 @@ export async function batchRead(ids, rpcUrl) {
   return out;
 }
 
+// The keyed node first, then the public ones for whatever it left unread (22.10. 21:15: the public nodes alone read
+// 17 of 417 — a run of 50-call batches is rate-limited after the first; the job board reads the same way and read all).
+export async function readJobs(ids, env) {
+  const keyed = env.BSC_RPC_KEYED_URL_2;
+  let read = await batchRead(ids, keyed || null);
+  const missed = read.filter((x) => !x.job).map((x) => x.id);
+  if (missed.length && keyed) {
+    const got = Object.fromEntries((await batchRead(missed)).map((x) => [x.id, x.job]));
+    read = read.map((x) => (x.job ? x : { id: x.id, job: got[x.id] || null }));
+  }
+  return read;
+}
+
 // The daily run. opts.rpcUrl: one node (a fork); opts.now: the time (tests).
 export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } = {}) {
   const day = now.toISOString().slice(0, 10);
@@ -138,7 +151,7 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
   const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
   const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
   const windowSec = await readDisputeWindow(async (to, data) => pub.call({ to, data }).then((r) => r.data));
-  const jobs = await batchRead(ids, rpcUrl);
+  const jobs = rpcUrl ? await batchRead(ids, rpcUrl) : await readJobs(ids, env);
   const knownFarms = JSON.parse((await env.AGENT.get(FARMS_KEY)) || '[]');
   const { due, drop, farms, spike } = pickDue(jobs, cand, { now: Math.floor(now.getTime() / 1000), windowSec, knownFarms });
   const byId = Object.fromEntries(jobs.map((x) => [x.id, x.job]));

@@ -52,9 +52,9 @@
 import { healthFactor, drawdownToLiquidation } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
-import { rebalancePlan } from './rebalance.js';
+import { rebalancePlan, rebalanceDefaultTarget } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
-import { lpPositionPlan, lpPositionFacts } from './lp-service.js';
+import { lpPositionPlan, lpPositionFacts, lpRangeCheck } from './lp-service.js';
 import { decodeJob, ERC8183, readDisputeWindow } from './hire.js';
 
 // WHAT THE JOB MUST LOOK LIKE, SAID IN THE QUOTE (2026-10-06). The delivery refuses a job evaluated by anyone but the
@@ -127,8 +127,8 @@ export const SERVICES = {
     category: 'rebalancing',
     price: '100000000000000000',
     price_display: '0.10 $U',
-    deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.',
-    needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted' },
+    deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool. For liquidity it rebalances ranges: a range check of every PancakeSwap V3 position a wallet holds, any pair — in range or not, the room to each edge, and the same width re-centred on today\'s price, aligned to the pool\'s tick spacing.',
+    needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted', position_or_address: 'for a range check instead: a PancakeSwap V3 position id, or the wallet that holds the positions' },
   },
   lp_tier_plan: {
     id: 'lp_tier_plan',
@@ -210,12 +210,23 @@ export async function readJob(jobId) {
 // the task names a position or a wallet, it is read before the quote: not
 // one position, or not against WBNB, is declined with the reason. A read
 // that fails does not block the quote (delivery reads again and says why).
-async function cannotPlan(serviceId, params = {}) {
-  if (serviceId !== 'lp_position_plan' || missingInput(serviceId, params)) return null;
+export async function cannotPlan(serviceId, params = {}) {
+  if (missingInput(serviceId, params)) return null;
+  // a range check with nothing to check is not sold (2026-10-23): a wallet without a position, or an id that does not
+  // exist. Empty positions are a reading (pair, fee tier, "nothing left to re-centre") and are quoted.
+  if (serviceId === 'rebalance_plan' && params.range && !(Array.isArray(params.holdings) && params.holdings.length)) {
+    try {
+      const rc = await lpRangeCheck(params);
+      if (!rc.positions.some((p) => !p.error)) return `${rc.summary}`;
+    } catch (e) { return `${String(e.message || e).slice(0, 160)}.`; }
+    return null;
+  }
+  if (serviceId !== 'lp_position_plan') return null;
   try {
     const { facts } = await lpPositionFacts(params);
     if (facts.positions !== 1) return facts.verdict || `That wallet holds ${facts.positions} PancakeSwap V3 positions; name the one to plan by its id.`;
-    if (!facts.against_wbnb) return `Position #${facts.position} is not against WBNB. The DeFi agent plans only WBNB pairs — the free look at https://brainonbnb.com/defi still reads it.`;
+    if (facts.liquidity === '0') return `Position #${facts.position} holds no liquidity — nothing to plan.`;
+    // not against WBNB (2026-10-23): quoted — the delivery is the range check of that position (lpPositionPlan)
   } catch { /* unreadable now: delivery reads it again */ }
   return null;
 }
@@ -224,12 +235,14 @@ async function cannotPlan(serviceId, params = {}) {
 export const WBNB_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 export const TOKEN_DEFAULTS_TO_WBNB = new Set(['grid_plan', 'lp_tier_plan']);
 export const WBNB_NOTE = `No token was named: the plan is for WBNB (${WBNB_TOKEN}), BNB Chain's own coin.`;
+export const REBALANCE_DEFAULT_NOTE = 'No holdings or position were named: the plan prices the hiring wallet\'s holdings, read from the chain at delivery, to equal weight (a wallet with fewer than two gets the DeFi agent\'s own wallet, said so in the answer). Name holdings, or a PancakeSwap V3 position or wallet for a range check, to choose.';
 export function missingInput(serviceId, params = {}) {
   const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
   const p = params || {};
   if (serviceId === 'health_factor') return addr(p.address) ? null : 'health_factor needs `address`: the account whose Venus position to read (0x…)';
   if (serviceId === 'grid_plan' || serviceId === 'lp_tier_plan') return addr(p.token) || addr(p.address) ? null : `${serviceId} needs \`token\`: the token or pool address (0x…)`;
-  if (serviceId === 'rebalance_plan') return Array.isArray(p.holdings) && p.holdings.length ? null : 'rebalance_plan needs `holdings`: [{ "token": "0x…", "usd": 1000 }, …]';
+  // a range check (2026-10-23) needs the position or the wallet that holds them
+  if (serviceId === 'rebalance_plan') return (Array.isArray(p.holdings) && p.holdings.length) || (p.range && (/^\d+$/.test(String(p.position ?? '')) || addr(p.address))) ? null : 'rebalance_plan needs `holdings`: [{ "token": "0x…", "usd": 1000 }, …] — or, for a range check of PancakeSwap V3 positions, `position` (the tokenId) or `address` (the wallet that holds them)';
   if (serviceId === 'lp_position_plan') return /^\d+$/.test(String(p.position ?? p.tokenId ?? p.id ?? '')) || addr(p.address) || addr(p.wallet) || addr(p.owner) ? null : 'lp_position_plan needs `position` (the PancakeSwap V3 tokenId) or `address` (a wallet that holds exactly one)';
   return null;   // yield_plan starts with nothing
 }
@@ -250,7 +263,9 @@ export async function doWork(serviceId, params, env = null) {
     return { service: 'yield_plan', plan: await yieldPlan(params || {}) };
   }
   if (serviceId === 'rebalance_plan') {
-    return { service: 'rebalance_plan', plan: await rebalancePlan(params || {}) };
+    const p = params || {};
+    if (!(Array.isArray(p.holdings) && p.holdings.length) && (p.range || p.position != null)) return { service: 'rebalance_plan', mode: 'range_check', plan: await lpRangeCheck(p) };
+    return { service: 'rebalance_plan', plan: await rebalancePlan(p) };
   }
   if (serviceId === 'lp_tier_plan') {
     return { service: 'lp_tier_plan', plan: await lpTierPlan(params || {}) };
@@ -284,6 +299,7 @@ export function pickService(text = '', explicit) {
   return null;
 }
 
+export const RANGE_WORDS = /\bv3 positions?\b|\bpositions? (held|of|owned)\b|\bin range\b|out of range|re-?cent(er|re)|range check|\blp range/i;
 export const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
@@ -303,12 +319,14 @@ export const extractParams = (text = '', given = {}) => {
   // which is the most expensive moment to discover that a category cannot be
   // delivered at all. The strictness in rebalance.js is right; what was missing
   // was the bridge from a sentence to a portfolio.
+  const givenList = Array.isArray(given.holdings) && given.holdings.length > 0;
+  let listed = givenList;
   if (!Array.isArray(out.holdings)) {
     const arr = String(text).match(/\[\s*\{[\s\S]*?\}\s*\]/)?.[0];
     if (arr) {
       try {
         const parsed = JSON.parse(arr);
-        if (Array.isArray(parsed) && parsed.length) out.holdings = parsed;
+        if (Array.isArray(parsed) && parsed.length) { out.holdings = parsed; listed = true; }
       } catch { /* not JSON after all — fall through to the addresses */ }
     }
   }
@@ -320,8 +338,12 @@ export const extractParams = (text = '', given = {}) => {
   // 1000 USD of 0x… to 70/30" is two holdings of 1000 and a 70/30 target, not an even split of the first figure.
   if (!Array.isArray(out.holdings) || !out.holdings.length) {
     const h = readHoldings(String(text));
-    if (h.length) out.holdings = h;
+    if (h.length) { out.holdings = h; listed = true; }
   }
+  // A RANGE CHECK, NOT A PORTFOLIO (2026-10-23): "range check for the PancakeSwap v3 positions held by 0x…" named a
+  // wallet, and the fallback below would have read it as one $1,000 token holding. Range words and no list of holdings:
+  // the request is a range check of that wallet's positions (or the position named), and no holdings are made up.
+  if (!listed && RANGE_WORDS.test(String(text))) { out.range = true; return out; }
   if (Array.isArray(out.holdings) && out.holdings.length >= 2 && (out.targets == null || typeof out.targets !== 'object')) {
     const tg = readTargets(String(text), out.holdings);
     if (tg) out.targets = tg;
@@ -502,6 +524,8 @@ const ownSentence = (s) => `I sell one thing on BNB Chain: ${s.name}. ${String(s
 const priceCheckOnly = (data) => /quote-probe|price check|price quote only/i.test([data?.task_description, data?.task, data?.terms?.deliverables].filter((v) => typeof v === 'string').join(' '));
 function misdirected(forced, wanted, data) {
   if (priceCheckOnly(data)) return null;
+  // the Rebalancer does LP range checks too (2026-10-23): marketplaces file range work under "rebalancing"
+  if (forced === 'rebalance_plan' && RANGE_WORDS.test(String(wanted))) return null;
   const guessed = pickService(wanted, data?.service);
   if (!forced || !guessed || guessed.id === forced) return null;
   const there = `https://agent.brainonbnb.com/${SLUG_OF[guessed.id]}/a2a`;
@@ -601,7 +625,11 @@ export async function handleA2A(request, env, opts = {}) {
     // generic brief; the grid planner and the fee tier agent declined it and showed as not hireable there. The x402 path
     // already plans WBNB when nothing is named; now the escrow quote does the same, and says so in the signed terms.
     const wbnbDefault = !!need && TOKEN_DEFAULTS_TO_WBNB.has(service.id);
-    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan' && !wbnbDefault) {
+    // NOTHING NAMED ON THE REBALANCER (2026-10-23): Pokter's "Quote your standard deliverable so a buyer can see the
+    // price" was declined for want of holdings and marked seller-declined. Delivery reads the hiring wallet's holdings
+    // from the chain (rebalanceDefaultTarget, as the x402 path does since 2026-10-15); the signed terms say so.
+    const holdingsDefault = !!need && service.id === 'rebalance_plan';
+    if (need && service.id !== 'health_factor' && service.id !== 'lp_position_plan' && !wbnbDefault && !holdingsDefault) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x04', reason: `${need}. Name it in task_description and ask again — nothing was quoted.` }));
     }
     const asked = extractParams([data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' '), data.params || {});
@@ -610,7 +638,7 @@ export async function handleA2A(request, env, opts = {}) {
     // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
     const seller = await sellerOf(service.id);
     if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
-    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : null });
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : holdingsDefault ? REBALANCE_DEFAULT_NOTE : null });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }
@@ -820,6 +848,10 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
     } else if (service.id === 'health_factor' && missingInput(service.id, params)) {
       // no account named (2026-10-05): the wallet that paid is the one read, and the document says so
       result = await doWork(service.id, { ...params, address: job.client }, env); result.read_for = `the hiring wallet ${job.client} — no account was named in the task`;
+    } else if (service.id === 'rebalance_plan' && missingInput(service.id, params)) {
+      // nothing named (2026-10-23): the quote said the hiring wallet's holdings, read now
+      const got = await rebalanceDefaultTarget(job.client);
+      result = await doWork(service.id, { ...params, holdings: got.holdings }, env); result.read_for = got.target;
     } else if (TOKEN_DEFAULTS_TO_WBNB.has(service.id) && missingInput(service.id, params)) {
       // no token named (2026-10-22): the quote said WBNB, so WBNB is planned, and the document says so
       result = await doWork(service.id, { ...params, token: WBNB_TOKEN }, env); result.read_for = WBNB_NOTE;

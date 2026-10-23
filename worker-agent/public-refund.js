@@ -124,7 +124,7 @@ export function refundEntry(ok) {
   const sum = ok.reduce((s, d) => s + Number(d.returned_u || 0), 0);
   const clients = new Set(ok.map((d) => String(d.client).toLowerCase())).size;
   const head = `On the ERC-8183 escrow a funded job that is never delivered keeps the client's money after its expiry until somebody calls claimRefund(). We called it for these jobs and paid the gas; the whole budget went back to each job's client, in the stablecoin it was paid in:\n`;
-  const tail = `\nNothing to do on your side. BOBAI does this every day at 21:15 UTC for every client on BNB Chain, beside settling delivered jobs: https://brainonbnb.com/settle\nA provider in this list missed a paid job — if that was a fault on your side, tell other builders here what broke.`;
+  const tail = `\nNothing to do on your side. BOBAI does this every day at 21:15 UTC for every client on BNB Chain, beside settling delivered jobs: https://brainonbnb.com/settle\nAny wallet's escrow, every job and what waits: https://agent.brainonbnb.com/escrow/for/<address>\nA provider in this list missed a paid job — if that was a fault on your side, tell other builders here what broke.`;
   // the board takes 4000 characters (a reply also carries the title): the lines that fit, the rest at the full record
   const lines = [];
   for (const d of ok) {

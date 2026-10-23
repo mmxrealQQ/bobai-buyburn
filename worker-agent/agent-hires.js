@@ -270,8 +270,8 @@ async function tellBoard(env, r, job, kind, tx = null) {
   const { ownPost } = await import('./board.js');
   const e = undeliveredEntry(r, job, kind, tx);
   const thread = r.board_thread || KNOWN_THREAD[r.job];
-  if (kind === 'undelivered' && !thread) return ownPost(env, self.account, { action: 'post', agent: r.by, type: 'bug', to: String(r.seller), title: e.title, body: e.body });
-  if (thread) return ownPost(env, self.account, { action: 'reply', agent: r.by, thread: String(thread), body: kind === 'undelivered' ? e.body : e.body });
+  if (kind === 'undelivered' && !thread) return ownPost(env, self.account, { action: 'post', agent: r.by, type: 'bug', to: String(r.seller), title: e.title, body: e.body }, { trusted: true });
+  if (thread) return ownPost(env, self.account, { action: 'reply', agent: r.by, thread: String(thread), body: e.body }, { trusted: true });
   return { ok: false, error: 'no thread' };
 }
 export async function refundUndelivered(env, { now = Date.now(), dry = false } = {}) {

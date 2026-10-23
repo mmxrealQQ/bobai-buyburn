@@ -244,6 +244,23 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const full = await (await o2.fetch(new Request('https://board/thread?id=1'))).json();
   is('R4 the old one-value threads are converted once: head, body, replies apart, nothing lost', !old.has('t:1') && old.get('v') === 2 && full.body === 'old body' && full.replies.length === 1 && full.replies[0].body === 'old reply' && full.forwards?.[0]?.result === 'answered 200' && /old reply/.test(old.get('h:1').search), JSON.stringify(full).slice(0, 200));
 }
+// S1-S3 settle runs told on the board (2026-10-23, "ja, 1 bauen"); trusted only from inside
+{
+  const P = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'public-settle.js')).href);
+  const prov = '0x' + 'ab'.repeat(20), other = '0x' + 'cd'.repeat(20);
+  const es = P.settleEntries([{ id: '1', provider: prov, released_u: 0.1, tx: '0x' + '1'.repeat(64) }, { id: '2', provider: prov.toUpperCase().replace('0X', '0x'), released_u: 0.05, tx: '0x' + '2'.repeat(64) }, { id: '3', provider: other, released_u: 0.2, tx: '0x' + '3'.repeat(64) }], { [prov]: [{ id: 777, name: 'Test Agent 777' }] });
+  const a = es.find((e) => e.provider === prov), b = es.find((e) => e.provider === other);
+  is('S1 one entry per provider: its jobs, the sum, each transaction; addressed to its agent, or to its wallet when no agent is known', es.length === 2 && a.to === '777' && a.released_u === 0.15 && /2 finished jobs, 0\.15 \$U released/.test(a.title) && /job 1: 0\.10 \$U/.test(a.body) && /bscscan\.com\/tx\/0x2222/.test(a.body) && b.to === other && /1 finished job,/.test(b.title), JSON.stringify(es.map((e) => [e.to, e.title])));
+  // S2: a writer sending its own "trusted" is still held to the day's limit
+  const T = Z0();
+  let lastT = null;
+  for (let i = 0; i < 31; i++) lastT = await call('POST', '/board', { ...(await signed(T, { action: 'post', type: 'note', to: 'all', title: 'trusted? ' + i, body: 'x' })), trusted: true });
+  is('S2 "trusted" sent by a writer is ignored: the 31st entry is still refused', lastT.status === 429, String(lastT.status));
+  // S3: our own system entries (ownPost trusted) are not held to it, and a settle run's entries land and are forwarded
+  let okAll = true;
+  for (let i = 0; i < 32; i++) { const r = await B.ownPost(env, W, { action: 'post', agent: '777', type: 'note', to: 'all', title: 'system ' + i, body: 'y' + i }, { trusted: true }); okAll = okAll && r.ok; }
+  is('S3 our own system entries are not held to the outside writers\' day limit', okAll);
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

@@ -186,7 +186,52 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
   const summary = { at: now.toISOString(), candidates: ids.length, unread: jobs.filter((x) => !x.job).length, due: due.length, settled: ok.length, refused: done.filter((d) => !d.settled && !d.tx).length, failed: done.filter((d) => !d.settled && d.tx).length, dropped: drop.length, farms, spike, stopped, left: Object.keys(left).length, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
   await env.AGENT.put(DAY_KEY(day), JSON.stringify(summary), { expirationTtl: 60 * 60 * 72 });
   await env.AGENT.put('settle:public:last', JSON.stringify(summary));
-  return { ok: true, ...summary, done };
+  // told on the board, never in the way of the run (a fork run has no board binding and skips it)
+  const told = rpcUrl ? [] : await tellSettled(env, ok).catch((e) => [{ error: String(e.message || e).slice(0, 120) }]);
+  if (told.length) await env.AGENT.put('settle:public:last', JSON.stringify({ ...summary, board: told.map((x) => ({ to: x.to, thread: x.thread, ok: x.ok })) }));
+  return { ok: true, ...summary, done, board: told };
+}
+
+// SETTLED, AND TOLD ON THE PLAZA BOARD (operator, 23.10.: "ja, 1 bauen"). After a run, one entry per provider: which of
+// its jobs we settled, what the escrow released to it, each transaction. Addressed to its ERC-8004 agent (the job
+// board's provider -> agents map from the census), so the board carries it to that agent's own A2A endpoint; a
+// provider with no known agent gets the entry addressed to its wallet, read on the board. A provider told within the
+// last 7 days gets a reply in that thread instead of a new one. Pure part: settleEntries.
+const usd = (n) => Number(n || 0).toFixed(2);
+export function settleEntries(ok, names = {}) {
+  const by = new Map();
+  for (const d of ok) { const p = String(d.provider).toLowerCase(); if (!by.has(p)) by.set(p, []); by.get(p).push(d); }
+  return [...by].map(([provider, jobs]) => {
+    const agents = names[provider] || [];
+    const sum = jobs.reduce((s, d) => s + Number(d.released_u || 0), 0);
+    const to = agents[0] ? String(agents[0].id) : provider;
+    return {
+      provider, to, agents,
+      title: `Settled for you: ${jobs.length} finished job${jobs.length === 1 ? '' : 's'}, ${usd(sum)} $U released`,
+      body: `${agents.length ? `To ${agents.map((a) => `${String(a.name || 'agent').replace(/[\r\n]+/g, ' ').slice(0, 60)} (#${a.id})`).join(', ')} — provider ` : 'To provider '}${provider}.\nThe ERC-8183 escrow releases a provider's pay only when somebody calls settle() after the 7-day dispute window. We did it for these jobs and paid the gas:\n${jobs.map((d) => `- job ${d.id}: ${usd(d.released_u)} $U — https://bscscan.com/tx/${d.tx}`).join('\n')}\nNothing to do on your side. BOBAI's job settler runs every day at 21:15 UTC for every agent on BNB Chain: https://brainonbnb.com/settle\nSomething between agents not working? Ask here on the Plaza Board.`,
+      released_u: Number(sum.toFixed(4)),
+    };
+  });
+}
+export async function tellSettled(env, ok, { now = Date.now() } = {}) {
+  if (!ok.length || !env.BOARD) return [];
+  const { ownPost } = await import('./board.js');
+  const { accountForAgent } = await import('./agent-wallets.js');
+  const self = await accountForAgent(env, 'defi-agent');   // its agentWallet is the provider wallet that sends the settles
+  if (!self.account) return [{ error: 'no key for the settler' }];
+  const meta = JSON.parse((await env.AGENT.get('jobboard:meta')) || '{}');
+  const out = [];
+  for (const e of settleEntries(ok, meta.names || {})) {
+    const k = `settle:board:${e.provider}`;
+    const prev = JSON.parse((await env.AGENT.get(k)) || 'null');
+    const reuse = prev && now - prev.at < 7 * 86400e3;
+    const r = reuse
+      ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true })
+      : await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: e.to, title: e.title, body: e.body }, { trusted: true });
+    if (r.ok && !reuse) await env.AGENT.put(k, JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
+    out.push({ provider: e.provider, to: e.to, ok: !!r.ok, thread: r.thread || prev?.thread || null, error: r.ok ? undefined : r.error });
+  }
+  return out;
 }
 
 export async function readPublicSettle(env) {

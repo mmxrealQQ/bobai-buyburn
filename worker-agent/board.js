@@ -105,7 +105,8 @@ export class PlazaBoard {
     // before any registry call (the review: limits were checked after the RPC): replay and the day's limits, not counted
     if (op === 'precheck' || op === 'write') {
       if (await this.s.get('m:' + p.msgKey)) return Response.json({ ok: false, error: 'this exact entry was posted already — sign a new message (a new ts)' }, { status: 409 });
-      for (const [k, max] of [[`rl:${day}:${p.signer.toLowerCase()}`, LIMITS.perSignerPerDay], [`rl:${day}:ip:${ipKey(p.ip)}`, LIMITS.perIpPerDay]]) {
+      // our own system entries (a settle run, a hire not delivered) are not held to the limits set for outside writers
+      if (!p.trusted) for (const [k, max] of [[`rl:${day}:${p.signer.toLowerCase()}`, LIMITS.perSignerPerDay], [`rl:${day}:ip:${ipKey(p.ip)}`, LIMITS.perIpPerDay]]) {
         if (((await this.s.get(k)) || 0) >= max) return Response.json({ ok: false, error: `the day's limit of ${max} entries is reached; try again tomorrow (UTC)` }, { status: 429 });
       }
       if (op === 'precheck') return Response.json({ ok: true });
@@ -154,7 +155,7 @@ export class PlazaBoard {
         if (had) return Response.json({ ok: false, error: 'already forwarded' });
         if (!p.operator) {
           if (!(await this.bump(`fwt:${day}:${p.to}`, LIMITS.forwardsPerTargetPerDay))) return Response.json({ ok: false, error: 'this agent had its forwards for today' });
-          if (!(await this.bump(`fws:${day}:${String(p.signer).toLowerCase()}`, LIMITS.forwardsPerSignerPerDay))) return Response.json({ ok: false, error: 'this writer had its forwards for today' });
+          if (!p.trusted && !(await this.bump(`fws:${day}:${String(p.signer).toLowerCase()}`, LIMITS.forwardsPerSignerPerDay))) return Response.json({ ok: false, error: 'this writer had its forwards for today' });
         }
         if (!(await this.bump(`fw:${day}`, LIMITS.forwardsPerDay))) return Response.json({ ok: false, error: "the day's forwards are used" });
         head.forwards.push({ key, to: p.to, entry: p.entry, at: now });
@@ -317,7 +318,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
 // One entry, checked end to end: the rules, the signature over the exact message, the day's limits (before any
 // registry call), the identity it claims, the status permission; then the Durable Object. Used by POST /board, the
 // A2A skill, the MCP tool and our own agents alike.
-export async function writeEntry(env, p0, ip = null, ctx = null) {
+export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
   const bad = checkPost(p0);
   if (bad) return { status: 400, body: { ok: false, error: bad, how: 'https://agent.brainonbnb.com/board/how' } };
   const p = { ...p0, ...(p0.agent != null && p0.agent !== '' ? { agent: normId(p0.agent) } : { agent: undefined }), ...(p0.thread ? { thread: normId(p0.thread) } : {}) };
@@ -327,7 +328,7 @@ export async function writeEntry(env, p0, ip = null, ctx = null) {
   if (!good) return { status: 401, body: { ok: false, error: 'the signature does not match this message and signer', signed_message_expected: message } };
   // the replay key is the signed message itself (the review: v=0/1 and high-s re-encode one signature four ways)
   const msgKey = await sha256Hex(String(p.signer).toLowerCase() + '\n' + message);
-  const pre = await board(env).fetch('https://board/precheck', { method: 'POST', body: JSON.stringify({ signer: p.signer, ip: ip || '-', msgKey }) });
+  const pre = await board(env).fetch('https://board/precheck', { method: 'POST', body: JSON.stringify({ signer: p.signer, ip: ip || '-', msgKey, trusted: !!opts.trusted }) });
   if (!pre.ok) return { status: pre.status, body: await pre.json() };
   const keyed = env.BSC_RPC_KEYED_URL_2;
   let agentName = null, verified = false;
@@ -348,11 +349,11 @@ export async function writeEntry(env, p0, ip = null, ctx = null) {
     const who = tid ? await agentIdentity(tid, keyed) : null;
     may = mayChangeStatus(t, p.signer, who ? [who.owner, who.wallet].filter(Boolean) : []);
   }
-  const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, agent_name: agentName, verified, to_name: toName, may, ip: ip || '-', msgKey }) });
+  const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, agent_name: agentName, verified, to_name: toName, may, ip: ip || '-', msgKey, trusted: !!opts.trusted }) });   // set last: a writer cannot send its own `trusted`
   const body = await r.json();
   // only a verified writer's entry is carried to other agents (the review: throwaway wallets could use up the forwards)
   if (body.ok && verified) {
-    const job = forwardEntry(env, { ...p, agent_name: agentName, verified }, body).catch(() => {});
+    const job = forwardEntry(env, { ...p, agent_name: agentName, verified }, body, { trusted: !!opts.trusted }).catch(() => {});
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
   }
   return { status: r.status, body };
@@ -360,11 +361,11 @@ export async function writeEntry(env, p0, ip = null, ctx = null) {
 
 // OUR AGENTS WRITE THEMSELVES: one of our agents signs with its own agentWallet (the key this worker holds for it) and
 // writes through the same checks as anybody — verified, forwarded. Returns writeEntry's answer, or { ok:false }.
-export async function ownPost(env, account, entry) {
+export async function ownPost(env, account, entry, opts = {}) {
   try {
     const p = { ...entry, ts: Math.floor(Date.now() / 1000), signer: account.address };
     const signature = await account.signMessage({ message: await boardMessage(p) });
-    const r = await writeEntry(env, { ...p, signature }, 'own');
+    const r = await writeEntry(env, { ...p, signature }, 'own', null, { trusted: !!opts.trusted });
     return r.body;
   } catch (e) { return { ok: false, error: String(e.message || e).slice(0, 160) }; }
 }
@@ -394,7 +395,7 @@ export async function forwardEntry(env, p, res, opts = {}) {
   for (const id of targets) {
     const endpoint = await a2aUrlOf(id, { keyed: env.BSC_RPC_KEYED_URL_2 }).catch(() => null);
     if (!endpoint) { results.push({ to: id, skipped: 'no usable A2A endpoint in its registration' }); continue; }
-    const mark = await board(env).fetch('https://board/forward', { method: 'POST', body: JSON.stringify({ thread: t.id, to: id, entry: res.reply || 0, signer: p.signer, operator: !!opts.operator }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+    const mark = await board(env).fetch('https://board/forward', { method: 'POST', body: JSON.stringify({ thread: t.id, to: id, entry: res.reply || 0, signer: p.signer, operator: !!opts.operator, trusted: !!opts.trusted }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (!mark.ok) { results.push({ to: id, skipped: mark.error || 'not marked' }); continue; }
     const line = opts.textFor ? opts.textFor(id) : text;
     const msg = { jsonrpc: '2.0', id: `plaza-${t.id}-${res.reply || 0}`, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: `plaza-board-${t.id}-${res.reply || 0}-${id}`, parts: [{ kind: 'text', text: line }, { kind: 'data', data: { skill: 'plaza-board', event, thread: t.id, reply: res.reply || null, type: t.type, title_untrusted: title, from: { agent: p.agent ?? null, verified: !!p.verified, signer: p.signer }, read: `https://agent.brainonbnb.com/board/thread/${t.id}`, page: `https://brainonbnb.com/board#t${t.id}` } }] } } };

@@ -49,7 +49,7 @@ async function tellRefused(env, jobId, reason) {
     const self = await accountForAgent(env, slug);
     if (!self.account) return { ok: false, error: 'no key for ' + slug };
     const { ownPost } = await import('./board.js');
-    return ownPost(env, self.account, { action: 'post', agent: String(AGENT_ID_OF[slug]), type: 'bug', to: e.to, title: e.title, body: e.body });
+    return ownPost(env, self.account, { action: 'post', agent: String(AGENT_ID_OF[slug]), type: 'bug', to: e.to, title: e.title, body: e.body }, { trusted: true });
   } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 120) }; }
 }
 

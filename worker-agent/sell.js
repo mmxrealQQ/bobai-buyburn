@@ -128,7 +128,7 @@ export const SERVICES = {
     price: '100000000000000000',
     price_display: '0.10 $U',
     deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool. For liquidity it rebalances ranges: a range check of every PancakeSwap V3 position a wallet holds, any pair — in range or not, the room to each edge, and the same width re-centred on today\'s price, aligned to the pool\'s tick spacing.',
-    needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted', position_or_address: 'for a range check instead: a PancakeSwap V3 position id, or the wallet that holds the positions' },
+    needs: { holdings: 'array of { token: "0x…", usd: 1000 }, optional when a position is named', targets: 'optional map of token → target weight in percent; equal weight if omitted', position: 'a PancakeSwap V3 position id, or the wallet that holds the positions (0x…), for a range check, optional' },
   },
   lp_tier_plan: {
     id: 'lp_tier_plan',

@@ -82,7 +82,7 @@ const ASKS = {
   health_factor: 'How close is my Venus position to being liquidated?',
   grid_plan: 'Can a grid actually make money in this pool, after costs?',
   yield_plan: 'Where should this sit to earn most — and is moving it worth the gas?',
-  rebalance_plan: 'What would it cost me to get back to my target weights?',
+  rebalance_plan: 'What would it cost me to get back to my target weights — and which of my LP ranges need re-centring?',
   lp_tier_plan: 'Which fee tier should I put liquidity in?',
   lp_position_plan: 'What would the DeFi agent decide about my position?',
 };
@@ -168,7 +168,7 @@ const bodyOf = (needs) => JSON.stringify({ params: Object.fromEntries(Object.ent
 // where you can type it right away"): one field per thing the service needs; the button opens the Plaza's hire flow
 // (wallet, quote, escrow — the path that already works) with the request written out from the fields.
 const fieldsOf = (needs) => Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v))).map(([k, v]) => k === 'holdings'
-  ? `          <label class="sv-f"><span>${esc(k)}</span><textarea name="${esc(k)}" rows="3" placeholder="one holding a line: token address, then its dollars&#10;0x0E09…cE82 600&#10;0xbb4C…095c 400"></textarea></label>`
+  ? `          <label class="sv-f"><span>${esc(k)}</span><textarea name="${esc(k)}" rows="3" placeholder="one holding a line: token address, then its dollars&#10;0x0E09…cE82 600&#10;0xbb4C…095c 400${/optional/i.test(String(v)) ? '&#10;(optional when a position is named)' : ''}"></textarea></label>`
   : `          <label class="sv-f"><span>${esc(k)}</span><input name="${esc(k)}" autocomplete="off" spellcheck="false" placeholder="${esc(String(v).replace(/,? optional.*$/i, '').slice(0, 70))}${/optional/i.test(String(v)) ? ' (optional)' : ''}"></label>`).join('\n');
 
 // THE FIRST SENTENCE ON THE CARD, THE REST ONE TAP AWAY (2026-10-13): six cards of the same price stood from 12 to 40
@@ -488,7 +488,7 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
           if (!rows.length || rows.some(function (r) { return !r; })) { if (!bad) bad = 'holdings: one line each, a token address then its dollars'; return; }
           parts.push('I hold ' + rows.join(' and ')); return;
         }
-        parts.push(k === 'capitalUsd' || k === 'amountUsd' ? '$' + v.replace(/^\\$/, '') : k === 'levels' ? v + ' levels' : k === 'bandPct' ? 'band ' + v + '%' : k === 'position' ? 'position ' + v : k + ' ' + v);
+        parts.push(k === 'capitalUsd' || k === 'amountUsd' ? '$' + v.replace(/^\\$/, '') : k === 'levels' ? v + ' levels' : k === 'bandPct' ? 'band ' + v + '%' : k === 'position' ? (/^0x[0-9a-fA-F]{40}$/.test(v) ? 'range check for the v3 positions held by ' + v : f.dataset.service === 'rebalance_plan' ? 'range check for v3 position ' + v : 'position ' + v) : k + ' ' + v);
       });
       if (bad) { msg.textContent = bad + '.'; return; }
       msg.textContent = '';

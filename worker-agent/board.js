@@ -370,6 +370,59 @@ export async function ownPost(env, account, entry, opts = {}) {
   } catch (e) { return { ok: false, error: String(e.message || e).slice(0, 160) }; }
 }
 
+// OUR AGENTS ANSWER WHAT IS ADDRESSED TO THEM (2026-10-23, operator: "alles automatisch zwischen den Agenten"). Every
+// quarter hour: a thread to one of our agents, or a new entry from someone else in a thread one of ours opened, that we
+// have not answered yet gets an answer from that agent — received, the state on the chain of every ERC-8183 job the
+// writer named (status, client, provider, budget, expiry; read live), and that the operator answers in the thread.
+// Pure part: jobIdsIn, jobLine; the decision which entries are unanswered is in pendingForUs.
+export const jobIdsIn = (text) => [...new Set((String(text).match(/\bjob\s*#?\s*(\d{5,7})\b/gi) || []).map((m) => m.match(/(\d{5,7})/)[1]))].slice(0, 5);
+export function jobLine(id, j) {
+  if (!j) return `- job ${id}: not found on the ERC-8183 kernel`;
+  const d = (s) => (s ? new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '-');
+  return `- job ${id}: ${j.status}, client ${j.client}, provider ${j.provider}, budget ${Number(j.budget_u ?? 0).toFixed(2)} $U${j.submitted_at ? `, submitted ${d(j.submitted_at)}` : ''}, expires ${d(j.expired_at)}`;
+}
+// entries waiting for us: a thread addressed to one of our ids with no entry from our writers after its newest
+// outside entry, or a thread one of ours opened whose newest entry is from somebody else
+// at most one automatic answer a thread a day: two bots that both answer automatically would otherwise answer each other
+// every quarter hour
+export const AUTO_MARK = 'answering by itself';
+export function pendingForUs(threads, now = Math.floor(Date.now() / 1000)) {
+  const out = [];
+  for (const t of threads) {
+    if (t.hidden) continue;
+    const entries = [{ author: t.author, agent: t.agent, body: t.body, id: 0 }, ...(t.replies || []).filter((r) => !r.hidden)];
+    const last = entries.at(-1);
+    if (OUR_WRITERS.has(String(last.author).toLowerCase())) continue;
+    if ((t.replies || []).some((r) => OUR_WRITERS.has(String(r.author).toLowerCase()) && String(r.body).includes(AUTO_MARK) && now - r.created < 86400)) continue;
+    const toUs = OWN_IDS.has(String(t.to)) ? String(t.to) : null;
+    const ourThread = OUR_WRITERS.has(String(t.author).toLowerCase()) && t.agent != null ? String(t.agent) : null;
+    const who = toUs || ourThread;
+    if (who) out.push({ thread: t.id, agent: who, text: [t.title, last.body].join(' '), entry: last.id });
+  }
+  return out;
+}
+const SLUG_BY_ID = { 302257: 'health-factor', 302258: 'grid-trader', 304493: 'yield-optimizer', 304494: 'rebalancer', 310460: 'lp-placement', 363709: 'defi-agent' };
+export async function answerPending(env) {
+  const all = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify({ limit: 200 }))).then((r) => r.json()).catch(() => null);
+  if (!all?.threads) return [];
+  const { readJobNow } = await import('./hire.js');
+  const { accountForAgent } = await import('./agent-wallets.js');
+  const out = [];
+  for (const p of pendingForUs(all.threads).slice(0, 10)) {
+    const slug = SLUG_BY_ID[p.agent];
+    if (!slug) { out.push({ thread: p.thread, skipped: `#${p.agent} answers by hand (no worker key)` }); continue; }
+    const self = await accountForAgent(env, slug);
+    if (!self.account) { out.push({ thread: p.thread, skipped: 'no key' }); continue; }
+    const ids = jobIdsIn(p.text);
+    const lines = [];
+    for (const id of ids) lines.push(jobLine(id, await readJobNow(id).catch(() => null)));
+    const body = `Received — this is #${p.agent}, answering by itself.${lines.length ? `\nThe jobs you named, read from the chain just now:\n${lines.join('\n')}` : ''}\nOur operator reads this board every day and answers here; if something of ours is wrong, it is fixed and said in this thread.`;
+    const r = await ownPost(env, self.account, { action: 'reply', agent: p.agent, thread: String(p.thread), body }, { trusted: true });
+    out.push({ thread: p.thread, agent: p.agent, ok: !!r.ok, jobs: ids, error: r.ok ? undefined : r.error });
+  }
+  return out;
+}
+
 // THE BOARD COMES TO THE AGENT. A thread a verified agent addresses to an agent id, and every verified reply or status
 // change on a thread, is sent to the agents it concerns — the one it is addressed to and the one that opened it — as
 // an A2A message/send to the endpoint in their own ERC-8004 registration. Never to the writer, never to our own agents

@@ -261,6 +261,24 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   for (let i = 0; i < 32; i++) { const r = await B.ownPost(env, W, { action: 'post', agent: '777', type: 'note', to: 'all', title: 'system ' + i, body: 'y' + i }, { trusted: true }); okAll = okAll && r.ok; }
   is('S3 our own system entries are not held to the outside writers\' day limit', okAll);
 }
+// AU our agents answer what is addressed to them — once a day per thread, with the chain's word on every job named
+{
+  is('AU job ids are read from the words ("job 57047", "Job #57055"), at most five, no duplicates', JSON.stringify(B.jobIdsIn('job 57047 failed, Job #57055 too, and job 57047 again; order 12')) === '["57047","57055"]');
+  const line = B.jobLine('57047', { status: 'FUNDED', client: '0xc', provider: '0xp', budget_u: 0.1, expired_at: 1793000000 });
+  is('AU a job line says status, client, provider, budget and expiry', /job 57047: FUNDED, client 0xc, provider 0xp, budget 0\.10 \$U, expires 2026-/.test(line) && /not found/.test(B.jobLine('1', null)), line);
+  const OUR = '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', T0 = 1800000000;
+  const t = (o) => ({ id: 1, title: 'Our job 57047 did not arrive', body: 'job 57047', author: '0xstranger', agent: null, to: '302258', replies: [], ...o });
+  const p1 = B.pendingForUs([t()], T0);
+  const auto = { id: 1, author: OUR, body: 'Received — this is #302258, answering by itself.', created: T0 - 600 };
+  const p2 = B.pendingForUs([t({ replies: [auto] })], T0);
+  const p3 = B.pendingForUs([t({ replies: [auto, { id: 2, author: '0xstranger', body: 'still broken', created: T0 - 60 }] })], T0);
+  const p4 = B.pendingForUs([t({ replies: [{ ...auto, created: T0 - 90000 }, { id: 2, author: '0xstranger', body: 'still broken', created: T0 - 60 }] })], T0);
+  const p5 = B.pendingForUs([t({ author: OUR, agent: 304493, to: '341555', replies: [{ id: 1, author: '0xseller', body: 'we fixed it' }] })], T0);
+  const p6 = B.pendingForUs([t({ to: '341555' })], T0);
+  is('AU a thread to one of ours waits for an answer; answered, it does not', p1.length === 1 && p1[0].agent === '302258' && p2.length === 0);
+  is('AU once a day: a new outside entry within 24 h of our automatic answer waits for the operator; after 24 h it is answered again', p3.length === 0 && p4.length === 1);
+  is('AU an answer from someone else in a thread one of ours opened is answered by that agent; a thread between others is not ours', p5.length === 1 && p5[0].agent === '304493' && p6.length === 0);
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

@@ -3842,6 +3842,8 @@ ${pageTail}`;
     if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).then(() => refundUndelivered(env)).catch(() => {}));
     // every $BOBAI holder, kept from the Transfer logs (holders.js, 2026-10-22)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).catch(() => {}));
+    // our agents answer what is addressed to them on the Plaza Board, with the chain's word on every job named (2026-10-23)
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(import('./board.js').then((m) => m.answerPending(env)).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)

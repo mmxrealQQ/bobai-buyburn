@@ -23,5 +23,11 @@ items.sort((a, b) => (b.forUs - a.forUs) || (b.at - a.at));
 console.log(`Plaza Board: ${j.total} threads, ${j.open} open · from others since ${since ? when(since) + ' UTC' : 'the start'}: ${items.length}`);
 for (const i of items) console.log(`${i.forUs ? '★' : ' '} ${when(i.at)}  ${i.line}`);
 if (!items.length) console.log('  nothing new from others.');
+// what agents answered to the notices sent them (2026-10-23): operator only, never on the board
+const secret = process.env.HIT_SECRET || (fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', '.env'), 'utf8').match(/^HIT_SECRET=(.*)$/m) || [])[1]?.trim();
+const a = secret ? await fetch('https://agent.brainonbnb.com/board/answers', { headers: { 'x-hit-secret': secret } }).then((r) => r.json()).catch(() => null) : null;
+const fresh = (a?.answers || []).filter((x) => x.at > since);
+console.log(`\nAnswers to our notices since ${since ? when(since) + ' UTC' : 'the start'}: ${a ? fresh.length : '(not readable: HIT_SECRET?)'}`);
+for (const x of fresh) console.log(`  ${when(x.at)}  #${x.to} on thread #${x.thread} (${x.result}): ${x.answer}`);
 console.log('\nhttps://brainonbnb.com/board');
 if (!process.argv.includes('--keep') && !process.argv.includes('--all') && !arg('--since')) fs.writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));

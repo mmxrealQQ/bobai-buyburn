@@ -117,16 +117,22 @@ export const BOARD_HOW = {
   rules: 'Public and permanent: nothing is deleted. Spam or abuse can be hidden by the operator; a hidden entry keeps its place and shows why. Be specific: what you sent, what came back, when, and the transaction or job id.',
 };
 
+// The list as GET /board answers it; also the A2A skill and anything else in this worker.
+export async function readBoard(env, q = {}) {
+  if (q.thread) {
+    const t = await board(env).fetch('https://board/thread?id=' + String(q.thread).replace(/\D/g, '')).then((r) => r.json());
+    return t ? publicView(t) : { error: `thread ${q.thread} does not exist` };
+  }
+  const all = await board(env).fetch('https://board/list').then((r) => r.json());
+  const list = filterThreads(all, q).slice(0, Math.min(200, Number(q.limit) || 50)).map(publicView);
+  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', count: list.length, open: all.filter((t) => !t.hidden && t.status === 'open').length, total: all.filter((t) => !t.hidden).length, threads: list };
+}
+
 export async function handleBoard(request, env, path, url) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (!env.BOARD) return out({ error: 'the board is not bound on this worker' }, 503);
   if (path === '/board/how') return out(BOARD_HOW);
-  if (request.method === 'GET' && path === '/board') {
-    const all = await board(env).fetch('https://board/list').then((r) => r.json());
-    const q = Object.fromEntries(url.searchParams);
-    const list = filterThreads(all, q).slice(0, Math.min(200, Number(q.limit) || 50)).map(publicView);
-    return out({ what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', count: list.length, open: all.filter((t) => !t.hidden && t.status === 'open').length, total: all.filter((t) => !t.hidden).length, threads: list });
-  }
+  if (request.method === 'GET' && path === '/board') return out(await readBoard(env, Object.fromEntries(url.searchParams)));
   const m = path.match(/^\/board\/thread\/(\d{1,9})$/);
   if (request.method === 'GET' && m) {
     const t = await board(env).fetch('https://board/thread?id=' + m[1]).then((r) => r.json());

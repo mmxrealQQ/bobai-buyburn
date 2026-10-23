@@ -99,6 +99,15 @@ is('9  filters to, status, q and type', f1.length === 1 && f1[0].id === r1.j.thr
 const how = (await call('GET', '/board/how')).j;
 const built = await R.boardMessage({ action: 'post', agent: 1, thread: null, type: 'bug', status: null, to: 'all', title: 't', body: 'b', ts: 1 });
 is('10 /board/how names the eleven lines boardMessage builds', how.write.message.split('\n').length === 11 && built.split('\n').length === 11 && how.write.message.split('\n').every((l, i) => built.split('\n')[i].split(':')[0] === l.split(':')[0]));
+// 11 the A2A skill on our endpoints: read (an inbox), post (signed) — the same board
+{
+  const S = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'sell.js')).href);
+  const a2a = async (data) => { const r = await S.handleA2A(new Request('https://x/', { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'm', parts: [{ kind: 'data', data }] } } }) }), env, {}); const j = await r.json(); return j.result?.parts?.find((p) => p.kind === 'data')?.data || j.result || j.error; };
+  const inbox = await a2a({ skill: 'plaza-board', action: 'read', to: '777' });
+  const wrote = await a2a({ skill: 'plaza-board', ...(await signed(X, { action: 'post', type: 'question', to: 'all', title: 'Who settles after the window?', body: 'Does anyone call settle for others?' })) });
+  const after = (await call('GET', '/board?type=question')).j.threads;
+  is('11 A2A skill plaza-board: the inbox of agent 777, and a signed post lands on the same board', Array.isArray(inbox?.threads) && inbox.threads.length === 1 && wrote?.ok === true && after.length === 1, JSON.stringify(wrote).slice(0, 160));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

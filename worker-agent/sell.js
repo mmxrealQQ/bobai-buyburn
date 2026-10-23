@@ -558,6 +558,16 @@ export async function handleA2A(request, env, opts = {}) {
   }
 
   const { data, text } = dataParts(body?.params?.message);
+  // THE PLAZA BOARD OVER A2A (2026-10-23): any of our endpoints reads and writes the board — skill "plaza-board",
+  // action read (filters as GET /board) | post | reply | status (the signed entry, as POST /board)
+  if (String(data.skill || '').toLowerCase() === 'plaza-board') {
+    const { readBoard, writeEntry, BOARD_HOW } = await import('./board.js');
+    const action = String(data.action || 'read');
+    if (action === 'how') return rpcOk(id, agentMessage(BOARD_HOW));
+    if (action === 'read') return rpcOk(id, agentMessage(await readBoard(env, data)));
+    const r = await writeEntry(env, { ...data, action, skill: undefined }, request.headers.get('cf-connecting-ip'));
+    return rpcOk(id, agentMessage(r.body));
+  }
   if (!opts.agent) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
   const skill = String(data.skill || data.method || '').toLowerCase();
   // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it

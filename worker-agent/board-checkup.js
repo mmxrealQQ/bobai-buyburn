@@ -60,7 +60,8 @@ function fetcherFor(id, self, deadline) {
       const go = own && self && isOurHost(url) ? self.fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) }) : fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) });
       const r = await go;
       const t = await readCapped(r);
-      try { return { status: r.status, json: JSON.parse(t) }; } catch { return { status: r.status, text: t.slice(0, 200) }; }
+      // the whole text (already capped at 256 KB): a streamed answer (text/event-stream) is parsed by the caller
+      try { return { status: r.status, json: JSON.parse(t) }; } catch { return { status: r.status, text: t }; }
     } catch (e) { return { error: String(e.message || e).slice(0, 120) }; }
   };
 }
@@ -97,6 +98,17 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   add('agentWallet', !!wallet, wallet || 'not set', 'setAgentWallet: SDK buyers check your signed quotes against it');
   const a2a = serviceUrl(doc, ['a2a']), mcp = serviceUrl(doc, ['mcp']);
   add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || 'none', 'declare a service named "A2A" (exactly, the SDK matches it case-sensitively) with its endpoint');
+  // the MCP endpoint, when one is declared (2026-10-23: Pokter and 8004scan measure it; the checkup did not): tools/list
+  // as a client sends it, stateless first, then with initialize when the server wants a session
+  // an answer as JSON or as a server-sent event stream (both are allowed by MCP and A2A): the last JSON data line
+  const sse = (r) => { if (r.json) return r.json; const ds = String(r.text || '').split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()); for (const x of ds.reverse()) { try { return JSON.parse(x); } catch { /* next */ } } return null; };
+  if (mcp && /^https:\/\//.test(mcp)) {
+    const call = (body, sid) => get(mcp, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'mcp-protocol-version': '2025-06-18', ...(sid ? { 'mcp-session-id': sid } : {}), 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify(body) });
+    let j = sse(await call({ jsonrpc: '2.0', id: 1, method: 'tools/list' }));
+    if (!j?.result?.tools) { await call({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'plaza-board-checkup', version: '1.0' } } }); j = sse(await call({ jsonrpc: '2.0', id: 2, method: 'tools/list' })); }
+    const n = Array.isArray(j?.result?.tools) ? j.result.tools.length : null;
+    add('MCP answers tools/list', n != null, n != null ? `${n} tool${n === 1 ? '' : 's'}` : `${String(mcp).slice(0, 80)} gave no tool list${j?.error ? ' (' + String(j.error.message || j.error.code).slice(0, 80) + ')' : ''}`, 'answer JSON-RPC tools/list at the declared MCP endpoint (streamable HTTP) — Pokter and 8004scan measure it');
+  }
   let card = null, rpcUrl = null;
   if (a2a) {
     // where the card is: the URL named, else under the endpoint's path, else at the domain's root — the A2A standard
@@ -115,8 +127,9 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   if (rpcUrl) {
     const t0 = Date.now();
     const r = await get(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'plaza-checkup-' + Date.now(), kind: 'message', parts: [{ kind: 'text', text: 'What can you do?' }] } } }) });
-    const ok = !!(r.json && (r.json.result || r.json.error?.code));
-    add('A2A message/send answers', ok, ok ? `${r.json.result ? 'a result' : 'a JSON-RPC error ' + r.json.error.code} in ${Date.now() - t0} ms` : `${String(rpcUrl).slice(0, 100)} answered ${r.status || r.error}`, 'answer JSON-RPC message/send at the card\'s url — marketplaces send exactly this ("What can you do?")');
+    const rj = sse(r);
+    const ok = !!(rj && (rj.result || rj.error?.code));
+    add('A2A message/send answers', ok, ok ? `${rj.result ? 'a result' : 'a JSON-RPC error ' + rj.error.code} in ${Date.now() - t0} ms` : `${String(rpcUrl).slice(0, 100)} answered ${r.status || r.error}`, 'answer JSON-RPC message/send at the card\'s url — marketplaces send exactly this ("What can you do?")');
     // the dialect the agent itself offers: BNB's SDK skill if its card has it, else the older "negotiate" (Marque's
     // reference agents, 2026-10-23 — asked in the wrong dialect they looked as if they quoted nothing)
     const skills = (card?.skills || []).map((s) => String(s.id || ''));
@@ -124,7 +137,7 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     if (dialect) {
       const q = await get(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'plaza-quote-' + Date.now(), parts: [{ kind: 'data', data: { skill: dialect, task_description: 'Quote your standard deliverable so a buyer can see the price before hiring.', terms: { deliverables: 'Your standard deliverable.', quality_standards: 'As described on your card.' }, chain_id: 56 } }] } } }) });
       // a Message (result.parts) or a Task (result.artifacts[].parts, or result.status.message.parts) — both are A2A
-      const res = q.json?.result || {};
+      const res = sse(q)?.result || {};
       const parts = [...(res.parts || []), ...(res.artifacts || []).flatMap((a) => a.parts || []), ...(res.status?.message?.parts || [])];
       const d = parts.find((p) => p.kind === 'data')?.data || res || {};
       const flat = JSON.stringify(d);

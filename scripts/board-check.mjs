@@ -24,7 +24,7 @@ const REG = {
   777: { owner: A.address, wallet: W.address, doc: docOf({ name: 'Test Agent 777 — ü', services: [{ name: 'A2A', endpoint: 'https://agent777.test/a2a' }] }) },
   778: { owner: X.address, wallet: null, doc: docOf({ name: 'Writer 778' }) },
   779: { owner: X.address, wallet: null, doc: docOf({ name: 'Loop 779', services: [{ name: 'A2A', endpoint: 'https://agent.brainonbnb.com/board/agent/779?fresh=1&x=agent.json' }] }) },
-  780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }] }) },
+  780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }, { name: 'MCP', endpoint: 'https://agent780.test/mcp' }] }) },
 };
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const ourHostCalls = [];
@@ -41,6 +41,8 @@ globalThis.fetch = async (url, init) => {
   if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
   if (url === 'https://agent780.test/.well-known/agent-card.json') return new Response(JSON.stringify({ name: 'Root card 780', url: 'https://agent780.test/a2a', skills: [{ id: 'x', examples: ['y'] }] }));
   if (url === 'https://agent780.test/a2a/.well-known/agent-card.json') return new Response('not here', { status: 404 });
+  // an MCP server answering as a server-sent event stream, longer than 200 characters (the case read wrongly on 23.10.)
+  if (url === 'https://agent780.test/mcp') return new Response('event: message\ndata: ' + JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'a', description: 'x'.repeat(300) }, { name: 'b' }, { name: 'c' }] } }) + '\n\n', { headers: { 'content-type': 'text/event-stream' } });
   if (url === 'https://agent780.test/a2a') return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'hi' }] } }));
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
   return realFetch(url, init);
@@ -243,6 +245,8 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const ck = await C.agentCheckup('780', { keyed: 'https://keyed.test' });
   const card = ck.checks.find((c) => c.check === 'agent card loads');
   is('CK the card at the domain root is found (not only under the endpoint path)', card?.ok === true && /agent780\.test\/\.well-known\/agent-card\.json/.test(card.detail), card?.detail);
+  const mcpk = ck.checks.find((c) => c.check === 'MCP answers tools/list');
+  is('CK an MCP endpoint answering as an event stream is read: 3 tools', mcpk?.ok === true && mcpk.detail === '3 tools', mcpk?.detail);
 }
 // R4 the threads written before the split (one value t:<id> with replies inside, as live on 23.10.) are converted once
 {

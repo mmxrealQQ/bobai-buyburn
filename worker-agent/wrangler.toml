@@ -50,3 +50,9 @@ LP_WATCH_POOL = "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56"
 [[services]]
 binding = "SELF"
 service = "bobai-agent"
+
+# The operator is told when a hire is not delivered and when its budget is back (agent-hires.js tellOperator, 2026-10-23).
+# Secret BROADCAST_SECRET: the same one the bot's /broadcast asks for.
+[[services]]
+binding = "TG"
+service = "bobai-tg-bot"

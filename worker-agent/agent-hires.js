@@ -230,6 +230,23 @@ export function undeliveredStep(row, job, now = Date.now()) {
   return null;
 }
 const CLAIM_REFUND = (jobId) => '0x5b7baf64' + BigInt(jobId).toString(16).padStart(64, '0');
+// ...AND TOLD (operator, 2026-10-23: "wenn einer nicht liefert, mach es public und melde es"): the operator gets one
+// private Telegram message when a hire is first published as not delivered, and one when its budget is back. Through
+// the Telegram bot's /broadcast (service binding TG + BROADCAST_SECRET); without them it is skipped, never fatal.
+const AGENT_NAME = { 302257: 'Venus Health Factor Monitor', 304493: 'Venus Yield Ranking', 363709: 'DeFi Agent' };
+const dayOf = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+export function undeliveredMessage(r, job, kind, tx = null) {
+  const who = `${r.seller_name} (#${r.seller}, ${r.site || 'Marque'})`, ours = AGENT_NAME[r.by] || `#${r.by}`;
+  if (kind === 'refunded') return `↩️ <b>Refunded</b>: job ${r.job} — ${who} never delivered; our ${ours} has its ${r.price_u} $U back.${tx ? `\nhttps://bscscan.com/tx/${tx}` : ''}`;
+  return `⚠️ <b>Hire not delivered</b>: ${who} took job ${r.job} (${r.price_u} $U from our ${ours}) on ${dayOf(r.at)} and has delivered nothing a day later.\nPublished: agent.brainonbnb.com/hires · brainonbnb.com/venus · Brain Plaza.${job?.expired_at ? ` Budget back by claimRefund after ${dayOf(job.expired_at * 1000)}.` : ''}`;
+}
+async function tellOperator(env, text) {
+  if (!env.TG || !env.BROADCAST_SECRET) return false;
+  try {
+    const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text }) }).then((x) => x.json());
+    return r?.ok === true;
+  } catch { return false; }
+}
 export async function refundUndelivered(env, { now = Date.now(), dry = false } = {}) {
   const list = await readHires(env);
   const out = [];
@@ -237,8 +254,8 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
     const job = await readJobNow(r.job).catch(() => null);
     const step = undeliveredStep(r, job, now);
     if (!step) continue;
-    if (step === 'mark-undelivered') { if (!dry) await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at }); out.push({ job: r.job, step }); continue; }
-    if (step === 'mark-refunded') { if (!dry) await log(env, { ...r, status: REFUNDED }); out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-undelivered') { if (!dry) { await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at }); await tellOperator(env, undeliveredMessage(r, job, 'undelivered')); } out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-refunded') { if (!dry) { await log(env, { ...r, status: REFUNDED }); await tellOperator(env, undeliveredMessage(r, job, 'refunded')); } out.push({ job: r.job, step }); continue; }
     const h = HIRES.find((x) => x.by === r.by);
     const self = h ? await accountForAgent(env, h.slug) : { account: null };
     if (!self.account || self.account.address.toLowerCase() !== String(job.client).toLowerCase()) { out.push({ job: r.job, step, error: 'the client wallet\'s key is not here' }); continue; }
@@ -252,6 +269,7 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
       const after = await readJobNow(r.job).catch(() => null);
       const ok = rc.status === 'success' && after?.status === 'EXPIRED';
       await log(env, { ...r, status: ok ? REFUNDED : r.status, refund_tx: hash, refund_ok: ok });
+      if (ok) await tellOperator(env, undeliveredMessage(r, job, 'refunded', hash));
       out.push({ job: r.job, step, tx: hash, ok });
     } catch (e) { out.push({ job: r.job, step, error: String(e.shortMessage || e.message || e).slice(0, 160) }); }
   }

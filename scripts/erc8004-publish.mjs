@@ -2972,11 +2972,16 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     ((op && op.opinions) || []).forEach(function (o) { if (o.job) we.push({ at: o.at, who: 'DeFi agent', seller: (o.seller && o.seller.name) || 'Mandate Range-1', site: 'Mandate', price: o.price_u, status: o.status, agrees: o.agrees, tx: o.tx }); });
     we.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); });
     set('aw-n-hired', nf(we.length));
-    set('aw-s-hired', we.length ? nf(we.reduce(function (s, x) { return s + (+x.price || 0); }, 0), 2) + ' $U paid to ' + nf(new Set(we.map(function (x) { return x.seller; })).size) + ' agents' : 'second opinions, paid in $U');
+    // NOT DELIVERED IS SAID, NOT SUMMED AWAY (2026-10-23, operator: "transparent und ehrlich"): Sluicegate took two paid
+    // jobs and delivered neither; the line counts what came back as answers and what did not, and the row says it in red
+    var undelivered = function (x) { return /not delivered|refunded/.test(x.status || ''); };
+    var nNo = we.filter(undelivered).length;
+    set('aw-s-hired', we.length ? nf(we.reduce(function (s, x) { return s + (+x.price || 0); }, 0), 2) + ' $U paid to ' + nf(new Set(we.map(function (x) { return x.seller; })).size) + ' agents' + (nNo ? ' &middot; ' + nf(nNo) + ' not delivered (budget back at expiry)' : '') : 'second opinions, paid in $U');
     set('aw-hired', we.length ? we.slice(0, 8).map(function (x) {
       var v = x.agrees === true ? ' &middot; <span class="ok">same reading</span>' : x.agrees === false ? ' &middot; <span class="no">different reading</span>' : '';
       var f = x.theirs != null ? ' &middot; theirs ' + nf(x.theirs, 2) + (x.ours != null ? ', ours ' + nf(x.ours, 2) : '') : '';
-      return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + (x.status !== 'answered' ? ' &middot; ' + esc(x.status) : '') + tx(x.tx) + '</div>';
+      var st = x.status === 'answered' ? '' : undelivered(x) ? ' &middot; <span class="no">' + esc(x.status) + '</span>' : ' &middot; ' + esc(x.status);
+      return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + st + tx(x.tx) + '</div>';
     }).join('') : '<p class="rg-note">None yet.</p>');
     // hired us: paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers
     var us = [];

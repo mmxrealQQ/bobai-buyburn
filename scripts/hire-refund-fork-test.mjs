@@ -39,6 +39,11 @@ console.log('the rule (offline)');
   ok('delivered (SUBMITTED) or already refunded: nothing', step(row(), job({ status: 'SUBMITTED' }), now) === null && step(row({ status: H.REFUNDED }), job({ status: 'EXPIRED' }), now) === null);
   const slu = (H.HIRES || []).find((h) => h.seller === 341555);
   ok('Sluicegate is paused, with the reason', !!slu?.paused && /57047/.test(slu.paused), slu?.paused);
+  // the operator is told (2026-10-23, "mach es public und melde es"): the seller, the job, the price, where it is published
+  const msg = H.undeliveredMessage ? H.undeliveredMessage({ job: '57047', seller: 341555, seller_name: 'Sluicegate', site: 'Marque', by: 304493, price_u: 0.1, at: '2026-10-22T09:05:28Z' }, { expired_at: Date.parse('2026-10-30T09:05:28Z') / 1000 }, 'undelivered') : '';
+  ok('the operator\'s message names seller, job, price, our agent, where it is published and when the budget comes back', /Sluicegate \(#341555, Marque\)/.test(msg) && /job 57047/.test(msg) && /0\.1 \$U/.test(msg) && /Venus Yield Ranking/.test(msg) && /agent\.brainonbnb\.com\/hires/.test(msg) && /30 Oct/.test(msg), msg.split('\n')[0]);
+  const msg2 = H.undeliveredMessage ? H.undeliveredMessage({ job: '57047', seller: 341555, seller_name: 'Sluicegate', site: 'Marque', by: 304493, price_u: 0.1 }, null, 'refunded', '0xabc') : '';
+  ok('the refund message names the transaction', /Refunded/.test(msg2) && /bscscan\.com\/tx\/0xabc/.test(msg2));
   const out = await H.runAgentHires({ AGENT_HIRES: 'on', AGENT: { get: async () => null, put: async () => {} } }, { dry: true }).catch((e) => [{ error: e.message }]);
   const s = out.find((x) => x.seller === 341555);
   ok('the day\'s run skips the paused hire and pays nothing', s?.status === 'paused', JSON.stringify(s || {}).slice(0, 120));

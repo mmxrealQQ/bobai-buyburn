@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7370,
-   "zipBytes": 192992,
-   "txtBytes": 599743,
-   "sha256": "1f9786882a6b6735",
+   "lines": 7448,
+   "zipBytes": 194827,
+   "txtBytes": 605916,
+   "sha256": "9a73d9301cfcb06c",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5686,
-   "zipBytes": 97965,
-   "txtBytes": 292576,
-   "sha256": "4a633e2ef540d8e8",
+   "lines": 5743,
+   "zipBytes": 99159,
+   "txtBytes": 295934,
+   "sha256": "ca389f32eacbf1ba",
    "reqs": [
     {
      "what": "A bot token",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 66,
-   "lines": 20985,
-   "zipBytes": 503396,
-   "txtBytes": 1418652,
-   "sha256": "8ba4326bd66c3db5",
+   "lines": 21108,
+   "zipBytes": 506550,
+   "txtBytes": 1429152,
+   "sha256": "a8c634e078749027",
    "reqs": [
     {
      "what": "A wallet to be paid into",

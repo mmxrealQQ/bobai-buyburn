@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7370 lines.
+# one fetch. 17 files, 7448 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5743,8 +5743,11 @@ export async function lpPositionPlan(params = {}, env = null) {
   // the ids to choose from): the buyer keeps the payment as a credit.
   if (r.facts.positions !== 1) throw new Error(`${r.facts.verdict}${Array.isArray(r.facts.position_ids) && r.facts.position_ids.length ? ` Position ids: ${r.facts.position_ids.join(', ')}.` : ''} The free look says the same: https://agent.brainonbnb.com/lp/look`);
   const { facts, pub, p, owner, poolInfo, owedBnbEquiv } = r;
+  // NOT A WBNB PAIR: THE RANGE CHECK (2026-10-23). It used to be handed back with one sentence ("plans only WBNB
+  // pairs") and declined at the quote; the width replay and the BNB amounts need a WBNB side, the range check does not.
   if (!facts.against_wbnb) {
-    return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };
+    const rc = await lpRangeCheck({ position: facts.position });
+    return { ...facts, ...rc.positions[0], service: 'lp_position_plan', mode: 'range_check', verdict: `${rc.positions[0].verdict} Not a WBNB pair: this is the range check — the width replay and the BNB amounts are planned for WBNB pairs only.`, method: rc.method, measured_at: rc.measured_at };
   }
   // The agent's own decisions, on this position, from the same code.
   // The verdict the agent itself acts on: measured re-set cost and the price
@@ -5784,6 +5787,81 @@ export async function lpPositionPlan(params = {}, env = null) {
     what_this_is_not: 'An execution. This agent signs nothing on your position; it tells you what it would do, from the same code that runs its own. Measurement, not advice.',
     measured_at: new Date().toISOString(),
     source: 'PancakeSwap V3 NonfungiblePositionManager and the pool itself, read live; the width from the recorded price windows',
+  };
+}
+
+// THE RANGE CHECK, ANY PAIR, EVERY POSITION (2026-10-23). Marketplaces file "rebalancing" as LP range work: Pokter
+// asked our Rebalancer "Range check for the PancakeSwap v3 positions held by 0x…: which are in range, and what should
+// be re-centred?" and it declined (it priced portfolios only), and the DeFi agent declined too (not a WBNB pair). The
+// reading needs no pair of ours: per position the ticks, the pool's tick, in range or not, the room to each edge, and
+// where the same width would sit centred on today's price, aligned to the pool's tick spacing. Read-only: it moves
+// nothing. Up to MAX_RANGE positions per wallet; empty ones (liquidity 0) are named, not judged.
+const MAX_RANGE = 20;
+const ERC20_SYMBOL = [{ name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'string' }] }];
+const SPACING_ABI = [{ name: 'tickSpacing', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'int24' }] }];
+const FEE_SPACING = { 100: 1, 500: 10, 2500: 50, 10000: 200 };
+// Pure: one position's verdict from its ticks, the pool's tick and the spacing.
+export function rangeVerdict(lower, upper, tick, spacing) {
+  const pct = (a, b) => +((Math.pow(1.0001, a - b) - 1) * 100).toFixed(2);
+  const width = upper - lower;
+  const inRange = tick >= lower && tick < upper;
+  const sp = Math.max(1, spacing || 1);
+  const newLower = Math.floor((tick - width / 2) / sp) * sp;
+  const newUpper = newLower + Math.max(sp, Math.round(width / sp) * sp);
+  const out = { ticks: [lower, upper], tick, tick_spacing: sp, in_range: inRange, width_pct: pct(upper, lower) };
+  if (inRange) {
+    out.room = { to_lower_pct: -pct(lower, tick), to_upper_pct: pct(upper, tick) };
+    // near an edge: less than a tenth of the width left on one side
+    const left = Math.min((tick - lower) / width, (upper - tick) / width);
+    out.near_edge = left < 0.1;
+    out.recentre = out.near_edge ? 'soon' : 'no';
+  } else {
+    out.out_of_range = tick < lower ? { side: 'below', price_must_rise_pct: pct(lower, tick) } : { side: 'above', price_must_fall_pct: -pct(upper, tick) };
+    out.recentre = 'yes';
+  }
+  out.recentred_ticks = [newLower, newUpper];
+  out.verdict = inRange
+    ? `In range: ${out.room.to_lower_pct}% of room below the price, ${out.room.to_upper_pct}% above${out.near_edge ? ' — near an edge; re-centring soon keeps it earning' : ''}.`
+    : `Out of range (${out.out_of_range.side}): all one token, earning nothing. The same width centred on the price is ticks ${newLower} to ${newUpper}.`;
+  return out;
+}
+export async function lpRangeCheck(params = {}) {
+  const pub = client();
+  const idIn = params.position ?? params.tokenId ?? params.id;
+  const ids = [];
+  let address = String(params.address || params.wallet || params.owner || '').match(/0x[a-fA-F0-9]{40}/)?.[0] || null, n = null;
+  if (idIn != null && /^\d+$/.test(String(idIn))) ids.push(BigInt(String(idIn)));
+  else {
+    if (!address) throw new Error('a range check needs a PancakeSwap V3 position id or the wallet that holds the positions (0x…)');
+    n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
+    for (let i = 0; i < Math.min(n, MAX_RANGE); i++) ids.push(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, BigInt(i)]));
+  }
+  const symbols = new Map();
+  const sym = async (t) => { if (!symbols.has(t)) symbols.set(t, await read(pub, t, ERC20_SYMBOL, 'symbol').catch(() => t.slice(0, 8))); return symbols.get(t); };
+  const positions = [];
+  for (const id of ids) {
+    const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [id]).catch(() => null);
+    if (!pos) { positions.push({ position: String(id), error: 'not on the PancakeSwap V3 manager' }); continue; }
+    const pair = `${await sym(pos[2])}/${await sym(pos[3])}`;
+    const base = { position: String(id), pair, token0: pos[2], token1: pos[3], fee_tier_pct: Number(pos[4]) / 10000 };
+    if (pos[7] === 0n) { positions.push({ ...base, empty: true, verdict: 'Empty: no liquidity left in it, nothing to re-centre.' }); continue; }
+    const poolInfo = await readPool(pub, pos);
+    const spacing = Number(await read(pub, poolInfo.pool, SPACING_ABI, 'tickSpacing').catch(() => FEE_SPACING[Number(pos[4])] || 1));
+    positions.push({ ...base, pool: poolInfo.pool, ...rangeVerdict(Number(pos[5]), Number(pos[6]), poolInfo.tick, spacing) });
+  }
+  const live = positions.filter((p) => p.ticks);
+  const out = live.filter((p) => !p.in_range), soon = live.filter((p) => p.near_edge);
+  return {
+    service: 'range_check',
+    ...(address && n != null ? { address, positions_held: n, ...(n > MAX_RANGE ? { read: `the first ${MAX_RANGE}` } : {}) } : {}),
+    summary: !positions.length ? 'This wallet holds no PancakeSwap V3 position. Nothing to check.'
+      : !live.length ? `${positions.length} position${positions.length === 1 ? '' : 's'}, none with liquidity left — nothing to re-centre.`
+      : `${live.length} position${live.length === 1 ? '' : 's'} with liquidity: ${live.length - out.length} in range, ${out.length} out of range${soon.length ? `, ${soon.length} near an edge` : ''}.${out.length ? ` Re-centre: ${out.map((p) => '#' + p.position).join(', ')}.` : ''}`,
+    positions,
+    method: 'Per position: its ticks and the pool\'s current tick, read live; room to each edge as a price move in percent; re-centred = the same width centred on the current tick, aligned to the pool\'s tick spacing. Near an edge = less than a tenth of the width left on one side.',
+    what_this_is_not: 'An execution or advice on whether to provide liquidity. It reads and moves nothing.',
+    measured_at: new Date().toISOString(),
+    source: 'PancakeSwap V3 NonfungiblePositionManager and each pool, read live',
   };
 }
 

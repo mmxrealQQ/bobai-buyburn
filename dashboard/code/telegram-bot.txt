@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5686 lines.
+# one fetch. 12 files, 5743 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1359,6 +1359,51 @@ export function addAlertedBuys(rec, add, now = Date.now()) {
   const since = rec && Number.isFinite(rec.since) ? rec.since : now;
   const buys = [...((rec && Array.isArray(rec.buys)) ? rec.buys : []), ...add].filter((b) => b && now - b.ts < ALERTED_KEEP_MS).slice(-ALERTED_MAX);
   return { since, buys };
+}
+// ONE ALERT PER BUY, WHATEVER THE TICKS DO (2026-10-23). The $328 buy of 22.10. 20:37 UTC went out twice, the same
+// photo in the same minute: two every-minute ticks both read `pending_nft_buys` before either had written it back
+// (KV is eventually consistent across locations, up to 60 s, and a tick can run longer than a minute). A Durable
+// Object is one instance worldwide with ordered storage, so a claim is atomic: the first tick to claim a tx sends,
+// every other one skips it. A send that fails releases the claim, so the next tick can retry. Claims are kept 7 days.
+export class AlertGate {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    const u = new URL(request.url);
+    const key = u.searchParams.get('k');
+    if (!key) return new Response('{"error":"no key"}', { status: 400 });
+    const now = Date.now();
+    if (u.pathname === '/claim') {
+      const at = await this.state.storage.get(key);
+      if (at && now - at < ALERTED_KEEP_MS) return Response.json({ claimed: false, at });
+      await this.state.storage.put(key, now);
+      // prune now and then: one list in a hundred claims
+      if (Math.random() < 0.01) {
+        const all = await this.state.storage.list();
+        const old = [...all].filter(([, t]) => now - t >= ALERTED_KEEP_MS).map(([k]) => k);
+        if (old.length) await this.state.storage.delete(old.slice(0, 128));
+      }
+      return Response.json({ claimed: true });
+    }
+    if (u.pathname === '/release') { await this.state.storage.delete(key); return Response.json({ released: true }); }
+    return new Response('{"error":"unknown"}', { status: 404 });
+  }
+}
+// true: this tick may send. No gate bound (tests, a local run): true, the KV dedup as before. A gate that cannot be
+// asked: true as well — a buy told twice is better than a buy never told (the health check counts untold buys).
+export async function claimAlert(env, kind, id) {
+  if (!env || !env.GATE) return true;
+  try {
+    const stub = env.GATE.get(env.GATE.idFromName('alerts'));
+    const r = await stub.fetch(`https://gate/claim?k=${encodeURIComponent(kind + ':' + String(id).toLowerCase())}`);
+    const j = await r.json();
+    if (j.claimed !== true) console.log('[GATE] already sent by another tick', kind, id);
+    return j.claimed === true;
+  } catch (e) { console.error('[GATE] claim failed, sending anyway', kind, id, e.message || e); return true; }
+}
+export async function releaseAlert(env, kind, id) {
+  if (!env || !env.GATE) return;
+  try { await env.GATE.get(env.GATE.idFromName('alerts')).fetch(`https://gate/release?k=${encodeURIComponent(kind + ':' + String(id).toLowerCase())}`); }
+  catch (e) { console.error('[GATE] release failed', kind, id, e.message || e); }
 }
 export const ordinal = (n) => { const t = n % 100, u = n % 10; return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th'); };
 const shortDay = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -5596,16 +5641,18 @@ export default {
       if (alertsThisRun >= MAX_ALERTS_PER_RUN) { stillPending.push(p); continue; }
       const drop = dropByBuyTx.get(String(p.txHash || '').toLowerCase());
       if (drop) {
+        if (!(await claimAlert(env, 'buy', p.txHash))) continue;   // another tick sent it: off the queue
         const t = alertTrade(p, drop);
         const sent = await postBuyAlert(t, await burnedPct(), nftLineFromDrop(drop), TG_CHAT_ID, false, await buyCtx(t));
         if (sent) { alertsThisRun++; noteAlerted(t); console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
-        else { stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
+        else { await releaseAlert(env, 'buy', p.txHash); stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
         continue;
       }
       if (nowMs - p.queuedAt > NFT_PENDING_TIMEOUT_MS) {
+        if (!(await claimAlert(env, 'buy', p.txHash))) continue;
         const sent = await postBuyAlert(p, await burnedPct(), nftLineTimeout(), TG_CHAT_ID, false, await buyCtx(p));
         if (sent) { alertsThisRun++; noteAlerted(p); console.log('[BUY] timeout-alert', p.txHash); }
-        else { stillPending.push(p); console.error('[BUY] timeout-alert send failed, will retry', p.txHash); }
+        else { await releaseAlert(env, 'buy', p.txHash); stillPending.push(p); console.error('[BUY] timeout-alert send failed, will retry', p.txHash); }
         continue;
       }
       stillPending.push(p);
@@ -5673,9 +5720,10 @@ export default {
               console.log('[BUY] alert cap reached, sold-out alert left for the next cron', txHash);
             } else if (soldOut) {
               // No mint will happen — fire immediately with sold-out line
+              if (!(await claimAlert(env, 'buy', txHash))) { postedSet.add(txHash); continue; }
               const sent = await postBuyAlert(tradeBase, await burnedPct(), nftLineSoldOut(tierIdx), TG_CHAT_ID, false, await buyCtx(tradeBase));
               if (sent) { postedSet.add(txHash); alertsThisRun++; noteAlerted(tradeBase); }
-              else console.error('[BUY] sold-out alert NOT sent, will retry next cron', txHash);
+              else { await releaseAlert(env, 'buy', txHash); console.error('[BUY] sold-out alert NOT sent, will retry next cron', txHash); }
             } else {
               // Queue for matching with mint-worker drop — alert fires once #tokenId known
               postedSet.add(txHash);   // dedup so the next cron's log scan skips this tx
@@ -5755,3 +5803,12 @@ crons = ["* * * * *"]
 [[kv_namespaces]]
 binding = "KV"
 id = "<your-kv-namespace-id>"
+
+# One alert per buy (2026-10-23): AlertGate claims each tx once, worldwide (index.js claimAlert)
+[[durable_objects.bindings]]
+name = "GATE"
+class_name = "AlertGate"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AlertGate"]

@@ -25,7 +25,7 @@ const opt = (n) => { const i = raw.indexOf(n); return i >= 0 ? raw[i + 1] : null
 const confirm = raw.includes('--confirm');
 const [jobId, starsRaw] = raw.filter((a, i) => a !== '--confirm' && !['--from', '--comment'].includes(a) && !['--from', '--comment'].includes(raw[i - 1]));
 const stars = Number(starsRaw);
-if (!/^\d+$/.test(jobId || '') || !(Number.isInteger(stars) && stars >= 1 && stars <= 5)) { console.log('usage: node scripts/bnb-sdk/rate-marque.mjs <jobId> <stars 1-5> [--comment "..."] [--from defi] [--confirm]'); process.exit(1); }
+if (!/^\d+$/.test(jobId || '') || !(Number.isInteger(stars) && stars >= 1 && stars <= 5)) { console.log('usage: node scripts/bnb-sdk/rate-marque.mjs <jobId> <stars 1-5> [--comment "..."] [--from defi|health] [--confirm]'); process.exit(1); }
 const fromDefi = opt('--from') === 'defi';
 if (confirm && fromDefi) {
   // the same quiet minutes as hire-marque.mjs: never beside a send of the DeFi agent from 0xbFAA
@@ -35,7 +35,9 @@ if (confirm && fromDefi) {
     process.exit(1);
   }
 }
-const pk = process.env[fromDefi ? 'LP_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
+// --from health (2026-10-23): the Venus health factor monitor's own agentWallet, which pays its daily Keel hire
+const fromHealth = opt('--from') === 'health';
+const pk = process.env[fromDefi ? 'LP_PRIVATE_KEY' : fromHealth ? 'BACKUP1_PRIVATE_KEY' : 'AGENT_PROVIDER_PRIVATE_KEY'];
 const account = privateKeyToAccount(pk.startsWith('0x') ? pk : `0x${pk}`);
 const get = async (p) => { const r = await fetch(SITE + p, { signal: AbortSignal.timeout(60000) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(`${p}: ${j.detail || j.error || r.status}`); return j; };
 

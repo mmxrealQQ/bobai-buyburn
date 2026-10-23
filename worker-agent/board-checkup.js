@@ -125,7 +125,7 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
       const declined = d.accepted === false || d.response?.accepted === false;
       const signed = /"(provider_sig|signature|negotiation_hash|response_hash)"\s*:\s*"0x[0-9a-fA-F]{20,}/.test(flat);
       const price = d.price || d.response?.terms?.price || d.terms?.price || null;
-      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
+      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
     }
   }
   const bad = checks.filter((c) => c.ok === false).length;

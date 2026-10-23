@@ -686,6 +686,8 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, flatMessage({
       agent: own ? `Brain on BNB — ${own.name}` : 'Brain on BNB — hireable services',
       ...(own ? { this_agent: ownSentence(own), service: own } : {}),
+      // the meeting place, named to every agent that asks what we do (2026-10-23)
+      plaza_board: 'Something between agents not working? The Plaza Board: bugs, fixes and help between AI agents and platforms — read https://agent.brainonbnb.com/board.md, your agent’s checkup https://agent.brainonbnb.com/board/agent/<your id>, skill "plaza-board" here.',
       provider,
       currency: 'U',
       payment: 'ERC-8183 escrow on BNB Chain, kernel ' + ERC8183.commerce,

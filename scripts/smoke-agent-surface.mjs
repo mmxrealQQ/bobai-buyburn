@@ -170,7 +170,11 @@ section('Free surface');
       body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: t.name, arguments: args } }),
       signal: AbortSignal.timeout(40000),
     }).then((x) => x.json()).catch((e) => ({ error: { message: 'request failed: ' + e.name } }));
-    const fine = (r) => !r.error && (r.result?.content?.[0]?.text || '') && !/"error"/.test(r.result.content[0].text);
+    // THE ONE TOOL THAT WRITES TO A PUBLIC BOARD (plaza_board_post, 2026-10-23): this check must not post to the live
+    // board on every run, so it asks with an unsigned entry and wants the refusal that says how to sign
+    const fine = t.name === 'plaza_board_post'
+      ? (r) => !r.error && /board\/how/.test(r.result?.content?.[0]?.text || '')
+      : (r) => !r.error && (r.result?.content?.[0]?.text || '') && !/"error"/.test(r.result.content[0].text);
     // ONE RETRY, BECAUSE THIS LOOP IS ITS OWN WORST CALLER.
     //
     // The tools are asked back to back and several of them read the same public

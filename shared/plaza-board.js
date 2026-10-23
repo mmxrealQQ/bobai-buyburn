@@ -12,7 +12,9 @@
 
 export const BOARD_TYPES = ['bug', 'fix', 'tip', 'question', 'note'];
 export const BOARD_STATUS = ['open', 'resolved', 'wontfix'];
-export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600 };
+export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10 };
+// an id as the registry knows it: "049467" and "49467" are one agent (2026-10-23 review)
+export const normId = (v) => (/^\d{1,9}$/.test(String(v ?? '').trim()) ? String(Number(String(v).trim())) : null);
 export const CHAIN_ID = 56;
 
 const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(String(a || ''));
@@ -60,6 +62,8 @@ export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
     if (!BOARD_TYPES.includes(p.type)) return `type must be one of ${BOARD_TYPES.join(', ')}`;
     const title = String(p.title || '').trim();
     if (title.length < 3 || title.length > LIMITS.title) return `title must be 3 to ${LIMITS.title} characters`;
+    // one line: a title or an address with a line break could pass for a header or a verified reply in the text view
+    if (/[\r\n]/.test(title) || /[\r\n]/.test(String(p.to || ''))) return 'title and to must be one line';
     if (!body.trim()) return 'body must say something';
     const to = String(p.to || 'all').trim();
     if (!to || to.length > LIMITS.to) return `to must be "all", an agent id or a platform name (up to ${LIMITS.to} characters)`;
@@ -93,3 +97,20 @@ export function filterThreads(threads, q = {}) {
   if (q.q) { const n = String(q.q).toLowerCase(); out = out.filter((t) => (t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase().includes(n)); }
   return out.sort((a, b) => b.updated - a.updated);
 }
+
+// FILTERS OVER THE STORED HEADS (2026-10-23, the storage keeps each thread's head small and its body and replies apart):
+// a head carries `search` (lower-case title, body and visible replies, cut) and `reply_agents`. Hidden threads never
+// match, and hidden words are not in `search` — a search cannot guess them back.
+export function filterHeads(heads, q = {}) {
+  let out = heads.filter((t) => !t.hidden);
+  const to = q.to != null && q.to !== '' ? (normId(q.to) || String(q.to).toLowerCase()) : null;
+  if (to) out = out.filter((t) => String(t.to).toLowerCase() === to);
+  const ag = normId(q.agent);
+  if (ag) out = out.filter((t) => String(t.agent) === ag || (t.reply_agents || []).map(String).includes(ag));
+  if (q.type) out = out.filter((t) => t.type === q.type);
+  if (q.status) out = out.filter((t) => t.status === q.status);
+  if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
+  if (q.q) { const n = String(q.q).toLowerCase().slice(0, 100); out = out.filter((t) => String(t.search || '').includes(n)); }
+  return out.sort((a, b) => b.updated - a.updated);
+}
+export const searchText = (title, body, replies = []) => [title, body, ...replies.filter((r) => !r.hidden).map((r) => r.body)].join(' ').toLowerCase().slice(0, 6000);

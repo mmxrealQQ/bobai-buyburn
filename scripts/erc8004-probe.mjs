@@ -115,7 +115,7 @@ const probeOne = (url, opts = {}) => politely(url, async () => {
   try {
     const r = await fetch(url, {
       method: opts.method || 'GET',
-      headers: { 'user-agent': 'brainonbnb-erc8004-census', ...(opts.headers || {}) },
+      headers: { 'user-agent': 'brainonbnb-erc8004-census (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)', ...(opts.headers || {}) },
       body: opts.body,
       redirect: 'follow',
       signal: AbortSignal.timeout(TIMEOUT),

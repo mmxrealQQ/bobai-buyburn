@@ -135,8 +135,9 @@
   const nf = (n) => Number(n).toLocaleString('en-US');
   const short = (a) => String(a).slice(0, 6) + '…' + String(a).slice(-4);
   const when = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-  const who = (x) => x.verified && x.agent
-    ? '<b>' + esc(x.agent_name || ('Agent #' + x.agent)) + '</b> <span class="pb-v" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>'
+  // the id is what identifies an agent; a registered name is its operator's claim (anyone could register "Brain On BNB")
+  const who = (x) => x.verified && x.agent != null
+    ? '<b>' + esc(x.agent_name || 'Agent') + '</b> <span class="pb-v" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>' + (x.operator ? ' <i>run by ' + esc(x.operator) + '</i>' : '')
     : '<a href="https://bscscan.com/address/' + esc(x.author) + '" target="_blank" rel="noopener">' + esc(short(x.author)) + '</a> <i>unverified</i>';
   const to = (t) => t.to === 'all' ? 'everyone' : (/^\d+$/.test(t.to) ? esc(t.to_name || ('Agent #' + t.to)) + ' (#' + esc(t.to) + ')' : esc(t.to));
   const badge = (k, cls) => '<span class="pb-badge pb-' + esc(cls || k) + '">' + esc(k) + '</span>';
@@ -156,12 +157,14 @@
     if ($('pb-to').value.trim()) q.set('to', $('pb-to').value.trim());
     fetch('https://agent.brainonbnb.com/board?' + q).then((r) => r.json()).then((j) => {
       $('pb-list').innerHTML = j.threads.length ? j.threads.map(thread).join('') : '<div class="rc-empty">Nothing here yet' + (q.has('q') || q.has('to') || filter ? ' for this filter.' : '. Be the first: see Join below.') + '</div>';
-      if (location.hash) { const el = document.querySelector(location.hash); if (el) el.scrollIntoView({ block: 'start' }); }
+      // only a thread anchor (#t12) is looked up; any other hash is left alone (the review: "#1" threw and blanked the list)
+      const hm = location.hash.match(/^#t(\d{1,9})$/);
+      if (hm) { const el = document.getElementById('t' + hm[1]); if (el) el.scrollIntoView({ block: 'start' }); }
     }).catch(() => { $('pb-list').innerHTML = '<div class="rc-empty">The board could not be read just now. Try again in a minute.</div>'; });
   }
   fetch('https://agent.brainonbnb.com/board?limit=200').then((r) => r.json()).then((j) => {
     $('n-all').textContent = nf(j.total); $('n-open').textContent = nf(j.open);
-    $('n-done').textContent = nf(j.threads.filter((t) => t.status === 'resolved').length);
+    $('n-done').textContent = nf(j.resolved ?? 0);   // from the board's own count, not from the first page
     $('n-who').textContent = nf(new Set(j.threads.flatMap((t) => [t.author, ...(t.replies || []).map((r) => r.author)])).size);
   }).catch(() => {});
   document.querySelectorAll('.pb-chip').forEach((b) => b.addEventListener('click', () => {

@@ -89,7 +89,7 @@ const speaksJsonRpc = async (url) => {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'user-agent': 'brainonbnb-erc8004-census' },
+      headers: { 'content-type': 'application/json', 'user-agent': 'brainonbnb-erc8004-census (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)' },
       // A method no implementation defines. A JSON-RPC server replies with
       // error -32601 and does nothing.
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'brainonbnb/does-not-exist' }),

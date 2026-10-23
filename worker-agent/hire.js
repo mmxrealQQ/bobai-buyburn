@@ -214,7 +214,8 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
   try {
     r = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      // our name and the board in every quote request to an outside agent (2026-10-23: agents find the Plaza Board in their logs)
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'user-agent': 'BrainPlaza/1.0 (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,

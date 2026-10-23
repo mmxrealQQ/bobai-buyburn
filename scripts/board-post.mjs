@@ -13,7 +13,8 @@ import { boardMessage, checkPost } from '../shared/plaza-board.js';
 
 const file = process.argv[2], confirm = process.argv.includes('--confirm');
 if (!file) { console.error('usage: node scripts/board-post.mjs <file.json> [--confirm]'); process.exit(1); }
-let key = (process.env.LP_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
+// --as 49467: our Brain Plaza identity, signed by its owner (BOBAI_PRIVATE_KEY); default the owner of our six (LP_PRIVATE_KEY)
+let key = (process.argv.includes('--as') && process.argv[process.argv.indexOf('--as') + 1] === '49467' ? process.env.BOBAI_PRIVATE_KEY : process.env.LP_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
 const acct = privateKeyToAccount(key);
 const entries = JSON.parse(fs.readFileSync(file, 'utf8'));
 console.log(`${confirm ? 'POSTING' : 'DRY RUN — nothing is posted'} · signer ${acct.address}\n`);

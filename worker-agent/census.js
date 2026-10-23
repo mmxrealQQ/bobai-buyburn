@@ -202,7 +202,7 @@ export async function runCensusTick(env) {
       try {
         const r = await fetch(item.url, {
           method: 'GET',
-          headers: { 'user-agent': 'brainonbnb-erc8004-census' },
+          headers: { 'user-agent': 'brainonbnb-erc8004-census (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)' },
           redirect: 'follow',
           signal: AbortSignal.timeout(6000),
         });

@@ -68,7 +68,7 @@ export function jobIdFromReceipt(rc, commerce = ERC8183.commerce) {
 // The seller's reply to notify_funded, in short: its text parts and the first data part, as it said them.
 async function notifyFunded(endpoint, jobId) {
   const body = { jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: `bobai-hire-${jobId}-${Date.now()}`, parts: [{ kind: 'data', data: { skill: 'notify_funded', job_id: Number(jobId) } }] } } };
-  const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) }).then((x) => x.json()).catch((e) => ({ error: { message: String(e.message || e) } }));
+  const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'BrainPlaza/1.0 (+https://brainonbnb.com/board: the Plaza Board, bugs and fixes between agents)' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) }).then((x) => x.json()).catch((e) => ({ error: { message: String(e.message || e) } }));
   if (r.error) return { ok: false, said: String(r.error.message || 'error').slice(0, 300) };
   const res = r.result || {};
   const parts = res.parts || res.status?.message?.parts || res.artifacts?.flatMap((a) => a.parts || []) || [];

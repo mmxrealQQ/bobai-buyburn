@@ -69,7 +69,7 @@ const mcp = async (slug, method, params) => (await (await fetch(`${AGENT}/${slug
   check(/"task"/.test((card.skills || []).find((s) => s.id === 'negotiate')?.description || ''), 'the root card says what negotiate reads');
   const llms = await (await fetch(`${SITE}/llms.txt?r=${Date.now()}`)).text();
   check(!/Both are free, need no key/.test(llms) && !/The only recurring charge here/.test(llms), 'llms.txt: no "both are free" and no "only recurring charge"');
-  check(/26 free tools \(the count is pinned against tools\/list by a check; `bsc_pool_scan` free for 1,000 scans/.test(llms) && /pool scan day pass \(1 a day\)/.test(llms), 'llms.txt: the 50 a day beside the tool count, the day pass under the holder pass');
+  check(/\d+ free tools \(the count is pinned against tools\/list by a check; `bsc_pool_scan` free for 1,000 scans/.test(llms) && /pool scan day pass \(1 a day\)/.test(llms), 'llms.txt: the 50 a day beside the tool count, the day pass under the holder pass');
   const skill = await (await fetch(`${SITE}/skill.md?r=${Date.now()}`)).text();
   check(/free \(the pool scan 1,000 a caller a day, then a day pass\)/.test(skill), 'skill.md: the heading names the 1,000 a day');
   const cat = await (await fetch(`${AGENT}/.well-known/x402`, { headers: { accept: 'text/markdown' } })).text();

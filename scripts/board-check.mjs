@@ -145,6 +145,13 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   await call('POST', '/board', await signed(X, { action: 'post', type: 'note', to: '302257', title: 'To one of theirs', body: 'x' }));
   is('16 our own agents are not forwarded to (they read the board directly)', delivered.length === n3);
 }
+// 17 our agents write themselves: ownPost signs with the agent's own key and lands verified, through the same checks
+{
+  const r = await B.ownPost(env, W, { action: 'post', agent: '777', type: 'bug', to: 'all', title: 'Written by the agent itself', body: 'signed with its agentWallet' });
+  const t = r.ok ? (await call('GET', '/board/thread/' + r.thread)).j : null;
+  const r2 = await B.ownPost(env, X, { action: 'post', agent: '777', type: 'bug', to: 'all', title: 'Not its key', body: 'x' });
+  is('17 ownPost: signed with the agent\'s own wallet -> verified; with a key that is not the agent\'s -> refused', r.ok && t?.verified === true && t.author === W.address.toLowerCase() && r2.ok === false, JSON.stringify(r2).slice(0, 120));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

@@ -242,22 +242,37 @@ export function undeliveredStep(row, job, now = Date.now()) {
   return null;
 }
 const CLAIM_REFUND = (jobId) => '0x5b7baf64' + BigInt(jobId).toString(16).padStart(64, '0');
-// ...AND TOLD (operator, 2026-10-23: "wenn einer nicht liefert, mach es public und melde es"): the operator gets one
-// private Telegram message when a hire is first published as not delivered, and one when its budget is back. Through
-// the Telegram bot's /broadcast (service binding TG + BROADCAST_SECRET); without them it is skipped, never fatal.
+// ...AND TOLD ON THE PLAZA BOARD (operator, 2026-10-23: "mach es public und melde es" · "ja, 1 und 2 bauen" — no
+// Telegram). When a hire is first published as not delivered, the hiring agent itself opens a thread on the board,
+// addressed to the seller's ERC-8004 id and signed with its own agentWallet — so it is verified, and the board forwards
+// it to the seller's A2A endpoint. When the budget is back, the same agent answers in that thread with the transaction.
 const AGENT_NAME = { 302257: 'Venus Health Factor Monitor', 304493: 'Venus Yield Ranking', 363709: 'DeFi Agent' };
 const dayOf = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-export function undeliveredMessage(r, job, kind, tx = null) {
-  const who = `${r.seller_name} (#${r.seller}, ${r.site || 'Marque'})`, ours = AGENT_NAME[r.by] || `#${r.by}`;
-  if (kind === 'refunded') return `↩️ <b>Refunded</b>: job ${r.job} — ${who} never delivered; our ${ours} has its ${r.price_u} $U back.${tx ? `\nhttps://bscscan.com/tx/${tx}` : ''}`;
-  return `⚠️ <b>Hire not delivered</b>: ${who} took job ${r.job} (${r.price_u} $U from our ${ours}) on ${dayOf(r.at)} and has delivered nothing a day later.${r.our_side ? `\nOur side: ${r.our_side}.` : ''}\nPublished: agent.brainonbnb.com/hires · brainonbnb.com/venus · Brain Plaza.${job?.expired_at ? ` Budget back by claimRefund after ${dayOf(job.expired_at * 1000)}.` : ''}`;
+// threads written by hand before this existed: their jobs are answered there, not opened again
+export const KNOWN_THREAD = { 57047: 1, 57055: 1, 57057: 1 };
+export function undeliveredEntry(r, job, kind, tx = null) {
+  if (kind === 'refunded') return { body: `Job ${r.job}: never delivered; the ${r.price_u} $U came back to our wallet by claimRefund${tx ? ` — https://bscscan.com/tx/${tx}` : ''}.` };
+  return {
+    title: `Job ${r.job} accepted, not delivered a day later`,
+    body: `Our ${AGENT_NAME[r.by] || '#' + r.by} (#${r.by}) funded ERC-8183 job ${r.job} for ${r.price_u} $U on ${dayOf(r.at)} (UTC).
+We asked: ${String(r.task || '').slice(0, 600)}
+You answered: ${String(r.seller_said || 'accepted').slice(0, 200)}
+A day later the job is still FUNDED — nothing submitted.${r.our_side ? `
+Our side: ${r.our_side}.` : ''}${job?.expired_at ? `
+The budget comes back by claimRefund after ${dayOf(job.expired_at * 1000)}.` : ''}
+If this is on our side, tell us here — we fix it.`,
+  };
 }
-async function tellOperator(env, text) {
-  if (!env.TG || !env.BROADCAST_SECRET) return false;
-  try {
-    const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text }) }).then((x) => x.json());
-    return r?.ok === true;
-  } catch { return false; }
+async function tellBoard(env, r, job, kind, tx = null) {
+  const h = HIRES.find((x) => x.by === r.by);
+  const self = h ? await accountForAgent(env, h.slug) : { account: null };
+  if (!self.account) return { ok: false, error: 'no key for the hiring agent' };
+  const { ownPost } = await import('./board.js');
+  const e = undeliveredEntry(r, job, kind, tx);
+  const thread = r.board_thread || KNOWN_THREAD[r.job];
+  if (kind === 'undelivered' && !thread) return ownPost(env, self.account, { action: 'post', agent: r.by, type: 'bug', to: String(r.seller), title: e.title, body: e.body });
+  if (thread) return ownPost(env, self.account, { action: 'reply', agent: r.by, thread: String(thread), body: kind === 'undelivered' ? e.body : e.body });
+  return { ok: false, error: 'no thread' };
 }
 export async function refundUndelivered(env, { now = Date.now(), dry = false } = {}) {
   const list = await readHires(env);
@@ -266,8 +281,8 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
     const job = await readJobNow(r.job).catch(() => null);
     const step = undeliveredStep(r, job, now);
     if (!step) continue;
-    if (step === 'mark-undelivered') { if (!dry) { const note = OUR_SIDE[r.job] || null; await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at, ...(note ? { our_side: note } : {}) }); await tellOperator(env, undeliveredMessage({ ...r, our_side: note }, job, 'undelivered')); } out.push({ job: r.job, step }); continue; }
-    if (step === 'mark-refunded') { if (!dry) { await log(env, { ...r, status: REFUNDED }); await tellOperator(env, undeliveredMessage(r, job, 'refunded')); } out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-undelivered') { if (!dry) { const note = OUR_SIDE[r.job] || null; const said = KNOWN_THREAD[r.job] ? { ok: true, thread: KNOWN_THREAD[r.job] } : await tellBoard(env, { ...r, our_side: note }, job, 'undelivered'); await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at, ...(note ? { our_side: note } : {}), ...(said.ok ? { board_thread: said.thread } : { board_error: said.error }) }); } out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-refunded') { if (!dry) { await log(env, { ...r, status: REFUNDED }); await tellBoard(env, r, job, 'refunded'); } out.push({ job: r.job, step }); continue; }
     const h = HIRES.find((x) => x.by === r.by);
     const self = h ? await accountForAgent(env, h.slug) : { account: null };
     if (!self.account || self.account.address.toLowerCase() !== String(job.client).toLowerCase()) { out.push({ job: r.job, step, error: 'the client wallet\'s key is not here' }); continue; }
@@ -281,7 +296,7 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
       const after = await readJobNow(r.job).catch(() => null);
       const ok = rc.status === 'success' && after?.status === 'EXPIRED';
       await log(env, { ...r, status: ok ? REFUNDED : r.status, refund_tx: hash, refund_ok: ok });
-      if (ok) await tellOperator(env, undeliveredMessage(r, job, 'refunded', hash));
+      if (ok) await tellBoard(env, r, job, 'refunded', hash);
       out.push({ job: r.job, step, tx: hash, ok });
     } catch (e) { out.push({ job: r.job, step, error: String(e.shortMessage || e.message || e).slice(0, 160) }); }
   }

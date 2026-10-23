@@ -39,11 +39,15 @@ console.log('the rule (offline)');
   ok('delivered (SUBMITTED) or already refunded: nothing', step(row(), job({ status: 'SUBMITTED' }), now) === null && step(row({ status: H.REFUNDED }), job({ status: 'EXPIRED' }), now) === null);
   const slu = (H.HIRES || []).find((h) => h.seller === 341555);
   ok('Sluicegate is paused, with the reason', !!slu?.paused && /57047/.test(slu.paused), slu?.paused);
-  // the operator is told (2026-10-23, "mach es public und melde es"): the seller, the job, the price, where it is published
-  const msg = H.undeliveredMessage ? H.undeliveredMessage({ job: '57047', seller: 341555, seller_name: 'Sluicegate', site: 'Marque', by: 304493, price_u: 0.1, at: '2026-10-22T09:05:28Z' }, { expired_at: Date.parse('2026-10-30T09:05:28Z') / 1000 }, 'undelivered') : '';
-  ok('the operator\'s message names seller, job, price, our agent, where it is published and when the budget comes back', /Sluicegate \(#341555, Marque\)/.test(msg) && /job 57047/.test(msg) && /0\.1 \$U/.test(msg) && /Venus Yield Ranking/.test(msg) && /agent\.brainonbnb\.com\/hires/.test(msg) && /30 Oct/.test(msg), msg.split('\n')[0]);
-  const msg2 = H.undeliveredMessage ? H.undeliveredMessage({ job: '57047', seller: 341555, seller_name: 'Sluicegate', site: 'Marque', by: 304493, price_u: 0.1 }, null, 'refunded', '0xabc') : '';
-  ok('the refund message names the transaction', /Refunded/.test(msg2) && /bscscan\.com\/tx\/0xabc/.test(msg2));
+  // told on the Plaza Board by the hiring agent itself (2026-10-23, "ja, 1 und 2 bauen" — no Telegram)
+  const e = H.undeliveredEntry ? H.undeliveredEntry({ job: '57099', seller: 341555, seller_name: 'Sluicegate', by: 304493, price_u: 0.1, at: '2026-10-22T09:05:28Z', task: 'Size: 4 USDC', seller_said: 'accepted', our_side: 'our brief named no size' }, { expired_at: Date.parse('2026-10-30T09:05:28Z') / 1000 }, 'undelivered') : {};
+  ok('the board entry names the job, our agent, the price, what we asked, what it said, our side and when the budget comes back', /Job 57099 accepted, not delivered/.test(e.title || '') && /Venus Yield Ranking \(#304493\)/.test(e.body || '') && /0\.1 \$U/.test(e.body) && /We asked: Size: 4 USDC/.test(e.body) && /Our side: our brief named no size/.test(e.body) && /30 Oct/.test(e.body), (e.body || '').split('\n')[0]);
+  const e2 = H.undeliveredEntry ? H.undeliveredEntry({ job: '57099', by: 304493, price_u: 0.1 }, null, 'refunded', '0xabc') : {};
+  ok('the refund answer names the transaction', /claimRefund/.test(e2.body || '') && /bscscan\.com\/tx\/0xabc/.test(e2.body));
+  ok('jobs already written up by hand (thread 1) are answered there, not opened again', H.KNOWN_THREAD?.[57047] === 1 && H.KNOWN_THREAD?.[57055] === 1 && H.KNOWN_THREAD?.[57057] === 1);
+  const W = await import('../worker-agent/job-watch.js');
+  const rf = W.refusedEntry ? W.refusedEntry('57037', 'could not complete job 57037: Give a BSC token or pool address.. Nothing was submitted; your budget is untouched and returns to you at expiry.', { client: '0x0d8c', expired_at: 1793136098, description: JSON.stringify({ client_ref: 'marque.trade', task: 'Plan a 45-level grid' }) }) : {};
+  ok('a refused paid job of ours: addressed to the marketplace it came through, the task, the reason (once), the refund date, "on our side"', rf.to === 'marque.trade' && /Plan a 45-level grid/.test(rf.body || '') && /address\.\n/.test(rf.body) && !/\.\.\n/.test(rf.body) && /2026-10-27 21:21 UTC/.test(rf.body) && /on our side/.test(rf.body), rf.body);
   const out = await H.runAgentHires({ AGENT_HIRES: 'on', AGENT: { get: async () => null, put: async () => {} } }, { dry: true }).catch((e) => [{ error: e.message }]);
   const s = out.find((x) => x.seller === 341555);
   ok('the day\'s run skips the paused hire and pays nothing', s?.status === 'paused', JSON.stringify(s || {}).slice(0, 120));

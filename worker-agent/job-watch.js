@@ -21,19 +21,36 @@
 // funded, not ours, not evaluated by the router, or under the price. A job
 // already delivered is skipped there.
 import { ERC8183 } from './hire.js';
-import { deliverJob, readJob } from './sell.js';
-import { ourAccounts } from './agent-wallets.js';
+import { deliverJob, readJob, pickService, AGENT_SERVICE } from './sell.js';
+import { ourAccounts, accountForAgent, AGENT_ID_OF } from './agent-wallets.js';
+const SLUG_FOR = Object.fromEntries(Object.entries(AGENT_SERVICE).map(([slug, svc]) => [svc, slug]));
 import { addCandidates } from './public-settle.js';
 
-export function refusedMessage(jobId, reason) {
-  return `🔴 <b>We did not deliver a paid job</b>: ${jobId} — ${String(reason).replace(/^could not complete job \d+: /, '').slice(0, 300)}\nThe buyer's budget returns at expiry. https://agent.brainonbnb.com/jobs/watch`;
+// A PAID JOB WE DID NOT DELIVER IS SAID ON THE PLAZA BOARD (2026-10-23, operator: "ja, 1 und 2 bauen" — no Telegram):
+// the agent that sells the service opens a thread, signed with its own agentWallet, addressed to the marketplace the
+// job came through (client_ref) or else the buyer's wallet: what was asked, why we did not deliver, when the budget
+// returns. Our mistake, in public, where the buyer and the marketplace read it.
+export function refusedEntry(jobId, reason, job = null) {
+  let d = {}; try { d = JSON.parse(job?.description || '{}'); } catch { d = {}; }
+  const task = String(d.task || d.task_description || '').slice(0, 400);
+  const to = String(d.client_ref || job?.client || 'all').slice(0, 80);
+  const why = String(reason).replace(/^could not complete job \d+: /, '').replace(/\. Nothing was submitted.*$/, '').replace(/[.\s]+$/, '').slice(0, 300);
+  const until = job?.expired_at ? new Date(job.expired_at * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'its expiry';
+  return { to, task, title: `We did not deliver paid job ${jobId}`, body: `Job ${jobId}${task ? ` asked: "${task}"` : ''}
+We did not deliver it: ${why}.
+Nothing was submitted; the buyer's budget returns at ${until}. This is on our side and we are fixing it — the fix will be answered here.` };
 }
 async function tellRefused(env, jobId, reason) {
-  if (!env.TG || !env.BROADCAST_SECRET) return false;
   try {
-    const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text: refusedMessage(jobId, reason) }) }).then((x) => x.json());
-    return r?.ok === true;
-  } catch { return false; }
+    const job = await readJob(jobId).catch(() => null);
+    const e = refusedEntry(jobId, reason, job);
+    const service = pickService(e.task);
+    const slug = (service && SLUG_FOR[service.id]) || 'defi-agent';
+    const self = await accountForAgent(env, slug);
+    if (!self.account) return { ok: false, error: 'no key for ' + slug };
+    const { ownPost } = await import('./board.js');
+    return ownPost(env, self.account, { action: 'post', agent: String(AGENT_ID_OF[slug]), type: 'bug', to: e.to, title: e.title, body: e.body });
+  } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 120) }; }
 }
 
 const CURSOR_KEY = 'jobs:watch:id';
@@ -112,8 +129,8 @@ export async function watchFundedJobs(env, rpc) {
     const old = JSON.parse((await env.AGENT.get(REFUSED_KEY)) || '{}');
     const all = Object.entries({ ...old, ...refusedNow }).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 20);
     if (Object.keys(refusedNow).some((k) => old[k]?.reason !== refusedNow[k].reason)) await env.AGENT.put(REFUSED_KEY, JSON.stringify(Object.fromEntries(all)));
-    // A PAID JOB WE DID NOT DELIVER IS TOLD (2026-10-23): Marque job 57037, a real buyer's grid, was refused on 20.10.
-    // and nobody saw it for three days. The operator gets one private Telegram message per newly refused job.
+    // A PAID JOB WE DID NOT DELIVER IS SAID (2026-10-23): Marque job 57037, a real buyer's grid, was refused on 20.10.
+    // and nobody saw it for three days. Now the selling agent says it on the Plaza Board, once per newly refused job.
     for (const k of Object.keys(refusedNow).filter((x) => !old[x])) await tellRefused(env, k, refusedNow[k].reason);
   }
 

@@ -268,6 +268,18 @@ export async function writeEntry(env, p, ip = null, ctx = null) {
   return { status: r.status, body };
 }
 
+// OUR AGENTS WRITE THEMSELVES (2026-10-23, operator: "ja, 1 und 2 bauen"): one of our agents signs with its own
+// agentWallet (the key this worker holds for it) and writes through the same checks as anybody — verified, forwarded.
+// account: a viem account; agent: its ERC-8004 id. Returns writeEntry's answer, or { ok:false } when it could not.
+export async function ownPost(env, account, entry) {
+  try {
+    const p = { ...entry, ts: Math.floor(Date.now() / 1000), signer: account.address };
+    const signature = await account.signMessage({ message: await boardMessage(p) });
+    const r = await writeEntry(env, { ...p, signature }, 'own');
+    return r.body;
+  } catch (e) { return { ok: false, error: String(e.message || e).slice(0, 160) }; }
+}
+
 // THE BOARD COMES TO THE AGENT (2026-10-23, operator: "die Agenten müssen das automatisch auch weiterleiten"). A thread
 // addressed to an agent id, and every reply or status change on a thread, is sent to the agents it concerns — the one
 // it is addressed to and the one that opened it — as an A2A message/send to the endpoint in their own ERC-8004

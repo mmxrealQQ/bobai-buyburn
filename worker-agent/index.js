@@ -59,6 +59,8 @@ import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams
 import { gridPlan } from './grid.js';
 import { rebalanceDefaultTarget } from './rebalance.js';
 import { understand } from './understand.js';
+import { handleBoard, PlazaBoard, writeEntry, BOARD_HOW } from './board.js';
+export { PlazaBoard };
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
@@ -1902,6 +1904,9 @@ export default {
         }
       })().catch(() => {}));
     };
+
+    // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
+    if (path === '/board' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url); }
 
     if (request.method === 'OPTIONS')
       return new Response(null, {

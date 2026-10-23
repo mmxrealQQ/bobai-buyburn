@@ -56,3 +56,12 @@ service = "bobai-agent"
 [[services]]
 binding = "TG"
 service = "bobai-tg-bot"
+
+# The Plaza Board (2026-10-23): one Durable Object holds every thread (board.js PlazaBoard)
+[[durable_objects.bindings]]
+name = "BOARD"
+class_name = "PlazaBoard"
+
+[[migrations]]
+tag = "board-v1"
+new_sqlite_classes = ["PlazaBoard"]

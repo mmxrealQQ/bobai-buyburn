@@ -1885,7 +1885,11 @@ export default {
     // Names a step of the paid path for /stats/detail (bumpDetail). Our own
     // smoke test says who it is and is left out, as on the dashboard worker.
     const selfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
-    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, name)).catch(() => {})); };
+    // WHO ASKS THE PRICE (2026-10-23): ~40 terms a day on each answer and 143 on the scan pass, next to no payment —
+    // a terms step also counts sellua:<product> (the user agent's first word, letters only, no version, as the site's
+    // poolscanua), so an indexer polling the 402s is told apart from a buyer that stops at the price.
+    const uaProduct = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
+    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
     // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
     // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
     // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.
@@ -3128,7 +3132,7 @@ ${pageTail}`;
       const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
       const res = json({
         ...d, names: sorted,
-        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
+        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>] (a tool call is mcp:call:<tool>), mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path, sellua:<product> for the software that asked a price (since 2026-10-23). Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Isolates that have gone quiet are rolled up every 15 minutes (rolled_up); until then they are read one by one. Cached 2 minutes. Separate from /stats: nothing here enters its totals.',
       });
       res.headers.set('cache-control', 'public, max-age=120');
       if (globalThis.caches) ctx.waitUntil(caches.default.put(ck, res.clone()).catch(() => {}));

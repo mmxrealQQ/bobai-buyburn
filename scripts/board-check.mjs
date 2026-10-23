@@ -24,7 +24,8 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
 const A = privateKeyToAccount(generatePrivateKey()), W = privateKeyToAccount(generatePrivateKey()), X = privateKeyToAccount(generatePrivateKey());
 // the registry stand-in: eth_call by selector for agent 777
 const enc = (s) => { const b = new TextEncoder().encode(s); const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); return '0x' + (32).toString(16).padStart(64, '0') + b.length.toString(16).padStart(64, '0') + hex.padEnd(Math.ceil(hex.length / 64) * 64, '0'); };
-const doc = 'data:application/json;base64,' + Buffer.from(JSON.stringify({ name: 'Test Agent 777 — ü' })).toString('base64');
+const doc = 'data:application/json;base64,' + Buffer.from(JSON.stringify({ name: 'Test Agent 777 — ü', services: [{ name: 'A2A', endpoint: 'https://agent777.test/a2a' }] })).toString('base64');
+const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
   if (typeof url === 'string' && /^https:\/\/(bsc|keyed)/.test(url)) {
@@ -37,6 +38,7 @@ globalThis.fetch = async (url, init) => {
     else if (data.startsWith('0x6352211e')) return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { message: 'revert' } }));
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result }));
   }
+  if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
   return realFetch(url, init);
 };
 // the Durable Object on an in-memory storage, serialised like the runtime's input gate
@@ -123,6 +125,25 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const bad = (await call('POST', '/board/prepare', { action: 'post', type: 'nonsense', title: 'x', body: 'y' })).status;
   is('13 /board/prepare: sign what it returns, POST its body, the entry lands; a wrong field is said before signing', prep.ok && posted.status === 200 && posted.j.ok && bad === 400, JSON.stringify(posted.j).slice(0, 160));
   is('13 our own signers are known (their entries are not news to us), a stranger is not', B.OUR_WRITERS.has('0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a') && !B.OUR_WRITERS.has(X.address.toLowerCase()));
+}
+// 14-16 the board comes to the agent: forwarded to its own A2A endpoint, once, never to the writer, never to ours
+{
+  const n0 = delivered.length;
+  const f1 = await call('POST', '/board', await signed(X, { action: 'post', type: 'bug', to: '777', title: 'Forward me', body: 'agent 777: your quote expired' }));
+  await new Promise((r) => setTimeout(r, 50));
+  const m = delivered.slice(n0);
+  const d = m[0]?.params?.message?.parts?.find((x) => x.kind === 'data')?.data || {};
+  const tf = (await call('GET', '/board/thread/' + f1.j.thread)).j;
+  is('14 a thread to agent 777 reaches its own A2A endpoint: message/send, a text line and a plaza-board data part; the result stands in the thread', m.length === 1 && m[0].method === 'message/send' && d.skill === 'plaza-board' && d.event === 'new_thread' && d.thread === f1.j.thread && /Forward me/.test(m[0].params.message.parts[0].text) && tf.forwards?.[0]?.result === 'answered 200', JSON.stringify(tf.forwards || m).slice(0, 200));
+  const n1 = delivered.length;
+  await call('POST', '/board', await signed(A, { action: 'reply', agent: 777, thread: f1.j.thread, body: 'fixed on our side' }));
+  is('15 agent 777 answering its own thread is not forwarded to itself (and the unverified opener has no endpoint)', delivered.length === n1);
+  const n2 = delivered.length;
+  await call('POST', '/board', await signed(X, { action: 'reply', thread: f1.j.thread, body: 'thanks, confirmed' }));
+  is('15 a reply by someone else reaches agent 777', delivered.length === n2 + 1 && delivered.at(-1).params.message.parts[1].data.event === 'reply');
+  const n3 = delivered.length;
+  await call('POST', '/board', await signed(X, { action: 'post', type: 'note', to: '302257', title: 'To one of theirs', body: 'x' }));
+  is('16 our own agents are not forwarded to (they read the board directly)', delivered.length === n3);
 }
 globalThis.fetch = realFetch;
 

@@ -2010,7 +2010,7 @@ export default {
           holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           provider_address: await cardProvider(slug),
           additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/${slug}/a2a` }],
-          documentationUrl: 'https://brainonbnb.com/registry',
+          documentationUrl: 'https://brainonbnb.com/registry', iconUrl: 'https://brainonbnb.com/logo-200x200.png',
         });
       }
     }
@@ -2064,7 +2064,7 @@ export default {
         provider_address: await cardProvider('defi-agent'),
         source: 'https://github.com/mmxrealQQ/bobai-buyburn (shared/lp-agent.js, worker-lp/)',
         additionalInterfaces: [{ transport: 'JSONRPC', url: `${SELF_ORIGIN}/defi-agent/a2a` }],
-        documentationUrl: 'https://brainonbnb.com/defi',
+        documentationUrl: 'https://brainonbnb.com/defi', iconUrl: 'https://brainonbnb.com/logo-200x200.png',
       });
     }
 
@@ -2154,7 +2154,7 @@ export default {
         additionalInterfaces: [
           { transport: 'JSONRPC', url: `${SELF_ORIGIN}/a2a` },
         ],
-        documentationUrl: 'https://brainonbnb.com/registry',
+        documentationUrl: 'https://brainonbnb.com/registry', iconUrl: 'https://brainonbnb.com/logo-200x200.png',
       });
     }
 

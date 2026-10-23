@@ -39,15 +39,15 @@ export const refundData = (id) => '0x5b7baf64' + BigInt(id).toString(16).padStar
 export function pickRefunds(jobs, { now, knownFarms = [], own = OWN_WALLETS, max = MAX_PER_DAY, perClient = PER_CLIENT_DAY, perPair = PER_PAIR_DAY } = {}) {
   const farms = new Set(knownFarms.map((x) => String(x).toLowerCase()));
   const skipped = {}, skip = (why) => { skipped[why] = (skipped[why] || 0) + 1; };
-  const ok = [];
+  const ok = [], gone = [];   // gone: funded, expired and never ours to refund — they leave the settle list for good
   for (const { id, job } of jobs) {
     if (!job) { skip('unread'); continue; }
     if (job.status !== 'FUNDED' || !(now >= job.expired_at)) continue;
     const c = String(job.client).toLowerCase(), p = String(job.provider).toLowerCase();
-    if (!(Number(job.budget_u) >= MIN_BUDGET_U)) { skip('under 0.01 $U'); continue; }
-    if (c === p) { skip('client is the provider'); continue; }
-    if (farms.has(c) || farms.has(p)) { skip('farm'); continue; }
-    if (own.has(c)) { skip('our own hire'); continue; }
+    if (!(Number(job.budget_u) >= MIN_BUDGET_U)) { skip('under 0.01 $U'); gone.push(String(id)); continue; }
+    if (c === p) { skip('client is the provider'); gone.push(String(id)); continue; }
+    if (farms.has(c) || farms.has(p)) { skip('farm'); gone.push(String(id)); continue; }
+    if (own.has(c)) { skip('our own hire'); gone.push(String(id)); continue; }
     ok.push({ id: String(id), c, p });
   }
   // NOT TO BE MILKED, as the settle: the gas is ours, so whoever can make jobs could make us pay for their refunds or
@@ -60,7 +60,7 @@ export function pickRefunds(jobs, { now, knownFarms = [], own = OWN_WALLETS, max
     nC[x.c] = (nC[x.c] || 0) + 1; nPair[pair] = (nPair[pair] || 0) + 1;
     due.push(x.id);
   }
-  return { due, skipped };
+  return { due, skipped, gone };
 }
 
 // The ids worth reading: the job board's FUNDED jobs and the FUNDED settle candidates (a job the watcher saw funded).
@@ -84,22 +84,36 @@ export async function runPublicRefund(env, { rpcUrl = null, now = new Date(), id
   const jobs = rpcUrl ? await batchRead(list, rpcUrl) : await readJobs(list, env);
   const knownFarms = JSON.parse((await env.AGENT.get(FARMS_KEY)) || '[]');
   const meta = JSON.parse((await env.AGENT.get('jobboard:meta')) || '{}');
-  const { due, skipped } = pickRefunds(jobs, { now: Math.floor(now.getTime() / 1000), knownFarms: [...knownFarms, ...(meta.farms || [])] });
+  const { due, skipped, gone } = pickRefunds(jobs, { now: Math.floor(now.getTime() / 1000), knownFarms: [...knownFarms, ...(meta.farms || [])] });
   const byId = Object.fromEntries(jobs.map((x) => [String(x.id), x.job]));
   const done = [];
   let stopped = null;
-  for (const id of due) {
-    const bal = await pub.getBalance({ address: account.address });
-    if (bal < RESERVE_BNB + GAS_PER_REFUND * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
-    const data = refundData(id);
-    try { await pub.call({ account, to: ERC8183.commerce, data }); }
-    catch (e) { done.push({ id, refunded: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
-    try {
-      const hash = await wal.sendTransaction({ to: ERC8183.commerce, data, gasPrice: GAS_PRICE, gas: 200000n });
-      const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+  // THE RECORD IS WRITTEN WHATEVER HAPPENS (2026-10-23 review): a node that throws mid-run must not leave refunds that
+  // went out unrecorded — the loop is held in try/finally, and a sent refund whose receipt did not come keeps its hash
+  try {
+    for (const id of due) {
+      const bal = await pub.getBalance({ address: account.address }).catch(() => null);
+      if (bal == null) { stopped = 'the wallet balance could not be read'; break; }
+      if (bal < RESERVE_BNB + GAS_PER_REFUND * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
+      const data = refundData(id);
+      try { await pub.call({ account, to: ERC8183.commerce, data }); }
+      catch (e) { done.push({ id, refunded: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
       const j = byId[id];
-      done.push({ id, refunded: rc.status === 'success', tx: hash, client: j.client, provider: j.provider, returned_u: j.budget_u, returned_wei: j.budget, expired_at: j.expired_at, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
-    } catch (e) { done.push({ id, refunded: false, why: String(e.shortMessage || e.message).slice(0, 140) }); }
+      let hash = null;
+      try {
+        hash = await wal.sendTransaction({ to: ERC8183.commerce, data, gasPrice: GAS_PRICE, gas: 200000n });
+        const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+        done.push({ id, refunded: rc.status === 'success', tx: hash, client: j.client, provider: j.provider, returned_u: j.budget_u, returned_wei: j.budget, expired_at: j.expired_at, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
+      } catch (e) { done.push({ id, refunded: false, ...(hash ? { tx: hash, client: j.client, provider: j.provider, unconfirmed: true } : {}), why: String(e.shortMessage || e.message).slice(0, 140) }); }
+    }
+  } catch (e) { stopped = `the run stopped: ${String(e.shortMessage || e.message || e).slice(0, 140)}`; }
+  // the settle list: refunded jobs and jobs that will never be ours to refund leave it (the settle keeps funded,
+  // expired jobs on it for this run)
+  if (!rpcUrl || env.AGENT) {
+    const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+    let n = 0;
+    for (const id of [...gone, ...done.filter((d) => d.refunded).map((d) => String(d.id))]) if (cand[id]) { delete cand[id]; n++; }
+    if (n) await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(cand));
   }
   const ok = done.filter((d) => d.refunded);
   const prevLog = JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]');
@@ -108,7 +122,7 @@ export async function runPublicRefund(env, { rpcUrl = null, now = new Date(), id
   const clients = new Set([...t.clients, ...ok.map((d) => String(d.client).toLowerCase())]);
   const totals = { jobs: t.jobs + ok.length, returned_u: Number((t.returned_u + ok.reduce((s, d) => s + Number(d.returned_u || 0), 0)).toFixed(4)), clients: [...clients], since: t.since || (ok.length ? now.toISOString() : null) };
   await env.AGENT.put(TOTALS_KEY, JSON.stringify(totals));
-  const summary = { at: now.toISOString(), read: list.length, unread: jobs.filter((x) => !x.job).length, due: due.length, refunded: ok.length, returned_u: Number(ok.reduce((s, d) => s + Number(d.returned_u || 0), 0).toFixed(4)), refused: done.filter((d) => !d.refunded && !d.tx).length, failed: done.filter((d) => !d.refunded && d.tx).length, skipped, stopped, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
+  const summary = { at: now.toISOString(), read: list.length, unread: jobs.filter((x) => !x.job).length, due: due.length, refunded: ok.length, returned_u: Number(ok.reduce((s, d) => s + Number(d.returned_u || 0), 0).toFixed(4)), refused: done.filter((d) => !d.refunded && !d.tx).length, failed: done.filter((d) => !d.refunded && d.tx).length, unconfirmed: done.filter((d) => d.unconfirmed).length, skipped, stopped, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
   await env.AGENT.put(DAY_KEY(day), JSON.stringify(summary), { expirationTtl: 60 * 60 * 72 });
   await env.AGENT.put(LAST_KEY, JSON.stringify(summary));
   const told = rpcUrl ? null : await tellRefunded(env, ok, { now: now.getTime() }).catch((e) => ({ error: String(e.message || e).slice(0, 120) }));
@@ -147,10 +161,11 @@ export async function tellRefunded(env, ok, { now = Date.now() } = {}) {
   const e = refundEntry(ok);
   const prev = JSON.parse((await env.AGENT.get('refund:board')) || 'null');
   const reuse = prev && now - prev.at < 7 * 86400e3;
-  const r = reuse
-    ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true })
-    : await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: 'all', title: e.title, body: e.body }, { trusted: true });
-  if (r.ok && !reuse) await env.AGENT.put('refund:board', JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
+  let r = reuse ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true }) : null;
+  // a thread hidden or full takes no reply (2026-10-23 review): then a new one, which the next week's replies go to
+  const fresh = !r || !r.ok;
+  if (fresh) r = await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: 'all', title: e.title, body: e.body }, { trusted: true });
+  if (r.ok && fresh) await env.AGENT.put('refund:board', JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
   return { ok: !!r.ok, thread: r.thread || prev?.thread || null, error: r.ok ? undefined : r.error };
 }
 

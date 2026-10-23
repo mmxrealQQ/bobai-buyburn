@@ -56,7 +56,7 @@ console.log('the rule (offline)');
   ok('a delivered job past its window, paid by another, >= 0.01 $U, is due', r.due.join() === '1', r.due.join());
   ok('a self-hire, a wei budget, a farm job and another evaluator are dropped', ['2', '3', '4', '9'].every((x) => r.drop.includes(x)), r.drop.join());
   ok('a job still in its window and an open job before expiry stay on the list, untouched', !r.drop.includes('5') && !r.due.includes('5') && !r.drop.includes('8'));
-  ok('a completed job and a funded job past expiry leave the list', r.drop.includes('6') && r.drop.includes('7'));
+  ok('a completed job leaves the list; a funded job past expiry stays on it, unsettled, for the public refund (2026-10-23)', r.drop.includes('6') && !r.drop.includes('7') && !r.due.includes('7'));
   ok('a job that could not be read stays for the next day', !r.drop.includes('10') && !r.due.includes('10'));
   const many = Array.from({ length: 14 }, (_, i) => ({ id: String(100 + i), job: job({ client: P(900 + i) }) }));
   const c2 = Object.fromEntries(many.map((x) => [x.id, { provider: P(1) }]));

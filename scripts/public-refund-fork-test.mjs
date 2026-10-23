@@ -55,6 +55,7 @@ console.log('the rule (offline)');
   ok('before expiry, delivered and already expired (refunded) jobs are not', !['2', '3', '10'].some((x) => r.due.includes(x)));
   ok('a wei budget, a self-hire, a farm provider, a farm client and our own hire are skipped, each counted', r.skipped['under 0.01 $U'] === 1 && r.skipped['client is the provider'] === 1 && r.skipped.farm === 2 && r.skipped['our own hire'] === 1, JSON.stringify(r.skipped));
   ok('an unread job is left for the next day', r.skipped.unread === 1 && !r.due.includes('9'));
+  ok('the jobs never ours to refund (wei budget, self-hire, farms, our own) are named to leave the settle list; an unread or capped one is not', r.gone.sort().join() === ['4', '5', '6', '7', '8'].join() && !r.gone.includes('9') && !r.gone.includes('1'), r.gone.join());
   const oneClient = Array.from({ length: 9 }, (_, i) => ({ id: String(100 + i), job: job({ provider: P(20 + i), client: P(500) }) }));
   ok('one client, nine providers: five a day, the oldest first', F.pickRefunds(oneClient, { now }).due.join() === '100,101,102,103,104');
   const onePair = Array.from({ length: 14 }, (_, i) => ({ id: String(200 + i), job: job({ provider: P(30), client: P(600) }) }));
@@ -91,7 +92,8 @@ ok('the kernel has funded jobs past expiry around its head', expired.length >= 3
 
 const key = generatePrivateKey(), me = privateKeyToAccount(key).address;
 await test.setBalance({ address: me, value: parseEther('0.01') });
-const kv = new Map([['settle:farms', JSON.stringify(['0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d'])]]);
+// the settle list holds every expired funded job (the settle keeps them there for this run since 2026-10-23)
+const kv = new Map([['settle:farms', JSON.stringify(['0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d'])], ['settle:candidates', JSON.stringify(Object.fromEntries(expired.map((x) => [String(x.id), { provider: x.job.provider.toLowerCase() }])))]]);
 const env = { AGENT_PROVIDER_PRIVATE_KEY: key, AGENT: { get: async (k) => (kv.has(k) ? kv.get(k) : null), put: async (k, v) => { kv.set(k, v); }, delete: async (k) => { kv.delete(k); } } };
 const U = ERC8183.paymentToken, ERC20 = parseAbi(['function balanceOf(address) view returns (uint256)']);
 const bal = (a) => pub.readContract({ address: U, abi: ERC20, functionName: 'balanceOf', args: [a] });
@@ -115,6 +117,8 @@ const due = {}; for (const d of done) due[String(d.client).toLowerCase()] = 1;
 ok('the caller got nothing from it', (await bal(me)) === meBefore);
 const pairs = {}; for (const d of done) { const k = `${String(d.client).toLowerCase()}>${String(d.provider).toLowerCase()}`; pairs[k] = (pairs[k] || 0) + 1; }
 ok('no client->provider pair more than three times, no client more than five', Object.values(pairs).every((v) => v <= 3) && Object.values(done.reduce((m, d) => { const c = String(d.client).toLowerCase(); m[c] = (m[c] || 0) + 1; return m; }, {})).every((v) => v <= 5));
+const leftCand = JSON.parse(kv.get('settle:candidates'));
+ok('the settle list after the run: every refunded job and every job never ours to refund has left it; the ones waiting their turn stay', done.every((d) => !leftCand[String(d.id)]) && expired.filter((x) => Number(x.job.budget_u) < 0.01 || x.job.client.toLowerCase() === x.job.provider.toLowerCase()).every((x) => !leftCand[String(x.id)]) && Object.keys(leftCand).length === expired.length - done.length - expired.filter((x) => Number(x.job.budget_u) < 0.01 || x.job.client.toLowerCase() === x.job.provider.toLowerCase()).length, `${Object.keys(leftCand).length} left of ${expired.length}`);
 ok('no simulation refused a due job', run.refused === 0 && run.failed === 0, JSON.stringify(run.done.filter((d) => !d.refunded)).slice(0, 160));
 const second = await F.runPublicRefund(env, { rpcUrl: LOCAL, ids, now: new Date(nowSec * 1000) });
 ok('a second run the same day does nothing', second.skipped === 'ran today');

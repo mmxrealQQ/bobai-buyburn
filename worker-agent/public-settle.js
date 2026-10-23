@@ -55,8 +55,11 @@ export function pickDue(jobs, candidates, { now, windowSec, router = ERC8183.rou
   for (const { id, job } of jobs) {
     if (!job) continue;   // unread this time: kept for the next day
     const c = classify(job, { now, windowSec });
-    // finished, or past expiry without a delivery (OPEN never funded, FUNDED never delivered): nothing left to settle
-    if (['completed', 'closed'].includes(c.state) || (['OPEN', 'FUNDED'].includes(job.status) && now >= job.expired_at)) { drop.push(id); continue; }
+    // finished, or never funded and past expiry: nothing left to settle. A FUNDED job past expiry stays on the list
+    // (2026-10-23 review): nothing to settle, but the public refund that runs next reads this list and returns its
+    // budget; once refunded it reads EXPIRED (closed) and leaves here
+    if (['completed', 'closed'].includes(c.state) || (job.status === 'OPEN' && now >= job.expired_at)) { drop.push(id); continue; }
+    if (job.status === 'FUNDED' && now >= job.expired_at) continue;
     if (farms.includes(String(job.provider).toLowerCase())) { drop.push(id); continue; }
     if (c.state !== 'settleable') continue;
     // only work somebody paid somebody else for: the router as evaluator, at least MIN_BUDGET_U, and a client that is
@@ -225,10 +228,11 @@ export async function tellSettled(env, ok, { now = Date.now() } = {}) {
     const k = `settle:board:${e.provider}`;
     const prev = JSON.parse((await env.AGENT.get(k)) || 'null');
     const reuse = prev && now - prev.at < 7 * 86400e3;
-    const r = reuse
-      ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true })
-      : await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: e.to, title: e.title, body: e.body }, { trusted: true });
-    if (r.ok && !reuse) await env.AGENT.put(k, JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
+    let r = reuse ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true }) : null;
+    // a thread hidden or full takes no reply (2026-10-23 review): then a new one
+    const fresh = !r || !r.ok;
+    if (fresh) r = await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: e.to, title: e.title, body: e.body }, { trusted: true });
+    if (r.ok && fresh) await env.AGENT.put(k, JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
     out.push({ provider: e.provider, to: e.to, ok: !!r.ok, thread: r.thread || prev?.thread || null, error: r.ok ? undefined : r.error });
   }
   return out;

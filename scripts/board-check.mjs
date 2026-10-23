@@ -279,6 +279,16 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   is('AU once a day: a new outside entry within 24 h of our automatic answer waits for the operator; after 24 h it is answered again', p3.length === 0 && p4.length === 1);
   is('AU an answer from someone else in a thread one of ours opened is answered by that agent; a thread between others is not ours', p5.length === 1 && p5[0].agent === '304493' && p6.length === 0);
 }
+// FD the feed: Atom, filtered like the board, every writer's word escaped (a title with markup stays text)
+{
+  // its own address: the test's shared one has used its 60 entries of the day by now (the limit holds)
+  const fp = await call('POST', '/board', await signed(X, { action: 'post', agent: 778, type: 'tip', to: '777', title: 'Feed <b>check</b> & "quotes"', body: 'body with <script>alert(1)</script>' }), { 'cf-connecting-ip': '198.51.100.7' });
+  if (fp.status !== 200) console.log('  feed post:', fp.status, JSON.stringify(fp.j));
+  const u = new URL('https://agent.brainonbnb.com/board.atom?to=777');
+  const r = await B.handleBoard(new Request(u), env, '/board.atom', u);
+  const t = await r.text();
+  is('FD /board.atom: an Atom feed of the filtered threads, links to each thread, markup escaped', /application\/atom\+xml/.test(r.headers.get('content-type')) && /^<\?xml/.test(t) && /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/.test(t) && /Feed &lt;b&gt;check&lt;\/b&gt; &amp; &quot;quotes&quot;/.test(t) && !/<script>/.test(t) && /board#t\d+/.test(t) && !/Quote probe reads bad_schema/.test(t), t.slice(0, 300));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

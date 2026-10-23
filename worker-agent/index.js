@@ -1914,7 +1914,7 @@ export default {
     };
 
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
-    if (path === '/board' || path === '/board.md' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url, ctx); }
+    if (path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url, ctx); }
 
     if (request.method === 'OPTIONS')
       return new Response(null, {

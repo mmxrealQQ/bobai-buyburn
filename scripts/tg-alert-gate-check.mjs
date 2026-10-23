@@ -62,6 +62,9 @@ const gated = sends.filter((m) => {
 });
 is('4  every buy alert of the tick claims first and releases on a failed send', sends.length === 3 && gated.length === 3, `${gated.length} of ${sends.length}`);
 
+// 6, 7 (2026-10-23, the same race): the burn alert reads last_burned, the whale scan its cursor — both from KV
+is('6  the burn alert claims its burn total first and releases on a failed send', /claimAlert\(env, 'burn', burnKey\)[\s\S]{0,200}postBurnAlert\(currentBurned[\s\S]{0,120}releaseAlert\(env, 'burn', burnKey\)/.test(src));
+is('7  every whale alert claims its move first (inside postWhaleAlert) and releases on a failed send', /async function postWhaleAlert[\s\S]{0,400}claimAlert\(WHALE_ENV, 'whale', gateKey\)[\s\S]{0,200}releaseAlert\(WHALE_ENV, 'whale', gateKey\)/.test(src));
 is('5  wrangler.toml binds GATE to AlertGate with a migration', /name = "GATE"/.test(toml) && /class_name = "AlertGate"/.test(toml) && /new_sqlite_classes = \["AlertGate"\]/.test(toml));
 
 console.log(`\n${pass} PASS, ${fail} FAIL`);

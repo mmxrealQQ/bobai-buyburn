@@ -2452,7 +2452,11 @@ async function postWhaleAlert(data, official = true) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const text = renderWhaleAlert(data);
   if (!text) return false;
+  // one alert per move (2026-10-23), as the buy alert: two overlapping ticks rescan the same blocks from the same cursor
+  const gateKey = `${data.txHash}:${data.kind}:${data.from || ''}:${data.to || ''}`;
+  if (!(await claimAlert(WHALE_ENV, 'whale', gateKey))) return true;   // another tick told it
   const ok = await tgSend(text);
+  if (!ok) { await releaseAlert(WHALE_ENV, 'whale', gateKey); return false; }
   if (official && whaleAlertIsPublic(data)) await tgSend(text, TG_CHAT_ID);
   return ok;
 }
@@ -5078,7 +5082,11 @@ export default {
 
       // Only alert if burn increased by at least 1000 BOBAI (avoid spam from rounding)
       if (currentBurned > lastBurned + 1000) {
-        const sent = await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice);
+        // one alert per burn total (2026-10-23): two overlapping ticks read the same old last_burned
+        const burnKey = String(Math.floor(currentBurned));
+        const mine = await claimAlert(env, 'burn', burnKey);
+        const sent = mine ? await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice) : true;
+        if (mine && !sent) await releaseAlert(env, 'burn', burnKey);
         // A BURN THAT CANNOT BE TOLD IS WRITTEN DOWN ONCE (2026-10-09): `burn_stuck_since` is set the first tick an
         // owed alert does not go out (no price, Telegram refused) and removed once one does — a write only on a
         // failure and on the recovery. /health serves it; the health check is red when it is over an hour old.

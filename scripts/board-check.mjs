@@ -177,6 +177,14 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   is('R1 an outside registration naming our host: no forward endpoint, the checkup refuses to call it (no call to us at all)', url === null && ourHostCalls.length === 0 && /names our own host/.test(cardCheck?.detail || ''), JSON.stringify({ url, ourHostCalls, d: cardCheck?.detail }));
   const fr = await call('GET', '/board/agent/777?fresh=1');
   is('R1 ?fresh=1 is the operator\'s (a stranger is served the memory or the per-IP budget)', fr.status === 200 || fr.status === 429);
+  // ES: the agent's view carries its agentWallet's escrow (escrow-for.js over the job board's store), JSON and text
+  const now = Math.floor(Date.now() / 1000), w = W.address.toLowerCase();
+  env.AGENT = { get: async (k) => (k === 'jobboard:jobs' ? JSON.stringify({ 9001: [w, '0x' + '9'.repeat(40), 'S', 0.1, now - 700000, now + 9e5], 9002: ['0x' + '8'.repeat(40), '0x' + '9'.repeat(40), 'F', 5, 0, now - 10] }) : null) };
+  const ev = await call('GET', '/board/agent/777?fresh=1', null, { 'x-hit-secret': 'hs' });
+  const mdUrl = new URL('https://agent.brainonbnb.com/board/agent/777.md?fresh=1');
+  const evMd = await (await B.handleBoard(new Request(mdUrl, { headers: { 'x-hit-secret': 'hs' } }), env, mdUrl.pathname, mdUrl)).text();
+  is('ES the agent view shows its agentWallet\'s escrow: one delivered job past its window, pay waiting release, nobody else\'s job; the text view too', ev.j?.escrow?.wallet === w && ev.j.escrow.jobs_as_provider === 1 && ev.j.escrow.pay_waiting_release.jobs === 1 && ev.j.escrow.money_waiting_refund.jobs === 0 && ev.j.escrow.full.endsWith(w) && /## Escrow \(agentWallet/.test(evMd), JSON.stringify(ev.j?.escrow).slice(0, 200));
+  delete env.AGENT;
 }
 // R2 unverified writers are not forwarded; one agent gets at most 5 forwards a day; slots only for real endpoints
 {

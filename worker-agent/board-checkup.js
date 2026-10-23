@@ -99,8 +99,11 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || 'none', 'declare a service named "A2A" (exactly, the SDK matches it case-sensitively) with its endpoint');
   let card = null, rpcUrl = null;
   if (a2a) {
-    const cardUrl = /agent(-card)?\.json$/.test(a2a) ? a2a : String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json';
-    const c = await get(cardUrl);
+    // where the card is: the URL named, else under the endpoint's path, else at the domain's root — the A2A standard
+    // place (2026-10-23: two agents serve it at the root and the checkup, asking only under /a2a, called them broken)
+    const tries = /agent(-card)?\.json$/.test(a2a) ? [a2a] : [String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json', (() => { try { return new URL(a2a).origin + '/.well-known/agent-card.json'; } catch { return null; } })()].filter((x, i, all) => x && all.indexOf(x) === i);
+    let c = null, cardUrl = tries[0];
+    for (const t of tries) { c = await get(t); cardUrl = t; if (c.json && (c.json.skills || c.json.name)) break; }
     card = c.json && (c.json.skills || c.json.name) ? c.json : null;
     add('agent card loads', !!card, card ? `${cardUrl.slice(0, 100)} · ${(card.skills || []).length} skills` : `${cardUrl.slice(0, 100)} answered ${c.status || c.error}${c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
@@ -119,13 +122,16 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     const skills = (card?.skills || []).map((s) => String(s.id || ''));
     const dialect = skills.includes('negotiate-erc8183-job') ? 'negotiate-erc8183-job' : skills.find((x) => /negotiate/.test(x)) || null;
     if (dialect) {
-      const q = await get(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'message/send', params: { message: { role: 'user', messageId: 'plaza-quote-' + Date.now(), parts: [{ kind: 'data', data: { skill: dialect, task_description: 'Quote your standard deliverable so a buyer can see the price before hiring.', terms: { deliverables: 'Your standard deliverable.', quality_standards: 'As described on your card.' }, chain_id: 56 } }] } } }) });
-      const d = q.json?.result?.parts?.find?.((p) => p.kind === 'data')?.data || q.json?.result || {};
+      const q = await get(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'plaza-quote-' + Date.now(), parts: [{ kind: 'data', data: { skill: dialect, task_description: 'Quote your standard deliverable so a buyer can see the price before hiring.', terms: { deliverables: 'Your standard deliverable.', quality_standards: 'As described on your card.' }, chain_id: 56 } }] } } }) });
+      // a Message (result.parts) or a Task (result.artifacts[].parts, or result.status.message.parts) — both are A2A
+      const res = q.json?.result || {};
+      const parts = [...(res.parts || []), ...(res.artifacts || []).flatMap((a) => a.parts || []), ...(res.status?.message?.parts || [])];
+      const d = parts.find((p) => p.kind === 'data')?.data || res || {};
       const flat = JSON.stringify(d);
       const declined = d.accepted === false || d.response?.accepted === false;
       const signed = /"(provider_sig|signature|negotiation_hash|response_hash)"\s*:\s*"0x[0-9a-fA-F]{20,}/.test(flat);
       const price = d.price || d.response?.terms?.price || d.terms?.price || null;
-      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
+      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : price ? ` (a price, ${String(price).slice(0, 30)}, without a signature)` : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
     }
   }
   const bad = checks.filter((c) => c.ok === false).length;

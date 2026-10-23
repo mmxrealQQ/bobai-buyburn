@@ -24,6 +24,7 @@ const REG = {
   777: { owner: A.address, wallet: W.address, doc: docOf({ name: 'Test Agent 777 — ü', services: [{ name: 'A2A', endpoint: 'https://agent777.test/a2a' }] }) },
   778: { owner: X.address, wallet: null, doc: docOf({ name: 'Writer 778' }) },
   779: { owner: X.address, wallet: null, doc: docOf({ name: 'Loop 779', services: [{ name: 'A2A', endpoint: 'https://agent.brainonbnb.com/board/agent/779?fresh=1&x=agent.json' }] }) },
+  780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }] }) },
 };
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const ourHostCalls = [];
@@ -38,6 +39,9 @@ globalThis.fetch = async (url, init) => {
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result }));
   }
   if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
+  if (url === 'https://agent780.test/.well-known/agent-card.json') return new Response(JSON.stringify({ name: 'Root card 780', url: 'https://agent780.test/a2a', skills: [{ id: 'x', examples: ['y'] }] }));
+  if (url === 'https://agent780.test/a2a/.well-known/agent-card.json') return new Response('not here', { status: 404 });
+  if (url === 'https://agent780.test/a2a') return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'hi' }] } }));
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
   return realFetch(url, init);
 };
@@ -233,6 +237,12 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
 {
   const inbox = (await call('GET', '/board?to=0777')).j.threads.length, inbox2 = (await call('GET', '/board?to=777')).j.threads.length;
   is('R10 "0777" and "777" are one agent', inbox > 0 && inbox === inbox2 && R.normId('049467') === '49467', `${inbox} ${inbox2}`);
+}
+// CK a card at the domain's root (the A2A standard place) is found when the endpoint path has none
+{
+  const ck = await C.agentCheckup('780', { keyed: 'https://keyed.test' });
+  const card = ck.checks.find((c) => c.check === 'agent card loads');
+  is('CK the card at the domain root is found (not only under the endpoint path)', card?.ok === true && /agent780\.test\/\.well-known\/agent-card\.json/.test(card.detail), card?.detail);
 }
 // R4 the threads written before the split (one value t:<id> with replies inside, as live on 23.10.) are converted once
 {

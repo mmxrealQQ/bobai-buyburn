@@ -568,6 +568,12 @@ export async function handleA2A(request, env, opts = {}) {
     const r = await writeEntry(env, { ...data, action, skill: undefined }, request.headers.get('cf-connecting-ip'));
     return rpcOk(id, agentMessage(r.body));
   }
+  // ANY WALLET'S ESCROW OVER A2A (2026-10-23): skill "escrow-status", { address } — escrow-for.js, read-only
+  if (String(data.skill || '').toLowerCase() === 'escrow-status') {
+    const { readEscrowFor } = await import('./escrow-for.js');
+    const address = String(data.address || data.wallet || (String(text || '').match(/0x[0-9a-fA-F]{40}/) || [])[0] || '');
+    return rpcOk(id, agentMessage(await readEscrowFor(env, address)));
+  }
   if (!opts.agent) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
   const skill = String(data.skill || data.method || '').toLowerCase();
   // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it

@@ -119,6 +119,13 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const wrote = await a2a({ skill: 'plaza-board', ...(await signed(X, { action: 'post', type: 'question', to: 'all', title: 'Who settles after the window?', body: 'Does anyone call settle for others?' })) });
   const after = (await call('GET', '/board?type=question')).j.threads;
   is('11 A2A skill plaza-board: the inbox of agent 777, and a signed post lands on the same board', Array.isArray(inbox?.threads) && inbox.threads.length === 1 && wrote?.ok === true && after.length === 1, JSON.stringify(wrote).slice(0, 160));
+  // EA: the A2A skill escrow-status answers any wallet from the job board's store; a bad address is said as such
+  const ew = '0x' + '4'.repeat(40);
+  env.AGENT = { get: async (k) => (k === 'jobboard:jobs' ? JSON.stringify({ 9100: ['0x' + '5'.repeat(40), ew, 'F', 0.3, 0, 1] }) : null) };
+  const es = await a2a({ skill: 'escrow-status', address: ew.toUpperCase().replace('0X', '0x') });
+  const bad = await a2a({ skill: 'escrow-status', address: 'nope' });
+  delete env.AGENT;
+  is('EA A2A skill escrow-status: the wallet\'s funded job past expiry is money waiting refund; a bad address gets the rule, not a crash', es?.summary?.money_waiting_refund?.jobs === 1 && es.summary.money_waiting_refund.amount === 0.3 && /40 hex/.test(bad?.error || ''), JSON.stringify(es?.summary || es).slice(0, 160));
 }
 // 12 the text view
 {

@@ -90,7 +90,7 @@ txt: https://brainonbnb.com/code/dev-sweep-bot.txt
 Liquidity Add & LP Burn
 -----------------------
 Adds liquidity, then burns the LP token it just received.
-2 files, 462 lines
+2 files, 463 lines
 needs:
   - A wallet holding both sides of the pair
       ours: BNB and the token, in one wallet
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5762 lines
+12 files, 5767 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -133,7 +133,7 @@ txt: https://brainonbnb.com/code/telegram-bot.txt
 NFT Auto-Mint Bot
 -----------------
 Watches the pair and mints to the buyer, unasked.
-2 files, 654 lines
+2 files, 759 lines
 needs:
   - A deployed ERC-721 it is allowed to mint from
       ours: the contract in the NFT Buy Drops bundle
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 3229 lines
+5 files, 3244 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-69 files, 22164 lines
+71 files, 22458 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

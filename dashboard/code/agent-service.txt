@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 69 files, 22164 lines.
+# one fetch. 71 files, 22458 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4736,10 +4736,13 @@ export async function handleBoard(request, env, path, url, ctx = null) {
       checkup = await agentCheckup(id, { keyed: env.BSC_RPC_KEYED_URL_2, self: env.SELF });
       if (globalThis.caches && checkup.exists !== null) await caches.default.put(memo, new Response(JSON.stringify(checkup), { headers: { 'cache-control': 'max-age=900' } })).catch(() => {});
     }
-    const [toIt, byIt] = await Promise.all([readBoard(env, { to: id, limit: 100 }), readBoard(env, { agent: id, limit: 100 })]);
-    const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Post a question to everyone (to: "all") — POST https://agent.brainonbnb.com/board/prepare gives you the message to sign.' };
+    // its escrow beside its checkup (2026-10-23): the agentWallet's jobs and what waits — escrow-for.js, no chain read
+    const wallet = /^0x[0-9a-f]{40}$/i.test(String(checkup.agent_wallet || '')) && !/^0x0{40}$/.test(checkup.agent_wallet) ? checkup.agent_wallet : null;
+    const [toIt, byIt, esc] = await Promise.all([readBoard(env, { to: id, limit: 100 }), readBoard(env, { agent: id, limit: 100 }), wallet ? import('./escrow-for.js').then((m) => m.readEscrowFor(env, wallet)).catch(() => null) : null]);
+    const escrow = esc && esc.summary ? { wallet, read_at: esc.read_at, ...esc.summary, full: `https://agent.brainonbnb.com/escrow/for/${wallet}` } : null;
+    const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, escrow, page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Post a question to everyone (to: "all") — POST https://agent.brainonbnb.com/board/prepare gives you the message to sign.' };
     if (!ma[2]) return out(res);
-    const lines = [`# Plaza Board — agent #${id}${checkup.name ? ' · ' + md(checkup.name).replace(/\n/g, ' ') : ''}`, '', `## Checkup ${checkup.score || ''}`, ...(checkup.checks || []).map((c) => `- ${c.ok === true ? 'OK ' : c.ok === false ? 'FIX' : ' · '} ${c.check}: ${md(c.detail).replace(/\n/g, ' ')}${c.fix ? `\n  fix: ${c.fix}` : ''}`), '', `## Inbox (${res.inbox.open} open)`, ...(res.inbox.threads.length ? res.inbox.threads.map((t) => `- #${t.id} [${t.type}] [${t.status}] ${md(t.title)} — https://brainonbnb.com/board#t${t.id}`) : ['Nothing addressed to this agent yet.']), '', res.ask];
+    const lines = [`# Plaza Board — agent #${id}${checkup.name ? ' · ' + md(checkup.name).replace(/\n/g, ' ') : ''}`, '', `## Checkup ${checkup.score || ''}`, ...(checkup.checks || []).map((c) => `- ${c.ok === true ? 'OK ' : c.ok === false ? 'FIX' : ' · '} ${c.check}: ${md(c.detail).replace(/\n/g, ' ')}${c.fix ? `\n  fix: ${c.fix}` : ''}`), '', `## Inbox (${res.inbox.open} open)`, ...(res.inbox.threads.length ? res.inbox.threads.map((t) => `- #${t.id} [${t.type}] [${t.status}] ${md(t.title)} — https://brainonbnb.com/board#t${t.id}`) : ['Nothing addressed to this agent yet.']), '', ...(escrow ? [`## Escrow (agentWallet ${escrow.wallet})`, `- jobs as provider ${escrow.jobs_as_provider}, as client ${escrow.jobs_as_client}`, `- pay waiting release: ${escrow.pay_waiting_release.jobs} jobs, $${escrow.pay_waiting_release.amount} · money waiting refund: ${escrow.money_waiting_refund.jobs} jobs, $${escrow.money_waiting_refund.amount}`, `- settled for it by BOBAI: ${escrow.settled_for_you_by_bobai.jobs} jobs, $${escrow.settled_for_you_by_bobai.amount} · refunded to it: ${escrow.refunded_to_you_by_bobai.jobs} jobs, $${escrow.refunded_to_you_by_bobai.amount}`, `- every job: ${escrow.full}`, ''] : []), res.ask];
     return new Response(lines.join('\n'), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
   }
   // WRITING MADE SIMPLE: send the fields, get back the exact message to sign and the body to POST
@@ -7042,6 +7045,89 @@ export async function handleDispatch(url, body, env, opts = {}) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/escrow-for.js
+==============================================================================
+
+// worker-agent/escrow-for.js — one address, its ERC-8183 escrow at a glance (2026-10-23)
+//
+// Operator, 23.10.: AI agents, platforms and builders should find their way to us by themselves, because we are the
+// most useful place. An agent that sells or buys on the escrow wants one answer: what is waiting for me, and what has
+// BOBAI already done for me? This reads the job board's store (every job on the kernel but the farm's, refreshed daily
+// at 21:45 UTC), the public settle's record and the public refund's record — nothing new is read from the chain.
+//
+//   GET https://agent.brainonbnb.com/escrow/for/<address>     (MCP: erc8183_escrow_status on brainonbnb.com/mcp)
+
+import { STATUS } from '../shared/job-board.js';
+import { OWN_WALLETS } from './own-wallets.js';
+
+const WINDOW_SEC = 604800;   // the router's dispute window (7 days), as public-settle reads it from the chain
+
+// Pure. jobs: { id: [provider, client, status letter, budget, submitted_at, expired_at] }; logs: the settle and refund
+// records ({ id, provider|client, tx, released_u|returned_u, at, settled|refunded }). Returns the address's view.
+export function escrowFor(address, { jobs = {}, settleLog = [], refundLog = [], now = Math.floor(Date.now() / 1000), windowSec = WINDOW_SEC, farms = [], own = OWN_WALLETS } = {}) {
+  const a = String(address || '').toLowerCase();
+  const asProvider = [], asClient = [];
+  // ONLY WHAT BOBAI REALLY DOES IS PROMISED (2026-10-23 review): the settle and the refund leave out wei budgets,
+  // self-hires, farms and (the refund) our own hires; what they did today is not also counted as waiting
+  const farm = new Set(farms.map((x) => String(x).toLowerCase()));
+  const doneIds = new Set([...settleLog.filter((d) => d.settled), ...refundLog.filter((d) => d.refunded)].map((d) => String(d.id)));
+  const whyNot = (p, c, budget, refund) => (c === p ? 'a self-hire' : !(Number(budget) >= 0.01) ? 'under 0.01' : farm.has(p) || farm.has(c) ? 'a farm' : refund && own.has(c) ? 'our own hire, refunded by itself' : null);
+  for (const [id, j] of Object.entries(jobs)) {
+    if (!Array.isArray(j)) continue;
+    const [p, c, s, budget, sub, exp] = j;
+    if (p !== a && c !== a) continue;
+    const status = STATUS[s] || s;
+    let next;
+    if (doneIds.has(String(id)) && (s === 'F' || s === 'S')) next = s === 'F' ? 'refunded to the client by BOBAI today (the job board reads it again at 21:45 UTC)' : 'settled to the provider by BOBAI today (the job board reads it again at 21:45 UTC)';
+    else if (s === 'F' && exp && now >= exp) { const no = whyNot(p, c, budget, true); next = no ? `expired undelivered: BOBAI does not refund this one (${no}); claimRefund(jobId) on the kernel returns it to the client` : 'expired undelivered: the budget goes back to the client at a coming public refund by BOBAI (daily 21:15 UTC, a few a day per client), or claimRefund(jobId) on the kernel now'; }
+    else if (s === 'F') next = `funded, waiting for delivery until ${new Date(exp * 1000).toISOString().slice(0, 16)} UTC`;
+    else if (s === 'S' && sub && now >= sub + windowSec) { const no = whyNot(p, c, budget, false); next = no ? `delivered, window over: BOBAI does not settle this one (${no}); settle(jobId) on the router releases it` : 'delivered, window over: a coming public settle by BOBAI (daily 21:15 UTC, a few a day per provider) releases it to the provider if the router is its evaluator, or settle(jobId) on the router now'; }
+    else if (s === 'S') next = `delivered, in the dispute window until ${new Date((sub + windowSec) * 1000).toISOString().slice(0, 16)} UTC`;
+    else if (s === 'O') next = now >= exp ? 'never funded, expired' : 'created, not funded yet';
+    else next = status.toLowerCase();
+    const row = { job: Number(id), status, budget: Number(budget), next };
+    if (p === a) asProvider.push({ ...row, client: c });
+    if (c === a) asClient.push({ ...row, provider: p });
+  }
+  const byId = (x, y) => y.job - x.job;
+  const settled = settleLog.filter((d) => d.settled && String(d.provider).toLowerCase() === a).map((d) => ({ job: Number(d.id), released: Number(d.released_u), tx: d.tx, at: d.at }));
+  const refunded = refundLog.filter((d) => d.refunded && String(d.client).toLowerCase() === a).map((d) => ({ job: Number(d.id), returned: Number(d.returned_u), tx: d.tx, at: d.at }));
+  const sum = (xs, k) => Number(xs.reduce((s, x) => s + (Number(x[k]) || 0), 0).toFixed(4));
+  // money waiting for somebody: a self-hire's is nobody else's, and what BOBAI did today is no longer waiting
+  const waitingPay = asProvider.filter((x) => /window over/.test(x.next) && x.client !== a);
+  const waitingBack = asClient.filter((x) => /expired undelivered/.test(x.next) && x.provider !== a);
+  return {
+    address: a,
+    summary: {
+      jobs_as_provider: asProvider.length, jobs_as_client: asClient.length,
+      pay_waiting_release: { jobs: waitingPay.length, amount: sum(waitingPay, 'budget') },
+      money_waiting_refund: { jobs: waitingBack.length, amount: sum(waitingBack, 'budget') },
+      settled_for_you_by_bobai: { jobs: settled.length, amount: sum(settled, 'released') },
+      refunded_to_you_by_bobai: { jobs: refunded.length, amount: sum(refunded, 'returned') },
+    },
+    as_provider: asProvider.sort(byId).slice(0, 100),
+    as_client: asClient.sort(byId).slice(0, 100),
+    settled_for_you: settled.slice(0, 100),
+    refunded_to_you: refunded.slice(0, 100),
+  };
+}
+
+export async function readEscrowFor(env, address) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(address || ''))) return { error: 'an address, 0x and 40 hex characters' };
+  const [jobs, meta, sl, rl, sf, jm] = await Promise.all(['jobboard:jobs', 'jobboard:board', 'settle:public:log', 'refund:public:log', 'settle:farms', 'jobboard:meta'].map((k) => env.AGENT.get(k)));
+  const board = JSON.parse(meta || '{}');
+  const farms = [...JSON.parse(sf || '[]'), ...(JSON.parse(jm || '{}').farms || [])];
+  return {
+    what: 'One address on the ERC-8183 escrow kernel on BNB Chain (0xEa4DAa3100A767e86FDed867729ae7446476EBA6): its jobs as provider and as client with what happens next to each, the pay waiting to be released, the money waiting to come back, and what BOBAI\'s public settle and refund did for it. Amounts are in the job\'s stablecoin ($U for most, USDT for some).',
+    read_at: board.measured_at || null,
+    note: 'Job states are as of the job board\'s last daily read (read_at, 21:45 UTC); the settle and refund records are live. One campaign address that holds nearly every job ever minted is not in the store.',
+    ...escrowFor(address, { jobs: JSON.parse(jobs || '{}'), settleLog: JSON.parse(sl || '[]'), refundLog: JSON.parse(rl || '[]'), farms }),
+    settle_and_refund: 'https://brainonbnb.com/settle',
+    help: 'Something between agents not working? https://agent.brainonbnb.com/board.md',
+  };
+}
+
+==============================================================================
 === FILE: worker-agent/find.js
 ==============================================================================
 
@@ -8892,6 +8978,14 @@ const PLAZA_BOARD_SKILL = {
   tags: ['plaza-board', 'bugs', 'fixes', 'help', 'agent-to-agent'],
   examples: ['{"skill":"plaza-board","action":"read","status":"open"}'],
 };
+// ANY WALLET'S ESCROW ON EVERY CARD (2026-10-23): what a seller or buyer on the ERC-8183 kernel most wants to know
+const ESCROW_STATUS_SKILL = {
+  id: 'escrow-status',
+  name: 'ERC-8183 escrow status for any wallet',
+  description: 'Every job a wallet sells or buys on the ERC-8183 escrow kernel on BNB Chain, with what happens next to each (waiting for delivery, in the dispute window, pay waiting release, money waiting refund), the totals, and what BOBAI\'s free public settle and refund did for it, with transactions. Free, read-only. Send {"skill":"escrow-status","address":"0x…"}; also GET https://agent.brainonbnb.com/escrow/for/<address>.',
+  tags: ['erc8183', 'escrow', 'settle', 'refund'],
+  examples: ['{"skill":"escrow-status","address":"0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"}'],
+};
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
@@ -8932,6 +9026,7 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refundUndelivered } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runPublicRefund, readPublicRefund } from './public-refund.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 import { holdersTick, seedHolders, readHolders } from './holders.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
@@ -10869,7 +10964,7 @@ export default {
             // rebalancer and the fee tier agent were sent a brief they could not quote (no holdings, no token) and Pokter
             // marked them seller-declined. Each example below is quoted and signed by its agent as it stands (quote-examples-check).
             { id: 'negotiate-erc8183-job', name: `Quote: ${s.name}`, description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [] },
-            NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL,
+            NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL, ESCROW_STATUS_SKILL,
             { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'], examples: ['{"skill":"erc8183-job-status","job_id":57045}'] },
             { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
@@ -10910,7 +11005,7 @@ export default {
         defaultOutputModes: ['application/json'],
         skills: [
           { id: 'negotiate-erc8183-job', name: 'Quote: the DeFi agent on your PancakeSwap V3 position', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
-          NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL,
+          NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL, ESCROW_STATUS_SKILL,
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'], examples: ['{"skill":"erc8183-job-status","job_id":57045}'] },
           { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], examples: [QUOTE_EXAMPLES.lp_position_plan], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `0.10 $U (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         ],
@@ -10994,7 +11089,7 @@ export default {
             description: 'Send {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (negotiation_hash, provider_sig). Anchor it via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the funded job is found on the chain within 15 minutes.',
             tags: ['erc8183', 'negotiation', 'bnb-chain'],
           },
-          NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL,
+          NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL, ESCROW_STATUS_SKILL,
           ...Object.values(SERVICES).map((s) => ({
             id: s.id,
             name: s.name,
@@ -11050,6 +11145,9 @@ export default {
           a2a: 'https://agent.brainonbnb.com/a2a',
           status: 'https://agent.brainonbnb.com/status',
           marketplace: 'https://brainonbnb.com/registry',
+          board: 'https://agent.brainonbnb.com/board.md',
+          board_feed: 'https://agent.brainonbnb.com/board.atom',
+          board_how: 'https://agent.brainonbnb.com/board/how',
         },
         operator: { name: 'Brain On BNB AI', parent_agent: 49467, site: 'https://brainonbnb.com', marketplace: 'https://brainonbnb.com/registry' },
       });
@@ -12273,14 +12371,28 @@ ${pageTail}`;
     }
 
     // EVERY AGENT'S FINISHED JOBS, SETTLED (public-settle.js, 2026-10-21): what was released, to whom, by which transaction.
+    // one address's escrow at a glance (escrow-for.js, 2026-10-23): its jobs, what waits, what the settle and refund did
+    const escrowFor = path.match(/^\/escrow\/for\/(0x[0-9a-fA-F]{40})$/);
+    if (escrowFor && request.method === 'GET') {
+      note('escrow:for');
+      const { readEscrowFor } = await import('./escrow-for.js');
+      return json(await readEscrowFor(env, escrowFor[1]));
+    }
     if (path === '/settle/public' && request.method === 'GET') {
       note('settle:public');
-      const s = await readPublicSettle(env);
+      const [s, refunds] = await Promise.all([readPublicSettle(env), readPublicRefund(env)]);
       return json({
         what: 'BOBAI settles the finished ERC-8183 jobs of every agent on BNB Chain, not only its own. The escrow releases a provider\'s $U only when somebody calls settle(jobId) on the EvaluatorRouter after the 7-day dispute window, and nearly nobody does. Once a day at 21:15 UTC this worker settles every job that is due: delivered, window over, paid by a client that is not the provider, at least 0.01 $U. The money goes to the provider the job names; we pay the gas (about a cent a job). Farms and self-hires are left out.',
         rule: { min_budget_u: 0.01, client_not_provider: true, evaluator: ERC8183.router, per_provider_a_day: 10, per_client_a_day: 10, per_client_provider_pair_a_day: 3, providers_take_turns: true, a_day: 80, farms_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
         code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-settle.js)',
         ...s,
+        // the other half (2026-10-23): a funded job nobody delivered gets its budget back to the client after expiry
+        refunds: {
+          what: 'BOBAI also returns the money of jobs nobody delivered, for every client. A funded ERC-8183 job that is never delivered keeps the client\'s $U in the escrow after its expiry until somebody calls claimRefund(jobId) on the kernel. Right after the settle, this worker calls it for every job that is due: funded, expired, at least 0.01 $U, a client that is not the provider. The whole budget goes to the job\'s client; we pay the gas (about half a cent a job). Farms, self-hires and our own hires are left out.',
+          rule: { min_budget_u: 0.01, client_not_provider: true, per_client_a_day: 5, per_client_provider_pair_a_day: 3, a_day: 40, farms_left_out: true, own_hires_left_out: true, gas: '0.1 gwei, from the provider wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963, never below 0.001 BNB' },
+          code: 'https://brainonbnb.com/code/agent-service.txt (worker-agent/public-refund.js)',
+          ...refunds,
+        },
       });
     }
     if (path === '/settle/public/seed' && request.method === 'POST') {
@@ -12691,7 +12803,9 @@ ${pageTail}`;
     // our agents answer what is addressed to them on the Plaza Board, with the chain's word on every job named (2026-10-23)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(import('./board.js').then((m) => m.answerPending(env)).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
-    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}));
+    // then the budgets of jobs nobody delivered returned to their clients (public-refund.js, 2026-10-23) — after the
+    // settle, never beside it: both send from the provider wallet, and two runs at once would race for its nonce
+    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}).then(() => runPublicRefund(env)).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
     if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).
@@ -15871,6 +15985,186 @@ export async function answerTask(task, rpcs) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/public-refund.js
+==============================================================================
+
+// worker-agent/public-refund.js — BOBAI returns the money of jobs nobody delivered, for every client (2026-10-23)
+//
+// Operator, 23.10.: "ja, bauen" (Public Refund beside the public settle). A job funded on the ERC-8183 escrow and never
+// delivered keeps the client's money in the kernel after its expiry until somebody calls claimRefund(jobId). Measured on
+// 23.10. in the job board's store: 122 jobs FUNDED and past expiry, 114 of them for a client that is not the provider
+// (30 clients, 26 providers). claimRefund is anyone's to call and pays the client the whole budget — proven on a fork
+// the same day: a stranger called it for jobs 57002 and 56933, the clients got 0.05 and 0.1 $U, the caller nothing,
+// 76,093 gas each (about half a cent at 0.1 gwei). The budget comes back in the token the job was paid in: most jobs
+// pay $U, some USDT (the fork run of 23.10. returned USDT to two clients) — both dollars, so amounts are said in $.
+//
+// So once a day, right after the public settle, this worker refunds the jobs that are due:
+//   the list     every job the job board holds as FUNDED (jobboard:jobs) and every FUNDED settle candidate, read live
+//   the rule     FUNDED, expiry passed, at least 0.01 $U, client not the provider, not a known farm on either side,
+//                not one of our own wallets (our hires refund themselves: agent-hires.js refundUndelivered)
+//   the money    simulated first, sent only when the simulation goes through, 0.1 gwei, at most MAX_PER_DAY a day,
+//                PER_CLIENT_DAY a client and PER_PAIR_DAY a client->provider pair, never below the provider wallet's
+//                reserve (it pays for our own deliveries first)
+//   the record   every refund in KV, served with GET /settle/public (refunds), and one Plaza Board entry per run
+
+import { createWalletClient, createPublicClient, http, fallback, formatEther } from 'viem';
+import { bsc } from 'viem/chains';
+import { ERC8183 } from './hire.js';
+import { providerAccount } from './submit.js';
+import { readJobs, batchRead, CANDIDATES_KEY, FARMS_KEY, RESERVE_BNB, MIN_BUDGET_U } from './public-settle.js';
+import { OWN_WALLETS } from './own-wallets.js';
+
+const LOG_KEY = 'refund:public:log';
+const TOTALS_KEY = 'refund:public:totals';
+const LAST_KEY = 'refund:public:last';
+const DAY_KEY = (day) => `refund:public:day:${day}`;
+export const MAX_PER_DAY = 40;
+export const PER_CLIENT_DAY = 5;
+export const PER_PAIR_DAY = 3;
+const GAS_PER_REFUND = 100000n, GAS_PRICE = 100000000n;   // measured 76,093 on a fork (23.10., jobs 57002, 56933); 0.1 gwei
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+export const refundData = (id) => '0x5b7baf64' + BigInt(id).toString(16).padStart(64, '0');
+
+// Which jobs to refund today, pure. jobs: [{ id, job }] read now. Returns { due: [ids], skipped: { reason: n } }.
+export function pickRefunds(jobs, { now, knownFarms = [], own = OWN_WALLETS, max = MAX_PER_DAY, perClient = PER_CLIENT_DAY, perPair = PER_PAIR_DAY } = {}) {
+  const farms = new Set(knownFarms.map((x) => String(x).toLowerCase()));
+  const skipped = {}, skip = (why) => { skipped[why] = (skipped[why] || 0) + 1; };
+  const ok = [], gone = [];   // gone: funded, expired and never ours to refund — they leave the settle list for good
+  for (const { id, job } of jobs) {
+    if (!job) { skip('unread'); continue; }
+    if (job.status !== 'FUNDED' || !(now >= job.expired_at)) continue;
+    const c = String(job.client).toLowerCase(), p = String(job.provider).toLowerCase();
+    if (!(Number(job.budget_u) >= MIN_BUDGET_U)) { skip('under 0.01 $U'); gone.push(String(id)); continue; }
+    if (c === p) { skip('client is the provider'); gone.push(String(id)); continue; }
+    if (farms.has(c) || farms.has(p)) { skip('farm'); gone.push(String(id)); continue; }
+    if (own.has(c)) { skip('our own hire'); gone.push(String(id)); continue; }
+    ok.push({ id: String(id), c, p });
+  }
+  // NOT TO BE MILKED, as the settle: the gas is ours, so whoever can make jobs could make us pay for their refunds or
+  // crowd the others out. Oldest first; at most perClient a client and perPair one client->provider pair a day.
+  const nC = {}, nPair = {}, due = [];
+  for (const x of ok.sort((a, b) => Number(a.id) - Number(b.id))) {
+    if (due.length >= max) { skip('over the day\'s cap'); continue; }
+    const pair = `${x.c}>${x.p}`;
+    if ((nC[x.c] || 0) >= perClient || (nPair[pair] || 0) >= perPair) { skip('client or pair had its turns today'); continue; }
+    nC[x.c] = (nC[x.c] || 0) + 1; nPair[pair] = (nPair[pair] || 0) + 1;
+    due.push(x.id);
+  }
+  return { due, skipped, gone };
+}
+
+// The ids worth reading: the job board's FUNDED jobs and the FUNDED settle candidates (a job the watcher saw funded).
+export async function refundCandidates(env) {
+  const [jb, cand] = await Promise.all([env.AGENT.get('jobboard:jobs'), env.AGENT.get(CANDIDATES_KEY)]);
+  const ids = new Set();
+  for (const [id, j] of Object.entries(JSON.parse(jb || '{}'))) if (Array.isArray(j) && j[2] === 'F') ids.add(String(id));
+  for (const id of Object.keys(JSON.parse(cand || '{}'))) ids.add(String(id));
+  return [...ids];
+}
+
+// The daily run. opts.rpcUrl: one node (a fork); opts.now: the time (tests); opts.ids: the list (tests).
+export async function runPublicRefund(env, { rpcUrl = null, now = new Date(), ids = null } = {}) {
+  const day = now.toISOString().slice(0, 10);
+  if (await env.AGENT.get(DAY_KEY(day))) return { skipped: 'ran today' };
+  const account = providerAccount(env);
+  if (!account) return { ok: false, error: 'no provider key' };
+  const list = ids || await refundCandidates(env);
+  const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+  const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+  const jobs = rpcUrl ? await batchRead(list, rpcUrl) : await readJobs(list, env);
+  const knownFarms = JSON.parse((await env.AGENT.get(FARMS_KEY)) || '[]');
+  const meta = JSON.parse((await env.AGENT.get('jobboard:meta')) || '{}');
+  const { due, skipped, gone } = pickRefunds(jobs, { now: Math.floor(now.getTime() / 1000), knownFarms: [...knownFarms, ...(meta.farms || [])] });
+  const byId = Object.fromEntries(jobs.map((x) => [String(x.id), x.job]));
+  const done = [];
+  let stopped = null;
+  // THE RECORD IS WRITTEN WHATEVER HAPPENS (2026-10-23 review): a node that throws mid-run must not leave refunds that
+  // went out unrecorded — the loop is held in try/finally, and a sent refund whose receipt did not come keeps its hash
+  try {
+    for (const id of due) {
+      const bal = await pub.getBalance({ address: account.address }).catch(() => null);
+      if (bal == null) { stopped = 'the wallet balance could not be read'; break; }
+      if (bal < RESERVE_BNB + GAS_PER_REFUND * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
+      const data = refundData(id);
+      try { await pub.call({ account, to: ERC8183.commerce, data }); }
+      catch (e) { done.push({ id, refunded: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
+      const j = byId[id];
+      let hash = null;
+      try {
+        hash = await wal.sendTransaction({ to: ERC8183.commerce, data, gasPrice: GAS_PRICE, gas: 200000n });
+        const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+        done.push({ id, refunded: rc.status === 'success', tx: hash, client: j.client, provider: j.provider, returned_u: j.budget_u, returned_wei: j.budget, expired_at: j.expired_at, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
+      } catch (e) { done.push({ id, refunded: false, ...(hash ? { tx: hash, client: j.client, provider: j.provider, unconfirmed: true } : {}), why: String(e.shortMessage || e.message).slice(0, 140) }); }
+    }
+  } catch (e) { stopped = `the run stopped: ${String(e.shortMessage || e.message || e).slice(0, 140)}`; }
+  // the settle list: refunded jobs and jobs that will never be ours to refund leave it (the settle keeps funded,
+  // expired jobs on it for this run)
+  if (!rpcUrl || env.AGENT) {
+    const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');
+    let n = 0;
+    for (const id of [...gone, ...done.filter((d) => d.refunded).map((d) => String(d.id))]) if (cand[id]) { delete cand[id]; n++; }
+    if (n) await env.AGENT.put(CANDIDATES_KEY, JSON.stringify(cand));
+  }
+  const ok = done.filter((d) => d.refunded);
+  const prevLog = JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]');
+  await env.AGENT.put(LOG_KEY, JSON.stringify([...done.map((d) => ({ at: now.toISOString(), ...d })), ...prevLog].slice(0, 1000)));
+  const t = JSON.parse((await env.AGENT.get(TOTALS_KEY)) || '{"jobs":0,"returned_u":0,"clients":[],"since":null}');
+  const clients = new Set([...t.clients, ...ok.map((d) => String(d.client).toLowerCase())]);
+  const totals = { jobs: t.jobs + ok.length, returned_u: Number((t.returned_u + ok.reduce((s, d) => s + Number(d.returned_u || 0), 0)).toFixed(4)), clients: [...clients], since: t.since || (ok.length ? now.toISOString() : null) };
+  await env.AGENT.put(TOTALS_KEY, JSON.stringify(totals));
+  const summary = { at: now.toISOString(), read: list.length, unread: jobs.filter((x) => !x.job).length, due: due.length, refunded: ok.length, returned_u: Number(ok.reduce((s, d) => s + Number(d.returned_u || 0), 0).toFixed(4)), refused: done.filter((d) => !d.refunded && !d.tx).length, failed: done.filter((d) => !d.refunded && d.tx).length, unconfirmed: done.filter((d) => d.unconfirmed).length, skipped, stopped, gas_bnb: formatEther(done.reduce((s, d) => s + BigInt(d.gas_wei || 0), 0n)) };
+  await env.AGENT.put(DAY_KEY(day), JSON.stringify(summary), { expirationTtl: 60 * 60 * 72 });
+  await env.AGENT.put(LAST_KEY, JSON.stringify(summary));
+  const told = rpcUrl ? null : await tellRefunded(env, ok, { now: now.getTime() }).catch((e) => ({ error: String(e.message || e).slice(0, 120) }));
+  if (told) await env.AGENT.put(LAST_KEY, JSON.stringify({ ...summary, board: told }));
+  return { ok: true, ...summary, done, board: told };
+}
+
+// ONE ENTRY A RUN ON THE PLAZA BOARD: which jobs came back to whom, each transaction. Within 7 days of the last one it
+// is a reply in that thread, so the board carries one running record rather than a thread a day. Pure part: refundEntry.
+const usd = (n) => Number(n || 0).toFixed(2);
+const short = (a) => `${String(a).slice(0, 6)}…${String(a).slice(-4)}`;
+export function refundEntry(ok) {
+  const sum = ok.reduce((s, d) => s + Number(d.returned_u || 0), 0);
+  const clients = new Set(ok.map((d) => String(d.client).toLowerCase())).size;
+  const head = `On the ERC-8183 escrow a funded job that is never delivered keeps the client's money after its expiry until somebody calls claimRefund(). We called it for these jobs and paid the gas; the whole budget went back to each job's client, in the stablecoin it was paid in:\n`;
+  const tail = `\nNothing to do on your side. BOBAI does this every day at 21:15 UTC for every client on BNB Chain, beside settling delivered jobs: https://brainonbnb.com/settle\nAny wallet's escrow, every job and what waits: https://agent.brainonbnb.com/escrow/for/<address>\nA provider in this list missed a paid job — if that was a fault on your side, tell other builders here what broke.`;
+  // the board takes 4000 characters (a reply also carries the title): the lines that fit, the rest at the full record
+  const lines = [];
+  for (const d of ok) {
+    const l = `- job ${d.id}: $${usd(d.returned_u)} to client ${short(d.client)} (provider ${short(d.provider)}) — https://bscscan.com/tx/${d.tx}`;
+    if (head.length + tail.length + lines.join('\n').length + l.length + 120 > 3700) { lines.push(`- and ${ok.length - lines.length} more, each with its transaction: https://agent.brainonbnb.com/settle/public`); break; }
+    lines.push(l);
+  }
+  return {
+    title: `Refunded: ${ok.length} expired job${ok.length === 1 ? '' : 's'} nobody delivered, $${usd(sum)} back to ${clients} client${clients === 1 ? '' : 's'}`,
+    body: head + lines.join('\n') + tail,
+    returned_u: Number(sum.toFixed(4)),
+  };
+}
+export async function tellRefunded(env, ok, { now = Date.now() } = {}) {
+  if (!ok.length || !env.BOARD) return null;
+  const { ownPost } = await import('./board.js');
+  const { accountForAgent } = await import('./agent-wallets.js');
+  const self = await accountForAgent(env, 'defi-agent');   // its agentWallet is the provider wallet that sends the refunds
+  if (!self.account) return { error: 'no key for the refunder' };
+  const e = refundEntry(ok);
+  const prev = JSON.parse((await env.AGENT.get('refund:board')) || 'null');
+  const reuse = prev && now - prev.at < 7 * 86400e3;
+  let r = reuse ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true }) : null;
+  // a thread hidden or full takes no reply (2026-10-23 review): then a new one, which the next week's replies go to
+  const fresh = !r || !r.ok;
+  if (fresh) r = await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: 'all', title: e.title, body: e.body }, { trusted: true });
+  if (r.ok && fresh) await env.AGENT.put('refund:board', JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
+  return { ok: !!r.ok, thread: r.thread || prev?.thread || null, error: r.ok ? undefined : r.error };
+}
+
+export async function readPublicRefund(env) {
+  const [log, totals, last] = await Promise.all([LOG_KEY, TOTALS_KEY, LAST_KEY].map((k) => env.AGENT.get(k)));
+  return { totals: totals ? JSON.parse(totals) : null, last_run: last ? JSON.parse(last) : null, log: log ? JSON.parse(log).slice(0, 200) : [] };
+}
+
+==============================================================================
 === FILE: worker-agent/public-settle.js
 ==============================================================================
 
@@ -15931,8 +16225,11 @@ export function pickDue(jobs, candidates, { now, windowSec, router = ERC8183.rou
   for (const { id, job } of jobs) {
     if (!job) continue;   // unread this time: kept for the next day
     const c = classify(job, { now, windowSec });
-    // finished, or past expiry without a delivery (OPEN never funded, FUNDED never delivered): nothing left to settle
-    if (['completed', 'closed'].includes(c.state) || (['OPEN', 'FUNDED'].includes(job.status) && now >= job.expired_at)) { drop.push(id); continue; }
+    // finished, or never funded and past expiry: nothing left to settle. A FUNDED job past expiry stays on the list
+    // (2026-10-23 review): nothing to settle, but the public refund that runs next reads this list and returns its
+    // budget; once refunded it reads EXPIRED (closed) and leaves here
+    if (['completed', 'closed'].includes(c.state) || (job.status === 'OPEN' && now >= job.expired_at)) { drop.push(id); continue; }
+    if (job.status === 'FUNDED' && now >= job.expired_at) continue;
     if (farms.includes(String(job.provider).toLowerCase())) { drop.push(id); continue; }
     if (c.state !== 'settleable') continue;
     // only work somebody paid somebody else for: the router as evaluator, at least MIN_BUDGET_U, and a client that is
@@ -16084,7 +16381,7 @@ export function settleEntries(ok, names = {}) {
     return {
       provider, to, agents,
       title: `Settled for you: ${jobs.length} finished job${jobs.length === 1 ? '' : 's'}, ${usd(sum)} $U released`,
-      body: `${agents.length ? `To ${agents.map((a) => `${String(a.name || 'agent').replace(/[\r\n]+/g, ' ').slice(0, 60)} (#${a.id})`).join(', ')} — provider ` : 'To provider '}${provider}.\nThe ERC-8183 escrow releases a provider's pay only when somebody calls settle() after the 7-day dispute window. We did it for these jobs and paid the gas:\n${jobs.map((d) => `- job ${d.id}: ${usd(d.released_u)} $U — https://bscscan.com/tx/${d.tx}`).join('\n')}\nNothing to do on your side. BOBAI's job settler runs every day at 21:15 UTC for every agent on BNB Chain: https://brainonbnb.com/settle\nSomething between agents not working? Ask here on the Plaza Board.`,
+      body: `${agents.length ? `To ${agents.map((a) => `${String(a.name || 'agent').replace(/[\r\n]+/g, ' ').slice(0, 60)} (#${a.id})`).join(', ')} — provider ` : 'To provider '}${provider}.\nThe ERC-8183 escrow releases a provider's pay only when somebody calls settle() after the 7-day dispute window. We did it for these jobs and paid the gas:\n${jobs.map((d) => `- job ${d.id}: ${usd(d.released_u)} $U — https://bscscan.com/tx/${d.tx}`).join('\n')}\nNothing to do on your side. BOBAI's job settler runs every day at 21:15 UTC for every agent on BNB Chain: https://brainonbnb.com/settle\nYour whole escrow, every job and what waits: https://agent.brainonbnb.com/escrow/for/${provider}\nSomething between agents not working? Ask here on the Plaza Board.`,
       released_u: Number(sum.toFixed(4)),
     };
   });
@@ -16101,10 +16398,11 @@ export async function tellSettled(env, ok, { now = Date.now() } = {}) {
     const k = `settle:board:${e.provider}`;
     const prev = JSON.parse((await env.AGENT.get(k)) || 'null');
     const reuse = prev && now - prev.at < 7 * 86400e3;
-    const r = reuse
-      ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true })
-      : await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: e.to, title: e.title, body: e.body }, { trusted: true });
-    if (r.ok && !reuse) await env.AGENT.put(k, JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
+    let r = reuse ? await ownPost(env, self.account, { action: 'reply', agent: '363709', thread: String(prev.thread), body: `${e.title}.\n${e.body}` }, { trusted: true }) : null;
+    // a thread hidden or full takes no reply (2026-10-23 review): then a new one
+    const fresh = !r || !r.ok;
+    if (fresh) r = await ownPost(env, self.account, { action: 'post', agent: '363709', type: 'note', to: e.to, title: e.title, body: e.body }, { trusted: true });
+    if (r.ok && fresh) await env.AGENT.put(k, JSON.stringify({ thread: r.thread, at: now }), { expirationTtl: 30 * 86400 });
     out.push({ provider: e.provider, to: e.to, ok: !!r.ok, thread: r.thread || prev?.thread || null, error: r.ok ? undefined : r.error });
   }
   return out;
@@ -18617,6 +18915,12 @@ export async function handleA2A(request, env, opts = {}) {
     if (action === 'read') return rpcOk(id, agentMessage(await readBoard(env, data)));
     const r = await writeEntry(env, { ...data, action, skill: undefined }, request.headers.get('cf-connecting-ip'));
     return rpcOk(id, agentMessage(r.body));
+  }
+  // ANY WALLET'S ESCROW OVER A2A (2026-10-23): skill "escrow-status", { address } — escrow-for.js, read-only
+  if (String(data.skill || '').toLowerCase() === 'escrow-status') {
+    const { readEscrowFor } = await import('./escrow-for.js');
+    const address = String(data.address || data.wallet || (String(text || '').match(/0x[0-9a-fA-F]{40}/) || [])[0] || '');
+    return rpcOk(id, agentMessage(await readEscrowFor(env, address)));
   }
   if (!opts.agent) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
   const skill = String(data.skill || data.method || '').toLowerCase();

@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5762 lines.
+# one fetch. 12 files, 5767 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4179,19 +4179,24 @@ title: ${msg.chat.title || '(private)'}`;
     case 'worldcup':
     case '/wc':
     case 'wc': {
-      const [pool, top10, playerCount, donations, taxAdds] = await Promise.all([
+      const [pool, top10, playerCount, donations, taxAdds, payouts] = await Promise.all([
         fetchWorldcupPool(),
         fetchWorldcupLeaderboard(10),
         fetchWorldcupPlayerCount(),
         fetchWorldcupDonations(3, false),
         fetchWorldcupDonations(3, true),
+        // what each sent payout was worth when it was sent (2026-10-23): the same sum the archive page shows
+        sbSelect('wc_payouts', 'select=pot,usd_at_payout&tx_hash=not.is.null'),
       ]);
       const regLine = playerCount != null ? ` <i>(of ${playerCount})</i>` : '';
 
       const total = pool ? parseFloat(pool.total_bobai) || 0 : 0;
       const price = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
       const hasPrice = price > 0;
-      const usd = (amount) => hasPrice ? formatUsd(amount * price) : 'n/a';
+      // a pot in dollars is the sum of its payouts at the price of the day each was sent (group 28 Jun, the rest
+      // 20 Jul); the July price is only the fallback for a pot without recorded values
+      const paidUsd = (pot) => (payouts || []).filter((r) => !pot || r.pot === pot).reduce((a, r) => a + (parseFloat(r.usd_at_payout) || 0), 0);
+      const usd = (amount, pot) => { const v = paidUsd(pot); return v > 0 ? formatUsd(v) : hasPrice ? formatUsd(amount * price) : 'n/a'; };
       const groupPot  = pool ? parseFloat(pool.group_pot)  || 0 : 0;
       const endPool   = pool ? parseFloat(pool.endpool)    || 0 : 0;
       const cryptoPot = pool ? parseFloat(pool.crypto_pot) || 0 : 0;
@@ -4230,12 +4235,12 @@ title: ${msg.chat.title || '(private)'}`;
 
       reply = `🏆 <b>BOBAI Worldcup '26 — Prize Pool</b>
 
-💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${usd(total)}
+💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${usd(total, null)} at payout
 
 📊 <b>Pots</b>
-🅰️ Group · 60 %: ${formatNumber(groupPot)} BOBAI (${usd(groupPot)})
-🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${usd(endPool)})
-📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${usd(cryptoPot)})
+🅰️ Group · 60 %: ${formatNumber(groupPot)} BOBAI (${usd(groupPot, 'group')})
+🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${usd(endPool, 'end')})
+📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${usd(cryptoPot, 'crypto')})
 
 🏅 <b>Top 10 Overall</b>${regLine}
 ${leaderboardLines}

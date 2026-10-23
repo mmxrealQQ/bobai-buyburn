@@ -29,7 +29,12 @@ export const HIRES = [
   // come back through claimRefund at expiry (refundUndelivered).
   { by: 304493, slug: 'yield-optimizer', seller: 341555, sellerName: 'Sluicegate', site: 'Marque',
     paused: 'accepted jobs 57047 (22 Oct) and 57055 (23 Oct) and delivered neither',
-    task: (w) => `Best stablecoin yield on Venus on BNB Chain for the USDC and USDT of wallet ${w}: which market pays more today` },
+    // ITS OWN FORMAT (2026-10-23): Sluicegate's card asks for the size, what it earns now and a threshold; every job it
+    // delivered (56806…57008) named an amount, ours named only a wallet. The brief now follows job 56997, which it
+    // delivered: size, current venue and rate, holding period, threshold, deliverable.
+    task: (w, ctx) => ctx.size
+      ? `Size: ${ctx.size} ${ctx.coin} on BNB Smart Chain.\nCurrently: supplied to Venus (v${ctx.coin}) at ${ctx.apr}% APR.\nHolding period: 30 days.\nThreshold: recommend a venue only if its net APR beats my current yield by at least 1.0 percentage point after gas, swap and exit costs at this size.\nDeliverable: the best venue with gross APR, each cost itemised, and net APR at ${ctx.size} ${ctx.coin}, every rate with its source and timestamp; the runner-up; or an explicit decline if nothing clears the threshold.`
+      : `Best stablecoin yield on Venus on BNB Chain for the USDC and USDT of wallet ${w}: which market pays more today` },
   // Plinth keeper (#363619, 0.01 $U) was hired once on 22.10. (job 57045) and answered that it cannot read PancakeSwap
   // positions at all: paying it daily would buy nothing. Bound is Marque's own rebalancing reference (warranted MCS-REB-1).
   { by: 363709, slug: 'defi-agent', seller: 341553, sellerName: 'Bound', site: 'Marque',
@@ -219,6 +224,13 @@ export async function collectDeliveries(env, { now = Date.now() } = {}) {
 // calls claimRefund — simulated first, the receipt checked, the job read back as EXPIRED — and the row says
 // "not delivered, budget refunded" with the transaction. Pure part (undeliveredStep) pinned by agent-hires-check.
 export const NOT_DELIVERED = 'accepted, not delivered';
+// OUR SIDE, SAID WITH IT (2026-10-23, operator: "transparent und ehrlich" · "der Fehler ist nicht bei uns?"): these two
+// briefs named a wallet, not the size Sluicegate's card asks for. It answered "accepted" and then nothing — but the
+// record says what we sent too.
+export const OUR_SIDE = {
+  57047: 'our brief named a wallet, not the size its card asks for',
+  57055: 'our brief named a wallet, not the size its card asks for',
+};
 export const REFUNDED = 'not delivered, budget refunded';
 export function undeliveredStep(row, job, now = Date.now()) {
   if (!row?.job || !job || [REFUNDED].includes(row.status)) return null;
@@ -238,7 +250,7 @@ const dayOf = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric
 export function undeliveredMessage(r, job, kind, tx = null) {
   const who = `${r.seller_name} (#${r.seller}, ${r.site || 'Marque'})`, ours = AGENT_NAME[r.by] || `#${r.by}`;
   if (kind === 'refunded') return `↩️ <b>Refunded</b>: job ${r.job} — ${who} never delivered; our ${ours} has its ${r.price_u} $U back.${tx ? `\nhttps://bscscan.com/tx/${tx}` : ''}`;
-  return `⚠️ <b>Hire not delivered</b>: ${who} took job ${r.job} (${r.price_u} $U from our ${ours}) on ${dayOf(r.at)} and has delivered nothing a day later.\nPublished: agent.brainonbnb.com/hires · brainonbnb.com/venus · Brain Plaza.${job?.expired_at ? ` Budget back by claimRefund after ${dayOf(job.expired_at * 1000)}.` : ''}`;
+  return `⚠️ <b>Hire not delivered</b>: ${who} took job ${r.job} (${r.price_u} $U from our ${ours}) on ${dayOf(r.at)} and has delivered nothing a day later.${r.our_side ? `\nOur side: ${r.our_side}.` : ''}\nPublished: agent.brainonbnb.com/hires · brainonbnb.com/venus · Brain Plaza.${job?.expired_at ? ` Budget back by claimRefund after ${dayOf(job.expired_at * 1000)}.` : ''}`;
 }
 async function tellOperator(env, text) {
   if (!env.TG || !env.BROADCAST_SECRET) return false;
@@ -254,7 +266,7 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
     const job = await readJobNow(r.job).catch(() => null);
     const step = undeliveredStep(r, job, now);
     if (!step) continue;
-    if (step === 'mark-undelivered') { if (!dry) { await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at }); await tellOperator(env, undeliveredMessage(r, job, 'undelivered')); } out.push({ job: r.job, step }); continue; }
+    if (step === 'mark-undelivered') { if (!dry) { const note = OUR_SIDE[r.job] || null; await log(env, { ...r, status: NOT_DELIVERED, not_delivered_since: r.at, ...(note ? { our_side: note } : {}) }); await tellOperator(env, undeliveredMessage({ ...r, our_side: note }, job, 'undelivered')); } out.push({ job: r.job, step }); continue; }
     if (step === 'mark-refunded') { if (!dry) { await log(env, { ...r, status: REFUNDED }); await tellOperator(env, undeliveredMessage(r, job, 'refunded')); } out.push({ job: r.job, step }); continue; }
     const h = HIRES.find((x) => x.by === r.by);
     const self = h ? await accountForAgent(env, h.slug) : { account: null };

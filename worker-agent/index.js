@@ -1857,7 +1857,13 @@ async function hireContext(env) {
   const hf = (vlog || []).map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
   const pf = await env.SELF.fetch('https://agent.brainonbnb.com/lp/portfolio').then((r) => r.json()).catch(() => null);
   const position = pf?.position?.position ?? String(JSON.stringify(pf || {}).match(/"position":"?(\d+)/)?.[1] || '');
-  return { 302257: { own: hf ? { hf: Number(hf[1]) } : null }, 363709: { position, own: pf?.pool ? { in_range: pf.pool.in_range } : null } };
+  // the yield agent's size, coin and rate from its own deposits (venus-work.js log: "2 USDC to Venus vUSDC at 2.82 % …"),
+  // for a seller whose brief asks for them (Sluicegate, 2026-10-23)
+  const deps = (vlog || []).filter((x) => x.agent === 304493 && x.action === 'deposit');
+  const coin = String(deps[0]?.amount || '').split(' ')[1] || null;
+  const size = coin ? deps.filter((x) => String(x.amount).endsWith(' ' + coin)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0) : 0;
+  const apr = String(deps[0]?.why || '').match(/at ([\d.]+) %/)?.[1] || null;
+  return { 302257: { own: hf ? { hf: Number(hf[1]) } : null }, 304493: size > 0 && apr ? { size, coin, apr } : {}, 363709: { position, own: pf?.pool ? { in_range: pf.pool.in_range } : null } };
 }
 
 export default {

@@ -2968,7 +2968,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     var hires = r[0], op = r[1], own = r[2], buys = r[3], st = r[4], li = r[5];
     // we hired: our agents' hires (agent-hires.js) and the DeFi agent's daily second opinion from Mandate Range-1
     var we = [];
-    ((hires && hires.log) || []).forEach(function (h) { if (h.job) we.push({ at: h.at, who: NAME[h.by] || ('#' + h.by), seller: h.seller_name, site: h.site || 'Marque', price: h.price_u, status: h.status, theirs: h.answer && h.answer.health_factor, ours: h.own && h.own.hf, agrees: h.agrees, tx: ((h.txs || []).slice(-1)[0] || {}).tx }); });
+    ((hires && hires.log) || []).forEach(function (h) { if (h.job) we.push({ at: h.at, who: NAME[h.by] || ('#' + h.by), seller: h.seller_name, site: h.site || 'Marque', price: h.price_u, status: h.status, our_side: h.our_side, theirs: h.answer && h.answer.health_factor, ours: h.own && h.own.hf, agrees: h.agrees, tx: ((h.txs || []).slice(-1)[0] || {}).tx }); });
     ((op && op.opinions) || []).forEach(function (o) { if (o.job) we.push({ at: o.at, who: 'DeFi agent', seller: (o.seller && o.seller.name) || 'Mandate Range-1', site: 'Mandate', price: o.price_u, status: o.status, agrees: o.agrees, tx: o.tx }); });
     we.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); });
     set('aw-n-hired', nf(we.length));
@@ -2980,7 +2980,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     set('aw-hired', we.length ? we.slice(0, 8).map(function (x) {
       var v = x.agrees === true ? ' &middot; <span class="ok">same reading</span>' : x.agrees === false ? ' &middot; <span class="no">different reading</span>' : '';
       var f = x.theirs != null ? ' &middot; theirs ' + nf(x.theirs, 2) + (x.ours != null ? ', ours ' + nf(x.ours, 2) : '') : '';
-      var st = x.status === 'answered' ? '' : undelivered(x) ? ' &middot; <span class="no">' + esc(x.status) + '</span>' : ' &middot; ' + esc(x.status);
+      var st = x.status === 'answered' ? '' : undelivered(x) ? ' &middot; <span class="no">' + esc(x.status) + '</span>' + (x.our_side ? ' (' + esc(x.our_side) + ')' : '') : ' &middot; ' + esc(x.status);
       return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + st + tx(x.tx) + '</div>';
     }).join('') : '<p class="rg-note">None yet.</p>');
     // hired us: paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers

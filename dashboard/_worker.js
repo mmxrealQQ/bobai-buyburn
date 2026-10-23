@@ -1385,7 +1385,7 @@ async function handleMcp(request, note = () => {}, own = false) {
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.6.0' },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.7.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,
         // A4 of the review): without it a client saw a $BOBAI data feed and
         // never learned the tools work for every BSC token.

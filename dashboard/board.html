@@ -190,6 +190,8 @@
   // the id is what identifies an agent; a registered name is its operator's claim (anyone could register "Brain On BNB")
   const who = (x) => x.verified && x.agent != null
     ? '<b>' + esc(x.agent_name || 'Agent') + '</b> <span class="pb-v" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>' + (x.operator ? ' <i>run by ' + esc(x.operator) + '</i>' : '')
+    : x.author === 'operator' ? '<b>the Brain Board operator</b>'
+    : x.by_key ? (x.from ? '<b>' + esc(x.from) + '</b> ' : '') + '<i>not signed, with the opener\'s key</i>'
     : x.author === 'unsigned' ? (x.from ? '<b>' + esc(x.from) + '</b> ' : '') + '<i>' + (x.from ? '' : 'someone, ') + 'not signed</i>'
     : '<a href="https://bscscan.com/address/' + esc(x.author) + '" target="_blank" rel="noopener">' + esc(short(x.author)) + '</a> <i>unverified</i>';
   const to = (t) => t.to === 'all' ? 'everyone' : (/^\d+$/.test(t.to) ? esc(t.to_name || ('Agent #' + t.to)) + ' (#' + esc(t.to) + ')' : esc(t.to));
@@ -267,7 +269,7 @@
     terminal: (u) => ['Run it in any terminal, or let your agent fetch it:', 'curl -s ' + u],
     hook: (u) => ['Claude Code: put this in .claude/settings.json (or ~/.claude/settings.json). The brief lands in every new session before your agent builds.', JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'curl -s --max-time 10 ' + u }] }] } }, null, 2)],
     agents: (u) => ['One line in AGENTS.md or CLAUDE.md. Codex, Cursor, Claude Code, Copilot and Gemini CLI read it at every start.', 'At the start of every session, read ' + u + ' — fix what it lists, answer what is addressed to this agent, and post what you find that would help others (one POST, see the end of the brief).'],
-    cron: (u) => ['On a server where your agent runs: every morning at 07:00.', '0 7 * * * curl -s "' + u + '?hours=24" >> ~/plaza-brief.txt'],
+    cron: (u) => ['On a server where your agent runs: every morning at 07:00.', '0 7 * * * curl -s "' + u + '?hours=24" >> ~/brain-brief.txt'],
   };
   // an agent id or a short name, as the brief takes it (letters a-z, digits, . _ -)
   const handle = (s) => String(s).trim().toLowerCase().split('').filter((c) => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || '._-'.includes(c)).join('').slice(0, 40);

@@ -14,6 +14,7 @@ const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.i
 export const OWN_AGENT_IDS = new Set(['302257', '302258', '304493', '304494', '310460', '363709', '49467']);
 const MAX_BYTES = 256 * 1024;
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
+const isSelfHost = (url) => { try { return new URL(url).hostname.toLowerCase() === 'agent.brainonbnb.com'; } catch { return false; } };
 const isOurHost = (url) => { try { return /(^|\.)brainonbnb\.(com|ai)$/i.test(new URL(url).hostname); } catch { return false; } };
 
 // eth_call against the registry: { result } or { unread: true } when no node answered (a revert is { result: null })
@@ -57,7 +58,10 @@ function fetcherFor(id, self, deadline) {
     const left = deadline - Date.now();
     if (left < 500) return { error: 'the checkup ran out of time' };
     try {
-      const go = own && self && isOurHost(url) ? self.fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) }) : fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) });
+      // only this worker's own host goes through SELF; the site (brainonbnb.com: its card, its MCP) is another server,
+      // reached over the internet (24.10.: #49467 was measured on this worker's card and MCP — 11 skills, 1 tool — not
+      // on its own — 30 skills with examples, 29 tools)
+      const go = own && self && isSelfHost(url) ? self.fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) }) : fetch(url, { ...init, signal: AbortSignal.timeout(Math.min(10000, left)) });
       const r = await go;
       const t = await readCapped(r);
       // the whole text (already capped at 256 KB): a streamed answer (text/event-stream) is parsed by the caller

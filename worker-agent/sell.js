@@ -235,6 +235,7 @@ export async function cannotPlan(serviceId, params = {}) {
 export const WBNB_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 export const TOKEN_DEFAULTS_TO_WBNB = new Set(['grid_plan', 'lp_tier_plan']);
 export const WBNB_NOTE = `No token was named: the plan is for WBNB (${WBNB_TOKEN}), BNB Chain's own coin.`;
+export const PLAIN_ASK_NOTE = 'No service was named: this is the Venus health factor and liquidation distance of the hiring wallet, read from the chain at delivery. Also for sale here, each quoted when named in task_description: grid_plan, yield_plan, rebalance_plan, lp_tier_plan.';
 export const REBALANCE_DEFAULT_NOTE = 'No holdings or position were named: the plan prices the hiring wallet\'s holdings, read from the chain at delivery, to equal weight (a wallet with fewer than two gets the DeFi agent\'s own wallet, said so in the answer). Name holdings, or a PancakeSwap V3 position or wallet for a range check, to choose.';
 export function missingInput(serviceId, params = {}) {
   const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
@@ -644,7 +645,13 @@ export async function handleA2A(request, env, opts = {}) {
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const elsewhere = misdirected(forced, wanted, data);
     if (elsewhere) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: elsewhere }));
-    const service = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    // A PLAIN PRICE REQUEST ON THE SHARED ENDPOINT (2026-10-24, operator's go: "beide beheben"): "Quote your standard
+    // deliverable" names no service, and #49467's card points here; it was declined and Pokter marks that
+    // seller-declined. The one service that needs nothing named — the Venus health factor of the hiring wallet, read at
+    // delivery — is quoted, and the signed terms say so and list the others. A brief that names a service gets that one.
+    const picked = forced ? SERVICES[forced] : pickService(wanted, data.service);
+    const plainAsk = !forced && !picked && !data.service;
+    const service = picked || (plainAsk ? SERVICES.health_factor : null);
     if (!service || (service.id === 'lp_position_plan' && !forced)) {
       return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: service ? 'The position plan is sold through the escrow by the DeFi agent at https://agent.brainonbnb.com/defi-agent/a2a.' : `We do not sell that. For sale here: ${Object.values(SERVICES).filter((s) => s.id !== 'lp_position_plan').map((s) => `${s.id} (${s.name})`).join('; ')}.` }));
     }
@@ -672,7 +679,7 @@ export async function handleA2A(request, env, opts = {}) {
     // signed by the agentWallet of the agent selling it: the key an SDK buyer checks the quote against
     const seller = await sellerOf(service.id);
     if (!seller.account) return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x05', reason: `${seller.reason}.` }));
-    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : holdingsDefault ? REBALANCE_DEFAULT_NOTE : null });
+    const q = await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken, note: wbnbDefault ? WBNB_NOTE : holdingsDefault ? REBALANCE_DEFAULT_NOTE : plainAsk ? PLAIN_ASK_NOTE : null });
     if (!q.ok) return rpcOk(id, agentMessage({ accepted: false, reason_code: q.reason_code, reason: q.reason }));
     return rpcOk(id, agentMessage({ ...q.envelope, job_requirements: jobRequirements(await quoteWindow()) }));
   }

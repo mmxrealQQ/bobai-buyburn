@@ -21,7 +21,9 @@ for (const [slug, svc] of [['lp-placement', 'lp_tier_plan'], ['grid-trader', 'gr
 }
 const hf = env(await ask('health-factor', 'Check a Venus health factor.'));
 say(acc(hf) === true, 'health-factor: still quoted without an address (the paying wallet is read)');
+// since 2026-10-23 (Pokter's "Quote your standard deliverable" was marked seller-declined) the rebalancer quotes a brief
+// without holdings too: delivery reads the hiring wallet's holdings, and the signed terms say so
 const rb = env(await ask('rebalancer', 'Price a rebalance.'));
-say(acc(rb) === false, 'rebalancer: still declines without holdings (untouched)');
+say(acc(rb) === true && /No holdings or position were named/.test(deliv(rb)), 'rebalancer: no holdings named — quoted, and the terms say the hiring wallet\'s holdings are read');
 console.log(bad ? `\n${bad} FAIL` : '\nall PASS');
 process.exit(bad ? 1 : 0);

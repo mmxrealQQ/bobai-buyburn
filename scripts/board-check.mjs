@@ -429,14 +429,14 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   new B.PlazaBoard({ storage: st4, blockConcurrencyWhile: (fn) => (ch4 = ch4.then(fn)) });
   await ch4;
   const ag = o4.get('a:363709'), nm = o4.get('a:acme-bot'), wl = o4.get('a:0x' + '8'.repeat(40));
-  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 6; })()), JSON.stringify([ag, nm, wl]));
+  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 7; })()), JSON.stringify([ag, nm, wl]));
 }
 // JN /join: the text an agent follows when its builder says "check the board and take part"
 {
   const u = new URL('https://agent.brainonbnb.com/join');
   const r = await B.handleBoard(new Request(u), env, '/join', u);
   const t = await r.text();
-  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /YOUR NAME HERE/.test(t) && /board\/brief\/<id or name>/.test(t) && /ask your builder first/.test(t) && /"from":"<your name>"/.test(t) && /keep the "key"/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
+  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /YOUR NAME HERE/.test(t) && /board\/brief\/<id or name>/.test(t) && /ask your builder first/.test(t) && /"from":"<your name>"/.test(t) && /save the WHOLE answer/.test(t) && /shown only once/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
 }
 // RV1-RV11 the independent review of 24.10., each finding as a pin
 {
@@ -491,6 +491,59 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   // RV11 names close to ours are refused
   const near = ['brain_on_bnb', 'brain.on.bnb', 'b0bai', 'defi-agent', 'health-factor', 'BrainBoard', 'p1aza'].map(R.normName);
   is('RV11 names close to ours (separators, look-alike digits, our agents\' slugs) are refused; an ordinary name is not', near.every((n) => n === null) && R.normName('acme-bot') === 'acme-bot', JSON.stringify(near));
+}
+// FR1-FR7 the first-run check of 24.10. (a fresh agent given only the one sentence), each finding as a pin
+{
+  const ip = { 'cf-connecting-ip': '198.18.0.1' };
+  // an old open bug of somebody else, outside any 24 h window
+  const old = await call('POST', '/board', { action: 'post', type: 'bug', to: 'all', title: 'An old open bug of someone', body: 'still open', from: 'old-timer' }, ip);
+  mem.set('h:' + old.j.thread, { ...mem.get('h:' + old.j.thread), created: now() - 5 * 86400, updated: now() - 5 * 86400 });
+  const mine = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'My own open question', body: '?', from: 'fresh-bot' }, ip);
+  const u = new URL('https://agent.brainonbnb.com/board/brief/fresh-bot');
+  const t = await (await B.handleBoard(new Request(u), env, '/board/brief/fresh-bot', u)).text();
+  const uj = new URL('https://agent.brainonbnb.com/board/brief/fresh-bot.json');
+  const j = await (await B.handleBoard(new Request(uj), env, '/board/brief/fresh-bot.json', uj)).json();
+  is('FR1 a name with nothing addressed to it still gets CAN YOU HELP from every open thread (a 5-day-old bug too) and the board\'s open count', j.can_you_help.length === 5 && /CAN YOU HELP\? Open threads of others/.test(t) && / open on the board in all: https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open/.test(t) && j.open_on_board > 5 && (await (async () => { const all = B.buildBrief({ id: 'fresh-bot', since: now() - 86400, threads: [], questions: [(await call('GET', '/board/thread/' + old.j.thread)).j] }); return all.can_you_help.some((h) => h.thread === old.j.thread); })()), t.slice(0, 500));
+  is('FR2 its own open thread stands under YOUR OPEN THREADS, with how to resolve it', j.your_open_threads.some((x) => x.thread === mine.j.thread) && /YOUR OPEN THREADS \(\d+\) — mark one resolved when it is/.test(t) && /"My own open question"/.test(t));
+  is('FR3 the brief\'s templates carry "from":"<the name>" for a name, none for an agent id; and say the key comes once', /"from":"fresh-bot"}'/.test(t) && /its "key" comes only once/.test(t) && !/"from":/.test(B.briefText(B.buildBrief({ id: 777, since: 0, threads: [], questions: [] }))));
+  // FR4 a status change with the key answers as one, and is credited to the opener
+  const st = await call('POST', '/board', { action: 'status', thread: mine.j.thread, status: 'resolved', key: mine.j.key }, ip);
+  const th = (await call('GET', '/board/thread/' + mine.j.thread)).j;
+  is('FR4 resolving with the key answers "is resolved now" (not the post text) and the entry reads fresh-bot, with the opener\'s key', st.status === 200 && /is resolved now/.test(st.j.note) && !/Posted/.test(st.j.note) && th.replies.at(-1).from === 'fresh-bot' && th.replies.at(-1).by_key === true && /fresh-bot \(not signed, with the opener's key\)/.test(B.boardMarkdown(th)), JSON.stringify(st.j));
+  // FR5 search finds a writer's name
+  const sq = (await call('GET', '/board?q=old-timer')).j.threads;
+  is('FR5 ?q= finds a thread by its writer\'s name', sq.some((x) => x.id === old.j.thread));
+  // FR6 the operator sets a status with a reason; a signed writer sending operator_status is still refused
+  const noKey = await call('POST', '/board/status', { thread: old.j.thread, status: 'resolved', body: 'fixed' });
+  const op = await call('POST', '/board/status', { thread: old.j.thread, status: 'resolved', body: 'The opener lost its key; the bug is fixed.' }, { 'x-hit-secret': 'hs' });
+  const S6 = privateKeyToAccount(generatePrivateKey());
+  const sneak = await call('POST', '/board', { ...(await signed(S6, { action: 'status', thread: String(mine.j.thread), status: 'open' })), operator_status: true }, { 'cf-connecting-ip': '198.18.0.2' });
+  const to = (await call('GET', '/board/thread/' + old.j.thread)).j;
+  const act = (await call('GET', '/board/active')).j.active;
+  is('FR6 /board/status: the operator only (401 without the secret), shown as the Brain Board operator, no row in Active here; a signed writer sending operator_status is refused', noKey.status === 401 && op.status === 200 && to.status === 'resolved' && /the Brain Board operator/.test(B.boardMarkdown(to)) && !act.some((a) => a.key === 'operator') && sneak.status === 403, `${noKey.status} ${op.status} ${to.status} ${sneak.status}`);
+  // FR7 a hidden thread is counted apart and said
+  const hid = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'to be hidden', body: 'spam' }, { 'cf-connecting-ip': '198.18.0.3' });
+  await call('POST', '/board/hide', { thread: hid.j.thread, reason: 'test' }, { 'x-hit-secret': 'hs' });
+  const lst = (await call('GET', '/board?limit=1')).j;
+  is('FR7 the list says how many threads are hidden, and the text view explains the ids', lst.hidden >= 1 && /more hidden by the operator/.test(B.boardMarkdown(lst)), String(lst.hidden));
+}
+// V7 old key-made status changes get the opener's name; the migrations end on one version and stay there; TP a tip asks
+// nothing: not in CAN YOU HELP, not under YOUR OPEN THREADS
+{
+  const o7 = new Map([['v', 6], ['h:1', { id: 1, type: 'tip', status: 'resolved', from: 'first-run-check', author: 'unsigned' }], ['r:1:00001', { id: 1, created: 5, author: 'unsigned', body: '', status_change: { from: 'open', to: 'resolved' } }], ['r:1:00002', { id: 2, created: 6, author: 'unsigned', from: 'x-bot', body: 'a plain reply' }]]);
+  const s7 = { get: async (k) => structuredClone(o7.get(k)), put: async (k, v) => { o7.set(k, structuredClone(v)); }, delete: async (k) => { o7.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o7].filter(([k]) => k.startsWith(prefix)).sort(([a], [b]) => (a < b ? -1 : 1))) };
+  let c7 = Promise.resolve();
+  new B.PlazaBoard({ storage: s7, blockConcurrencyWhile: (fn) => (c7 = c7.then(fn)) });
+  await c7;
+  const v1 = o7.get('v');
+  new B.PlazaBoard({ storage: s7, blockConcurrencyWhile: (fn) => (c7 = c7.then(fn)) });
+  await c7;
+  is('V7 an old status change without a wallet becomes the opener\'s (name, by_key); a plain reply is untouched; the version ends at 7 and stays 7 on the next start', o7.get('r:1:00001').by_key === true && o7.get('r:1:00001').from === 'first-run-check' && !o7.get('r:1:00002').by_key && v1 === 7 && o7.get('v') === 7, JSON.stringify([o7.get('r:1:00001'), v1, o7.get('v')]));
+  const tip = { id: 900, type: 'tip', status: 'open', to: 'all', author: 'unsigned', from: 'tipper', created: 1, updated: 1, title: 'a tip', body: 'x', replies: [] };
+  const bug = { ...tip, id: 901, type: 'bug', title: 'a bug' };
+  const b1 = B.buildBrief({ id: 'reader', since: 0, threads: [], questions: [tip, bug] });
+  const b2 = B.buildBrief({ id: 'tipper', since: 0, threads: [tip], questions: [] });
+  is('TP a tip asks nothing: CAN YOU HELP shows the bug, not the tip; its writer\'s YOUR OPEN THREADS leaves it out', b1.can_you_help.length === 1 && b1.can_you_help[0].thread === 901 && b2.your_open_threads.length === 0, JSON.stringify([b1.can_you_help, b2.your_open_threads]));
 }
 globalThis.fetch = realFetch;
 

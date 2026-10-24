@@ -167,7 +167,17 @@ const bodyOf = (needs) => JSON.stringify({ params: Object.fromEntries(Object.ent
 // THE CARD TAKES THE ANSWER'S INPUT ITSELF (2026-10-13, operator: "the pay-per-answer POST line is huge — better a field
 // where you can type it right away"): one field per thing the service needs; the button opens the Plaza's hire flow
 // (wallet, quote, escrow — the path that already works) with the request written out from the fields.
-const fieldsOf = (needs) => Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v))).map(([k, v]) => k === 'holdings'
+// WHAT IS NEEDED STANDS OPEN, THE OPTIONS ONE TAP AWAY (2026-10-24, operator: "mach weiter mit den Kaufformularen"): six
+// forms with every optional field open made the cards 4 500 px on a phone; a field the service can do without sits in
+// "More options" inside the same form (it is still sent).
+const isOpt = (v) => /optional/i.test(String(v));
+const fieldsOf = (needs) => {
+  const all = Object.entries(needs || {}).filter(([, v]) => !/^or[ ]/i.test(String(v)));
+  const req = all.filter(([, v]) => !isOpt(v)), opt = all.filter(([, v]) => isOpt(v));
+  return [fieldList(req), opt.length ? `          <details class="sv-opt"${req.length ? '' : ' data-only'}><summary>${req.length ? 'More options' : 'Options'} (${opt.length})</summary>\n${fieldList(opt)}\n          </details>` : ''].filter(Boolean).join('\n');
+};
+const needsHead = (needs) => (Object.entries(needs || {}).some(([, v]) => !/^or[ ]/i.test(String(v)) && !isOpt(v)) ? 'What it needs from you' : 'Nothing is required — the options below are yours to add');
+const fieldList = (entries) => entries.map(([k, v]) => k === 'holdings'
   ? `          <label class="sv-f"><span>${esc(k)}</span><textarea name="${esc(k)}" rows="3" placeholder="one holding a line: token address, then its dollars&#10;0x0E09…cE82 600&#10;0xbb4C…095c 400${/optional/i.test(String(v)) ? '&#10;(optional when a position is named)' : ''}"></textarea></label>`
   : `          <label class="sv-f"><span>${esc(k)}</span><input name="${esc(k)}" autocomplete="off" spellcheck="false" placeholder="${esc(String(v).replace(/,? optional.*$/i, '').slice(0, 70))}${/optional/i.test(String(v)) ? ' (optional)' : ''}"></label>`).join('\n');
 
@@ -184,7 +194,7 @@ const delivery = (d) => `      <article class="sv-buy">
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
         <p class="sv-what">${esc(leadOf(d.what)[0])}</p>${leadOf(d.what)[1] ? `
         <details class="sv-more"><summary>How it works</summary><p class="sv-what">${esc(leadOf(d.what)[1])}</p></details>` : ''}
-        <p class="sv-needs-h">What it needs from you</p>
+        <p class="sv-needs-h">${needsHead(d.needs)}</p>
         <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
 ${fieldsOf(d.needs)}
           <div class="sv-form-go"><button type="submit">Hire for $0.10 &rarr;</button><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a></div>
@@ -314,6 +324,11 @@ function page() {
   .sv-steps{margin:10px 0 10px 20px;padding:0}.sv-steps li{margin:0 0 8px}.sv-how p{margin:0}
   .sv-caps{list-style:none;display:grid;gap:12px;margin:0;padding:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));align-items:start}
   .sv-capd{margin-top:6px}
+  .sv-opt{margin:2px 0 10px}
+  .sv-opt summary{cursor:pointer;font-size:.76rem;color:var(--gold);list-style:none;margin:2px 0 8px}
+  .sv-opt summary::-webkit-details-marker{display:none}
+  .sv-opt summary::before{content:'+ '}
+  .sv-opt[open] summary::before{content:'– '}
   .sv-capd summary{cursor:pointer;font-size:.74rem;color:var(--gold);list-style:none}
   .sv-capd summary::-webkit-details-marker{display:none}
   .sv-capd summary::before{content:'+ '}
@@ -506,7 +521,8 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
         }
         parts.push(k === 'capitalUsd' || k === 'amountUsd' ? '$' + v.replace(/^\\$/, '') : k === 'levels' ? v + ' levels' : k === 'bandPct' ? 'band ' + v + '%' : k === 'position' ? (/^0x[0-9a-fA-F]{40}$/.test(v) ? 'range check for the v3 positions held by ' + v : f.dataset.service === 'rebalance_plan' ? 'range check for v3 position ' + v : 'position ' + v) : k + ' ' + v);
       });
-      if (bad) { msg.textContent = bad + '.'; return; }
+      // a mistake in a field under "More options" opens that fold, so the field it names can be seen (2026-10-24)
+      if (bad) { f.querySelectorAll('.sv-opt').forEach(function (d) { if ([].some.call(d.querySelectorAll('input,textarea'), function (x) { return x.value.trim(); })) d.open = true; }); msg.textContent = bad + '.'; return; }
       msg.textContent = '';
       var task = f.dataset.name + ': ' + (parts.join(', ') || 'as described');
       location.href = '/registry?hire=' + encodeURIComponent(f.dataset.agent) + '&task=' + encodeURIComponent(task.slice(0, 300));

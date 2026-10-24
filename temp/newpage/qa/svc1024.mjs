@@ -24,8 +24,20 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   say(s.shorts.every((t) => !/[:;]$/.test(t.trim())), `${tag}: no one-line summary ends on a colon or semicolon`);
   await ev(`document.querySelector('.sv-caps .sv-capd summary').click()`);
   say(await ev(`(()=>{const d=document.querySelector('.sv-caps .sv-capd');return d.open && d.querySelector('code,.sv-limit') && d.querySelector('code,.sv-limit').offsetHeight>0})()`), `${tag}: a click opens a tool's description and its call`);
+  // THE HIRE FORMS (2026-10-24): what is needed stands open, the options in a closed "More options" inside the form;
+  // an option typed there still goes into the hire; a mistake in a closed option opens it
   await send('Page.navigate', { url: base + '/services?r=' + Date.now() }); await sleep(5000);
-  const hgt = await ev('document.documentElement.scrollHeight'), cap = W < 500 ? 13000 : 7000;
+  const fm = await ev(`(()=>{const fs=[...document.querySelectorAll('form.sv-form')];return fs.map(f=>({svc:f.dataset.service,open:[...f.querySelectorAll('input,textarea')].filter(x=>!x.closest('.sv-opt')).map(x=>x.name),opt:[...f.querySelectorAll('.sv-opt input,.sv-opt textarea')].map(x=>[x.name,/optional/.test(x.placeholder)]),closed:[...f.querySelectorAll('.sv-opt')].every(d=>!d.open)}))})()`);
+  say(fm.length === 6 && fm.every((f) => f.closed && f.opt.every(([, o]) => o)) && fm.some((f) => f.opt.length) && fm.find((f) => f.svc === 'grid_plan')?.open.join() === 'token', `${tag}: six forms, every option in a closed fold and only options there (grid: open ${fm.find((f) => f.svc === 'grid_plan')?.open.join()})`);
+  await ev(`(()=>{const f=document.querySelector('form.sv-form[data-service="grid_plan"]');f.querySelector('[name=token]').value='0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';f.querySelector('[name=levels]').value='12';f.requestSubmit()})()`);
+  await sleep(2500);
+  const went = decodeURIComponent(await ev('location.href'));
+  say(/\/registry\?hire=302258&task=.*0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82.*12 levels/.test(went), `${tag}: a grid hire with an option typed carries it to the hire flow ("${went.split('task=')[1]?.slice(0, 90)}")`);
+  await send('Page.navigate', { url: base + '/services?r=' + Date.now() }); await sleep(5000);
+  const oe = await ev(`(()=>{const f=document.querySelector('form.sv-form[data-service="rebalance_plan"]');const t=f.querySelector('.sv-opt [name=holdings]');if(!t)return null;const d=t.closest('.sv-opt');const was=d.open;t.value='lots of cake';f.requestSubmit();return [was,d.open,f.querySelector('.sv-form-msg').textContent,location.pathname]})()`);
+  say(!!oe && oe[0] === false && oe[1] === true && /holdings: one line each/.test(oe[2]) && oe[3] === '/services', `${tag}: a mistake in a closed option (holdings) opens the fold and says what is wrong — "${oe && oe[2]}"`);
+  await send('Page.navigate', { url: base + '/services?r=' + Date.now() }); await sleep(5000);
+  const hgt = await ev('document.documentElement.scrollHeight'), cap = W < 500 ? 12300 : 6200;
   say(hgt <= cap, `${tag}: the page is ${hgt} px (at most ${cap}; was ${W < 500 ? '14 341' : '7 974'})`);
   say(!(await ev('document.documentElement.scrollWidth > innerWidth + 1')), `${tag}: nothing wider than the screen`);
 }

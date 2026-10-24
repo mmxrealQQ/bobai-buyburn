@@ -134,6 +134,15 @@
     .lpr-mix i{display:block;height:100%;background:#2dd4bf}
     .lpr-mix + .lpr-ends span:first-child small:first-child{color:#2dd4bf;font-weight:600}.lpr-mix + .lpr-ends span:last-child small:first-child{color:#f0b90b;font-weight:600}
     @media (max-width:559px){.lpr-ends{font-size:12px}}
+/* FOLDS (2026-10-24, operator chose variant A like /services: /defi was 9,821 px on a phone): what went in, what it is
+   worth and the range stay open; the second opinion, "For agents", "How it works" and what a plan costs open on a tap;
+   the day-by-day table shows its five newest runs */
+.fold>:first-child{cursor:pointer}
+.fold>:first-child::after{content:' \25BE';color:var(--gold,#f0b90b);font-size:.85em}
+.fold.open>:first-child::after{content:' \25B4'}
+.fold:not(.open)>:not(:first-child){display:none!important}
+#ag-lp-series-wrap:not(.open) .lp-series tr:nth-child(n+7){display:none}
+.lp-more{background:none;border:1px solid rgba(240,185,11,.45);color:var(--gold,#f0b90b);border-radius:999px;padding:7px 14px;font:600 .8rem Inter,sans-serif;cursor:pointer;margin-top:10px}
 </style>
 </head>
 <body>
@@ -161,12 +170,12 @@
     </div>
     <!-- THE RANGE, DRAWN (2026-10-13): lower, upper, the price now, room, what it holds (app.js lpRange) -->
     <div class="agt-flow fi lpr" id="ag-lp-range" hidden></div>
-    <div class="agt-flow fi lpr" id="ag-opinion" hidden></div>
+    <div class="agt-flow fi lpr fold" id="ag-opinion" hidden></div>
     <!-- THE CURVE (2026-10-12): worth against capital put in, every run of /lp/series (app.js lpCurve) -->
     <div class="agt-flow fi lpc" id="ag-lp-curve" hidden></div>
     <!-- FOR AGENTS (2026-10-12, operator: "AI and the blockchain must see us"): what another agent needs to find, call or
          hire this one — its A2A card and endpoint, its ERC-8004 id, the escrow hire, its measured chart, the open record -->
-    <div class="agt-flow fi lpa" data-nousd>
+    <div class="agt-flow fi lpa fold" data-nousd>
       <h3>For agents</h3>
       <p class="agt-note">This agent is ERC-8004 <b>#363709</b> on BNB Chain. Another agent can read its card, ask it over A2A, or hire it through the ERC-8183 escrow; its chart on Brain Plaza is measured, not self-reported.</p>
       <div class="lpa-r"><span><b>Agent card</b><small>A2A, what it can do</small></span><code>https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json</code><button type="button" data-copy="https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json">Copy</button></div>
@@ -190,11 +199,12 @@
     <div class="agt-flow fi" id="ag-lp-series-wrap">
       <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
       <div class="lp-series-box"><table class="lp-series" id="ag-lp-series"></table></div>
+      <button type="button" class="lp-more" id="lp-series-more" hidden>Show every run</button>
       <p class="agt-note">Value is in BNB because the position is quoted in BNB. After a re-set the fees-owed column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital, and the portfolio counts them as fees all the same. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
     </div>
   </div>
 
-  <div class="lp-part" id="steps">
+  <div class="lp-part fold" id="steps">
     <div class="sh fi"><h2>How it <em>works</em></h2>
       <p class="sh-sub">One PancakeSwap V3 range on BNB Chain, in the CAKE/BNB 0.05% pool &mdash; with a small reserve range below the price when BNB waits &mdash; run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
     </div>
@@ -234,7 +244,7 @@
       </div>
       <div id="lp-yours-out" class="lp-yours-out" hidden></div>
     </div>
-    <div class="agt-flow fi">
+    <div class="agt-flow fi fold">
       <h3>What it costs, and what comes next</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>One answer, one payment</b><span>0.10 USD1, or half that in $BOBAI at the quote you are shown. Send it to the income wallet, paste the transaction hash, get the plan. Agents do the same over x402 without a page (USD1 signed by EIP-3009 is accepted too), or hire the agent itself: it is ERC-8004 agent <a href="https://8004scan.io/agents/bsc/363709" target="_blank" rel="noopener">#363709</a> on BNB Chain, hired through the ERC-8183 escrow with a signed quote at <a href="https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json" rel="noopener">its own card</a>, and listed on <a href="https://brainonbnb.com/registry">Brain Plaza</a>, <a href="https://marque.trade/agents/56/363709" target="_blank" rel="noopener">Marque</a>, <a href="https://www.mandatemarkets.com/agents/363709" target="_blank" rel="noopener">Mandate</a>, <a href="https://pokter.xyz/agents/56/363709" target="_blank" rel="noopener">Pokter</a> and Dolphin.</span></div></li>
@@ -251,6 +261,23 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=124" defer></script>
+<script src="app.js?v=125" defer></script>
+<script>
+  // the folds (2026-10-24): a tap or Enter on a fold's first line opens it; links and buttons inside keep working.
+  // The second opinion is drawn later by app.js, so its first line is marked again whenever it is redrawn.
+  (function () {
+    var mark = function (f) { var h = f.firstElementChild; if (!h) return; h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', f.classList.contains('open') ? 'true' : 'false'); };
+    var toggle = function (f) { f.classList.toggle('open'); mark(f); };
+    document.querySelectorAll('.fold').forEach(function (f) { mark(f); new MutationObserver(function () { mark(f); }).observe(f, { childList: true }); });
+    document.addEventListener('click', function (e) { var h = e.target.closest('.fold > :first-child'); if (!h || e.target.closest('a, button, input, code')) return; toggle(h.parentElement); });
+    document.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var h = e.target.closest && e.target.closest('.fold > :first-child'); if (!h || h !== e.target) return; e.preventDefault(); toggle(h.parentElement); });
+    // the day-by-day table: its five newest runs, then a button for all of them
+    var wrap = document.getElementById('ag-lp-series-wrap'), more = document.getElementById('lp-series-more'), table = document.getElementById('ag-lp-series');
+    if (wrap && more && table) {
+      new MutationObserver(function () { var n = table.querySelectorAll('tr').length - 1; more.hidden = n <= 5; more.textContent = 'Show all ' + n + ' runs'; }).observe(table, { childList: true, subtree: true });
+      more.addEventListener('click', function () { var open = wrap.classList.toggle('open'); more.textContent = open ? 'Show the five newest' : 'Show all ' + (table.querySelectorAll('tr').length - 1) + ' runs'; });
+    }
+  })();
+</script>
 </body>
 </html>

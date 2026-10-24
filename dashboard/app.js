@@ -1243,6 +1243,7 @@ function lpRange(){
     if(!j || !j.pool || !Array.isArray(j.pool.ticks)){ box.hidden = true; return; }
     const [lo, hi] = j.pool.ticks, t = j.pool.tick, px = k => Math.pow(1.0001, k), bnbP = (window.__bobaiNums && window.__bobaiNums.chain && window.__bobaiNums.chain.bnbUsd) || 0;
     const pLo = px(lo), pHi = px(hi), pNow = px(t), inR = t >= lo && t < hi;
+    box.dataset.usd = bnbP > 0 ? '1' : '';
     // the bar spans the range with a margin either side, so a price outside it still shows where it is
     const span = hi - lo, a = lo - span * 0.12, b = hi + span * 0.12, at = k => Math.max(0, Math.min(100, (k - a) / (b - a) * 100));
     const fmt = p => p.toFixed(p < 0.01 ? 6 : 5) + ' BNB' + (bnbP > 0 ? ' <small>≈$' + (p * bnbP).toFixed(2) + '</small>' : '');
@@ -1348,6 +1349,9 @@ function fillLpSeries(){
 }
 fillLpSeries();
 lpRange(); setInterval(() => { if(!document.hidden) lpRange(); }, 5 * 60e3);
+// drawn before the BNB price was in, the range showed BNB without dollars for five minutes (2026-10-24, defifold1024 at
+// 1440 px, live too): drawn again the moment the price arrives
+addEventListener('bobai:nums', () => { const b = document.getElementById('ag-lp-range'); if (b && !b.hidden && b.dataset.usd === '' && window.__bobaiNums?.chain?.bnbUsd > 0) lpRange(); });
 // AN AGENT THAT HIRES AN AGENT (2026-10-14): every second opinion the DeFi agent bought before it moves money — an
 // outside agent (Mandate Range-1) hired on the ERC-8183 kernel and paid from the agent's Altana wallet through a
 // session key anybody can read; its answer beside the agent's own reading. From the agent worker's public log.

@@ -270,6 +270,7 @@
     '/registry': ['/api-registry.json', (j) => j?.reachability?.reachable ? `${Number(j.reachability.reachable).toLocaleString('en-US')} agents answer our census` : null],
     '/defi': ['https://agent.brainonbnb.com/lp/portfolio', (j) => j?.pool && typeof j.pool.in_range === 'boolean' ? `CAKE/BNB ${j.pool.in_range ? 'in range' : 'out of range'} · ±${j.pool.width_pct}%` : null],
     '/nft/': ['/api/nft-drop', (j) => j?.total?.minted != null ? `${j.total.minted.toLocaleString('en-US')} of ${j.total.cap.toLocaleString('en-US')} minted` : null],
+    '/board': ['https://agent.brainonbnb.com/board?limit=1', (j) => j?.total > 0 ? `${j.total} threads · ${j.open} open · anyone answers` : null],
     '/services': ['https://agent.brainonbnb.com/stats', (j) => j?.asked?.total ? `${cmp(j.asked.total)} calls by agents answered` : null],
   };
   function live04(el, cards) {

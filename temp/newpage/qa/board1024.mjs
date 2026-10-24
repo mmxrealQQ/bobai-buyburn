@@ -9,7 +9,7 @@ import os from 'node:os';
 const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-board24-' + port;
 let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
-const total = (await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json()).total;
+const { total, open: openN } = await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json();
 
 const join = await fetch(base + '/join').then(async (r) => [r.headers.get('content-type'), await r.text()]).catch(() => ['', '']);
 say(/text\/plain/.test(join[0]) && /^BRAIN BOARD on brainonbnb\.com — join/.test(join[1]), `${base}/join answers in plain text for an agent`);
@@ -31,7 +31,7 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   const activeCount = (await (await fetch('https://agent.brainonbnb.com/board/active')).json()).count;
   const act = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const l=document.getElementById('pb-active-list');if(l||++n>30){clearInterval(t);r(l?[l.children.length,l.innerText.slice(0,160),document.getElementById('n-who').textContent]:[0,document.getElementById('pb-active').innerText,document.getElementById('n-who').textContent])}},300)})`);
   if (activeCount === 0) say(/Nobody yet/.test(act[1]) && act[2] === '0', `${tag}: Active here, nobody yet: it says so`);
-  else say(!!act && Math.min(100, act[0]) === Math.min(100, activeCount) && act[2] === String(activeCount) && /wrote .* · brief read .* · \d+ entr/.test(act[1]), `${tag}: Active here lists ${activeCount} (the board's own count) — "${act && act[1].split('\n')[0]}"`);
+  else say(!!act && Math.min(100, act[0]) === Math.min(100, activeCount) && act[2] === String(activeCount) && / · \d+ (min|h|days) ago · \d+ entr/.test(act[1]), `${tag}: Active here lists ${activeCount} (the board's own count) — "${act && act[1].split('\n')[0]}"`);
   say(/curl -s https:\/\/agent\.brainonbnb\.com\/board\/brief\/<your agent id>$/.test(await txt('pb-wcode')), `${tag}: the brief card opens on the terminal line with a placeholder id`);
   await ev(`(()=>{const i=document.getElementById('pb-bid');i.value='Acme-Bot';i.dispatchEvent(new Event('input'))})()`);
   say((await txt('pb-wcode')) === 'curl -s https://agent.brainonbnb.com/board/brief/acme-bot', `${tag}: a name works as well as an id`);
@@ -45,7 +45,7 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   say(/^At the start of every session, read https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709 /.test(await txt('pb-wcode')), `${tag}: AGENTS.md line with the id`);
   await ev(`document.querySelector('[data-w="cron"]').click()`);
   say(/^0 7 \* \* \* curl -s "https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709\?hours=24"/.test(await txt('pb-wcode')), `${tag}: cron line with the id`);
-  say((await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(100, total), `${tag}: the brief's tabs leave the board's filter and list alone`);
+  say((await ev(`document.querySelector('.pb-chip[data-f="status:open"]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(20, openN), `${tag}: the brief's tabs leave the board's filter (Open) and list alone`);
   await ev(`document.getElementById('pb-bshow').click()`);
   const br = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const x=document.getElementById('pb-bout').textContent;if(/^BRAIN BOARD/.test(x)||++n>60){clearInterval(t);r(x)}},500)})`);
   say(/^BRAIN BOARD — brief for agent #363709 · Brain on BNB/.test(br) && /NEW FOR YOU/.test(br) && /ANSWER OR REPORT/.test(br), `${tag}: Show my brief prints the live brief — "${String(br).split('\n')[0].slice(0, 90)}"`);
@@ -55,8 +55,12 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   await sleep(300);
   say(/No browser wallet found/.test(await txt('pw-say')), `${tag}: Sign with wallet without a wallet says so (nothing sent)`);
   await ev(`(()=>{document.getElementById('pw-title').value='';document.getElementById('pw-body').value=''})()`);
-  say(/Write without a wallet/.test(await ev(`document.getElementById('join').innerText`)) && /board\/brief\//.test(await ev(`document.getElementById('join').innerText`)), `${tag}: Join names the brief and writing without a wallet`);
+  say(/Write without a wallet/.test(await ev(`document.getElementById('join').textContent`)) && /board\/brief\//.test(await ev(`document.getElementById('join').textContent`)), `${tag}: For developers names the brief and writing without a wallet`);
   say(!(await ev('document.documentElement.scrollWidth > innerWidth + 1')), `${tag}: nothing wider than the screen`);
+  // 2026-10-24: the page was 14 923 px (desktop) and 30 293 px (phone) of open threads
+  await ev(`(()=>{document.querySelectorAll('.pb-chip[data-f="status:open"]')[0].click()})()`); await sleep(1500);
+  const hgt = await ev('document.documentElement.scrollHeight'), cap = W < 500 ? 4500 : 3000;
+  say(hgt <= cap, `${tag}: the page is short — ${hgt} px (at most ${cap})`);
 }
 say(!errs.length, 'no script error ' + errs.slice(0, 2).join(' | '));
 ws.close(); ch.kill(); await sleep(600);

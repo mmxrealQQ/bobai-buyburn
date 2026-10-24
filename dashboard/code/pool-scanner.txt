@@ -3573,8 +3573,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=59" as="style">
-  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="preload" href="styles.css?v=67" as="style">
+  <link rel="stylesheet" href="styles.css?v=67">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -6818,7 +6818,7 @@ export { flagsCard, verdictCard };
     .ecg.ecg3{grid-template-columns:repeat(3,minmax(0,1fr))}
     /* FIVE IN ONE ROW (operator, 2026-10-19: "viel einfacher, viel weniger, dafür das wichtigste"): a card is its name,
        one sentence, one live figure and one button; the green dot says it is live, so the word LIVE goes */
-    .ecg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .ecg{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .ecg .ec{padding:18px 16px;gap:8px}
     .ecg .ec p{font-size:.76rem;line-height:1.5;flex:0 0 auto}
     .ecg .ec-st.live{display:none}
@@ -6829,7 +6829,7 @@ export { flagsCard, verdictCard };
     @media (max-width:420px){.ecg{grid-template-columns:1fr}}
     @media (max-width:700px){.ecg.ecg3{grid-template-columns:1fr}}
     /* the fourth card, the Plaza Board (2026-10-23): four across, two on a tablet, one on a phone */
-    .ecg.ecg4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .ecg.ecg4{grid-template-columns:repeat(3,minmax(0,1fr))}
     @media (max-width:1100px){.ecg.ecg4{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:700px){.ecg.ecg4{grid-template-columns:1fr}}
     .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}

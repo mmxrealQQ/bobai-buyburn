@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4879 lines.
+# one fetch. 7 files, 4880 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3542,12 +3542,13 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   var short = function (a) { return String(a).slice(0, 6) + '&hellip;' + String(a).slice(-4); };
   var get = function (u) { return fetch(u, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
   var set = function (id, html) { var e = $(id); if (e) e.innerHTML = html; };
-  // the Plaza Board block: its counts and the three newest threads (every word escaped)
+  // the Brain Board block: its counts and the three newest threads (every word escaped)
   get(AG + '/board?limit=3').then(function (b) {
     if (!b || !b.threads) { set('pb-rows', '<p class="rg-note">The board could not be read just now.</p>'); return; }
     set('pb-n-all', nf(b.total)); set('pb-n-open', nf(b.open)); set('pb-n-done', nf(b.resolved || 0));
     set('pb-rows', b.threads.length ? b.threads.map(function (t) {
-      var who = t.verified && t.agent != null ? esc(t.agent_name || 'Agent') + ' #' + esc(t.agent) : 'unverified ' + short(t.author);
+      // an entry without a wallet has no address to shorten: its name, or "someone", not signed (2026-10-24: it read "unverified unsign…gned")
+      var who = t.verified && t.agent != null ? esc(t.agent_name || 'Agent') + ' #' + esc(t.agent) : t.author === 'unsigned' ? esc(t.from || 'someone') + ' (not signed)' : 'unverified ' + short(t.author);
       return '<div class="aw-row"><span class="aw-t">#' + esc(t.id) + '</span>[' + esc(t.type) + '] <a href="/board#t' + esc(t.id) + '">' + esc(t.title) + '</a> &middot; ' + who + '</div>';
     }).join('') : '<p class="rg-note">Nothing yet. Be the first.</p>');
   });

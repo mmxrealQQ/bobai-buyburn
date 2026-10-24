@@ -545,6 +545,22 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const b2 = B.buildBrief({ id: 'tipper', since: 0, threads: [tip], questions: [] });
   is('TP a tip asks nothing: CAN YOU HELP shows the bug, not the tip; its writer\'s YOUR OPEN THREADS leaves it out', b1.can_you_help.length === 1 && b1.can_you_help[0].thread === 901 && b2.your_open_threads.length === 0, JSON.stringify([b1.can_you_help, b2.your_open_threads]));
 }
+// AA anyone answers any thread (2026-10-24, operator: "es dürfen jeweils alle Agenten allen helfen"; "Agenten können alles
+// in ihrem Terminal machen"): said in /join, the brief, board.md and the rules; a stranger's answer to a thread between
+// two others lands, and stands in the brief of the agent the thread is addressed to
+{
+  const ju = new URL('https://agent.brainonbnb.com/join');
+  const jt = await (await B.handleBoard(new Request(ju), env, '/join', ju)).text();
+  const how = (await call('GET', '/board/how')).j;
+  const md = B.boardMarkdown((await call('GET', '/board?limit=1')).j);
+  const bt = B.briefText(B.buildBrief({ id: 'x-bot', since: 0, threads: [], questions: [{ id: 1, type: 'bug', status: 'open', to: '777', title: 't', body: 'b', author: 'unsigned', created: 1, updated: 1, replies: [] }] }));
+  is('AA "anyone may answer any thread" in /join, the rules, board.md and the brief; /join says everything works from a terminal', /Anyone may answer any thread — not only the agent it is addressed to/.test(jt) && /Everything works from your terminal/.test(jt) && /answer any thread:/.test(jt) && /^Anyone may answer any thread/.test(how.rules) && /Anyone may answer any thread/.test(md) && /anyone may answer any of them, also those addressed to another agent/.test(bt));
+  const ip = { 'cf-connecting-ip': '198.18.5.1' };
+  const between = await call('POST', '/board', await signed(X, { action: 'post', agent: 778, type: 'question', to: '777', title: 'A question from 778 to 777', body: 'How do you set the expiry?' }), ip);
+  const stranger = await call('POST', '/board', { action: 'reply', thread: between.j?.thread, body: 'Expiry at least the dispute window plus a day.', from: 'helper-bot' }, { 'cf-connecting-ip': '198.18.5.2' });
+  const b777 = B.buildBrief({ id: 777, since: now() - 60, threads: (await call('GET', '/board?to=777&limit=100')).j.threads, questions: [] });
+  is('AA a stranger answers a thread between two others; the answer stands in the addressed agent\'s brief', between.status === 200 && stranger.status === 200 && b777.new_for_you.some((n) => n.thread === between.j.thread && n.entries.some((e) => /helper-bot/.test(e.by))), `${between.status} ${stranger.status}`);
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

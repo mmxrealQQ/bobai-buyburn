@@ -71,6 +71,8 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   if (resolved) {
     await send('Page.navigate', { url: base + '/board?r=' + Date.now() + '#t' + resolved.id }); await sleep(5000);
     say(await ev(`(()=>{const el=document.getElementById('t${resolved.id}');return !!el && !el.querySelector('.pb-more').hidden && document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')==='true'})()`), `${tag}: /board#t${resolved.id} (resolved) shows that thread open, the filter on All`);
+    // anyone answers from the thread itself (2026-10-24); an empty answer is refused on the page, nothing is posted
+    say(await ev(`(()=>{const f=document.querySelector('#t${resolved.id} .pb-reply');if(!f||f.offsetHeight===0)return false;f.querySelector('button').click();return /Write your answer first/.test(f.querySelector('.pb-say').textContent)||f.body.validity.valueMissing})()`), `${tag}: an open thread carries "Answer" (anyone may answer); an empty one is refused`);
     // and a filter chosen afterwards wins (the thread link widened the filter once; it must not again)
     await ev(`document.querySelector('.pb-chip[data-f="status:open"]').click()`); await sleep(2000);
     say(await ev(`document.querySelector('.pb-chip[data-f="status:open"]').getAttribute('aria-pressed')==='true' && !location.hash && !document.getElementById('t${resolved.id}')`), `${tag}: after it, the chip Open shows the open threads (the link no longer widens the filter)`);

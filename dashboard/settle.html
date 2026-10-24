@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="styles.css?v=59">
   <link rel="stylesheet" href="home.css?v=1">
   <link rel="stylesheet" href="record.css?v=4">
+  <style>.rc-row[hidden]{display:none}.rc-more{display:block;margin:-6px auto 16px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -130,7 +131,18 @@
         : '<div class="rc-row rc-muted"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · ' + (d.unconfirmed ? 'sent, its receipt not seen yet: ' : 'not refunded: ') + esc(d.why || 'sent, not done') + '</span>'
           + (d.tx ? '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a></span>' : '') + '</div>').join('')
       : '<div class="rc-empty">No refund yet. The first run is at 21:15 UTC, right after the settle.</div>');
+    // the newest ten of each list, the rest one click away (2026-10-24: the two lists were 4 400 px, 7 300 on a phone)
+    fold('rc-rows', 10); fold('rf-rows', 10 + (rl ? 1 : 0));
   }).catch(() => { $('rc-last').textContent = 'The record could not be read just now. Try again in a minute.'; $('rc-rows').innerHTML = ''; $('rf-rows').innerHTML = ''; });
+  function fold(id, keep) {
+    const box = $(id), rows = [...box.children].filter((r) => r.classList.contains('rc-row'));
+    if (rows.length <= keep + 2) return;
+    rows.slice(keep).forEach((r) => { r.hidden = true; });
+    const b = document.createElement('button');
+    b.className = 'rc-more'; b.type = 'button'; b.textContent = 'Show all ' + nf(rows.length - (id === 'rf-rows' && keep > 10 ? 1 : 0)) + ' (' + nf(rows.length - keep) + ' more)';
+    b.addEventListener('click', () => { rows.forEach((r) => { r.hidden = false; }); b.remove(); });
+    box.after(b);
+  }
 })();
 </script>
 </body>

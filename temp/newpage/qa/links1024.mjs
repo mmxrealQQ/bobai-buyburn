@@ -38,7 +38,9 @@ const check = async (u) => {
     try {
       const r = await fetch(u, { method: 'GET', redirect: 'follow', headers: { 'user-agent': own ? 'brainonbnb-linkcheck' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36' }, signal: AbortSignal.timeout(25000) });
       // /tip answers 402 by design: a pay link for agents (x402)
-      const ok = own ? (r.status >= 200 && r.status < 300) || (r.status === 402 && u.includes('/tip')) : (r.status < 400 || [401, 403, 405, 429].includes(r.status));
+      // (2026-10-24) a checkup page answers 429 by design past 20 different agents a day from one address — this checker
+      // opens every agent's checkup the board links
+      const ok = own ? (r.status >= 200 && r.status < 300) || (r.status === 402 && u.includes('/tip')) || (r.status === 429 && /\/board\/agent\/\d+$/.test(u)) : (r.status < 400 || [401, 403, 405, 429].includes(r.status));
       if (ok) return;
       if (a === 1) bad.push([r.status, u]);
     } catch (e) { if (a === 1) bad.push(['ERR ' + String(e.name || e).slice(0, 30), u]); }

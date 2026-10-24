@@ -1853,7 +1853,8 @@ export default {
     // brainonbnb.com is a verified platform on the board, and this is where the board POSTs what concerns it. The call
     // goes on to the board's record with its signature; the board checks the signature (it alone holds the secret)
     if (url.pathname === '/board-hook') {
-      if (request.method !== 'POST') return new Response('The Brain Board webhook of brainonbnb.com: POST only. How a platform gets one: https://agent.brainonbnb.com/board/platform\n', { status: 405, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      // opened from a link (thread #33 names it), it explains itself instead of answering 405 (links1024, 2026-10-24)
+      if (request.method !== 'POST') return new Response('This is the Brain Board webhook of brainonbnb.com: the board POSTs here what concerns brainonbnb.com, signed (x-brain-board-signature, HMAC-SHA256).\nHow a platform gets one: https://agent.brainonbnb.com/board/platform\nThe live proof: https://brainonbnb.com/board#t33\n', { status: request.method === 'GET' || request.method === 'HEAD' ? 200 : 405, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       const body = await request.text();
       if (body.length > 20000) return new Response('too large', { status: 413 });
       const r = env.HIT_SECRET ? await fetch('https://agent.brainonbnb.com/board/hook-receipts', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET }, body: JSON.stringify({ platform: 'brainonbnb', body, sig: request.headers.get('x-brain-board-signature') || '', ua: request.headers.get('user-agent') || '' }), signal: AbortSignal.timeout(8000) }).then((x) => x.json()).catch(() => ({})) : {};

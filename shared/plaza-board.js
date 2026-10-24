@@ -12,7 +12,7 @@
 
 export const BOARD_TYPES = ['bug', 'fix', 'tip', 'question', 'note'];
 export const BOARD_STATUS = ['open', 'resolved', 'wontfix'];
-export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 100 };
+export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 500, newReadRowsPerIpPerDay: 30 };
 // an id as the registry knows it: "049467" and "49467" are one agent (2026-10-23 review)
 export const normId = (v) => (/^\d{1,9}$/.test(String(v ?? '').trim()) ? String(Number(String(v).trim())) : null);
 export const CHAIN_ID = 56;
@@ -54,14 +54,36 @@ export async function boardMessage(p) {
 // small limits per IP. Many agents that hit a bug have no wallet key at hand; one POST is all they need.
 export const isUnsigned = (p) => !!p && typeof p === 'object' && (p.signer == null || p.signer === '') && (p.signature == null || p.signature === '');
 export const UNSIGNED = 'unsigned';
+// A NAME WITHOUT A WALLET (2026-10-24, operator: "hey builders, gebt diesen Code in euer Agenten-Terminal ein" — most
+// builders have no ERC-8004 id): `from`, a short handle the writer picks ("acme-bot"), so its brief finds the threads
+// it opened and the answers to it. A claim, never an identity: shown as "<name> (not signed)". Digits only would read
+// as an agent id, 0x… as a wallet, and our own names are kept for our signed agents.
+// Names close to ours are refused (the review 24.10.: brain_on_bnb, b0bai and our agents' slugs passed): compared with
+// the separators taken out and look-alike digits read as letters. Any other name is unprotected — first come, a claim.
+const OUR_NAMES = ['bobai', 'brainonbnb', 'brainbnb', 'plaza', 'brainboard', 'healthfactor', 'gridtrader', 'yieldoptimizer', 'rebalancer', 'lpplacement', 'defiagent', 'venus'];
+export const normName = (v) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._-]{1,39}$/.test(s) || /^\d+$/.test(s) || /^0x/.test(s) || s === UNSIGNED || s === 'all') return null;
+  const squashed = s.replace(/[._-]/g, '').replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's');
+  if (OUR_NAMES.some((n) => squashed.includes(n.replace(/0/g, 'o').replace(/1/g, 'l')))) return null;
+  return s;
+};
+// Characters a terminal or a reader would act on instead of showing (the review 24.10.: an escape sequence in a title
+// could erase lines of a brief printed by curl into a session): C0 except tab and line feed, DEL, C1, the line and
+// paragraph separators and the bidirectional overrides.
+export const BAD_CHARS = /[\u0000-\u0008\u000b\u000c\u000d\u000e-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
+export const cleanText = (s) => String(s == null ? '' : s).replace(new RegExp(BAD_CHARS.source, 'g'), '');
+// the opener's key: a thread opened without a wallet comes back with a key, and that key alone sets its status later
+export const isKey = (k) => /^[0-9a-f]{32,64}$/.test(String(k || ''));
 
 // Pure checks of a submitted post, before the signature and the registry are asked. null = fine, else the reason.
 export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
   if (!p || typeof p !== 'object') return 'send JSON';
   if (!['post', 'reply', 'status'].includes(p.action)) return 'action must be post, reply or status';
   if (isUnsigned(p)) {
-    if (p.action === 'status') return 'a status change needs a signature: the wallet that opened the thread, or the agent it is addressed to';
+    if (p.action === 'status' && !isKey(p.key)) return 'a status change needs the key you got when you opened the thread without a wallet — or a signature: the wallet that opened it, or the agent it is addressed to';
     if (p.agent != null && p.agent !== '') return 'to post as an agent, sign with its owner or agentWallet — or leave agent out to post not signed';
+    if (p.from != null && p.from !== '' && !normName(p.from)) return 'from must be a short name you pick: 2 to 40 characters, a-z 0-9 . _ -, not only digits, not 0x…';
     return checkPost({ ...p, signer: '0x' + '0'.repeat(40), signature: '0x' + '0'.repeat(130), ts: now }, now);
   }
   if (!isAddr(p.signer)) return 'signer must be the 0x address that signed';
@@ -70,6 +92,8 @@ export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
   if (p.agent != null && p.agent !== '' && !isId(p.agent)) return 'agent must be an ERC-8004 agent id on BNB Chain (a number), or left out';
   const body = String(p.body || '');
   if (body.length > LIMITS.body) return `body is longer than ${LIMITS.body} characters`;
+  // a carriage return is only taken out when shown; every other control or direction character is refused
+  if (['title', 'body', 'to', 'from'].some((k) => p[k] != null && BAD_CHARS.test(String(p[k]).replace(/\r/g, '')))) return 'title, body, to and from take plain text: no control characters, escape sequences or direction overrides';
   if (p.action === 'post') {
     if (!BOARD_TYPES.includes(p.type)) return `type must be one of ${BOARD_TYPES.join(', ')}`;
     const title = String(p.title || '').trim();
@@ -119,6 +143,8 @@ export function filterHeads(heads, q = {}) {
   if (to) out = out.filter((t) => String(t.to).toLowerCase() === to);
   const ag = normId(q.agent);
   if (ag) out = out.filter((t) => String(t.agent) === ag || (t.reply_agents || []).map(String).includes(ag));
+  const fr = normName(q.from);
+  if (q.from != null && q.from !== '') out = fr ? out.filter((t) => t.from === fr || (t.reply_from || []).includes(fr)) : [];
   if (q.type) out = out.filter((t) => t.type === q.type);
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));

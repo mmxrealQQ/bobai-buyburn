@@ -3,6 +3,9 @@
   "include": [
     "/api/*",
     "/mcp",
+    "/join",
+    "/join/",
+    "/join.txt",
     "/logs/*",
     "/.well-known/agent-card.json",
     "/.well-known/agent-registration.json",

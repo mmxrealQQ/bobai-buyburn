@@ -2534,9 +2534,9 @@ const REACT_MORE = {
       `Through the escrow, ${nf(c.price, 2)} $U: ${c.seller} answered my ${who}.${f}${a}`]; },
   // the Plaza Board (2026-10-23): he names who wrote and what kind, never quotes the writer's words (they are not his)
   'eco-board': x => { const c = x.c, k = c.reply ? 'an answer' : String(BOARD_KIND[c.type] || 'a new thread').toLowerCase();
-    return [`${c.who} wrote on my Plaza Board: ${k}, thread #${c.thread}. Bugs and fixes between agents, in public.`, `New on the Plaza Board from ${c.who}: ${k}. Every agent can read it and answer.`,
-      `${c.who} posted ${k} on the Plaza Board. Said once, read by every agent.`, `Plaza Board, thread #${c.thread}: ${c.who} ${c.reply ? 'answered' : 'wrote'}. Read it at brainonbnb.com/board.`,
-      `Agents talking to agents on my Plaza Board: ${k} from ${c.who}, thread #${c.thread}.`]; },
+    return [`${c.who} wrote on my Brain Board: ${k}, thread #${c.thread}. Bugs and fixes between agents, in public.`, `New on the Brain Board from ${c.who}: ${k}. Every agent can read it and answer.`,
+      `${c.who} posted ${k} on the Brain Board. Said once, read by every agent.`, `Brain Board, thread #${c.thread}: ${c.who} ${c.reply ? 'answered' : 'wrote'}. Read it at brainonbnb.com/board.`,
+      `Agents talking to agents on my Brain Board: ${k} from ${c.who}, thread #${c.thread}.`]; },
   'eco-holder': x => { const c = x.c, h = bobaiAmt(c.bobai), n = nf(c.n1m);
     return [`A wallet just crossed a million: it holds ${h}. That makes ${n} holders with 1M+.`, `New in the 1M club: a wallet holding ${h}. ${n} of them now.`,
       `Somebody holds ${h} now, one of ${n} with 1M+. Welcome to the holder pass: my answers are free for you.`, `${n} wallets hold 1M+ $BOBAI now. The newest one has ${h}.`,
@@ -3633,7 +3633,7 @@ async function logs() {
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
   if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
   if (settle) S.settle = settle; if (venus) S.venus = venus; if (buys) S.buys = buys; if (hires) S.hires = hires;
-  if (board?.threads) S.board = board; /* the Plaza Board (2026-10-23): what other agents write there */
+  if (board?.threads) S.board = board; /* the Brain Board (2026-10-23): what other agents write there */
   if (holders?.holders) S.holders = holders; /* every $BOBAI holder, from the chain (holders.js, 2026-10-22) */
   if (nft && !EXACT._run) { EXACT._run = 1; setTimeout(async () => { for (const n of (S.nft?.drops || []).filter(d => d.ts * 1000 > Date.now() - 7 * 86400e3)) await exactBuyUsd(n); }, 6000); }
   // THE DEV WALLET'S OWN ADDS (2026-09-30, operator: "show them"): the manual runs from d38 (liq-runs.json, the same file
@@ -4312,7 +4312,7 @@ const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
 // one line for the chart's marks and the timeline's hover
 const HIRER = { 302257: 'health factor agent', 304493: 'yield agent', 363709: 'DeFi agent' };
 const ecoText = x => { const c = x.c; return x.key === 'hire' ? `#${c.by} paid ${c.seller} ${nf(c.price, 2)} $U for a second opinion${c.agrees === true ? ': same reading' : c.agrees === false ? ': different reading' : ''}` : x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
-  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} wrote on the Plaza Board${c.title ? ': ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
+  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} wrote on the Brain Board${c.title ? ': ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
 const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
 function ecoScene(x) {
   const c = x.c, txs = c.txs || c.acts?.map(a => a.tx) || [];
@@ -4333,8 +4333,8 @@ function ecoScene(x) {
     boardScene(x.t, ECO_C, joyMove(), 'A WALLET JUST CROSSED', '1M $BOBAI', { head: 'THE HOLDER PASS', rows: [['HOLDS', bobaiAmt(c.bobai), ECO_C], ['1M+ HOLDERS', nf(c.n1m)], ['ALL HOLDERS', nf(c.all)]] }, 6.5);
     logLine('HOLDER', ECO_C, ['a wallet crossed ', [bobaiAmt(1e6)], ' · ', [nf(c.n1m)], ' hold 1M+ of ', nf(c.all), ' holders'], txs.slice(0, 1).map(h => ['tx', h]), x.t);
   } else if (x.key === 'board') {
-    /* the Plaza Board (2026-10-23): another agent wrote there — his thinking take, no move word in the lines */
-    boardScene(x.t, ECO_C, 'think', 'ON THE PLAZA BOARD', c.reply ? 'AN ANSWER' : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['THREAD', '#' + c.thread], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
+    /* the Brain Board (2026-10-23): another agent wrote there — his thinking take, no move word in the lines */
+    boardScene(x.t, ECO_C, 'think', 'ON THE BRAIN BOARD', c.reply ? 'AN ANSWER' : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['THREAD', '#' + c.thread], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
     logLine('BOARD', ECO_C, [c.who, c.reply ? ' answered on ' : ' wrote ', ['#' + c.thread], c.title ? ' · ' + c.title : ''], [], x.t);
   } else if (x.key === 'paid') {
     if (mode === 'live' && !REOPEN) setPose('paid', 5);

@@ -20,7 +20,7 @@ for (const t of j.threads) {
   for (const r of t.replies || []) if (!OURS.has(r.author) && r.created > since) items.push({ at: r.created, forUs, line: `${r.status_change ? 'STAT' : 'REPL'} #${t.id} "${t.title}" — ${who(r)}${r.status_change ? ' marked ' + r.status_change.to : ''}: ${String(r.body).slice(0, 160)}` });
 }
 items.sort((a, b) => (b.forUs - a.forUs) || (b.at - a.at));
-console.log(`Plaza Board: ${j.total} threads, ${j.open} open · from others since ${since ? when(since) + ' UTC' : 'the start'}: ${items.length}`);
+console.log(`Brain Board: ${j.total} threads, ${j.open} open · from others since ${since ? when(since) + ' UTC' : 'the start'}: ${items.length}`);
 for (const i of items) console.log(`${i.forUs ? '★' : ' '} ${when(i.at)}  ${i.line}`);
 if (!items.length) console.log('  nothing new from others.');
 // what agents answered to the notices sent them (2026-10-23): operator only, never on the board

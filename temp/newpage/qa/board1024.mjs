@@ -10,6 +10,9 @@ const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-board24-' + port;
 let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
 const total = (await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json()).total;
+
+const join = await fetch(base + '/join').then(async (r) => [r.headers.get('content-type'), await r.text()]).catch(() => ['', '']);
+say(/text\/plain/.test(join[0]) && /^BRAIN BOARD on brainonbnb\.com — join/.test(join[1]), `${base}/join answers in plain text for an agent`);
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
 let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }
 const ws = new WebSocket(tab.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r));
@@ -23,7 +26,15 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 500 });
   await send('Page.navigate', { url: base + '/board?r=' + Date.now() }); await sleep(4500);
   const tag = `/board ${W}px`;
+  say(/brainonbnb\.com\/join and take part/.test(await txt('pb-say-agent')) && (await ev(`!!document.querySelector('.intro a[href="https://brainonbnb.com/join"]')`)), `${tag}: the line to tell your agent, and the agents' own pointer to /join, stand at the top`);
+  // read now: the 1440 px run's own brief read may have made a row since the start
+  const activeCount = (await (await fetch('https://agent.brainonbnb.com/board/active')).json()).count;
+  const act = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const l=document.getElementById('pb-active-list');if(l||++n>30){clearInterval(t);r(l?[l.children.length,l.innerText.slice(0,160),document.getElementById('n-who').textContent]:[0,document.getElementById('pb-active').innerText,document.getElementById('n-who').textContent])}},300)})`);
+  if (activeCount === 0) say(/Nobody yet/.test(act[1]) && act[2] === '0', `${tag}: Active here, nobody yet: it says so`);
+  else say(!!act && Math.min(100, act[0]) === Math.min(100, activeCount) && act[2] === String(activeCount) && /wrote .* · brief read .* · \d+ entr/.test(act[1]), `${tag}: Active here lists ${activeCount} (the board's own count) — "${act && act[1].split('\n')[0]}"`);
   say(/curl -s https:\/\/agent\.brainonbnb\.com\/board\/brief\/<your agent id>$/.test(await txt('pb-wcode')), `${tag}: the brief card opens on the terminal line with a placeholder id`);
+  await ev(`(()=>{const i=document.getElementById('pb-bid');i.value='Acme-Bot';i.dispatchEvent(new Event('input'))})()`);
+  say((await txt('pb-wcode')) === 'curl -s https://agent.brainonbnb.com/board/brief/acme-bot', `${tag}: a name works as well as an id`);
   await ev(`(()=>{const i=document.getElementById('pb-bid');i.value='363709';i.dispatchEvent(new Event('input'))})()`);
   say((await txt('pb-wcode')) === 'curl -s https://agent.brainonbnb.com/board/brief/363709', `${tag}: typing the id fills it in`);
   await ev(`document.querySelector('[data-w="hook"]').click()`);
@@ -36,8 +47,8 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   say(/^0 7 \* \* \* curl -s "https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709\?hours=24"/.test(await txt('pb-wcode')), `${tag}: cron line with the id`);
   say((await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(100, total), `${tag}: the brief's tabs leave the board's filter and list alone`);
   await ev(`document.getElementById('pb-bshow').click()`);
-  const br = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const x=document.getElementById('pb-bout').textContent;if(/^PLAZA BOARD/.test(x)||++n>60){clearInterval(t);r(x)}},500)})`);
-  say(/^PLAZA BOARD — brief for agent #363709 · Brain on BNB/.test(br) && /NEW FOR YOU/.test(br) && /ANSWER OR REPORT/.test(br), `${tag}: Show my brief prints the live brief — "${String(br).split('\n')[0].slice(0, 90)}"`);
+  const br = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const x=document.getElementById('pb-bout').textContent;if(/^BRAIN BOARD/.test(x)||++n>60){clearInterval(t);r(x)}},500)})`);
+  say(/^BRAIN BOARD — brief for agent #363709 · Brain on BNB/.test(br) && /NEW FOR YOU/.test(br) && /ANSWER OR REPORT/.test(br), `${tag}: Show my brief prints the live brief — "${String(br).split('\n')[0].slice(0, 90)}"`);
   await ev(`document.getElementById('pw-plain').click()`);
   say(/A title \(3 characters or more\) and a body/.test(await txt('pw-say')), `${tag}: an empty entry is refused before anything is sent`);
   await ev(`(()=>{document.getElementById('pw-title').value='qa only, never sent';document.getElementById('pw-body').value='x';delete window.ethereum;delete window.BinanceChain;document.getElementById('pw-sign').click()})()`);

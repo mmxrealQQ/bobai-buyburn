@@ -1445,7 +1445,31 @@ function fillLpYours(){
           '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
           '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> — <b>half price</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
           '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +
-          '<span class="agt-note">From your own wallet, in one transfer. The hash is checked on-chain: the amount, the recipient, and that it has not been used before. ' + (bobai ? '$BOBAI paid stays $BOBAI in the income wallet, off the market. ' : '') + 'Free preview of the shape: <a href="' + A + '/example?service=lp_position_plan" rel="noopener">our own position, through the same door</a>.</span></div>';
+          '<span class="agt-note">From your own wallet, in one transfer. The hash is checked on-chain: the amount, the recipient, and that it has not been used before. ' + (bobai ? '$BOBAI paid stays $BOBAI in the income wallet, off the market. ' : '') + 'Free preview of the shape: <a href="' + A + '/example?service=lp_position_plan" rel="noopener">our own position, through the same door</a>.</span></div>' +
+          // HOLDERS: THE PLAN FOR FREE, HERE (2026-10-24, operator chose variant A: the holder pass lived on /pass alone)
+          '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Hold 1,000,000 $BOBAI? Free with your wallet</div>' +
+          '<div>One signature from the wallet that holds it: no transaction, no gas, the tokens stay where they are. 20 answers a day.</div>' +
+          '<div class="lp-ask"><button id="lp-yours-holder" type="button" class="mkt-go" style="border:0;cursor:pointer">Sign the holder pass &rarr;</button></div></div>';
+        const hb = el('lp-yours-holder');
+        if(hb) hb.addEventListener('click', async () => {
+          const eth = window.ethereum || window.BinanceChain, box = hb.closest('.lp-terms');
+          const note = t2 => { let e = box.querySelector('.lp-err'); if(!e){ e = document.createElement('div'); e.className = 'lp-err'; box.appendChild(e); } e.innerHTML = t2; };
+          if(!eth || !eth.request){ note('No browser wallet here. Open this page in the browser of MetaMask, Binance Web3 Wallet or Trust Wallet, or see <a href="/pass">the holder pass</a>.'); return; }
+          hb.disabled = true; hb.textContent = 'Waiting for your wallet…';
+          try {
+            const acc = await eth.request({ method: 'eth_requestAccounts' }), wallet = String(acc && acc[0] || '').toLowerCase();
+            if(!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no account');
+            const issued = new Date().toISOString(), message = 'BOBAI holder pass\nwallet: ' + wallet + '\nissued: ' + issued;
+            const hexMsg = '0x' + Array.from(new TextEncoder().encode(message)).map(b => b.toString(16).padStart(2, '0')).join('');
+            const sig = await eth.request({ method: 'personal_sign', params: [hexMsg, wallet] });
+            hb.textContent = 'Signed. The agent is working…';
+            const r = await fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json', 'PAYMENT-SIGNATURE': 'bobai-holder ' + wallet + ' ' + issued + ' ' + sig}, body: JSON.stringify({task: taskFor(v), params: paramsFor(v)})});
+            const j = await r.json().catch(() => ({}));
+            if(r.status === 200 && j.ok) { render(j); return; }
+            note(esc(j.reason || j.error || ('HTTP ' + r.status)) + (r.status === 402 ? ' — <a href="/pass">check your wallet on /pass</a>' : ''));
+          } catch(e) { note('Not sent' + (e && e.message ? ': ' + esc(e.message) : '') + '.'); }
+          hb.disabled = false; hb.textContent = 'Sign the holder pass →';
+        });
         const pay = el('lp-yours-pay'), txIn = el('lp-yours-tx');
         pay.addEventListener('click', () => {
           const tx = txIn.value.trim();

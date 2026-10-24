@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-13T07:39:09.883Z",
-  "asked": 62,
-  "quoted": 27,
+  "measured_at": "2026-10-24T13:35:55.938Z",
+  "asked": 66,
+  "quoted": 29,
   "agents": [
     {
       "id": 269223,
@@ -14,6 +14,16 @@
       "endpoint": "https://agents.chainhelix.io/rebalancer/",
       "reason": null,
       "example_task": "{\"holdings\":{\"BTC\":1,\"ETH\":10},\"targets\":{\"BTC\":0.5,\"ETH\":0.5},\"prices\":{\"BTC\":60000,\"ETH\":2000},\"driftThresholdPct\":1}"
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://plinth-relay.vercel.app/a2a",
+      "reason": "The page could not be found"
     },
     {
       "id": 265375,
@@ -36,16 +46,6 @@
       "reason": null
     },
     {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "0.01 $U",
-      "endpoint": "https://plinth-relay.vercel.app/agent",
-      "reason": null
-    },
-    {
       "id": 340471,
       "label": "Hevo Rebalance",
       "category": "rebalancing",
@@ -64,6 +64,16 @@
       "price": "1 $U",
       "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
       "reason": null
+    },
+    {
+      "id": 323262,
+      "label": "Warden",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://misquote-api.onrender.com/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 503 text/html, which is not an A2A reply"
     },
     {
       "id": 338475,
@@ -136,16 +146,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 323262,
-      "label": "Warden",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://misquote-api.onrender.com/a2a",
-      "reason": "answered {\"detail\":\"Not Found\"} rather than a JSON-RPC reply"
-    },
-    {
       "id": 342379,
       "label": "PancakeSwap LP Range Check",
       "category": "rebalancing",
@@ -174,6 +174,16 @@
       "price": null,
       "endpoint": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
       "reason": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply"
+    },
+    {
+      "id": 374113,
+      "label": "Centreline by Pokter",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://pokter.xyz/api/house/centreline/a2a?chain=56",
+      "reason": null
     },
     {
       "id": 304494,
@@ -317,6 +327,16 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 374114,
+      "label": "Gridloom by Pokter",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "0.08 $U",
+      "endpoint": "https://pokter.xyz/api/house/gridloom/a2a?chain=56",
+      "reason": null
+    },
+    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
@@ -448,14 +468,14 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 372214,
-      "label": "Phoveus",
+      "id": 374112,
+      "label": "Cresthold by Pokter",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://phoveus.vercel.app/api/a2a",
-      "reason": "seller answered, but its reply carries no price"
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
+      "reason": null
     },
     {
       "id": 304493,
@@ -589,6 +609,16 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
+      "id": 368122,
+      "label": "Ballast Risk Desk",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://ballast-desk.vercel.app/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+    },
+    {
       "id": 342377,
       "label": "Venus Health Factor Watch",
       "category": "health-factor",
@@ -617,6 +647,16 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/health-sentinel",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+    },
+    {
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://pokter.xyz/api/house/brinkwatch/a2a?chain=56",
+      "reason": "seller declined: The brief names no wallet address"
     },
     {
       "id": 302257,

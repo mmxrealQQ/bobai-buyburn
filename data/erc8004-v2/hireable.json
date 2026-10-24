@@ -1,15 +1,9 @@
 {
-  "measured_at": "2026-10-13T07:36:00.739Z",
+  "measured_at": "2026-10-24T13:31:10.523Z",
   "agents": [
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -32,14 +26,20 @@
       "ours": false
     },
     {
+      "id": 374113,
+      "label": "Centreline by Pokter",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 323262,
-      "label": "Warden",
+      "id": 363619,
+      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -82,6 +82,12 @@
     {
       "id": 336622,
       "label": "RangeKeeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 323262,
+      "label": "Warden",
       "category": "rebalancing",
       "ours": false
     },
@@ -132,6 +138,12 @@
     {
       "id": 340455,
       "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 374114,
+      "label": "Gridloom by Pokter",
       "category": "grid-trading",
       "ours": false
     },
@@ -221,6 +233,12 @@
       "ours": false
     },
     {
+      "id": 374112,
+      "label": "Cresthold by Pokter",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
       "category": "yield-optimization",
@@ -241,12 +259,6 @@
     {
       "id": 341564,
       "label": "marketplace-operated-yield-planner",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 372214,
-      "label": "Phoveus",
       "category": "yield-optimization",
       "ours": false
     },
@@ -345,6 +357,12 @@
     {
       "id": 338480,
       "label": "Venus Liquidation Guard",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
       "category": "health-factor",
       "ours": false
     },

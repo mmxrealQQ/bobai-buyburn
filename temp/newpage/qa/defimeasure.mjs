@@ -13,9 +13,9 @@ const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend[
 const ev = async (x) => (await send('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true })).result?.result?.value;
 await send('Page.enable'); await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: 844, deviceScaleFactor: 1, mobile: W < 500 });
-await send('Page.navigate', { url: base + '/defi?r=' + Date.now() }); await sleep(9000);
+await send('Page.navigate', { url: base + (process.argv[4]||'/defi')+'?r=' + Date.now() }); await sleep(9000);
 const rows = await ev(`(() => { const out = ['total ' + document.documentElement.scrollHeight];
-  for (const id of ['portfolio', 'series', 'steps', 'yours']) { const el = document.getElementById(id); if (!el) continue; out.push('#' + id + ' ' + el.offsetHeight);
+  for (const id of ${JSON.stringify((process.argv[5] || 'portfolio,series,steps,yours').split(','))}) { const el = document.getElementById(id); if (!el) continue; out.push('#' + id + ' ' + el.offsetHeight);
     for (const c of el.children) if (c.offsetHeight > 40) out.push('   ' + String(c.offsetHeight).padStart(5) + ' ' + c.tagName + '.' + String(c.className).split(' ')[0] + ' ' + (c.innerText || '').replace(/\\s+/g, ' ').slice(0, 100)); }
   return out; })()`);
 console.log((rows || ['nothing read']).join('\n'));

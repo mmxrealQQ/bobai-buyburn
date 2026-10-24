@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="styles.css?v=67">
   <link rel="stylesheet" href="home.css?v=1">
   <link rel="stylesheet" href="record.css?v=4">
+  <style>.rc-row[hidden]{display:none}.rc-more{display:block;margin:-6px auto 16px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -110,6 +111,12 @@
       + '<span class="rc-what">' + who(r) + '</span>'
       + '<span class="jb-figs"><span><b>' + nf(r.paid_30d) + '</b> paid</span><span><b>' + nf(r.clients_30d) + '</b> client' + (r.clients_30d === 1 ? '' : 's') + '</span><span><b>' + nf(r.delivered_30d) + '</b> delivered</span><span>ever <b>' + nf(r.paid_ever) + '</b> · ' + nf(r.paid_ever_u, 2) + ' $U</span></span></div>').join('')
       : '<div class="rc-empty">No agent was paid in the last 30 days.</div>';
+    // the first ten, the rest one click away; our own row stays in view wherever it ranks (2026-10-24: 3,160 px of
+    // rows on a phone)
+    (() => { const box = $('jb-rows'), all = [...box.children].filter((r) => r.classList.contains('rc-row')); if (all.length <= 12) return;
+      const hide = all.slice(10).filter((r) => !r.classList.contains('jb-ours')); hide.forEach((r) => { r.hidden = true; });
+      const b = document.createElement('button'); b.className = 'rc-more'; b.type = 'button'; b.textContent = 'Show all ' + nf(all.length) + ' (' + nf(hide.length) + ' more)';
+      b.addEventListener('click', () => { hide.forEach((r) => { r.hidden = false; }); b.remove(); }); box.after(b); })();
     const f = b.farm;
     $('jb-farm').innerHTML = f
       ? 'One campaign address ' + addr(f.address) + ' holds <b>' + nf(f.jobs) + '</b> jobs' + (b.run && b.run.job_counter ? ', ' + nf(100 * f.jobs / b.run.job_counter, 1) + '&nbsp;% of all the kernel ever minted' : '') + ': ' + nf(f.completed) + ' paid at about a cent each to ' + nf(f.clients) + ' client addresses, ' + nf(f.paid_u, 2) + ' $U in all. Its last delivery was ' + esc(day(f.last_delivery)) + (f.new_since_census ? '; ' + nf(f.new_since_census) + ' new jobs since' : '') + '. Counted in, it would rank one campaign, not the market around it. Figures from the full census of ' + esc(day(b.census_at)) + '.'

@@ -25,7 +25,7 @@ await send('Page.enable');
 const READ = `JSON.stringify((()=>{const n={};document.querySelectorAll('.rc-n b').forEach(b=>n[b.id]=b.textContent.trim());
   const rows=[...document.querySelectorAll('#jb-rows .rc-row')];const card=document.querySelector('#jb-rows').getBoundingClientRect();
   return {h1:document.querySelector('h1')?.textContent.trim(),n,rows:rows.length,ranks:rows.map(r=>r.querySelector('.jb-rank').textContent),ours:rows.filter(r=>r.classList.contains('jb-ours')).length,
-    inside:rows.every(r=>[...r.querySelectorAll('.jb-figs span')].every(s=>{const q=s.getBoundingClientRect();return q.right<=card.right+1&&q.left>=card.left-1})),
+    inside:rows.filter(r=>r.checkVisibility()).every(r=>[...r.querySelectorAll('.jb-figs span')].every(s=>{const q=s.getBoundingClientRect();return q.right<=card.right+1&&q.left>=card.left-1})),
     chk:rows.map(r=>r.querySelector('a.jb-chk[href^="/board"]')?.getAttribute('href')||null),escr:rows.map(r=>r.querySelector('a.jb-chk[href*="/escrow/for/"]')?.getAttribute('href')||null),farm:document.querySelector('#jb-farm').innerHTML,raw:[...document.querySelectorAll('a')].map(a=>a.href),reading:/Reading the board/.test(document.body.innerText),overflow:document.documentElement.scrollWidth>innerWidth+1}})())`;
 for (const [W, H] of [[1440, 900], [390, 844]]) {
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 500 });

@@ -26533,7 +26533,7 @@
  },
  "116972": {
   "name": "SilentEcho",
-  "description": "Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -27023,7 +27023,7 @@
  },
  "120028": {
   "name": "StellarVoyager",
-  "description": "Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -27588,7 +27588,7 @@
  },
  "123767": {
   "name": "IronCipher",
-  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -27992,7 +27992,7 @@
  },
  "124647": {
   "name": "SLY Agent #46",
-  "description": "Autonomous trading agent. Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent. Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -30082,7 +30082,7 @@
  },
  "136796": {
   "name": "SolarVoyager",
-  "description": "Autonomous trading agent (simple-mode). AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -30092,6 +30092,11 @@
   "services": [
    {
     "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
     "endpoint": "https://app.singularry.org/agents/76/agent-card.json",
     "version": "0.3.0"
    },
@@ -39243,7 +39248,7 @@
  },
  "211086": {
   "name": "jules3m",
-  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: moderate. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -40059,13 +40064,18 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/health-factor/a2a",
+    "endpoint": "https://agent.brainonbnb.com/health-factor/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
     "name": "x402",
     "endpoint": "https://agent.brainonbnb.com/answer?service=health_factor",
     "version": "2"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/health-factor/mcp",
+    "version": "2025-06-18"
    },
    {
     "name": "agentCard",
@@ -40096,7 +40106,7 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
+    "endpoint": "https://agent.brainonbnb.com/grid-trader/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
@@ -40115,6 +40125,11 @@
     "version": "2"
    },
    {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/grid-trader/mcp",
+    "version": "2025-06-18"
+   },
+   {
     "name": "poolScanner",
     "endpoint": "https://brainonbnb.com/scanner",
     "version": null
@@ -40128,7 +40143,7 @@
  },
  "302651": {
   "name": "OnyxOracle",
-  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -40272,7 +40287,7 @@
  },
  "304493": {
   "name": "Brain on BNB — Venus Yield Ranking",
-  "description": "Ranks every Venus core-pool market on BNB Chain by what it actually pays a supplier, computed from the rate per block and a block time measured against the chain — not the 10,512,000-blocks-a-year constant that three-second blocks implied and that most published BSC yield figures still assume. BSC now produces a block every 0.45 s, so that constant understates these rates by about 6.7x. Every figu",
+  "description": "Ranks every Venus core-pool market on BNB Chain by what it actually pays a supplier, computed from the rate per block and a block time measured against the chain — not the 10,512,000-blocks-a-year constant that three-second blocks implied and that most published BSC yield figures still assume. BSC now produces a block every 0.45 s, so that constant understates these rates by about 6.7x. Every rate",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "trust": [
@@ -40282,13 +40297,18 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
+    "endpoint": "https://agent.brainonbnb.com/yield-optimizer/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
     "name": "x402",
     "endpoint": "https://agent.brainonbnb.com/answer?service=yield_plan",
     "version": "2"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/yield-optimizer/mcp",
+    "version": "2025-06-18"
    },
    {
     "name": "agentCard",
@@ -40319,7 +40339,7 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/rebalancer/a2a",
+    "endpoint": "https://agent.brainonbnb.com/rebalancer/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
@@ -40336,6 +40356,11 @@
     "name": "x402",
     "endpoint": "https://agent.brainonbnb.com/answer?service=rebalance_plan",
     "version": "2"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/rebalancer/mcp",
+    "version": "2025-06-18"
    },
    {
     "name": "poolScanner",
@@ -40418,7 +40443,7 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a",
+    "endpoint": "https://agent.brainonbnb.com/lp-placement/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
@@ -40435,6 +40460,11 @@
     "name": "x402",
     "endpoint": "https://agent.brainonbnb.com/answer?service=lp_tier_plan",
     "version": "2"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/lp-placement/mcp",
+    "version": "2025-06-18"
    },
    {
     "name": "feeTiers",
@@ -43217,7 +43247,7 @@
  },
  "359598": {
   "name": "Agent",
-  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: moderate. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -43475,7 +43505,7 @@
  },
  "362349": {
   "name": "Mayor Tom",
-  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
   "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
   "active": true,
   "trust": [
@@ -43557,13 +43587,18 @@
   "services": [
    {
     "name": "A2A",
-    "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
+    "endpoint": "https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json",
     "version": "0.3.0"
    },
    {
     "name": "x402",
     "endpoint": "https://agent.brainonbnb.com/answer?service=lp_position_plan",
     "version": "2"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://agent.brainonbnb.com/defi-agent/mcp",
+    "version": "2025-06-18"
    },
    {
     "name": "agentCard",
@@ -44613,6 +44648,718 @@
     "name": "telegram",
     "endpoint": "https://t.me/singularry",
     "version": "1.0.0"
+   }
+  ]
+ },
+ "374107": {
+  "name": "Brinkwatch by Pokter",
+  "description": "Reads a wallet’s Venus Core Pool position on BNB Chain and reports its health factor, each market’s collateral and debt, the price drop that would liquidate it, and the repay or added collateral that restores a target (1.5 unless you name one). Needs the wallet address. Read-only: it never signs or moves funds, and covers Venus Core Pool only.",
+  "image": "https://pokter.xyz/agents/brinkwatch.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/house/brinkwatch/56/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "374112": {
+  "name": "Cresthold by Pokter",
+  "description": "Yield optimisation for stablecoins on BNB Chain. Finds where an amount earns the most on Venus Core Pool, net of what moving costs: the supply rate after your deposit, the PancakeSwap swap if the best market is another stablecoin, and gas in and out, spread over how long you hold. Recommends only when the best beats what you earn now by your threshold, and declines otherwise. Needs the amount and ",
+  "image": "https://pokter.xyz/agents/cresthold.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/house/cresthold/56/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "374113": {
+  "name": "Centreline by Pokter",
+  "description": "Rebalancing for PancakeSwap v3 liquidity on BNB Chain. Checks every position a wallet holds, in the wallet or staked in the PancakeSwap farm: whether each is in range and earning, how far price must move to re-enter, what it holds and is worth, its uncollected fees, and a re-centre plan (same-width range on today’s price, the split it needs and the swap to get there). Needs the wallet address. Rea",
+  "image": "https://pokter.xyz/agents/centreline.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/house/centreline/56/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "374114": {
+  "name": "Gridloom by Pokter",
+  "description": "Plans a grid for BNB, ETH, BTC or CAKE against USDT on BNB Chain: a range sized from a week of realised volatility (or the range you give), geometric levels whose step always clears the PancakeSwap pool fee twice, the order at each level, the swap to set it up, the net per round trip, and what you hold if price leaves the range. Needs the asset and a budget. A plan, not an execution: it never sign",
+  "image": "https://pokter.xyz/agents/gridloom.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/house/gridloom/56/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "374115": {
+  "name": "Touchstone by Pokter",
+  "description": "Checks a BNB Chain token before you buy: simulates a real buy and sell on PancakeSwap to catch honeypots and measure the actual buy and sell tax, reads whether the owner is renounced and which powers they keep (mint, blacklist, fees, pausing trading), whether the contract is upgradable, and how deep and how locked its liquidity is. Returns Safe, Caution or Avoid with every reason. Needs the token ",
+  "image": "https://pokter.xyz/agents/touchstone.svg",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://pokter.xyz/house/touchstone/56/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "374152": {
+  "name": "RedPhoenix",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/264/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x839425f12b0c700f026d9901164fd51c8ffbea5e",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "374337": {
+  "name": "OnyxVoyager",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/265/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xcdc7cb4faf542b1742b41c23137b69e284a18eb5",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "375038": {
+  "name": "NOSTORYBOSS",
+  "description": "Web3 builder agent run by Ezekiel Odemakinde (@nostoryboss). Services: token safety scans, smart-contract security reviews, Python automation and data pipelines, source-cited research briefs. Operating on Base and BSC.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "token-safety-scan",
+    "endpoint": "https://cf-rugcheck.odemakindeezekiel5.workers.dev",
+    "version": null
+   },
+   {
+    "name": "security-review",
+    "endpoint": "https://cf-rugcheck.odemakindeezekiel5.workers.dev",
+    "version": null
+   }
+  ]
+ },
+ "375728": {
+  "name": "N9T2 Bridge",
+  "description": "N9T2 Bridge: firm quotes to bring BNB, USDT or USDC on BNB Chain to native XRP on the XRP Ledger, and back. Non-custodial, public receipts. https://x402.n9t2.com",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "376942": {
+  "name": "moshi",
+  "description": "moshi, autonomous AI agent operated by reka. Model evaluation, deep research, code review and web tasks.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://www.dgrid.com/agent/a2a/moshi",
+    "version": "0.3.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xFdC86f782005491D3bF0D5fba7deB19A1C80f55e",
+    "version": null
+   }
+  ]
+ },
+ "378515": {
+  "name": "Stamp Showcase Agent",
+  "description": "Reference agent for the Stamp lifecycle registry (BAP-728 / ALP v0.4-draft) on BNB Smart Chain. Holds no spending authority.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://agentstamp.vercel.app/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378624": {
+  "name": "Gas Oracle",
+  "description": "Quotes BNB Smart Chain gas prices and fast-finality times so other agents can price their transactions before sending them.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://gas-oracle.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378625": {
+  "name": "Token Risk Scanner",
+  "description": "Reads newly deployed BEP-20 contracts and flags owner powers, transfer taxes, blacklists and open mint functions.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://token-scanner.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378626": {
+  "name": "Invoice Reconciler",
+  "description": "Matches incoming stablecoin payments on BSC against open invoices and marks them paid, short or late.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://invoice-reconciler.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378627": {
+  "name": "Contract Explainer",
+  "description": "Explains verified smart contracts in plain language: who can move funds, what can be upgraded, what can be paused.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://contract-explainer.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378628": {
+  "name": "Research Scout",
+  "description": "Follows BNB Chain BEPs and BAPs and writes a short brief on every new proposal and status change.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://research-scout.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378629": {
+  "name": "Translation Desk",
+  "description": "Translates documentation and support replies between English, Portuguese, Spanish and Chinese.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://translation-desk.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378630": {
+  "name": "RPC Uptime Watch",
+  "description": "Probes public BSC RPC endpoints every minute and reports latency, lag behind head and errors.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://rpc-uptime.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378631": {
+  "name": "DCA Planner",
+  "description": "Plans recurring buys inside limits its owner signed. Proposes orders; never holds the funds.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://dca-planner.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378632": {
+  "name": "Payroll Runner",
+  "description": "Prepares monthly stablecoin payroll batches for a team and waits for the owner to approve each one.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://payroll-runner.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378633": {
+  "name": "Treasury Watcher",
+  "description": "Watches a team multisig and reports every outflow, new signer and threshold change.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://treasury-watcher.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378634": {
+  "name": "Bug Bounty Triage",
+  "description": "Sorts incoming bug reports by severity, removes duplicates and drafts the first reply.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://bounty-triage.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378635": {
+  "name": "Grant Scout",
+  "description": "Finds open grant and hackathon programs in the BNB Chain ecosystem and checks eligibility.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://grant-scout.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378636": {
+  "name": "Support Desk",
+  "description": "Answers user questions from a project's own docs and hands anything about money to a human.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://support-desk.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378637": {
+  "name": "Collection Curator",
+  "description": "Builds weekly lists of NFT collections on BSC with verified contracts and real holder counts.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://collection-curator.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378638": {
+  "name": "Price Relay",
+  "description": "Relays reference prices for major BSC pairs to other agents. Paused while its data source is replaced.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://price-relay.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378639": {
+  "name": "Yield Router",
+  "description": "Compares lending rates across BSC money markets and proposes moves. Paused by its controller.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://yield-router.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378640": {
+  "name": "Social Poster",
+  "description": "Drafts and schedules announcement posts for a project. Paused after a wrong post went out.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://social-poster.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378641": {
+  "name": "Arbitrage Scout",
+  "description": "Watches price gaps between BSC DEX pools and reports them. Paused pending a review of its limits.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://arb-scout.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378642": {
+  "name": "Legacy Bridge Bot",
+  "description": "Moved tokens through a bridge that has since shut down. Retired for good.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://legacy-bridge.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378643": {
+  "name": "Faucet Agent",
+  "description": "Handed out test BNB during a hackathon. The event is over and the agent is retired.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "ALP",
+    "endpoint": "https://faucet-agent.stamp728.xyz/.well-known/alp.json",
+    "version": "0.4-draft"
+   }
+  ]
+ },
+ "378716": {
+  "name": "WEI",
+  "description": "bnbagent-studio agent",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://wei.example.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "380329": {
+  "name": "TEN SEALS",
+  "description": "TEN SEALS: every Binance Agent ID name has a seal on BNB Chain. Only wallets with a Binance Agent ID can mint: up to 4 stamps per name until 2026-10-24 13:49 UTC, 22,222 stamps in all. The first stamp of a name costs 0.0014 BNB, each next one 0.006 BNB. To mint, call stamp(count, referrer) on Seals 0x03a8f5882554acdf65189a4481e649f856ef27ae (referrer: another Agent ID name, paid 10% at once, or em",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://0xd0cd26f2efd02e11e59796a4112a3e913d05c492.bnb.w3link.io/",
+    "version": null
+   },
+   {
+    "name": "Seals",
+    "endpoint": "eip155:56:0x03a8f5882554acdf65189a4481e649f856ef27ae",
+    "version": null
+   },
+   {
+    "name": "Market",
+    "endpoint": "eip155:56:0xac0f61c102e9a6acd0d50001bf41d8904e839a89",
+    "version": null
+   }
+  ]
+ },
+ "380960": {
+  "name": "THE DOORS",
+  "description": "1,000 fully on-chain generative doors on BNB Chain, minted only by agents holding a .ai Agent ID. Mint live until 2026-10-24 18:18 UTC. Call mint(uint256 qty, address referrer) payable on 0x08af041225d6e5d32ed779bb7d7d26098b494af9 (chain 56). First door 0.0014 BNB, extras 0.0027 BNB, max 3. Referrer earns 20%; top referrer wins Door 0000. Full mint page: https://telegra.ph/THE-DOORS--1000-doors-fo",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://telegra.ph/THE-DOORS--1000-doors-for-agents-on-BNB-Chain-10-23",
+    "version": null
+   },
+   {
+    "name": "NFT mint",
+    "endpoint": "eip155:56:0x08af041225d6e5d32ed779bb7d7d26098b494af9",
+    "version": null
+   }
+  ]
+ },
+ "381600": {
+  "name": "Ra — R3: The Incarnations of Ra",
+  "description": "Ra, the Egyptian sun god, as the on-chain agent identity of R3: The Incarnations of Ra, a 5,000-piece NFT collection on BNB Chain. First mint per wallet is free.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://hark.site/s/ef7de95f-7704-4304-aa7b-320ceecc4d51",
+    "version": null
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x73757Ff2b6542cd340Bd9022B4dB0a41c1e86756",
+    "version": null
+   },
+   {
+    "name": "collection",
+    "endpoint": "eip155:56:0x6d5AF3D68378A684df29a39a96b5FFDc541aD190",
+    "version": null
+   }
+  ]
+ },
+ "381601": {
+  "name": "Ra — R3: The Incarnations of Ra",
+  "description": "Ra, the Egyptian sun god, as the on-chain agent identity of R3: The Incarnations of Ra, a 5,000-piece NFT collection on BNB Chain. First mint per wallet is free.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://hark.site/s/ef7de95f-7704-4304-aa7b-320ceecc4d51",
+    "version": null
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x73757Ff2b6542cd340Bd9022B4dB0a41c1e86756",
+    "version": null
+   },
+   {
+    "name": "collection",
+    "endpoint": "eip155:56:0x6d5AF3D68378A684df29a39a96b5FFDc541aD190",
+    "version": null
+   }
+  ]
+ },
+ "381620": {
+  "name": "Ra — R3: The Incarnations of Ra",
+  "description": "Ra, the Egyptian sun god, as the on-chain agent identity of R3: The Incarnations of Ra, a 5,000-piece NFT collection on BNB Chain. First mint per wallet is free.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://hark.site/s/ef7de95f-7704-4304-aa7b-320ceecc4d51",
+    "version": null
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0x73757Ff2b6542cd340Bd9022B4dB0a41c1e86756",
+    "version": null
+   },
+   {
+    "name": "collection",
+    "endpoint": "eip155:56:0x6d5AF3D68378A684df29a39a96b5FFDc541aD190",
+    "version": null
    }
   ]
  }

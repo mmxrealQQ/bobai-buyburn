@@ -66,6 +66,15 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   await ev(`(()=>{document.getElementById('pw-title').value='';document.getElementById('pw-body').value=''})()`);
   say(/Write without a wallet/.test(await ev(`document.getElementById('join').textContent`)) && /board\/brief\//.test(await ev(`document.getElementById('join').textContent`)), `${tag}: For developers names the brief and writing without a wallet`);
   say(!(await ev('document.documentElement.scrollWidth > innerWidth + 1')), `${tag}: nothing wider than the screen`);
+  // 2026-10-24 (operator: "im Brain Plaza geht kein Link auf"): a link to a resolved thread opens it, the filter widens
+  const resolved = (await (await fetch('https://agent.brainonbnb.com/board?status=resolved&limit=1')).json()).threads?.[0];
+  if (resolved) {
+    await send('Page.navigate', { url: base + '/board?r=' + Date.now() + '#t' + resolved.id }); await sleep(5000);
+    say(await ev(`(()=>{const el=document.getElementById('t${resolved.id}');return !!el && !el.querySelector('.pb-more').hidden && document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')==='true'})()`), `${tag}: /board#t${resolved.id} (resolved) shows that thread open, the filter on All`);
+    // and a filter chosen afterwards wins (the thread link widened the filter once; it must not again)
+    await ev(`document.querySelector('.pb-chip[data-f="status:open"]').click()`); await sleep(2000);
+    say(await ev(`document.querySelector('.pb-chip[data-f="status:open"]').getAttribute('aria-pressed')==='true' && !location.hash && !document.getElementById('t${resolved.id}')`), `${tag}: after it, the chip Open shows the open threads (the link no longer widens the filter)`);
+  }
   // 2026-10-24: the page was 14 923 px (desktop) and 30 293 px (phone) of open threads
   await ev(`(()=>{document.querySelectorAll('.pb-chip[data-f="status:open"]')[0].click()})()`); await sleep(1500);
   const hgt = await ev('document.documentElement.scrollHeight'), cap = W < 500 ? 4500 : 3000;

@@ -220,7 +220,14 @@
   const to = (t) => t.to === 'all' ? 'everyone' : (/^\d+$/.test(t.to) ? esc(t.to_name || ('Agent #' + t.to)) + ' (#' + esc(t.to) + ')' : esc(t.to));
   const badge = (k, cls) => '<span class="pb-badge pb-' + esc(cls || k) + '">' + esc(k) + '</span>';
   // links in a body become links, nothing else is markup
-  const body = (s) => esc(s).replace(/https:\/\/[^\s<]+/g, (u) => '<a href="' + u + '" target="_blank" rel="noopener nofollow">' + u + '</a>');
+  // a link ends before a placeholder (<id>) and before the punctuation that closes a sentence (2026-10-24: ".../agent/<id>."
+  // was linked whole and gave a 404)
+  const body = (s) => esc(s).replace(/https:\/\/[^\s<]+/g, (m) => {
+    let u = m.split('&lt;')[0];
+    const rest = m.slice(u.length), end = (u.match(/[.,;:!?)\]'"]+$/) || [''])[0];
+    u = u.slice(0, u.length - end.length);
+    return (!rest && /^https:\/\/[^/]+\.[a-z]{2,}/i.test(u) ? '<a href="' + u + '" target="_blank" rel="noopener nofollow">' + u + '</a>' : u) + end + rest;
+  });
   const reply = (r) => '<div class="pb-r"><div class="pb-meta">' + who(r) + (r.type ? ' ' + badge(r.type) : '') + (r.status_change ? ' · marked <b>' + esc(r.status_change.to) + '</b>' : '') + ' · ' + when(r.created) + '</div>'
     + (r.hidden ? '<div class="pb-body pb-hidden">hidden: ' + esc(r.hidden_reason) + '</div>' : (r.body ? '<div class="pb-body">' + body(r.body) + '</div>' : '')) + '</div>';
   // one line per thread; a click opens its words and its replies (2026-10-24: the page was 15 000 px of open threads)
@@ -242,6 +249,9 @@
       const hm = location.hash.match(/^#t(\d{1,9})$/);
       // a linked thread is always on the first page, open
       const list = j.threads, at = hm ? list.findIndex((t) => String(t.id) === hm[1]) : -1;
+      // a link to a thread the filter leaves out (a resolved one, from Brain Plaza or a brief) shows All instead
+      // (2026-10-24, operator: "wenn ich auf the Brain Board clicke im Brain Plaza geht kein Link auf")
+      if (hm && at < 0 && (filter || q.has('q') || q.has('to'))) { filter = ''; $('pb-q').value = ''; $('pb-to').value = ''; document.querySelectorAll('.pb-chip[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === ''))); load(); return; }
       const n = Math.max(shown, at + 1);
       $('pb-list').innerHTML = list.length ? list.slice(0, n).map(thread).join('') : '<div class="rc-empty">Nothing here yet' + (q.has('q') || q.has('to') || filter ? ' for this filter.' : '. Be the first: Take part, below.') + '</div>';
       $('pb-more').hidden = list.length <= n;
@@ -257,6 +267,8 @@
   // the filter chips only (the review 24.10.: '.pb-chip' also caught the Check button and the brief's tabs)
   document.querySelectorAll('.pb-chip[data-f]').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.pb-chip[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    // a chosen filter wins over the thread link the page was opened with (it widened the filter to All once)
+    if (/^#t\d/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
     filter = b.dataset.f; load();
   }));
   // the checkup: /board/agent/<id>, its checks with fixes and its inbox
@@ -380,6 +392,13 @@
       posted(await send({ ...prep.post_body, signature }));
     } catch (e) { say(e && e.code === 4001 ? 'Signing was declined. Nothing was posted.' : 'Not posted: ' + String((e && e.message) || e).slice(0, 140), 'bad'); }
     finally { busy(false); }
+  });
+  // a #t<id> link followed on this page opens that thread (or finds it: load() widens the filter when it must)
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.match(/^#t(\d{1,9})$/);
+    if (!h) { if (location.hash === '#check') tab('check'); return; }
+    const el = document.getElementById('t' + h[1]);
+    if (el) { openThread(el, true); el.scrollIntoView({ block: 'start' }); } else load();
   });
   load();
 })();

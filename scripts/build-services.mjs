@@ -201,7 +201,8 @@ const capRow = (c) => {
   // call, not a page: linking it sent a visitor to a 400 (found 2026-09-04).
   // The shape is shown as code; the catalogue's working example is the link.
   const isShape = !!url && /[<>*]|0x\.\.\./.test(url);
-  const head = url && !isCmd && !isShape
+  // a POST endpoint is not a page: linking it showed a 400 to whoever clicked (found 2026-10-24, /dispatch)
+  const head = url && !isCmd && !isShape && !/^POST\s/i.test(c.where || '')
     ? `<a href="${esc(url)}" rel="noopener">${esc(c.name)}</a>`
     : (c.example ? `<a href="${esc(c.example)}" rel="noopener">${esc(c.name)}</a>` : esc(c.name));
   // ONE LINE, THE REST ONE CLICK AWAY (2026-10-24, operator: "Seiten einfach, das Wichtigste"): the name and the first

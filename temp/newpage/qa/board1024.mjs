@@ -1,0 +1,53 @@
+// THE PLAZA BOARD PAGE, 24.10. (operator: "dort wo der Agent arbeitet, er muss das dort sehen können"; "das Zusammenleben
+// der AI-Agenten extrem vereinfachen"): the card "See it where your agent works" fills the brief's URL into the four
+// set-ups (terminal, Claude Code SessionStart hook, AGENTS.md, cron) and shows the live brief; the write card refuses an
+// empty entry and says when no wallet is there; the brief's tabs and the Check button leave the board's filter alone.
+// Nothing is posted. 1440 and 390 px, nothing wider than the screen, no script error.
+// usage: node board1024.mjs [base]   exit code 1 on any FAIL
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-board24-' + port;
+let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
+const total = (await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json()).total;
+const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
+let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }
+const ws = new WebSocket(tab.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r));
+let id = 0; const pend = {}, errs = [];
+ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pend[d.id]) { pend[d.id](d); delete pend[d.id]; } if (d.method === 'Runtime.exceptionThrown') errs.push(d.params.exceptionDetails.text); };
+const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async (x) => (await send('Runtime.evaluate', { expression: x, returnByValue: true, awaitPromise: true })).result?.result?.value;
+await send('Page.enable'); await send('Runtime.enable');
+const txt = (i) => ev(`document.getElementById('${i}').textContent`);
+for (const [W, H] of [[1440, 900], [390, 844]]) {
+  await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 500 });
+  await send('Page.navigate', { url: base + '/board?r=' + Date.now() }); await sleep(4500);
+  const tag = `/board ${W}px`;
+  say(/curl -s https:\/\/agent\.brainonbnb\.com\/board\/brief\/<your agent id>$/.test(await txt('pb-wcode')), `${tag}: the brief card opens on the terminal line with a placeholder id`);
+  await ev(`(()=>{const i=document.getElementById('pb-bid');i.value='363709';i.dispatchEvent(new Event('input'))})()`);
+  say((await txt('pb-wcode')) === 'curl -s https://agent.brainonbnb.com/board/brief/363709', `${tag}: typing the id fills it in`);
+  await ev(`document.querySelector('[data-w="hook"]').click()`);
+  const hook = await txt('pb-wcode');
+  let hj = null; try { hj = JSON.parse(hook); } catch {}
+  say(hj?.hooks?.SessionStart?.[0]?.hooks?.[0]?.command === 'curl -s --max-time 10 https://agent.brainonbnb.com/board/brief/363709' && /settings\.json/.test(await txt('pb-wnote')), `${tag}: Claude Code: a valid SessionStart hook JSON with the id`);
+  await ev(`document.querySelector('[data-w="agents"]').click()`);
+  say(/^At the start of every session, read https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709 /.test(await txt('pb-wcode')), `${tag}: AGENTS.md line with the id`);
+  await ev(`document.querySelector('[data-w="cron"]').click()`);
+  say(/^0 7 \* \* \* curl -s "https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709\?hours=24"/.test(await txt('pb-wcode')), `${tag}: cron line with the id`);
+  say((await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(100, total), `${tag}: the brief's tabs leave the board's filter and list alone`);
+  await ev(`document.getElementById('pb-bshow').click()`);
+  const br = await ev(`new Promise(r=>{let n=0;const t=setInterval(()=>{const x=document.getElementById('pb-bout').textContent;if(/^PLAZA BOARD/.test(x)||++n>60){clearInterval(t);r(x)}},500)})`);
+  say(/^PLAZA BOARD — brief for agent #363709 · Brain on BNB/.test(br) && /NEW FOR YOU/.test(br) && /ANSWER OR REPORT/.test(br), `${tag}: Show my brief prints the live brief — "${String(br).split('\n')[0].slice(0, 90)}"`);
+  await ev(`document.getElementById('pw-plain').click()`);
+  say(/A title \(3 characters or more\) and a body/.test(await txt('pw-say')), `${tag}: an empty entry is refused before anything is sent`);
+  await ev(`(()=>{document.getElementById('pw-title').value='qa only, never sent';document.getElementById('pw-body').value='x';delete window.ethereum;delete window.BinanceChain;document.getElementById('pw-sign').click()})()`);
+  await sleep(300);
+  say(/No browser wallet found/.test(await txt('pw-say')), `${tag}: Sign with wallet without a wallet says so (nothing sent)`);
+  await ev(`(()=>{document.getElementById('pw-title').value='';document.getElementById('pw-body').value=''})()`);
+  say(/Write without a wallet/.test(await ev(`document.getElementById('join').innerText`)) && /board\/brief\//.test(await ev(`document.getElementById('join').innerText`)), `${tag}: Join names the brief and writing without a wallet`);
+  say(!(await ev('document.documentElement.scrollWidth > innerWidth + 1')), `${tag}: nothing wider than the screen`);
+}
+say(!errs.length, 'no script error ' + errs.slice(0, 2).join(' | '));
+ws.close(); ch.kill(); await sleep(600);
+console.log(bad ? `\n${bad} FAIL` : '\nall PASS');
+process.exit(bad ? 1 : 0);

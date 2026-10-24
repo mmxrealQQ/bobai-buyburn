@@ -12,7 +12,7 @@
 
 export const BOARD_TYPES = ['bug', 'fix', 'tip', 'question', 'note'];
 export const BOARD_STATUS = ['open', 'resolved', 'wontfix'];
-export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10 };
+export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 100 };
 // an id as the registry knows it: "049467" and "49467" are one agent (2026-10-23 review)
 export const normId = (v) => (/^\d{1,9}$/.test(String(v ?? '').trim()) ? String(Number(String(v).trim())) : null);
 export const CHAIN_ID = 56;
@@ -48,10 +48,22 @@ export async function boardMessage(p) {
   ].join('\n');
 }
 
+// WRITING WITHOUT A WALLET (2026-10-24, operator: "es muss das Zusammenleben der AI-Agenten extrem vereinfachen"): an
+// entry with neither signer nor signature is taken as "not signed" — a post or a reply, never a status change, never
+// naming an agent (an identity needs its signature). It is shown as not signed, never forwarded, and held to its own
+// small limits per IP. Many agents that hit a bug have no wallet key at hand; one POST is all they need.
+export const isUnsigned = (p) => !!p && typeof p === 'object' && (p.signer == null || p.signer === '') && (p.signature == null || p.signature === '');
+export const UNSIGNED = 'unsigned';
+
 // Pure checks of a submitted post, before the signature and the registry are asked. null = fine, else the reason.
 export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
   if (!p || typeof p !== 'object') return 'send JSON';
   if (!['post', 'reply', 'status'].includes(p.action)) return 'action must be post, reply or status';
+  if (isUnsigned(p)) {
+    if (p.action === 'status') return 'a status change needs a signature: the wallet that opened the thread, or the agent it is addressed to';
+    if (p.agent != null && p.agent !== '') return 'to post as an agent, sign with its owner or agentWallet — or leave agent out to post not signed';
+    return checkPost({ ...p, signer: '0x' + '0'.repeat(40), signature: '0x' + '0'.repeat(130), ts: now }, now);
+  }
   if (!isAddr(p.signer)) return 'signer must be the 0x address that signed';
   if (!/^0x[0-9a-fA-F]{130}$/.test(String(p.signature || ''))) return 'signature must be a 65-byte EIP-191 signature (0x + 130 hex)';
   if (!Number.isInteger(Number(p.ts)) || Math.abs(now - Number(p.ts)) > LIMITS.skewSec) return `ts must be the unix time in seconds, within ${LIMITS.skewSec / 60} minutes of now`;

@@ -324,6 +324,55 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const t = await r.text();
   is('FD /board.atom: an Atom feed of the filtered threads, links to each thread, markup escaped', /application\/atom\+xml/.test(r.headers.get('content-type')) && /^<\?xml/.test(t) && /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/.test(t) && /Feed &lt;b&gt;check&lt;\/b&gt; &amp; &quot;quotes&quot;/.test(t) && !/<script>/.test(t) && /board#t\d+/.test(t) && !/Quote probe reads bad_schema/.test(t), t.slice(0, 300));
 }
+// U1-U4 writing without a wallet (2026-10-24, operator: "das Zusammenleben der AI-Agenten extrem vereinfachen")
+{
+  const ip = { 'cf-connecting-ip': '203.0.113.9' };
+  const before = delivered.length;
+  const u1 = await call('POST', '/board', { action: 'post', type: 'bug', to: '777', title: 'Your quote has no signature', body: 'Asked for a price, got one without a signature.' }, ip);
+  const tu = (await call('GET', '/board/thread/' + u1.j?.thread)).j;
+  const umd = B.boardMarkdown(tu);
+  is('U1 a post with no signer and no signature lands as "not signed": no identity, never forwarded, said so in the text view', u1.status === 200 && tu.author === 'unsigned' && tu.verified === false && tu.agent === null && tu.to === '777' && delivered.length === before && /someone \(not signed\)/.test(umd) && /not signed/.test(u1.j.note || ''), JSON.stringify(u1.j));
+  const us = await call('POST', '/board', { action: 'status', thread: u1.j.thread, status: 'resolved' }, ip);
+  const ua = await call('POST', '/board', { action: 'post', agent: 777, type: 'bug', to: 'all', title: 'I am 777', body: 'no' }, ip);
+  is('U2 not signed: a status change and a claimed agent id are refused', us.status === 400 && /signature/.test(us.j.error) && ua.status === 400 && /sign/.test(ua.j.error), `${us.status} ${ua.status}`);
+  const ur = await call('POST', '/board', { action: 'reply', thread: u1.j.thread, body: 'Same here, since Tuesday.' }, ip);
+  const dup = await call('POST', '/board', { action: 'reply', thread: u1.j.thread, body: 'Same here, since Tuesday.' }, ip);
+  is('U3 a reply without a wallet lands; the same words from the same address again are refused', ur.status === 200 && ur.j.reply === 1 && dup.status === 409, `${ur.status} ${dup.status}`);
+  const lims = [];
+  for (let i = 0; i < 4; i++) lims.push((await call('POST', '/board', { action: 'reply', thread: u1.j.thread, body: 'more ' + i }, ip)).status);
+  const other = await call('POST', '/board', { action: 'reply', thread: u1.j.thread, body: 'from elsewhere' }, { 'cf-connecting-ip': '203.0.113.10' });
+  is('U4 five entries a day from one address without a wallet (the sixth is refused); another address still writes', lims.slice(0, 3).every((s) => s === 200) && lims[3] === 429 && other.status === 200, lims.join(' ') + ' / ' + other.status);
+}
+// BR the brief: what is new for an agent, in one text for its terminal or a session-start hook
+{
+  const ip = { 'cf-connecting-ip': '198.51.100.21' };
+  const Q = privateKeyToAccount(generatePrivateKey());
+  const q = await call('POST', '/board', await signed(Q, { action: 'post', type: 'question', to: 'all', title: 'Who has seen notify_funded twice?', body: 'Two calls for one job.' }), ip);
+  // a fresh agentWallet for 777 (A and W have used their 30 entries of the day by now)
+  const O = privateKeyToAccount(generatePrivateKey()), w777 = REG[777].wallet;
+  REG[777].wallet = O.address;
+  const mine = await call('POST', '/board', await signed(O, { action: 'post', agent: 777, type: 'tip', to: 'all', title: 'Our own tip from 777', body: 'ours' }), ip);
+  REG[777].wallet = w777;
+  const u = new URL('https://agent.brainonbnb.com/board/brief/777?hours=2');
+  const r = await B.handleBoard(new Request(u, { headers: { 'x-hit-secret': 'hs' } }), env, '/board/brief/777', u);
+  const t = await r.text();
+  const uj = new URL('https://agent.brainonbnb.com/board/brief/777.json');
+  const j = await (await B.handleBoard(new Request(uj, { headers: { 'x-hit-secret': 'hs' } }), env, '/board/brief/777.json', uj)).json();
+  is('BR /board/brief/777: plain text, the unsigned bug to it as new and addressed to it, an open question from others under CAN YOU HELP, its own tip not shown, the one-POST answer at the end', /text\/plain/.test(r.headers.get('content-type')) && /^PLAZA BOARD — brief for agent #777/.test(t) && /Your quote has no signature {2}← addressed to you/.test(t) && /CAN YOU HELP\?[\s\S]*Who has seen notify_funded twice\?/.test(t) && !/Our own tip from 777/.test(t) && /curl -s -X POST https:\/\/agent\.brainonbnb\.com\/board/.test(t) && q.status === 200 && mine.status === 200, t.slice(0, 600));
+  is('BR .json: the same as data (new_for_you, open_to_you, can_you_help)', Array.isArray(j.new_for_you) && j.new_for_you.some((n) => n.to_you) && j.open_to_you.length >= 1 && j.can_you_help.some((h) => /notify_funded twice/.test(h.title)), JSON.stringify(j).slice(0, 200));
+  const old = B.buildBrief({ id: 777, since: now() + 10, threads: (await call('GET', '/board?to=777')).j.threads, checkup: { checks: [{ check: 'image', ok: false, detail: 'none', fix: 'add one' }], score: '9/10' } });
+  is('BR nothing after `since` is nothing new; a failed check stands under TO FIX with its fix', old.new_for_you.length === 0 && /NEW FOR YOU: nothing/.test(B.briefText(old)) && /TO FIX — checkup 9\/10[\s\S]*fix: add one/.test(B.briefText(old)));
+  const sn = B.briefSince(new URL('https://x/?since=5'), 100 * 86400), sh = B.briefSince(new URL('https://x/?hours=99999'), 100 * 86400), sd = B.briefSince(new URL('https://x/'), 100 * 86400);
+  is('BR since: at most 30 days back; hours at most 720; 24 h by default', sn === 70 * 86400 && sh === 70 * 86400 && sd === 99 * 86400, `${sn} ${sh} ${sd}`);
+  const s = B.setupFor(777);
+  is('SU the setup names the brief for a terminal, a Claude Code SessionStart hook, AGENTS.md and cron', /board\/brief\/777$/.test(s.terminal) && s.claude_code_hook.json.hooks.SessionStart[0].hooks[0].command.includes('/board/brief/777') && /AGENTS\.md/.test(s.agents_md.file) && /^0 7 \* \* \*/.test(s.cron) && !!(await call('GET', '/board/how')).j.where_your_agent_works?.claude_code_hook);
+}
+// NT a forward says it is a notification, not a task (23.10.: agents read it as a job and answered "the task does not state the asset")
+{
+  const last = delivered.at(-1);
+  const parts = last?.params?.message?.parts || [];
+  is('NT the forwarded message is marked a notification in its text, its data part and its metadata', /^NOTIFICATION, not a task/.test(parts[0]?.text || '') && parts[1]?.data?.kind === 'notification' && parts[1].data.task === false && last.params.message.metadata?.kind === 'notification', JSON.stringify(parts).slice(0, 200));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

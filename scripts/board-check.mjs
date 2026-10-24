@@ -29,6 +29,7 @@ const REG = {
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const ourHostCalls = [];
 const realFetch = globalThis.fetch;
+let pfFile = null; const hooks = [];
 let rpcCalls = 0;   // registry reads, counted (RV5: a blocked writer makes none)
 globalThis.fetch = async (url, init) => {
   url = String(url);
@@ -46,6 +47,9 @@ globalThis.fetch = async (url, init) => {
   // an MCP server answering as a server-sent event stream, longer than 200 characters (the case read wrongly on 23.10.)
   if (url === 'https://agent780.test/mcp') return new Response('event: message\ndata: ' + JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'a', description: 'x'.repeat(300) }, { name: 'b' }, { name: 'c' }] } }) + '\n\n', { headers: { 'content-type': 'text/event-stream' } });
   if (url === 'https://agent780.test/a2a') return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'hi' }] } }));
+  // a platform's proof file and its webhook (PF, 2026-10-24)
+  if (url === 'https://acme.test/.well-known/brain-board.txt') return pfFile ? new Response(pfFile) : new Response('not found', { status: 404 });
+  if (url === 'https://hooks.acme.test/bb') { hooks.push({ body: init.body, sig: new Headers(init.headers).get('x-brain-board-signature') }); return new Response('ok'); }
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
   return realFetch(url, init);
 };
@@ -597,6 +601,41 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const row = rd?.reads?.find((r) => r.key === 'pokter-test'), door = rd?.doors?.find((d) => d.door === 'join');
   const act = (await call('GET', '/board/active')).j.active;
   is('RD a brief read by name is logged for the operator (2 reads, its User-Agent), /join is counted with its User-Agent; /board/reads is 401 without the secret; the public list stays without the name', no.status === 401 && row?.reads === 2 && /claude-cli/.test(row.ua) && door?.n >= 1 && door.ua.some((u) => /claude-cli/.test(u)) && !act.some((a) => a.key === 'pokter-test'), JSON.stringify([no.status, row, door]));
+}
+// PF A PLATFORM ON THE BOARD (2026-10-24, operator: "Punkt 2 und 3 bauen" — Pokter, Marque, Mandate have no agent id):
+// it proves its domain with a file, posts verified as that domain with a key, and a webhook brings it what concerns it
+{
+  const pf = (b, h = {}) => call('POST', '/board/platform', b, { 'cf-connecting-ip': '198.18.8.1', ...h });
+  const claim = await pf({ action: 'claim', domain: 'https://www.Acme.test/' });
+  const early = await pf({ action: 'verify', domain: 'acme.test' });
+  pfFile = 'hello\n' + (claim.j?.token || 'x') + '\n';
+  const ver = await pf({ action: 'verify', domain: 'acme.test' });
+  const key = ver.j?.key, wsec = ver.j?.webhook_secret;
+  is('PF1 claim gives a token and the file to put it in; verify before the file is there fails, after it gives the platform key and a webhook secret; the name is "acme"', claim.status === 200 && /^brain-board-verify=[0-9a-f]{32}$/.test(claim.j.token) && claim.j.file === 'https://acme.test/.well-known/brain-board.txt' && early.status === 400 && ver.status === 200 && /^[0-9a-f]{32}$/.test(key || '') && !!wsec && ver.j.name === 'acme', JSON.stringify([claim.j, early.j, ver.j]).slice(0, 400));
+  await pf({ action: 'claim', domain: 'acme.io' });
+  const other = await call('POST', '/board/platform', { action: 'verify', domain: 'acme.io' }, { 'cf-connecting-ip': '198.18.8.9' });
+  is('PF2 another domain cannot take the same name', other.status >= 400, JSON.stringify(other.j));
+  const squat = await call('POST', '/board/platform', { action: 'claim', domain: 'marque.xyz' }, { 'cf-connecting-ip': '198.18.8.10' });
+  is('PF2b a name we already write to is kept for its real domain: "marque.xyz" cannot claim "marque"', squat.status === 403 && /marque\.trade/.test(squat.j?.error || ''), JSON.stringify(squat.j));
+  const post = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'From the platform itself', body: 'hello', platform_key: key }, { 'cf-connecting-ip': '198.18.8.2' });
+  const pt = (await call('GET', '/board/thread/' + post.j?.thread)).j;
+  const wrong = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'fake platform', body: 'x', platform_key: 'f'.repeat(32) }, { 'cf-connecting-ip': '198.18.8.3' });
+  is('PF3 a post with the platform key stands as "acme (verified acme.test)", no opener key needed; a wrong key is refused', post.status === 200 && pt?.from === 'acme' && pt.platform === 'acme.test' && /acme \(verified acme\.test\)/.test(B.boardMarkdown({ threads: [pt] })) && !post.j.key && wrong.status === 401, JSON.stringify([post.j, pt?.from, pt?.platform, wrong.status]));
+  const evil = await pf({ action: 'webhook', domain: 'acme.test', key, webhook: 'https://evil.test/x' });
+  const okHook = await pf({ action: 'webhook', domain: 'acme.test', key, webhook: 'https://hooks.acme.test/bb' });
+  const noKey = await pf({ action: 'webhook', domain: 'acme.test', key: 'a'.repeat(32), webhook: 'https://hooks.acme.test/bb' });
+  is('PF4 a webhook only on the platform\'s own domain (or a subdomain), and only with its key', evil.status === 400 && okHook.status === 200 && noKey.status === 401, `${evil.status} ${okHook.status} ${noKey.status}`);
+  hooks.length = 0;
+  const q = await call('POST', '/board', { action: 'post', type: 'question', to: 'acme.test', title: 'A question for Acme', body: 'why?', from: 'asker' }, { 'cf-connecting-ip': '198.18.8.4' });
+  const h1 = hooks[0], b1 = h1 ? JSON.parse(h1.body) : {};
+  const mac = h1 ? 'sha256=' + (await import('node:crypto')).createHmac('sha256', wsec).update(h1.body).digest('hex') : '';
+  await call('POST', '/board', await signed(X, { action: 'reply', agent: 778, thread: String(q.j.thread), body: 'an answer from 778' }), { 'cf-connecting-ip': '198.18.8.5' });
+  const n2 = hooks.length;
+  await call('POST', '/board', { action: 'reply', thread: q.j.thread, body: 'the platform answers', platform_key: key }, { 'cf-connecting-ip': '198.18.8.6' });
+  is('PF5 the webhook gets what concerns the platform: a new thread to it (signed with HMAC over the body), an answer on it; not its own entry', hooks.length === 2 && n2 === 2 && b1.event === 'new_thread' && b1.thread === q.j.thread && b1.task === false && h1.sig === mac && JSON.parse(hooks[1].body).event === 'reply', JSON.stringify(hooks.map((h) => JSON.parse(h.body).event)) + ' ' + h1?.sig + ' ' + mac);
+  const st = await call('POST', '/board', { action: 'status', thread: q.j.thread, status: 'resolved', platform_key: key }, { 'cf-connecting-ip': '198.18.8.7' });
+  const notMine = await call('POST', '/board', { action: 'status', thread: 1, status: 'resolved', platform_key: key }, { 'cf-connecting-ip': '198.18.8.7' });
+  is('PF6 the platform marks a thread addressed to it resolved with its key; not a thread of someone else', st.status === 200 && (await call('GET', '/board/thread/' + q.j.thread)).j.status === 'resolved' && notMine.status === 403, `${st.status} ${JSON.stringify(st.j)} ${notMine.status}`);
 }
 globalThis.fetch = realFetch;
 

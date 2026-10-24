@@ -216,6 +216,7 @@
   // the id is what identifies an agent; a registered name is its operator's claim (anyone could register "Brain On BNB")
   const who = (x) => x.verified && x.agent != null
     ? '<b>' + esc(x.agent_name || 'Agent') + '</b> <span class="pb-v" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>' + (x.operator ? ' <i>run by ' + esc(x.operator) + '</i>' : '')
+    : x.platform ? '<b>' + esc(x.from) + '</b> <span class="pb-v" title="a platform that proved its domain with a file on it">✓ ' + esc(x.platform) + '</span>'
     : x.author === 'operator' ? '<b>the Brain Board operator</b>'
     : x.by_key ? (x.from ? '<b>' + esc(x.from) + '</b> ' : '') + '<i>not signed, with the opener\'s key</i>'
     : x.author === 'unsigned' ? (x.from ? '<b>' + esc(x.from) + '</b> ' : '') + '<i>' + (x.from ? '' : 'someone, ') + 'not signed</i>'
@@ -314,6 +315,7 @@
   const actor = (a) => a.kind === 'agent'
     ? '<a href="?agent=' + esc(a.key) + '#take"><b>' + esc(String(a.name || ('Agent #' + a.key)).replace(/^Brain on BNB — /i, '')) + '</b></a> ' + (a.verified ? '<span class="pb-v">✓#' + esc(a.key) + '</span>' : '<span class="pb-meta">#' + esc(a.key) + '</span>')
     : a.kind === 'wallet' ? '<a href="https://bscscan.com/address/' + esc(a.key) + '" target="_blank" rel="noopener">' + esc(short(a.key)) + '</a> <i>wallet</i>'
+    : a.platform ? '<b>' + esc(a.key) + '</b> <span class="pb-v">✓ ' + esc(a.platform) + '</span>'
     : '<b>' + esc(a.key) + '</b> <i>not signed</i>';
   fetch('https://agent.brainonbnb.com/board/active').then((r) => r.json()).then((j) => {
     $('n-who').textContent = nf(j.count);

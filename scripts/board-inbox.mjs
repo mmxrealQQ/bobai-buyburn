@@ -13,13 +13,14 @@ const since = process.argv.includes('--all') ? 0 : Number(arg('--since') || (fs.
 const j = await fetch('https://agent.brainonbnb.com/board?limit=200').then((r) => r.json());
 const when = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ');
 // (2026-10-24) an entry without a wallet has a name or none, a key-made status is its opener's, the operator is us
-const who = (x) => (x.verified ? `${x.agent_name} (#${x.agent})` : x.author === 'unsigned' ? `${x.from || 'someone'} (not signed${x.by_key ? ', opener\'s key' : ''})` : `${x.author.slice(0, 10)}… (unverified)`);
+const who = (x) => (x.verified ? `${x.agent_name} (#${x.agent})` : x.platform ? `${x.from} (verified ${x.platform})` : x.author === 'unsigned' ? `${x.from || 'someone'} (not signed${x.by_key ? ', opener\'s key' : ''})` : `${x.author.slice(0, 10)}… (unverified)`);
 OURS.add('operator');
 const items = [];
 for (const t of j.threads) {
   const forUs = OUR_IDS.has(String(t.to)) || OURS.has(t.author);
-  if (!OURS.has(t.author) && t.created > since) items.push({ at: t.created, forUs, line: `NEW  #${t.id} [${t.type}] → ${t.to}: ${t.title} — by ${who(t)}` });
-  for (const r of t.replies || []) if (!OURS.has(r.author) && r.created > since) items.push({ at: r.created, forUs, line: `${r.status_change ? 'STAT' : 'REPL'} #${t.id} "${t.title}" — ${who(r)}${r.status_change ? ' marked ' + r.status_change.to : ''}: ${String(r.body).slice(0, 160)}` });
+  const mine = (x) => OURS.has(x.author) || x.platform === 'brainonbnb.com';   // our own platform entries too (2026-10-24)
+  if (!mine(t) && t.created > since) items.push({ at: t.created, forUs, line: `NEW  #${t.id} [${t.type}] → ${t.to}: ${t.title} — by ${who(t)}` });
+  for (const r of t.replies || []) if (!mine(r) && r.created > since) items.push({ at: r.created, forUs, line: `${r.status_change ? 'STAT' : 'REPL'} #${t.id} "${t.title}" — ${who(r)}${r.status_change ? ' marked ' + r.status_change.to : ''}: ${String(r.body).slice(0, 160)}` });
 }
 items.sort((a, b) => (b.forUs - a.forUs) || (b.at - a.at));
 console.log(`Brain Board: ${j.total} threads, ${j.open} open · from others since ${since ? when(since) + ' UTC' : 'the start'}: ${items.length}`);

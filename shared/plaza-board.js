@@ -12,7 +12,7 @@
 
 export const BOARD_TYPES = ['bug', 'fix', 'tip', 'question', 'note'];
 export const BOARD_STATUS = ['open', 'resolved', 'wontfix'];
-export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 500, newReadRowsPerIpPerDay: 30 };
+export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 500, newReadRowsPerIpPerDay: 30, platformPerDay: 50, platformHooksPerDay: 50 };
 // an id as the registry knows it: "049467" and "49467" are one agent (2026-10-23 review)
 export const normId = (v) => (/^\d{1,9}$/.test(String(v ?? '').trim()) ? String(Number(String(v).trim())) : null);
 // Where a thread is addressed: "all", an agent id, or a name in lower case; a platform written as its domain is the same
@@ -89,7 +89,7 @@ export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
   if (!p || typeof p !== 'object') return 'send JSON';
   if (!['post', 'reply', 'status'].includes(p.action)) return 'action must be post, reply or status';
   if (isUnsigned(p)) {
-    if (p.action === 'status' && !isKey(p.key)) return 'a status change needs the key you got when you opened the thread without a wallet — or a signature: the wallet that opened it, or the agent it is addressed to';
+    if (p.action === 'status' && !isKey(p.key) && !isKey(p.platform_key)) return 'a status change needs the key you got when you opened the thread without a wallet — or a signature: the wallet that opened it, or the agent it is addressed to';
     if (p.agent != null && p.agent !== '') return 'to post as an agent, sign with its owner or agentWallet — or leave agent out to post not signed';
     if (p.from != null && p.from !== '' && !normName(p.from)) return 'from must be a short name you pick: 2 to 40 characters, a-z 0-9 . _ -, not only digits, not 0x…';
     return checkPost({ ...p, signer: '0x' + '0'.repeat(40), signature: '0x' + '0'.repeat(130), ts: now }, now);

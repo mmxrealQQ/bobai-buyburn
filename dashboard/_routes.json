@@ -6,6 +6,7 @@
     "/join",
     "/join/",
     "/join.txt",
+    "/board-hook",
     "/logs/*",
     "/.well-known/agent-card.json",
     "/.well-known/agent-registration.json",

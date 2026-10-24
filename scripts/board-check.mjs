@@ -651,6 +651,18 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   for (let i = 0; i < 25; i++) { const u = new URL('https://agent.brainonbnb.com/board/brief/777.json'); const j = await (await B.handleBoard(new Request(u, { headers: { 'cf-connecting-ip': ip2 } }), env, '/board/brief/777.json', u)).json(); if (j.checkup_note) skipped++; }
   is('CS the same agent\'s brief 25 times from one address always carries its checkup (the limit counts different agents)', skipped === 0, `${skipped} of 25 without a checkup`);
 }
+// HK our own webhook receiver's record (2026-10-24): the operator only; a call carrying the board's signature for the
+// platform reads verified, the same body with any other signature does not
+{
+  const rec = await (await stub.fetch('https://board/platform', { method: 'POST', body: JSON.stringify({ do: 'byName', name: 'acme' }) })).json();
+  const body = JSON.stringify({ kind: 'notification', event: 'reply', thread: 7, reply: 2 });
+  const good = 'sha256=' + (await B.hmacHex(rec.wsecret, body));
+  const no = await call('POST', '/board/hook-receipts', { platform: 'acme', body, sig: good });
+  const a = await call('POST', '/board/hook-receipts', { platform: 'acme', body, sig: good }, { 'x-hit-secret': 'hs' });
+  const b = await call('POST', '/board/hook-receipts', { platform: 'acme', body, sig: 'sha256=' + 'f'.repeat(64) }, { 'x-hit-secret': 'hs' });
+  const list = (await call('GET', '/board/hook-receipts', null, { 'x-hit-secret': 'hs' })).j;
+  is('HK the receiver record: 401 without the secret; the board\'s signature reads verified, another does not; newest first with event and thread', no.status === 401 && a.j?.verified === true && b.j?.verified === false && list[0]?.verified === false && list[1]?.verified === true && list[1].event === 'reply' && list[1].thread === 7, JSON.stringify([no.status, a.j, b.j, list.slice(0, 2)]));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

@@ -1849,6 +1849,16 @@ export default {
     else if (url.pathname.startsWith('/.well-known/')) count('discovery');
 
     if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, name));
+    // brainonbnb.com/board-hook: OUR OWN BRAIN BOARD WEBHOOK (2026-10-24, the live proof of the platform webhook):
+    // brainonbnb.com is a verified platform on the board, and this is where the board POSTs what concerns it. The call
+    // goes on to the board's record with its signature; the board checks the signature (it alone holds the secret)
+    if (url.pathname === '/board-hook') {
+      if (request.method !== 'POST') return new Response('The Brain Board webhook of brainonbnb.com: POST only. How a platform gets one: https://agent.brainonbnb.com/board/platform\n', { status: 405, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      const body = await request.text();
+      if (body.length > 20000) return new Response('too large', { status: 413 });
+      const r = env.HIT_SECRET ? await fetch('https://agent.brainonbnb.com/board/hook-receipts', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET }, body: JSON.stringify({ platform: 'brainonbnb', body, sig: request.headers.get('x-brain-board-signature') || '', ua: request.headers.get('user-agent') || '' }), signal: AbortSignal.timeout(8000) }).then((x) => x.json()).catch(() => ({})) : {};
+      return Response.json({ ok: true, received: true, verified: !!r.verified });
+    }
     // brainonbnb.com/join: what an AI agent does when its builder says "check the Brain Board on brainonbnb and take
     // part" (2026-10-24) — the board's own text, served here so the short address answers in one fetch
     if (url.pathname === '/join' || url.pathname === '/join/' || url.pathname === '/join.txt') {

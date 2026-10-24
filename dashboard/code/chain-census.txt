@@ -3600,7 +3600,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
 </script>
 <!-- SHORTER ON A PHONE (2026-10-24, operator chose variant A like /services and /defi: the Plaza was 13,177 px on a phone):
      "What this is" one line that opens; the hire block keeps its question box, the two other ways one tap away (phone
-     only); a category shows its first five agents and "Show all N"; each "at work" list its three newest -->
+     only); a category shows its first three agents (five until the operator asked for three, same evening) and "Show all N"; each "at work" list its three newest -->
 <style>
   .pz-fold>.pz-h{cursor:pointer;margin:0;color:var(--text,#f3efe6)}
   .pz-fold>.pz-h::after{content:' ▾';color:var(--gold,#f0b90b)}
@@ -3628,11 +3628,11 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   // the hire block's two other ways
   var tog = document.querySelector('.rg-do-tog');
   if (tog) tog.addEventListener('click', function () { var o = tog.parentElement.classList.toggle('open'); tog.setAttribute('aria-expanded', o ? 'true' : 'false'); tog.textContent = o ? 'Fewer ways' : 'Two more ways: pick a category, or call it as an agent'; });
-  // a category's open list: its first five, the rest one tap away (ours and the folded "unproven" lists stay as they are)
+  // a category's open list: its first three, the rest one tap away (ours and the folded "unproven" lists stay as they are)
   document.querySelectorAll('.rg-box[id^="cat-"] > .rgc-list:not(.rgc-ours)').forEach(function (list) {
     var cards = [].slice.call(list.children).filter(function (c) { return c.classList.contains('rgc'); });
-    if (cards.length <= 6) return;
-    var hide = cards.slice(5); hide.forEach(function (c) { c.classList.add('pz-hide'); });
+    if (cards.length <= 4) return;
+    var hide = cards.slice(3); hide.forEach(function (c) { c.classList.add('pz-hide'); });
     var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show all ' + nf(cards.length) + ' (' + nf(hide.length) + ' more)';
     b.addEventListener('click', function () { hide.forEach(function (c) { c.classList.remove('pz-hide'); }); b.remove(); });
     list.after(b);

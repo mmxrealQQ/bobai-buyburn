@@ -433,7 +433,12 @@
   let build07 = null;
   const age = (t) => { const m = Math.max(0, (Date.now() - t) / 60e3); return m < 60 ? `${Math.max(1, Math.round(m))} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
   const day07 = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  const readBuild = () => fetch('/build.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => { build07 = j; line07(); more07(); }).catch(() => {});
+  // the newer of the site's deploy and the agent worker's (2026-10-24, operator: "auf der page steht ja immer noch rebuilt
+  // 1h ago" — the board, the agents and the APIs ship with the worker, not with the site)
+  const readBuild = () => Promise.all([fetch('/build.json', { cache: 'no-store' }).then((r) => r.json()), fetch('https://agent.brainonbnb.com/build', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)]).then(([j, a]) => {
+    const t = Math.max(Date.parse(j.site_deployed_at) || 0, Date.parse(a?.agent_deployed_at) || 0);
+    build07 = { ...j, site_deployed_at: t ? new Date(t).toISOString() : j.site_deployed_at }; line07(); more07();
+  }).catch(() => {});
   setTimeout(readBuild, 3000); setInterval(() => { if (!document.hidden) readBuild(); }, 10 * 60e3);
   function line07() {
     const l = $('[data-open="w08"] .bw-l'); if (!l || !build07?.site_deployed_at) return;

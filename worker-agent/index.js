@@ -3026,6 +3026,12 @@ ${pageTail}`;
       return handleSessionRevoke(request, env);
     }
 
+    // When this worker was last deployed (2026-10-24, operator: "auf der page steht ja immer noch rebuilt 1h ago" — a
+    // change to the board, the agents or the APIs ships here, not with the site); the front page shows the newer of both
+    if (path === '/build') {
+      return json({ agent_deployed_at: env.CF_VERSION_METADATA?.timestamp || null, version: env.CF_VERSION_METADATA?.id || null });
+    }
+
     if (path === '/status') {
       const t = await readTelemetry(env);
       if (!t) return json({ error: 'no telemetry tick has run yet' }, 503);

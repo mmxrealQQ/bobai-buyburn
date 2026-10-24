@@ -4,7 +4,7 @@
 // freely inside its own folder — its tests, results and tables are its own pages, in the same window.
 (() => {
   if (window.parent === window) return;
-  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener)(\/|$|\?)/;
+  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener|board|jobs|settle|venus|pass|set-and-earn)(\/|$|\?)/;
   const APPS = /^\/(brainscreener|game|worldcup)(\/|$)/;
   const home = location.pathname.split('/')[1];
   document.addEventListener('click', (e) => {
@@ -14,7 +14,7 @@
     if (u.origin !== location.origin) { if (!a.target) a.target = '_blank'; return; } // another site: never inside the window
     if (u.pathname === location.pathname && (u.hash || a.getAttribute('href').startsWith('#'))) return; // an anchor on this page
     if (APPS.test(location.pathname) && u.pathname.split('/')[1] === home) return; // an app's own page
-    if (/\.(txt|zip|json|pdf|md)$/i.test(u.pathname)) { if (!a.target) a.target = '_blank'; return; } // a file: its own tab
+    if (/\.(txt|zip|json|pdf|md)$/i.test(u.pathname) || /^\/join\/?$/.test(u.pathname)) { if (!a.target) a.target = '_blank'; return; } // a file (and /join, plain text for agents): its own tab
     e.preventDefault();
     if (PAGES.test(u.pathname)) parent.postMessage({ bp: 'page', path: u.pathname + u.search + u.hash, title: a.textContent.trim().slice(0, 60) }, location.origin);
     else parent.postMessage({ bp: 'home', hash: u.hash }, location.origin);

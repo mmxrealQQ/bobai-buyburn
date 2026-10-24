@@ -73,7 +73,19 @@
     "/worldcup/*",
     "/builder",
     "/builder/*",
-    "/og/*"
+    "/og/*",
+    "/board",
+    "/board.html",
+    "/jobs",
+    "/jobs.html",
+    "/settle",
+    "/settle.html",
+    "/venus",
+    "/venus.html",
+    "/pass",
+    "/pass.html",
+    "/set-and-earn",
+    "/set-and-earn.html"
   ],
   "exclude": []
 }

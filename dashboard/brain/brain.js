@@ -70,8 +70,8 @@
   }
   // STAGE 3: the site's own pages open in the page window, running their own code in the Brain look (?embed=1);
   // the apps (brainScreener, the game, the World Cup tip game) keep their own look and their own navigation inside
-  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener)(\/|$)/;
-  const NAMES = { scanner: 'Pool Scanner', registry: 'Brain Plaza', services: 'Agent Services', defi: 'DeFi Agent', liquidity: 'DeFi Agent', agents: 'DeFi Agent', nft: 'NFT Collection', library: 'The Library', whitepaper: 'Lite Paper', advantage: 'Agent Advantage Report', session: 'Session Keys', source: 'The Source', token: 'The Token', faq: 'Questions', roadmap: 'Roadmap', archive: 'Archive', brainscreener: 'brainScreener', game: 'The BOBAI Game', worldcup: "World Cup '26 Tip Game" };
+  const PAGES = /^\/(scanner|registry|services|defi|liquidity|agents|nft|library|whitepaper|advantage|session|source|token|faq|roadmap|archive|brainscreener|game|worldcup|list|agent|screener|board|jobs|settle|venus|pass|set-and-earn)(\/|$)/;
+  const NAMES = { scanner: 'Pool Scanner', registry: 'Brain Plaza', services: 'Agent Services', defi: 'DeFi Agent', liquidity: 'DeFi Agent', agents: 'DeFi Agent', nft: 'NFT Collection', library: 'The Library', whitepaper: 'Lite Paper', advantage: 'Agent Advantage Report', session: 'Session Keys', source: 'The Source', token: 'The Token', faq: 'Questions', roadmap: 'Roadmap', archive: 'Archive', brainscreener: 'brainScreener', game: 'The BOBAI Game', worldcup: "World Cup '26 Tip Game", board: 'Brain Board', jobs: 'Job Board', settle: 'Job Settler', venus: 'Venus Agents', pass: 'Holder Pass', 'set-and-earn': 'Set and Earn' };
   function openPage(path, title) {
     const u = new URL(path, location.origin), key = u.pathname.split('/')[1];
     u.searchParams.set('embed', '1');

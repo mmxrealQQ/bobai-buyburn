@@ -2170,7 +2170,10 @@ function dayActs() {
 // market's line). Each names only its own move, or none, so the clip that plays is the one the words describe.
 const MOVE_LINES = {
   saber: ['May the pump be with you.', 'Saber out. For the burns!', 'En garde, bears. The saber stays with me.', 'A Jedi never sells. He burns.', 'Lightsaber check: fully charged, like my next buyback.'],
-  moon: ['wen moon? I count burns, not days.', 'Moon check: still there. Still waiting for us.', 'Looking at the moon. Measuring the distance.', 'One day, moon. One burn at a time.', 'The moon called. I said: after the next buyback.'],
+  // the moon's own line again, once, among eight (2026-10-24, operator: "der Spruch kann schon kommen, er passte ja auch
+  // mit der Animation, nur war es der einzige, den ich immer gelesen habe")
+  moon: ['wen moon? I count burns, not days.', 'Moon check: still there. Still waiting for us.', 'Looking at the moon. Measuring the distance.', 'One day, moon. One burn at a time.', 'The moon called. I said: after the next buyback.',
+    'Is this the moon? Asking for a friend.', 'Moon mission status: rocket fuelled by 3% tax.', 'Dear moon, we are not late. We are fashionably burning.'],
   coffee: ['Coffee break. The bots keep working.', 'Coffee first. Charts second.', 'This coffee is stronger than paper hands.', 'A sip of coffee, a look at the pool. Perfect.', 'Coffee number three today. Building is thirsty work.'],
   hodl: ['Diamond hands. Always.', 'Holding. It is what I do best.', 'Diamond hands, zero regrets.', 'Hold tight. Hodl tighter.', 'These hands do not sell. They only burn.'],
   cheer: ['Thanks for watching me work.', 'You are here! Best part of my day.', 'Cheers to every holder out there.', 'Hooray for the builders!', 'A cheer for the community. You keep this brain going.'],

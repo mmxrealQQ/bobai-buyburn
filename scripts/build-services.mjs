@@ -151,8 +151,8 @@ const PAGES = [
 const card = (p) => `      <article class="sv-card">
         <h3><a href="${esc(p.href)}">${esc(p.name)}</a></h3>
         <p class="sv-ask">${esc(p.ask)}</p>
-        <p class="sv-what">${esc(p.what)}</p>
-        <p class="sv-cost">${esc(p.cost)}</p>
+        <details class="sv-more"><summary>What it shows</summary><p class="sv-what">${esc(p.what)}</p></details>
+        <p class="sv-cost">${esc(p.cost)} &middot; <a href="${esc(p.href)}">Open &rarr;</a></p>
       </article>`;
 
 const needsList = (needs) => {
@@ -191,17 +191,22 @@ const delivery = (d) => `      <article class="sv-buy">
           <span class="sv-price" title="${esc(String(d.price).replace('USD1', '$U'))} through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
-        ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : ''}
-        <p class="sv-what">${esc(leadOf(d.what)[0])}</p>${leadOf(d.what)[1] ? `
+        ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : `<p class="sv-ask">${esc(leadOf(d.what)[0])}</p>`}
+        <!-- COMPACT CARDS (2026-10-24, operator chose variant A: /services was 11,945 px on a phone, a card ~500 px):
+             name, one sentence, the price and one button; the rest opens with it -->
+        <details class="sv-open"><summary class="sv-open-b">Hire for $0.10</summary>
+        ${ASKS[d.id] ? `<p class="sv-what">${esc(leadOf(d.what)[0])}</p>` : ''}${leadOf(d.what)[1] ? `
         <details class="sv-more"><summary>How it works</summary><p class="sv-what">${esc(leadOf(d.what)[1])}</p></details>` : ''}
         <p class="sv-needs-h">${needsHead(d.needs)}</p>
         <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
 ${fieldsOf(d.needs)}
-          <div class="sv-form-go"><button type="submit">Hire for $0.10 &rarr;</button><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a></div>
+          <div class="sv-form-go"><button type="submit">Hire for $0.10 &rarr;</button></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
         <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        </details>
+        <a class="sv-example" href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a>
       </article>`;
 
 const capRow = (c) => {
@@ -290,6 +295,12 @@ function page() {
   .sv-form-go a{color:var(--gold,#f0b90b);font-size:.82rem}
   .sv-form-msg{margin:0;font-size:.8rem;color:#ff7a6e;min-height:0}
   .sv-more{margin:-2px 0 8px}.sv-more summary{cursor:pointer;font-size:.8rem;color:var(--gold,#f0b90b);list-style:none}.sv-more summary::before{content:'+ '}.sv-more[open] summary::before{content:'− '}
+  .sv-open{margin-top:10px}.sv-open>summary{list-style:none;display:inline-block;background:var(--gold,#f0b90b);color:#0b090a;border-radius:999px;padding:9px 16px;font:700 .86rem Inter,sans-serif;cursor:pointer}
+  .sv-open>summary::-webkit-details-marker,.sv-capsw>summary::-webkit-details-marker,.sv-how>summary::-webkit-details-marker{display:none}
+  .sv-open>summary::after{content:' ▾'}.sv-open[open]>summary{background:transparent;color:var(--gold,#f0b90b);box-shadow:inset 0 0 0 1px rgba(240,185,11,.5);margin-bottom:6px}.sv-open[open]>summary::after{content:' ▴'}
+  .sv-example{display:inline-block;margin:10px 0 0 14px;color:var(--gold,#f0b90b);font-size:.82rem}
+  .sv-capsw>summary,.sv-how>summary{list-style:none;cursor:pointer;color:var(--gold,#f0b90b);font-size:.84rem;margin:2px 0 6px}.sv-capsw>summary::after,.sv-how>summary::after{content:' ▾'}.sv-capsw[open]>summary::after,.sv-how[open]>summary::after{content:' ▴'}
+  .sv-how>summary b{color:var(--text)}
   .sv-dev{margin-top:6px}.sv-dev summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
   .sv-dev code{word-break:break-all}
   .sv-sec > p.sv-sub{color:var(--muted);font-size:.86rem;line-height:1.6;max-width:70ch;margin:0 0 18px}
@@ -405,13 +416,13 @@ ${PAGES.map(card).join('\n')}
 ${DELIVERIES.map(delivery).join('\n')}
     </div>
     <p class="sv-plain"><b>Or just ask.</b> Each of these agents takes a question in plain words over A2A (<code>message/send</code> at its endpoint): it says what it understood, what is still missing, and hands back the request filled in — so another agent never has to read this page to hire one.</p>
-    <div class="sv-how"><b>How paying works, and what protects you.</b>
+    <details class="sv-how"><summary><b>How paying works, and what protects you.</b></summary>
       <ol class="sv-steps">
         <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 or $U you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold.</li>
         <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>
-    <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></div>
+    <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></details>
   </section>
 
   <section class="sv-sec" id="sv-agent">
@@ -419,9 +430,10 @@ ${DELIVERIES.map(delivery).join('\n')}
     <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and the half a machine can pay for. <span id="sv-paid"></span></p>
 ${GROUPS.filter(([k]) => (CAPABILITIES[k] || []).length).map(([k, title, sub]) => `    <h3 class="sv-needs-h" id="sv-g-${k}" style="margin:18px 0 4px;font-size:.85rem;scroll-margin-top:84px">${esc(title)}</h3>
     <p class="sv-sub" style="margin-bottom:10px">${esc(sub)}</p>
+    <details class="sv-capsw"><summary>Show the ${CAPABILITIES[k].length} ${CAPABILITIES[k].length === 1 ? 'tool' : 'tools'}</summary>
     <ul class="sv-caps">
 ${CAPABILITIES[k].map(capRow).join('\n')}
-    </ul>`).join('\n')}
+    </ul></details>`).join('\n')}
   </section>
 
   <section class="sv-sec">

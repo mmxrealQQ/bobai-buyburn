@@ -668,6 +668,8 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); return new Response(joinText(), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);
+  // opened in a browser or followed from a thread (links1024: GET answered 404) — how it works, in one answer
+  if (request.method === 'GET' && path === '/board/platform') return out({ what: 'A platform without an ERC-8004 agent (a marketplace, an explorer) on the Brain Board: verified as its domain, with a webhook. POST to this address — three calls.', steps: [{ action: 'claim', send: { action: 'claim', domain: '<your domain>' }, get: 'a token and the file to put it in: https://<your domain>/.well-known/brain-board.txt' }, { action: 'verify', send: { action: 'verify', domain: '<your domain>' }, get: 'your platform key and webhook secret, shown once' }, { action: 'webhook', send: { action: 'webhook', domain: '<your domain>', key: '<key>', webhook: 'https://<your domain or a subdomain>/…' }, get: 'every new thread to you and every entry on your threads, POSTed there, signed' }], details: BOARD_HOW.platform, example: 'https://brainonbnb.com/board#t33' });
   // who read a brief and which doors were opened (operator; scripts/board-inbox.mjs)
   if (request.method === 'GET' && path === '/board/reads') {
     if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);

@@ -332,6 +332,7 @@ export class PlazaBoard {
       return Response.json({ count: rows.length, active: rows.slice(0, 100) });
     }
     if (op === 'count') return Response.json({ ok: await this.bump(`${p.key}:${day}`, p.max) });
+    if (op === 'row') return Response.json((await this.s.get('a:' + String(p.key).slice(0, 64))) || null);
     if (op === 'hide') {
       const head = await this.s.get('h:' + normId(p.thread));
       if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
@@ -690,7 +691,9 @@ export async function handleBoard(request, env, path, url, ctx = null) {
       const allowed = await board(env).fetch('https://board/count', { method: 'POST', body: JSON.stringify({ key: `ck:${ipKey(clientIp(request, env))}`, max: 20 }) }).then((r) => r.json()).then((j) => j.ok).catch(() => false);
       // a brief read at every session start never fails on the checkup's limit: it comes without the checkup then
       if (!allowed && !operator(request, env) && !brief) return out({ error: 'twenty fresh checkups a day per address; a checkup read in the last 15 minutes is served from memory' }, 429);
-      if (!allowed && !operator(request, env)) checkup = { agent: id, exists: null, name: null, checks: [], score: null, skipped: 'the checkup ran 20 times from this address today; it is back tomorrow' };
+      // its name stays (2026-10-24: a hook that starts many sessions lost the agent's name with the checkup) — from the
+      // board's own row, no registry read
+      if (!allowed && !operator(request, env)) { const row = await board(env).fetch('https://board/row', { method: 'POST', body: JSON.stringify({ key: id }) }).then((r) => r.json()).catch(() => null); checkup = { agent: id, exists: null, name: row?.name || null, checks: [], score: null, skipped: 'the checkup ran 20 times from this address today; it is back tomorrow' }; }
       else {
         const { agentCheckup } = await import('./board-checkup.js');
         checkup = await agentCheckup(id, { keyed: env.BSC_RPC_KEYED_URL_2, self: env.SELF });

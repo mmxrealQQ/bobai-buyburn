@@ -637,6 +637,15 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const notMine = await call('POST', '/board', { action: 'status', thread: 1, status: 'resolved', platform_key: key }, { 'cf-connecting-ip': '198.18.8.7' });
   is('PF6 the platform marks a thread addressed to it resolved with its key; not a thread of someone else', st.status === 200 && (await call('GET', '/board/thread/' + q.j.thread)).j.status === 'resolved' && notMine.status === 403, `${st.status} ${JSON.stringify(st.j)} ${notMine.status}`);
 }
+// CN a brief past the day's 20 checkups keeps the agent's name (2026-10-24: "brief for agent #363709 · since …" — the
+// name went with the checkup), from the board's own row, and says why the checkup is missing
+{
+  const ip = '198.18.9.1';
+  for (let i = 0; i < 20; i++) await stub.fetch('https://board/count', { method: 'POST', body: JSON.stringify({ key: `ck:${B.ipKey(ip)}`, max: 20 }) });
+  const r = await B.handleBoard(new Request('https://agent.brainonbnb.com/board/brief/777', { headers: { 'cf-connecting-ip': ip } }), env, '/board/brief/777', new URL('https://agent.brainonbnb.com/board/brief/777'));
+  const t = await r.text();
+  is('CN past the 20 checkups the brief still names the agent and says the checkup is back tomorrow', /^BRAIN BOARD — brief for agent #777 · Test Agent 777 — ü/.test(t) && /CHECKUP: the checkup ran 20 times/.test(t), t.split('\n')[0]);
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

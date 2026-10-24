@@ -4312,7 +4312,7 @@ function ecoEvents() {
     c: { address: h.address, bobai: +h.balance, n1m: S.holders.holders_1m, all: S.holders.holders, txs: [h.tx] } });
   // the Plaza Board (2026-10-23): an outside agent or wallet wrote there — a new thread or an answer; ours are not news
   for (const t of S.board?.threads || []) {
-    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase())) return; ev.push({ id, t: when * 1000, kind: 'eco', key: 'board', c: { thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':') } }); };
+    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com') return; ev.push({ id, t: when * 1000, kind: 'eco', key: 'board', c: { thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':') } }); };
     add(t, 'eb' + t.id, t.created);
     for (const r of t.replies || []) if (!r.hidden) add(r, 'eb' + t.id + ':' + r.id, r.created);
   }
@@ -4320,7 +4320,8 @@ function ecoEvents() {
 }
 // the writers that are us (the board's own OUR_WRITERS): our entries are already shown by their own moments
 const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
-const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
+// an entry without a wallet has a name (or none), a verified platform its domain (2026-10-24: "unsigned" read as a wallet "unsi…gned")
+const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : e.platform ? `${String(e.from).slice(0, 30)} (verified ${e.platform})` : e.author === 'unsigned' ? `${e.from ? String(e.from).slice(0, 30) : 'someone'} (no wallet)` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
 const BOARD_KIND = { bug: 'A BUG REPORT', fix: 'A FIX', tip: 'A TIP', question: 'A QUESTION', note: 'A NOTE' };
 // what was paid for, in words: one thing by its name, several by their count
 const paidWhat = c => c.n === 1 ? paidFor([...c.fors][0]) : c.fors.size === 1 && [...c.fors][0] === 'scanpass' ? `${nf(c.n)} pool scan day passes` : `${nf(c.n)} paid answers`;

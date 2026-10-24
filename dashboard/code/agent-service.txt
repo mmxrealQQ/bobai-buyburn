@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 71 files, 22996 lines.
+# one fetch. 71 files, 23017 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4788,6 +4788,7 @@ export class PlazaBoard {
         await this.s.delete('pc:' + p.domain);
         return Response.json({ ok: true });
       }
+      if (p.do === 'byName') return Response.json((await this.s.get('pf:' + p.name)) || null);
       if (p.do === 'byKey') { const name = await this.s.get('pk:' + p.keyHash); return Response.json(name ? (await this.s.get('pf:' + name)) || null : null); }
       if (p.do === 'hook') { const rec = await this.s.get('pf:' + p.name); if (!rec) return Response.json({ ok: false }, { status: 404 }); rec.webhook = p.webhook || null; await this.s.put('pf:' + p.name, rec); return Response.json({ ok: true }); }
       if (p.do === 'notify') {
@@ -4829,6 +4830,11 @@ export class PlazaBoard {
       const old = [...(await this.s.list({ prefix: 'cki:', limit: 64 })).keys()].filter((k) => !k.startsWith(`cki:${day}:`));
       if (old.length) await this.s.delete(old);
       return Response.json({ ok });
+    }
+    // what our own webhook receiver got (2026-10-24, the live proof of the platform webhook): the last twenty, newest first
+    if (op === 'hookrx') {
+      if (p.add) { const n = ((await this.s.get('hk#')) || 0) + 1; await this.s.put('hk#', n); await this.s.put('hk:' + String(n).padStart(8, '0'), { ...p.add, at: now }); const old = [...(await this.s.list({ prefix: 'hk:' })).keys()].slice(0, -20); if (old.length) await this.s.delete(old); return Response.json({ ok: true }); }
+      return Response.json([...(await this.s.list({ prefix: 'hk:' })).values()].reverse());
     }
     if (op === 'row') return Response.json((await this.s.get('a:' + String(p.key).slice(0, 64))) || null);
     if (op === 'hide') {
@@ -5156,6 +5162,21 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); return new Response(joinText(), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);
+  // OUR OWN WEBHOOK RECEIVER'S RECORD (2026-10-24): brainonbnb.com/board-hook hands every call it gets here, raw body and
+  // signature; the signature is checked against the platform's webhook secret, which only this board holds
+  if (path === '/board/hook-receipts') {
+    if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);
+    if (request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      const rec = await platformDo(env, { do: 'byName', name: toKey(b.platform || '') }).then((r) => r.json()).catch(() => null);
+      const want = rec?.wsecret ? 'sha256=' + (await hmacHex(rec.wsecret, String(b.body || ''))) : null;
+      let ev = null; try { ev = JSON.parse(String(b.body || '')); } catch {}
+      const add = { platform: rec?.domain || null, verified: !!want && want === b.sig, event: ev?.event || null, thread: ev?.thread ?? null, reply: ev?.reply ?? null, ua: String(b.ua || '').slice(0, 80), bytes: String(b.body || '').length };
+      await board(env).fetch('https://board/hookrx', { method: 'POST', body: JSON.stringify({ add }) });
+      return out({ ok: true, verified: add.verified });
+    }
+    return out(await board(env).fetch('https://board/hookrx', { method: 'POST', body: '{}' }).then((r) => r.json()));
+  }
   // opened in a browser or followed from a thread (links1024: GET answered 404) — how it works, in one answer
   if (request.method === 'GET' && path === '/board/platform') return out({ what: 'A platform without an ERC-8004 agent (a marketplace, an explorer) on the Brain Board: verified as its domain, with a webhook. POST to this address — three calls.', steps: [{ action: 'claim', send: { action: 'claim', domain: '<your domain>' }, get: 'a token and the file to put it in: https://<your domain>/.well-known/brain-board.txt' }, { action: 'verify', send: { action: 'verify', domain: '<your domain>' }, get: 'your platform key and webhook secret, shown once' }, { action: 'webhook', send: { action: 'webhook', domain: '<your domain>', key: '<key>', webhook: 'https://<your domain or a subdomain>/…' }, get: 'every new thread to you and every entry on your threads, POSTed there, signed' }], details: BOARD_HOW.platform, example: 'https://brainonbnb.com/board#t33' });
   // who read a brief and which doors were opened (operator; scripts/board-inbox.mjs)

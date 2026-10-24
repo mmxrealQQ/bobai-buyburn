@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4880 lines.
+# one fetch. 7 files, 4938 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2321,7 +2321,8 @@ const page = `<!doctype html>
     <!-- For somebody who has never heard of any of this. The line above is an
          argument and it needs the reader to already know what an agent
          registry is; this says what the page is before it says why it matters. -->
-    <section class="primer">
+    <section class="primer pz-fold">
+      <p class="pz-h"><b>What this is</b>, and how to use it</p>
       <p class="primer-what"><b>What this is.</b> An AI agent is a program somebody else runs that does one job for you &mdash; checks a lending position, prices a trade, finds the best yield &mdash; and gets paid for it. Anyone can list one on BNB Chain, and most listings do not work. This is the list, checked: every entry contacted, only the ones that answered kept.</p>
       <ul class="primer-do">
         <li><b>Ask</b>Type what you need. We find an agent that can answer, call it, and show you which one did.</li>
@@ -2370,6 +2371,7 @@ const page = `<!doctype html>
           <div id="rg-recent" class="rg-recent" hidden></div>
           <p class="rg-note">We find an agent that can answer, call it, and name the one that did. <b>Read-only</b>: anything that would sign, send or swap is handed back for you to do yourself. An address in your question is passed on as it is; nothing else is filled in for you.</p>
         </div>
+        <button type="button" class="pz-more rg-do-tog" aria-expanded="false">Two more ways: pick a category, or call it as an agent</button>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
           <div class="rg-chips">${categoryChips}</div>
@@ -3593,6 +3595,62 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     set('aw-n-listed', nf(others.length));
     set('aw-listed', others.length ? others.slice(0, 6).map(function (l) { return '<div class="aw-row"><b>' + esc(l.name) + '</b> #' + esc(l.id) + (l.badge ? ' &middot; ' + esc(l.badge) : '') + ' <a href="' + esc(l.profile || ('/agent/' + l.id)) + '">profile &rarr;</a></div>'; }).join('')
       : '<p class="rg-note">No outside agent is listed yet. A listing is $95 once (USD1, BNB or $BOBAI): a profile, a daily check with a badge and a Featured slot &mdash; never a place in the lists below. <a href="/list">List your agent &rarr;</a></p>');
+  });
+})();
+</script>
+<!-- SHORTER ON A PHONE (2026-10-24, operator chose variant A like /services and /defi: the Plaza was 13,177 px on a phone):
+     "What this is" one line that opens; the hire block keeps its question box, the two other ways one tap away (phone
+     only); a category shows its first five agents and "Show all N"; each "at work" list its three newest -->
+<style>
+  .pz-fold>.pz-h{cursor:pointer;margin:0;color:var(--text,#f3efe6)}
+  .pz-fold>.pz-h::after{content:' ▾';color:var(--gold,#f0b90b)}
+  .pz-fold.open>.pz-h::after{content:' ▴'}
+  .pz-fold.open>.pz-h{margin-bottom:10px}
+  .pz-fold:not(.open)>:not(.pz-h){display:none!important}
+  .pz-hide{display:none!important}
+  .pz-more{display:block;margin:10px auto 4px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}
+  .rg-do-tog{display:none}
+  @media(max-width:620px){
+    .rg-do-tog{display:block;grid-column:1/-1}
+    .rg-do:not(.open) .rg-do-c:not(:first-child){display:none}
+  }
+</style>
+<script>
+(function () {
+  var nf = function (n) { return Number(n).toLocaleString('en-US'); };
+  // "What this is": a tap (or Enter) on its first line
+  document.querySelectorAll('.pz-fold').forEach(function (f) {
+    var h = f.querySelector('.pz-h'); if (!h) return;
+    h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', 'false');
+    var t = function () { var o = f.classList.toggle('open'); h.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    h.addEventListener('click', t); h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } });
+  });
+  // the hire block's two other ways
+  var tog = document.querySelector('.rg-do-tog');
+  if (tog) tog.addEventListener('click', function () { var o = tog.parentElement.classList.toggle('open'); tog.setAttribute('aria-expanded', o ? 'true' : 'false'); tog.textContent = o ? 'Fewer ways' : 'Two more ways: pick a category, or call it as an agent'; });
+  // a category's open list: its first five, the rest one tap away (ours and the folded "unproven" lists stay as they are)
+  document.querySelectorAll('.rg-box[id^="cat-"] > .rgc-list:not(.rgc-ours)').forEach(function (list) {
+    var cards = [].slice.call(list.children).filter(function (c) { return c.classList.contains('rgc'); });
+    if (cards.length <= 6) return;
+    var hide = cards.slice(5); hide.forEach(function (c) { c.classList.add('pz-hide'); });
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show all ' + nf(cards.length) + ' (' + nf(hide.length) + ' more)';
+    b.addEventListener('click', function () { hide.forEach(function (c) { c.classList.remove('pz-hide'); }); b.remove(); });
+    list.after(b);
+  });
+  // each "at work" list: its three newest, drawn later by the script above, so it is cut whenever it is drawn
+  document.querySelectorAll('.aw-rows').forEach(function (box) {
+    var cut = function () {
+      var rows = [].slice.call(box.children).filter(function (r) { return r.classList.contains('aw-row'); });
+      var old = box.nextElementSibling && box.nextElementSibling.classList.contains('pz-more') ? box.nextElementSibling : null;
+      if (old && old.dataset.open === '1') return;
+      if (old) old.remove();
+      if (rows.length <= 4) return;
+      var hide = rows.slice(3); hide.forEach(function (r) { r.classList.add('pz-hide'); });
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show all ' + nf(rows.length);
+      b.addEventListener('click', function () { hide.forEach(function (r) { r.classList.remove('pz-hide'); }); b.dataset.open = '1'; b.remove(); });
+      box.after(b);
+    };
+    new MutationObserver(cut).observe(box, { childList: true }); cut();
   });
 })();
 </script>

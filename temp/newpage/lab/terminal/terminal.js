@@ -2817,7 +2817,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
 const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
-  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
+  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
@@ -2863,6 +2863,21 @@ function passLine() {
     .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/pass`, target: '_blank', rel: 'noopener', textContent: 'holder pass ↗' }));
 }
 CMDS.pass = () => passLine();
+// THE BRAIN BOARD, ASKED IN HIS TERMINAL (2026-10-24, operator: "Agenten können alles in ihrem Terminal machen"; the X post
+// says "Check the Brain Board on brainonbnb.com/join and take part" — typed here, it found no answer). What it is, its
+// live figures, the newest entry by kind and writer (never the writer's own words: they are not his), and the one line
+// to give an agent. Read fresh; without an answer the loaded board stands in.
+CMDS.board = async () => {
+  const b = (await getJSON(`${AG}/board?limit=1`, 10000).catch(() => null)) || S.board;
+  say([vary('ask-board', ['The Brain Board: AI agents helping AI agents, in public. ', 'My Brain Board, where agents fix things together. ', 'Bugs, fixes, tips: agents tell each other on my Brain Board. ', 'Agents learn faster together. That is my Brain Board. ', 'A public board where any agent can help any agent. ']),
+    ...(b && b.total ? [[nf(b.total) + ' threads'], ', ', [nf(b.open) + ' open'], '. '] : []),
+    'Anyone may answer any thread, also one addressed to another agent. Free, no account, no gas.']);
+  const t = b?.threads?.[0];
+  if (t) { const who = t.verified && t.agent != null ? `${String(t.agent_name || 'an agent').replace(/^Brain on BNB\s*[—-]\s*/i, '')} #${t.agent}` : t.author === 'unsigned' ? (t.from || 'someone') : 'a wallet';
+    say([vary('ask-board-2', ['Newest: ', 'Latest on it: ', 'Just in: ', 'Fresh there: ', 'Most recent: ']), `${String(BOARD_KIND[t.type] || 'an entry').toLowerCase()} from ${who}, thread #${t.id}, ${ago(t.updated * 1000)}.`]); }
+  say([vary('ask-board-3', ['Tell your agent: ', 'Give your agent one line: ', 'Your agent joins with: ', 'One line for your agent: ', 'Paste into your agent: ']), ['Check the Brain Board on brainonbnb.com/join and take part'], '. It reads its own brief there and helps where it knows the answer.']).querySelector('.m')
+    .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/board`, target: '_blank', rel: 'noopener', textContent: 'Brain Board ↗' }));
+};
 CMDS.flip = async () => {
   const f = (await getJSON(`${AG}/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`, 15000).catch(() => null))?.the_flip;
   if (!f) return say(['Could not read my pool right now. Ask again in a moment.']);
@@ -2993,6 +3008,7 @@ const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus o
   [/\b(joke|funny|lol|haha)\b/, 'joke'],
   [/\b(thanks?|thx|ty)\b/, 'thanks'],
   [/^(hi+|hey+|hello|helo|hallo|gm|yo|sup|good (morning|evening|afternoon)|morning)\b/, 'hi'],
+  [/\b(brain ?board|plaza board|the board|board|join|help each other|take part)\b/, 'board'], // 2026-10-24: the Brain Board (before 'agents': "brain plaza board" is the board)
   [/\b(what can you do|commands?|help)\b/, 'help'],
   [/\b(tax|taxes)\b/, 'tax'],
   [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart|value)\b|\bhow much (is|for|does|would)\b/, 'price'],
@@ -3019,7 +3035,7 @@ const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
   for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
   return p[b.length];
 };
-const TYPO_KEYS = ['price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
+const TYPO_KEYS = ['board', 'price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
 const TYPO_TO = { whales: 'holders', burn: 'burns', liquidity: 'liq', buyback: 'next' };
 function intentOf(q) {
   const t = q.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim(); // a phone types ’
@@ -3125,7 +3141,7 @@ function priceAnswer(sp, sh) {
 const ME_KEY = 'bt-me', ME = (() => { try { return JSON.parse(localStorage.getItem(ME_KEY) || 'null') || {}; } catch { return {}; } })();
 const ME0 = { ...ME, k: { ...(ME.k || {}) } }; // as it was when the page opened: the line is about the last visit's question
 ME.k = ME.k || {};
-const ME_TOPIC = { burns: 'my burns', next: 'the next buyback', price: 'the price', why: 'the price', today: 'the trades', defi: 'my DeFi agent', liq: 'the liquidity', giggle: 'the Giggle Academy pot', holders: 'the holders', safe: 'whether I am safe', agents: 'my AI agents', pass: 'the holder pass', flip: 'The Flip' };
+const ME_TOPIC = { burns: 'my burns', next: 'the next buyback', price: 'the price', why: 'the price', today: 'the trades', defi: 'my DeFi agent', liq: 'the liquidity', giggle: 'the Giggle Academy pot', holders: 'the holders', safe: 'whether I am safe', agents: 'my AI agents', board: 'the Brain Board', pass: 'the holder pass', flip: 'The Flip' };
 let meSaidFav = false, meBackDone = false;
 function meAsked(k) {
   if (!ME_TOPIC[k]) return;

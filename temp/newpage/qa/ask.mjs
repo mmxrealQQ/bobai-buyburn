@@ -27,15 +27,18 @@ await sleep(8000);
 const ask = async (q) => {
   const n0 = await ev(`document.getElementById('bt-log').children.length`);
   await ev(`(() => { const i = document.getElementById('bt-cmdIn'); i.value = ${JSON.stringify(q)}; document.getElementById('bt-cmd').requestSubmit(); })()`);
-  await sleep(q.match(/safe|rug|whale|holder|agents|flip/) ? 9000 : 1500);
+  await sleep(q.match(/safe|rug|whale|holder|agents|flip|board/i) ? 9000 : 1500);
   return ev(`[...document.getElementById('bt-log').children].slice(${n0}).map(l => l.innerText.replace(/\\s+/g, ' ').trim()).filter(t => !/^YOU/.test(t)).join(' | ')`);
 };
 // 2026-10-10: the small talk people really type (each fell to the fallback or the wrong answer before)
-const QS = ['holder pass', 'why hold bobai', 'how do i buy', 'what is bobai', 'what’s this', 'are you an ai', 'airdrop?', 'should i sell', 'gn', 'i love you', 'bad bot', 'lfg', 'cmc listing', 'how much is 1 bobai', 'who made you', 'how are you today', 'dance', 'price?','is it safe?', 'what did I miss', 'why down', 'whales', 'wen moon', 'who are you', 'gm', 'tax', 'ca', 'how to buy', 'nft', 'team', 'prise', 'liqudity', 'when is the next burn', 'how are you', 'thanks', 'burns', 'defi', 'dexscreener shows a different 24h', 'agents', 'the flip', 'how many holders'];
+const QS = ['Check the Brain Board on brainonbnb.com/join and take part', 'board', 'holder pass', 'why hold bobai', 'how do i buy', 'what is bobai', 'what’s this', 'are you an ai', 'airdrop?', 'should i sell', 'gn', 'i love you', 'bad bot', 'lfg', 'cmc listing', 'how much is 1 bobai', 'who made you', 'how are you today', 'dance', 'price?','is it safe?', 'what did I miss', 'why down', 'whales', 'wen moon', 'who are you', 'gm', 'tax', 'ca', 'how to buy', 'nft', 'team', 'prise', 'liqudity', 'when is the next burn', 'how are you', 'thanks', 'burns', 'defi', 'dexscreener shows a different 24h', 'agents', 'the flip', 'how many holders'];
 // the sites' 24h question (2026-10-09) must get the USD and the against-BNB figure, not the day's summary
 const MUST = { 'how many holders': /In all, \d[\d,]* wallets hold \$BOBAI and \d+ of them 1M\+, counted from the chain/, /* 2026-10-22: the count from /holders */ 'dexscreener shows a different 24h': /in USD.*Against BNB I am [+-]\d+\.\d%.*BNB went [+-]\d+\.\d%/,
   'who made you': /dev|builder/i, 'are you an ai': /chatbot|language model|ChatGPT|never made up/i, 'airdrop?': /no BOBAI airdrop/i, 'should i sell': /What I can show/,
   'what is bobai': /I am BOBAI|BOBAI\. A brain|The name is BOBAI|token, awake/,
+  // 2026-10-24: the X post's sentence and "board" — what the Brain Board is, its figures, anyone answers, the line to give an agent, the link
+  'Check the Brain Board on brainonbnb.com/join and take part': /(Brain Board|agents fix things|any agent can help).*\d+ threads.*\d+ open.*Anyone may answer any thread.*(Newest|Latest on it|Just in|Fresh there|Most recent): .* thread #\d+.*Check the Brain Board on brainonbnb\.com\/join and take part.*Brain Board ↗/,
+  'board': /(Brain Board|agents fix things|any agent can help).*Anyone may answer any thread.*Brain Board ↗/,
   // 2026-10-14: the agents we run and the second opinion ours bought; The Flip from our own pool
   'agents': /(employ six|Six AI agents|six AI agents|run six agents|I have six).*(hired another AI|second opinion).*1,000,000 \$BOBAI \(≈\$\d.*20 a day.*holder pass ↗/,
   // 2026-10-16: the $BOBAI holder pass, asked directly and said after the buy answer

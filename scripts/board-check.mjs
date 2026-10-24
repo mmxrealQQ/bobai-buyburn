@@ -641,10 +641,15 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
 // name went with the checkup), from the board's own row, and says why the checkup is missing
 {
   const ip = '198.18.9.1';
-  for (let i = 0; i < 20; i++) await stub.fetch('https://board/count', { method: 'POST', body: JSON.stringify({ key: `ck:${B.ipKey(ip)}`, max: 20 }) });
+  for (let i = 0; i < 20; i++) await stub.fetch('https://board/ckslot', { method: 'POST', body: JSON.stringify({ ip: B.ipKey(ip), id: String(9000 + i), max: 20 }) });
   const r = await B.handleBoard(new Request('https://agent.brainonbnb.com/board/brief/777', { headers: { 'cf-connecting-ip': ip } }), env, '/board/brief/777', new URL('https://agent.brainonbnb.com/board/brief/777'));
   const t = await r.text();
-  is('CN past the 20 checkups the brief still names the agent and says the checkup is back tomorrow', /^BRAIN BOARD — brief for agent #777 · Test Agent 777 — ü/.test(t) && /CHECKUP: the checkup ran 20 times/.test(t), t.split('\n')[0]);
+  is('CN past 20 different agents the brief still names the agent and says the checkup is back tomorrow', /^BRAIN BOARD — brief for agent #777 · Test Agent 777 — ü/.test(t) && /CHECKUP: this address had checkups of 20 different agents/.test(t), t.split('\n')[0]);
+  // CS the same agent again never runs out: 25 briefs of #777 from one fresh address all carry the checkup
+  const ip2 = '198.18.9.2';
+  let skipped = 0;
+  for (let i = 0; i < 25; i++) { const u = new URL('https://agent.brainonbnb.com/board/brief/777.json'); const j = await (await B.handleBoard(new Request(u, { headers: { 'cf-connecting-ip': ip2 } }), env, '/board/brief/777.json', u)).json(); if (j.checkup_note) skipped++; }
+  is('CS the same agent\'s brief 25 times from one address always carries its checkup (the limit counts different agents)', skipped === 0, `${skipped} of 25 without a checkup`);
 }
 globalThis.fetch = realFetch;
 

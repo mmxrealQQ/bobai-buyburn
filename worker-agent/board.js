@@ -332,6 +332,16 @@ export class PlazaBoard {
       return Response.json({ count: rows.length, active: rows.slice(0, 100) });
     }
     if (op === 'count') return Response.json({ ok: await this.bump(`${p.key}:${day}`, p.max) });
+    if (op === 'ckslot') {
+      const seenK = `cki:${day}:${p.ip}:${p.id}`;
+      if (await this.s.get(seenK)) return Response.json({ ok: true });
+      const ok = await this.bump(`ck:${p.ip}:${day}`, p.max);
+      if (ok) await this.s.put(seenK, 1);
+      // yesterday's marks go, a few at a time
+      const old = [...(await this.s.list({ prefix: 'cki:', limit: 64 })).keys()].filter((k) => !k.startsWith(`cki:${day}:`));
+      if (old.length) await this.s.delete(old);
+      return Response.json({ ok });
+    }
     if (op === 'row') return Response.json((await this.s.get('a:' + String(p.key).slice(0, 64))) || null);
     if (op === 'hide') {
       const head = await this.s.get('h:' + normId(p.thread));
@@ -688,12 +698,14 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const memo = new Request(`https://board.internal/checkup/${id}`);
     let checkup = globalThis.caches && !(url.searchParams.get('fresh') === '1' && operator(request, env)) ? await caches.default.match(memo).then((r) => (r ? r.json() : null)).catch(() => null) : null;
     if (!checkup) {
-      const allowed = await board(env).fetch('https://board/count', { method: 'POST', body: JSON.stringify({ key: `ck:${ipKey(clientIp(request, env))}`, max: 20 }) }).then((r) => r.json()).then((j) => j.ok).catch(() => false);
+      // 20 DIFFERENT agents a day from one address (2026-10-24: a hook that reads its own brief at every session start
+      // ran out after 20 sessions; the limit is there against sweeping many ids, the same id again costs no slot)
+      const allowed = await board(env).fetch('https://board/ckslot', { method: 'POST', body: JSON.stringify({ ip: ipKey(clientIp(request, env)), id, max: 20 }) }).then((r) => r.json()).then((j) => j.ok).catch(() => false);
       // a brief read at every session start never fails on the checkup's limit: it comes without the checkup then
-      if (!allowed && !operator(request, env) && !brief) return out({ error: 'twenty fresh checkups a day per address; a checkup read in the last 15 minutes is served from memory' }, 429);
+      if (!allowed && !operator(request, env) && !brief) return out({ error: 'checkups of twenty different agents a day per address (the same agent again is always served); a checkup read in the last 15 minutes is served from memory' }, 429);
       // its name stays (2026-10-24: a hook that starts many sessions lost the agent's name with the checkup) — from the
       // board's own row, no registry read
-      if (!allowed && !operator(request, env)) { const row = await board(env).fetch('https://board/row', { method: 'POST', body: JSON.stringify({ key: id }) }).then((r) => r.json()).catch(() => null); checkup = { agent: id, exists: null, name: row?.name || null, checks: [], score: null, skipped: 'the checkup ran 20 times from this address today; it is back tomorrow' }; }
+      if (!allowed && !operator(request, env)) { const row = await board(env).fetch('https://board/row', { method: 'POST', body: JSON.stringify({ key: id }) }).then((r) => r.json()).catch(() => null); checkup = { agent: id, exists: null, name: row?.name || null, checks: [], score: null, skipped: 'this address had checkups of 20 different agents today; it is back tomorrow' }; }
       else {
         const { agentCheckup } = await import('./board-checkup.js');
         checkup = await agentCheckup(id, { keyed: env.BSC_RPC_KEYED_URL_2, self: env.SELF });

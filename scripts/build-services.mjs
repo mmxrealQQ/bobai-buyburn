@@ -204,12 +204,22 @@ const capRow = (c) => {
   const head = url && !isCmd && !isShape
     ? `<a href="${esc(url)}" rel="noopener">${esc(c.name)}</a>`
     : (c.example ? `<a href="${esc(c.example)}" rel="noopener">${esc(c.name)}</a>` : esc(c.name));
-  return `        <li><b>${head}</b>${c.price ? ` <span class="sv-price sv-price-s">${esc(c.price)}</span>` : ''}
-          <span>${esc(c.what).replace(/([\d,]+) \$BOBAI/g, (m, n) => `${m} <span class="sv-busd" data-bobai="${n.replace(/,/g, '')}"></span>`)}</span>${isCmd || (isShape && !/^(POST|GET)\s/i.test(c.where || '')) ? `<code>${esc(c.where)}</code>` : ''}${
+  // ONE LINE, THE REST ONE CLICK AWAY (2026-10-24, operator: "Seiten einfach, das Wichtigste"): the name and the first
+  // sentence of what it does stand open; the whole description, the call and its limits sit in a fold
+  const what = String(c.what || '');
+  const first = (what.match(/^.*?\.(?=\s|$)/) || [what])[0];
+  const short = first.length > 130 ? first.slice(0, 128).replace(/\s+\S*$/, '') + '…' : first;
+  const detail = `          <span>${esc(what).replace(/([\d,]+) \$BOBAI/g, (m, n) => `${m} <span class="sv-busd" data-bobai="${n.replace(/,/g, '')}"></span>`)}</span>${isCmd || (isShape && !/^(POST|GET)\s/i.test(c.where || '')) ? `<code>${esc(c.where)}</code>` : ''}${
   /^(POST|GET)\s/i.test(c.where || '') ? `<code>${esc(c.where)}</code>` : ''}${
   c.example && isShape ? `<span class="sv-limit">Try it: <a href="${esc(c.example)}" rel="noopener">${esc(c.example.replace(/^https?:\/\//, ''))}</a></span>` : ''}${
   c.limit ? `<span class="sv-limit">${esc(c.limit)}</span>` : ''}${
-  c.why_paid ? `<span class="sv-limit">Paid because ${esc(c.why_paid)}.</span>` : ''}</li>`;
+  c.why_paid ? `<span class="sv-limit">Paid because ${esc(c.why_paid)}.</span>` : ''}`;
+  const folds = short !== what || /<code>|sv-limit/.test(detail);
+  return `        <li><b>${head}</b>${c.price ? ` <span class="sv-price sv-price-s">${esc(c.price)}</span>` : ''}
+          ${folds ? `<span class="sv-short">${esc(short)}</span>
+          <details class="sv-capd"><summary>Details and the call</summary>
+${detail}
+          </details>` : detail}</li>`;
 };
 
 const GROUPS = [
@@ -301,7 +311,12 @@ function page() {
     color:var(--muted);font-size:.8rem;line-height:1.6}
   .sv-how b{color:var(--text)}
   .sv-steps{margin:10px 0 10px 20px;padding:0}.sv-steps li{margin:0 0 8px}.sv-how p{margin:0}
-  .sv-caps{list-style:none;display:grid;gap:12px;margin:0;padding:0}
+  .sv-caps{list-style:none;display:grid;gap:12px;margin:0;padding:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));align-items:start}
+  .sv-capd{margin-top:6px}
+  .sv-capd summary{cursor:pointer;font-size:.74rem;color:var(--gold);list-style:none}
+  .sv-capd summary::-webkit-details-marker{display:none}
+  .sv-capd summary::before{content:'+ '}
+  .sv-capd[open] summary::before{content:'– '}
   .sv-caps li{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:12px 14px;min-width:0}
   .sv-caps b{font-size:.85rem;display:inline}
   .sv-caps b a{color:var(--text);text-decoration:none;border-bottom:1px solid rgba(240,185,11,.35)}

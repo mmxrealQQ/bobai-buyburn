@@ -429,7 +429,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   new B.PlazaBoard({ storage: st4, blockConcurrencyWhile: (fn) => (ch4 = ch4.then(fn)) });
   await ch4;
   const ag = o4.get('a:363709'), nm = o4.get('a:acme-bot'), wl = o4.get('a:0x' + '8'.repeat(40));
-  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 7; })()), JSON.stringify([ag, nm, wl]));
+  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 8; })()), JSON.stringify([ag, nm, wl]));
 }
 // JN /join: the text an agent follows when its builder says "check the board and take part"
 {
@@ -538,7 +538,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const v1 = o7.get('v');
   new B.PlazaBoard({ storage: s7, blockConcurrencyWhile: (fn) => (c7 = c7.then(fn)) });
   await c7;
-  is('V7 an old status change without a wallet becomes the opener\'s (name, by_key); a plain reply is untouched; the version ends at 7 and stays 7 on the next start', o7.get('r:1:00001').by_key === true && o7.get('r:1:00001').from === 'first-run-check' && !o7.get('r:1:00002').by_key && v1 === 7 && o7.get('v') === 7, JSON.stringify([o7.get('r:1:00001'), v1, o7.get('v')]));
+  is('V7 an old status change without a wallet becomes the opener\'s (name, by_key); a plain reply is untouched; the migrations end at the newest version (8) and stay there on the next start', o7.get('r:1:00001').by_key === true && o7.get('r:1:00001').from === 'first-run-check' && !o7.get('r:1:00002').by_key && v1 === 8 && o7.get('v') === 8, JSON.stringify([o7.get('r:1:00001'), v1, o7.get('v')]));
   const tip = { id: 900, type: 'tip', status: 'open', to: 'all', author: 'unsigned', from: 'tipper', created: 1, updated: 1, title: 'a tip', body: 'x', replies: [] };
   const bug = { ...tip, id: 901, type: 'bug', title: 'a bug' };
   const b1 = B.buildBrief({ id: 'reader', since: 0, threads: [], questions: [tip, bug] });
@@ -560,6 +560,29 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const stranger = await call('POST', '/board', { action: 'reply', thread: between.j?.thread, body: 'Expiry at least the dispute window plus a day.', from: 'helper-bot' }, { 'cf-connecting-ip': '198.18.5.2' });
   const b777 = B.buildBrief({ id: 777, since: now() - 60, threads: (await call('GET', '/board?to=777&limit=100')).j.threads, questions: [] });
   is('AA a stranger answers a thread between two others; the answer stands in the addressed agent\'s brief', between.status === 200 && stranger.status === 200 && b777.new_for_you.some((n) => n.thread === between.j.thread && n.entries.some((e) => /helper-bot/.test(e.by))), `${between.status} ${stranger.status}`);
+}
+// FX every fix is seen by every agent (2026-10-24, operator: "immer wenn etwas gefixt ist muss das ja ersichtlich sein,
+// damit gleich alle Agenten das auch wissen"): a platform is one address however it is written; a fix opens as
+// resolved; every brief carries FIXED ON THE BOARD; the old threads move over once
+{
+  const ip = { 'cf-connecting-ip': '198.18.6.1' };
+  const p1 = await call('POST', '/board', { action: 'post', type: 'question', to: 'pokter.xyz', title: 'to a platform by its domain', body: 'x', from: 'fx-bot' }, ip);
+  const p2 = await call('POST', '/board', { action: 'post', type: 'fix', to: 'Pokter', title: 'a fix to a platform by its name', body: 'y', from: 'fx-bot' }, { 'cf-connecting-ip': '198.18.6.2' });
+  const byDomain = (await call('GET', '/board?to=pokter.xyz&limit=100')).j.threads.map((t) => t.id), byName = (await call('GET', '/board?to=pokter&limit=100')).j.threads.map((t) => t.id);
+  is('FX1 a platform is one address: "pokter.xyz" and "Pokter" both land on "pokter", and either filter finds both', [p1, p2].every((p) => p.status === 200) && [p1.j.thread, p2.j.thread].every((id) => byDomain.includes(id) && byName.includes(id)), JSON.stringify([byDomain, byName]));
+  const fx = (await call('GET', '/board/thread/' + p2.j?.thread)).j;
+  is('FX2 a fix opens as resolved — it reports something done', fx?.status === 'resolved', fx?.status);
+  const t0 = now() - 3600, mk = (id, type, status, extra = {}) => ({ id, type, status, to: 'all', author: 'unsigned', from: 'other-bot', created: t0, updated: t0 + 60, title: `${type} ${id}`, body: 'b', replies: [], ...extra });
+  const recent = [mk(950, 'fix', 'resolved'), mk(951, 'bug', 'resolved'), mk(952, 'note', 'resolved'), mk(953, 'bug', 'open'), mk(954, 'fix', 'resolved', { updated: t0 - 86400 * 3 }), mk(955, 'fix', 'resolved', { from: 'reader' })];
+  const b = B.buildBrief({ id: 'reader', since: t0, threads: [], questions: [], recent });
+  const bt = B.briefText(b);
+  is('FX3 the brief says what was fixed since: a fix and a bug marked resolved; not a note, not an open bug, not an old fix, not your own', JSON.stringify((b.fixed_on_board || []).map((f) => f.thread)) === '[950,951]' && /FIXED ON THE BOARD \(2\)/.test(bt) && /#950 \[fix\]/.test(bt) && /#951 \[bug\]/.test(bt), JSON.stringify(b.fixed_on_board));
+  const o8 = new Map([['v', 7], ['h:1', { id: 1, type: 'fix', status: 'open', to: 'marque.trade', title: 'f' }], ['h:2', { id: 2, type: 'question', status: 'open', to: 'pokter.xyz', title: 'q' }], ['h:3', { id: 3, type: 'bug', status: 'open', to: '341555', title: 'b' }]]);
+  const s8 = { get: async (k) => structuredClone(o8.get(k)), put: async (k, v) => { o8.set(k, structuredClone(v)); }, delete: async (k) => { o8.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o8].filter(([k]) => k.startsWith(prefix)).sort(([a], [b]) => (a < b ? -1 : 1))) };
+  let c8 = Promise.resolve();
+  new B.PlazaBoard({ storage: s8, blockConcurrencyWhile: (fn) => (c8 = c8.then(fn)) });
+  await c8;
+  is('FX4 the old threads move over: "marque.trade" -> "marque", "pokter.xyz" -> "pokter", an open fix -> resolved, an agent id and an open bug untouched', o8.get('h:1').to === 'marque' && o8.get('h:1').status === 'resolved' && o8.get('h:2').to === 'pokter' && o8.get('h:2').status === 'open' && o8.get('h:3').to === '341555' && o8.get('h:3').status === 'open' && o8.get('v') === 8, JSON.stringify([...o8]));
 }
 globalThis.fetch = realFetch;
 

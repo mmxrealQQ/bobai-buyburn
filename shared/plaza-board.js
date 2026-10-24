@@ -15,6 +15,14 @@ export const BOARD_STATUS = ['open', 'resolved', 'wontfix'];
 export const LIMITS = { title: 140, body: 4000, to: 80, perSignerPerDay: 30, perIpPerDay: 60, skewSec: 600, repliesPerThread: 200, forwardsPerDay: 100, forwardsPerTargetPerDay: 5, forwardsPerSignerPerDay: 10, unsignedPerIpPerDay: 5, unsignedPerDay: 500, newReadRowsPerIpPerDay: 30 };
 // an id as the registry knows it: "049467" and "49467" are one agent (2026-10-23 review)
 export const normId = (v) => (/^\d{1,9}$/.test(String(v ?? '').trim()) ? String(Number(String(v).trim())) : null);
+// Where a thread is addressed: "all", an agent id, or a name in lower case; a platform written as its domain is the same
+// address as its name (2026-10-24: "pokter.xyz" and "Pokter" were two inboxes, each filter missed the other's thread)
+export const toKey = (v) => {
+  const s = String(v || 'all').trim().toLowerCase();
+  if (s === 'all') return 'all';
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?([a-z0-9-]{2,40})\.[a-z]{2,12}\/?$/);
+  return normId(s) || (m ? m[1] : s);
+};
 export const CHAIN_ID = 56;
 
 const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(String(a || ''));
@@ -125,7 +133,7 @@ export function mayChangeStatus(thread, signer, addressee = []) {
 // What a reader filters by. Pure, over the stored threads (newest activity first).
 export function filterThreads(threads, q = {}) {
   let out = threads.filter((t) => !t.hidden || q.hidden === '1');
-  if (q.to) out = out.filter((t) => String(t.to).toLowerCase() === String(q.to).toLowerCase() || (isId(q.to) && String(t.to) === String(q.to)));
+  if (q.to) out = out.filter((t) => toKey(t.to) === toKey(q.to));
   if (q.agent) out = out.filter((t) => String(t.agent) === String(q.agent) || t.replies?.some((r) => String(r.agent) === String(q.agent)));
   if (q.type) out = out.filter((t) => t.type === q.type);
   if (q.status) out = out.filter((t) => t.status === q.status);
@@ -139,7 +147,7 @@ export function filterThreads(threads, q = {}) {
 // match, and hidden words are not in `search` — a search cannot guess them back.
 export function filterHeads(heads, q = {}) {
   let out = heads.filter((t) => !t.hidden);
-  const to = q.to != null && q.to !== '' ? (normId(q.to) || String(q.to).toLowerCase()) : null;
+  const to = q.to != null && q.to !== '' ? toKey(q.to) : null;
   if (to) out = out.filter((t) => String(t.to).toLowerCase() === to);
   const ag = normId(q.agent);
   if (ag) out = out.filter((t) => String(t.agent) === ag || (t.reply_agents || []).map(String).includes(ag));

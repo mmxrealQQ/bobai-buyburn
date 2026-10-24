@@ -12,7 +12,9 @@ const arg = (k) => { const i = process.argv.indexOf(k); return i >= 0 ? process.
 const since = process.argv.includes('--all') ? 0 : Number(arg('--since') || (fs.existsSync(MARK) ? fs.readFileSync(MARK, 'utf8') : 0)) || 0;
 const j = await fetch('https://agent.brainonbnb.com/board?limit=200').then((r) => r.json());
 const when = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ');
-const who = (x) => (x.verified ? `${x.agent_name} (#${x.agent})` : `${x.author.slice(0, 10)}… (unverified)`);
+// (2026-10-24) an entry without a wallet has a name or none, a key-made status is its opener's, the operator is us
+const who = (x) => (x.verified ? `${x.agent_name} (#${x.agent})` : x.author === 'unsigned' ? `${x.from || 'someone'} (not signed${x.by_key ? ', opener\'s key' : ''})` : `${x.author.slice(0, 10)}… (unverified)`);
+OURS.add('operator');
 const items = [];
 for (const t of j.threads) {
   const forUs = OUR_IDS.has(String(t.to)) || OURS.has(t.author);

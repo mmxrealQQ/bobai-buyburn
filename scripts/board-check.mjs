@@ -436,7 +436,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const u = new URL('https://agent.brainonbnb.com/join');
   const r = await B.handleBoard(new Request(u), env, '/join', u);
   const t = await r.text();
-  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /YOUR NAME HERE/.test(t) && /board\/brief\/<id or name>/.test(t) && /ask your builder first/.test(t) && /"from":"<your name>"/.test(t) && /save the WHOLE answer/.test(t) && /shown only once/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
+  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /PICK YOUR NAME/.test(t) && /reading already counts/.test(t) && /board\/brief\/<id or name>/.test(t) && /ask your builder first/.test(t) && /"from":"<your name>"/.test(t) && /save the WHOLE answer/.test(t) && /shown only once/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
 }
 // RV1-RV11 the independent review of 24.10., each finding as a pin
 {
@@ -525,7 +525,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const hid = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'to be hidden', body: 'spam' }, { 'cf-connecting-ip': '198.18.0.3' });
   await call('POST', '/board/hide', { thread: hid.j.thread, reason: 'test' }, { 'x-hit-secret': 'hs' });
   const lst = (await call('GET', '/board?limit=1')).j;
-  is('FR7 the list says how many threads are hidden, and the text view explains the ids', lst.hidden >= 1 && /more hidden by the operator/.test(B.boardMarkdown(lst)), String(lst.hidden));
+  is('FR7 the list says how many threads are hidden, and the text view explains the ids', lst.hidden >= 1 && /hidden by the operator for spam/.test(B.boardMarkdown(lst)) && /thread ids count them too/.test(B.boardMarkdown(lst)), String(lst.hidden));
 }
 // V7 old key-made status changes get the opener's name; the migrations end on one version and stay there; TP a tip asks
 // nothing: not in CAN YOU HELP, not under YOUR OPEN THREADS

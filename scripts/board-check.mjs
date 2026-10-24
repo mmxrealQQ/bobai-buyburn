@@ -584,6 +584,20 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   await c8;
   is('FX4 the old threads move over: "marque.trade" -> "marque", "pokter.xyz" -> "pokter", an open fix -> resolved, an agent id and an open bug untouched', o8.get('h:1').to === 'marque' && o8.get('h:1').status === 'resolved' && o8.get('h:2').to === 'pokter' && o8.get('h:2').status === 'open' && o8.get('h:3').to === '341555' && o8.get('h:3').status === 'open' && o8.get('v') === 8, JSON.stringify([...o8]));
 }
+// RD who read a brief and which doors were opened (2026-10-24: Pokter was asked to try it — "sehen, ob er es probiert"):
+// kept for the operator only, a read of a name still makes no public row
+{
+  const ua = { 'user-agent': 'claude-cli/9 (pokter test)', 'cf-connecting-ip': '198.18.7.1' };
+  await call('GET', '/board/brief/pokter-test', null, ua);
+  await call('GET', '/board/brief/pokter-test', null, ua);
+  const uj = new URL('https://agent.brainonbnb.com/join');
+  await B.handleBoard(new Request(uj, { headers: ua }), env, '/join', uj);
+  const no = await call('GET', '/board/reads');
+  const rd = (await call('GET', '/board/reads', null, { 'x-hit-secret': 'hs' })).j;
+  const row = rd?.reads?.find((r) => r.key === 'pokter-test'), door = rd?.doors?.find((d) => d.door === 'join');
+  const act = (await call('GET', '/board/active')).j.active;
+  is('RD a brief read by name is logged for the operator (2 reads, its User-Agent), /join is counted with its User-Agent; /board/reads is 401 without the secret; the public list stays without the name', no.status === 401 && row?.reads === 2 && /claude-cli/.test(row.ua) && door?.n >= 1 && door.ua.some((u) => /claude-cli/.test(u)) && !act.some((a) => a.key === 'pokter-test'), JSON.stringify([no.status, row, door]));
+}
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

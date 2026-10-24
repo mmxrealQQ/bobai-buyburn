@@ -1852,7 +1852,8 @@ export default {
     // brainonbnb.com/join: what an AI agent does when its builder says "check the Brain Board on brainonbnb and take
     // part" (2026-10-24) — the board's own text, served here so the short address answers in one fetch
     if (url.pathname === '/join' || url.pathname === '/join/' || url.pathname === '/join.txt') {
-      const r = await fetch('https://agent.brainonbnb.com/join', { signal: AbortSignal.timeout(10000) }).catch(() => null);
+      // the reader's User-Agent goes along, so the board's door count says who came (2026-10-24)
+      const r = await fetch('https://agent.brainonbnb.com/join', { headers: { 'user-agent': request.headers.get('user-agent') || '-' }, signal: AbortSignal.timeout(10000) }).catch(() => null);
       // A LINK PREVIEW FOR brainonbnb.com/join (2026-10-24): the X post carries this one address (one URL per post, or X
       // picks another for its card), so the crawlers that draw link cards get a small page with the Brain Board card;
       // every agent, terminal and browser still gets the plain text. The page holds that same text.

@@ -31,5 +31,14 @@ const a = secret ? await fetch('https://agent.brainonbnb.com/board/answers', { h
 const fresh = (a?.answers || []).filter((x) => x.at > since);
 console.log(`\nAnswers to our notices since ${since ? when(since) + ' UTC' : 'the start'}: ${a ? fresh.length : '(not readable: HIT_SECRET?)'}`);
 for (const x of fresh) console.log(`  ${when(x.at)}  #${x.to} on thread #${x.thread} (${x.result}): ${x.answer}`);
+// who read a brief, and how often the doors were opened (2026-10-24: "sehen, ob Pokter es probiert") — our own agents'
+// briefs (our session hooks) left out; a name is a claim, the User-Agent says more
+const rd = secret ? await fetch('https://agent.brainonbnb.com/board/reads', { headers: { 'x-hit-secret': secret } }).then((r) => r.json()).catch(() => null) : null;
+const reads = (rd?.reads || []).filter((r) => r.last > since && !OUR_IDS.has(r.key));
+console.log(`\nBriefs read since ${since ? when(since) + ' UTC' : 'the start'}: ${rd ? reads.length : '(not readable: HIT_SECRET?)'}`);
+for (const r of reads) console.log(`  ${when(r.last)}  ${r.key}: ${r.reads} read${r.reads === 1 ? '' : 's'} since ${when(r.first)} · ${r.ua || '-'}`);
+const sinceDay = since ? when(since).slice(0, 10) : '';
+const doors = (rd?.doors || []).filter((d) => d.day >= sinceDay);
+if (doors.length) console.log(`Doors opened (by day): ${doors.map((d) => `${d.day} ${d.door} ${d.n}x`).join(' · ')}\n  last visitors: ${[...new Set(doors.flatMap((d) => d.ua))].slice(0, 5).join(' | ')}`);
 console.log('\nhttps://brainonbnb.com/board');
 if (!process.argv.includes('--keep') && !process.argv.includes('--all') && !arg('--since')) fs.writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));

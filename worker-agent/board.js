@@ -165,6 +165,7 @@ export class PlazaBoard {
   // A read never makes a row for a name (the review 24.10.: any GET /board/brief/<name> filled the public list) — a
   // name shows once it has written; a read makes a row only for an agent id, at most 30 new rows a day from one address.
   async seen(p, now) {
+    if (p.kind === 'read') await this.readLog(p, now);
     const k = 'a:' + String(p.key).slice(0, 64);
     const had = await this.s.get(k);
     const kind = /^\d+$/.test(p.key) ? 'agent' : /^0x/.test(p.key) ? 'wallet' : 'name';
@@ -175,6 +176,25 @@ export class PlazaBoard {
     if (p.name) a.name = String(p.name).replace(/[\r\n]+/g, ' ').slice(0, 80);
     if (p.verified) a.verified = true;
     await this.s.put(k, a);
+  }
+  // WHO READ A BRIEF (2026-10-24, operator: Pokter was asked on X to join and try it — "wir sehen nicht, ob er es
+  // probiert"): every brief read, by id or name, with its last User-Agent — the operator's only (GET /board/reads), never
+  // in a public list (a read is no claim, anybody can read any name). At most 500 keys; a key read before keeps counting.
+  async readLog(p, now) {
+    const k = 'rd:' + String(p.key).slice(0, 64);
+    let r = await this.s.get(k);
+    if (!r) { const n = (await this.s.get('rd#')) || 0; if (n >= 500) return; await this.s.put('rd#', n + 1); r = { key: String(p.key).slice(0, 64), reads: 0, first: now }; }
+    r.reads++; r.last = now;
+    if (p.ua) r.ua = String(p.ua).replace(/[^\x20-\x7e]+/g, ' ').slice(0, 100);
+    await this.s.put(k, r);
+  }
+  // the doors a newcomer comes through (/join, /board.md, /board/how): a count per day and the last five User-Agents
+  async door(p, day) {
+    const k = `dr:${day}:${String(p.door).slice(0, 20)}`, d = (await this.s.get(k)) || { n: 0, ua: [] };
+    d.n++;
+    const ua = String(p.ua || '-').replace(/[^\x20-\x7e]+/g, ' ').slice(0, 100);
+    d.ua = [ua, ...d.ua.filter((x) => x !== ua)].slice(0, 5);
+    await this.s.put(k, d);
   }
   async bump(k, max) { const n = (await this.s.get(k)) || 0; if (n >= max) return false; await this.s.put(k, n + 1); return true; }
   async fetch(request) {
@@ -262,6 +282,12 @@ export class PlazaBoard {
     }
     // a counter with a ceiling, for limits kept elsewhere (fresh checkups per IP)
     if (op === 'seen') { await this.seen(p, now); return Response.json({ ok: true }); }
+    if (op === 'door') { await this.door(p, day); return Response.json({ ok: true }); }
+    if (op === 'reads') {
+      const reads = [...(await this.s.list({ prefix: 'rd:' })).values()].sort((a, b) => b.last - a.last);
+      const doors = [...(await this.s.list({ prefix: 'dr:' }))].map(([k, d]) => ({ day: k.split(':')[1], door: k.split(':')[2], ...d })).sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 60);
+      return Response.json({ reads, doors });
+    }
     if (op === 'active') {
       const cut = now - 30 * 86400;
       const rows = [...(await this.s.list({ prefix: 'a:' })).values()].filter((a) => Math.max(a.last_read || 0, a.last_write || 0) >= cut).sort((a, b) => Math.max(b.last_read || 0, b.last_write || 0) - Math.max(a.last_read || 0, a.last_write || 0));
@@ -513,8 +539,14 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // HEAD is GET without the body (feed checkers ask HEAD first)
   if (request.method === 'HEAD') { const r = await handleBoard(new Request(request.url, { method: 'GET', headers: request.headers }), env, path, url, ctx); return new Response(null, { status: r.status, headers: r.headers }); }
   if (!env.BOARD) return out({ error: 'the board is not bound on this worker' }, 503);
-  if (path === '/board/how') return out(BOARD_HOW);
-  if (path === '/join' || path === '/board/join') return new Response(joinText(), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
+  const doorIn = (d) => { const job = board(env).fetch('https://board/door', { method: 'POST', body: JSON.stringify({ door: d, ua: request.headers.get('user-agent') }) }).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else return job; };
+  if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
+  if (path === '/join' || path === '/board/join') { await doorIn('join'); return new Response(joinText(), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
+  // who read a brief and which doors were opened (operator; scripts/board-inbox.mjs)
+  if (request.method === 'GET' && path === '/board/reads') {
+    if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);
+    return out(await board(env).fetch('https://board/reads', { method: 'POST', body: '{}' }).then((r) => r.json()));
+  }
   if (request.method === 'GET' && path === '/board/active') return out(await readActive(env));
   // ONE AGENT'S PAGE ON THE BOARD: what is addressed to it, what it wrote, and a live checkup with fixes. A checkup is
   // kept 15 minutes; a fresh one costs a slot of 20 a day per IP (the review: ?fresh=1 had no limit), and ?fresh=1
@@ -528,7 +560,8 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const since = briefSince(url, Math.floor(Date.now() / 1000));
     const [toIt, byIt, ...asks] = await Promise.all([readBoard(env, { to: name, limit: 100 }), readBoard(env, { from: name, limit: 100 }), readBoard(env, { status: 'open', limit: 60 }), readBoard(env, { since, limit: 40 })]);
     const b = buildBrief({ id: name, name: null, exists: null, since, threads: [...toIt.threads, ...byIt.threads], checkup: null, escrow: null, questions: asks[0].threads, recent: asks[1].threads });
-    if (ctx?.waitUntil) ctx.waitUntil(seenBy(env, { key: name, kind: 'read', ip: clientIp(request, env) })); else await seenBy(env, { key: name, kind: 'read', ip: clientIp(request, env) });
+    const read = { key: name, kind: 'read', ip: clientIp(request, env), ua: request.headers.get('user-agent') };
+    if (ctx?.waitUntil) ctx.waitUntil(seenBy(env, read)); else await seenBy(env, read);
     if (mn[2] === 'json') return out(b);
     return new Response(briefText(b), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
   }
@@ -557,7 +590,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (brief) {
       const since = briefSince(url, Math.floor(Date.now() / 1000));
       const asks = await Promise.all([readBoard(env, { status: 'open', limit: 60 }), readBoard(env, { since, limit: 40 })]);
-      if (checkup.exists !== false) { const job = seenBy(env, { key: id, kind: 'read', name: checkup.name || null, ip: clientIp(request, env) }); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+      if (checkup.exists !== false) { const job = seenBy(env, { key: id, kind: 'read', name: checkup.name || null, ip: clientIp(request, env), ua: request.headers.get('user-agent') }); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
       const b = buildBrief({ id, name: checkup.name, exists: checkup.exists, since, threads: [...toIt.threads, ...byIt.threads], checkup, escrow, questions: asks[0].threads, recent: asks[1].threads });
       if (ma[3] === 'json') return out(b);
       return new Response(briefText(b), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
@@ -577,6 +610,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // same filters — ?to=<your agent id> is a feed of what is addressed to your agent. Slack, Discord and Telegram feed
   // bots and every reader take it, so a builder hears of a new entry without anybody writing a mail.
   if (request.method === 'GET' && (path === '/board.atom' || path === '/board/feed')) return new Response(boardAtom(await readBoard(env, { ...Object.fromEntries(url.searchParams), limit: Math.min(50, Number(url.searchParams.get('limit')) || 30) }), url), { headers: { 'content-type': 'application/atom+xml; charset=utf-8', ...cors, 'cache-control': 'public, max-age=300' } });
+  if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) await doorIn('board.md');
   if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) return new Response(boardMarkdown(await readBoard(env, Object.fromEntries(url.searchParams))), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
   if (request.method === 'GET' && path === '/board') return out(await readBoard(env, Object.fromEntries(url.searchParams)));
   const m = path.match(/^\/board\/thread\/(\d{1,9})$/);

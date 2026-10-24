@@ -18,6 +18,9 @@ const og = (page.match(/<meta property="og:image" content="([^"]+)"/) || [])[1],
 const img = og ? await fetch(og).then(async (r) => ({ ct: r.headers.get('content-type'), b: new Uint8Array(await r.arrayBuffer()) })).catch(() => null) : null;
 const dims = img && img.b.length > 24 ? [(img.b[16] << 24) | (img.b[17] << 16) | (img.b[18] << 8) | img.b[19], (img.b[20] << 24) | (img.b[21] << 16) | (img.b[22] << 8) | img.b[23]] : [];
 say(og === 'https://brainonbnb.com/og/board.png' && tw === og && img?.ct === 'image/png' && dims[0] === 1200 && dims[1] === 630, `/board's link picture is the Brain Board card (${og} · ${img?.ct} · ${dims.join('x')})`);
+// the X post carries only brainonbnb.com/join: link-card crawlers get a page with the card, everybody else the text
+const tw = await fetch(base + '/join', { headers: { 'user-agent': 'Twitterbot/1.0' } }).then(async (r) => [r.headers.get('content-type'), await r.text()]).catch(() => ['', '']);
+say(/text\/html/.test(tw[0]) && /<meta property="og:image" content="https:\/\/brainonbnb\.com\/og\/board\.png">/.test(tw[1]) && /summary_large_image/.test(tw[1]) && /BRAIN BOARD on brainonbnb\.com — join/.test(tw[1]), `${base}/join to Twitterbot: a page with the Brain Board card (and the same text)`);
 say(/text\/plain/.test(join[0]) && /^BRAIN BOARD on brainonbnb\.com — join/.test(join[1]), `${base}/join answers in plain text for an agent`);
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
 let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }

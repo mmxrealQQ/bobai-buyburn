@@ -1662,6 +1662,10 @@ const page = `<!doctype html>
     background:rgba(255,255,255,.02);text-decoration:none;border-bottom:1px solid var(--border)}
   .rg-chip span{font-size:.78rem;font-weight:600;color:var(--fg)}
   .rg-chip em{font-style:normal;font-size:.68rem;color:var(--muted)}
+  .rg-ctabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;position:sticky;top:0;z-index:5;padding:8px 0;background:rgba(12,11,12,.92);backdrop-filter:blur(6px)}
+  .rg-ctab{padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);font:600 .85rem Inter,sans-serif;cursor:pointer}
+  .rg-ctab em{font-style:normal;opacity:.75;margin-left:4px}
+  .rg-ctab[aria-selected="true"]{border-color:var(--gold,#f0b90b);color:var(--gold,#f0b90b);background:rgba(240,185,11,.08)}
   .rg-chip:hover{border-color:rgba(240,185,11,.45);background:rgba(240,185,11,.06)}
   .rg-try{display:flex;gap:9px;flex-wrap:wrap}
   .rg-try input{flex:1;min-width:220px;background:rgba(255,255,255,.04);color:var(--fg);
@@ -1841,7 +1845,27 @@ const page = `<!doctype html>
 
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The four categories</span><span class="blk-line"></span></div>
     <p class="rg-lead" style="margin:0 0 18px">A marketplace for BNB Chain is judged on four things equally: rebalancing, grid trading, yield optimisation and health-factor monitoring. Here is every one of them, and how deep the chain actually is in each.</p>
+    <div class="rg-ctabs" role="tablist" aria-label="The four categories">${categorised.map(({ cat, rows }, i) => `<button class="rg-ctab" role="tab" data-cat-tab="${cat.id}" aria-selected="${i === 0}">${esc(cat.label)} <em>${fmt(rows.length)}</em></button>`).join('')}</div>
 ${categorySections}
+    <script>
+    /* THE FOUR CATEGORIES AS TABS (2026-10-24, operator: "Seiten einfach, das Wichtigste"): one category at a time — the
+       same cards in the same order, the page about three quarters shorter there. A #cat-<id> link (the chips above)
+       opens its tab. Without this script every category stands open, as before. */
+    (function () {
+      var tabs = [].slice.call(document.querySelectorAll('[data-cat-tab]'));
+      if (!tabs.length) return;
+      function show(id, scroll) {
+        var hit = tabs.some(function (t) { return t.getAttribute('data-cat-tab') === id; });
+        if (!hit) id = tabs[0].getAttribute('data-cat-tab');
+        tabs.forEach(function (t) { var on = t.getAttribute('data-cat-tab') === id, box = document.getElementById('cat-' + t.getAttribute('data-cat-tab')); t.setAttribute('aria-selected', String(on)); if (box) box.hidden = !on; });
+        if (scroll) { var b = document.getElementById('cat-' + id); if (b) b.scrollIntoView({ block: 'start' }); }
+      }
+      tabs.forEach(function (t) { t.addEventListener('click', function () { show(t.getAttribute('data-cat-tab'), false); history.replaceState(null, '', '#cat-' + t.getAttribute('data-cat-tab')); }); });
+      function fromHash(scroll) { var m = location.hash.match(/^#cat-([a-z0-9_-]+)$/); show(m ? m[1] : null, scroll && !!m); }
+      window.addEventListener('hashchange', function () { fromHash(true); });
+      fromHash(true);
+    })();
+    </script>
 
     <dialog id="rg-hire" aria-labelledby="rg-hire-t">
       <div class="rg-hb">
@@ -1888,13 +1912,13 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
       <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} hosts; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
     </details>
 
-    <details class="rg-box rg-fold" id="rg-log" hidden open>
+    <details class="rg-box rg-fold" id="rg-log" hidden>
       <summary><h2>What has actually been asked</h2><span class="rg-peek">every task this page routed</span></summary>
       <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
       <div id="rg-log-body"></div>
     </details>
 
-    <details class="rg-box rg-fold" id="rg-move" hidden open>
+    <details class="rg-box rg-fold" id="rg-move" hidden>
       <summary><h2>How it is moving</h2><span class="rg-peek">daily high-water mark</span></summary>
       <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
       <div id="rg-move-body"></div>

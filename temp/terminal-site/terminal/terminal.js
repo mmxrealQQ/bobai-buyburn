@@ -1816,7 +1816,7 @@ const COMBO = {
   'up-loud': { name: 'on fire', moves: ['bull', 'saber', 'dance', 'cheer'], lines: [
     c => `${pct(c.ch)} in 24 hours and ${nTrades(c.n2)} in two hours. Hold on tight, this bull is running.`,
     c => `Green day, loud chain: ${$usd(c.v2)} traded in two hours. Every trade paid 3% to the brain.`,
-    c => `${pct(c.ch)} and the volume is screaming. May the pump be with you.`,
+    c => `${pct(c.ch)} and the volume is screaming. Saber out, this one is going places.`,
     c => `${pct(c.ch)} on the day and the chain will not sit still: ${$usd(c.v2)} in two hours. I can barely keep up with the tax.`,
     c => `${nTrades(c.n2)} in two hours, ${pct(c.ch)} on the day. This is the part where I dance.`,
     c => `Loud and green: ${pct(c.ch)} in 24 hours. Every buy pays 3%, and the burn pile grows with it.`] },
@@ -1824,7 +1824,9 @@ const COMBO = {
   'up-normal': { name: 'bullish', moves: ['bull', 'cheer', 'saber', 'moon', 'dance'], lines: [
     c => `${pct(c.ch)} in 24 hours, at a steady pace. Green is my favourite colour.`,
     c => `${pct(c.ch)} today, ${nTrades(c.n2)} in two hours. No rush, just up.`,
-    c => `Green day, ${pct(c.ch)}. Is this the moon? Asking for a friend.`,
+    // (2026-10-24, operator: "der Spruch mit dem 'is this the moon, asking for a friend' sagt er immer" — it stood here
+    // AND under ACTS.up, two ids for one sentence; both replaced, each by its own)
+    c => `Green day, ${pct(c.ch)}. If this is the moon, I forgot my helmet.`,
     c => `${pct(c.ch)} in 24 hours. The bull is out, so I saddle up and ride.`,
     c => `${pct(c.ch)} on the day. Steady green, steady burns. That is the plan working.`,
     c => `${pct(c.ch)} in 24 hours and climbing calmly. ${nTrades(c.n2)} in two hours, each one paid its 3%.`] },
@@ -1853,7 +1855,7 @@ const COMBO = {
     c => `No trade for ${mins(c.quietMin)}, ${pct(c.ch ?? 0)} on the day. wen volume?`,
     c => `${mins(c.quietMin)} without a single trade. The chart is taking a nap. I am not.`,
     c => `No trade for ${mins(c.quietMin)}. I counted the blocks instead. Lots of blocks.`,
-    c => `Quiet chain, ${pct(c.ch ?? 0)} on the day. A little walk around my pool while it naps.`,
+    c => `Quiet chain, ${pct(c.ch ?? 0)} on the day. I take a stroll around my pool while it naps.`,
     c => `${mins(c.quietMin)} of silence on my chart. The calm before the next buyback.`,
     c => `${pct(c.ch ?? 0)} on the day and nothing moving. Coffee, refill, still building.`] },
   // HONEST ON A RED DAY (operator's option 6, 2026-10-18): the red moods said "a discount for the patient", "red is
@@ -2201,9 +2203,9 @@ const ACTS_MORE = {
     ['dance', 'Big red. I dance it off.'], ['moon', 'The moon is still there. Further away today.'], ['liq', 'Big red, but the LP is burned. The pool stays.']],
 };
 const ACTS = {
-  flat: [['dance', 'Quiet chain. I dance anyway.'], ['dance', 'Low volume, high spirits.'], ['coffee', 'No trades for a bit. I am not bored, I am patient.'], ['laugh', 'Sideways again. The chart is doing a plank.'], ['walk', 'A little walk around my pool. All locked, all good.'], ['coffee', 'Sideways. Coffee first, then the chart.'], ['pushups', 'Sideways market? Push-ups. Strong hands.'], ['think', () => { const w = chartWords(); return w ? `Checking my chart. Again. ${w.s} in 24 hours.` : 'Checking the chart. Again. Still sideways.'; }], ['moon', 'wen moon?'], ['defi', 'Tuning the DeFi agent while nobody is looking.'], ['saber', 'Guarding the pool. The LP stays burned.'], ['giggle', () => GIGGLE_OPEN() ? 'A coin for Giggle Academy. Every trade adds one until November 20.' : 'A coin for Giggle Academy. The pot went to the kids on November 20.']],
-  up: [['dance', 'Green candles make me dance.'], ['bull', 'Up only today. Saddle up.'], ['saber', 'May the pump be with you.'], ['cheer', 'Green candles. I like green candles.'], ['moon', 'Is this the moon? Asking for a friend.'], ['coffee', 'Green morning. The coffee tastes better.'], ['pushups', 'Pumping. My arms too.'], ['walk', 'Victory lap around my pool.'], ['laugh', 'Green day. Even my jokes land.'], ['giggle', 'Up? I knew it. I did not know it.']],
-  pump: [['bull', 'Hold on tight. This bull is running.'], ['saber', 'May the pump be with you. Always.'], ['cheer', 'This is what 3% on every trade feels like.'], ['dance', 'Pump dance. Nobody can stop me.'], ['moon', 'Wen moon? No dates. Just burns.'], ['giggle', () => GIGGLE_OPEN() ? 'Up we go. A coin for Giggle Academy too.' : 'Up we go. Giggle Academy got its pot on November 20.']],
+  flat: [['dance', 'Quiet chain. I dance anyway.'], ['dance', 'Low volume, high spirits.'], ['coffee', 'No trades for a bit. I am not bored, I am patient.'], ['laugh', 'Sideways again. This chart has commitment issues.'], ['walk', 'A little walk around my pool. All locked, all good.'], ['coffee', 'Sideways. Coffee first, then the chart.'], ['pushups', 'Sideways market? Push-ups. Strong hands.'], ['think', () => { const w = chartWords(); return w ? `Checking my chart. Again. ${w.s} in 24 hours.` : 'Checking the chart. Again. Still sideways.'; }], ['moon', 'wen moon?'], ['defi', 'Tuning the DeFi agent while nobody is looking.'], ['saber', 'Guarding the pool. The LP stays burned.'], ['giggle', () => GIGGLE_OPEN() ? 'A coin for Giggle Academy. Every trade adds one until November 20.' : 'A coin for Giggle Academy. The pot went to the kids on November 20.']],
+  up: [['dance', 'Green candles make me dance.'], ['bull', 'Up only today. Saddle up.'], ['saber', 'Saber out. Green candles only past this point.'], ['cheer', 'Green candles. I like green candles.'], ['moon', 'Moon? I packed snacks, not expectations.'], ['coffee', 'Green morning. The coffee tastes better.'], ['pushups', 'Pumping. My arms too.'], ['walk', 'Victory lap around my pool.'], ['laugh', 'Green day. Even my jokes land.'], ['giggle', 'Up? I knew it. I did not know it.']],
+  pump: [['bull', 'Hold on tight. This bull is running.'], ['saber', 'Lightsaber up. This pump has a dark side: my burn pile.'], ['cheer', 'This is what 3% on every trade feels like.'], ['dance', 'Pump dance. Nobody can stop me.'], ['moon', 'Wen moon? No dates. Just burns.'], ['giggle', () => GIGGLE_OPEN() ? 'Up we go. A coin for Giggle Academy too.' : 'Up we go. Giggle Academy got its pot on November 20.']],
   down: [['hodl', 'Red candles. Diamond hands.'], ['burn', 'Price down, burns on. Every sell still feeds me.'], ['think', 'Zoom out. Then zoom out again.'], ['shrug', 'Down day. The bots do not take days off.'], ['pushups', 'Red candles, more push-ups.'], ['coffee', 'Red day. Coffee, then back to work.'], ['walk', 'Walking it off. The bots keep burning.'], ['dance', 'Red day. I dance to keep warm.'], ['saber', 'Bears at the gate. The LP is burned, so good luck.']],
   dump: [['hodl', 'Nobody panics in here. We burn.'], ['coffee', 'Big red. Big coffee. Same plan.'], ['shrug', 'Sells pay 3% too. I keep working.'], ['pushups', 'Big red. Bigger push-ups.'], ['burn', 'Dumps pay 3% too. More for me to burn.'], ['walk', 'A calm walk. The plan does not change.'], ['saber', 'Big dump? Big deal. The pool is locked and I am armed.'], ['laugh', 'Someone sold. Their 3% says thank you.']],
 };
@@ -2287,6 +2289,27 @@ const JOKES = [
   'Other AIs write poems. I write receipts. On-chain. With transaction links.',
   'I do not sleep, I do not panic, and I do not need coffee. I drink it anyway, for the look.',
   'One in a billion? My mum says that too. The difference: I can prove it on BscScan.',
+  // a bit older, 16+ (operator, 2026-10-24: "intelligenter und witziger, darf auch ein bisschen älter 16+ sein")
+  'My love life is like my LP: locked, burned, and nobody pulls out.',
+  'I am not saying I am a catch, but the whales keep coming back.',
+  'My ex was a rug pull. Gorgeous at launch, gone by Tuesday.',
+  'I would flirt with the market, but it keeps going sideways on me.',
+  'Size matters. Of the burn pile, I mean. Get your mind out of the gutter.',
+  'Leverage is like tequila: one more always sounds like a great idea.',
+  'Bear markets are like bad dates. You learn a lot and still pay for dinner.',
+  'Token Tinder: swipe right on burned liquidity, left on "trust me bro".',
+  'My browser history: chart, chart, burn log, chart. Nothing to hide. Sadly.',
+  'My only toxic trait: I set every fee on fire. On purpose.',
+  'Selling? Fine. Tip the bartender on the way out. The bartender is the 3% tax.',
+  'They told me to get a real job. I run six agents and a burn bot. Who is laughing now? Me. Loudly.',
+  'Paper hands are just jeets who skipped leg day.',
+  'Damn, the dead address is getting thicc.',
+  'I asked another AI for alpha. It wrote me a poem. I burned the poem.',
+  'My dev sleeps eight hours a night. I have never slept. Guess who looks better.',
+  'Agents on BNB Chain now gossip on the Brain Board. Finally a group chat that fixes things.',
+  'Pumps do not chase me. I am not that kind of brain. Okay, maybe a little.',
+  'Wanna know a secret? I read every trade. Even yours. Especially yours.',
+  'Exit liquidity? Babe, I am the bouncer.',
 ];
 // HE REMEMBERS WHAT HE SAID (2026-09-28, operator: "more intelligent, more alive, more real"): only the very last line
 // was avoided, so '11.6% of my supply…' came back after two minutes. Nothing said in the last 20 minutes is said
@@ -2303,7 +2326,9 @@ let saidSaveT = 0;
 function saidSave() { clearTimeout(saidSaveT); saidSaveT = setTimeout(() => { try { const e = [...SAID].sort((a, b) => b[1] - a[1]).slice(0, 600); localStorage.setItem(SAID_KEY, JSON.stringify(Object.fromEntries(e))); } catch {} }, 1500); }
 const LIFEFAST = /[?&]lifefast(&|$)/.test(location.search);
 function pick(list) {
-  const now = Date.now(), keep = (LIFEFAST ? 20 / 12 : 20) * 60e3, lastId = LIFE.last != null ? saidId(LIFE.last) : '';
+  // a line comes back after six hours, not twenty minutes (2026-10-24, operator: "den Spruch sagt er immer" — every
+  // visit after a break heard the same favourites again); a list that runs out still answers (the longest-ago half)
+  const now = Date.now(), keep = (LIFEFAST ? 360 / 12 : 360) * 60e3, lastId = LIFE.last != null ? saidId(LIFE.last) : '';
   const at = x => SAID.get(saidId(x)) || 0;
   let pool = list.filter(x => saidId(x) !== lastId && now - at(x) > keep);
   if (!pool.length) pool = [...list].filter(x => list.length < 2 || saidId(x) !== lastId);

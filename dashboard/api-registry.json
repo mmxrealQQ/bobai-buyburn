@@ -2,16 +2,16 @@
   "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-10-24T13:31:10.523Z",
-  "registered_ids": 382699,
-  "ids_scanned": 382699,
+  "measured_at": "2026-10-24T14:24:16.250Z",
+  "registered_ids": 382783,
+  "ids_scanned": 382783,
   "registrations": {
-    "parses": 170312,
+    "parses": 170337,
     "unparsable": 4600,
-    "empty": 11972,
-    "points_offchain": 195815,
+    "empty": 11984,
+    "points_offchain": 195862,
     "unread_after_retries": 0,
-    "active_flag": 167734,
+    "active_flag": 167759,
     "names_a_service": 2570,
     "has_http_endpoint": 2064,
     "endpoint_on_a_real_tld": 1610,
@@ -24,7 +24,7 @@
     "probed": 2064,
     "reachable": 995,
     "dead": 1069,
-    "answering_mcp": 329,
+    "answering_mcp": 295,
     "serving_an_agent_card": 379,
     "a2a_callable": 362,
     "a2a_confirmed_by_probe": 10
@@ -48,5 +48,5 @@
   "quote_agents_asked": 63,
   "quoted_when_asked": 29,
   "quoted_of_hireable": 28,
-  "quotes_measured_at": "2026-10-24T13:35:55.938Z"
+  "quotes_measured_at": "2026-10-24T14:27:11.124Z"
 }

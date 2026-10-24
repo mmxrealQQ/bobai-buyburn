@@ -1,13 +1,13 @@
 {
-  "cursor": 382700,
-  "highestId": 382699,
+  "cursor": 382784,
+  "highestId": 382783,
   "counts": {
     "unread": 0,
-    "empty": 11972,
+    "empty": 11984,
     "unparsable": 4600,
-    "offchain": 195815,
-    "valid": 170312,
-    "active": 167734,
+    "offchain": 195862,
+    "valid": 170337,
+    "active": 167759,
     "withServices": 2570,
     "withHttpEndpoint": 2064,
     "plausibleEndpoint": 1610,
@@ -16,6 +16,6 @@
     "x402": 13838
   },
   "startedAt": "2026-08-25T13:31:30.513Z",
-  "updatedAt": "2026-10-24T12:58:25.660Z",
+  "updatedAt": "2026-10-24T13:54:03.381Z",
   "pendingRetry": []
 }

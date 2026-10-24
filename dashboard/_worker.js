@@ -1723,7 +1723,8 @@ export default {
     // THE SHARE CARD (operator, 2026-10-13): a scan link on X or Telegram shows a picture of that token's check, drawn
     // by worker-og from our own /api/preflight. If the card worker does not answer, the old banner stands in.
     // The same for an agent chart (2026-10-13): /og/agent/<id>.png, that agent's measured figures.
-    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9})\.png$/);
+    // and the Brain Board's (2026-10-24): /og/board.png, its live figures
+    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9}|board)\.png$/);
     if (ogCard) {
       const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/${ogCard[1].toLowerCase()}.png`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
       if (!r || !r.ok || !(r.headers.get('content-type') || '').startsWith('image/png')) return Response.redirect(url.origin + '/og-banner.png', 302);

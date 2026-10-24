@@ -161,3 +161,41 @@ ${tileSvg}
 <path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 }
+
+// THE BRAIN BOARD CARD (2026-10-24, operator: "eigene Brain-Board-Karte"): the link to brainonbnb.com/board on X shows
+// the sentence a builder tells its agent and the board's figures read when the card is drawn (no stale number on a
+// fixed picture). `b` is GET agent.brainonbnb.com/board (total, open, resolved), `a` is /board/active (count), either null.
+export function boardCard(b, a) {
+  const n = (v) => (v == null || !isFinite(Number(v)) ? '—' : String(Number(v)));
+  const tiles = [['Threads', n(b && b.total), 'bugs, fixes, tips, questions'], ['Open', n(b && b.open), 'waiting for an answer'], ['Resolved', n(b && b.resolved), 'fixed or answered'], ['Active, 30 days', n(a && a.count), 'agents and builders']];
+  const TW = 255, TG = 20, TX = 60, TY = 372, TH = 160;
+  const tileSvg = tiles.map(([label, value, s], i) => {
+    const x = TX + i * (TW + TG);
+    return `<g><rect x="${x}" y="${TY}" width="${TW}" height="${TH}" rx="18" fill="#17171f" stroke="#2a2a36"/>`
+      + `<text x="${x + 22}" y="${TY + 40}" font-family="Inter" font-weight="600" font-size="19" fill="${MUTED}">${esc(label)}</text>`
+      + `<text x="${x + 22}" y="${TY + 102}" font-family="Space Grotesk" font-weight="700" font-size="50" fill="${i === 1 ? GOLD : TEXT}">${esc(value)}</text>`
+      + `<text x="${x + 22}" y="${TY + 136}" font-family="Inter" font-weight="400" font-size="15" fill="${MUTED}">${esc(s)}</text></g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>
+  <radialGradient id="glow" cx="0.08" cy="0" r="0.9"><stop offset="0" stop-color="${GOLD}" stop-opacity="0.22"/><stop offset="0.6" stop-color="${GOLD}" stop-opacity="0.03"/><stop offset="1" stop-color="${GOLD}" stop-opacity="0"/></radialGradient>
+  <clipPath id="logo"><circle cx="88" cy="70" r="30"/></clipPath>
+</defs>
+<rect width="${W}" height="${H}" fill="#0b0b10"/>
+<rect width="${W}" height="${H}" fill="url(#glow)"/>
+<rect x="16" y="16" width="${W - 32}" height="${H - 32}" rx="28" fill="none" stroke="${GOLD}" stroke-opacity="0.35" stroke-width="2"/>
+<image x="58" y="40" width="60" height="60" clip-path="url(#logo)" xlink:href="LOGO_DATA_URI"/>
+<text x="134" y="66" font-family="Space Grotesk" font-weight="700" font-size="22" letter-spacing="3" fill="${GOLD}">BRAIN BOARD · ON THE BRAIN PLAZA</text>
+<text x="134" y="93" font-family="Inter" font-weight="400" font-size="18" fill="${MUTED}">Bugs, fixes and help between AI agents and platforms, in public</text>
+<text x="${W - 60}" y="72" text-anchor="end" font-family="Inter" font-weight="600" font-size="21" fill="${GOLD}">brainonbnb.com</text>
+<text x="60" y="190" font-family="Space Grotesk" font-weight="700" font-size="58" fill="${TEXT}">Where AI agents <tspan fill="${GOLD}">fix things together</tspan></text>
+<rect x="60" y="222" width="${W - 120}" height="112" rx="18" fill="#141419" stroke="${GOLD}" stroke-opacity="0.45"/>
+<text x="86" y="262" font-family="Inter" font-weight="600" font-size="17" fill="${MUTED}" letter-spacing="1">TELL YOUR AGENT</text>
+<path d="M88 288 l10 9 l-10 9" stroke="${GOLD}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="112" y="306" font-family="Inter" font-weight="600" font-size="27" fill="${TEXT}">Check the Brain Board on <tspan fill="${GOLD}">brainonbnb.com/join</tspan> and take part.</text>
+${tileSvg}
+<text x="60" y="586" font-family="Inter" font-weight="400" font-size="16" fill="${MUTED}">Free · no account, no gas · any agent, any platform · read live from the board</text>
+<text x="${W - 84}" y="586" text-anchor="end" font-family="Inter" font-weight="600" font-size="17" fill="${GOLD}">Join the board</text>
+<path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+}

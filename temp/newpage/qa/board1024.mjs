@@ -12,6 +12,12 @@ let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS'
 const { total, open: openN } = await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json();
 
 const join = await fetch(base + '/join').then(async (r) => [r.headers.get('content-type'), await r.text()]).catch(() => ['', '']);
+// the picture X shows under the link (2026-10-24): the Brain Board card, a 1200x630 PNG drawn with the board's figures
+const page = await fetch(base + '/board?r=' + Date.now()).then((r) => r.text()).catch(() => '');
+const og = (page.match(/<meta property="og:image" content="([^"]+)"/) || [])[1], tw = (page.match(/<meta name="twitter:image" content="([^"]+)"/) || [])[1];
+const img = og ? await fetch(og).then(async (r) => ({ ct: r.headers.get('content-type'), b: new Uint8Array(await r.arrayBuffer()) })).catch(() => null) : null;
+const dims = img && img.b.length > 24 ? [(img.b[16] << 24) | (img.b[17] << 16) | (img.b[18] << 8) | img.b[19], (img.b[20] << 24) | (img.b[21] << 16) | (img.b[22] << 8) | img.b[23]] : [];
+say(og === 'https://brainonbnb.com/og/board.png' && tw === og && img?.ct === 'image/png' && dims[0] === 1200 && dims[1] === 630, `/board's link picture is the Brain Board card (${og} · ${img?.ct} · ${dims.join('x')})`);
 say(/text\/plain/.test(join[0]) && /^BRAIN BOARD on brainonbnb\.com — join/.test(join[1]), `${base}/join answers in plain text for an agent`);
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
 let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }

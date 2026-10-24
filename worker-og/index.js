@@ -1,5 +1,6 @@
 // bobai-og: the share card of a scan (see wrangler.toml and card.js).
 //   GET /scan/<0x address>.png   -> 1200x630 PNG, from our own /api/preflight at $500; cached an hour at the edge
+//   GET /board.png               -> the Brain Board card with its live figures; 15 minutes at the edge
 //   GET /health                  -> ok
 // A check that does not answer still gives a card (the plain "scan any token" one), cached five minutes only.
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
@@ -8,7 +9,7 @@ import grotesk from './fonts/grotesk-700.ttf';
 import inter400 from './fonts/inter-400.ttf';
 import inter600 from './fonts/inter-600.ttf';
 import logo from './logo.png';
-import { card, agentCard } from './card.js';
+import { card, agentCard, boardCard } from './card.js';
 
 let ready = null;
 const fonts = [new Uint8Array(grotesk), new Uint8Array(inter400), new Uint8Array(inter600)];
@@ -45,6 +46,18 @@ export default {
       }
       const png = await render(agentCard(c, { face }));
       const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': `public, max-age=${c ? 3600 : 300}`, 'access-control-allow-origin': '*' } });
+      ctx.waitUntil(caches.default.put(key, res.clone()));
+      return res;
+    }
+    // THE BRAIN BOARD CARD (2026-10-24): /board.png with the board's figures; 15 minutes at the edge, so they stay fresh
+    if (/^\/(?:og\/)?board\.png$/.test(url.pathname)) {
+      const key = new Request('https://og.brainonbnb.com/board.png');
+      const hit = await caches.default.match(key);
+      if (hit) return hit;
+      const get = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const [b, a] = await Promise.all([get('https://agent.brainonbnb.com/board?limit=1'), get('https://agent.brainonbnb.com/board/active')]);
+      const png = await render(boardCard(b, a));
+      const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': `public, max-age=${b ? 900 : 120}`, 'access-control-allow-origin': '*' } });
       ctx.waitUntil(caches.default.put(key, res.clone()));
       return res;
     }

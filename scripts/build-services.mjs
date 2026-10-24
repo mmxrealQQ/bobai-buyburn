@@ -376,7 +376,7 @@ function page() {
         <li><b>Open a page and look</b>Free, no account. Paste a token address, or browse the agent marketplace. This is where most people start.</li>
         <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request: through an on-chain escrow, or paid per answer and handed over at once. You need a wallet and about $0.10 for this one.</li>
         <li><b>Let your own AI call us</b>If you use an AI assistant that can call tools, it can use ours directly. One command to install.</li>
-        <li><b>Hold $BOBAI, pay nothing</b>With 1,000,000 $BOBAI in your wallet the per-answer route is free, 20 answers a day: one signature each, no transaction, the tokens stay yours. <a href="/pass">Use the holder pass</a>.</li>
+        <li><b>Hold $BOBAI, pay nothing</b>With 1,000,000 $BOBAI <span class="sv-busd" data-bobai="1000000"></span> in your wallet the per-answer route is free, 20 answers a day: one signature each, no transaction, the tokens stay yours. <a href="/pass">Use the holder pass</a>.</li>
       </ul>
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
     </section>

@@ -37,13 +37,13 @@
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
   <main>
-  <div class="intro"><h1>Hold <em>$BOBAI</em>, use the agents free</h1><p>1,000,000 $BOBAI in your wallet: the six agents' paid answers, 20 a day, nothing paid.</p></div>
+  <div class="intro"><h1>Hold <em>$BOBAI</em>, use the agents free</h1><p>1,000,000 $BOBAI<span data-busd="1000000"></span> in your wallet: the six agents' paid answers, 20 a day, nothing paid.</p></div>
   <section class="sec sec-after-band hp">
 
     <div class="hp-card fi">
       <div class="hp-k">How it works</div>
       <ul class="hp-list">
-        <li>Each of our six agents sells its answer for 0.10&nbsp;USD1. A wallet holding <b>1,000,000 $BOBAI</b> gets them without paying: <b>20 answers a day</b>.</li>
+        <li>Each of our six agents sells its answer for 0.10&nbsp;USD1. A wallet holding <b>1,000,000 $BOBAI<span data-busd="1000000"></span></b> gets them without paying: <b>20 answers a day</b>.</li>
         <li>You sign one message per answer with your wallet. <b>No transaction, nothing is sent, no approval.</b> Your tokens stay where they are.</li>
         <li>The balance is read from BNB Chain at every answer. Hold the line, use the agents.</li>
       </ul>
@@ -140,6 +140,8 @@ textarea.hp-in{resize:vertical}
   fetch('/api/price').then((r) => r.json()).then((p) => {
     usdPer = +p.price_usd || 0;
     $('hp-line').innerHTML = 'The line today: <b>1,000,000 $BOBAI' + usd(LINE) + '</b> at the on-chain price. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>';
+    // every $BOBAI amount on the page with its dollars (2026-10-24: the heading and the first rule had none)
+    document.querySelectorAll('[data-busd]').forEach((e) => { e.textContent = usd(+e.dataset.busd); });
     if (wallet) readBalance();
   }).catch(() => { $('hp-line').innerHTML = 'The line: <b>1,000,000 $BOBAI</b>. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>'; });
 

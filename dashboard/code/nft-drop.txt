@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1373 lines.
+# one fetch. 10 files, 1382 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -287,6 +287,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .coll-card img{width:100%;height:auto;display:block;aspect-ratio:1024/1280;object-fit:cover}
 .coll-card .label{padding:6px 8px;font-size:.6rem;text-align:center;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;font-weight:600;font-family:'Space Grotesk',sans-serif}
 @media(max-width:760px){.collection-grid{grid-template-columns:repeat(4,1fr)}}
+/* A PHONE SEES MORE AT ONCE (2026-10-24, operator chose variant A: the page was 7,957 px on a phone): each tier's seven
+   cards one row to swipe sideways; every picture stays. (The tiers two across were tried and taken back: the price ran
+   into the count and the rarity cells were cut at the edge.) */
+@media(max-width:560px){
+  .collection-tier{margin-bottom:20px}
+  .collection-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:8px;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .coll-card{flex:0 0 21.5%;min-width:0;scroll-snap-align:start}   /* the fifth card peeks in: there is more to swipe */
+  .coll-card .label{padding:4px 4px;font-size:.52rem}
+}
 
 footer{text-align:center;color:var(--muted);font-size:.74rem;padding:48px 24px 36px;border-top:1px solid var(--border);margin-top:48px}
 footer a{color:var(--muted)}

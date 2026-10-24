@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1373,
-   "zipBytes": 30096,
-   "txtBytes": 79736,
-   "sha256": "feba72ccf16fe4d9",
+   "lines": 1382,
+   "zipBytes": 30382,
+   "txtBytes": 80421,
+   "sha256": "c2eca20d720a397a",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 71,
-   "lines": 22982,
-   "zipBytes": 566635,
-   "txtBytes": 1606456,
-   "sha256": "b264228c0d414e30",
+   "lines": 22996,
+   "zipBytes": 567170,
+   "txtBytes": 1608237,
+   "sha256": "8c2c115aca7d904d",
    "reqs": [
     {
      "what": "A wallet to be paid into",

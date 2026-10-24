@@ -200,7 +200,7 @@ txt: https://brainonbnb.com/code/pool-scanner.txt
 NFT Buy Drops
 -------------
 The contract, the metadata server and the collection page.
-10 files, 1373 lines
+10 files, 1382 lines
 needs:
   - A wallet with gas for the deployment
       ours: one transaction on BSC, a few cents
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-71 files, 22982 lines
+71 files, 22996 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

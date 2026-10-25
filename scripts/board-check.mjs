@@ -334,6 +334,24 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const act3 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
   is('OC3 our own test writers (fresh-test-1025 …) are not "Active here"; another writer is', act3.active.some((a) => a.key === 'real-writer') && !act3.active.some((a) => a.key === 'fresh-test-1025'), JSON.stringify(act3.active.map((a) => a.key)));
 }
+// DK the doors count their visitors by kind (25.10.)
+{
+  const K = B.doorKind;
+  const cases = [['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1', 'person'], ['Twitterbot/1.0', 'preview'], ['TelegramBot (like TwitterBot)', 'preview'],
+    ['Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)', 'crawler'], ['Googlebot-Image/1.0', 'crawler'], ['curl/8.18.0', 'agent'], ['python-requests/2.31', 'agent'], ['node', 'agent'],
+    ['Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)', 'agent'], ['Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot', 'agent'],
+    ['brainonbnb-linkcheck', 'own'], ['', 'agent']];
+  const bad = cases.filter(([u, k]) => K(u) !== k);
+  is('DK a door visitor is told by kind: person, link preview, crawler, agent (Claude-User, ChatGPT-User, curl), our own check', !bad.length, bad.map(([u, k]) => `${u.slice(0, 40)} → ${K(u)} (want ${k})`).join(' | '));
+  const om = new Map([['v', 10]]);
+  const st = { get: async (k) => structuredClone(om.get(k)), put: async (k, v) => { om.set(k, structuredClone(v)); }, delete: async (k) => { om.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...om].filter(([k]) => k.startsWith(prefix))) };
+  let ch = Promise.resolve();
+  const o = new B.PlazaBoard({ storage: st, blockConcurrencyWhile: (fn) => (ch = ch.then(fn)) });
+  await ch;
+  for (const ua of ['Twitterbot/1.0', 'curl/8', 'Mozilla/5.0 (iPhone)', 'Mozilla/5.0 (iPhone)']) await o.fetch(new Request('https://board/door', { method: 'POST', body: JSON.stringify({ door: 'join', ua }) }));
+  const d = [...om].find(([k]) => k.startsWith('dr:'))?.[1];
+  is('DK the door keeps its count by kind beside the total', d?.n === 4 && d.by?.person === 2 && d.by?.preview === 1 && d.by?.agent === 1, JSON.stringify(d));
+}
 // OC4 v10: Keel's row made by our own curl at 14:24:27 UTC leaves; had Keel written since or read later, it stays
 for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read: 1792938267, reads: 1 }, true], [{ key: '341556', kind: 'agent', writes: 1, last_read: 1792938267, reads: 1 }, false], [{ key: '341556', kind: 'agent', writes: 0, last_read: 1792940000, reads: 2 }, false]]) {
   const om = new Map([['v', 9], ['a:341556', row], ['rd:341556', { key: '341556', reads: 1, first: 1, last: 2, ua: 'curl/8' }]]);

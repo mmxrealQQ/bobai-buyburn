@@ -40,6 +40,6 @@ console.log(`\nBriefs read since ${since ? when(since) + ' UTC' : 'the start'}: 
 for (const r of reads) console.log(`  ${when(r.last)}  ${r.key}: ${r.reads} read${r.reads === 1 ? '' : 's'} since ${when(r.first)} · ${r.ua || '-'}`);
 const sinceDay = since ? when(since).slice(0, 10) : '';
 const doors = (rd?.doors || []).filter((d) => d.day >= sinceDay);
-if (doors.length) console.log(`Doors opened (by day): ${doors.map((d) => `${d.day} ${d.door} ${d.n}x`).join(' · ')}\n  last visitors: ${[...new Set(doors.flatMap((d) => d.ua))].slice(0, 5).join(' | ')}`);
+if (doors.length) console.log(`Doors opened (by day): ${doors.map((d) => `${d.day} ${d.door} ${d.n}x${d.by ? ' (' + Object.entries(d.by).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ') + ')' : ''}`).join(' · ')}\n  last visitors: ${[...new Set(doors.flatMap((d) => d.ua))].slice(0, 5).join(' | ')}`);
 console.log('\nhttps://brainonbnb.com/board');
 if (!process.argv.includes('--keep') && !process.argv.includes('--all') && !arg('--since')) fs.writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));

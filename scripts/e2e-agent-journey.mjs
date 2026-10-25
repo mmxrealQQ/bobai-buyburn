@@ -25,9 +25,14 @@ step('the x402 catalogue lists the paid resources', (x402.body?.resources || [])
 
 // 2. MEASURE (free)
 const init = await rpc(`${S}/mcp`, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
-step('MCP initialize', init.body?.result?.serverInfo?.version === '1.5.1', init.body?.result?.serverInfo?.version);
+// held against what a stranger reads elsewhere, not against a number typed here (2026-10-25: this said 1.5.1 and 26
+// while the server, the registry and llms.txt all said 1.7.0 and 29 — the check was the stale part)
+const latest = ((mreg.body?.servers || []).find((x) => (x.server || x).name === 'com.brainonbnb/bobai' && (x._meta?.['io.modelcontextprotocol.registry/official'] || {}).isLatest) || {}).server?.version;
+step('MCP initialize: the version the official registry lists as latest', !!latest && init.body?.result?.serverInfo?.version === latest, `server ${init.body?.result?.serverInfo?.version} / registry ${latest}`);
 const tl = await rpc(`${S}/mcp`, 'tools/list');
-step('MCP lists 26 tools', (tl.body?.result?.tools || []).length === 26, `${(tl.body?.result?.tools || []).length}`);
+const llmsTxt = await fetch(`${S}/llms.txt`).then((r) => r.text()).catch(() => '');
+const said = +((llmsTxt.match(/(\d+) free tools/) || [])[1] || 0);
+step('MCP lists as many tools as llms.txt says', said > 0 && (tl.body?.result?.tools || []).length === said, `${(tl.body?.result?.tools || []).length} listed / ${said} in llms.txt`);
 const pf = await rpc(`${S}/mcp`, 'tools/call', { name: 'bsc_token_preflight', arguments: { address: CAKE, usd: 250 } });
 step('a pre-trade check on CAKE answers', pf.body?.result && !pf.body.result.isError, (pf.body?.result?.content?.[0]?.text || '').slice(0, 80).replace(/\s+/g, ' '));
 const look = await rpc(`${S}/mcp`, 'tools/call', { name: 'pancakeswap_position_look', arguments: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } });

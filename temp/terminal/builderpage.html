@@ -44,6 +44,17 @@ video { display: block; width: 100%; max-width: 100%; aspect-ratio: 9 / 16; obje
 .cap code { font: 11px var(--mono); color: var(--mut); }
 .cap .role { color: var(--gold); font-size: 11.5px; }
 .cap .note { color: var(--mut); font-size: 11.5px; }
+.cap .born { color: var(--fg); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+h3.dg { font-size: 15px; margin: 22px 0 10px; color: var(--fg); }
+h3.dg small { color: var(--mut); font-weight: 400; margin-left: 6px; }
+.take { position: relative; }
+.pick { display: none; position: absolute; top: 6px; right: 6px; z-index: 2; gap: 6px; }
+body.can-pick .pick { display: flex; }
+.pick .pk { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.55); color: var(--fg); font: 700 20px/1 system-ui, sans-serif; cursor: pointer; }
+.pick .pk.ok:hover { border-color: #3ecf8e; } .pick .pk.no:hover { border-color: #ff5d6c; }
+.take.pick-ok { outline: 3px solid #3ecf8e; outline-offset: 2px; } .take.pick-ok .pk.ok { background: #3ecf8e; color: #08130d; border-color: #3ecf8e; }
+.take.pick-no { outline: 3px solid #ff5d6c; outline-offset: 2px; } .take.pick-no .pk.no { background: #ff5d6c; color: #1a0508; border-color: #ff5d6c; }
+.pick-sum { margin-left: 10px; color: var(--fg); }
 body.nolive .take.live, body.noheld .take.held { display: none; }
 .ovw { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
 table.ov { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -110,9 +121,28 @@ const D = /*DATA*/null;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const LAB = { live: 'Live', held: 'Withheld', pend: 'New · your pick' };
 const panel = document.getElementById('panel');
-const takeHtml = (t, mv) => `<figure class="take ${t.st}" id="${t.code}"><video src="${t.v}#t=0.1" muted loop playsinline preload="metadata" controls></video>
+// ✓ / ✗ ON A TAKE TO DECIDE (2026-10-25, operator: "Häkchen für ja und Kreuzchen für nein … wenn gemacht, sage ich es
+// dir und du siehst es"): saved through /builder/decide (signed in, kept on the agent server); a second click on the
+// same mark takes it back. Off the site (the artifact copy) the marks stay hidden.
+const pickHtml = t => `<span class="pick" data-clip="${esc(t.clip)}" data-code="${esc(t.code)}"><button type="button" class="pk ok" data-c="ok" title="ok: plays in the terminal">✓</button><button type="button" class="pk no" data-c="no" title="no: withheld">✗</button></span>`;
+let PICKS = null;
+const paintPicks = () => {
+  if (!PICKS) return;
+  document.querySelectorAll('.pick').forEach(p => { const c = PICKS[p.dataset.clip]?.choice || ''; const f = p.closest('figure'); f.classList.toggle('pick-ok', c === 'ok'); f.classList.toggle('pick-no', c === 'no'); });
+  const all = [...new Set([...document.querySelectorAll('#decide .pick')].map(p => p.dataset.clip))], ok = all.filter(c => PICKS[c]?.choice === 'ok').length, no = all.filter(c => PICKS[c]?.choice === 'no').length;
+  const s = document.getElementById('pick-sum'); if (s) s.textContent = `✓ ${ok} · ✗ ${no} · open ${all.length - ok - no}`;
+};
+const loadPicks = () => fetch('/builder/decide', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.picks) { PICKS = j.picks; document.body.classList.add('can-pick'); paintPicks(); } }).catch(() => {});
+document.addEventListener('click', e => {
+  const b = e.target.closest('.pick .pk'); if (!b || !PICKS) return;
+  const p = b.closest('.pick'), clip = p.dataset.clip, choice = PICKS[clip]?.choice === b.dataset.c ? null : b.dataset.c;
+  fetch('/builder/decide', { method: 'POST', headers: { 'content-type': 'application/json', 'x-builder': '1' }, body: JSON.stringify({ clip, code: p.dataset.code, choice }) })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status)).then(j => { PICKS = j.picks; paintPicks(); }).catch(err => alertLine('not saved (' + err + ') — try again'));
+});
+const alertLine = m => { const s = document.getElementById('pick-sum'); if (s) s.textContent = m; };
+const takeHtml = (t, mv, pick) => `<figure class="take ${t.st}" id="${t.code}">${pick ? pickHtml(t) : ''}<video src="${t.v}#t=0.1" muted loop playsinline preload="metadata" controls></video>
   <figcaption class="cap"><span class="row"><b class="code">${t.code}</b><span class="st">${LAB[t.st]}</span></span>
-  ${mv ? `<span>${esc(mv)}</span>` : ''}<code>${esc(t.clip)}</code>${t.role ? `<span class="role">${esc(t.role)}</span>` : ''}${t.note ? `<span class="note">${esc(t.note)}</span>` : ''}</figcaption></figure>`;
+  ${mv ? `<span>${esc(mv)}</span>` : ''}<code>${esc(t.clip)}</code>${t.born ? `<span class="born">made ${esc(t.born)}</span>` : ''}${t.role ? `<span class="role">${esc(t.role)}</span>` : ''}${t.note ? `<span class="note">${esc(t.note)}</span>` : ''}</figcaption></figure>`;
 
 function terminal() {
   const all = D.moves.flatMap(m => m.takes), n = s => all.filter(t => t.st === s).length;
@@ -120,6 +150,13 @@ function terminal() {
   let h = `<div class="sub">${n('live')} live · ${n('held')} withheld · ${n('pend')} new
     <label><input type="checkbox" id="f-live" checked> show live</label><label><input type="checkbox" id="f-held" checked> show withheld</label></div>
     <div class="jump"><a href="#ov"><b>ALL</b> overview</a>${pend.length ? '<a href="#new"><b>NEW</b> to pick</a>' : ''}${D.moves.map(m => `<a href="#m-${m.move}"><b>${m.letter}</b> ${esc(m.move)}</a>`).join('')}</div>`;
+  const dec = g => D.moves.flatMap(m => m.takes.filter(t => t.decide === g).map(t => takeHtml(t, m.move, true)));
+  const dMine = dec('mine'), dMe = dec('me'), dYou = dec('you');
+  if (dMine.length + dMe.length + dYou.length) h += `<section id="decide"><h2><span class="c">DECIDE</span> ok or not, take by take <small>${dMine.length + dMe.length + dYou.length}</small> <small id="pick-sum" class="pick-sum"></small></h2>
+    <p class="note-box">Click <b>✓</b> = ok, it plays in the terminal · <b>✗</b> = no, it is withheld. A second click on the same mark takes it back. Your marks are saved at once; when you are done, tell Claude — it reads them and carries them out. Takes without a mark stay as they are.</p>
+    ${dMine.length ? `<h3 class="dg">1 · Live, released by Claude, never confirmed by you <small>${dMine.length}</small></h3><div class="grid">${dMine.join('')}</div>` : ''}
+    ${dMe.length ? `<h3 class="dg">2 · Withheld on Claude's judgement — a good one may wait here unplayed <small>${dMe.length}</small></h3><div class="grid">${dMe.join('')}</div>` : ''}
+    ${dYou.length ? `<h3 class="dg">3 · Withheld on your word earlier — in case you think again <small>${dYou.length}</small></h3><div class="grid">${dYou.join('')}</div>` : ''}</section>`;
   const fresh = D.moves.flatMap(m => m.takes.filter(t => t.made && t.st === 'live').map(t => takeHtml({ ...t, note: [`made by Claude on ${t.made}`, t.note].filter(Boolean).join(' · ') }, m.move)));
   if (fresh.length) h += `<section id="fresh"><h2><span class="c">NEW</span> live since the last days, made by Claude — your OK? <small>${fresh.length}</small></h2>
     <p class="note-box">These already play in the terminal. Tell Claude the code of any you do not like (for example "ZZN1 weg") and it is pulled at once; the ones you keep stay as they are.</p><div class="grid">${fresh.join('')}</div></section>`;
@@ -196,6 +233,7 @@ function show(tab, keepHash) {
   TABS[tab](); try { localStorage.setItem('bb-tab', tab); } catch {}
   // a video plays while the pointer rests on it, and stops when it leaves
   panel.querySelectorAll('video').forEach(v => { v.addEventListener('mouseenter', () => v.play().catch(() => {})); v.addEventListener('mouseleave', () => v.pause()); });
+  if (PICKS) paintPicks(); else loadPicks();
   if (!keepHash) window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { show(b.dataset.tab); history.replaceState(null, '', '#' + b.dataset.tab); }));

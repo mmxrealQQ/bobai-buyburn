@@ -1926,6 +1926,20 @@ export default {
       })().catch(() => {}));
     };
 
+    // THE OPERATOR'S PICKS ON THE BUILDER PAGE (2026-10-25, operator: "Häkchen für ja und Kreuzchen für nein … wenn gemacht,
+    // sage ich es dir und du siehst es"): brainonbnb.com/builder (behind its password) passes each click on with the
+    // operator's secret; one KV value, a pick per clip ({code, choice ok|no, at}); choice null takes a pick back
+    if (path === '/builder/decide') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const picks = JSON.parse((await env.AGENT.get('builder:decide')) || '{}');
+      if (request.method === 'POST') {
+        const p = await request.json().catch(() => ({})), clip = String(p.clip || ''), choice = p.choice ?? null;
+        if (!/^[a-z0-9-]{1,60}$/.test(clip) || !['ok', 'no', null].includes(choice)) return json({ error: 'clip, and choice ok, no or null' }, 400);
+        if (choice === null) delete picks[clip]; else picks[clip] = { code: String(p.code || '').slice(0, 8), choice, at: new Date().toISOString() };
+        await env.AGENT.put('builder:decide', JSON.stringify(picks));
+      }
+      return json({ picks });
+    }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url, ctx); }
 

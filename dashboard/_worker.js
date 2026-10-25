@@ -1740,6 +1740,13 @@ export default {
       if (same) { let d = 0; for (let i = 0; i < want.length; i++) d |= want.charCodeAt(i) ^ got.charCodeAt(i); same = d === 0; }
       if (!same) return new Response('Builder sheet: sign in with the username and password you were given.', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="BOBAI builders", charset="UTF-8"', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
       if (url.pathname === '/builder') return Response.redirect(url.origin + '/builder/', 301);
+      // the operator's ✓ / ✗ on a take (2026-10-25): signed in above, passed on with our secret to the agent server's
+      // KV; the x-builder header forces a CORS preflight, so no other site can click for a signed-in browser
+      if (url.pathname === '/builder/decide') {
+        if (request.method === 'POST' && request.headers.get('x-builder') !== '1') return new Response('{"error":"x-builder header missing"}', { status: 400, headers: { 'Content-Type': 'application/json' } });
+        const r = await fetch('https://agent.brainonbnb.com/builder/decide', { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET || '' }, body: request.method === 'POST' ? await request.text() : undefined });
+        return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
+      }
       const res = await env.ASSETS.fetch(request), out = new Response(res.body, res);
       out.headers.set('Cache-Control', 'private, no-store'); out.headers.set('X-Robots-Tag', 'noindex, nofollow');
       return out;

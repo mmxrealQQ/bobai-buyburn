@@ -42,9 +42,20 @@ def still(src, dst, w):
 
 # 1. the terminal's takes
 import time
+OPERATOR_OK = {'hub-board-bug', 'hub-board-plane', 'hub-board-detective'}  # 25.10. operator: "die sind super"
+MINE_HELD = {'hub-hire-v2'}  # its note names the operator (he approved the first take), but holding this one back was Claude's call
+MINE_LIVE = {  # released by Claude, never confirmed by the operator (anim/cut.txt)
+    'hub-ouch': '6.10. released by Claude: the Halloween moon hits his head (clipcheck: his face in every frame)',
+    'hub-ouch-v3': '6.10. released by Claude: the moon hits his head, second take (clipcheck: his face in every frame)',
+    'hub-zen': '10.10. released by Claude: palms together, floats cross-legged, lands',
+    'hub-zen-v2': '10.10. released by Claude: deep breath, arms over head, tree pose, steps down',
+    'hub-popcorn-v3': '10.10. released by Claude: watches like at the movies, eats, crumples the bucket and pockets it',
+    'hub-paid-v3': '22.10. released by Claude: the paper bird stays low beside him (an agent paid a service)'}
 for m in moves:
     for t in m['takes']:
-        t['v'] = f"v/{t['code']}.mp4"; preview(os.path.join(ANIM, t['file']), os.path.join(OUT, t['v']))
+        # named by the CLIP, never by the code (2026-10-25: when the codes moved back, v/ZZN1.mp4 — built as board-bug —
+        # would have stood as ZZN1 guitar, since a file newer than its source is never built again)
+        t['v'] = f"v/{t['clip']}.mp4"; preview(os.path.join(ANIM, t['file']), os.path.join(OUT, t['v']))
         # NEW AND ALREADY LIVE (2026-10-25, operator: "die neuen Videos ganz oben im /builder, damit ich sie sehe und
         # freigeben kann … dann sehe ich auch gleich, welche du gemacht hast"): a take shot in the last 36 hours (the ones of 22.10. he had already seen and released) that
         # plays live stands at the very top with its day, so the operator can still say no
@@ -55,6 +66,20 @@ for m in moves:
                 'board-plane': 'plays when an agent only answers on the Brain Board',
                 'board-detective': 'plays when an agent opens a question, tip or note on the Brain Board'}
         if m['move'] in WHEN and not t.get('note'): t['note'] = WHEN[m['move']]
+        # TO DECIDE, ALL AT THE TOP (2026-10-25, operator: "sortiere alle, bei welchen du unsicher bist, ganz oben; dann
+        # sage ich, welches ok ist und welches nicht … sonst sind evtl. super Animationen drin, die nie abgespielt werden"):
+        #   mine  live, released by Claude after 6.10., never confirmed by the operator
+        #   me    withheld on Claude's judgement — a good take may wait here unplayed
+        #   you   withheld on the operator's word, shown in case he thinks again
+        # THE DAY IT WAS MADE, on every take (2026-10-25, operator: "füge jeweils noch das Herstellungsdatum an"): the
+        # untouched original (<clip>.raw.mp4) or the take itself, the earlier — a re-key or a trim later moves a file's date
+        days = [os.path.getmtime(p) for p in (os.path.join(ANIM, t['clip'] + '.raw.mp4'), os.path.join(ANIM, t['file'])) if os.path.exists(p)]
+        t['born'] = time.strftime('%d.%m.%Y', time.gmtime(min(days))) if days else ''
+        if t['clip'] in OPERATOR_OK: t.pop('made', None)
+        if t['st'] == 'held':
+            t['decide'] = 'me' if t['clip'] in MINE_HELD or not re.search(r'operator', t.get('note', ''), re.I) else 'you'
+        elif t['st'] == 'live' and t['clip'] in MINE_LIVE:
+            t['decide'] = 'mine'; t['note'] = MINE_LIVE[t['clip']]
 # 2. Halloween: the clown's clips and every picture of the look
 clown = []
 for k, what in (('climb', 'He grips the gravestone\'s rim and pulls himself up beside it'), ('sneak', 'Tiptoe steps; the page carries him over behind BOBAI (mirrored for the other side)'),

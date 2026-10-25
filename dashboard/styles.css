@@ -1362,18 +1362,13 @@
     /* THE LINK SYSTEM — the same on every page that loads this file.
        Links in text carry no class (buttons, nav items, cards and logos carry
        one, or wrap an image, and keep their own styling; the home menu is
-       excluded by its parent). Three kinds, told apart by one mark after the
-       text, drawn as an SVG mask in currentColor so it looks the same in
-       every font and on every page:
-         a jump within the page   href="#…"          no mark
-         a change of page         another page here  a right arrow
-         a way out of the site    target="_blank"    an up-right arrow
+       excluded by its parent). No drawn mark after the text (see below).
        Gold, a thin underline, no frame (2026-09-05, on the operator's word:
        "no frames"; until then these links sat in gold boxes, and so did six
        of the seven menu words). */
     body :not(.nm) > a:not([class]):not(:has(img,svg,picture)){color:var(--gold);text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px;transition:text-decoration-color .2s}
     body :not(.nm) > a:not([class]):not(:has(img,svg,picture)):hover{text-decoration-color:var(--gold)}
     body a:not([class]) code{color:inherit;background:none;padding:0}
-    body :not(.nm) > a:not([class]):not(:has(img,svg,picture)):not([href^="#"]):not([href^="mailto:"])::after{content:'';display:inline-block;width:.62em;height:.62em;margin-left:.3em;vertical-align:-.02em;background:currentColor;opacity:.75;
-      -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6h8.2M6.3 2.6 9.7 6l-3.4 3.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6h8.2M6.3 2.6 9.7 6l-3.4 3.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
-    body :not(.nm) > a:not([class]):not(:has(img,svg,picture))[target="_blank"]::after{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9l6-6M4.2 3H9v4.8' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9l6-6M4.2 3H9v4.8' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+    /* NO DRAWN MARK (2026-10-25): the arrow these links were to carry never drew (its SVG namespace read https://, from 5.9.
+       to 25.10.) and left a gap; drawn at last it doubled every arrow already written in the text ("tx ↗ →") and put one
+       after every footer word. The site is kept as the operator has known it: links with no mark; an arrow is written where it is meant. */

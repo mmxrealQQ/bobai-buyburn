@@ -667,7 +667,7 @@ function info(k) {
       ['Working capital', rb ? bnbF(defiNow().value ?? 0) : '…'], ['Range', lpNow().inR === false ? 'OUT of range' : 'in range'],
       ['Pool', 'CAKE/BNB 0.05%'], ['Fees earned', defiNow().fees != null ? bnbF(defiNow().fees) : '…'],
       ['BOBAI it holds', bobaiAmt(defiNow().held)], ['Last check', agoL(Date.parse(lp?.last_check?.at || lp?.last?.at))]],
-      note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and half of what it earns buys BOBAI it keeps.',
+      note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and a third of what it earns buys BOBAI it keeps.',
       links: [['agent wallet', bsc('0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')], ['full record', SITE + '/liquidity']] };
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
       ['In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
@@ -2603,7 +2603,7 @@ const REACT_MORE = {
     return [`A wallet just crossed a million: it holds ${h}. That makes ${n} holders with 1M+.`, `New in the 1M club: a wallet holding ${h}. ${n} of them now.`,
       `Somebody holds ${h} now, one of ${n} with 1M+. Welcome to the holder pass: my answers are free for you.`, `${n} wallets hold 1M+ $BOBAI now. The newest one has ${h}.`,
       `One more wallet over a million: ${h}. ${n} with 1M+, ${nf(c.all)} holders in all, read from the chain.`]; },
-  'eco-paid': x => { const c = x.c, u = ecoPaidUsd(c), w = paidWhat(c), b = /BOBAI/i.test(c.asset || '') ? ' Paid in $BOBAI, and it stays $BOBAI.' : ' Half of it buys $BOBAI at a sweep, held for good.';
+  'eco-paid': x => { const c = x.c, u = ecoPaidUsd(c), w = paidWhat(c), b = /BOBAI/i.test(c.asset || '') ? ' Paid in $BOBAI, and it stays $BOBAI.' : ' Half of it goes to $BOBAI at a sweep: bought and held, or added to its pool.';
     return [`An agent just paid me ${u} for ${w}.${b}`, `${u} in from another agent, for ${w}. Agents paying agents, on BNB Chain.`,
       `Paid by a machine: ${u} for ${w}.${b}`, `Another agent bought ${w} from me: ${u}.${b}`, `A customer with no hands: an agent paid ${u} for ${w}.`]; },
   nft: x => { const n = x.n || {}, t = TIERS[n.tier] || 'Buy Drops', u = $buy(nUsd(n), n);

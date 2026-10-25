@@ -1,0 +1,208 @@
+<title>BOBAI Builder Sheet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* layout: one dark sheet like the terminal itself; a tab per theme, codes in gold mono, status as coloured chips */
+:root {
+  --bg: #0f0d14; --panel: #18151f; --line: #2b2634; --fg: #ece7df; --mut: #9d94a8; --gold: #f0b90b;
+  --live: #6fd69a; --held: #ff8592; --pend: #f5c26b; --hw: #ff8a3d;
+  --mono: "Space Mono", ui-monospace, Consolas, monospace; --body: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; }
+header.top { display: grid; gap: 6px; padding-bottom: 14px; }
+.kick { font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+h1 { margin: 0; font: 700 clamp(22px, 3.4vw, 32px)/1.15 var(--mono); text-wrap: balance; }
+.lede { margin: 0; color: var(--mut); max-width: 72ch; }
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; flex-wrap: wrap; gap: 6px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.tabs button { font: 700 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--mut); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.tabs button[aria-selected="true"] { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+.tabs button.hw[aria-selected="true"] { background: var(--hw); border-color: var(--hw); }
+.tabs button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tabs .n { font-weight: 400; opacity: .8; }
+.sub { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--mut); padding-top: 8px; align-items: center; }
+.sub label { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.jump { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12.5px; padding-top: 6px; }
+.jump a { color: var(--fg); text-decoration: none; white-space: nowrap; }
+.jump b { color: var(--gold); font-family: var(--mono); }
+section { margin-top: 28px; display: grid; gap: 10px; }
+h2 { margin: 0; font: 700 17px/1.25 var(--mono); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+h2 .c { color: var(--gold); }
+h2 small { color: var(--mut); font: 400 13px var(--body); }
+.when { margin: 0; color: var(--mut); font-size: 14px; max-width: 90ch; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 176px), 1fr)); align-items: start; }
+.take { margin: 0; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--live); border-radius: 8px; padding: 6px; display: grid; gap: 6px; min-width: 0; }
+.take.held { border-top-color: var(--held); } .take.pend { border-top-color: var(--pend); }
+.take:target { outline: 2px solid var(--gold); }
+video { display: block; width: 100%; max-width: 100%; aspect-ratio: 9 / 16; object-fit: cover; background: #15121b; border-radius: 5px; }
+.cap { font-size: 12.5px; line-height: 1.4; display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.cap .row { display: flex; gap: 8px; align-items: baseline; }
+.code { font: 700 14px var(--mono); color: var(--gold); }
+.st { font: 700 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.live .st { color: var(--live); } .held .st { color: var(--held); } .pend .st { color: var(--pend); }
+.cap code { font: 11px var(--mono); color: var(--mut); }
+.cap .role { color: var(--gold); font-size: 11.5px; }
+.cap .note { color: var(--mut); font-size: 11.5px; }
+body.nolive .take.live, body.noheld .take.held { display: none; }
+.ovw { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.ov { border-collapse: collapse; width: 100%; font-size: 13px; }
+.ov th, .ov td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.ov th { font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.ov td.l { font: 700 13px var(--mono); color: var(--gold); }
+.ov td.k a { color: var(--fg); }
+.ov td.nl { font-variant-numeric: tabular-nums; color: var(--mut); white-space: nowrap; }
+.chip { display: inline-block; margin: 2px 4px 2px 0; padding: 1px 8px; border-radius: 999px; font: 700 11.5px var(--mono); text-decoration: none; border: 1.5px solid; }
+.chip.live { color: var(--live); border-color: var(--live); } .chip.held { color: var(--held); border-color: var(--held); opacity: .75; } .chip.pend { color: var(--pend); border-color: var(--pend); background: #f5c26b1f; }
+.note-box { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--pend); border-radius: 8px; padding: 10px 14px; color: var(--fg); font-size: 14px; max-width: 90ch; }
+.note-box.hw { border-left-color: var(--hw); }
+/* Halloween */
+.scenes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.scene { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; align-content: start; min-width: 0; }
+.scene video { aspect-ratio: auto; border-radius: 0; object-fit: contain; max-height: 460px; background: #000; }
+.scene .tx { padding: 10px 14px 14px; display: grid; gap: 4px; }
+.scene .nm { font: 700 15px var(--mono); }
+.scene .where { font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--hw); }
+.scene p { margin: 0; color: var(--mut); font-size: 13.5px; }
+.pics { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.pic { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.pic .frames { display: flex; gap: 4px; align-items: end; justify-content: center; min-height: 110px; min-width: 0; overflow: hidden; background: #0a090e; border-radius: 5px; padding: 6px; }
+.pic .frames img { max-height: 120px; max-width: 100%; height: auto; min-width: 0; object-fit: contain; flex: 0 1 auto; }
+.pic.wide { grid-column: 1 / -1; } .pic.wide .frames img { max-height: 300px; max-width: 49%; }
+.pic figcaption { font-size: 12px; display: grid; gap: 2px; overflow-wrap: anywhere; }
+.pic figcaption b { font-family: var(--mono); font-size: 12.5px; }
+.pic figcaption span { color: var(--mut); }
+/* WC26 */
+.avs { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr)); }
+.av { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: grid; gap: 4px; text-align: center; min-width: 0; }
+.av.extra { border-color: var(--held); }
+.av img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #0a090e; border-radius: 5px; }
+.av figcaption { font-size: 12px; overflow-wrap: anywhere; } .av figcaption b { font-family: var(--mono); color: var(--gold); }
+.av .x { color: var(--held); font-size: 11px; }
+.ill { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.ill figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.ill img { width: 100%; aspect-ratio: 3 / 2; object-fit: contain; background: #0a090e; border-radius: 5px; }
+.ill figcaption { font-size: 12.5px; display: grid; gap: 2px; overflow-wrap: anywhere; } .ill figcaption b { font-family: var(--mono); }
+.ill figcaption code { font: 11px var(--mono); color: var(--mut); }
+.ill .miss { aspect-ratio: 3 / 2; display: grid; place-items: center; color: var(--held); border: 1px dashed var(--held); border-radius: 5px; font: 700 12px var(--mono); }
+.foot { margin-top: 36px; color: var(--mut); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; max-width: 90ch; }
+@media (max-width: 560px) { .tabs { flex-wrap: nowrap; overflow-x: auto; } .tabs button { padding: 9px 12px; font-size: 12px; white-space: nowrap; } .tabs .n { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="kick">$BOBAI · for the builders</div>
+    <h1>BOBAI Builder Sheet</h1>
+    <p class="lede">Every animation, picture and illustration we made, one tab per theme. A code like <b class="code">C4</b> names one take for good: the letter is the move, the number the take. Tell us the code and what to change.</p>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Themes">
+    <button role="tab" id="t-terminal" data-tab="terminal">BOBAI Terminal <span class="n" id="n-terminal"></span></button>
+    <button role="tab" id="t-halloween" data-tab="halloween" class="hw">Halloween <span class="n">until 1.11.</span></button>
+    <button role="tab" id="t-wc26" data-tab="wc26">Worldcup '26 <span class="n" id="n-wc"></span></button>
+  </nav>
+  <main id="panel"></main>
+  <p class="foot">Previews are small copies: BOBAI's takes are cut out of their green screen and laid on the terminal's dark ground. The terminal plays the full-size takes. Made from the project files on the day shown at the top of each tab.</p>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const LAB = { live: 'Live', held: 'Withheld', pend: 'New · your pick' };
+const panel = document.getElementById('panel');
+const takeHtml = (t, mv) => `<figure class="take ${t.st}" id="${t.code}"><video src="${t.v}#t=0.1" muted loop playsinline preload="metadata" controls></video>
+  <figcaption class="cap"><span class="row"><b class="code">${t.code}</b><span class="st">${LAB[t.st]}</span></span>
+  ${mv ? `<span>${esc(mv)}</span>` : ''}<code>${esc(t.clip)}</code>${t.role ? `<span class="role">${esc(t.role)}</span>` : ''}${t.note ? `<span class="note">${esc(t.note)}</span>` : ''}</figcaption></figure>`;
+
+function terminal() {
+  const all = D.moves.flatMap(m => m.takes), n = s => all.filter(t => t.st === s).length;
+  const pend = D.moves.flatMap(m => m.takes.filter(t => t.st === 'pend').map(t => takeHtml(t, m.move)));
+  let h = `<div class="sub">${n('live')} live · ${n('held')} withheld · ${n('pend')} new
+    <label><input type="checkbox" id="f-live" checked> show live</label><label><input type="checkbox" id="f-held" checked> show withheld</label></div>
+    <div class="jump"><a href="#ov"><b>ALL</b> overview</a>${pend.length ? '<a href="#new"><b>NEW</b> to pick</a>' : ''}${D.moves.map(m => `<a href="#m-${m.move}"><b>${m.letter}</b> ${esc(m.move)}</a>`).join('')}</div>`;
+  const fresh = D.moves.flatMap(m => m.takes.filter(t => t.made && t.st === 'live').map(t => takeHtml({ ...t, note: [`made by Claude on ${t.made}`, t.note].filter(Boolean).join(' · ') }, m.move)));
+  if (fresh.length) h += `<section id="fresh"><h2><span class="c">NEW</span> live since the last days, made by Claude — your OK? <small>${fresh.length}</small></h2>
+    <p class="note-box">These already play in the terminal. Tell Claude the code of any you do not like (for example "ZZN1 weg") and it is pulled at once; the ones you keep stay as they are.</p><div class="grid">${fresh.join('')}</div></section>`;
+  if (pend.length) h += `<section id="new"><h2><span class="c">NEW</span> waiting for your pick <small>${pend.length}</small></h2>
+    <p class="note-box">Release or pull each one by its code. A released take moves into its move below.</p><div class="grid">${pend.join('')}</div></section>`;
+  h += `<section id="ov"><h2><span class="c">ALL</span> overview <small>green live · red withheld · yellow new · a code jumps to its video</small></h2><div class="ovw"><table class="ov">
+    <tr><th></th><th>move</th><th>live</th><th>takes</th></tr>${D.moves.map(m => `<tr><td class="l">${m.letter}</td><td class="k"><a href="#m-${m.move}">${esc(m.move)}</a></td>
+    <td class="nl">${m.takes.filter(t => t.st === 'live').length} / ${m.takes.length}</td><td>${m.takes.map(t => `<a class="chip ${t.st}" href="#${t.code}" title="${esc(t.clip)}">${t.code}</a>`).join('')}</td></tr>`).join('')}</table></div></section>`;
+  for (const m of D.moves) {
+    const own = m.takes.filter(t => t.st !== 'pend'); if (!own.length) continue;
+    h += `<section id="m-${m.move}"><h2><span class="c">${m.letter}</span> ${esc(m.move)} <small>${own.filter(t => t.st === 'live').length} live of ${own.length}</small></h2>
+      <p class="when">${esc(m.when)}</p><div class="grid">${own.map(t => takeHtml(t)).join('')}</div></section>`;
+  }
+  panel.innerHTML = h;
+  for (const [id, cls] of [['f-live', 'nolive'], ['f-held', 'noheld']]) document.getElementById(id).addEventListener('change', e => document.body.classList.toggle(cls, !e.target.checked));
+}
+
+// the Halloween look: what each piece is and where it stands (frames listed by file name: <piece>_<frame>)
+const HW_PIECES = [
+  ['pumpkin', 'Brain pumpkin', 'Sits in the buyback ring; looks right now and then, screams when the big clown shows'],
+  ['skull', 'Skull', 'BURN BOBAI station'], ['coffin', 'Coffin', 'BURN BOB station'], ['cauldron', 'Cauldron', 'LIQ station'],
+  ['spider', 'Spider', 'DEFI AGENT station; blinks'], ['candy', 'Pail of sweets', 'GIGGLE station'], ['cat', 'Black cat', 'CREATOR station; blinks, hisses at the ghost'],
+  ['bat', 'Bat', 'TRADES station; flaps now and then, carries a trade to the pumpkin'], ['ghost', 'Ghost', 'Rises from the skull and drags a chain of blocks; wails twice'],
+  ['moon', 'Moon', 'Face moon in the sky; panics when the skeleton or the hand grabs it'], ['skeleton', 'Skeleton', 'Desktop: lowers itself head-first on its rope, steals the moon and throws it at BOBAI'],
+  ['hand', 'Skeleton hand', 'Phone: reaches down from the top, grabs the moon; desktop: gropes behind the timeline'],
+  ['clown', 'Small clown', 'Peeks out behind the log with a balloon (phone: bottom edge)'], ['balloon', 'Balloon', 'The small clown\'s balloon'],
+  ['stalker', 'Big clown (still)', 'The picture the four Veo clips were made from; plays only where video cannot'],
+  ['grabber', 'Grabber', 'Older stand-in for the big clown\'s hands'], ['pumpkin-small', 'Small pumpkin', 'Phone layout'],
+  ['dais', 'Stone', 'BOBAI stands on it, carved with a chain of blocks'], ['chain', 'Chain of blocks', 'Hangs from the top edge'],
+  ['web', 'Web', 'One web in a corner'], ['candles', 'Candles', 'Stand on the timeline'], ['back', 'Night backdrop', 'Very dim, nearly colourless painting behind everything (wide for desktop, tall for phones)']];
+const SCENES = [
+  ['01-desktop-skelett.mp4', 'Skeleton steals the moon', 'Desktop', 'Head-first on its rope, the moon panics, pulled up, a swing, the throw at his head, BOBAI rubs his head (takes ZZN1/ZZN3), the moon flies home. While BOBAI is still talking the moon waits until his sentence is over.'],
+  ['02-desktop-clown.mp4', 'The big clown', 'Desktop', 'Climbs up beside the gravestone, sneaks over behind BOBAI on tiptoe, reaches for him once, giggles, sneaks back and climbs down. Always from the side of the stone (since 7.10.).'],
+  ['03-vollbild-skelett.mp4', 'Skeleton, full screen', 'Desktop · full screen', 'The same scene with the terminal over the whole screen.'],
+  ['05-handy-clown.mp4', 'The big clown on a phone', 'Phone 390 × 844', 'No free room beside the stone on a phone, so he climbs up right next to BOBAI, reaches once and climbs down.']];
+const OTHER = [['Hand steals the moon', 'Phone', 'The hand with its whole arm reaches down, grabs the moon, everybody takes fright, the moon is thrown at his head and bounces home.'],
+  ['Small clown + balloon', 'All sizes', 'Peeks out behind the log; every costume takes fright for half a second.'],
+  ['Ghost with the chain', 'All sizes', 'Rises from the skull, drags a chain of blocks across, the cat hisses.'],
+  ['Bat run', 'All sizes', 'The bat carries a trade to the pumpkin.']];
+function halloween() {
+  const has = new Set(D.pics), frames = k => D.pics.filter(p => p === k || p.startsWith(k + '_') || (k === 'back' && p.startsWith('back-')));
+  let h = `<div class="sub">Live 5.10.–1.11. (UTC) · pill ON / OFF right of LIVE · one scene at a time, 22–34 s apart, only while BOBAI stands still</div>
+  <div class="jump"><a href="#hw-scenes"><b>01</b> scenes</a><a href="#hw-clown"><b>02</b> big clown clips</a><a href="#hw-pics"><b>03</b> pictures</a></div>
+  <section id="hw-scenes"><h2><span class="c">01</span> Scenes <small>filmed on brainonbnb.com</small></h2>
+  <div class="scenes">${SCENES.map(([f, n, w, t]) => `<article class="scene"><video src="hw/${f}#t=0.5" muted loop playsinline preload="metadata" controls></video>
+    <div class="tx"><span class="where">${w}</span><span class="nm">${n}</span><p>${t}</p></div></article>`).join('')}
+  ${OTHER.map(([n, w, t]) => `<article class="scene"><div class="tx"><span class="where">${w} · not filmed yet</span><span class="nm">${n}</span><p>${t}</p></div></article>`).join('')}</div></section>
+  <section id="hw-clown"><h2><span class="c">02</span> Big clown clips <small>four Veo takes from his own picture, shot on lime, drawn by the terminal's own player</small></h2>
+  <div class="grid">${D.clown.map(c => `<figure class="take live"><video src="${c.v}#t=0.1" muted loop playsinline preload="metadata" controls></video><figcaption class="cap"><span class="row"><b class="code">${c.k}</b></span><span class="note">${esc(c.what)}</span></figcaption></figure>`).join('')}</div></section>
+  <section id="hw-pics"><h2><span class="c">03</span> Pictures <small>every station wears a costume; frames side by side</small></h2>
+  <div class="pics">${HW_PIECES.filter(([k]) => frames(k).length).map(([k, n, t]) => `<figure class="pic${k === 'back' ? ' wide' : ''}"><div class="frames">${frames(k).map(p => `<img src="hw/${p}.webp" alt="${esc(p)}" title="${esc(p)}" loading="lazy">`).join('')}</div>
+    <figcaption><b>${n}</b><span>${esc(t)}</span><span><code>${frames(k).join(' · ')}</code></span></figcaption></figure>`).join('')}</div></section>`;
+  panel.innerHTML = h;
+}
+
+function wc26() {
+  const extra = D.avatars.filter(a => !a.in48);
+  let h = `<div class="sub">The illustrations as they are in the project today (dashboard/worldcup/app/illus) · ${D.avatars.length - extra.length} of 48 team avatars · ${D.illus.filter(i => i.img).length} of ${D.illus.length} illustrations</div>
+  <div class="jump"><a href="#wc-av"><b>01</b> team avatars</a><a href="#wc-il"><b>02</b> illustrations</a></div>`;
+  if (extra.length || D.missing48.length) h += `<p class="note-box">${extra.length ? `${extra.length} avatar file(s) are for teams not among the 48: ${extra.map(a => `<b>${esc(a.code)}</b>`).join(', ')} (marked red). ` : ''}${D.missing48.length ? `Missing: ${D.missing48.map(esc).join(', ')}.` : 'Every one of the 48 teams has its avatar.'}</p>`;
+  h += `<section id="wc-av"><h2><span class="c">01</span> Team avatars <small>512 × 512, BOBAI in the national kit · used on dashboard, leaderboard, profile, champion pick</small></h2>
+  <div class="avs">${D.avatars.map(a => `<figure class="av${a.in48 ? '' : ' extra'}"><img src="${a.img}" alt="${esc(a.name || a.code)}" loading="lazy"><figcaption><b>${esc(a.code)}</b> ${esc(a.name)}${a.in48 ? '' : '<br><span class="x">not among the 48</span>'}</figcaption></figure>`).join('')}</div></section>
+  <section id="wc-il"><h2><span class="c">02</span> Illustrations <small>heroes, card accents, coins, prize pool</small></h2>
+  <div class="ill">${D.illus.map(i => `<figure>${i.img ? `<img src="${i.img}" alt="${esc(i.name)}" loading="lazy">` : '<div class="miss">not made yet</div>'}<figcaption><b>${esc(i.name)}</b><span>${esc(i.used)}</span><code>${esc(i.file)}</code></figcaption></figure>`).join('')}</div></section>`;
+  panel.innerHTML = h;
+}
+
+const TABS = { terminal, halloween, wc26 };
+document.getElementById('n-terminal').textContent = D.moves.reduce((a, m) => a + m.takes.length, 0) + ' takes';
+document.getElementById('n-wc').textContent = D.avatars.length + D.illus.length + ' pictures';
+function show(tab, keepHash) {
+  if (!TABS[tab]) tab = 'terminal';
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+  TABS[tab](); try { localStorage.setItem('bb-tab', tab); } catch {}
+  // a video plays while the pointer rests on it, and stops when it leaves
+  panel.querySelectorAll('video').forEach(v => { v.addEventListener('mouseenter', () => v.play().catch(() => {})); v.addEventListener('mouseleave', () => v.pause()); });
+  if (!keepHash) window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { show(b.dataset.tab); history.replaceState(null, '', '#' + b.dataset.tab); }));
+// a deep link: #halloween / #wc26 opens that tab; a take's code (#C4) opens the terminal tab at it
+const h0 = location.hash.slice(1); let start = 'terminal';
+try { start = localStorage.getItem('bb-tab') || start; } catch {}
+if (TABS[h0]) start = h0; else if (/^[A-Z]{1,2}\d+$/.test(h0)) start = 'terminal';
+show(start, true);
+if (h0 && !TABS[h0]) document.getElementById(h0)?.scrollIntoView();
+</script>

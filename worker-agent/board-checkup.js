@@ -80,6 +80,9 @@ async function registration(uri, get) {
   } catch (e) { return { error: 'the document is not JSON: ' + String(e.message || e).slice(0, 80) }; }
   return { error: `unsupported tokenURI scheme: ${uri.slice(0, 30)}` };
 }
+// an A2A service that names its card, not its endpoint — read without the query (2026-10-25: AgentCore's ends
+// "agent-card.json?qualifier=DEFAULT")
+const isCardUrl = (u) => /agent(-card)?\.json$/.test(String(u).split(/[?#]/)[0]);
 const serviceUrl = (doc, names) => (Array.isArray(doc?.services) ? doc.services : Array.isArray(doc?.endpoints) ? doc.endpoints : []).find((s) => names.includes(String(s.name || s.type || '').toLowerCase()))?.endpoint || null;
 
 export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 30000 } = {}) {
@@ -117,15 +120,20 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   if (a2a) {
     // where the card is: the URL named, else under the endpoint's path, else at the domain's root — the A2A standard
     // place (2026-10-23: two agents serve it at the root and the checkup, asking only under /a2a, called them broken)
-    const tries = /agent(-card)?\.json$/.test(a2a) ? [a2a] : [String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json', (() => { try { return new URL(a2a).origin + '/.well-known/agent-card.json'; } catch { return null; } })()].filter((x, i, all) => x && all.indexOf(x) === i);
+    // the card URL named with a query (2026-10-25: AWS Bedrock AgentCore's ends "agent-card.json?qualifier=DEFAULT";
+    // the test read the whole string, missed it, and asked the domain's root — Firstshare Checker was told "404, a site
+    // answering HTML?" where its card asks for credentials)
+    const tries = isCardUrl(a2a) ? [a2a] : [String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json', (() => { try { return new URL(a2a).origin + '/.well-known/agent-card.json'; } catch { return null; } })()].filter((x, i, all) => x && all.indexOf(x) === i);
     let c = null, cardUrl = tries[0];
     for (const t of tries) { c = await get(t); cardUrl = t; if (c.json && (c.json.skills || c.json.name)) break; }
     card = c.json && (c.json.skills || c.json.name) ? c.json : null;
-    add('agent card loads', !!card, card ? `${cardUrl.slice(0, 100)} · ${(card.skills || []).length} skills` : `${cardUrl.slice(0, 100)} answered ${c.status || c.error}${c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
+    // a card behind credentials is there, only not for a reader: a fix of its own, not "serve it at /.well-known"
+    const locked = !card && (c.status === 401 || c.status === 403);
+    add('agent card loads', !!card, card ? `${cardUrl.slice(0, 100)} · ${(card.skills || []).length} skills` : `${cardUrl.slice(0, 100)} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
       const noEx = (card.skills || []).filter((s) => !(s.examples || []).length).map((s) => String(s.id || s.name).slice(0, 40));
       add('every skill has an example', !noEx.length, noEx.length ? `without: ${noEx.slice(0, 8).join(', ')}` : 'yes', 'add examples to each skill — 8004scan grades A2A quality on it (ours went 77 -> 87)');
-      rpcUrl = card.url || (/agent(-card)?\.json$/.test(a2a) ? null : a2a);
+      rpcUrl = card.url || (isCardUrl(a2a) ? null : a2a);
     }
   }
   if (rpcUrl) {
@@ -165,7 +173,7 @@ export async function a2aUrlOf(id, { keyed = null, self = null } = {}) {
   const reg = await registration(str(u.result), get);
   const a2a = serviceUrl(reg.doc, ['a2a']);
   if (!a2a || !/^https:\/\//.test(a2a) || (isOurHost(a2a) && !OWN_AGENT_IDS.has(id))) return null;
-  if (!/agent(-card)?\.json$/.test(a2a)) return a2a;
+  if (!isCardUrl(a2a)) return a2a;
   const c = await get(a2a);
   const url = c.json?.url;
   return url && /^https:\/\//.test(url) && !(isOurHost(url) && !OWN_AGENT_IDS.has(id)) ? url : null;

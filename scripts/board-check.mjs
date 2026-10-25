@@ -24,6 +24,7 @@ const REG = {
   777: { owner: A.address, wallet: W.address, doc: docOf({ name: 'Test Agent 777 — ü', services: [{ name: 'A2A', endpoint: 'https://agent777.test/a2a' }] }) },
   778: { owner: X.address, wallet: null, doc: docOf({ name: 'Writer 778' }) },
   779: { owner: X.address, wallet: null, doc: docOf({ name: 'Loop 779', services: [{ name: 'A2A', endpoint: 'https://agent.brainonbnb.com/board/agent/779?fresh=1&x=agent.json' }] }) },
+  781: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Locked card 781', services: [{ name: 'A2A', endpoint: 'https://agentcore781.test/runtimes/arn%3Ax/invocations/.well-known/agent-card.json?qualifier=DEFAULT' }] }) },
   780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }, { name: 'MCP', endpoint: 'https://agent780.test/mcp' }] }) },
 };
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
@@ -42,6 +43,7 @@ globalThis.fetch = async (url, init) => {
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result }));
   }
   if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
+  if (url.startsWith('https://agentcore781.test/')) return new Response(url.includes('?qualifier=DEFAULT') ? '{"message":"Missing Authentication Token"}' : 'not here', { status: url.includes('?qualifier=DEFAULT') ? 401 : 404 });
   if (url === 'https://agent780.test/.well-known/agent-card.json') return new Response(JSON.stringify({ name: 'Root card 780', url: 'https://agent780.test/a2a', skills: [{ id: 'x', examples: ['y'] }] }));
   if (url === 'https://agent780.test/a2a/.well-known/agent-card.json') return new Response('not here', { status: 404 });
   // an MCP server answering as a server-sent event stream, longer than 200 characters (the case read wrongly on 23.10.)
@@ -274,6 +276,14 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   is('CK the card at the domain root is found (not only under the endpoint path)', card?.ok === true && /agent780\.test\/\.well-known\/agent-card\.json/.test(card.detail), card?.detail);
   const mcpk = ck.checks.find((c) => c.check === 'MCP answers tools/list');
   is('CK an MCP endpoint answering as an event stream is read: 3 tools', mcpk?.ok === true && mcpk.detail === '3 tools', mcpk?.detail);
+}
+// CK2 a card URL named with a query (AWS Bedrock AgentCore, 25.10.) is asked as named; one behind credentials gets its own fix
+{
+  const ck = await C.agentCheckup('781', { keyed: 'https://keyed.test' });
+  const card = ck.checks.find((c) => c.check === 'agent card loads');
+  is('CK2 the named card URL with ?qualifier is asked, its 401 told as credentials, not as a missing /.well-known', card?.ok === false && /qualifier=DEFAULT answered 401 \(asks for credentials\)/.test(card.detail) && /without credentials/.test(card.fix || ''), JSON.stringify(card));
+  const fwd = await C.a2aUrlOf('781', { keyed: 'https://keyed.test' });
+  is('CK3 a notice is not POSTed to a named card URL with a query (its card gives no endpoint: nothing forwarded)', fwd === null, String(fwd));
 }
 // R4 the threads written before the split (one value t:<id> with replies inside, as live on 23.10.) are converted once
 {

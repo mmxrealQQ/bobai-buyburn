@@ -2862,7 +2862,8 @@ ${pageTail}`;
     }
     if (path === '/buys') {
       const tx = (url.searchParams.get('tx') || '').toLowerCase().match(/^0x[0-9a-f]{64}$|^x402:\d+$|^holder:\S+$/)?.[0] || null;
-      return json(await readBuys(env, tx), 200, { 'Cache-Control': 'public, max-age=60' });
+      // a payer whose payment did not buy finds the reason beside the ones that did (2026-10-25)
+      return json({ ...(await readBuys(env, tx)), refused: 'https://agent.brainonbnb.com/buys/refused' }, 200, { 'Cache-Control': 'public, max-age=60' });
     }
     if (path === '/lp/agent' || path === '/lp/collect') {
       const rec = await readAgentRecord(env);

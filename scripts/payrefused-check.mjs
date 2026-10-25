@@ -22,5 +22,7 @@ pin(rec?.product === 'answer:health_factor' && rec?.status === 402, `product and
 pin(!!rec?.why && rec.why.length > 5, `the reason kept (${rec?.why})`);
 pin(/^x402 v1/.test(rec?.proof || ''), `the proof's shape kept (${rec?.proof})`);
 pin(!!rec && !JSON.stringify(rec).includes(PROOF), 'the proof itself is not kept');
-console.log(fails ? `${fails} FAIL` : 'all pins hold');
+const buys = await (await fetch(`${BASE}/buys?r=${Date.now()}`)).json().catch(() => ({}));
+pin(buys.refused === `${BASE}/buys/refused` && Array.isArray(buys.payments), `/buys links the refused ones beside the payments (${buys.refused})`);
+console.log(fails ?`${fails} FAIL` : 'all pins hold');
 process.exitCode = fails ? 1 : 0; // not process.exit: on Windows it trips libuv while fetch handles close

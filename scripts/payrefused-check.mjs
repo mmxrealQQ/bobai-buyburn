@@ -5,7 +5,7 @@
 // usage: node scripts/payrefused-check.mjs [base]   — exit 1 on any FAIL
 const BASE = process.argv[2] || 'https://agent.brainonbnb.com';
 const UA = 'brainonbnb-paycheck/' + Date.now();
-const PROOF = Buffer.from(JSON.stringify({ x402Version: 1, scheme: 'exact', network: 'bsc', payload: {} })).toString('base64');
+const PROOF = Buffer.from(JSON.stringify({ x402Version: 1, scheme: 'exact', network: 'bsc', payload: { authorization: { from: '0x000000000000000000000000000000000000dEaD' } } })).toString('base64');
 let fails = 0;
 const pin = (ok, what) => { if (!ok) fails++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`); };
 const r = await fetch(`${BASE}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': UA, 'X-PAYMENT': PROOF }, body: JSON.stringify({ address: '0x0000000000000000000000000000000000000001' }) });
@@ -21,6 +21,7 @@ pin(!!rec, 'GET /buys/refused holds the attempt');
 pin(rec?.product === 'answer:health_factor' && rec?.status === 402, `product and status kept (${rec?.product}, ${rec?.status})`);
 pin(!!rec?.why && rec.why.length > 5, `the reason kept (${rec?.why})`);
 pin(/^x402 v1/.test(rec?.proof || ''), `the proof's shape kept (${rec?.proof})`);
+pin(rec?.from === '0x000000000000000000000000000000000000dead', `the payer the signature names kept (${rec?.from})`);
 pin(!!rec && !JSON.stringify(rec).includes(PROOF), 'the proof itself is not kept');
 // the tip door too (it pays through the same path)
 await fetch(`${BASE}/tip?usd=1`, { method: 'POST', headers: { 'user-agent': UA + '-tip', 'X-PAYMENT': '0x' + '00'.repeat(32) } }).catch(() => null);

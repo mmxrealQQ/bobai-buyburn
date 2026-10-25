@@ -312,6 +312,15 @@ function proofShape(proof) {
     return ['x402 v' + (j.x402Version ?? '?'), j.scheme || acc.scheme, j.network || acc.network, kind].filter(Boolean).join(' · ');
   } catch { return `unreadable (${p.length} chars)`; }
 }
+// the wallet a signed payment names as its payer — public, on chain once it settles (2026-10-25: the first refused
+// payment kept, 'transfer amount exceeds balance', did not say whose balance)
+function payerOf(proof) {
+  try {
+    const pl = JSON.parse(atob(String(proof || '').trim().replace(/-/g, '+').replace(/_/g, '/'))).payload || {};
+    const a = String(pl.authorization?.from || pl.permit2Authorization?.from || '');
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a.toLowerCase() : null;
+  } catch { return null; }
+}
 // only on a caller's first free answer (firstCall, 2026-10-01)
 const thankJson = async (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request) && await firstCall(request)
   ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
@@ -1927,7 +1936,7 @@ export default {
       if (selfTest || !proof || !out || out.status === 200 || !env.AGENT) return;
       const b = out.body && typeof out.body === 'object' ? out.body : {};
       const rec = { at: new Date().toISOString(), product, status: out.status, why: [b.stage, b.reason || b.error].filter(Boolean).map(String).join(': ').slice(0, 240),
-        ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(ownSite ? { own_site: true } : {}) };
+        ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(payerOf(proof) ? { from: payerOf(proof) } : {}), ...(ownSite ? { own_site: true } : {}) };
       ctx.waitUntil(env.AGENT.get('payrefused', 'json').then((l) => env.AGENT.put('payrefused', JSON.stringify([rec, ...(Array.isArray(l) ? l : [])].slice(0, 20)), { expirationTtl: 1209600 })).catch(() => {}));
     };
     // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers

@@ -245,10 +245,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1792854565876">
+<link rel="stylesheet" href="brain/brain.css?v=1792899430532">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1792846219">
+<link rel="stylesheet" href="terminal/terminal.css?v=1792899283">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -849,7 +849,8 @@
     </p>
     <!-- WORKS WITH US (operator, 2026-10-20): the agent marketplaces that trade with our agents. app.js puts one figure
          beside each name from the chain (escrow jobs, x402 payments); without it the names stand alone. -->
-    <p class="ec-more fi"><span>Works with us</span>
+    <!-- not "Works with us" (operator 25.10.: read as an official partnership, which there is not) -->
+    <p class="ec-more fi"><span>Our agents trade on</span>
       <a class="ec-with" href="https://www.mandatemarkets.com" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-mandate.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Mandate</b> <span data-ecwith="mandate"></span></a>
       <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-pokter.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
       <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-marque.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Marque</b> <span data-ecwith="marque"></span></a>
@@ -1382,9 +1383,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1792846219')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1792899283')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1792854565876" defer></script>
-<script src="brain/cards.js?v=1792854565876" defer></script>
-<script src="brain/hero.js?v=1792854565876" defer></script>
+<script src="brain/brain.js?v=1792899430533" defer></script>
+<script src="brain/cards.js?v=1792899430533" defer></script>
+<script src="brain/hero.js?v=1792899430533" defer></script>
 </body></html>

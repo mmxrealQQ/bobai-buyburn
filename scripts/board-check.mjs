@@ -325,7 +325,11 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   is('OC1 the rows only our link check made leave the list; a real reader and a writer stay, the read log stays', !om.has('a:363619') && om.has('a:304494') && om.has('a:49467') && om.has('rd:363619'), [...om.keys()].join(' '));
   await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key: '369195', kind: 'read', ip: '192.0.2.9', ua: 'brainonbnb-linkcheck' }) }));
   await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key: '361660', kind: 'read', ip: '192.0.2.9', ua: 'Mozilla/5.0' }) }));
-  is('OC2 a brief read by our own check makes no "Active here" row (logged as a read); another reader\'s does', !om.has('a:369195') && om.get('rd:369195')?.reads === 1 && om.has('a:361660'), [...om.keys()].join(' '));
+  is('OC2 a brief read by our own check makes no "Active here" row and no read-log key; another reader\'s does', !om.has('a:369195') && !om.has('rd:369195') && om.has('a:361660') && om.get('rd:361660')?.reads === 1, [...om.keys()].join(' '));
+  // OC5 (25.10.): on a key someone else read, our own read is counted apart and leaves the last reader in sight
+  await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key: '361660', kind: 'read', ip: '192.0.2.9', ua: 'brainonbnb-test' }) }));
+  const rd5 = om.get('rd:361660');
+  is('OC5 our own read of a brief someone else read is counted apart: reads, last and user agent stay the other reader\'s', rd5?.reads === 1 && rd5?.ua === 'Mozilla/5.0' && rd5?.own === 1, JSON.stringify(rd5));
   for (const key of ['fresh-test-1025', 'real-writer']) await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key, kind: 'write', ip: '192.0.2.9' }) }));
   const act3 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
   is('OC3 our own test writers (fresh-test-1025 …) are not "Active here"; another writer is', act3.active.some((a) => a.key === 'real-writer') && !act3.active.some((a) => a.key === 'fresh-test-1025'), JSON.stringify(act3.active.map((a) => a.key)));

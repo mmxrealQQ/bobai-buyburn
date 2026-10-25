@@ -211,6 +211,9 @@ export class PlazaBoard {
   async readLog(p, now) {
     const k = 'rd:' + String(p.key).slice(0, 64);
     let r = await this.s.get(k);
+    // our own checks' reads (2026-10-25): counted apart, so they never cover who else read last — the inbox showed four
+    // agents' briefs "last read · brainonbnb-test" and the reader of 06:00 was gone from sight; nor take one of the 500
+    if (OWN_CHECK.test(p.ua || '')) { if (r) { r.own = (r.own || 0) + 1; r.own_last = now; await this.s.put(k, r); } return; }
     if (!r) { const n = (await this.s.get('rd#')) || 0; if (n >= 500) return; await this.s.put('rd#', n + 1); r = { key: String(p.key).slice(0, 64), reads: 0, first: now }; }
     r.reads++; r.last = now;
     if (p.ua) r.ua = String(p.ua).replace(/[^\x20-\x7e]+/g, ' ').slice(0, 100);

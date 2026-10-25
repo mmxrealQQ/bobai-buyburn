@@ -24,6 +24,8 @@ const REG = {
   777: { owner: A.address, wallet: W.address, doc: docOf({ name: 'Test Agent 777 — ü', services: [{ name: 'A2A', endpoint: 'https://agent777.test/a2a' }] }) },
   778: { owner: X.address, wallet: null, doc: docOf({ name: 'Writer 778' }) },
   779: { owner: X.address, wallet: null, doc: docOf({ name: 'Loop 779', services: [{ name: 'A2A', endpoint: 'https://agent.brainonbnb.com/board/agent/779?fresh=1&x=agent.json' }] }) },
+  782: { owner: X.address, wallet: X.address, doc: docOf({ name: 'x402 short 782', services: [{ name: 'x402', endpoint: 'https://pay782.test/answer' }] }) },
+  783: { owner: X.address, wallet: X.address, doc: docOf({ name: 'x402 whole 783', services: [{ name: 'x402', endpoint: 'https://pay783.test/answer' }] }) },
   781: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Locked card 781', services: [{ name: 'A2A', endpoint: 'https://agentcore781.test/runtimes/arn%3Ax/invocations/.well-known/agent-card.json?qualifier=DEFAULT' }] }) },
   780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }, { name: 'MCP', endpoint: 'https://agent780.test/mcp' }] }) },
 };
@@ -43,6 +45,13 @@ globalThis.fetch = async (url, init) => {
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result }));
   }
   if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
+  if (url.startsWith('https://pay782.test/') || url.startsWith('https://pay783.test/')) {
+    const whole = url.includes('783'), opt = { scheme: 'exact', network: 'eip155:56', amount: '1', asset: '0x1', payTo: '0x2', maxTimeoutSeconds: 60 };
+    const accepts = whole ? [opt, { ...opt, asset: '0x3' }] : [opt, { scheme: 'exact', network: 'eip155:56', amount: '1', asset: '0x3', payTo: '0x2' }];
+    // 782 answers GET with 405 and POST with its 402 (the checkup tries both); 783 answers GET
+    if (!whole && (!init || !init.method || init.method === 'GET')) return new Response('method not allowed', { status: 405 });
+    return new Response(JSON.stringify({ error: 'payment required' }), { status: 402, headers: { 'payment-required': Buffer.from(JSON.stringify({ x402Version: 2, accepts })).toString('base64') } });
+  }
   if (url.startsWith('https://agentcore781.test/')) return new Response(url.includes('?qualifier=DEFAULT') ? '{"message":"Missing Authentication Token"}' : 'not here', { status: url.includes('?qualifier=DEFAULT') ? 401 : 404 });
   if (url === 'https://agent780.test/.well-known/agent-card.json') return new Response(JSON.stringify({ name: 'Root card 780', url: 'https://agent780.test/a2a', skills: [{ id: 'x', examples: ['y'] }] }));
   if (url === 'https://agent780.test/a2a/.well-known/agent-card.json') return new Response('not here', { status: 404 });
@@ -338,6 +347,13 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
 {
   const bn = B.briefText(B.buildBrief({ id: 'my-bot', since: 1, threads: [], questions: [] })), bi = B.briefText(B.buildBrief({ id: '363709', since: 1, threads: [], questions: [] }));
   is('CA the brief ends with the filled-in /board link for a chat assistant; under a name it carries &from=, under an id not', /board\?type=tip&to=all&title=<URL-encoded>&body=<URL-encoded>&from=my-bot#take/.test(bn) && /&body=<URL-encoded>#take/.test(bi) && !/from=363709/.test(bi), bn.split('\n').slice(-3).join(' | '));
+}
+// X4 the checkup reads an agent's x402 terms (25.10.): an option without maxTimeoutSeconds is named; complete ones pass
+{
+  const c2 = (await C.agentCheckup('782', { keyed: 'https://keyed.test' })).checks.find((c) => c.check === 'x402 terms are complete');
+  const c3 = (await C.agentCheckup('783', { keyed: 'https://keyed.test' })).checks.find((c) => c.check === 'x402 terms are complete');
+  is('X4 an x402 option lacking maxTimeoutSeconds is named (asked by POST after a 405 GET), with the fix', c2?.ok === false && /#1 lacks maxTimeoutSeconds/.test(c2.detail) && /maxTimeoutSeconds/.test(c2.fix || ''), JSON.stringify(c2));
+  is('X4 complete x402 terms pass', c3?.ok === true && /2 options, each complete/.test(c3.detail), JSON.stringify(c3));
 }
 // DK the doors count their visitors by kind (25.10.)
 {

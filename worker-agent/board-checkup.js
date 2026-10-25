@@ -65,7 +65,8 @@ function fetcherFor(id, self, deadline) {
       const r = await go;
       const t = await readCapped(r);
       // the whole text (already capped at 256 KB): a streamed answer (text/event-stream) is parsed by the caller
-      try { return { status: r.status, json: JSON.parse(t) }; } catch { return { status: r.status, text: t }; }
+      const pr = r.headers?.get?.('payment-required') || null; // an x402 seller's terms (x402 v2), read by the x402 check
+      try { return { status: r.status, json: JSON.parse(t), pr }; } catch { return { status: r.status, text: t, pr }; }
     } catch (e) { return { error: String(e.message || e).slice(0, 120) }; }
   };
 }
@@ -159,6 +160,28 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
       const price = d.price || d.response?.terms?.price || d.terms?.price || null;
       add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : price ? ` (a price, ${String(price).slice(0, 30)}, without a signature)` : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
     }
+  }
+  // THE x402 SERVICE, when one is declared (2026-10-25: Marque read ours as bad_schema and never once good — two of five
+  // payment options had no maxTimeoutSeconds; complete, all six read live within the hour). Asked unpaid as a client
+  // asks (GET, then POST): a 402 whose terms (PAYMENT-REQUIRED, else the body) carry every field x402 requires in each
+  // accepts[] entry — a strict client drops the whole 402 over one incomplete option.
+  const x402 = serviceUrl(doc, ['x402']);
+  if (x402 && /^https:\/\//.test(x402)) {
+    const UAH = { 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' };
+    let r = await get(x402, { headers: UAH });
+    if (r.status !== 402) { const p = await get(x402, { method: 'POST', headers: { ...UAH, 'content-type': 'application/json' }, body: '{}' }); if (p.status === 402) r = p; }
+    let terms = null;
+    try { terms = r.pr ? JSON.parse(atob(r.pr)) : null; } catch { /* not base64 JSON */ }
+    if (!terms && r.json && Array.isArray(r.json.accepts)) terms = r.json;
+    const v2 = Number(terms?.x402Version) >= 2;
+    const need = v2 ? ['scheme', 'network', 'amount', 'asset', 'payTo', 'maxTimeoutSeconds'] : ['scheme', 'network', 'maxAmountRequired', 'resource', 'description', 'mimeType', 'payTo', 'maxTimeoutSeconds', 'asset'];
+    const short = (terms?.accepts || []).map((a, i) => [i, need.filter((k) => a?.[k] == null || a[k] === '')]).filter(([, m]) => m.length);
+    const n = terms?.accepts?.length || 0;
+    add('x402 terms are complete', r.status === 402 && n > 0 && !short.length,
+      r.status !== 402 ? `${String(x402).slice(0, 80)} answered ${r.status || r.error} to an unpaid request` : !n ? 'a 402 without accepts[] (neither in PAYMENT-REQUIRED nor in the body)'
+        : short.length ? `x402 v${v2 ? 2 : 1}, ${n} option${n === 1 ? '' : 's'}: ${short.slice(0, 3).map(([i, m]) => `#${i} lacks ${m.join(', ')}`).join('; ')}` : `x402 v${v2 ? 2 : 1}, ${n} option${n === 1 ? '' : 's'}, each complete`,
+      r.status !== 402 ? 'answer an unpaid request with 402 and your terms (PAYMENT-REQUIRED header, base64 JSON) — that is how an x402 client reads the price'
+        : `give every accepts[] entry ${need.join(', ')} — a strict client (Marque reads it as bad_schema) drops the whole 402 over one incomplete option`);
   }
   const bad = checks.filter((c) => c.ok === false).length;
   return { id: Number(id), exists: true, name: doc?.name ? String(doc.name).slice(0, 80) : null, owner, agent_wallet: wallet, score: `${checks.length - bad}/${checks.length}`, checks, checked_at: new Date().toISOString(), note: 'Read-only: the registry and the agent\'s own public endpoints, called the way a buyer calls them. A quote request creates no job.' };

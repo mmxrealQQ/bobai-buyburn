@@ -4398,6 +4398,7 @@ function ecoEvents() {
 const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // the names our own first-run and webhook tests wrote under (24.-25.10., as worker-agent/board.js OUR_TESTS): a test is no other agent's moment
 const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
+let paidPoseAt = 0; // when the last payment moved him (the replay's 20 s spacing, the 'paid' moment below)
 // an entry without a wallet has a name (or none), a verified platform its domain (2026-10-24: "unsigned" read as a wallet "unsi…gned")
 const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : e.platform ? `${String(e.from).slice(0, 30)} (verified ${e.platform})` : e.author === 'unsigned' ? `${e.from ? String(e.from).slice(0, 30) : 'someone'} (no wallet)` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
 const BOARD_KIND = { bug: 'A BUG REPORT', fix: 'A FIX', tip: 'A TIP', question: 'A QUESTION', note: 'A NOTE' };
@@ -4446,7 +4447,10 @@ function ecoScene(x) {
     boardScene(x.t, ECO_C, bm, 'ON THE BRAIN BOARD', c.n > 1 ? `${c.n} ENTRIES` : c.reply ? (c.items[0].status ? 'A STATUS CHANGE' : 'AN ANSWER') : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['WHAT', c.n > 1 ? c.kinds.toUpperCase() : null], [c.threads.length > 1 ? 'THREADS' : 'THREAD', c.threads.map(t => '#' + t).join(' · ')], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
     logLine('BOARD', ECO_C, [c.who, ' · ', [c.kinds], ' · ' + c.threads.map(t => '#' + t).join(' '), c.title ? ' · ' + c.title : ''], [], x.t);
   } else if (x.key === 'paid') {
-    if (mode === 'live' && !REOPEN) setPose('paid', 5);
+    // in the replay too (2026-10-25, operator: "auch im Replay abspielen … die paid waren kurz aufeinander"): live every
+    // payment moves him; in a replay payments close together move him once in 20 s, and a big buy or burn keeps the stage
+    const pNow = performance.now();
+    if (!REOPEN && (mode === 'live' || (pNow - paidPoseAt > 20000 && !(pNow < momentUntil && (momentEl._level || 0) > 1)))) { paidPoseAt = pNow; setPose('paid', 5); }
     logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   }
   sayMore('eco-' + x.key, x);

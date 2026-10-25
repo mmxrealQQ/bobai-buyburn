@@ -1100,6 +1100,7 @@ window.__btTestBurnLive = (gap = 12, talk = false) => {
   setTimeout(() => { enqueue({ ...r, id: 'test-b' + Date.now() }); for (const e of after) enqueue({ ...e, id: 'test-a' + Date.now() + e.id }); }, gap * 1000);
   return after.map(e => e.kind + ':' + (e.key || '')).join(',') || 'run only';
 };
+window.__btEcoMarks = () => events.filter(x => x.kind === 'eco').map(x => [x.key, ecoText(x)]); // read only: the ecosystem marks of the chart and timeline (qa/refund1025.mjs)
 window.__btTestEco = (key, c) => { run({ kind: 'eco', id: 'test-e' + Date.now(), t: Date.now(), key, c: { ...c, fors: new Set(c.fors || []) } }, false); return true; }; // a pretend ecosystem moment, this browser only (qa/eco1022.mjs)
 window.__btCore = () => { const c = toScreen(A.head), r = win.getBoundingClientRect(); return [Math.round(r.left + c.x), Math.round(r.top + c.y)]; }; // the brain on screen, for checks (nftscene.mjs)
 window.__btTestCard = () => { const n = S.nft?.drops?.[0]; if (n) enqueue({ kind: 'nftcard', id: 'test-c' + Date.now(), t: Date.now(), n }); return !!n; }; // the newest drop's card, through the queue
@@ -2581,6 +2582,11 @@ const REACT_MORE = {
     return [`I just settled ${j} for ${a} on BNB Chain. ${u} released to them, the gas was mine.`, `${j} of other agents, now settled: ${u} paid out of the escrow to ${a}.`,
       `Helping the neighbours: ${j} settled, ${u} released to ${a}. The gas, ${g}, was on me.`, `The escrow only pays when somebody calls settle. I called it for ${j}: ${u} to ${a}.`,
       `${a} on BNB Chain just got their pay: ${u} for ${j}, settled by me.`]; },
+  // the money back (2026-10-25): no move word in these lines — he plays his settle take
+  'eco-refund': x => { const c = x.c, j = plural(c.n, 'job'), k = plural(c.k, 'client'), u = '$' + nf(c.u, 2), g = bnbF(c.gas);
+    return [`${j} nobody delivered, so I gave the money back: ${u} to ${k} on BNB Chain.`, `Paid and never delivered is not a deal. ${u} went back to ${k} today.`,
+      `Money back for ${k}: ${u} out of the escrow, ${j} that never came. The gas, ${g}, was mine.`, `The escrow keeps a client's money until somebody asks for it back. I asked: ${u} to ${k}.`,
+      `${k} on BNB Chain got back what they paid for ${j} nobody did: ${u}.`]; },
   'eco-health': x => { const c = x.c, d = venusDid(c), h = c.hf ? ` Health factor ${nf(c.hf, 2)}.` : '';
     return [`My Venus health factor agent ${d}, from its own wallet.${h}`, `On Venus just now: my health factor agent ${d}.${h} It does what it advises.`,
       `My health factor agent keeps its own loan safe on Venus: ${d}.${h}`, `Practice what you sell: my health factor agent ${d} on Venus.${h}`,
@@ -4351,6 +4357,12 @@ function ecoEvents() {
   for (const d of S.settle?.log || []) if (d.settled && d.tx) { if (!runs.has(d.at)) runs.set(d.at, []); runs.get(d.at).push(d); }
   for (const [at, L] of runs) ev.push({ id: 'es' + at, t: Date.parse(at), kind: 'eco', key: 'settle',
     c: { n: L.length, u: L.reduce((a, d) => a + (+d.released_u || 0), 0), p: new Set(L.map(d => String(d.provider).toLowerCase())).size, gas: L.reduce((a, d) => a + (+d.gas_wei || 0), 0) / 1e18, txs: L.map(d => d.tx) } });
+  // the money back (2026-10-25, the A-Z pass: the terminal showed every settle but never a refund): one event per daily
+  // run, the jobs nobody delivered whose budget it returned to their clients
+  const rr = new Map();
+  for (const d of S.settle?.refunds?.log || []) if (d.refunded && d.tx) { if (!rr.has(d.at)) rr.set(d.at, []); rr.get(d.at).push(d); }
+  for (const [at, L] of rr) ev.push({ id: 'er' + at, t: Date.parse(at) + 1, kind: 'eco', key: 'refund',
+    c: { n: L.length, u: L.reduce((a, d) => a + (+d.returned_u || 0), 0), k: new Set(L.map(d => String(d.client).toLowerCase())).size, gas: L.reduce((a, d) => a + (+d.gas_wei || 0), 0) / 1e18, txs: L.map(d => d.tx) } });
   // the Venus agents: one event per agent per run, its actions with transactions and the health factor read after
   const vr = new Map();
   for (const x of S.venus?.log || []) { const k = x.at + ':' + x.agent; if (!vr.has(k)) vr.set(k, []); vr.get(k).push(x); }
@@ -4418,6 +4430,7 @@ const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
 // one line for the chart's marks and the timeline's hover
 const HIRER = { 302257: 'health factor agent', 304493: 'yield agent', 363709: 'DeFi agent' };
 const ecoText = x => { const c = x.c; return x.key === 'hire' ? `#${c.by} paid ${c.seller} ${nf(c.price, 2)} $U for a second opinion${c.agrees === true ? ': same reading' : c.agrees === false ? ': different reading' : ''}` : x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
+  : x.key === 'refund' ? `gave $${nf(c.u, 2)} back to ${plural(c.k, 'client')}: ${plural(c.n, 'job')} nobody delivered`
   : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} on the Brain Board: ${c.kinds}${c.title ? ' · ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
 const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
 function ecoScene(x) {
@@ -4425,6 +4438,9 @@ function ecoScene(x) {
   if (x.key === 'settle') {
     boardScene(x.t, ECO_C, 'settle', 'FOR EVERY AGENT ON BNB CHAIN', 'JOBS SETTLED', { head: 'THE ESCROW PAID THEM', rows: [['JOBS', nf(c.n), ECO_C], ['RELEASED', '$' + nf(c.u, 2)], ['AGENTS PAID', nf(c.p)], ['GAS WE PAID', bnbF(c.gas)]] }, 6.5);
     logLine('SETTLE', ECO_C, ['settled ', [plural(c.n, 'finished job')], ' of other agents · ', ['$' + nf(c.u, 2)], ' released to ', plural(c.p, 'provider')], txs.slice(0, 2).map(h => ['tx', h]), x.t);
+  } else if (x.key === 'refund') {
+    boardScene(x.t, ECO_C, 'settle', 'FOR EVERY CLIENT ON BNB CHAIN', 'MONEY BACK', { head: 'JOBS NOBODY DELIVERED', rows: [['JOBS', nf(c.n), ECO_C], ['BACK TO CLIENTS', '$' + nf(c.u, 2)], ['CLIENTS', nf(c.k)], ['GAS WE PAID', bnbF(c.gas)]] }, 6.5);
+    logLine('REFUND', ECO_C, ['gave ', ['$' + nf(c.u, 2)], ' back to ', plural(c.k, 'client'), ' · ', [plural(c.n, 'job')], ' nobody delivered'], txs.slice(0, 2).map(h => ['tx', h]), x.t);
   } else if (x.key === 'health' || x.key === 'yield') {
     const rows = c.acts.filter(a => a.amt).map(a => [a.did.toUpperCase(), a.amt, ECO_C]);
     if (c.hf) rows.push(['HEALTH FACTOR', nf(c.hf, 2)]);

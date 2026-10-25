@@ -164,7 +164,8 @@ try {
   const tv = H.tgEvidenceVerdicts ? H.tgEvidenceVerdicts(h6) : [];
   const byName = (re) => tv.find((v) => re.test(v.name)) || {};
   is('7 the health rule reads the bot\'s own /health: the untold buy, the 20-min queue and the burn stuck 2 h are red',
-    tv.length === 3 && byName(/was posted/).good === false && /never told/.test(byName(/was posted/).detail) && byName(/15 min/).good === false && byName(/burn alerts/).good === false, JSON.stringify(tv));
+    // 4 since 25.10.: the bot's /health also says whether a buy was told twice (here: none, so that one is green)
+    tv.length === 4 && byName(/was posted/).good === false && /never told/.test(byName(/was posted/).detail) && byName(/15 min/).good === false && byName(/burn alerts/).good === false && byName(/told twice/).good === true, JSON.stringify(tv));
   const keep = H.keepVerdict;
   is('7 808.41 to the hundredth: dust is fine, 808.39 and 26,792 are red, an unread wallet is red',
     !!keep && keep('a', 808410000002992638762n).good && !keep('a', 808390000000000000000n).good && !keep('a', 26792110000000000000000n).good && !keep('a', null).good);

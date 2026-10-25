@@ -188,6 +188,8 @@ export function tgEvidenceVerdicts(j, now = Date.now()) {
     const short = (t) => String(t).slice(0, 10) + '…';
     add('every $100+ buy of the last 24 h was posted', ba.missing_count === 0,
       `${ba.posted} of ${ba.buys_100_24h} marked${ba.missing_count ? ` — ${ba.missing_count} never told: ${(ba.missing || []).map(short).join(', ')}` : ''}`);
+    // told once (2026-10-25): a bot that does not report it yet (before its deploy) is not judged on it
+    if (ba.told_twice_7d != null) add('no buy was told twice in the last 7 days', ba.told_twice_7d === 0, ba.told_twice_7d ? `${ba.told_twice_7d} told twice: ${(ba.told_twice || []).map(short).join(', ')}` : 'each buy told once');
     const old = ba.pending && ba.pending.oldest_min;
     add('no buy alert waits for its NFT longer than 15 min', !(old > 15), ba.pending && ba.pending.count ? `${ba.pending.count} waiting, the oldest ${old} min` : 'nothing waiting');
   }
@@ -211,7 +213,10 @@ const tgEvidenceHolds = () => {
     && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: '2026-10-09T07:00:00Z' } }) === 'true,true,false'
     && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: '2026-10-09T08:50:00Z' } }) === 'true,true,true'
     && v({ ...fine, burn_alerts: { gap: 50000, stuck_since: null } }) === 'true,true,true'
-    && v({ ok: true }) === 'false,false,false';
+    && v({ ok: true }) === 'false,false,false'
+    // told once (25.10.): judged only once the bot reports it; a buy in the record twice reads red
+    && v({ ...fine, buy_alerts: { ...fine.buy_alerts, told_twice_7d: 0, told_twice: [] } }) === 'true,true,true,true'
+    && v({ ...fine, buy_alerts: { ...fine.buy_alerts, told_twice_7d: 1, told_twice: ['0xdef'] } }) === 'true,false,true,true';
 };
 
 // FIVE WALLETS KEEP 808.41 BOBAI (operator, 2026-10-08): the buyback wallet 1ce (worker/index.js KEEP_TOKENS), the
@@ -391,6 +396,14 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     // 2026-10-09: the public 24 h market card (16:00-18:59 UTC); an older bot that does not name it is not asked
     if ('market_card' in d) ok('Bots', 'market card went out (channel, 16:00 UTC)', dailyOnTime(d.market_card, 19, new Date(), '2026-10-09'), `last sent ${d.market_card || 'never'}`);
     for (const v of tgEvidenceVerdicts(j)) ok('Bots', v.name, v.good, v.detail);
+    // ONE NFT PER BUY (2026-10-25, operator: "es gab wieder zwei NFT"): the drop log of the minter, the last 36 h (wider
+    // than the day between two reports); two drops for one buy transaction is the double mint MintGate stops (23.10.)
+    { const dr = await getJson('https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops'), D = dr.json && Array.isArray(dr.json.drops) ? dr.json.drops : null; // getJson, the module's: runHealth's getJ is declared further down
+      if (!D) ok('Bots', 'no buy got two NFTs in the last 36 h', false, 'the minter did not report its drops');
+      else { const since = Date.now() - 36 * 3600e3, n = new Map();
+        for (const d of D) { const t = d.ts < 1e12 ? d.ts * 1000 : d.ts; if (t >= since && d.buyTx) n.set(String(d.buyTx).toLowerCase(), (n.get(String(d.buyTx).toLowerCase()) || 0) + 1); }
+        const two = [...n].filter(([, c]) => c > 1).map(([k]) => k.slice(0, 10) + '…');
+        ok('Bots', 'no buy got two NFTs in the last 36 h', !two.length, two.length ? `${two.length} buy(s) minted twice: ${two.join(', ')}` : `${n.size} buy(s), one NFT each`); } }
     // informational: a degraded log scan walks on from its cursor (2026-10-09); said, not red
     ok('Bots', 'telegram bot log scans read whole (informational)', true, j.scan_degraded_since ? `degraded since ${j.scan_degraded_since}, walking from the cursor` : 'not degraded');
   }

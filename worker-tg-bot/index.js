@@ -845,6 +845,11 @@ async function healthEvidence(env, now = Date.now()) {
     const [ledger, posted, pending, alerted] = await Promise.all([readSwapLedger(env), json('posted_txs'), json('pending_nft_buys'), json(ALERTED_BUYS_KEY)]);
     const marked = new Set([...(Array.isArray(posted) ? posted : []), ...((alerted && Array.isArray(alerted.buys)) ? alerted.buys.map((b) => b && b.tx) : [])].map((t) => String(t || '').toLowerCase()));
     out.buy_alerts = postedBuyEvidence(ledger, marked, Array.isArray(pending) ? pending : [], now);
+    // TOLD ONCE (2026-10-25, operator: "irgendetwas stimmt nicht mehr mit den buy alerts und nft minter"): a transaction
+    // the alert record holds twice in its week was told twice — the morning report reads this, not only "none missing"
+    { const seen = new Map(); for (const b of (alerted && Array.isArray(alerted.buys) ? alerted.buys : [])) { const t = String(b && b.tx || '').toLowerCase(); if (t) seen.set(t, (seen.get(t) || 0) + 1); }
+      const twice = [...seen].filter(([, n]) => n > 1).map(([t]) => t);
+      out.buy_alerts.told_twice_7d = twice.length; out.buy_alerts.told_twice = twice.slice(0, 5); }
   } catch (e) { out.buy_alerts = { error: String(e && e.message || e).slice(0, 120) }; }
   try {
     const [lastRaw, stuck] = await Promise.all([env.KV.get('last_burned'), env.KV.get('burn_stuck_since')]);

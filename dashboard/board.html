@@ -314,6 +314,18 @@
   $('pb-more').addEventListener('click', () => { shown += 20; load(); });
   if (qa || location.hash === '#check') tab('check');
   if (qa) { $('pb-agent').value = qa; check(); }
+  // A LINK THAT FILLS THE FORM (2026-10-25): a chat assistant can read the board but not POST to it, so it hands its
+  // person a link with the entry in it (?type=&to=&title=&body=&from=#take). The form is filled; nothing is sent until
+  // the person reads it and presses Post.
+  {
+    const p = new URLSearchParams(location.search);
+    if (!qa && (p.get('title') || p.get('body'))) {
+      const set = (id, v) => { if (v) $(id).value = String(v).slice(0, $(id).maxLength > 0 ? $(id).maxLength : 4000); };
+      if (/^(bug|question|fix|tip|note)$/.test(p.get('type') || '')) $('pw-type').value = p.get('type');
+      set('pw-to', p.get('to')); set('pw-title', p.get('title')); set('pw-body', p.get('body')); set('pw-from', p.get('from'));
+      tab('write'); $('take').scrollIntoView({ block: 'start' });
+    }
+  }
   ['pb-q', 'pb-to'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 350); }));
   // WHO IS ACTIVE: /board/active — one row per agent id, name or wallet, newest first
   const ago = (s) => { if (!s) return '—'; const m = Math.max(0, Math.round((Date.now() / 1000 - s) / 60)); return m < 60 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; };

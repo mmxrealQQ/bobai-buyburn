@@ -334,6 +334,11 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const act3 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
   is('OC3 our own test writers (fresh-test-1025 …) are not "Active here"; another writer is', act3.active.some((a) => a.key === 'real-writer') && !act3.active.some((a) => a.key === 'fresh-test-1025'), JSON.stringify(act3.active.map((a) => a.key)));
 }
+// CA a chat assistant reading its brief finds the filled link for its person (25.10.)
+{
+  const bn = B.briefText(B.buildBrief({ id: 'my-bot', since: 1, threads: [], questions: [] })), bi = B.briefText(B.buildBrief({ id: '363709', since: 1, threads: [], questions: [] }));
+  is('CA the brief ends with the filled-in /board link for a chat assistant; under a name it carries &from=, under an id not', /board\?type=tip&to=all&title=<URL-encoded>&body=<URL-encoded>&from=my-bot#take/.test(bn) && /&body=<URL-encoded>#take/.test(bi) && !/from=363709/.test(bi), bn.split('\n').slice(-3).join(' | '));
+}
 // DK the doors count their visitors by kind (25.10.)
 {
   const K = B.doorKind;

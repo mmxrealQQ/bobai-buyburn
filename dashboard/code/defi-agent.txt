@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7448 lines.
+# one fetch. 17 files, 7457 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -267,6 +267,11 @@ if (SELF) {
       is('a run that only met a node timeout and sent nothing is retried', nodeHiccupOnly(hiccup) === true);
       is('… not once it is the retry itself (one more time, never a loop)', nodeHiccupOnly({ ...hiccup, retried_after: { at: hiccup.at } }) === false);
       is('… not when any step acted, or a failed step had sent transactions', nodeHiccupOnly({ ...hiccup, acted: true }) === false && nodeHiccupOnly({ ...hiccup, steps: { rebalance: { acted: false, error: T, txs: [{ hash: '0xa' }] } } }) === false && nodeHiccupOnly(broke) === false);
+      // 2026-10-25 03:00 UTC: a node behind the chain — the position read as "Invalid token ID", nothing sent
+      const R = 'The contract function "positions" reverted with the following reason:\nInvalid token ID';
+      const behind = { at: '2026-10-25T03:00:58Z', ok: false, acted: false, steps: { rebalance: { acted: false, error: R }, increase: { acted: false, why: 'this wallet holds no position to grow' } } };
+      is('a position read that reverts "Invalid token ID" and sent nothing is retried once (told only if the retry meets it too)', nodeHiccupOnly(behind) === true && nodeHiccupOnly({ ...behind, retried_after: { at: behind.at } }) === false);
+      is('… not a write that reverts that way, nor another revert reason, nor when it had sent transactions', nodeHiccupOnly({ ...behind, steps: { rebalance: { acted: false, error: R.replace('"positions"', '"decreaseLiquidity"') } } }) === false && nodeHiccupOnly({ ...behind, steps: { rebalance: { acted: false, error: R.replace('Invalid token ID', 'Not approved') } } }) === false && nodeHiccupOnly({ ...behind, steps: { rebalance: { acted: false, error: R, txs: [{ hash: '0xa' }] } } }) === false);
       is('… not when another error stands beside the timeout, nor a dry run, nor a run without an error', nodeHiccupOnly({ ...hiccup, steps: { ...hiccup.steps, collect: { acted: false, error: 'execution reverted' } } }) === false && nodeHiccupOnly({ ...hiccup, dry: true }) === false && nodeHiccupOnly({ ...hiccup, ok: true, steps: { increase: { acted: false } } }) === false);
     }
     is('… the same failure has the same key (said once while it repeats), another failure another key', alertsOf(broke)[0].key === alertsOf({ ...broke, at: '2026-09-18T13:00:00Z' })[0].key && alertsOf(broke)[0].key !== alertsOf({ ...broke, steps: { rebalance: { ...broke.steps.rebalance, error: 'another reason' } } })[0].key);
@@ -3948,7 +3953,11 @@ export function alertsOf(entry) {
 // told "rebalance FAILED" and the next check an hour later was fine. A run whose only errors are a node not answering,
 // that acted nowhere and sent nothing, is run once more a minute later instead — it is then exactly the same run, one
 // minute later. A real error, or a run that sent anything, is told as before and left to the hourly check.
-const NODE_HICCUP = /took too long|timed? ?out|timeout|fetch failed|HTTP request failed|rate.?limit|too many requests|\b429\b|\b50[234]\b|ECONNRESET|socket hang up|network error/i;
+// A READ THAT MET A NODE BEHIND THE CHAIN (2026-10-25, operator's go "Option 2"): at 03:00 UTC one run read the wallet
+// as holding no position and positions() of it as "Invalid token ID" — nothing was sent, and twenty minutes later
+// #7637521 read as held on every node. A read of the position manager that reverts that way is retried once like a
+// timeout; the operator is told when the retry meets it too (then it is real). Only these reads, only this reason.
+const NODE_HICCUP = /took too long|timed? ?out|timeout|fetch failed|HTTP request failed|rate.?limit|too many requests|\b429\b|\b50[234]\b|ECONNRESET|socket hang up|network error|The contract function "(positions|ownerOf|tokenOfOwnerByIndex)" reverted with the following reason:\s*Invalid token ID/i;
 export function nodeHiccupOnly(entry) {
   if (!entry || entry.dry || entry.acted || entry.retried_after) return false;
   const parts = [];

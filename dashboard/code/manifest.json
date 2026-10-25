@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7448,
-   "zipBytes": 194827,
-   "txtBytes": 605916,
-   "sha256": "9a73d9301cfcb06c",
+   "lines": 7457,
+   "zipBytes": 195369,
+   "txtBytes": 607672,
+   "sha256": "5910a8efeef3a910",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7758,
-   "zipBytes": 173479,
-   "txtBytes": 522104,
-   "sha256": "6cd5a8d93f8a671b",
+   "lines": 7753,
+   "zipBytes": 173253,
+   "txtBytes": 520791,
+   "sha256": "3bfed18eff245f48",
    "reqs": [
     {
      "what": "A static host",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3276,
-   "zipBytes": 107512,
-   "txtBytes": 321964,
-   "sha256": "d07fa847ada352e6",
+   "lines": 3312,
+   "zipBytes": 109451,
+   "txtBytes": 326822,
+   "sha256": "25858c4a857f4a8c",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 71,
-   "lines": 23017,
-   "zipBytes": 567677,
-   "txtBytes": 1610197,
-   "sha256": "bd702c60418c8eae",
+   "lines": 23058,
+   "zipBytes": 569349,
+   "txtBytes": 1615653,
+   "sha256": "092e1916ed693334",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -751,9 +751,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4938,
-   "zipBytes": 110279,
-   "txtBytes": 318241,
-   "sha256": "6cee4b0d3f2ea2c0",
+   "zipBytes": 110340,
+   "txtBytes": 318349,
+   "sha256": "d63090ff1f77da38",
    "reqs": [
     {
      "what": "Node 18+ and time",

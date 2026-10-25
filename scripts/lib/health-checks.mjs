@@ -219,6 +219,33 @@ const tgEvidenceHolds = () => {
     && v({ ...fine, buy_alerts: { ...fine.buy_alerts, told_twice_7d: 1, told_twice: ['0xdef'] } }) === 'true,false,true,true';
 };
 
+// A PAYMENT REFUSED ON OUR SIDE (2026-10-25): /buys/refused keeps every payment that came back without buying, with
+// the reason the paying path gave. A payer's own fault — no balance, a used or expired signature, the wrong amount,
+// token or signer, input missing, a hash not found, the facilitator's own policy — is the payer's; any other reason
+// (an RPC that failed, a settle we could not send, a reason this list does not know) is ours to look at and reads red.
+// Our own checks (brainonbnb- user agents) and our site are left out; the last 24 h. Pure; pinned below.
+export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `/i;
+export function refusedVerdict(list, now = Date.now()) {
+  if (!Array.isArray(list)) return { good: false, detail: 'the agent server did not report /buys/refused' };
+  const day = list.filter((r) => r && !/^brainonbnb-/i.test(r.ua || '') && !r.own_site && now - Date.parse(r.at) < 864e5);
+  const ours = day.filter((r) => !PAYER_SIDE.test(r.why || ''));
+  return { good: ours.length === 0, detail: ours.length
+    ? `${ours.length} refused on our side: ${ours.slice(0, 2).map((r) => `${r.product} ${String(r.at).slice(11, 16)} — ${String(r.why || 'no reason').slice(0, 90)}`).join(' | ')}`
+    : `${day.length} refused in 24 h, each for the payer's own reason${day.length ? ' (' + [...new Set(day.map((r) => (String(r.why).match(PAYER_SIDE) || ['?'])[0]))].slice(0, 2).join('; ') + ')' : ''}` };
+}
+const refusedHolds = () => {
+  const now = Date.parse('2026-10-25T16:00:00Z'), at = '2026-10-25T15:45:00Z';
+  const g = (list) => refusedVerdict(list, now).good;
+  return g([]) === true
+    && g([{ at, ua: 'node', product: 'answer:x', why: 'verify: the payment would not settle: Execution reverted with reason: ERC20: transfer amount exceeds balance' }]) === true
+    && g([{ at, ua: 'node', product: 'answer:x', why: 'verify: the payment would not settle: HTTP request failed. Status: 429' }]) === false
+    && g([{ at, ua: 'node', product: 'answer:x', why: 'the settlement could not be sent' }]) === false
+    && g([{ at, ua: 'brainonbnb-paycheck/1', product: 'answer:x', why: 'HTTP request failed' }]) === true
+    && g([{ at: '2026-10-24T10:00:00Z', ua: 'node', product: 'answer:x', why: 'HTTP request failed' }]) === true
+    && g([{ at, ua: 'x', product: 'tip', why: 'transaction not found — if it was just sent, wait for it to confirm' }]) === true
+    && g(null) === false;
+};
+
 // FIVE WALLETS KEEP 808.41 BOBAI (operator, 2026-10-08): the buyback wallet 1ce (worker/index.js KEEP_TOKENS), the
 // creator wallet d38 (add-liquidity-safe.js KEEP_BOBAI), the NFT relayer, the Giggle pot and the operator's wallet.
 // "Exactly" to the hundredth: the operator's wallet carries 0.000000003 BOBAI of dust from a tax rounding, which is
@@ -340,6 +367,7 @@ ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
 ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a run reads red, tax that just arrived does not)', buybackVerdictHolds());
 ok('Health', 'the told-buys / burn-alert rules pass their own pins (an untold buy, a stuck queue, a burn stuck an hour read red)', tgEvidenceHolds());
+ok('Health', 'the refused-payment rule passes its own pins (a payer\'s empty wallet is theirs, a failed RPC or an unknown reason is ours)', refusedHolds());
 ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is not, an unread wallet is red)', keepHolds());
 
 // ---- the bots -------------------------------------------------------------
@@ -786,6 +814,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', pair: '0x6eadd4cb786898b34929444988380ed0cc6fd9a6' }),
   });
   ok('Paid', 'invented payment is rejected', /not found|malformed|need/i.test(fake.json?.reason || ''), fake.json?.reason || '');
+  // the payments that came back without buying (/buys/refused, 2026-10-25): one refused on our side is red
+  const rf = await getJson(`${AGENT}/buys/refused`);
+  const rv = refusedVerdict(rf.json && rf.json.refused);
+  ok('Paid', 'no payment of the last 24 h was refused on our side', rv.good, rv.detail);
 
   const guard = await fetch(`${AGENT}/run-checks`, { method: 'POST' }).catch(() => null);
   ok('Paid', 'admin trigger needs the secret', guard?.status === 403, guard ? `got ${guard.status}` : '');

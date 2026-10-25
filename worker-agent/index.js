@@ -299,6 +299,19 @@ async function listAll(env, prefix) {
 // A free answer to a caller from outside carries the thank-you note (shared/thanks.js, 2026-09-26): free, a tip
 // welcome, never required. The site's own pages, which read some of these routes for their figures, get none.
 const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test(request.headers.get('origin') || request.headers.get('referer') || '');
+// The shape of a payment proof, never the proof (2026-10-25): which form it came in, the x402 version, scheme, network
+// and payload kind — enough to tell what a payer's client sent, nothing that could be replayed.
+function proofShape(proof) {
+  const p = String(proof || '').trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(p)) return 'tx hash';
+  if (/^bobai-holder /.test(p)) return 'holder pass';
+  try {
+    const j = JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
+    const pl = j.payload || {}, acc = j.accepted || {};
+    const kind = pl.permit2Authorization ? 'permit2' : pl.authorization ? 'eip3009' : pl.txHash || pl.transaction ? 'tx' : Object.keys(pl).slice(0, 3).join('+') || 'no payload';
+    return ['x402 v' + (j.x402Version ?? '?'), j.scheme || acc.scheme, j.network || acc.network, kind].filter(Boolean).join(' · ');
+  } catch { return `unreadable (${p.length} chars)`; }
+}
 // only on a caller's first free answer (firstCall, 2026-10-01)
 const thankJson = async (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request) && await firstCall(request)
   ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
@@ -1906,6 +1919,17 @@ export default {
     // request from brainonbnb.com is counted under own:<step>, so sell:<step> is what others asked.
     const ownSite = fromOurSite(request);
     const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
+    // A PAYMENT THAT DID NOT BUY (2026-10-25): on 24.10. eight payments came back 402 on two answers and nothing said
+    // why — the counter kept the status, not the reason. Each one is kept now (the last 20, 14 days, KV payrefused):
+    // the product, the status, the reason the paying path answered, the caller's user agent and the proof's shape
+    // (proofShape) — never the proof. Read at GET /buys/refused. Only written after the path has answered.
+    const missed = (product, proof, out) => {
+      if (selfTest || !proof || !out || out.status === 200 || !env.AGENT) return;
+      const b = out.body && typeof out.body === 'object' ? out.body : {};
+      const rec = { at: new Date().toISOString(), product, status: out.status, why: [b.stage, b.reason || b.error].filter(Boolean).map(String).join(': ').slice(0, 240),
+        ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(ownSite ? { own_site: true } : {}) };
+      ctx.waitUntil(env.AGENT.get('payrefused', 'json').then((l) => env.AGENT.put('payrefused', JSON.stringify([rec, ...(Array.isArray(l) ? l : [])].slice(0, 20)), { expirationTtl: 1209600 })).catch(() => {}));
+    };
     // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
     // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
     // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.
@@ -2833,6 +2857,9 @@ ${pageTail}`;
     // What the DeFi agent's daily tick did — sweep, collect, rebalance,
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
+    if (path === '/buys/refused') {
+      return json({ what_this_is: 'The last 20 payments (14 days) that came back without buying: what was bought, the status, the reason the paying path gave, the caller\'s user agent and the shape of the proof — never the proof itself.', refused: (await env.AGENT.get('payrefused', 'json').catch(() => null)) || [] });
+    }
     if (path === '/buys') {
       const tx = (url.searchParams.get('tx') || '').toLowerCase().match(/^0x[0-9a-f]{64}$|^x402:\d+$|^holder:\S+$/)?.[0] || null;
       return json(await readBuys(env, tx), 200, { 'Cache-Control': 'public, max-age=60' });
@@ -3419,6 +3446,7 @@ ${pageTail}`;
           const q = Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service'));
           const out = await sellAnswer(env, ctx, payTo, id, { task: q.task || '', params: q }, getProof);
           note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:paid:${out.status}`);
+          missed(`answer:${id}`, getProof, out);
           return json(out.body, out.status, out.headers || {});
         }
         const out = await sellAnswer(env, ctx, payTo, id, {}, null);
@@ -3432,6 +3460,7 @@ ${pageTail}`;
         const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
         // terms = asked the price; paid:<status> = came back with a proof.
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
+        missed(`answer:${id}`, proof, out);
         return json(out.body, out.status, out.headers || {});
       }
     }
@@ -3604,6 +3633,7 @@ ${pageTail}`;
       const proof = request.method === 'POST' ? (request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT')) : null;
       const out = await purchaseScanPass(env, ctx, payTo, proof);
       note(proof ? (out.status === 200 ? 'sell:scanpass:paid' : 'sell:scanpass:refused') : 'sell:scanpass:terms');
+      missed('scan-pass', proof, out);
       // GET reads the terms with 200, as /watch does; POST without payment is the 402 itself.
       return json(out.body, request.method === 'GET' && !proof ? 200 : out.status, out.headers || {});
     }
@@ -3667,6 +3697,7 @@ ${pageTail}`;
 
       const out = await purchaseWatch(env, ctx, payTo, ready.spec, proof);
       note(`sell:watch:paid:${out.status}`);
+      missed('watch', proof, out);
       return json(out.body, out.status, out.headers || {});
     }
 

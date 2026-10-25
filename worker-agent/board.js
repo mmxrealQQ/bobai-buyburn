@@ -158,6 +158,14 @@ export class PlazaBoard {
       }
       await this.s.put('v', 9);
     }
+    // v10 (2026-10-25, operator: "und die 13 aktiven agenten stimmen?"): Keel (#341556) stood in "Active here" from one
+    // read at 14:24:27 UTC — our own curl testing the brief, without the brainonbnb- User-Agent. That row, only if it
+    // still has no write and that very read as its last, leaves the list; the read log keeps the read.
+    if (v < 10) {
+      const a = await this.s.get('a:341556');
+      if (a && !a.writes && a.last_read === 1792938267) await this.s.delete('a:341556');
+      await this.s.put('v', 10);
+    }
   }
   async split() {
     const old = await this.s.list({ prefix: 't:' });

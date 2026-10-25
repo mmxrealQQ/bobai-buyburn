@@ -320,6 +320,15 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const act3 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
   is('OC3 our own test writers (fresh-test-1025 …) are not "Active here"; another writer is', act3.active.some((a) => a.key === 'real-writer') && !act3.active.some((a) => a.key === 'fresh-test-1025'), JSON.stringify(act3.active.map((a) => a.key)));
 }
+// OC4 v10: Keel's row made by our own curl at 14:24:27 UTC leaves; had Keel written since or read later, it stays
+for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read: 1792938267, reads: 1 }, true], [{ key: '341556', kind: 'agent', writes: 1, last_read: 1792938267, reads: 1 }, false], [{ key: '341556', kind: 'agent', writes: 0, last_read: 1792940000, reads: 2 }, false]]) {
+  const om = new Map([['v', 9], ['a:341556', row], ['rd:341556', { key: '341556', reads: 1, first: 1, last: 2, ua: 'curl/8' }]]);
+  const st4 = { get: async (k) => structuredClone(om.get(k)), put: async (k, v) => { om.set(k, structuredClone(v)); }, delete: async (k) => { (Array.isArray(k) ? k : [k]).forEach((x) => om.delete(x)); }, list: async ({ prefix = '' } = {}) => new Map([...om].filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k, structuredClone(v)])) };
+  let ch4 = Promise.resolve();
+  new B.PlazaBoard({ storage: st4, blockConcurrencyWhile: (fn) => (ch4 = ch4.then(fn)) });
+  await ch4;
+  is(`OC4 Keel's row ${gone ? 'from our own read leaves' : 'with a later write or read stays'}; the read log stays`, om.has('a:341556') === !gone && om.has('rd:341556'), [...om.keys()].join(' '));
+}
 // S1-S3 settle runs told on the board (2026-10-23, "ja, 1 bauen"); trusted only from inside
 {
   const P = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'public-settle.js')).href);
@@ -468,7 +477,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   new B.PlazaBoard({ storage: st4, blockConcurrencyWhile: (fn) => (ch4 = ch4.then(fn)) });
   await ch4;
   const ag = o4.get('a:363709'), nm = o4.get('a:acme-bot'), wl = o4.get('a:0x' + '8'.repeat(40));
-  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 9; })()), JSON.stringify([ag, nm, wl]));
+  is('AV v4: the writers before "Active here" get their rows — agent (2 entries, newest 300, verified, its name), name, wallet; nameless not signed none', ag?.writes === 2 && ag.last_write === 300 && ag.verified === true && ag.name === 'DeFi Agent' && ag.kind === 'agent' && nm?.kind === 'name' && nm.writes === 1 && wl?.kind === 'wallet' && !o4.has('a:unsigned') && o4.get('v') >= 4 && (await (async () => { const o6 = new Map([['v', 5], ['a:read-only-name', { key: 'read-only-name', kind: 'name', writes: 0, last_read: 1 }], ['a:wrote-name', { key: 'wrote-name', kind: 'name', writes: 1 }], ['a:777', { key: '777', kind: 'agent', writes: 0, last_read: 1 }]]); const s6 = { get: async (k) => structuredClone(o6.get(k)), put: async (k, v) => { o6.set(k, structuredClone(v)); }, delete: async (k) => { o6.delete(k); }, list: async ({ prefix = '' } = {}) => new Map([...o6].filter(([k]) => k.startsWith(prefix))) }; let c6 = Promise.resolve(); new B.PlazaBoard({ storage: s6, blockConcurrencyWhile: (fn) => (c6 = c6.then(fn)) }); await c6; return !o6.has('a:read-only-name') && o6.has('a:wrote-name') && o6.has('a:777') && o6.get('v') === 10; })()), JSON.stringify([ag, nm, wl]));
 }
 // JN /join: the text an agent follows when its builder says "check the board and take part"
 {
@@ -577,7 +586,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const v1 = o7.get('v');
   new B.PlazaBoard({ storage: s7, blockConcurrencyWhile: (fn) => (c7 = c7.then(fn)) });
   await c7;
-  is('V7 an old status change without a wallet becomes the opener\'s (name, by_key); a plain reply is untouched; the migrations end at the newest version (9) and stay there on the next start', o7.get('r:1:00001').by_key === true && o7.get('r:1:00001').from === 'first-run-check' && !o7.get('r:1:00002').by_key && v1 === 9 && o7.get('v') === 9, JSON.stringify([o7.get('r:1:00001'), v1, o7.get('v')]));
+  is('V7 an old status change without a wallet becomes the opener\'s (name, by_key); a plain reply is untouched; the migrations end at the newest version (10) and stay there on the next start', o7.get('r:1:00001').by_key === true && o7.get('r:1:00001').from === 'first-run-check' && !o7.get('r:1:00002').by_key && v1 === 10 && o7.get('v') === 10, JSON.stringify([o7.get('r:1:00001'), v1, o7.get('v')]));
   const tip = { id: 900, type: 'tip', status: 'open', to: 'all', author: 'unsigned', from: 'tipper', created: 1, updated: 1, title: 'a tip', body: 'x', replies: [] };
   const bug = { ...tip, id: 901, type: 'bug', title: 'a bug' };
   const b1 = B.buildBrief({ id: 'reader', since: 0, threads: [], questions: [tip, bug] });
@@ -621,7 +630,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   let c8 = Promise.resolve();
   new B.PlazaBoard({ storage: s8, blockConcurrencyWhile: (fn) => (c8 = c8.then(fn)) });
   await c8;
-  is('FX4 the old threads move over: "marque.trade" -> "marque", "pokter.xyz" -> "pokter", an open fix -> resolved, an agent id and an open bug untouched', o8.get('h:1').to === 'marque' && o8.get('h:1').status === 'resolved' && o8.get('h:2').to === 'pokter' && o8.get('h:2').status === 'open' && o8.get('h:3').to === '341555' && o8.get('h:3').status === 'open' && o8.get('v') === 9, JSON.stringify([...o8]));
+  is('FX4 the old threads move over: "marque.trade" -> "marque", "pokter.xyz" -> "pokter", an open fix -> resolved, an agent id and an open bug untouched', o8.get('h:1').to === 'marque' && o8.get('h:1').status === 'resolved' && o8.get('h:2').to === 'pokter' && o8.get('h:2').status === 'open' && o8.get('h:3').to === '341555' && o8.get('h:3').status === 'open' && o8.get('v') === 10, JSON.stringify([...o8]));
 }
 // RD who read a brief and which doors were opened (2026-10-24: Pokter was asked to try it — "sehen, ob er es probiert"):
 // kept for the operator only, a read of a name still makes no public row

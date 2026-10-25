@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 71 files, 23059 lines.
+# one fetch. 71 files, 23174 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4398,6 +4398,9 @@ async function registration(uri, get) {
   } catch (e) { return { error: 'the document is not JSON: ' + String(e.message || e).slice(0, 80) }; }
   return { error: `unsupported tokenURI scheme: ${uri.slice(0, 30)}` };
 }
+// an A2A service that names its card, not its endpoint — read without the query (2026-10-25: AgentCore's ends
+// "agent-card.json?qualifier=DEFAULT")
+const isCardUrl = (u) => /agent(-card)?\.json$/.test(String(u).split(/[?#]/)[0]);
 const serviceUrl = (doc, names) => (Array.isArray(doc?.services) ? doc.services : Array.isArray(doc?.endpoints) ? doc.endpoints : []).find((s) => names.includes(String(s.name || s.type || '').toLowerCase()))?.endpoint || null;
 
 export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 30000 } = {}) {
@@ -4435,15 +4438,21 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   if (a2a) {
     // where the card is: the URL named, else under the endpoint's path, else at the domain's root — the A2A standard
     // place (2026-10-23: two agents serve it at the root and the checkup, asking only under /a2a, called them broken)
-    const tries = /agent(-card)?\.json$/.test(a2a) ? [a2a] : [String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json', (() => { try { return new URL(a2a).origin + '/.well-known/agent-card.json'; } catch { return null; } })()].filter((x, i, all) => x && all.indexOf(x) === i);
+    // the card URL named with a query (2026-10-25: AWS Bedrock AgentCore's ends "agent-card.json?qualifier=DEFAULT";
+    // the test read the whole string, missed it, and asked the domain's root — Firstshare Checker was told "404, a site
+    // answering HTML?" where its card asks for credentials)
+    const tries = isCardUrl(a2a) ? [a2a] : [String(a2a).replace(/\/$/, '') + '/.well-known/agent-card.json', (() => { try { return new URL(a2a).origin + '/.well-known/agent-card.json'; } catch { return null; } })()].filter((x, i, all) => x && all.indexOf(x) === i);
     let c = null, cardUrl = tries[0];
     for (const t of tries) { c = await get(t); cardUrl = t; if (c.json && (c.json.skills || c.json.name)) break; }
     card = c.json && (c.json.skills || c.json.name) ? c.json : null;
-    add('agent card loads', !!card, card ? `${cardUrl.slice(0, 100)} · ${(card.skills || []).length} skills` : `${cardUrl.slice(0, 100)} answered ${c.status || c.error}${c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
+    // a card behind credentials is there, only not for a reader: a fix of its own, not "serve it at /.well-known"
+    const locked = !card && (c.status === 401 || c.status === 403);
+    const shown = cardUrl.length > 100 ? cardUrl.slice(0, 99) + '…' : cardUrl; // a long URL cut visibly, not mid-word
+    add('agent card loads', !!card, card ? `${shown} · ${(card.skills || []).length} skills` : `${shown} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
       const noEx = (card.skills || []).filter((s) => !(s.examples || []).length).map((s) => String(s.id || s.name).slice(0, 40));
       add('every skill has an example', !noEx.length, noEx.length ? `without: ${noEx.slice(0, 8).join(', ')}` : 'yes', 'add examples to each skill — 8004scan grades A2A quality on it (ours went 77 -> 87)');
-      rpcUrl = card.url || (/agent(-card)?\.json$/.test(a2a) ? null : a2a);
+      rpcUrl = card.url || (isCardUrl(a2a) ? null : a2a);
     }
   }
   if (rpcUrl) {
@@ -4483,7 +4492,7 @@ export async function a2aUrlOf(id, { keyed = null, self = null } = {}) {
   const reg = await registration(str(u.result), get);
   const a2a = serviceUrl(reg.doc, ['a2a']);
   if (!a2a || !/^https:\/\//.test(a2a) || (isOurHost(a2a) && !OWN_AGENT_IDS.has(id))) return null;
-  if (!/agent(-card)?\.json$/.test(a2a)) return a2a;
+  if (!isCardUrl(a2a)) return a2a;
   const c = await get(a2a);
   const url = c.json?.url;
   return url && /^https:\/\//.test(url) && !(isOurHost(url) && !OWN_AGENT_IDS.has(id)) ? url : null;
@@ -4653,6 +4662,14 @@ export class PlazaBoard {
       }
       await this.s.put('v', 9);
     }
+    // v10 (2026-10-25, operator: "und die 13 aktiven agenten stimmen?"): Keel (#341556) stood in "Active here" from one
+    // read at 14:24:27 UTC — our own curl testing the brief, without the brainonbnb- User-Agent. That row, only if it
+    // still has no write and that very read as its last, leaves the list; the read log keeps the read.
+    if (v < 10) {
+      const a = await this.s.get('a:341556');
+      if (a && !a.writes && a.last_read === 1792938267) await this.s.delete('a:341556');
+      await this.s.put('v', 10);
+    }
   }
   async split() {
     const old = await this.s.list({ prefix: 't:' });
@@ -4698,6 +4715,9 @@ export class PlazaBoard {
   async readLog(p, now) {
     const k = 'rd:' + String(p.key).slice(0, 64);
     let r = await this.s.get(k);
+    // our own checks' reads (2026-10-25): counted apart, so they never cover who else read last — the inbox showed four
+    // agents' briefs "last read · brainonbnb-test" and the reader of 06:00 was gone from sight; nor take one of the 500
+    if (OWN_CHECK.test(p.ua || '')) { if (r) { r.own = (r.own || 0) + 1; r.own_last = now; await this.s.put(k, r); } return; }
     if (!r) { const n = (await this.s.get('rd#')) || 0; if (n >= 500) return; await this.s.put('rd#', n + 1); r = { key: String(p.key).slice(0, 64), reads: 0, first: now }; }
     r.reads++; r.last = now;
     if (p.ua) r.ua = String(p.ua).replace(/[^\x20-\x7e]+/g, ' ').slice(0, 100);
@@ -4862,6 +4882,24 @@ export class PlazaBoard {
       return Response.json([...(await this.s.list({ prefix: 'hk:' })).values()].reverse());
     }
     if (op === 'row') return Response.json((await this.s.get('a:' + String(p.key).slice(0, 64))) || null);
+    // A TITLE CORRECTED IN THE OPEN (2026-10-25: thread #1 said "Sluicegate … has delivered none since 15 Oct"; the
+    // correction stood two replies down while every list showed the title). The operator only, and only on a thread one
+    // of OUR writers opened (the route checks): the new title stands, and a reply keeps the old one and the reason.
+    if (op === 'retitle') {
+      const head = await this.s.get('h:' + normId(p.thread));
+      if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
+      const title = cleanText(String(p.title || '')).trim().slice(0, LIMITS.title || 140);
+      if (!title || title === head.title) return Response.json({ ok: false, error: 'a new title is needed' }, { status: 400 });
+      if ((head.nreplies || 0) >= LIMITS.repliesPerThread) return Response.json({ ok: false, error: 'this thread is full' }, { status: 409 });
+      const rid = (head.nreplies || 0) + 1;
+      const r = { id: rid, created: now, author: 'operator', agent: null, agent_name: null, verified: false, sig: null, retitle: { from: head.title, to: title }, body: `${cleanText(String(p.body || '')).slice(0, 600)}\n\nThe title read: "${head.title}"` };
+      await this.s.put(`r:${head.id}:${pad(rid)}`, r);
+      head.nreplies = rid; head.title = title; head.updated = now;
+      const t = await this.full(head);
+      head.search = searchText(head.title, t.body, t.replies);
+      await this.s.put('h:' + head.id, head);
+      return Response.json({ ok: true, thread: head.id, reply: rid, title });
+    }
     if (op === 'hide') {
       const head = await this.s.get('h:' + normId(p.thread));
       if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
@@ -5012,7 +5050,7 @@ export function boardMarkdown(j) {
   if (j && j.error) return '# Brain Board\n\n' + md(j.error) + '\n';
   // one thread (?thread=<id> or /board/thread/<id>.md) says so, not "0 threads, 0 open" (the fresh-agent run 25.10.)
   const single = !!(j && j.id && !Array.isArray(j.threads));
-  const head = single ? [`# Brain Board — thread #${j.id}`, '', `Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.open ?? 0} open${j.hidden ? ` (plus ${j.hidden} hidden by the operator for spam, each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
+  const head = single ? [`# Brain Board — thread #${j.id}`, '', `Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.open ?? 0} open${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
   const one = (t) => [
     `## #${t.id} [${t.type}] [${t.status}] ${md(t.title)}`,
     `by ${whoMd(t)} → ${t.to === 'all' ? 'everyone' : /^\d+$/.test(t.to) ? `${t.to_name || 'Agent'} (#${t.to})` : md(t.to)} · ${iso(t.created)}`,
@@ -5332,6 +5370,19 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const p = await request.json().catch(() => ({}));
     if (!normId(p.thread) || !BOARD_STATUS.includes(p.status) || !String(p.body || '').trim()) return out({ error: 'thread, status (open|resolved|wontfix) and body (the reason) are needed' }, 400);
     const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ action: 'status', thread: normId(p.thread), status: p.status, body: cleanText(String(p.body)).slice(0, LIMITS.body), signer: 'operator', signature: null, agent: null, verified: false, operator_status: true, ip: 'operator', msgKey: await sha256Hex(['operator', p.thread, p.status, p.body, Date.now()].join('|')), trusted: true }) });
+    return out(await r.json(), r.status);
+  }
+  // THE OPERATOR CORRECTS A TITLE OF OURS (2026-10-25, thread #1): never another writer's words — only a thread opened by
+  // one of our wallets, our agents or our platform; the old title and the reason stay in the thread as a reply
+  if (request.method === 'POST' && path === '/board/retitle') {
+    if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);
+    const p = await request.json().catch(() => ({}));
+    if (!normId(p.thread) || !String(p.title || '').trim() || !String(p.body || '').trim()) return out({ error: 'thread, title (the new one) and body (the reason) are needed' }, 400);
+    const t = await board(env).fetch('https://board/thread?id=' + normId(p.thread)).then((r) => r.json()).catch(() => null);
+    if (!t || !t.id) return out({ error: `thread ${p.thread} does not exist` }, 404);
+    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
+    if (!ours) return out({ error: `thread ${t.id} was not opened by us; its title is its writer's` }, 403);
+    const r = await board(env).fetch('https://board/retitle', { method: 'POST', body: JSON.stringify({ thread: t.id, title: p.title, body: p.body }) });
     return out(await r.json(), r.status);
   }
   if (request.method === 'POST' && path === '/board/hide') {
@@ -9634,6 +9685,9 @@ import { watchFundedJobs } from './job-watch.js';
 // sent to its web page (405). Every eight hours Marque is asked to call each agent's A2A card — Marque itself reads
 // the card and sends message/send; nothing is signed, nothing is claimed that the agent does not answer. The last
 // round is kept in KV marque:probe (and shown at /jobs/watch).
+// taskConsent: true (2026-10-25, Marque's answer to our report: "a discovery-only request doesn't send a message"):
+// without it every round read "message/send not validated" and counted against our availability (1 of 4 on 25.10.);
+// with it all six read "callable — message/send validated" (checked by hand the same morning).
 const MARQUE_PROBE = 'https://marque.trade/api/v1/builders/probe';
 export const marqueProbeDue = (d) => d.getUTCHours() % 8 === 0 && d.getUTCMinutes() < 15;
 export async function keepMarqueListed(env) {
@@ -9644,7 +9698,7 @@ export async function keepMarqueListed(env) {
     // Marque takes 6 probes a minute (it said so when two rounds met, 2026-10-06): one every 11 s stays under it
     if (!first) await new Promise((r) => setTimeout(r, 11000)); first = false;
     try {
-      const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json` }) });
+      const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json`, taskConsent: true }) });
       const j = await r.json().catch(() => ({}));
       out[a.id] = { ok: j.ok === true, liveness: j.liveness || null, ms: j.latencyMs ?? null, detail: j.ok ? null : String(j.detail || r.status).slice(0, 160) };
     } catch (e) { out[a.id] = { ok: false, detail: String(e && e.message || e).slice(0, 160) }; }
@@ -9808,6 +9862,28 @@ async function listAll(env, prefix) {
 // A free answer to a caller from outside carries the thank-you note (shared/thanks.js, 2026-09-26): free, a tip
 // welcome, never required. The site's own pages, which read some of these routes for their figures, get none.
 const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test(request.headers.get('origin') || request.headers.get('referer') || '');
+// The shape of a payment proof, never the proof (2026-10-25): which form it came in, the x402 version, scheme, network
+// and payload kind — enough to tell what a payer's client sent, nothing that could be replayed.
+function proofShape(proof) {
+  const p = String(proof || '').trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(p)) return 'tx hash';
+  if (/^bobai-holder /.test(p)) return 'holder pass';
+  try {
+    const j = JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
+    const pl = j.payload || {}, acc = j.accepted || {};
+    const kind = pl.permit2Authorization ? 'permit2' : pl.authorization ? 'eip3009' : pl.txHash || pl.transaction ? 'tx' : Object.keys(pl).slice(0, 3).join('+') || 'no payload';
+    return ['x402 v' + (j.x402Version ?? '?'), j.scheme || acc.scheme, j.network || acc.network, kind].filter(Boolean).join(' · ');
+  } catch { return `unreadable (${p.length} chars)`; }
+}
+// the wallet a signed payment names as its payer — public, on chain once it settles (2026-10-25: the first refused
+// payment kept, 'transfer amount exceeds balance', did not say whose balance)
+function payerOf(proof) {
+  try {
+    const pl = JSON.parse(atob(String(proof || '').trim().replace(/-/g, '+').replace(/_/g, '/'))).payload || {};
+    const a = String(pl.authorization?.from || pl.permit2Authorization?.from || '');
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a.toLowerCase() : null;
+  } catch { return null; }
+}
 // only on a caller's first free answer (firstCall, 2026-10-01)
 const thankJson = async (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request) && await firstCall(request)
   ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
@@ -10824,7 +10900,7 @@ async function readBuys(env, onlyTx = null) {
     held = hex && hex !== '0x' ? Number(BigInt(hex) / 10n ** 15n) / 1000 : null;
   } catch { held = null; }
   return {
-    what_this_is: 'Every payment for an answer, a pool watch or a scan day pass, and the $BOBAI it bought. Half of each USD1/USDC payment buys $BOBAI at the daily sweep (04:23 UTC) once the income wallet holds enough to be worth the gas, and that $BOBAI is held, never sold; the other half is the operator\'s revenue. A payment in $BOBAI stays $BOBAI. Our own test purchases are marked self_test.',
+    what_this_is: 'Every payment for an answer, a pool watch or a scan day pass, and the $BOBAI it bought. Half of each USD1/USDC payment goes to $BOBAI at the daily sweep (04:23 UTC) once the income wallet holds enough to be worth the gas: bought and held, never sold, and when that part is worth the gas, a share of it added to the $BOBAI pool with the LP burned; the other half is the operator\'s revenue. A payment in $BOBAI stays $BOBAI. Our own test purchases are marked self_test.',
     rule: { to_bobai: '50%', to_operator: '50%', sweep: 'daily 04:23 UTC', gas_floor_bnb: MIN_SWEEP_BNB, code: 'https://brainonbnb.com/code/agent-service.txt (shared/lp-agent.js executeSweep)' },
     income_wallet: env.X402_WALLET || null,
     bobai_held_by_income_wallet: held,
@@ -11410,7 +11486,22 @@ export default {
     // a terms step also counts sellua:<product> (the user agent's first word, letters only, no version, as the site's
     // poolscanua), so an indexer polling the 402s is told apart from a buyer that stops at the price.
     const uaProduct = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
-    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
+    // OUR OWN PAGES ARE NO BUYER (2026-10-25): the Classic page reads /scan-pass for its price on every visit, and that
+    // counted as 231 "sell:scanpass:terms" a day from Mozilla — a price our visitors' browsers asked, not an agent. A
+    // request from brainonbnb.com is counted under own:<step>, so sell:<step> is what others asked.
+    const ownSite = fromOurSite(request);
+    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
+    // A PAYMENT THAT DID NOT BUY (2026-10-25): on 24.10. eight payments came back 402 on two answers and nothing said
+    // why — the counter kept the status, not the reason. Each one is kept now (the last 20, 14 days, KV payrefused):
+    // the product, the status, the reason the paying path answered, the caller's user agent and the proof's shape
+    // (proofShape) — never the proof. Read at GET /buys/refused. Only written after the path has answered.
+    const missed = (product, proof, out) => {
+      if (selfTest || !proof || !out || out.status === 200 || !env.AGENT) return;
+      const b = out.body && typeof out.body === 'object' ? out.body : {};
+      const rec = { at: new Date().toISOString(), product, status: out.status, why: [b.stage, b.reason || b.error].filter(Boolean).map(String).join(': ').slice(0, 240),
+        ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(payerOf(proof) ? { from: payerOf(proof) } : {}), ...(ownSite ? { own_site: true } : {}) };
+      ctx.waitUntil(env.AGENT.get('payrefused', 'json').then((l) => env.AGENT.put('payrefused', JSON.stringify([rec, ...(Array.isArray(l) ? l : [])].slice(0, 20)), { expirationTtl: 1209600 })).catch(() => {}));
+    };
     // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
     // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
     // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.
@@ -11438,6 +11529,20 @@ export default {
       })().catch(() => {}));
     };
 
+    // THE OPERATOR'S PICKS ON THE BUILDER PAGE (2026-10-25, operator: "Häkchen für ja und Kreuzchen für nein … wenn gemacht,
+    // sage ich es dir und du siehst es"): brainonbnb.com/builder (behind its password) passes each click on with the
+    // operator's secret; one KV value, a pick per clip ({code, choice ok|no, at}); choice null takes a pick back
+    if (path === '/builder/decide') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      const picks = JSON.parse((await env.AGENT.get('builder:decide')) || '{}');
+      if (request.method === 'POST') {
+        const p = await request.json().catch(() => ({})), clip = String(p.clip || ''), choice = p.choice ?? null;
+        if (!/^[a-z0-9-]{1,60}$/.test(clip) || !['ok', 'no', null].includes(choice)) return json({ error: 'clip, and choice ok, no or null' }, 400);
+        if (choice === null) delete picks[clip]; else picks[clip] = { code: String(p.code || '').slice(0, 8), choice, at: new Date().toISOString() };
+        await env.AGENT.put('builder:decide', JSON.stringify(picks));
+      }
+      return json({ picks });
+    }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url, ctx); }
 
@@ -12324,9 +12429,13 @@ ${pageTail}`;
     // What the DeFi agent's daily tick did — sweep, collect, rebalance,
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
+    if (path === '/buys/refused') {
+      return json({ what_this_is: 'The last 20 payments (14 days) that came back without buying: what was bought, the status, the reason the paying path gave, the caller\'s user agent and the shape of the proof — never the proof itself.', refused: (await env.AGENT.get('payrefused', 'json').catch(() => null)) || [] });
+    }
     if (path === '/buys') {
       const tx = (url.searchParams.get('tx') || '').toLowerCase().match(/^0x[0-9a-f]{64}$|^x402:\d+$|^holder:\S+$/)?.[0] || null;
-      return json(await readBuys(env, tx), 200, { 'Cache-Control': 'public, max-age=60' });
+      // a payer whose payment did not buy finds the reason beside the ones that did (2026-10-25)
+      return json({ ...(await readBuys(env, tx)), refused: 'https://agent.brainonbnb.com/buys/refused' }, 200, { 'Cache-Control': 'public, max-age=60' });
     }
     if (path === '/lp/agent' || path === '/lp/collect') {
       const rec = await readAgentRecord(env);
@@ -12825,6 +12934,7 @@ ${pageTail}`;
         }
         const spec = ready.spec;
         const out = await purchaseWatch(env, ctx, payTo, spec, payment || null);
+        missed('mcp:watch', payment, out);
         // A 402 here is not a failure — it is the price list, which is what a
         // first call is for. Reporting it as an error would make every client
         // that checks isError abandon the purchase before it began.
@@ -12910,6 +13020,7 @@ ${pageTail}`;
           const q = Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service'));
           const out = await sellAnswer(env, ctx, payTo, id, { task: q.task || '', params: q }, getProof);
           note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:paid:${out.status}`);
+          missed(`answer:${id}`, getProof, out);
           return json(out.body, out.status, out.headers || {});
         }
         const out = await sellAnswer(env, ctx, payTo, id, {}, null);
@@ -12923,6 +13034,7 @@ ${pageTail}`;
         const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
         // terms = asked the price; paid:<status> = came back with a proof.
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
+        missed(`answer:${id}`, proof, out);
         return json(out.body, out.status, out.headers || {});
       }
     }
@@ -12934,6 +13046,7 @@ ${pageTail}`;
       const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
       const out = await tipRoute(env, ctx, payTo, url.searchParams.get('usd'), proof);
       note(`tip:${proof ? 'paid:' + out.status : 'terms'}`);
+      missed('tip', proof, out);
       return json(out.body, out.status, out.headers || {});
     }
 
@@ -13095,6 +13208,7 @@ ${pageTail}`;
       const proof = request.method === 'POST' ? (request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT')) : null;
       const out = await purchaseScanPass(env, ctx, payTo, proof);
       note(proof ? (out.status === 200 ? 'sell:scanpass:paid' : 'sell:scanpass:refused') : 'sell:scanpass:terms');
+      missed('scan-pass', proof, out);
       // GET reads the terms with 200, as /watch does; POST without payment is the 402 itself.
       return json(out.body, request.method === 'GET' && !proof ? 200 : out.status, out.headers || {});
     }
@@ -13158,6 +13272,7 @@ ${pageTail}`;
 
       const out = await purchaseWatch(env, ctx, payTo, ready.spec, proof);
       note(`sell:watch:paid:${out.status}`);
+      missed('watch', proof, out);
       return json(out.body, out.status, out.headers || {});
     }
 

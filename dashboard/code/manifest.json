@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5767,
-   "zipBytes": 99903,
-   "txtBytes": 298284,
-   "sha256": "62e400b4122b2214",
+   "lines": 5772,
+   "zipBytes": 100164,
+   "txtBytes": 298920,
+   "sha256": "b814e0239da47687",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3312,
-   "zipBytes": 109501,
-   "txtBytes": 326943,
-   "sha256": "63f9f1a30fb5bf54",
+   "lines": 3319,
+   "zipBytes": 109774,
+   "txtBytes": 328099,
+   "sha256": "2a8cbc0bb1b1c2d9",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 71,
-   "lines": 23059,
-   "zipBytes": 569559,
-   "txtBytes": 1616135,
-   "sha256": "cd03b6f70719c858",
+   "lines": 23174,
+   "zipBytes": 572817,
+   "txtBytes": 1626330,
+   "sha256": "e6b184eefbaa904e",
    "reqs": [
     {
      "what": "A wallet to be paid into",

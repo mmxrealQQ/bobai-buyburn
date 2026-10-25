@@ -1129,7 +1129,9 @@ const STAND_IN = { 'buy-kraken': 'cheer', 'buy-thunder': 'saber', 'buy-whale': '
   // withheld as cut by the frame (temp/terminal/anim/cut.txt, 2026-09-27) until re-shot in the wide framing
   burn: 'burn-nice', pushups: 'walk', liq: 'build',
   // the ecosystem's own moves (2026-10-22, run_1022.sh): until a take is reviewed and released, the move it stood in for
-  settle: 'build', hire: 'think', venus: 'think', paid: 'giggle' };
+  settle: 'build', hire: 'think', venus: 'think', paid: 'giggle',
+  // the Brain Board's moves (2026-10-25, run_1025.sh): bug -> fix, the paper-plane answer, the detective; his thinking take until released
+  'board-bug': 'think', 'board-plane': 'think', 'board-detective': 'think' };
 function withClip(p) { let q = p; for (let n = 0; n < 8 && q && q !== 'idle' && flowPose(q) !== q; n++) q = STAND_IN[q]; return q && flowPose(q) === q ? q : p; }
 function setPose(p, hold = 2.4, urgent = true) {
   FACE.hop = 0;
@@ -1334,7 +1336,7 @@ function vidInit() {
   // ONE LIST, NOT SEVENTY QUESTIONS (2026-09-27): the deploy writes anim/clips.json with every clip it ships. Asking
   // for each possible clip cost ~70 requests per visit, and each missing one came back as the index page, whose
   // stylesheet hints the browser then chased relative to anim/. The per-clip question stays only as the fallback.
-  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', 'settle', 'hire', 'venus', 'paid', ...EXTRA_POSES, ...TIER_POSES]; // settle/hire/venus/paid: the ecosystem's moves (2026-10-22), known here, never his own idle moves // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
+  const moves = ['burn', 'liq', 'defi', 'giggle', 'nft', 'ouch', 'settle', 'hire', 'venus', 'paid', 'board-bug', 'board-plane', 'board-detective', ...EXTRA_POSES, ...TIER_POSES]; // settle/hire/venus/paid: the ecosystem's moves (2026-10-22), known here, never his own idle moves // nft: he paints the card (hub-nft, 2026-09-29); ouch: the Halloween moon hits his head (2026-10-06) — known here, never one of his own idle moves
   // every take up to -v9 (2026-09-30: new waiting takes rest-v3..v6 and third takes of moves would have been ignored)
   const V = n => Array.from({ length: 8 }, (_, i) => n + '-v' + (i + 2));
   const wanted = ['idle', ...V('idle'), 'rest', ...V('rest'), ...Array.from({ length: 8 }, (_, i) => 'rest-s' + (i + 1)), ...ENTRANCES.flatMap(e => ['hub-enter-' + e, ...V('hub-enter-' + e)]), ...moves.flatMap(m => ['hub-' + m, ...V('hub-' + m), m, m + '-v2'])];
@@ -4434,9 +4436,12 @@ function ecoScene(x) {
     boardScene(x.t, ECO_C, joyMove(), 'A WALLET JUST CROSSED', '1M $BOBAI', { head: 'THE HOLDER PASS', rows: [['HOLDS', bobaiAmt(c.bobai), ECO_C], ['1M+ HOLDERS', nf(c.n1m)], ['ALL HOLDERS', nf(c.all)]] }, 6.5);
     logLine('HOLDER', ECO_C, ['a wallet crossed ', [bobaiAmt(1e6)], ' · ', [nf(c.n1m)], ' hold 1M+ of ', nf(c.all), ' holders'], txs.slice(0, 1).map(h => ['tx', h]), x.t);
   } else if (x.key === 'board') {
-    /* the Brain Board (2026-10-23): another agent wrote there — his thinking take, no move word in the lines */
+    /* the Brain Board (2026-10-23): another agent wrote there — no move word in the lines */
+    // its own take (2026-10-25): a bug, a fix or a thread marked resolved -> the ladybug that turns into a butterfly;
+    // only answers -> the paper plane; a new question, tip or note -> the detective
+    const bm = c.items.some(i => i.status === 'resolved' || (!i.reply && (i.type === 'bug' || i.type === 'fix'))) ? 'board-bug' : c.items.every(i => i.reply) ? 'board-plane' : 'board-detective';
     // one writer's visit is one scene (2026-10-25): every entry it held, counted, with its threads
-    boardScene(x.t, ECO_C, 'think', 'ON THE BRAIN BOARD', c.n > 1 ? `${c.n} ENTRIES` : c.reply ? (c.items[0].status ? 'A STATUS CHANGE' : 'AN ANSWER') : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['WHAT', c.n > 1 ? c.kinds.toUpperCase() : null], [c.threads.length > 1 ? 'THREADS' : 'THREAD', c.threads.map(t => '#' + t).join(' · ')], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
+    boardScene(x.t, ECO_C, bm, 'ON THE BRAIN BOARD', c.n > 1 ? `${c.n} ENTRIES` : c.reply ? (c.items[0].status ? 'A STATUS CHANGE' : 'AN ANSWER') : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['WHAT', c.n > 1 ? c.kinds.toUpperCase() : null], [c.threads.length > 1 ? 'THREADS' : 'THREAD', c.threads.map(t => '#' + t).join(' · ')], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
     logLine('BOARD', ECO_C, [c.who, ' · ', [c.kinds], ' · ' + c.threads.map(t => '#' + t).join(' '), c.title ? ' · ' + c.title : ''], [], x.t);
   } else if (x.key === 'paid') {
     if (mode === 'live' && !REOPEN) setPose('paid', 5);

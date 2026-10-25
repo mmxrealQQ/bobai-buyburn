@@ -103,6 +103,14 @@ export function checkPage(name, before, after) {
   return problems;
 }
 
+// A NAMESPACE IS A NAME, NOT AN ADDRESS (2026-10-25, the A-Z pass): an SVG whose xmlns reads "https://www.w3.org/2000/svg"
+// is no SVG at all — the link system's arrow mask in styles.css carried it from 5.9. to 25.10., so every text link on
+// every page ended in an empty gap instead of its arrow. The W3C names stay http:// forever; any https:// one stops the deploy.
+export function wrongNamespace(name, text) {
+  const m = text.match(/xmlns(:\w+)?=(\\?["']|%22|%27)https(:|%3A)(\/\/|%2F%2F)www\.w3\.org/i);
+  return m ? [`${name}: an XML namespace written as https:// (${m[0]}) — it must read http://www.w3.org/…, or the SVG does not draw`] : [];
+}
+
 if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let n = 0, bad = 0;
   const is = (what, cond) => { n++; if (!cond) bad++; console.log(`${cond ? 'ok  ' : 'FAIL'}  ${what}`); };
@@ -114,6 +122,9 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
   is('a conditional comment is an instruction and stays', stripComments('<!--[if lt IE 9]><script src="x.js"></script><![endif]--><!-- gone -->') === '<!--[if lt IE 9]><script src="x.js"></script><![endif]-->');
   is('an unterminated comment is left in, with everything after it', stripComments('<p>a</p><!-- never closed <p>b</p>') === '<p>a</p><!-- never closed <p>b</p>');
   is('a page without comments comes back as it was', stripComments('<!doctype html><html><body><p>x</p></body></html>') === '<!doctype html><html><body><p>x</p></body></html>');
+  is('an SVG mask written with xmlns=\'https://www.w3.org/2000/svg\' (the 25.10. arrows) stops the deploy', wrongNamespace('styles.css', `a::after{mask:url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E")}`).length === 1);
+  is('the same percent-encoded, and an xlink namespace, stop it too', wrongNamespace('a.css', 'url("data:image/svg+xml,%3Csvg xmlns=%22https%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E")').length === 1 && wrongNamespace('b.svg', '<svg xmlns:xlink="https://www.w3.org/1999/xlink">').length === 1);
+  is('the right namespace, and an ordinary https link to w3.org, pass', wrongNamespace('c.css', `xmlns='http://www.w3.org/2000/svg'`).length === 0 && wrongNamespace('d.html', '<a href="https://www.w3.org/TR/SVG/">spec</a>').length === 0);
   // The check that stands before the deploy, both ways.
   const page = '<html><head><style>a{}</style></head><body><!-- note --><p>Hello</p><script>var x=1;</script></body></html>';
   is('a correctly built page passes the check', checkPage('p', page, stripComments(page)).length === 0);
@@ -149,11 +160,12 @@ function main() {
       if (e.isDirectory()) { walk(from); continue; }
       if (e.name.toLowerCase().endsWith('.html')) {
         const html = fs.readFileSync(from, 'utf8'), built = stripComments(html);
-        problems.push(...checkPage(path.join(rel, e.name), html, built));
+        problems.push(...checkPage(path.join(rel, e.name), html, built), ...wrongNamespace(path.join(rel, e.name), html));
         fs.writeFileSync(to, built);
         pages++; before += zlib.brotliCompressSync(Buffer.from(html)).length; after += zlib.brotliCompressSync(Buffer.from(built)).length;
         continue;
       }
+      if (/\.(css|js|mjs|svg)$/i.test(e.name)) problems.push(...wrongNamespace(path.join(rel, e.name), fs.readFileSync(from, 'utf8')));
       try { fs.linkSync(from, to); linked++; } catch { fs.copyFileSync(from, to); copied++; }
     }
   };

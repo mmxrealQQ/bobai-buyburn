@@ -20,14 +20,14 @@
       "ours": false
     },
     {
-      "id": 340471,
-      "label": "Hevo Rebalance",
+      "id": 374113,
+      "label": "Centreline by Pokter",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 374113,
-      "label": "Centreline by Pokter",
+      "id": 340471,
+      "label": "Hevo Rebalance",
       "category": "rebalancing",
       "ours": false
     },
@@ -355,14 +355,14 @@
       "ours": false
     },
     {
-      "id": 338480,
-      "label": "Venus Liquidation Guard",
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 374107,
-      "label": "Brinkwatch by Pokter",
+      "id": 338480,
+      "label": "Venus Liquidation Guard",
       "category": "health-factor",
       "ours": false
     },

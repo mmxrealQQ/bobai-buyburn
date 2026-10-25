@@ -1898,7 +1898,11 @@ export default {
     // a terms step also counts sellua:<product> (the user agent's first word, letters only, no version, as the site's
     // poolscanua), so an indexer polling the 402s is told apart from a buyer that stops at the price.
     const uaProduct = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
-    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
+    // OUR OWN PAGES ARE NO BUYER (2026-10-25): the Classic page reads /scan-pass for its price on every visit, and that
+    // counted as 231 "sell:scanpass:terms" a day from Mozilla — a price our visitors' browsers asked, not an agent. A
+    // request from brainonbnb.com is counted under own:<step>, so sell:<step> is what others asked.
+    const ownSite = fromOurSite(request);
+    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
     // WHAT A CHECKER SENDS OVER A2A (2026-10-15): Mandate checks each agent from "its free call" and calls our answers
     // "not data we can read", but the free MCP tools were not called and A2A was not counted. Each A2A POST is counted
     // (a2a:<agent>:<method>:<part kinds>) and the last ten, cut to 1500 characters, are kept 3 days in KV a2a-seen:<agent>.

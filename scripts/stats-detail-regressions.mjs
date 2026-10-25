@@ -70,6 +70,7 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   await hit({ detail: 'MCP:Client:Claude AI <script>' });
   await call('/answer');
   await call('/answer', { headers: { 'user-agent': 'bobai-smoke-test' } });
+  await call('/answer', { headers: { origin: 'https://brainonbnb.com', 'user-agent': 'Mozilla/5.0' } }); // our own page asking a price
   for (let i = 0; i < 400; i++) await hit({ detail: `junk:${i}` });
   await flush();
 
@@ -81,6 +82,7 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   ok('the tool call is there', r.names['mcp:call:bsc_pool_scan'] === 1);
   ok('a name is cleaned, not trusted', r.names['mcp:client:claudeaiscript'] === 1, Object.keys(r.names).filter((n) => n.startsWith('mcp:client')).join());
   ok('the paid path names its step once; the smoke test is left out', r.names['sell:answer:index'] === 1, String(r.names['sell:answer:index']));
+  ok('a price our own page asks (Origin brainonbnb.com) counts as own:, not as sell: (25.10.: 231 scan-pass "terms" a day were the Classic page)', r.names['own:sell:answer:index'] === 1 && !r.names['sellua:mozilla'], JSON.stringify(Object.fromEntries(Object.entries(r.names).filter(([k]) => /answer:index|sellua/.test(k)))));
   ok('invented names are capped and fall to "other"', Object.keys(r.names).length <= 301 && r.names.other > 0, `${Object.keys(r.names).length} names`);
   const countKeys = keys.filter((k) => k.startsWith('count:'));
   ok('count:* holds the kinds only — no detail name reaches the public totals', countKeys.length === 1 && /^count:rest:/.test(countKeys[0]), countKeys.join());

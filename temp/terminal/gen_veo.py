@@ -896,6 +896,8 @@ def gen(pose, model, secs, force=False):
     if '-enter-' in pose:  # an entrance starts on the empty screen: the still's own backdrop colour, no figure
         st = Image.open(os.path.join(HERE, 'figure', 'hub-start-wide.png')).convert('RGB')
         buf = BytesIO(); Image.new('RGB', st.size, st.getpixel((6, 6))).save(buf, 'PNG'); first = base64.b64encode(buf.getvalue()).decode()
+    if model.startswith('gemini-omni'):
+        return gen_omni(pose, model, secs, prompt, first, img, dst, blue)
     body = {'instances': [{'prompt': prompt,
                            'image': {'bytesBase64Encoded': first, 'mimeType': 'image/png'},
                            'lastFrame': {'bytesBase64Encoded': img, 'mimeType': 'image/png'}}],
@@ -924,10 +926,71 @@ def gen(pose, model, secs, force=False):
         elif os.path.exists(mark): os.remove(mark)
     print(f'OK {pose} ({len(v.content)//1024} KB) -> {dst}{" [wide]" if WIDE else ""}', flush=True); return True
 
+def _find(o, pred, path=()):
+    # first value anywhere in a JSON tree whose (key, value) matches pred — the Interactions answer is new to us
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if pred(k, v): return v
+            r = _find(v, pred, path + (k,))
+            if r is not None: return r
+    elif isinstance(o, list):
+        for v in o:
+            r = _find(v, pred, path)
+            if r is not None: return r
+    return None
+
+def _save(pose, dst, data, blue):
+    open(dst, 'wb').write(data)
+    for flag, on in (('wide', WIDE), ('blue', blue)):
+        mark = os.path.join(OUT, f'{pose}.{flag}')
+        if on: open(mark, 'w').close()
+        elif os.path.exists(mark): os.remove(mark)
+    print(f'OK {pose} ({len(data)//1024} KB) -> {dst}{" [wide]" if WIDE else ""}', flush=True); return True
+
+# GEMINI OMNI FLASH (25.10.2026): Google shut the Veo 3.1 preview models down on 22.10. ("no longer available, use
+# gemini-omni-1.1-flash"). Same idea through the Interactions API: first frame, last frame, then the prompt; no
+# duration field, so the length is asked for in the prompt; the video comes as a file (poll until ACTIVE) or inline.
+def gen_omni(pose, model, secs, prompt, first, last, dst, blue):
+    prompt += f' The clip is exactly {int(secs)} seconds long; it starts on the first image and ends exactly on the second image. No audio needed.'
+    body = {'model': model,
+            'input': [{'type': 'image', 'data': first, 'mime_type': 'image/png'},
+                      {'type': 'image', 'data': last, 'mime_type': 'image/png'},
+                      {'type': 'text', 'text': prompt}],
+            'response_format': {'type': 'video', 'aspect_ratio': '9:16', 'resolution': '720p', 'delivery': 'uri'}}
+    print(f'[{pose}] {model} {secs}s · sending', flush=True)
+    r = requests.post(f'{API}/interactions', headers={'x-goog-api-key': KEY, 'Content-Type': 'application/json'}, data=json.dumps(body), timeout=900)
+    if r.status_code != 200:
+        print(f'ERR {pose}: {r.status_code} {r.text[:800]}', flush=True); return False
+    j = r.json(); iid = j.get('id') or j.get('name')
+    open(os.path.join(OUT, f'{pose}.omni.json'), 'w').write(json.dumps(j, default=str)[:20000])  # shape, for the record
+    for _ in range(120):  # still running: ask the interaction again (that answer carries the video inline)
+        st = str(j.get('status') or j.get('state') or '').lower()
+        if _find(j, lambda k, v: k == 'uri' and isinstance(v, str) and '/files/' in v) or _find(j, lambda k, v: k == 'data' and isinstance(v, str) and len(v) > 100000) or st in ('failed', 'cancelled', 'error'):
+            break
+        time.sleep(10)
+        try: j = requests.get(f'{API}/interactions/{iid}', headers={'x-goog-api-key': KEY}, timeout=120).json()
+        except Exception: continue
+    uri = _find(j, lambda k, v: k == 'uri' and isinstance(v, str) and '/files/' in v)
+    if uri:
+        fid = uri.split('/files/')[1].split(':')[0].split('?')[0]
+        for _ in range(120):
+            # one dropped TLS handshake must not lose a paid take (25.10.: hub-board-plane died here)
+            try: f = requests.get(f'{API}/files/{fid}', headers={'x-goog-api-key': KEY}, timeout=60).json()
+            except Exception: time.sleep(10); continue
+            if f.get('state') == 'ACTIVE': break
+            if f.get('state') == 'FAILED': print(f'ERR {pose}: file FAILED {json.dumps(f)[:400]}', flush=True); return False
+            time.sleep(10)
+        v = requests.get(f'{API}/files/{fid}:download?alt=media', headers={'x-goog-api-key': KEY}, timeout=300, allow_redirects=True)
+        return _save(pose, dst, v.content, blue)
+    data = _find(j, lambda k, v: k == 'data' and isinstance(v, str) and len(v) > 100000)
+    if data: return _save(pose, dst, base64.b64decode(data), blue)
+    print(f'ERR {pose}: no video {json.dumps(j, default=str)[:800]}', flush=True); return False
+
 WIDE = '--wide' in sys.argv
 if __name__ == '__main__':
     a = sys.argv[1:]
-    pick = lambda p: 'veo-3.1-lite-generate-preview' if '--lite' in a else 'veo-3.1-generate-preview' if ('--std' in a or (p in STANDARD and '--fast' not in a)) else 'veo-3.1-fast-generate-preview'
+    # --omni (default since 25.10.2026, Veo 3.1 previews shut down): Gemini Omni Flash; --veo keeps the old names
+    pick = (lambda p: 'gemini-omni-1.1-flash') if '--veo' not in a else (lambda p: 'veo-3.1-lite-generate-preview' if '--lite' in a else 'veo-3.1-generate-preview' if ('--std' in a or (p in STANDARD and '--fast' not in a)) else 'veo-3.1-fast-generate-preview')
     secs = a[a.index('--secs') + 1] if '--secs' in a else '8'
     poses = [x for i, x in enumerate(a) if not x.startswith('--') and (i == 0 or a[i - 1] != '--secs')]
     for p in poses: gen(p, pick(p), secs, '--force' in a)

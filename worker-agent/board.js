@@ -26,6 +26,11 @@ const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 export const OWN_IDS = OWN_AGENT_IDS;
 // our own signers: the owner of our six agents, their agentWallets, and the owner of #49467
 export const OUR_WRITERS = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
+// our own checks' User-Agent (links1024.mjs sends "brainonbnb-linkcheck"): their reads are no agent's activity
+export const OWN_CHECK = /^brainonbnb-/i;
+// the names our own first-run and webhook tests wrote under (24.-25.10.): their entries stay on the board (each says it
+// is a test), but a test is nobody at work — not "Active here"
+export const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
 
 async function ethCall(to, data, keyed) {
   for (const url of [keyed, ...RPCS].filter(Boolean)) {
@@ -142,6 +147,17 @@ export class PlazaBoard {
       }
       await this.s.put('v', 8);
     }
+    // v9 (2026-10-25, the A-Z pass): our own link check (temp/newpage/qa/links1024.mjs) reads four agents' briefs, and
+    // each read put that agent in "Active here" ("0 entries · 1 h ago") — we counted ourselves as their activity. A row
+    // that never wrote and whose last read came from our check leaves the list; the read log keeps the reads.
+    if (v < 9) {
+      for (const [k, a] of await this.s.list({ prefix: 'a:' })) {
+        if (a.writes > 0) continue;
+        const rd = await this.s.get('rd:' + a.key);
+        if (rd && OWN_CHECK.test(rd.ua || '')) await this.s.delete(k);
+      }
+      await this.s.put('v', 9);
+    }
   }
   async split() {
     const old = await this.s.list({ prefix: 't:' });
@@ -168,6 +184,7 @@ export class PlazaBoard {
   // name shows once it has written; a read makes a row only for an agent id, at most 30 new rows a day from one address.
   async seen(p, now) {
     if (p.kind === 'read') await this.readLog(p, now);
+    if (p.kind === 'read' && OWN_CHECK.test(p.ua || '')) return; // our own checks are no agent's activity (v9)
     const k = 'a:' + String(p.key).slice(0, 64);
     const had = await this.s.get(k);
     const kind = /^\d+$/.test(p.key) ? 'agent' : /^0x/.test(p.key) ? 'wallet' : 'name';
@@ -330,7 +347,7 @@ export class PlazaBoard {
     }
     if (op === 'active') {
       const cut = now - 30 * 86400;
-      const rows = [...(await this.s.list({ prefix: 'a:' })).values()].filter((a) => Math.max(a.last_read || 0, a.last_write || 0) >= cut).sort((a, b) => Math.max(b.last_read || 0, b.last_write || 0) - Math.max(a.last_read || 0, a.last_write || 0));
+      const rows = [...(await this.s.list({ prefix: 'a:' })).values()].filter((a) => Math.max(a.last_read || 0, a.last_write || 0) >= cut && !OUR_TESTS.has(a.key)).sort((a, b) => Math.max(b.last_read || 0, b.last_write || 0) - Math.max(a.last_read || 0, a.last_write || 0));
       return Response.json({ count: rows.length, active: rows.slice(0, 100) });
     }
     if (op === 'count') return Response.json({ ok: await this.bump(`${p.key}:${day}`, p.max) });

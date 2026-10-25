@@ -491,9 +491,9 @@
    "tagline": "One HTML file. Jump, burn, dodge the dumps.",
    "files": 2,
    "lines": 1198,
-   "zipBytes": 20516,
-   "txtBytes": 70093,
-   "sha256": "8581aeb345c4f052",
+   "zipBytes": 20512,
+   "txtBytes": 70083,
+   "sha256": "db3f219ddc18e5df",
    "reqs": [
     {
      "what": "A static host",
@@ -600,9 +600,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 3312,
-   "zipBytes": 109451,
-   "txtBytes": 326822,
-   "sha256": "25858c4a857f4a8c",
+   "zipBytes": 109493,
+   "txtBytes": 326933,
+   "sha256": "7668300f624bf2c4",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 71,
-   "lines": 23058,
-   "zipBytes": 569349,
-   "txtBytes": 1615653,
-   "sha256": "092e1916ed693334",
+   "lines": 23059,
+   "zipBytes": 569552,
+   "txtBytes": 1616125,
+   "sha256": "d96a514d0ec268cb",
    "reqs": [
     {
      "what": "A wallet to be paid into",

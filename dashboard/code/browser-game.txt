@@ -246,7 +246,7 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
 <div id="gameContainer">
   <header class="game-header">
     <div class="header-brand">
-      <a href="../" class="back-btn"><span>&#9664;</span> Dashboard</a>
+      <a href="../" class="back-btn"><span>&#9664;</span> Home</a>
       <div>
         <div class="brand-title">BRAIN ON BNB AI</div>
         <div class="brand-sub">Burn & Add Liq</div>
@@ -404,7 +404,7 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
     </div>
 
     <button class="popup-btn primary" id="burnAgainBtn" onclick="restartGame()" style="margin-top:12px">BURN AGAIN</button>
-    <a href="../" class="popup-btn" style="display:block;text-align:center;margin-top:6px;text-decoration:none;color:var(--gold);background:rgba(243,186,47,0.08);border:1px solid rgba(243,186,47,0.2)">&#9664; Back to Dashboard</a>
+    <a href="../" class="popup-btn" style="display:block;text-align:center;margin-top:6px;text-decoration:none;color:var(--gold);background:rgba(243,186,47,0.08);border:1px solid rgba(243,186,47,0.2)">&#9664; Back to Home</a>
   </div>
 </div>
 

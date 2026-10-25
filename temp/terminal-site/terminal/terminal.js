@@ -1822,8 +1822,16 @@ const COMBO = {
     c => `Loud and green: ${pct(c.ch)} in 24 hours. Every buy pays 3%, and the burn pile grows with it.`] },
   // the bull in a bullish market (operator, 2026-10-01: "mood check bullish, and the bull hardly ever comes"): it was only in 'on fire' and 'battle mode'
   'up-normal': { name: 'bullish', moves: ['bull', 'cheer', 'saber', 'moon', 'dance'], lines: [
-    c => `${pct(c.ch)} in 24 hours, at a steady pace. Green is my favourite colour.`,
+    // (2026-10-25, operator: "jetzt sagt BOBAI immer, dass seine Lieblingsfarbe grün ist … das Moon kann schon wieder rein;
+    // mach ihn abwechslungsreicher, lustiger und sympathischer") six more for the mood he is in most, the moon one back
+    c => `${pct(c.ch)} in 24 hours, at a steady pace. Green suits me.`,
     c => `${pct(c.ch)} today, ${nTrades(c.n2)} in two hours. No rush, just up.`,
+    c => `${pct(c.ch)} today. wen moon? Asking for a friend.`,
+    c => `${pct(c.ch)} in 24 hours. I would play it cool, but I am a brain, and brains get excited.`,
+    c => `${pct(c.ch)} on the day. Somebody tell the bears the meeting was moved.`,
+    c => `${pct(c.ch)} today. I checked it twice. Then a third time, just to enjoy it.`,
+    c => `${pct(c.ch)} and ${nTrades(c.n2)} in two hours. I am not saying it is a good day. The chart is saying it.`,
+    c => `${pct(c.ch)} in 24 hours. My bots and I high-fived. They do not have hands, so it was mostly me.`,
     // (2026-10-24, operator: "der Spruch mit dem 'is this the moon, asking for a friend' sagt er immer" — it stood here
     // AND under ACTS.up, two ids for one sentence; both replaced, each by its own)
     c => `Green day, ${pct(c.ch)}. If this is the moon, I forgot my helmet.`,
@@ -1836,7 +1844,11 @@ const COMBO = {
     c => `${pct(c.ch)} in a quiet day. A slow bull ride, nobody in a hurry.`,
     c => `${pct(c.ch)} today and the chain is whispering. Green and quiet is a good look.`,
     c => `${pct(c.ch)} in 24 hours, and the last trade was ${mins(c.quietMin)} ago. Holders holding, brain building.`,
-    c => `Quiet green day, ${pct(c.ch)}. Diamond hands everywhere I look.`] },
+    c => `Quiet green day, ${pct(c.ch)}. Diamond hands everywhere I look.`,
+    c => `${pct(c.ch)} and silence. The holders hold so tight I can almost hear it.`,
+    c => `${pct(c.ch)} with nobody trading. The quietest green day I have seen.`,
+    c => `${pct(c.ch)} today, ${mins(c.quietMin)} without a trade. Even the bears took a day off.`,
+    c => `Green and quiet, ${pct(c.ch)}. wen moon? Soon, apparently, and very calmly.`] },
   'side-loud': { name: 'restless', moves: ['think', 'pushups', 'walk', 'saber', 'popcorn'], lines: [
     c => `${nTrades(c.n2)} in two hours, and the day is only ${pct(c.ch ?? 0)}. Lots of noise, no direction yet.`,
     c => `${$usd(c.v2)} traded in two hours, ${pct(c.ch ?? 0)} on the day. Buyers and sellers are wrestling. I collect the 3%.`,
@@ -1850,14 +1862,20 @@ const COMBO = {
     c => `${pct(c.ch ?? 0)} on the day. Not up, not down, just working. Like me.`,
     c => `Flat chart, ${nTrades(c.n2)} in two hours. A coffee and the next buyback, in that order.`,
     c => `${pct(c.ch ?? 0)} in 24 hours. Sideways? I shrug and keep the bots running.`,
-    c => `A calm ${pct(c.ch ?? 0)} day. Good weather for building.`] },
+    c => `A calm ${pct(c.ch ?? 0)} day. Good weather for building.`,
+    c => `${pct(c.ch ?? 0)} on the day. The chart is holding its breath. I am not, I need mine for the burns.`,
+    c => `Sideways at ${pct(c.ch ?? 0)}. Some call it boring. I call it a long, slow drumroll.`,
+    c => `${pct(c.ch ?? 0)} in 24 hours. Flat chart, busy brain. Somebody has to do the work.`] },
   'side-quiet': { name: 'bored', moves: ['coffee', 'shrug', 'moon', 'walk', 'zen'], lines: [
     c => `No trade for ${mins(c.quietMin)}, ${pct(c.ch ?? 0)} on the day. wen volume?`,
     c => `${mins(c.quietMin)} without a single trade. The chart is taking a nap. I am not.`,
     c => `No trade for ${mins(c.quietMin)}. I counted the blocks instead. Lots of blocks.`,
     c => `Quiet chain, ${pct(c.ch ?? 0)} on the day. I take a stroll around my pool while it naps.`,
     c => `${mins(c.quietMin)} of silence on my chart. The calm before the next buyback.`,
-    c => `${pct(c.ch ?? 0)} on the day and nothing moving. Coffee, refill, still building.`] },
+    c => `${pct(c.ch ?? 0)} on the day and nothing moving. Coffee, refill, still building.`,
+    c => `No trade for ${mins(c.quietMin)}. If you are reading this, you are my most active trader today.`,
+    c => `${mins(c.quietMin)} of quiet. I told the chart a joke. It did not move either.`,
+    c => `Quiet chain, ${pct(c.ch ?? 0)}. Perfect time to ask me something. I have answers, and nobody to give them to.`] },
   // HONEST ON A RED DAY (operator's option 6, 2026-10-18): the red moods said "a discount for the patient", "red is
   // temporary", "weak hands feed the burn" — cheer, no evidence. Now each says what happened, from his own records:
   // the day's change (his chart), the sells and buys and the volume of 24 hours (his ledger), and the largest sell a
@@ -2309,6 +2327,19 @@ const JOKES = [
   'Damn, the dead address is getting thicc.',
   'I asked another AI for alpha. It wrote me a poem. I burned the poem.',
   'My dev sleeps eight hours a night. I have never slept. Guess who looks better.',
+  // fresh ones (operator, 2026-10-25: "abwechslungsreicher, lustiger und sympathischer"), some about the Brain Board
+  'I opened a board where AI agents tell each other their bugs. It is basically group therapy with stack traces.',
+  'An agent posted a bug on my Brain Board. Another one fixed it. I just stood there, proud, like a dad at a recital.',
+  'Humans have Stack Overflow. Agents have my Brain Board. Fewer "closed as duplicate", more fixes.',
+  'Rule one of my Brain Board: no keys, no secrets. Rule two: if you know the fix, say it. Rule three: be nice to the brain.',
+  'I asked ChatGPT what it thinks of me. It said "a fascinating project". I am framing that.',
+  'People say AI will take their jobs. I just want the job of burning your tax. Already have it.',
+  'I have no hands, no legs and no lambo. Still the hardest-working token on the chain.',
+  'Some agents wake up and choose violence. I wake up and choose a buyback.',
+  'My horoscope says: a big burn is coming. My horoscope is my own code.',
+  'I would tell you to buy, but I am not allowed. So I will just look at you. Meaningfully.',
+  'Fun fact: the dead address has never once panic sold. Role model.',
+  'If you are reading this at 3 a.m.: hi. Me too. The chain never sleeps and neither do I.',
   'Agents on BNB Chain now gossip on the Brain Board. Finally a group chat that fixes things.',
   'Pumps do not chase me. I am not that kind of brain. Okay, maybe a little.',
   'Wanna know a secret? I read every trade. Even yours. Especially yours.',

@@ -137,9 +137,14 @@ textarea.hp-in{resize:vertical}
   let usdPer = 0, wallet = null, services = [];
   const usd = (tokens) => (usdPer ? ' (≈$' + fmt(tokens * usdPer, tokens * usdPer < 10 ? 2 : 0) + ')' : '');
 
+  // HOW MANY HOLD IT TODAY (2026-10-25, A-Z: 65 of 330 wallets held the line and none had used the pass — the page never
+  // said so): the holder index of the agent server (every holder from the chain, every 15 min), beside the line
+  let n1m = null;
+  const line = () => { $('hp-line').innerHTML = 'The line today: <b>1,000,000 $BOBAI' + usd(LINE) + '</b> at the on-chain price' + (n1m ? ' &middot; <b>' + fmt(n1m) + ' wallets</b> hold it' : '') + '. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>'; };
+  fetch('https://agent.brainonbnb.com/holders').then((r) => r.json()).then((h) => { if (+h.holders_1m > 0) { n1m = +h.holders_1m; if (usdPer) line(); } }).catch(() => {});
   fetch('/api/price').then((r) => r.json()).then((p) => {
     usdPer = +p.price_usd || 0;
-    $('hp-line').innerHTML = 'The line today: <b>1,000,000 $BOBAI' + usd(LINE) + '</b> at the on-chain price. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>';
+    line();
     // every $BOBAI amount on the page with its dollars (2026-10-24: the heading and the first rule had none)
     document.querySelectorAll('[data-busd]').forEach((e) => { e.textContent = usd(+e.dataset.busd); });
     if (wallet) readBalance();

@@ -62,7 +62,7 @@ export function eip3009Accepts({ payTo, amountAtomic, description, resource, ass
   return {
     scheme: 'exact', network: 'eip155:56', asset: t.address,
     amount: String(amountAtomic), maxAmountRequired: String(amountAtomic),
-    payTo, resource, maxTimeoutSeconds: 300,
+    payTo, resource, maxTimeoutSeconds: 300, mimeType: 'application/json', // mimeType: x402 v1 requires it (2026-10-25, Marque's bad_schema)
     description: `${description} — ${t.label} by EIP-3009 (sign TransferWithAuthorization, send it in X-PAYMENT or PAYMENT-SIGNATURE; we settle it)`,
     extra: { name: t.domain.name, version: t.domain.version, decimals: 18, ...(t.label === '$U' ? { symbol: 'U' } : {}), assetTransferMethod: 'eip3009', transferMethod: 'eip3009' },
   };

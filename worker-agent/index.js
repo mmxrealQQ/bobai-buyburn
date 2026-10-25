@@ -206,6 +206,10 @@ const USD1 = '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d';
 const USD1_DECIMALS = 18n;
 
 const NETWORK = 'eip155:56';
+// THE FIELDS x402 REQUIRES ON A DIRECT TRANSFER TOO (2026-10-25, operator's go): Marque read our 402 as "bad_schema";
+// the direct-transfer options had no maxTimeoutSeconds (required in v2 and v1) and no mimeType (v1). A transfer is
+// taken for a day of blocks (MAX_PAYMENT_AGE_BLOCKS, ~25 h); a day is said. Terms only — nothing checked differently.
+const DIRECT_TERMS = { maxTimeoutSeconds: 86400, mimeType: 'application/json' };
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 // The project's own wallets. A payment from one of these is a test purchase
@@ -1378,14 +1382,14 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+          ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
           // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
           // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
           description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource, asset: U }),
@@ -1500,7 +1504,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+          ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource, asset: U }),
@@ -1547,12 +1551,12 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
         {
           scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
           description: `${what} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+          ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
           description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource, asset: U }),
@@ -1624,12 +1628,12 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           payTo,
           resource,
           description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+          ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
           scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
           description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: WATCH_PRICE_USD1.toString(), description: `Pool watch for ${WATCH_DAYS} days`, resource, asset: U }),

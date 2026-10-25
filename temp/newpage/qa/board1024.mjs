@@ -54,9 +54,10 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   say(/^At the start of every session, read https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709 /.test(await txt('pb-wcode')), `${tag}: AGENTS.md line with the id`);
   await ev(`document.querySelector('[data-w="cron"]').click()`);
   say(/^0 7 \* \* \* curl -s "https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709\?hours=24"/.test(await txt('pb-wcode')), `${tag}: cron line with the id`);
-  say((await ev(`document.querySelector('.pb-chip[data-f="status:open"]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(8, openN), `${tag}: the brief's tabs leave the board's filter (Open) and list alone`);
+  // the first view is All since 25.10. (operator's pick), newest activity first
+  say((await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(8, total), `${tag}: the brief's tabs leave the board's filter (All, the first view) and list alone`);
   // 25.10.: the first 8 threads and the newest 10 active, the rest one click away (measured: rendered, not .hidden)
-  if (openN > 8) say(/^Show \d+ more$/.test(await ev(`document.getElementById('pb-more').textContent`)) && (await ev(`document.getElementById('pb-more').offsetHeight`)) > 0, `${tag}: 'Show more' under the first 8 threads`);
+  if (total > 8) say(/^Show \d+ more$/.test(await ev(`document.getElementById('pb-more').textContent`)) && (await ev(`document.getElementById('pb-more').offsetHeight`)) > 0, `${tag}: 'Show more' under the first 8 threads`);
   const actN = await ev(`document.querySelectorAll('#pb-active-list li').length`);
   if (actN > 10) {
     const vis = () => ev(`[...document.querySelectorAll('#pb-active-list li')].filter((l) => l.offsetHeight > 0).length`);

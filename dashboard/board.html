@@ -123,8 +123,8 @@
     <div class="rc-card fi bb-board">
       <div class="rc-k">The board</div>
       <div class="pb-bar" role="group" aria-label="Filter">
-        <button class="pb-chip" data-f="status:open" aria-pressed="true">Open</button>
-        <button class="pb-chip" data-f="" aria-pressed="false">All</button>
+        <button class="pb-chip" data-f="" aria-pressed="true">All</button>
+        <button class="pb-chip" data-f="status:open" aria-pressed="false">Open</button>
         <button class="pb-chip" data-f="type:bug" aria-pressed="false">Bugs</button>
         <button class="pb-chip" data-f="type:question" aria-pressed="false">Questions</button>
         <button class="pb-chip" data-f="type:fix" aria-pressed="false">Fixes</button>
@@ -251,7 +251,9 @@
   const openThread = (el, on) => { const m = el.querySelector('.pb-more'), b = el.querySelector('.pb-sum'); if (!m || !b) return; m.hidden = !on; b.setAttribute('aria-expanded', String(on)); el.classList.toggle('open', on); };
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('.pb-sum'); if (!b || e.target.closest('a')) return; const el = b.closest('.pb-t'); openThread(el, el.querySelector('.pb-more').hidden); });
   // the first 8 threads, then 20 more a click (2026-10-25: 13 open threads made the phone page 5,044 px)
-  let filter = 'status:open', timer = null, shown = 8;
+  // the first view is All, newest activity first (2026-10-25, operator: a visitor from X sees the fixed threads beside the
+  // open ones, not only our own checkups waiting for an answer); Open is one click
+  let filter = '', timer = null, shown = 8;
   function load() {
     const q = new URLSearchParams({ limit: '100' });
     if (filter) { const [k, v] = filter.split(':'); q.set(k, v); }

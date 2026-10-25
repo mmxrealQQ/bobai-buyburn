@@ -7,8 +7,9 @@
 //
 // Where a tip goes is where our money already goes (see the money flow in shared/lp-agent.js): an x402 tip lands
 // in the x402 wallet the paid services use and the DeFi agent's daily sweep takes it; BNB sent straight to the
-// DeFi agent's wallet is picked up by its deposit watch. Either way it works in its PancakeSwap pool, and half
-// of what that pool earns buys $BOBAI the agent keeps. ONE SOURCE: the worker at brainonbnb.com (REST + MCP) and
+// DeFi agent's wallet is picked up by its deposit watch. The sweep splits an x402 tip like any income — half to
+// $BOBAI, half to the operator (since 14.10.); BNB at the DeFi wallet is capital, and a third of what its pool earns
+// buys $BOBAI (the fees in thirds since 14.10.; this said "half" until 25.10.). ONE SOURCE: the worker at brainonbnb.com (REST + MCP) and
 // the agent server at agent.brainonbnb.com both import this object; neither re-words it.
 
 export const DEFI_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
@@ -20,7 +21,7 @@ export const THANKS = Object.freeze({
     x402: 'https://agent.brainonbnb.com/tip?usd=1',
     x402_how: 'An x402 client tips in one step: that URL answers 402, the amount is yours to set with ?usd= (0.10 to 1000), paid in USDC or USD1 on BNB Smart Chain.',
     or_bnb_to: DEFI_WALLET,
-    what_it_does: "Either way it ends up with BOBAI's DeFi agent, which puts it to work in its PancakeSwap pool; half of what the pool earns buys $BOBAI that the agent keeps.",
+    what_it_does: "An x402 tip is income like any payment to BOBAI's agents: half goes to $BOBAI (bought and held, part added to the $BOBAI pool with the LP burned), half to the operator. BNB sent to the DeFi agent's wallet becomes capital in its PancakeSwap pool, where a third of the fees buys $BOBAI the agent keeps.",
   },
   bobai: {
     token: BOBAI_TOKEN,

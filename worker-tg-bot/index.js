@@ -118,7 +118,7 @@ const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsb
 const IGNORED_WALLETS = new Set([
   '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
-  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent (buys $BOBAI with half its fees)
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent (a third of its fees buys $BOBAI, since 14.10.)
   '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (tops wallets up to 808.41)
 ]);
 

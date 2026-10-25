@@ -1312,7 +1312,7 @@ async function readBuys(env, onlyTx = null) {
     held = hex && hex !== '0x' ? Number(BigInt(hex) / 10n ** 15n) / 1000 : null;
   } catch { held = null; }
   return {
-    what_this_is: 'Every payment for an answer, a pool watch or a scan day pass, and the $BOBAI it bought. Half of each USD1/USDC payment buys $BOBAI at the daily sweep (04:23 UTC) once the income wallet holds enough to be worth the gas, and that $BOBAI is held, never sold; the other half is the operator\'s revenue. A payment in $BOBAI stays $BOBAI. Our own test purchases are marked self_test.',
+    what_this_is: 'Every payment for an answer, a pool watch or a scan day pass, and the $BOBAI it bought. Half of each USD1/USDC payment goes to $BOBAI at the daily sweep (04:23 UTC) once the income wallet holds enough to be worth the gas: bought and held, never sold, and when that part is worth the gas, a share of it added to the $BOBAI pool with the LP burned; the other half is the operator\'s revenue. A payment in $BOBAI stays $BOBAI. Our own test purchases are marked self_test.',
     rule: { to_bobai: '50%', to_operator: '50%', sweep: 'daily 04:23 UTC', gas_floor_bnb: MIN_SWEEP_BNB, code: 'https://brainonbnb.com/code/agent-service.txt (shared/lp-agent.js executeSweep)' },
     income_wallet: env.X402_WALLET || null,
     bobai_held_by_income_wallet: held,

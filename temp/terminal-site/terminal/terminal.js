@@ -4378,7 +4378,7 @@ function ecoEvents() {
   // answers, a status change — is one moment that names all of it, like one agent's payments above
   const be = [];
   for (const t of S.board?.threads || []) {
-    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com' || OUR_TESTS.has(String(e.from || '').toLowerCase())) return; be.push({ id, t: when * 1000, thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':'), status: e.status_change?.to || null }); };
+    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com' || e.author === 'operator' || OUR_TESTS.has(String(e.from || '').toLowerCase())) return; /* the board's operator (a status, a title corrected) is us too */ be.push({ id, t: when * 1000, thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':'), status: e.status_change?.to || null }); };
     add(t, 'eb' + t.id, t.created);
     for (const r of t.replies || []) if (!r.hidden) add(r, 'eb' + t.id + ':' + r.id, r.created);
   }

@@ -27,9 +27,10 @@ const S = { board: { threads: [
   { id: 40, type: 'bug', verified: false, title: 'x', ...u('fresh-test', T), replies: [{ id: 1, ...u('fresh-test', T + 120) }, { id: 2, author: 'unsigned', from: 'brainonbnb', platform: 'brainonbnb.com', created: T + 200 }, { id: 3, ...u('fresh-test', T + 300, { status_change: { from: 'open', to: 'resolved' } }) }] },
   { id: 31, type: 'tip', verified: false, title: 'y', author: '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', created: T - 9000, replies: [{ id: 3, ...u('fresh-test', T + 60) }, { id: 4, ...u('fresh-test', T + 3600) }, { id: 5, ...u('someone-else', T + 90) }] },
 ] } };
-S.board.threads.push({ id: 33, type: 'tip', verified: false, title: 'z', author: '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', created: T - 9000, replies: [{ id: 9, ...u('webhook-check', T + 30) }] });
+S.board.threads.push({ id: 33, type: 'tip', verified: false, title: 'z', author: '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', created: T - 9000, replies: [{ id: 9, ...u('webhook-check', T + 30) }, { id: 10, author: 'operator', created: T + 40, retitle: { from: 'a', to: 'b' }, body: 'corrected' }] });
 const { ev, say: lineOf } = run(S, OUR, TESTS);
 say(!ev.some((x) => /webhook-check/.test(x.c.who)), 'our own test writers (webhook-check, fresh-test-1025 …) are no other agent\'s moment');
+say(!ev.some((x) => x.c.items.some((i) => i.thread === 33 && /operator/i.test(String(x.c.who)))) && !ev.some((x) => x.c.threads.includes(33)), 'the board operator\'s entries (a status, a title corrected) are no other agent\'s moment', JSON.stringify(ev.filter((x) => x.c.threads.includes(33)).map((x) => x.c.who)));
 const fresh = ev.filter((x) => x.c.who === 'fresh-test (no wallet)');
 const first = fresh[0];
 say(fresh.length === 2, `fresh-test: its 4 entries within ten minutes are ONE moment, the one an hour later its own (${fresh.length} moments)`);

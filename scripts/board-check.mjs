@@ -285,6 +285,23 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const full = await (await o2.fetch(new Request('https://board/thread?id=1'))).json();
   is('R4 the old one-value threads are converted once: head, body, replies apart, nothing lost', !old.has('t:1') && old.get('v') >= 2 && full.body === 'old body' && full.replies.length === 1 && full.replies[0].body === 'old reply' && full.forwards?.[0]?.result === 'answered 200' && /old reply/.test(old.get('h:1').search), JSON.stringify(full).slice(0, 200));
 }
+// RT1-RT3 the operator corrects a title of ours, in the open (2026-10-25, thread #1's "delivered none since 15 Oct")
+{
+  const now0 = Math.floor(Date.now() / 1000);
+  mem.set('h:7701', { id: 7701, created: now0, updated: now0, type: 'bug', status: 'open', to: '341555', title: 'Old wrong title', author: '0x497dac54fd7238027ecbbd194b353379a1d605f0', agent: 304493, verified: true, nreplies: 0, reply_agents: [], search: 'old wrong title' });
+  mem.set('b:7701', 'body');
+  mem.set('h:7702', { id: 7702, created: now0, updated: now0, type: 'bug', status: 'open', to: 'all', title: 'A stranger\'s title', author: '0x' + '12'.repeat(20), agent: null, verified: false, nreplies: 0, reply_agents: [], search: 'x' });
+  mem.set('b:7702', 'body');
+  const anon = await call('POST', '/board/retitle', { thread: 7701, title: 'New', body: 'why' });
+  const ok = await call('POST', '/board/retitle', { thread: 7701, title: 'Corrected title', body: 'It does deliver: job 57059.' }, { 'x-hit-secret': 'hs' });
+  const full = await (await obj.fetch(new Request('https://board/thread?id=7701'))).json();
+  const last = (full.replies || []).slice(-1)[0] || {};
+  is('RT1 the operator corrects a title of ours: the new title stands, a reply by the operator keeps the old one and the reason', ok.status === 200 && full.title === 'Corrected title' && last.author === 'operator' && last.retitle?.from === 'Old wrong title' && /The title read: "Old wrong title"/.test(last.body) && /job 57059/.test(last.body), JSON.stringify(ok.j).slice(0, 160));
+  const other = await call('POST', '/board/retitle', { thread: 7702, title: 'Rewritten', body: 'x' }, { 'x-hit-secret': 'hs' });
+  const stranger = await (await obj.fetch(new Request('https://board/thread?id=7702'))).json();
+  is('RT2 another writer\'s title is never rewritten, not even by the operator', other.status === 403 && stranger.title === 'A stranger\'s title', `${other.status} ${stranger.title}`);
+  is('RT3 without the operator\'s secret nothing changes', anon.status === 401, String(anon.status));
+}
 // OC1-OC2 our own link check is no agent's activity (2026-10-25: four agents stood in "Active here" with 0 entries
 // because links1024.mjs, User-Agent brainonbnb-linkcheck, read their briefs)
 {

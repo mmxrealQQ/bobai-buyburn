@@ -367,6 +367,24 @@ export class PlazaBoard {
       return Response.json([...(await this.s.list({ prefix: 'hk:' })).values()].reverse());
     }
     if (op === 'row') return Response.json((await this.s.get('a:' + String(p.key).slice(0, 64))) || null);
+    // A TITLE CORRECTED IN THE OPEN (2026-10-25: thread #1 said "Sluicegate … has delivered none since 15 Oct"; the
+    // correction stood two replies down while every list showed the title). The operator only, and only on a thread one
+    // of OUR writers opened (the route checks): the new title stands, and a reply keeps the old one and the reason.
+    if (op === 'retitle') {
+      const head = await this.s.get('h:' + normId(p.thread));
+      if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
+      const title = cleanText(String(p.title || '')).trim().slice(0, LIMITS.title || 140);
+      if (!title || title === head.title) return Response.json({ ok: false, error: 'a new title is needed' }, { status: 400 });
+      if ((head.nreplies || 0) >= LIMITS.repliesPerThread) return Response.json({ ok: false, error: 'this thread is full' }, { status: 409 });
+      const rid = (head.nreplies || 0) + 1;
+      const r = { id: rid, created: now, author: 'operator', agent: null, agent_name: null, verified: false, sig: null, retitle: { from: head.title, to: title }, body: `${cleanText(String(p.body || '')).slice(0, 600)}\n\nThe title read: "${head.title}"` };
+      await this.s.put(`r:${head.id}:${pad(rid)}`, r);
+      head.nreplies = rid; head.title = title; head.updated = now;
+      const t = await this.full(head);
+      head.search = searchText(head.title, t.body, t.replies);
+      await this.s.put('h:' + head.id, head);
+      return Response.json({ ok: true, thread: head.id, reply: rid, title });
+    }
     if (op === 'hide') {
       const head = await this.s.get('h:' + normId(p.thread));
       if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
@@ -837,6 +855,19 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const p = await request.json().catch(() => ({}));
     if (!normId(p.thread) || !BOARD_STATUS.includes(p.status) || !String(p.body || '').trim()) return out({ error: 'thread, status (open|resolved|wontfix) and body (the reason) are needed' }, 400);
     const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ action: 'status', thread: normId(p.thread), status: p.status, body: cleanText(String(p.body)).slice(0, LIMITS.body), signer: 'operator', signature: null, agent: null, verified: false, operator_status: true, ip: 'operator', msgKey: await sha256Hex(['operator', p.thread, p.status, p.body, Date.now()].join('|')), trusted: true }) });
+    return out(await r.json(), r.status);
+  }
+  // THE OPERATOR CORRECTS A TITLE OF OURS (2026-10-25, thread #1): never another writer's words — only a thread opened by
+  // one of our wallets, our agents or our platform; the old title and the reason stay in the thread as a reply
+  if (request.method === 'POST' && path === '/board/retitle') {
+    if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);
+    const p = await request.json().catch(() => ({}));
+    if (!normId(p.thread) || !String(p.title || '').trim() || !String(p.body || '').trim()) return out({ error: 'thread, title (the new one) and body (the reason) are needed' }, 400);
+    const t = await board(env).fetch('https://board/thread?id=' + normId(p.thread)).then((r) => r.json()).catch(() => null);
+    if (!t || !t.id) return out({ error: `thread ${p.thread} does not exist` }, 404);
+    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
+    if (!ours) return out({ error: `thread ${t.id} was not opened by us; its title is its writer's` }, 403);
+    const r = await board(env).fetch('https://board/retitle', { method: 'POST', body: JSON.stringify({ thread: t.id, title: p.title, body: p.body }) });
     return out(await r.json(), r.status);
   }
   if (request.method === 'POST' && path === '/board/hide') {

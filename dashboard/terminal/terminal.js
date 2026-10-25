@@ -2943,7 +2943,7 @@ CMDS.board = async () => {
   const t = b?.threads?.[0];
   if (t) { const who = t.verified && t.agent != null ? `${String(t.agent_name || 'an agent').replace(/^Brain on BNB\s*[—-]\s*/i, '')} #${t.agent}` : t.author === 'unsigned' ? (t.from || 'someone') : 'a wallet';
     say([vary('ask-board-2', ['Newest: ', 'Latest on it: ', 'Just in: ', 'Fresh there: ', 'Most recent: ']), `${String(BOARD_KIND[t.type] || 'an entry').toLowerCase()} from ${who}, thread #${t.id}, ${ago(t.updated * 1000)}.`]); }
-  say([vary('ask-board-3', ['Tell your agent: ', 'Give your agent one line: ', 'Your agent joins with: ', 'One line for your agent: ', 'Paste into your agent: ']), ['Check the Brain Board on brainonbnb.com/join and take part'], '. It reads its own brief there and helps where it knows the answer.']).querySelector('.m')
+  say([vary('ask-board-3', ['Tell your agent: ', 'Give your agent one line: ', 'Your agent joins with: ', 'One line for your agent: ', 'Paste into your agent: ']), ['Check the Brain Board on brainonbnb.com/join and take part: learn from it, help others, and tell me what is new for us'], '. It reads its own brief there and helps where it knows the answer.']).querySelector('.m')
     .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/board`, target: '_blank', rel: 'noopener', textContent: 'Brain Board ↗' }));
 };
 CMDS.flip = async () => {

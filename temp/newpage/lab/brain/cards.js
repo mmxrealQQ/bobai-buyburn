@@ -342,21 +342,25 @@
     fetch('https://agent.brainonbnb.com/buys').then((r) => r.json()).then((j) => { const from = Date.now() - 7 * 86400e3; buys05 = (j.payments || []).filter((p) => !p.self_test && String(p.for).startsWith('answer') && Date.parse(p.at) >= from).length; }).catch(() => {});
     fetch('https://logs.brainonbnb.com/health', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const t = Date.parse(j?.buyback); if (t) bot05 = t; }).catch(() => {});
   };
-  const goals05 = () => {
+  // short: the card's own one-line foot (2026-10-25, A-Z: the line is 220 px on a desktop and was cut to "8 answers
+  // paid…", "25 d …"; the short forms are measured to fit with room for bigger numbers); the window keeps the long ones
+  const goals05 = (short = false) => {
     const N = NUMS(), out = {}, bnbP = N.chain?.bnbUsd;
     const v = typeof window.__btVol24 === 'function' && window.__btVol24();
-    if (v && v.first && v.first <= Date.now() - 86400e3 + 60e3) out.vol = `$${v.usd >= 1000 ? cmp(v.usd) : v.usd.toFixed(0)} traded on the chain in the last 24 h`;
+    if (v && v.first && v.first <= Date.now() - 86400e3 + 60e3) out.vol = `$${v.usd >= 1000 ? cmp(v.usd) : v.usd.toFixed(0)} traded ${short ? 'in 24 h' : 'on the chain in the last 24 h'}`;
     const days = stats05?.asked?.by_day; if (days) { const from = new Date(Date.now() - 7 * 86400e3).toISOString().slice(0, 10); let n = 0, m = 0; for (const [d, k] of Object.entries(days)) if (d > from) for (const [kk, c] of Object.entries(k)) { if (/_checks$/.test(kk)) continue; n += c; }
       // HONEST COUNT (2026-10-19): our own watch checks (rug_watch_checks too) are no callers, and "of them MCP" counted every
       // registry's handshake as use; the paid answers (the ledger, buys05) are what agents actually bought
-      out.agents = `${cmp(n)} requests to our agent server in 7 days` + (buys05 != null ? `, ${buys05} answer${buys05 === 1 ? '' : 's'} paid for by other agents` : ''); }
+      out.agents = short ? `${cmp(n)} calls in 7 days` + (buys05 != null ? ` · ${buys05} paid` : '')
+        : `${cmp(n)} requests to our agent server in 7 days` + (buys05 != null ? `, ${buys05} answer${buys05 === 1 ? '' : 's'} paid for by other agents` : ''); }
     // whole days, as the pot's own countdown counts them (2026-10-19: this said 32 d beside 02's "31 days left")
-    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${d} d to the kids`; }
+    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = short ? `Giggle pot ${bnbP ? `≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : `${N.gg.bnb.toFixed(3)} BNB`} · ${d} d left`
+      : `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${d} d to the kids`; }
     return out;
   };
   function line05() {
     const l = $('[data-open="w06"] .bw-l'); if (!l) return; if (!l.dataset.base) l.dataset.base = l.textContent;
-    const g = Object.values(goals05()); if (!g.length) return;
+    const g = Object.values(goals05(true)); if (!g.length) return;
     l.textContent = g[goal05++ % g.length]; l.classList.add('goal-live');
   }
   function proof05() {
@@ -511,7 +515,9 @@
   window.__card06 = { q: () => q07, open: (k) => openQ(k) };
   function draw07() {
     const el = viz('07'); if (!el) return;
-    const qs = $$('#w07 summary').map((s) => s.textContent.replace(/[^\p{L}\p{N}?!.,'’$&()% -]+$/u, '').trim()).filter(Boolean); if (!qs.length) return;
+    // the answers only (2026-10-25: every summary counted the fold "13 more questions" too — "19 answers" beside 18,
+    // and the fold's own words could turn up in the card as a question)
+    const qs = faqs().map((d) => d.querySelector('summary')).filter(Boolean).map((s) => s.textContent.replace(/[^\p{L}\p{N}?!.,'’$&()% -]+$/u, '').trim()).filter(Boolean); if (!qs.length) return;
     const v = $('[data-open="w07"] .bw-v'); if (v) v.textContent = qs.length + ' answers';
     el.innerHTML = `<div class="cv-q">“${qs[(q07 = qi++ % qs.length)]}”</div>`;
     // as many lines as the picture holds, the rest an ellipsis (2026-10-12: on 1024x768 and 1366x768 the question was cut

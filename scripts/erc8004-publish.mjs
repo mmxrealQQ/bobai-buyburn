@@ -3106,7 +3106,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       if (old) old.remove();
       if (rows.length <= 4) return;
       var hide = rows.slice(3); hide.forEach(function (r) { r.classList.add('pz-hide'); });
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show all ' + nf(rows.length);
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show the ' + nf(rows.length) + ' newest'; /* the newest only: the total stands on the card above (25.10.: 'Show all 8' under 21 hires) */
       b.addEventListener('click', function () { hide.forEach(function (r) { r.classList.remove('pz-hide'); }); b.dataset.open = '1'; b.remove(); });
       box.after(b);
     };

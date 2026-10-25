@@ -129,7 +129,8 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     card = c.json && (c.json.skills || c.json.name) ? c.json : null;
     // a card behind credentials is there, only not for a reader: a fix of its own, not "serve it at /.well-known"
     const locked = !card && (c.status === 401 || c.status === 403);
-    add('agent card loads', !!card, card ? `${cardUrl.slice(0, 100)} · ${(card.skills || []).length} skills` : `${cardUrl.slice(0, 100)} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
+    const shown = cardUrl.length > 100 ? cardUrl.slice(0, 99) + '…' : cardUrl; // a long URL cut visibly, not mid-word
+    add('agent card loads', !!card, card ? `${shown} · ${(card.skills || []).length} skills` : `${shown} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
       const noEx = (card.skills || []).filter((s) => !(s.examples || []).length).map((s) => String(s.id || s.name).slice(0, 40));
       add('every skill has an example', !noEx.length, noEx.length ? `without: ${noEx.slice(0, 8).join(', ')}` : 'yes', 'add examples to each skill — 8004scan grades A2A quality on it (ours went 77 -> 87)');

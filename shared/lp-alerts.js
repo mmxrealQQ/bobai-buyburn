@@ -77,7 +77,11 @@ export function alertsOf(entry) {
 // told "rebalance FAILED" and the next check an hour later was fine. A run whose only errors are a node not answering,
 // that acted nowhere and sent nothing, is run once more a minute later instead — it is then exactly the same run, one
 // minute later. A real error, or a run that sent anything, is told as before and left to the hourly check.
-const NODE_HICCUP = /took too long|timed? ?out|timeout|fetch failed|HTTP request failed|rate.?limit|too many requests|\b429\b|\b50[234]\b|ECONNRESET|socket hang up|network error/i;
+// A READ THAT MET A NODE BEHIND THE CHAIN (2026-10-25, operator's go "Option 2"): at 03:00 UTC one run read the wallet
+// as holding no position and positions() of it as "Invalid token ID" — nothing was sent, and twenty minutes later
+// #7637521 read as held on every node. A read of the position manager that reverts that way is retried once like a
+// timeout; the operator is told when the retry meets it too (then it is real). Only these reads, only this reason.
+const NODE_HICCUP = /took too long|timed? ?out|timeout|fetch failed|HTTP request failed|rate.?limit|too many requests|\b429\b|\b50[234]\b|ECONNRESET|socket hang up|network error|The contract function "(positions|ownerOf|tokenOfOwnerByIndex)" reverted with the following reason:\s*Invalid token ID/i;
 export function nodeHiccupOnly(entry) {
   if (!entry || entry.dry || entry.acted || entry.retried_after) return false;
   const parts = [];

@@ -1895,7 +1895,7 @@ export default {
 main{max-width:680px;margin:0 auto;padding:24px 16px 40px}h1{font-size:24px;line-height:1.2;margin:0 0 6px}p{margin:0 0 14px;color:var(--mute)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
 .k{font-size:13px;color:var(--mute);margin:0 0 6px}#j-line{font-weight:600;color:var(--fg);margin:0 0 12px;word-break:break-word}
-.row{display:flex;gap:10px;flex-wrap:wrap}.btn{flex:1 1 200px;display:block;text-align:center;padding:13px 16px;border-radius:10px;font:600 16px/1.2 inherit;cursor:pointer;text-decoration:none;border:1px solid var(--acc)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.btn{flex:1 1 200px;display:block;text-align:center;padding:13px 16px;border-radius:10px;font-family:inherit;font-weight:600;font-size:16px;line-height:1.2;cursor:pointer;text-decoration:none;border:1px solid var(--acc)}
 .btn.a{background:var(--acc);color:var(--accfg)}.btn.b{background:transparent;color:var(--fg)}#j-say{min-height:1.4em;margin:8px 0 0;font-size:14px}
 details{margin-top:6px}summary{cursor:pointer;color:var(--mute)}pre{white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0 0}
 </style></head><body><main>

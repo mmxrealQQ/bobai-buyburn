@@ -3165,7 +3165,7 @@ async function handleCommand(msg, env) {
 🔵 <a href="https://web3.gate.com/trade/bsc/${BOBAI_TOKEN}">Gate DEX</a>
 🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
-🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
+🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}&amp;chain=bsc">PancakeSwap</a>
 
 <b>Step 3:</b> Set slippage to about 6% (3% tax + price move + buffer; a big buy needs more)
 <i>(3% on-chain tax on every trade)</i>
@@ -3369,7 +3369,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 🔵 <a href="https://web3.gate.com/trade/bsc/${BOBAI_TOKEN}">Gate DEX</a>
 🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
-🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
+🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}&amp;chain=bsc">PancakeSwap</a>
 
 🐦 <a href="https://x.com/BrainOnBNB">X Official</a>
 🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>

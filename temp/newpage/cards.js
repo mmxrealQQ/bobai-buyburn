@@ -548,7 +548,7 @@
     const k = document.createElement('div'); k.className = 'cx1'; k.dataset.nousd = '1';
     k.innerHTML = `<p class="cx1-s">A meme token on BNB Chain whose 3% trade tax buys back and burns, adds liquidity and funds a DeFi agent — every step a transaction.</p>`
       + `<div class="cx1-row"><code title="the $BOBAI contract on BNB Chain">${CA}</code><button type="button" class="cx1-copy">Copy</button>`
-      + `<a class="cx1-buy" href="https://pancakeswap.finance/swap?outputCurrency=${CA}" target="_blank" rel="noopener">Buy on PancakeSwap →</a></div>`;
+      + `<a class="cx1-buy" href="https://pancakeswap.finance/swap?outputCurrency=${CA}&chain=bsc" target="_blank" rel="noopener">Buy on PancakeSwap →</a></div>`;
     body.prepend(k);
     k.after(proof); proof.after(calc);
     const links = document.createElement('p'); links.className = 'cx1-l';

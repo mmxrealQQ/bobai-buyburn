@@ -191,9 +191,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 5767,
-   "zipBytes": 99901,
-   "txtBytes": 298256,
-   "sha256": "d7929ed9221c4755",
+   "zipBytes": 99903,
+   "txtBytes": 298284,
+   "sha256": "62e400b4122b2214",
    "reqs": [
     {
      "what": "A bot token",
@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7753,
-   "zipBytes": 173253,
-   "txtBytes": 520791,
-   "sha256": "3bfed18eff245f48",
+   "zipBytes": 173260,
+   "txtBytes": 520801,
+   "sha256": "0e7908324e60892b",
    "reqs": [
     {
      "what": "A static host",
@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1382,
-   "zipBytes": 30382,
-   "txtBytes": 80421,
-   "sha256": "c2eca20d720a397a",
+   "zipBytes": 30388,
+   "txtBytes": 80441,
+   "sha256": "0b2a928d71c58d54",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -600,9 +600,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 3312,
-   "zipBytes": 109493,
-   "txtBytes": 326933,
-   "sha256": "7668300f624bf2c4",
+   "zipBytes": 109501,
+   "txtBytes": 326943,
+   "sha256": "63f9f1a30fb5bf54",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 71,
    "lines": 23059,
-   "zipBytes": 569552,
-   "txtBytes": 1616125,
-   "sha256": "d96a514d0ec268cb",
+   "zipBytes": 569559,
+   "txtBytes": 1616135,
+   "sha256": "cd03b6f70719c858",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -751,9 +751,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4938,
-   "zipBytes": 110340,
-   "txtBytes": 318349,
-   "sha256": "d63090ff1f77da38",
+   "zipBytes": 110348,
+   "txtBytes": 318359,
+   "sha256": "3a66c544bb452a84",
    "reqs": [
     {
      "what": "Node 18+ and time",

@@ -1729,7 +1729,7 @@ const page = `<!doctype html>
   <nav><div class="nav">
     <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/registry">Brain Plaza</a>
-    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
 
   <section class="sec b-violet" style="margin-top:86px">

@@ -129,7 +129,7 @@ issued: <ISO time>" with that wallet (personal_sign — no transaction, nothing 
 
 ## Where to buy
 
-- PancakeSwap V2: https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff
+- PancakeSwap V2: https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc
 - Binance Web3 Wallet, OKX Wallet, Bitget Wallet — always paste the contract address yourself; do not trust ticker search.
 
 ## Agent identity (ERC-8004)

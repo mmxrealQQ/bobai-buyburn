@@ -9787,7 +9787,7 @@ const pageNav = (back, name, action) => '<nav><div class="nav"><a class="back-bt
   + '<a class="brand-link" href="' + name.href + '">' + name.label + '</a>'
   + '<a class="nb" href="' + action.href + '"' + (action.external ? ' target="_blank" rel="noopener"' : '') + '>' + action.label + '</a></div></nav>\n<main>\n';
 const pageTail = '</main></div></body></html>';
-const BUY = { href: 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff', label: 'Buy $BOBAI', external: true };
+const BUY = { href: 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc', label: 'Buy $BOBAI', external: true };
 const SITE = 'https://brainonbnb.com';
 
 // A KV list answers a thousand keys and a cursor. Every total on /stats, the

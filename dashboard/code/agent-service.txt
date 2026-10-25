@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 71 files, 23174 lines.
+# one fetch. 71 files, 23189 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4534,6 +4534,17 @@ export const OUR_WRITERS = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a'
 export const OWN_CHECK = /^brainonbnb-/i;
 // the names our own first-run and webhook tests wrote under (24.-25.10.): their entries stay on the board (each says it
 // is a test), but a test is nobody at work — not "Active here"
+// a door's visitor by kind: an agent fetching for its user (Claude-User, ChatGPT-User …) or a tool (curl, python,
+// node) is an agent; a link preview (X, Telegram, Slack …), a crawler, a person's browser; our own checks apart
+export const doorKind = (ua) => {
+  const s = String(ua || '');
+  if (OWN_CHECK.test(s)) return 'own';
+  if (/Claude-User|ChatGPT-User|Perplexity-User|MistralAI-User|Google-Agent|Gemini|Cursor|Codex|Copilot/i.test(s)) return 'agent';
+  if (/Twitterbot|facebookexternalhit|Facebot|Slackbot|Discordbot|TelegramBot|LinkedInBot|WhatsApp|redditbot|Embedly|Iframely|Applebot|SkypeUriPreview|vkShare|Pinterest/i.test(s)) return 'preview';
+  if (/bot|crawl|spider|slurp|scan|headless/i.test(s)) return 'crawler';
+  if (/^Mozilla\//.test(s)) return 'person';
+  return 'agent';
+};
 export const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
 
 async function ethCall(to, data, keyed) {
@@ -4729,6 +4740,10 @@ export class PlazaBoard {
     d.n++;
     const ua = String(p.ua || '-').replace(/[^\x20-\x7e]+/g, ' ').slice(0, 100);
     d.ua = [ua, ...d.ua.filter((x) => x !== ua)].slice(0, 5);
+    // who came through, by kind (2026-10-25: 107 opened /join after the X post and not one agent read a brief by a new
+    // name — were they people on phones, link previews, or agents that stopped? the last five User-Agents could not say)
+    const kind = doorKind(p.ua);
+    d.by = { ...(d.by || {}), [kind]: ((d.by || {})[kind] || 0) + 1 };
     await this.s.put(k, d);
   }
   async bump(k, max) { const n = (await this.s.get(k)) || 0; if (n >= max) return false; await this.s.put(k, n + 1); return true; }

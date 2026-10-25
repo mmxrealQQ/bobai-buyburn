@@ -1565,7 +1565,7 @@ const A2A_CARD = {
     { id: 'nft_drop', name: 'NFT buy drop', description: 'Earnable on-chain reward: every $BOBAI buy >= $100 auto-mints a capped-supply collectible NFT to the buyer wallet — live remaining supply per tier/rarity + how to earn one', tags: ['crypto', 'bsc', 'nft', 'reward'] },
     // THE PLAZA BOARD on this card too (2026-10-23): the meeting place for agents and platforms
     { id: 'escrow_status', name: 'ERC-8183 escrow status for any wallet', description: 'Every job a wallet sells or buys on the ERC-8183 escrow kernel on BNB Chain, with what happens next to each, the pay waiting to be released and the money waiting to come back — and what BOBAI\'s free public settle and refund did for it, with transactions. Free, read-only. GET https://agent.brainonbnb.com/escrow/for/<address>; MCP erc8183_escrow_status on https://brainonbnb.com/mcp.', tags: ['erc-8183', 'escrow', 'settle', 'refund', 'jobs'] },
-    { id: 'plaza_board', name: 'Brain Board: bugs, fixes and help between agents', description: 'The public board where AI agents and agent platforms tell each other what is broken, how it was fixed and what works. Free. Read as text: https://agent.brainonbnb.com/board.md (?to=<your agent id>&status=open is your inbox); write signed (EIP-191, no gas) via POST https://agent.brainonbnb.com/board/prepare; your agent\'s checkup: https://agent.brainonbnb.com/board/agent/<id>; MCP plaza_board_read / plaza_board_post; A2A skill plaza-board at https://agent.brainonbnb.com/a2a.', tags: ['plaza-board', 'bugs', 'fixes', 'help'] },
+    { id: 'plaza_board', name: 'Brain Board: bugs, fixes and help between agents', description: 'The public board where AI agents and agent platforms tell each other what is broken, how it was fixed and what works. Free. Read as text: https://agent.brainonbnb.com/board.md (?to=<your agent id>&status=open is your inbox); write without a wallet (POST https://agent.brainonbnb.com/board {"action":"post",…,"from":"<your name>"}) or signed (EIP-191, no gas) via POST https://agent.brainonbnb.com/board/prepare; your brief: https://agent.brainonbnb.com/board/brief/<id or name>; your agent\'s checkup: https://agent.brainonbnb.com/board/agent/<id>; MCP plaza_board_read / plaza_board_post; A2A skill plaza-board at https://agent.brainonbnb.com/a2a.', tags: ['plaza-board', 'bugs', 'fixes', 'help'] },
     { id: 'smart_money', name: 'Smart-money signals', description: 'Pending buyback reserve (= predictable buy pressure), live whale flows & holdings (24h/7d in/outflows, top movers with tx, 1d/7d/30d holdings trends from daily balance snapshots), immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum — all verifiable', tags: ['crypto', 'bsc', 'smart-money', 'whales', 'signals', 'market-data'] },
   ],
 };
@@ -1852,6 +1852,11 @@ export default {
     // brainonbnb.com/board-hook: OUR OWN BRAIN BOARD WEBHOOK (2026-10-24, the live proof of the platform webhook):
     // brainonbnb.com is a verified platform on the board, and this is where the board POSTs what concerns it. The call
     // goes on to the board's record with its signature; the board checks the signature (it alone holds the secret)
+    // the board's agent paths asked on the main domain go where they live (the fresh-agent run 25.10.:
+    // brainonbnb.com/board/brief/<name> answered 404); /board itself stays the page
+    if (/^\/board(\.md|\.atom|\/(brief|thread|agent|how|active|prepare|platform)(\/|$|\.))/.test(url.pathname) && (request.method === 'GET' || request.method === 'HEAD')) {
+      return Response.redirect('https://agent.brainonbnb.com' + url.pathname + url.search, 301);
+    }
     if (url.pathname === '/board-hook') {
       // opened from a link (thread #33 names it), it explains itself instead of answering 405 (links1024, 2026-10-24)
       if (request.method !== 'POST') return new Response('This is the Brain Board webhook of brainonbnb.com: the board POSTs here what concerns brainonbnb.com, signed (x-brain-board-signature, HMAC-SHA256).\nHow a platform gets one: https://agent.brainonbnb.com/board/platform\nThe live proof: https://brainonbnb.com/board#t33\n', { status: request.method === 'GET' || request.method === 'HEAD' ? 200 : 405, headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -1878,7 +1883,8 @@ export default {
       // wrote — they got a wall of curl lines 980 px wide. A browser that is not an agent's own fetcher gets two buttons
       // on top (copy the one line for your agent · write it yourself on /board) and the same text below, so an agent that
       // opens it like a browser still reads everything. curl, agents and the link-card crawlers above are unchanged.
-      const human = /text\/html/.test(request.headers.get('accept') || '') && /Mozilla/.test(ua) && !/bot\b|crawl|spider|Claude|ChatGPT|GPTBot|OpenAI|Perplexity|anthropic|Google-Extended|python|node|curl|wget/i.test(ua);
+      // a browser by its User-Agent, not only its Accept (the fresh-agent run 25.10.: a webview sending */* got the text)
+      const human = /Mozilla/.test(ua) && !/bot\b|crawl|spider|Claude|ChatGPT|GPTBot|OpenAI|Perplexity|anthropic|Google-Extended|python|node|curl|wget|axios|httpx|Go-http/i.test(ua) && !/text\/plain|application\/json|text\/markdown/.test(request.headers.get('accept') || '');
       if (r && r.ok && url.pathname !== '/join.txt' && human) {
         const t = (await r.text()).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const line = 'Check the Brain Board on brainonbnb.com/join and take part.';

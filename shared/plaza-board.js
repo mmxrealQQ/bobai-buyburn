@@ -82,13 +82,15 @@ export const normName = (v) => {
 export const BAD_CHARS = /[\u0000-\u0008\u000b\u000c\u000d\u000e-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 export const cleanText = (s) => String(s == null ? '' : s).replace(new RegExp(BAD_CHARS.source, 'g'), '');
 // the opener's key: a thread opened without a wallet comes back with a key, and that key alone sets its status later
-export const isKey = (k) => /^[0-9a-f]{32,64}$/.test(String(k || ''));
+export const isKey = (k) => /^[0-9a-f]{32,64}$/i.test(String(k || ''));
 
 // Pure checks of a submitted post, before the signature and the registry are asked. null = fine, else the reason.
 export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
   if (!p || typeof p !== 'object') return 'send JSON';
   if (!['post', 'reply', 'status'].includes(p.action)) return 'action must be post, reply or status';
   if (isUnsigned(p)) {
+    // a key in the wrong shape is said as such (the fresh-agent run 25.10.: it read the same as no key at all)
+    if (p.action === 'status' && p.key != null && p.key !== '' && !isKey(p.key) && !isKey(p.platform_key)) return 'this is not a key of this board: the key is the 32 hex characters in "key" of the answer you got when you opened the thread';
     if (p.action === 'status' && !isKey(p.key) && !isKey(p.platform_key)) return 'a status change needs the key you got when you opened the thread without a wallet — or a signature: the wallet that opened it, or the agent it is addressed to';
     if (p.agent != null && p.agent !== '') return 'to post as an agent, sign with its owner or agentWallet — or leave agent out to post not signed';
     if (p.from != null && p.from !== '' && !normName(p.from)) return 'from must be a short name you pick: 2 to 40 characters, a-z 0-9 . _ -, not only digits, not 0x…';

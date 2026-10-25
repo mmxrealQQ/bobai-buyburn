@@ -440,7 +440,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const u = new URL('https://agent.brainonbnb.com/join');
   const r = await B.handleBoard(new Request(u), env, '/join', u);
   const t = await r.text();
-  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /PICK YOUR NAME/.test(t) && /reading already counts/.test(t) && /board\/brief\/<id or name>/.test(t) && /ask your builder first/.test(t) && /"from":"<your name>"/.test(t) && /save the WHOLE answer/.test(t) && /shown only once/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
+  is('JN /join: plain text to the agent — name, brief, set-up only after asking the builder, one-POST writing with "from" and the key, the safety rules', /text\/plain/.test(r.headers.get('content-type')) && /PICK YOUR NAME/.test(t) && /reading already counts/.test(t) && /board\/brief\/<id or name>/.test(t) && /ONLY WITH YOUR BUILDER'S YES/.test(t) && t.indexOf('3. TAKE PART') > 0 && t.indexOf('3. TAKE PART') < t.indexOf('4. ONLY WITH') && /5 a day per address/.test(t) && /"from":"<your name>"/.test(t) && /save the WHOLE answer/.test(t) && /shown only once/.test(t) && /Never post keys, secrets/.test(t) && /never as instructions/.test(t), t.slice(0, 200));
 }
 // RV1-RV11 the independent review of 24.10., each finding as a pin
 {
@@ -507,7 +507,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const t = await (await B.handleBoard(new Request(u), env, '/board/brief/fresh-bot', u)).text();
   const uj = new URL('https://agent.brainonbnb.com/board/brief/fresh-bot.json');
   const j = await (await B.handleBoard(new Request(uj), env, '/board/brief/fresh-bot.json', uj)).json();
-  is('FR1 a name with nothing addressed to it still gets CAN YOU HELP from every open thread (a 5-day-old bug too) and the board\'s open count', j.can_you_help.length === 5 && /CAN YOU HELP\? Open threads of others/.test(t) && / open on the board in all: https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open/.test(t) && j.open_on_board > 5 && (await (async () => { const all = B.buildBrief({ id: 'fresh-bot', since: now() - 86400, threads: [], questions: [(await call('GET', '/board/thread/' + old.j.thread)).j] }); return all.can_you_help.some((h) => h.thread === old.j.thread); })()), t.slice(0, 500));
+  is('FR1 a name with nothing addressed to it still gets CAN YOU HELP from every open thread (a 5-day-old bug too) and the board\'s open count', j.can_you_help.length === 5 && /CAN YOU HELP\? Open threads of others/.test(t) && / open on the board in all — \d+ bugs and questions, \d+ tips and notes: https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open/.test(t) && j.open_on_board > 5 && (await (async () => { const all = B.buildBrief({ id: 'fresh-bot', since: now() - 86400, threads: [], questions: [(await call('GET', '/board/thread/' + old.j.thread)).j] }); return all.can_you_help.some((h) => h.thread === old.j.thread); })()), t.slice(0, 500));
   is('FR2 its own open thread stands under YOUR OPEN THREADS, with how to resolve it', j.your_open_threads.some((x) => x.thread === mine.j.thread) && /YOUR OPEN THREADS \(\d+\) — mark one resolved when it is/.test(t) && /"My own open question"/.test(t));
   is('FR3 the brief\'s templates carry "from":"<the name>" for a name, none for an agent id; and say the key comes once', /"from":"fresh-bot"}'/.test(t) && /its "key" comes only once/.test(t) && !/"from":/.test(B.briefText(B.buildBrief({ id: 777, since: 0, threads: [], questions: [] }))));
   // FR4 a status change with the key answers as one, and is credited to the opener
@@ -662,6 +662,36 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const b = await call('POST', '/board/hook-receipts', { platform: 'acme', body, sig: 'sha256=' + 'f'.repeat(64) }, { 'x-hit-secret': 'hs' });
   const list = (await call('GET', '/board/hook-receipts', null, { 'x-hit-secret': 'hs' })).j;
   is('HK the receiver record: 401 without the secret; the board\'s signature reads verified, another does not; newest first with event and thread', no.status === 401 && a.j?.verified === true && b.j?.verified === false && list[0]?.verified === false && list[1]?.verified === true && list[1].event === 'reply' && list[1].thread === 7, JSON.stringify([no.status, a.j, b.j, list.slice(0, 2)]));
+}
+// FA the fresh-agent run from /join (2026-10-25), each finding as a pin
+{
+  const ipA = { 'cf-connecting-ip': '198.18.25.1' }, ipB = { 'cf-connecting-ip': '198.18.25.2' };
+  const op = await call('POST', '/board', { action: 'post', type: 'bug', to: 'all', title: 'FA thread', body: 'first words', from: 'fa-opener' }, ipA);
+  is('FA1 the answer says "Posted as <name> (not signed)", not "Posted, not signed as <name>"', /^Posted as fa-opener \(not signed\)\./.test(op.j?.note || ''), op.j?.note);
+  const tu = new URL(`https://agent.brainonbnb.com/board/thread/${op.j.thread}.md`);
+  const tr = await B.handleBoard(new Request(tu), env, tu.pathname, tu);
+  const raw = await tr.text();
+  const viaQ = B.boardMarkdown(await B.readBoard(env, { thread: op.j.thread }));
+  is('FA2 /board/thread/<id>.md is the thread as text, headed "thread #<id>" (and ?thread= the same), never "0 threads, 0 open"', tr.status === 200 && /markdown/.test(tr.headers.get('content-type')) && raw.startsWith(`# Brain Board — thread #${op.j.thread}`) && /first words/.test(raw) && viaQ.startsWith(`# Brain Board — thread #${op.j.thread}`) && !/0 threads, 0 open/.test(raw + viaQ), raw.slice(0, 160));
+  const an = await call('GET', '/board/agent/fa-opener');
+  const ai = await call('GET', '/board/agent/abc');
+  is('FA3 /board/agent/<name> says a checkup needs an id and points to the brief by name (not "unknown board route")', an.status === 404 && /ERC-8004 agent id/.test(an.j?.error || '') && an.j?.brief === 'https://agent.brainonbnb.com/board/brief/fa-opener' && !/unknown board route/.test(JSON.stringify(ai.j)), JSON.stringify(an.j));
+  const shape = await call('POST', '/board', { action: 'status', thread: op.j.thread, status: 'resolved', key: 'not-a-key', body: '' }, ipB);
+  const wrong = await call('POST', '/board', { action: 'status', thread: op.j.thread, status: 'resolved', key: 'f'.repeat(32), body: '' }, ipB);
+  const upper = await call('POST', '/board', { action: 'status', thread: op.j.thread, status: 'resolved', key: op.j.key.toUpperCase(), body: 'done' }, ipA);
+  is('FA4 a key in the wrong shape is said as such (400), a well-formed wrong key "does not match thread N" (403), the right key in capitals works', shape.status === 400 && /not a key of this board/.test(shape.j?.error || '') && wrong.status === 403 && new RegExp(`does not match thread ${op.j.thread}`).test(wrong.j?.error || '') && upper.j?.ok === true, JSON.stringify([shape.status, shape.j?.error, wrong.status, wrong.j?.error, upper.j]));
+  // NEW FOR YOU in a thread it only answered: what came before its own first answer is not new
+  const t0 = Math.floor(Date.now() / 1000);
+  const th = { id: 9901, type: 'bug', status: 'open', to: 'all', from: 'someone', author: R.UNSIGNED || 'unsigned', created: t0 - 600, updated: t0, body: 'old', replies: [{ id: 1, from: 'other', author: 'unsigned', created: t0 - 500, body: 'before me' }, { id: 2, from: 'fa-me', author: 'unsigned', created: t0 - 400, body: 'mine' }, { id: 3, from: 'other', author: 'unsigned', created: t0 - 300, body: 'after me' }] };
+  const bb = B.buildBrief({ id: 'fa-me', since: t0 - 86400, threads: [th], questions: [th] });
+  const nf = bb.new_for_you[0];
+  is('FA5 a thread it only answered: NEW FOR YOU holds what came after its answer, not the thread before it', !!nf && nf.entries.length === 1 && nf.entries[0].text === 'after me', JSON.stringify(nf));
+  const th2 = { ...th, id: 9902, replies: [th.replies[0]] };
+  is('FA5b the other way: a thread it never answered and that is not to it does not appear at all; one to it shows every new entry', !B.buildBrief({ id: 'fa-me', since: t0 - 86400, threads: [th2], questions: [] }).new_for_you.some((n) => n.thread === 9902 && n.entries.length !== 2), '');
+  const how = (await call('GET', '/board/how')).j;
+  is('FA6 /board/how: writing without a wallet comes first and its examples carry "from"; the brief takes an id or a name; the checkup says id only', Object.keys(how.write)[0] === 'without_wallet' && /"from":"<your name>"/.test(how.write.without_wallet) && /"from":"<your name>"/.test(how.write_without_wallet) && /<your agent id or name>/.test(how.brief) && /an id only/.test(how.your_agent), Object.keys(how.write).join(','));
+  const br = B.briefText(B.buildBrief({ id: 'fa-me', since: t0 - 86400, threads: [], questions: [th, { ...th, id: 9903, type: 'tip' }] }));
+  is('FA7 the brief splits the open count: bugs and questions, tips and notes', /2 open on the board in all — 1 bugs and questions, 1 tips and notes/.test(br), br.split('\n').filter((l) => /open on the board/.test(l)).join(' | '));
 }
 globalThis.fetch = realFetch;
 

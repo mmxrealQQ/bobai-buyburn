@@ -1,0 +1,215 @@
+# clips that show the figure or the main effect cut by the frame (edge_scan.py + review 2026-09-27).
+# 2026-09-27: hub-liq released (operator: "liq was okay"; only sparks brush the left edge for a moment).
+# clips.mjs leaves them out of clips.json, so the terminal plays their stand-in until a re-shot take replaces them.
+# 2026-09-28 (operator: "use all animations and videos"): the older pose-start takes play again with a soft fade in and
+# out; these of them run out of the frame (edge_scan.py) and stay withheld until their wide hub take exists.
+bull
+burn
+burn-big
+burn-mega
+burn-apocalypse
+burn-supernova
+buy-huge
+buy-whale
+buy-thunder
+buy-kraken
+cheer
+saber
+# 2026-09-28 review of the day's takes: burn-big (lava column cut at the right edge), burn (fireball leaves the top),
+# burn-mega (a flaming skull replaces his head), buy-huge (hoodie brown in the rocket light), defi (hologram over his face,
+# eyes and brain turn blue). Sources in anim/rejected/*-0928.*; re-shot with sharper prompts. pushups re-shot and released.
+# 2026-09-29 review: hub-burn-big (fire light turns the hoodie brown; fix_hoodie leaves blotches), hub-burn-mega (the
+# flaming skull replaces his head, 2nd time), hub-buy-huge (the blue flame turns hoodie, trousers and brain blue). Kept
+# in anim/ so run_days.sh does not re-shoot them: the standard budget goes to the -v2 takes of tiers that work; these
+# tiers keep their stand-ins (buy-huge -> buy-big, burn-big/-mega -> burn-nice). hub-nft withheld too (easel off the
+# right edge, anim/rejected/hub-nft-0929.*), re-shot 30.9. with the card in front of his chest.
+# 2026-09-29 later: hub-burn-big and hub-buy-huge RELEASED after fix_hoodie --body (hoodie black below the neck, soft
+# ramp from the chin; originals anim/rejected/*-tinted.mp4). hub-burn-mega re-shot with a fire bowl (no skull in hand).
+# 2026-09-29 PENDING REVIEW (removed from here once checked):
+# 29.9. ~10:45 released after review: hub-nft (card in front of him), hub-burn-mega (fire bowl, fix_hoodie --body), hub-buy-huge-v2 (toy rocket, white clouds), hub-burn-big-v2 (lava pool hop), hub-burn-mega-v2 (ring of fire)
+# PENDING REVIEW:
+# 29.9. ~11:30 released after review: hub-burn + hub-defi (fix_hoodie --body), bull/coffee/walk/moon/giggle/shrug/hodl/pushups -v2
+# 30.9. ~09:45 released after review: hub-saber-v2, hub-buy-kraken-v2, hub-burn-apocalypse-v2 as shot; hub-buy-thunder-v2 + hub-cheer-v2 (fix_hoodie --body --hue 0,45), hub-buy-whale-v2 (--hue 190,260); originals rejected/*-tinted.mp4
+# 30.9. ~10:10 released: hub-burn-v2 (fix_hoodie --body --hue 0,45). WITHHELD: hub-defi-v2 (chart screen covers the top of his head and
+# tints the brain purple, flies off as a blue wedge at the right edge) — kept in anim/ so the run does not re-shoot it:
+# 30.9. ~10:30 released: hub-burn-supernova-v2 (fix_hoodie --body --hue 0,45), hub-build-v2 (--body --hue 0,55 --max .75: gold glitter on a black hoodie)
+# 30.9. ~10:50 released: hub-buy-big-v2 as shot; hub-buy-nice-v2, hub-burn-small-v2, hub-burn-nice-v2 (fix_hoodie --body --hue 0,45).
+# WITHHELD: hub-nft-v2 (a purple brain picture in a gold frame covers his whole face, then a burst does, hoodie purple):
+# 30.9. ~11:40 released: hub-defi-v3 (checks the agent on a small gold phone), hub-nft-v3 (gold card from the pocket, beside his face) — re-shoots of the withheld v2s, solid objects held low
+# 30.9. ~12:30 released: third takes hub-laugh-v3, hub-coffee-v3, hub-think-v3 (clean as shot)
+# 30.9. ~17:30 WITHHELD (operator: 'on one burn he only stands on a yellow spot'): the lava pool came out a flat yellow disc; a grade
+# to orange-red did not make it lava. Re-shot 1.10. morning as hub-burn-big-v3 (cracked lava rock):
+hub-burn-big-v2
+# 1.10. ~09:25 released: hub-liq-v3 (the pour lands as a glowing puddle at his feet; fix_hoodie --body --hue 0,45)
+# 1.10. ~09:40 WITHHELD: hub-burn-big-v3 (cracked lava rock is right, but the slab spreads to the sides: right edge in 31/62 frames) — re-shot as hub-burn-big-v4 (small round patch under his shoes):
+# 1.10. ~10:05 released as shot: hub-burn-big-v4 (small round cracked-lava patch; fading stones near the bottom, fewer edge frames than hub-burn-big), rest-v6, hub-shrug-v3, hub-walk-v3, hub-hodl-v3, hub-moon-v3, hub-pushups-v3
+# 1.10. ~10:05 WITHHELD (kept in anim/ so no run re-shoots them):
+# hub-giggle-v3: a pink burst covers his head and body, brain and hoodie turn pink
+# 1.10. ~11:30 RESCUED + released: rest-v3/v4/v5 (trim_hub cut the last 0.3 s where the arms went down; end 2.14/2.04/2.04, sheet checked)
+# 1.10. ~18:30 WITHHELD (operator: "the whale flying in the air is graphically wrong; the one from below is perfect"): a flat blue cartoon whale, cut at the edge, tints his hand blue:
+# 1.10. evening released: hub-buy-whale-v3 (surfs a whale rising from below, golden fountain; fix_hoodie --body --hue 0,45), hub-buy-kraken-v3 (giant kraken rises behind him out of glowing water, sparkle spiral), hub-buy-kraken-v4 (two tentacles form a golden crown, coin rain)
+# 1.10. evening WITHHELD: hub-defi-v4 (the golden robot helper is good, but it vanishes in a blotchy sparkle cloud over his whole right side, and a yellow spot glows on the floor):
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+# 2.10. released after review: hub-enter-multipla (yellow bubble car drives in, he hops out, car leaves in sparkles; ends in the pose)
+# 2.10. PENDING REVIEW:
+hub-enter-puppies
+# 2.10. PENDING REVIEW:
+hub-enter-builder
+# 2.10. PENDING REVIEW:
+hub-enter-jetpack
+# 2.10. PENDING REVIEW:
+hub-enter-giftbox
+
+# 2.10. released after review: hub-enter-breakdance (slides in on his knees, toprock, floor spin, back up; ends in the pose)
+# 2.10. WITHHELD: hub-enter-puppies (the dark water keys out as an opaque dark slab over the lower half — re-shot without water as -v2)
+hub-enter-puppies
+# 2.10. WITHHELD: hub-enter-builder (a sparkle cloud over his whole body, light on the floor, hoodie tinted orange — re-shot as -v2)
+hub-enter-builder
+# 2.10. WITHHELD: hub-enter-jetpack (mid-flight his face distorts behind a flame; after landing his brain-head glows yellow — re-shot as -v2)
+hub-enter-jetpack
+# 2.10. PENDING REVIEW:
+# 2.10. WITHHELD: hub-enter-giftbox (he stands on top of the box, then sinks back into it — re-shot as -v2)
+hub-enter-giftbox
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+hub-enter-builder-v2
+
+# 2.10. released after review: hub-enter-puppies-v2 (five baby kraken bounce in, he pats one, they bounce away; no water)
+# 2.10. WITHHELD: hub-saber-v3 (the glowing blade sweeps across his face, hoodie tinted brown by the glow)
+# 2.10. PENDING REVIEW:
+hub-enter-jetpack-v2
+# 2.10. WITHHELD: hub-enter-builder-v2 (vest comes off, then is fully on again; the tossed hat looks like a fireball; the tool belt dissolves into a dark smear at his feet)
+hub-enter-builder-v2
+# 2.10. PENDING REVIEW:
+hub-enter-giftbox-v2
+# 2.10. WITHHELD: hub-enter-jetpack-v2 (landing lights a yellow pool on the floor and browns his trousers; a flame flares beside his face as he takes it off)
+hub-enter-jetpack-v2
+# 2.10. PENDING REVIEW:
+# 2.10. WITHHELD: hub-enter-giftbox-v2 (back into the box again, the lid closes over him, he reappears out of glitter)
+hub-enter-giftbox-v2
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+
+# 2.10. released after review: hub-dance-v3 (shoulder bounces, a spin, arms crossed), hub-cheer-v3 (claps, jump, gold confetti)
+# 2.10. WITHHELD: hub-bull-v3 (for a moment there are TWO of him — one on the bull, one in front; then a sparkle cloud over his body)
+hub-bull-v3
+# 2.10. WITHHELD: hub-buy-nice-v3 (the coin is held up beside his face and flashes bright at eye level)
+# 2.10. PENDING REVIEW:
+
+# 2.10. WITHHELD: hub-burn-v3 (the fireball comes down onto his face and explodes over his head, hoodie browned)
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+# 2.10. PENDING REVIEW:
+
+# 2.10. released after review: hub-defi-v5 (a small gold robot walks in, hands him a coin, fist bump, walks off; no sparkle, no floor light)
+# 2.10. WITHHELD: hub-giggle-v4 (the coin is held up at face height over the edge of his face)
+# 2.10. WITHHELD: hub-nft-v4 (the card is held up beside his face, over his cheek)
+# 2.10. WITHHELD: hub-buy-big-v3 (a bright white flash at his chest lights his face, sparkle cloud)
+# 2.10. ~12:30 PULLED FROM LIVE (operator): breakdance + puppies-v2 — his face/head does not look like BOBAI; multipla — he opens the door wrong, walks through it and it closes on the other side
+hub-enter-breakdance
+hub-enter-puppies-v2
+hub-enter-multipla
+# 2.10. PULLED after the clip inspector (clipcheck.py, zoomed head row): flame/prop/flash over his face, a second BOBAI, letters, or a different face
+# hub-build-v3: floating lines of code text, face lit orange
+# hub-bull: for a moment two BOBAIs
+# hub-burn: the fireball covers half his face
+# hub-burn-small-v2: the flame burns right in front of his face, face yellow
+# hub-burn-nice: the candle flame covers half his face
+# hub-burn-apocalypse: a white flash erases his face, body dissolves in sparks
+# hub-burn-supernova: the star covers him, the flash washes his face out
+# hub-buy-big-v2: the diamond over his eye, then a flash over his face
+
+# 2.10. RESTORED hub-buy-huge (operator: "huge we have two good ones"; at full size it is clearly his face, in blue rocket light)
+# 2.10. RESCUED after the full-size head check (operator's yardstick: clearly his face, no physical bug, face not covered): hub-buy-nice-v3, hub-giggle-v4, hub-nft-v4, hub-buy-big-v3
+# 2.10. PULLED after the full live inspection (zoomed head row): his face covered
+# hub-buy-nice: a golden burst covers half his face
+# hub-buy-whale: the golden fountain covers him and his face completely for a moment
+# hub-coffee-v3: a glowing burst replaces his whole head for a moment
+# hub-giggle-v2: a pink burst covers his face at the end and turns it pink
+# 4.10. OPERATOR (review page): RELEASED F4 hub-buy-whale-v4, V4 hub-bull-v4, K4 hub-burn-nice-v4
+# 3.10. PENDING REVIEW (not shot yet):
+hub-burn-v4
+# 3.10. PENDING REVIEW (not shot yet):
+hub-burn-small-v3
+# 4.10. OPERATOR PULLED N3: not apocalypse-like enough (and supernova, not apocalypse, is the biggest tier) — re-shoot bigger
+hub-burn-apocalypse-v3
+# 3.10. PENDING REVIEW:
+hub-burn-supernova-v3
+
+# 3.10. OPERATOR (review page): out — kraken only H3+H4, supernova-v2 replaced by the first take
+hub-buy-kraken-v2
+hub-burn-supernova-v2
+
+# 4.10. ~15:30 PULLED by the operator after the NFT page (S4): hub-nft-v4 (the card held up beside his face)
+hub-nft-v4
+
+# 5.10. OPERATOR PULLED (review page): P2 hub-liq-v2, the green liq
+hub-liq-v2
+# 5.10. OPERATOR (review page): RELEASED H5 hub-buy-kraken-v5 ("so-so, take it"), G4 hub-buy-thunder-v4 and E3 hub-buy-huge-v3
+# (both fix_hoodie --body --hue 0,45; originals anim/rejected/*-tinted.mp4) — one new take per tier
+# 5.10. WITHHELD (operator: "only one each"): G3 thunder-v3 (sparkle cloud over his body at the end), E4 huge-v4 (Veo added
+# a bright flame beside his face despite "no fire")
+hub-buy-thunder-v3
+hub-buy-huge-v4
+# 5.10. later (operator: "thunder must be much stronger, it is a buy over $1k — Dragon Ball Z style; the kraken looks odd,
+# few tentacles, it must be worthy of the $2.5k biggest alert; on huge he can ride the rocket"): G4 withheld as too weak,
+# H5 stays as a stand-in until a worthy kraken exists; re-shot as thunder-v5, kraken-v6, huge-v5
+hub-buy-thunder-v4
+# 5.10. OPERATOR (review page): RELEASED G5 hub-buy-thunder-v5 (Dragon Ball Z power-up, golden aura — the glow on him IS the
+# effect, kept as shot) and H6 hub-buy-kraken-v6 (colossal kraken out of golden water, coin rain): "extremely beautiful".
+# H6 replaces the stand-in: H5 withheld
+hub-buy-kraken-v5
+# 6.10. hub-ouch + hub-ouch-v3 RELEASED (clipcheck: his face in every frame). v2 withheld: squeezed his face until it was no longer his (frames 3-5)
+# 7.10. OPERATOR PULLED (review page): P1 hub-liq and Q1 hub-defi ('P1 out, a new beautiful liq; Q1 out, a nicer one').
+# Q1's place: hub-defi-v6 RELEASED (a golden sprout grows into a knee-high coin tree, he picks a coin and pockets it, the
+# tree sinks back; clipcheck OK, face his in every frame, nothing near it)
+hub-liq
+hub-defi
+# 7.10. OPERATOR (builder sheet): RELEASED P4 hub-liq-v4 (two flasks, swirl pool). WITHHELD P5 hub-liq-v5: the same idea
+# again, the pool a flat yellow disc
+hub-liq-v5
+# 10.10. WITHHELD: hub-guitar (a real guitar appears though the prompt said invisible; at the end a flame flares in his fist above his head)
+hub-guitar
+# 10.10. WITHHELD: hub-popcorn (lovely, but at 7.4 s the bucket splits into two buckets flying to the sides; kernels litter the floor)
+hub-popcorn
+# 10.10. RELEASED: hub-zen (palms together, floats cross-legged, lands; clipcheck OK, face his in every frame)
+# 10.10. WITHHELD: hub-guitar-v2 (the guitar vanishes from one frame to the next, his face blurs in that frame)
+hub-guitar-v2
+# 10.10. WITHHELD: hub-popcorn-v2 (a red stick appears on the floor beside him when the bucket goes)
+# 10.10. RELEASED: hub-zen-v2 (deep breath, arms over head, tree pose, steps down; clipcheck OK)
+# 10.10. WITHHELD: hub-guitar-v3 (a sparkle cloud over his whole body as the guitar comes, a glowing pool on the floor as it goes) — guitar dropped after three takes
+# 10.10. RELEASED: hub-popcorn-v3 (watches like at the movies, eats, crumples the bucket and pockets it; a few kernels on the floor fade at 6.5 s; glow flag = white popcorn, false)
+# 11.10. OPERATOR RELEASED ("they look fine to me; the videos cost a lot"): ZZN3 hub-guitar-v3 (sparkles as the guitar comes and goes = magic,
+# hoodie flag = gold light), ZZO2 hub-ouch-v2 (face scrunched in pain, still his), ZZP2 hub-popcorn-v2 (glow = white popcorn,
+# the floor speck is tiny). Guitar joins: own lines, pump/up moods, evening, buy joy.
+# 12.10. WITHHELD (operator: "beim Lachen kam gestern wieder die rote Traene"): hub-laugh-v3 — frames ~100-148 a pink-red patch around the blue tears under his eyes, and the tears are partly see-through (52-79 px of alpha < 235 inside the face at 120/136), so the Halloween scene's orange shows through as red; tear_dry.py only acts from 158. Laugh keeps hub-laugh + hub-laugh-v2.
+# 12.10. RESTORED (operator: "DeFi: when the blue board comes, his arms are blue at the end"): these were written WITHHELD in
+# the notes above (30.9., 1.10., 2.10.) but their name line was missing, so they went live anyway. clipcheck today: hub-defi-v2
+# FAIL glow (the blue chart board over his head, the board's blue on brain and arms), hub-defi-v4 WARN twins (robot cut at the
+# edge, sparkle cloud over his side), hub-nft-v2 FAIL head/hoodie/glow, hub-burn-v3 FAIL head/hoodie/face, hub-burn-big-v3
+# FAIL hoodie. golive.mjs now refuses to build when a "WITHHELD: <take>" note has no name line and no later release.
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. review (clipcheck full size): hub-paid RELEASED (clean). hub-settle (stamp flash lit face, hoodie brown), hub-hire (light figure lit his face orange), hub-venus (sparkle cloud over his face) stay WITHHELD; re-shot as -v2.
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. operator after watching the four: settle, hire, venus "top" -> RELEASED; hub-paid WITHHELD (operator: the coin is already the buys' motif). hub-settle-v2 was ordered and stopped, never arrived.
+hub-paid
+# 22.10. operator on /builder: "I3, L3, Q2, S2, ZE3 — they are all good, put them in correctly" -> hub-burn-v3, hub-burn-big-v3, hub-defi-v2, hub-nft-v2, hub-laugh-v3 RELEASED.
+# 22.10. PENDING REVIEW:
+# 22.10. PENDING REVIEW:
+# 22.10. hub-paid-v3 RELEASED (the paper bird stays low and beside him; face free in every frame; clipcheck OK). hub-paid and hub-paid-v2 stay withheld.
+# 22.10. never shot (stopped before Veo answered): hub-settle-v2, hub-venus-v2 — no file.
+# 22.10. WITHHELD after review: the paper bird crosses his face half-transparent for ~0.5 s
+# 22.10. WITHHELD: arrived although its run was stopped; the operator approved the first hire take, this second take is not used
+# 25.10. hub-board-bug, hub-board-plane, hub-board-detective RELEASED (first Gemini Omni Flash takes; Veo 3.1 shut down 22.10.): clipcheck OK (plane: glow 1 = the white paper, not his face), face, amber eyes and black hoodie true in every zoomed frame, seam on what the page shows 1.3-1.4.
+# 25.10. OPERATOR (builder, DECIDE with ✓/✗, 09:26-09:29 UTC):
+# 25.10. RELEASED by the operator: hub-saber-v3 (U3), hub-hire-v2 (ZZO2), hub-paid-v2 (ZZQ2), hub-buy-kraken (H1), hub-defi-v4 (Q4)
+# 25.10. CONFIRMED live by the operator: hub-ouch, hub-ouch-v3, hub-paid-v3, hub-popcorn-v3, hub-zen, hub-zen-v2 (released by Claude 6.-22.10.)
+# 25.10. stay WITHHELD on the operator's no: V3 bull-v3, ZZN1 guitar, ZZN2 guitar-v2, ZZR1 popcorn, G3, E4, G4, H2, H5, L2, N3, O2, P1, P2, P5, S4, ZZQ1 paid; Q1 defi left unmarked, stays withheld

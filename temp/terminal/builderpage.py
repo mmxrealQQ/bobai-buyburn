@@ -43,6 +43,11 @@ def still(src, dst, w):
 # 1. the terminal's takes
 import time
 OPERATOR_OK = {'hub-board-bug', 'hub-board-plane', 'hub-board-detective'}  # 25.10. operator: "die sind super"
+# decided by the operator on 25.10. 09:26-09:29 UTC (builder DECIDE, ✓ / ✗; carried out in anim/cut.txt the same morning)
+DECIDED = {'hub-ouch', 'hub-ouch-v3', 'hub-paid-v3', 'hub-popcorn-v3', 'hub-zen', 'hub-zen-v2', 'hub-saber-v3', 'hub-bull-v3', 'hub-guitar',
+           'hub-guitar-v2', 'hub-hire-v2', 'hub-paid-v2', 'hub-popcorn', 'hub-buy-thunder-v3', 'hub-buy-huge-v4', 'hub-buy-thunder-v4',
+           'hub-buy-kraken', 'hub-buy-kraken-v2', 'hub-buy-kraken-v5', 'hub-burn-big-v2', 'hub-burn-apocalypse-v3', 'hub-burn-supernova-v2',
+           'hub-liq', 'hub-liq-v2', 'hub-liq-v5', 'hub-defi-v4', 'hub-nft-v4', 'hub-paid'}
 MINE_HELD = {'hub-hire-v2'}  # its note names the operator (he approved the first take), but holding this one back was Claude's call
 MINE_LIVE = {  # released by Claude, never confirmed by the operator (anim/cut.txt)
     'hub-ouch': '6.10. released by Claude: the Halloween moon hits his head (clipcheck: his face in every frame)',
@@ -76,6 +81,7 @@ for m in moves:
         days = [os.path.getmtime(p) for p in (os.path.join(ANIM, t['clip'] + '.raw.mp4'), os.path.join(ANIM, t['file'])) if os.path.exists(p)]
         t['born'] = time.strftime('%d.%m.%Y', time.gmtime(min(days))) if days else ''
         if t['clip'] in OPERATOR_OK: t.pop('made', None)
+        if t['clip'] in DECIDED: continue  # the operator's ✓ / ✗ of 25.10. — no longer open
         if t['st'] == 'held':
             t['decide'] = 'me' if t['clip'] in MINE_HELD or not re.search(r'operator', t.get('note', ''), re.I) else 'you'
         elif t['st'] == 'live' and t['clip'] in MINE_LIVE:

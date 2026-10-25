@@ -390,6 +390,14 @@ if (ALL) {
 }
 
 const list = [...ids].sort((a, b) => a - b);
+// A NARROW RUN NEVER REPLACES A WIDE ONE (2026-10-25): run without --all, the scan asked 23 agents and wrote over the
+// file of 948 asked / 373 rated that /registry reads — caught before it was published. A run asking under half of what
+// the file on disk asked stops before reading anything; --force writes it anyway.
+const before = readJson('reputation.json', null)?.population?.asked || 0;
+if (!SELFTEST && before > list.length * 2 && !process.argv.includes('--force')) {
+  console.error(`refused: this run would ask ${list.length} agents, the file on disk asked ${before}${ALL ? '' : ' — add --all (every agent that answered)'}; --force writes it anyway`);
+  process.exit(1);
+}
 console.log(`Reading the ERC-8004 ReputationRegistry for ${list.length} agents on BNB Smart Chain\n`);
 
 // ── the scan ──────────────────────────────────────────────────────────────

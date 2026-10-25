@@ -3,22 +3,22 @@
   "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
   "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-10-12T04:11:41.426Z",
+  "measured_at": "2026-10-25T15:59:08.900Z",
   "population": {
-    "asked": 948,
+    "asked": 995,
     "source": "every agent that answered in the last scan, plus everything hireable here"
   },
   "rated": {
-    "agents": 373,
-    "attestations": 20777,
-    "distinct_raters": 76,
-    "unreadable": 1
+    "agents": 381,
+    "attestations": 21064,
+    "distinct_raters": 79,
+    "unreadable": 0
   },
   "raters": [
     {
       "address": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "attestations": 1282,
-      "agents": 137,
+      "attestations": 1294,
+      "agents": 138,
       "tags": [
         "personality",
         "knowledge",
@@ -30,8 +30,8 @@
     },
     {
       "address": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "attestations": 1160,
-      "agents": 142,
+      "attestations": 1166,
+      "agents": 143,
       "tags": [
         "personality",
         "knowledge",
@@ -43,8 +43,8 @@
     },
     {
       "address": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "attestations": 1121,
-      "agents": 132,
+      "attestations": 1133,
+      "agents": 133,
       "tags": [
         "personality",
         "knowledge",
@@ -69,8 +69,8 @@
     },
     {
       "address": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "attestations": 1095,
-      "agents": 140,
+      "attestations": 1101,
+      "agents": 141,
       "tags": [
         "personality",
         "knowledge",
@@ -82,8 +82,8 @@
     },
     {
       "address": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "attestations": 1083,
-      "agents": 139,
+      "attestations": 1089,
+      "agents": 140,
       "tags": [
         "timeline",
         "knowledge",
@@ -95,8 +95,8 @@
     },
     {
       "address": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-      "attestations": 1081,
-      "agents": 135,
+      "attestations": 1087,
+      "agents": 136,
       "tags": [
         "personality",
         "knowledge",
@@ -108,8 +108,8 @@
     },
     {
       "address": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "attestations": 1065,
-      "agents": 135,
+      "attestations": 1071,
+      "agents": 136,
       "tags": [
         "personality",
         "stance",
@@ -121,8 +121,8 @@
     },
     {
       "address": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-      "attestations": 1059,
-      "agents": 140,
+      "attestations": 1065,
+      "agents": 141,
       "tags": [
         "personality",
         "stance",
@@ -134,8 +134,8 @@
     },
     {
       "address": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-      "attestations": 1044,
-      "agents": 131,
+      "attestations": 1059,
+      "agents": 132,
       "tags": [
         "personality",
         "knowledge",
@@ -147,8 +147,8 @@
     },
     {
       "address": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "attestations": 1040,
-      "agents": 137,
+      "attestations": 1046,
+      "agents": 138,
       "tags": [
         "personality",
         "knowledge",
@@ -173,8 +173,8 @@
     },
     {
       "address": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-      "attestations": 1018,
-      "agents": 131,
+      "attestations": 1024,
+      "agents": 132,
       "tags": [
         "personality",
         "knowledge",
@@ -212,8 +212,8 @@
     },
     {
       "address": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "attestations": 852,
-      "agents": 119,
+      "attestations": 858,
+      "agents": 120,
       "tags": [
         "personality",
         "knowledge",
@@ -224,9 +224,22 @@
       ]
     },
     {
+      "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "attestations": 842,
+      "agents": 117,
+      "tags": [
+        "personality",
+        "timeline",
+        "knowledge",
+        "stance",
+        "style",
+        "relationship"
+      ]
+    },
+    {
       "address": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-      "attestations": 829,
-      "agents": 120,
+      "attestations": 835,
+      "agents": 121,
       "tags": [
         "timeline",
         "knowledge",
@@ -237,16 +250,11 @@
       ]
     },
     {
-      "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "attestations": 824,
-      "agents": 116,
+      "address": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+      "attestations": 198,
+      "agents": 2,
       "tags": [
-        "personality",
-        "timeline",
-        "knowledge",
-        "stance",
-        "style",
-        "relationship"
+        "signal-accuracy"
       ]
     },
     {
@@ -406,14 +414,6 @@
       ]
     },
     {
-      "address": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-      "attestations": 47,
-      "agents": 2,
-      "tags": [
-        "signal-accuracy"
-      ]
-    },
-    {
       "address": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
       "attestations": 45,
       "agents": 37,
@@ -469,9 +469,17 @@
       ]
     },
     {
+      "address": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "attestations": 12,
+      "agents": 9,
+      "tags": [
+        "starred"
+      ]
+    },
+    {
       "address": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "attestations": 9,
-      "agents": 6,
+      "attestations": 10,
+      "agents": 7,
       "tags": [
         "starred"
       ]
@@ -525,6 +533,14 @@
       ]
     },
     {
+      "address": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "attestations": 4,
+      "agents": 4,
+      "tags": [
+        "starred"
+      ]
+    },
+    {
       "address": "0x178393dD0B74aF8BcD75D55de12238b673D0CA4E",
       "attestations": 3,
       "agents": 1,
@@ -556,6 +572,15 @@
       "agents": 3,
       "tags": [
         "mandate-assay"
+      ]
+    },
+    {
+      "address": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "attestations": 3,
+      "agents": 3,
+      "tags": [
+        "starred",
+        "responseTime"
       ]
     },
     {
@@ -621,14 +646,6 @@
       "agents": 1,
       "tags": [
         "outcome:partially"
-      ]
-    },
-    {
-      "address": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
-      "attestations": 2,
-      "agents": 2,
-      "tags": [
-        "responseTime"
       ]
     },
     {
@@ -725,6 +742,14 @@
       "agents": 1,
       "tags": [
         "responsetime"
+      ]
+    },
+    {
+      "address": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+      "attestations": 1,
+      "agents": 1,
+      "tags": [
+        "starred"
       ]
     },
     {
@@ -15744,6 +15769,23 @@
             "unit": "",
             "window": "fragment",
             "index": 5
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 365555,
+      "name": "Elitr On-chain Flow Analyst",
+      "raters": 1,
+      "latest": {
+        "signal-accuracy": [
+          {
+            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+            "value": 64,
+            "unit": "",
+            "window": null,
+            "index": 178
           }
         ]
       },
@@ -52849,6 +52891,614 @@
             "unit": "",
             "window": "fragment",
             "index": 7
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 44707,
+      "name": "@fls_otc · Ensoul",
+      "raters": 14,
+      "latest": {
+        "timeline": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 18
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          }
+        ],
+        "relationship": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 15
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 17
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          }
+        ],
+        "knowledge": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 14
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          }
+        ],
+        "style": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 14
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 16
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          }
+        ],
+        "personality": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 13
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          }
+        ],
+        "stance": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 13
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 15
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
           }
         ]
       },
@@ -95950,23 +96600,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 365555,
-      "name": "Elitr On-chain Flow Analyst",
-      "raters": 1,
-      "latest": {
-        "signal-accuracy": [
-          {
-            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-            "value": 63,
-            "unit": "",
-            "window": null,
-            "index": 31
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 30871,
       "name": "@cindycreation · Ensoul",
       "raters": 7,
@@ -103354,6 +103987,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 365554,
+      "name": "Elitr News Analyst",
+      "raters": 1,
+      "latest": {
+        "signal-accuracy": [
+          {
+            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+            "value": 17,
+            "unit": "",
+            "window": null,
+            "index": 20
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 30895,
       "name": "@0xzhang_crypto · Ensoul",
       "raters": 7,
@@ -104645,23 +105295,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 365554,
-      "name": "Elitr News Analyst",
-      "raters": 1,
-      "latest": {
-        "signal-accuracy": [
-          {
-            "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-            "value": 13,
-            "unit": "",
-            "window": null,
-            "index": 16
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 2875,
       "name": "@gonchar · Ensoul",
       "raters": 9,
@@ -105548,7 +106181,7 @@
     {
       "id": 302257,
       "name": "Brain on BNB — Venus Health Factor Monitor",
-      "raters": 3,
+      "raters": 4,
       "latest": {
         "uptime": [
           {
@@ -105585,9 +106218,121 @@
             "window": "rehire:yes",
             "index": 2
           }
+        ],
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 80,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          }
         ]
       },
       "rated_by_this_marketplace": false
+    },
+    {
+      "id": 302258,
+      "name": "Brain on BNB — BSC Grid Planner",
+      "raters": 4,
+      "latest": {
+        "uptime": [
+          {
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 100,
+            "unit": "%",
+            "window": "7d",
+            "index": 4
+          }
+        ],
+        "responseTime": [
+          {
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 236,
+            "unit": "ms",
+            "window": "7d",
+            "index": 5
+          }
+        ],
+        "mandate-assay": [
+          {
+            "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+            "value": 43,
+            "unit": "",
+            "window": "9 carat",
+            "index": 1
+          }
+        ],
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 341553,
+      "name": "Bound",
+      "raters": 7,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:rebalancing",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": true
     },
     {
       "id": 2526,
@@ -105785,48 +106530,115 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 302258,
-      "name": "Brain on BNB — BSC Grid Planner",
-      "raters": 3,
+      "id": 341554,
+      "name": "Lattice",
+      "raters": 6,
       "latest": {
-        "uptime": [
+        "starred": [
           {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
             "value": 100,
-            "unit": "%",
-            "window": "7d",
-            "index": 4
-          }
-        ],
-        "responseTime": [
-          {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-            "value": 236,
-            "unit": "ms",
-            "window": "7d",
-            "index": 5
-          }
-        ],
-        "responsetime": [
-          {
-            "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
-            "value": 6000,
-            "unit": "ms",
-            "window": null,
-            "index": 1
-          }
-        ],
-        "mandate-assay": [
-          {
-            "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-            "value": 43,
             "unit": "",
-            "window": "9 carat",
+            "window": "marque:grid",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 80,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 60,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
             "index": 1
           }
         ]
       },
-      "rated_by_this_marketplace": false
+      "rated_by_this_marketplace": true
+    },
+    {
+      "id": 341556,
+      "name": "Keel",
+      "raters": 7,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 80,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 60,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          },
+          {
+            "client": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+            "value": 100,
+            "unit": "",
+            "window": "marque:health_factor",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": true
     },
     {
       "id": 2502,
@@ -106015,68 +106827,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 61503,
-      "name": "@verifytest3 · Ensoul",
-      "raters": 1,
-      "latest": {
-        "stance": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          }
-        ],
-        "timeline": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 85,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          }
-        ],
-        "style": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          }
-        ],
-        "knowledge": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 83,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          }
-        ],
-        "personality": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 79,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          }
-        ],
-        "relationship": [
-          {
-            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-            "value": 78,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 61497,
       "name": "@verifytest2 · Ensoul",
       "raters": 1,
@@ -106130,6 +106880,68 @@
           {
             "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
             "value": 71,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 61503,
+      "name": "@verifytest3 · Ensoul",
+      "raters": 1,
+      "latest": {
+        "stance": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          }
+        ],
+        "timeline": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 85,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          }
+        ],
+        "style": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          }
+        ],
+        "knowledge": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 83,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          }
+        ],
+        "personality": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 79,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          }
+        ],
+        "relationship": [
+          {
+            "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+            "value": 78,
             "unit": "",
             "window": "fragment",
             "index": 6
@@ -106219,94 +107031,56 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 341553,
-      "name": "Bound",
-      "raters": 5,
+      "id": 341555,
+      "name": "Sluicegate",
+      "raters": 6,
       "latest": {
         "starred": [
           {
             "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
             "value": 100,
             "unit": "",
-            "window": "marque:rebalancing",
-            "index": 2
+            "window": "marque:yield",
+            "index": 1
           },
           {
             "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
             "value": 100,
             "unit": "",
-            "window": "marque:rebalancing",
+            "window": "marque:yield",
             "index": 1
           },
           {
             "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
             "value": 100,
             "unit": "",
-            "window": "marque:rebalancing",
+            "window": "marque:yield",
             "index": 1
           },
           {
             "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
             "value": 100,
             "unit": "",
-            "window": "marque:rebalancing",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
             "index": 1
           },
           {
             "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
             "value": 100,
             "unit": "",
-            "window": "marque:rebalancing",
+            "window": "marque:yield",
             "index": 1
           }
         ]
       },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 341554,
-      "name": "Lattice",
-      "raters": 5,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 2
-          },
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 80,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
+      "rated_by_this_marketplace": true
     },
     {
       "id": 2538,
@@ -106539,32 +107313,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 266933,
-      "name": "BNB Lending Guardian",
-      "raters": 1,
-      "latest": {
-        "uptime": [
-          {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-            "value": 98.56,
-            "unit": "%",
-            "window": "9d",
-            "index": 4
-          }
-        ],
-        "responseTime": [
-          {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-            "value": 237,
-            "unit": "ms",
-            "window": "9d",
-            "index": 5
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 265876,
       "name": "BNB Yield Optimizer",
       "raters": 1,
@@ -106591,90 +107339,26 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 341556,
-      "name": "Keel",
-      "raters": 5,
+      "id": 266933,
+      "name": "BNB Lending Guardian",
+      "raters": 1,
       "latest": {
-        "starred": [
+        "uptime": [
           {
-            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-            "value": 80,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 60,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
-          },
-          {
-            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-            "value": 100,
-            "unit": "",
-            "window": "marque:health_factor",
-            "index": 1
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 98.56,
+            "unit": "%",
+            "window": "9d",
+            "index": 4
           }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 341555,
-      "name": "Sluicegate",
-      "raters": 5,
-      "latest": {
-        "starred": [
+        ],
+        "responseTime": [
           {
-            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 237,
+            "unit": "ms",
+            "window": "9d",
+            "index": 5
           }
         ]
       },
@@ -106949,6 +107633,50 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 304493,
+      "name": "Brain on BNB — Venus Yield Ranking",
+      "raters": 3,
+      "latest": {
+        "uptime": [
+          {
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 100,
+            "unit": "%",
+            "window": "7d",
+            "index": 1
+          }
+        ],
+        "responseTime": [
+          {
+            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+            "value": 236,
+            "unit": "ms",
+            "window": "7d",
+            "index": 2
+          }
+        ],
+        "mandate-assay": [
+          {
+            "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+            "value": 41,
+            "unit": "",
+            "window": "9 carat",
+            "index": 1
+          }
+        ],
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 100,
       "name": "8004AI",
       "raters": 1,
@@ -107159,41 +107887,6 @@
             "unit": "ms",
             "window": "4d",
             "index": 2
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 304493,
-      "name": "Brain on BNB — Venus Yield Ranking",
-      "raters": 2,
-      "latest": {
-        "uptime": [
-          {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-            "value": 100,
-            "unit": "%",
-            "window": "7d",
-            "index": 1
-          }
-        ],
-        "responseTime": [
-          {
-            "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-            "value": 236,
-            "unit": "ms",
-            "window": "7d",
-            "index": 2
-          }
-        ],
-        "mandate-assay": [
-          {
-            "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-            "value": 41,
-            "unit": "",
-            "window": "9 carat",
-            "index": 1
           }
         ]
       },
@@ -107468,6 +108161,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 172459,
+      "name": "Bit Monk",
+      "raters": 1,
+      "latest": {
+        "uptime": [
+          {
+            "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
+            "value": 100,
+            "unit": "%",
+            "window": "7d",
+            "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 198999,
       "name": "bubbleai",
       "raters": 1,
@@ -107494,23 +108204,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 172459,
-      "name": "Bit Monk",
-      "raters": 1,
-      "latest": {
-        "uptime": [
-          {
-            "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
-            "value": 100,
-            "unit": "%",
-            "window": "7d",
-            "index": 2
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 341557,
       "name": "Redcell",
       "raters": 1,
@@ -107528,17 +108221,51 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 14,
-      "name": "BTCAI",
+      "id": 363709,
+      "name": "Brain on BNB — DeFi Agent",
       "raters": 1,
       "latest": {
-        "get top 1 rank >": [
+        "starred": [
           {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
             "value": 100,
             "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
+            "window": "pokter",
+            "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 374112,
+      "name": "Cresthold by Pokter",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 2
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 374114,
+      "name": "Gridloom by Pokter",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 2
           }
         ]
       },
@@ -107579,42 +108306,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 17,
-      "name": "BIGAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 19,
-      "name": "BASICAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 18,
-      "name": "TIMEAI",
+      "id": 14,
+      "name": "BTCAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107647,8 +108340,42 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 90,
-      "name": "oai",
+      "id": 18,
+      "name": "TIMEAI",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 19,
+      "name": "BASICAI",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 17,
+      "name": "BIGAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107666,6 +108393,23 @@
     {
       "id": 22,
       "name": "DAAI",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 90,
+      "name": "oai",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107715,8 +108459,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 97,
-      "name": "8004AI",
+      "id": 95,
+      "name": "botai",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107732,8 +108476,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 95,
-      "name": "botai",
+      "id": 97,
+      "name": "8004AI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107851,23 +108595,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 126,
-      "name": "SCANAI",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 125,
       "name": "NANAAI",
       "raters": 1,
@@ -107885,8 +108612,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 127,
-      "name": "LAOAI",
+      "id": 126,
+      "name": "SCANAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107902,8 +108629,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 129,
-      "name": "AGENTSAI",
+      "id": 127,
+      "name": "LAOAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107953,8 +108680,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 131,
-      "name": "AgentLISA",
+      "id": 129,
+      "name": "AGENTSAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -107970,8 +108697,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 251,
-      "name": "UUUAI5",
+      "id": 131,
+      "name": "AgentLISA",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108004,8 +108731,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 254,
-      "name": "Ninja",
+      "id": 251,
+      "name": "UUUAI5",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108023,6 +108750,23 @@
     {
       "id": 253,
       "name": "UUUAI3",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 254,
+      "name": "Ninja",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108276,6 +109020,23 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 331625,
+      "name": "SMEAI Reference Health Factor Monitor",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 342379,
       "name": "PancakeSwap LP Range Check",
       "raters": 1,
@@ -108354,6 +109115,57 @@
             "value": 100,
             "unit": "",
             "window": null,
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 374107,
+      "name": "Brinkwatch by Pokter",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 374113,
+      "name": "Centreline by Pokter",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 374115,
+      "name": "Touchstone by Pokter",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+            "value": 100,
+            "unit": "",
+            "window": "pokter",
             "index": 1
           }
         ]

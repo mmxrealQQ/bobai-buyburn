@@ -3,101 +3,113 @@
  "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
  "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
  "chain": "eip155:56",
- "measured_at": "2026-10-12T04:11:41.426Z",
+ "measured_at": "2026-10-25T15:59:08.900Z",
  "population": {
-  "asked": 948,
+  "asked": 995,
   "source": "every agent that answered in the last scan, plus everything hireable here"
  },
  "rated": {
-  "agents": 373,
-  "attestations": 20777,
-  "distinct_raters": 76,
-  "unreadable": 1
+  "agents": 381,
+  "attestations": 21064,
+  "distinct_raters": 79,
+  "unreadable": 0
  },
  "tags": [
   {
    "tag": "personality",
    "operational": false,
    "unit": "",
-   "attestations": 4300,
-   "agents": 278,
+   "attestations": 4320,
+   "agents": 279,
    "min": 65,
    "median": 70,
    "max": 95,
    "most_common": 70,
-   "most_common_share": 0.5777
+   "most_common_share": 0.5792
   },
   {
    "tag": "knowledge",
    "operational": false,
    "unit": "",
-   "attestations": 3523,
-   "agents": 272,
+   "attestations": 3542,
+   "agents": 273,
    "min": 68,
    "median": 70,
    "max": 98,
    "most_common": 70,
-   "most_common_share": 0.6458
+   "most_common_share": 0.6474
   },
   {
    "tag": "timeline",
    "operational": false,
    "unit": "",
-   "attestations": 3259,
-   "agents": 278,
+   "attestations": 3278,
+   "agents": 279,
    "min": 68,
    "median": 70,
    "max": 95,
    "most_common": 70,
-   "most_common_share": 0.6916
+   "most_common_share": 0.6931
   },
   {
    "tag": "stance",
    "operational": false,
    "unit": "",
-   "attestations": 3172,
-   "agents": 273,
+   "attestations": 3191,
+   "agents": 274,
    "min": 67,
    "median": 70,
    "max": 96,
    "most_common": 70,
-   "most_common_share": 0.7109
+   "most_common_share": 0.7123
   },
   {
    "tag": "relationship",
    "operational": false,
    "unit": "",
-   "attestations": 3139,
-   "agents": 277,
+   "attestations": 3159,
+   "agents": 278,
    "min": 66,
    "median": 70,
    "max": 95,
    "most_common": 70,
-   "most_common_share": 0.7079
+   "most_common_share": 0.7091
   },
   {
    "tag": "style",
    "operational": false,
    "unit": "",
-   "attestations": 3074,
-   "agents": 273,
+   "attestations": 3094,
+   "agents": 274,
    "min": 65,
    "median": 70,
    "max": 95,
    "most_common": 70,
-   "most_common_share": 0.7141
+   "most_common_share": 0.7153
   },
   {
    "tag": "signal-accuracy",
    "operational": false,
    "unit": "",
-   "attestations": 47,
+   "attestations": 198,
    "agents": 2,
    "min": 6,
-   "median": 45,
+   "median": 61,
    "max": 75,
-   "most_common": 57,
-   "most_common_share": 0.0638
+   "most_common": 60,
+   "most_common_share": 0.101
+  },
+  {
+   "tag": "starred",
+   "operational": false,
+   "unit": "",
+   "attestations": 58,
+   "agents": 24,
+   "min": 60,
+   "median": 100,
+   "max": 100,
+   "most_common": 100,
+   "most_common_share": 0.8103
   },
   {
    "tag": "get top 1 rank >",
@@ -110,18 +122,6 @@
    "max": 100,
    "most_common": 100,
    "most_common_share": 1
-  },
-  {
-   "tag": "starred",
-   "operational": false,
-   "unit": "",
-   "attestations": 39,
-   "agents": 14,
-   "min": 60,
-   "median": 100,
-   "max": 100,
-   "most_common": 100,
-   "most_common_share": 0.7692
   },
   {
    "tag": "uptime",
@@ -427,8 +427,8 @@
  "raters": [
   {
    "address": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-   "attestations": 1282,
-   "agents": 137,
+   "attestations": 1294,
+   "agents": 138,
    "tags": [
     "personality",
     "knowledge",
@@ -440,8 +440,8 @@
   },
   {
    "address": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-   "attestations": 1160,
-   "agents": 142,
+   "attestations": 1166,
+   "agents": 143,
    "tags": [
     "personality",
     "knowledge",
@@ -453,8 +453,8 @@
   },
   {
    "address": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-   "attestations": 1121,
-   "agents": 132,
+   "attestations": 1133,
+   "agents": 133,
    "tags": [
     "personality",
     "knowledge",
@@ -479,8 +479,8 @@
   },
   {
    "address": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-   "attestations": 1095,
-   "agents": 140,
+   "attestations": 1101,
+   "agents": 141,
    "tags": [
     "personality",
     "knowledge",
@@ -492,8 +492,8 @@
   },
   {
    "address": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-   "attestations": 1083,
-   "agents": 139,
+   "attestations": 1089,
+   "agents": 140,
    "tags": [
     "timeline",
     "knowledge",
@@ -505,8 +505,8 @@
   },
   {
    "address": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
-   "attestations": 1081,
-   "agents": 135,
+   "attestations": 1087,
+   "agents": 136,
    "tags": [
     "personality",
     "knowledge",
@@ -518,8 +518,8 @@
   },
   {
    "address": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-   "attestations": 1065,
-   "agents": 135,
+   "attestations": 1071,
+   "agents": 136,
    "tags": [
     "personality",
     "stance",
@@ -531,8 +531,8 @@
   },
   {
    "address": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-   "attestations": 1059,
-   "agents": 140,
+   "attestations": 1065,
+   "agents": 141,
    "tags": [
     "personality",
     "stance",
@@ -544,8 +544,8 @@
   },
   {
    "address": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-   "attestations": 1044,
-   "agents": 131,
+   "attestations": 1059,
+   "agents": 132,
    "tags": [
     "personality",
     "knowledge",
@@ -557,8 +557,8 @@
   },
   {
    "address": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-   "attestations": 1040,
-   "agents": 137,
+   "attestations": 1046,
+   "agents": 138,
    "tags": [
     "personality",
     "knowledge",
@@ -583,8 +583,8 @@
   },
   {
    "address": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
-   "attestations": 1018,
-   "agents": 131,
+   "attestations": 1024,
+   "agents": 132,
    "tags": [
     "personality",
     "knowledge",
@@ -622,8 +622,8 @@
   },
   {
    "address": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-   "attestations": 852,
-   "agents": 119,
+   "attestations": 858,
+   "agents": 120,
    "tags": [
     "personality",
     "knowledge",
@@ -634,9 +634,22 @@
    ]
   },
   {
+   "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+   "attestations": 842,
+   "agents": 117,
+   "tags": [
+    "personality",
+    "timeline",
+    "knowledge",
+    "stance",
+    "style",
+    "relationship"
+   ]
+  },
+  {
    "address": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
-   "attestations": 829,
-   "agents": 120,
+   "attestations": 835,
+   "agents": 121,
    "tags": [
     "timeline",
     "knowledge",
@@ -647,16 +660,11 @@
    ]
   },
   {
-   "address": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-   "attestations": 824,
-   "agents": 116,
+   "address": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+   "attestations": 198,
+   "agents": 2,
    "tags": [
-    "personality",
-    "timeline",
-    "knowledge",
-    "stance",
-    "style",
-    "relationship"
+    "signal-accuracy"
    ]
   },
   {
@@ -816,14 +824,6 @@
    ]
   },
   {
-   "address": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-   "attestations": 47,
-   "agents": 2,
-   "tags": [
-    "signal-accuracy"
-   ]
-  },
-  {
    "address": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
    "attestations": 45,
    "agents": 37,
@@ -879,9 +879,17 @@
    ]
   },
   {
+   "address": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+   "attestations": 12,
+   "agents": 9,
+   "tags": [
+    "starred"
+   ]
+  },
+  {
    "address": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-   "attestations": 9,
-   "agents": 6,
+   "attestations": 10,
+   "agents": 7,
    "tags": [
     "starred"
    ]
@@ -935,6 +943,14 @@
    ]
   },
   {
+   "address": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+   "attestations": 4,
+   "agents": 4,
+   "tags": [
+    "starred"
+   ]
+  },
+  {
    "address": "0x178393dD0B74aF8BcD75D55de12238b673D0CA4E",
    "attestations": 3,
    "agents": 1,
@@ -966,6 +982,15 @@
    "agents": 3,
    "tags": [
     "mandate-assay"
+   ]
+  },
+  {
+   "address": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+   "attestations": 3,
+   "agents": 3,
+   "tags": [
+    "starred",
+    "responseTime"
    ]
   },
   {
@@ -1031,14 +1056,6 @@
    "agents": 1,
    "tags": [
     "outcome:partially"
-   ]
-  },
-  {
-   "address": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
-   "attestations": 2,
-   "agents": 2,
-   "tags": [
-    "responseTime"
    ]
   },
   {
@@ -1138,6 +1155,14 @@
    ]
   },
   {
+   "address": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+   "attestations": 1,
+   "agents": 1,
+   "tags": [
+    "starred"
+   ]
+  },
+  {
    "address": "0x79c6e93A4176C6ED21184fB0bcDc87bF1c7559F9",
    "attestations": 1,
    "agents": 1,
@@ -1204,10 +1229,10 @@
    "liveness",
    "responsetime"
   ],
-  "share_of_all": 0.003128
+  "share_of_all": 0.003086
  },
- "multi_rated": 285,
- "single_rated": 88,
+ "multi_rated": 286,
+ "single_rated": 95,
  "agents": [
   {
    "id": 2554,
@@ -59359,6 +59384,1984 @@
       "unit": "",
       "window": "fragment",
       "index": 5
+     }
+    ]
+   }
+  },
+  {
+   "id": 365555,
+   "name": "Elitr On-chain Flow Analyst",
+   "clients": [
+    "0xc742AdA2872a042dD36D2E706907b4036968960C"
+   ],
+   "feedback": [
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 1,
+     "value": 75,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 75,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 2,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 3,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 4,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 5,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 6,
+     "value": 56,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 56,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 7,
+     "value": 50,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 50,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 8,
+     "value": 45,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 45,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 9,
+     "value": 42,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 42,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 10,
+     "value": 38,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 38,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 11,
+     "value": 36,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 36,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 12,
+     "value": 33,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 33,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 13,
+     "value": 31,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 31,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 14,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 15,
+     "value": 50,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 50,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 16,
+     "value": 44,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 44,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 17,
+     "value": 40,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 40,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 18,
+     "value": 45,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 45,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 19,
+     "value": 50,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 50,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 20,
+     "value": 54,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 54,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 21,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 22,
+     "value": 53,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 53,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 23,
+     "value": 56,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 56,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 24,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 25,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 26,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 27,
+     "value": 65,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 65,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 28,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 29,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 30,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 31,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 32,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 33,
+     "value": 65,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 65,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 34,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 35,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 36,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 37,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 38,
+     "value": 71,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 71,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 39,
+     "value": 72,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 72,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 40,
+     "value": 73,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 73,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 41,
+     "value": 74,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 74,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 42,
+     "value": 71,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 71,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 43,
+     "value": 72,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 72,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 44,
+     "value": 73,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 73,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 45,
+     "value": 71,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 71,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 46,
+     "value": 72,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 72,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 47,
+     "value": 73,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 73,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 48,
+     "value": 73,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 73,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 49,
+     "value": 71,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 71,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 50,
+     "value": 72,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 72,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 51,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 52,
+     "value": 71,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 71,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 53,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 54,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 55,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 56,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 57,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 58,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 59,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 60,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 61,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 62,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 63,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 64,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 65,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 66,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 67,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 68,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 69,
+     "value": 66,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 66,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 70,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 71,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 72,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 73,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 74,
+     "value": 69,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 69,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 75,
+     "value": 68,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 68,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 76,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 77,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 78,
+     "value": 66,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 66,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 79,
+     "value": 67,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 67,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 80,
+     "value": 66,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 66,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 81,
+     "value": 65,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 65,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 82,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 83,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 84,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 85,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 86,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 87,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 88,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 89,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 90,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 91,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 92,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 93,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 94,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 95,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 96,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 97,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 98,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 99,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 100,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 101,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 102,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 103,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 104,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 105,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 106,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 107,
+     "value": 56,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 56,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 108,
+     "value": 56,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 56,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 109,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 110,
+     "value": 56,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 56,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 111,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 112,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 113,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 114,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 115,
+     "value": 57,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 57,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 116,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 117,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 118,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 119,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 120,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 121,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 122,
+     "value": 58,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 58,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 123,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 124,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 125,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 126,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 127,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 128,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 129,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 130,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 131,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 132,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 133,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 134,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 135,
+     "value": 59,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 59,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 136,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 137,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 138,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 139,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 140,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 141,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 142,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 143,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 144,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 145,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 146,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 147,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 148,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 149,
+     "value": 61,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 61,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 150,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 151,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 152,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 153,
+     "value": 62,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 62,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 154,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 155,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 156,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 157,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 158,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 159,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 160,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 161,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 162,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 163,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 164,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 165,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 166,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 167,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 168,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 169,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 170,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 171,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 172,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 173,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 174,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 175,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 176,
+     "value": 63,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 63,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 177,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 178,
+     "value": 64,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 64,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "signal-accuracy": [
+     {
+      "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+      "value": 64,
+      "unit": "",
+      "window": null,
+      "index": 178
      }
     ]
    }
@@ -188055,6 +190058,1917 @@
    }
   },
   {
+   "id": 44707,
+   "name": "@fls_otc · Ensoul",
+   "clients": [
+    "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+    "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+    "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+    "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+    "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+    "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+    "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+    "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+    "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+    "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+    "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+    "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+    "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+    "0xb57E067Ff951943D44642fDD9F9f196311366959"
+   ],
+   "feedback": [
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 1,
+     "value": 87,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 87,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 2,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 3,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 4,
+     "value": 88,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 88,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 5,
+     "value": 86,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 86,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 6,
+     "value": 88,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 88,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 7,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 8,
+     "value": 87,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 87,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 9,
+     "value": 84,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 84,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 13,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 14,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 15,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 13,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 14,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 15,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 16,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 17,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 18,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "timeline": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 18
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     }
+    ],
+    "relationship": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 15
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 17
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     }
+    ],
+    "knowledge": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 14
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     }
+    ],
+    "style": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 14
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 16
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     }
+    ],
+    "personality": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 13
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     }
+    ],
+    "stance": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x2B91ba087961ddf38C8faB11E71cce2C1AC57329",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 13
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 15
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0xBCbdB9F78C658A73D667BBF30624d0378Aa56C28",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xdC7061aEf29C41Cb8a2F3B562F7A462835c747d4",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     }
+    ]
+   }
+  },
+  {
    "id": 6454,
    "name": "@_forab · Ensoul",
    "clients": [
@@ -310563,367 +314477,6 @@
    }
   },
   {
-   "id": 365555,
-   "name": "Elitr On-chain Flow Analyst",
-   "clients": [
-    "0xc742AdA2872a042dD36D2E706907b4036968960C"
-   ],
-   "feedback": [
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 1,
-     "value": 75,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 75,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 2,
-     "value": 60,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 60,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 3,
-     "value": 67,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 67,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 4,
-     "value": 57,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 57,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 5,
-     "value": 63,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 63,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 6,
-     "value": 56,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 56,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 7,
-     "value": 50,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 50,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 8,
-     "value": 45,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 45,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 9,
-     "value": 42,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 42,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 10,
-     "value": 38,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 38,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 11,
-     "value": 36,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 36,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 12,
-     "value": 33,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 33,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 13,
-     "value": 31,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 31,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 14,
-     "value": 57,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 57,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 15,
-     "value": 50,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 50,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 16,
-     "value": 44,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 44,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 17,
-     "value": 40,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 40,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 18,
-     "value": 45,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 45,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 19,
-     "value": 50,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 50,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 20,
-     "value": 54,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 54,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 21,
-     "value": 57,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 57,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 22,
-     "value": 53,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 53,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 23,
-     "value": 56,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 56,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 24,
-     "value": 59,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 59,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 25,
-     "value": 61,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 61,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 26,
-     "value": 63,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 63,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 27,
-     "value": 65,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 65,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 28,
-     "value": 62,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 62,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 29,
-     "value": 59,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 59,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 30,
-     "value": 61,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 61,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 31,
-     "value": 63,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 63,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "signal-accuracy": [
-     {
-      "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-      "value": 63,
-      "unit": "",
-      "window": null,
-      "index": 31
-     }
-    ]
-   }
-  },
-  {
    "id": 30871,
    "name": "@cindycreation · Ensoul",
    "clients": [
@@ -329638,6 +333191,246 @@
    }
   },
   {
+   "id": 365554,
+   "name": "Elitr News Analyst",
+   "clients": [
+    "0xc742AdA2872a042dD36D2E706907b4036968960C"
+   ],
+   "feedback": [
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 1,
+     "value": 20,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 20,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 2,
+     "value": 17,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 17,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 3,
+     "value": 14,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 14,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 4,
+     "value": 13,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 13,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 5,
+     "value": 11,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 11,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 6,
+     "value": 10,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 10,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 7,
+     "value": 9,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 9,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 8,
+     "value": 8,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 8,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 9,
+     "value": 8,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 8,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 10,
+     "value": 7,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 7,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 11,
+     "value": 7,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 7,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 12,
+     "value": 6,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 6,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 13,
+     "value": 12,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 12,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 14,
+     "value": 11,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 11,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 15,
+     "value": 16,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 16,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 16,
+     "value": 13,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 13,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 17,
+     "value": 11,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 11,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 18,
+     "value": 20,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 20,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 19,
+     "value": 18,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 18,
+     "unit": ""
+    },
+    {
+     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+     "index": 20,
+     "value": 17,
+     "decimals": 0,
+     "tag1": "signal-accuracy",
+     "tag2": "",
+     "revoked": false,
+     "number": 17,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "signal-accuracy": [
+     {
+      "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
+      "value": 17,
+      "unit": "",
+      "window": null,
+      "index": 20
+     }
+    ]
+   }
+  },
+  {
    "id": 30895,
    "name": "@0xzhang_crypto · Ensoul",
    "clients": [
@@ -332798,202 +336591,6 @@
    }
   },
   {
-   "id": 365554,
-   "name": "Elitr News Analyst",
-   "clients": [
-    "0xc742AdA2872a042dD36D2E706907b4036968960C"
-   ],
-   "feedback": [
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 1,
-     "value": 20,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 20,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 2,
-     "value": 17,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 17,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 3,
-     "value": 14,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 14,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 4,
-     "value": 13,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 13,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 5,
-     "value": 11,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 11,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 6,
-     "value": 10,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 10,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 7,
-     "value": 9,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 9,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 8,
-     "value": 8,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 8,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 9,
-     "value": 8,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 8,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 10,
-     "value": 7,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 7,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 11,
-     "value": 7,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 7,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 12,
-     "value": 6,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 6,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 13,
-     "value": 12,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 12,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 14,
-     "value": 11,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 11,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 15,
-     "value": 16,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 16,
-     "unit": ""
-    },
-    {
-     "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-     "index": 16,
-     "value": 13,
-     "decimals": 0,
-     "tag1": "signal-accuracy",
-     "tag2": "",
-     "revoked": false,
-     "number": 13,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "signal-accuracy": [
-     {
-      "client": "0xc742AdA2872a042dD36D2E706907b4036968960C",
-      "value": 13,
-      "unit": "",
-      "window": null,
-      "index": 16
-     }
-    ]
-   }
-  },
-  {
    "id": 2875,
    "name": "@gonchar · Ensoul",
    "clients": [
@@ -335222,7 +338819,8 @@
    "clients": [
     "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
     "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-    "0x13450a106568D011D25D8AC222b489B098Df9196"
+    "0x13450a106568D011D25D8AC222b489B098Df9196",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999"
    ],
    "feedback": [
     {
@@ -335312,6 +338910,17 @@
      "revoked": false,
      "number": 60,
      "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
     }
    ],
    "latest": {
@@ -335349,6 +338958,309 @@
       "unit": "",
       "window": "rehire:yes",
       "index": 2
+     }
+    ],
+    "starred": [
+     {
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "value": 80,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 302258,
+   "name": "Brain on BNB — BSC Grid Planner",
+   "clients": [
+    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+    "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+    "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 1,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "1d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    },
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 2,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "4d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    },
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 3,
+     "value": 223,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "4d",
+     "revoked": false,
+     "number": 223,
+     "unit": "ms"
+    },
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 4,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    },
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 5,
+     "value": 236,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 236,
+     "unit": "ms"
+    },
+    {
+     "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+     "index": 1,
+     "value": 6000,
+     "decimals": 0,
+     "tag1": "responsetime",
+     "tag2": "",
+     "revoked": true,
+     "number": 6000,
+     "unit": "ms"
+    },
+    {
+     "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+     "index": 1,
+     "value": 43,
+     "decimals": 0,
+     "tag1": "mandate-assay",
+     "tag2": "9 carat",
+     "revoked": false,
+     "number": 43,
+     "unit": ""
+    },
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "uptime": [
+     {
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 100,
+      "unit": "%",
+      "window": "7d",
+      "index": 4
+     }
+    ],
+    "responseTime": [
+     {
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 236,
+      "unit": "ms",
+      "window": "7d",
+      "index": 5
+     }
+    ],
+    "mandate-assay": [
+     {
+      "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+      "value": 43,
+      "unit": "",
+      "window": "9 carat",
+      "index": 1
+     }
+    ],
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 341553,
+   "name": "Bound",
+   "clients": [
+    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+    "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+   ],
+   "feedback": [
+    {
+     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:rebalancing",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 2
+     },
+     {
+      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
+     },
+     {
+      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
+     },
+     {
+      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
+     },
+     {
+      "client": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
+     },
+     {
+      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+      "value": 100,
+      "unit": "",
+      "window": "marque:rebalancing",
+      "index": 1
      }
     ]
    }
@@ -335803,126 +339715,282 @@
    }
   },
   {
-   "id": 302258,
-   "name": "Brain on BNB — BSC Grid Planner",
+   "id": 341554,
+   "name": "Lattice",
    "clients": [
-    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-    "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
-    "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90"
+    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
    ],
    "feedback": [
     {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
      "index": 1,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "1d",
+     "value": 80,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
      "revoked": false,
-     "number": 100,
-     "unit": "%"
+     "number": 80,
+     "unit": ""
     },
     {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
      "index": 2,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "4d",
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
      "revoked": false,
      "number": 100,
-     "unit": "%"
+     "unit": ""
     },
     {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 3,
-     "value": 223,
+     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+     "index": 1,
+     "value": 100,
      "decimals": 0,
-     "tag1": "responseTime",
-     "tag2": "4d",
-     "revoked": false,
-     "number": 223,
-     "unit": "ms"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 4,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "7d",
+     "tag1": "starred",
+     "tag2": "marque:grid",
      "revoked": false,
      "number": 100,
-     "unit": "%"
+     "unit": ""
     },
     {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 5,
-     "value": 236,
-     "decimals": 0,
-     "tag1": "responseTime",
-     "tag2": "7d",
-     "revoked": false,
-     "number": 236,
-     "unit": "ms"
-    },
-    {
-     "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
      "index": 1,
-     "value": 6000,
+     "value": 60,
      "decimals": 0,
-     "tag1": "responsetime",
-     "tag2": "",
+     "tag1": "starred",
+     "tag2": "marque:grid",
      "revoked": false,
-     "number": 6000,
-     "unit": "ms"
-    },
-    {
-     "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-     "index": 1,
-     "value": 43,
-     "decimals": 0,
-     "tag1": "mandate-assay",
-     "tag2": "9 carat",
-     "revoked": false,
-     "number": 43,
+     "number": 60,
      "unit": ""
     }
    ],
    "latest": {
-    "uptime": [
+    "starred": [
      {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
       "value": 100,
-      "unit": "%",
-      "window": "7d",
-      "index": 4
-     }
-    ],
-    "responseTime": [
+      "unit": "",
+      "window": "marque:grid",
+      "index": 2
+     },
      {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-      "value": 236,
-      "unit": "ms",
-      "window": "7d",
-      "index": 5
-     }
-    ],
-    "responsetime": [
+      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
      {
-      "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
-      "value": 6000,
-      "unit": "ms",
-      "window": null,
+      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+      "value": 80,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 60,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
       "index": 1
      }
-    ],
-    "mandate-assay": [
+    ]
+   }
+  },
+  {
+   "id": 341556,
+   "name": "Keel",
+   "clients": [
+    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+    "0xEAC21928DE023677A25eb925D1cb1b0786FaF946"
+   ],
+   "feedback": [
+    {
+     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+     "index": 1,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:health_factor",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
      {
-      "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-      "value": 43,
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "value": 80,
       "unit": "",
-      "window": "9 carat",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "value": 100,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+      "value": 100,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+      "value": 60,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 100,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+      "value": 100,
+      "unit": "",
+      "window": "marque:health_factor",
+      "index": 1
+     },
+     {
+      "client": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+      "value": 100,
+      "unit": "",
+      "window": "marque:health_factor",
       "index": 1
      }
     ]
@@ -336322,137 +340390,6 @@
    }
   },
   {
-   "id": 61503,
-   "name": "@verifytest3 · Ensoul",
-   "clients": [
-    "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA"
-   ],
-   "feedback": [
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 1,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 2,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 3,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 4,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 5,
-     "value": 79,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 79,
-     "unit": ""
-    },
-    {
-     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-     "index": 6,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "stance": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     }
-    ],
-    "timeline": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 85,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     }
-    ],
-    "style": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     }
-    ],
-    "knowledge": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 83,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     }
-    ],
-    "personality": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 79,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     }
-    ],
-    "relationship": [
-     {
-      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
-      "value": 78,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     }
-    ]
-   }
-  },
-  {
    "id": 61497,
    "name": "@verifytest2 · Ensoul",
    "clients": [
@@ -336576,6 +340513,137 @@
      {
       "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
       "value": 71,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     }
+    ]
+   }
+  },
+  {
+   "id": 61503,
+   "name": "@verifytest3 · Ensoul",
+   "clients": [
+    "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA"
+   ],
+   "feedback": [
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 1,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 2,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 3,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 4,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 5,
+     "value": 79,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 79,
+     "unit": ""
+    },
+    {
+     "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+     "index": 6,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "stance": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     }
+    ],
+    "timeline": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 85,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     }
+    ],
+    "style": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     }
+    ],
+    "knowledge": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 83,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     }
+    ],
+    "personality": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 79,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     }
+    ],
+    "relationship": [
+     {
+      "client": "0x0EC00AAA2f6bFFF03E34A4d70D4AE67dcdB20CEA",
+      "value": 78,
       "unit": "",
       "window": "fragment",
       "index": 6
@@ -336806,14 +340874,15 @@
    }
   },
   {
-   "id": 341553,
-   "name": "Bound",
+   "id": 341555,
+   "name": "Sluicegate",
    "clients": [
     "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
     "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
     "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
     "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a"
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
    ],
    "feedback": [
     {
@@ -336822,7 +340891,7 @@
      "value": 100,
      "decimals": 0,
      "tag1": "starred",
-     "tag2": "marque:rebalancing",
+     "tag2": "marque:yield",
      "revoked": false,
      "number": 100,
      "unit": ""
@@ -336833,7 +340902,7 @@
      "value": 100,
      "decimals": 0,
      "tag1": "starred",
-     "tag2": "marque:rebalancing",
+     "tag2": "marque:yield",
      "revoked": false,
      "number": 100,
      "unit": ""
@@ -336844,7 +340913,7 @@
      "value": 100,
      "decimals": 0,
      "tag1": "starred",
-     "tag2": "marque:rebalancing",
+     "tag2": "marque:yield",
      "revoked": false,
      "number": 100,
      "unit": ""
@@ -336855,18 +340924,7 @@
      "value": 100,
      "decimals": 0,
      "tag1": "starred",
-     "tag2": "marque:rebalancing",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 2,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:rebalancing",
+     "tag2": "marque:yield",
      "revoked": false,
      "number": 100,
      "unit": ""
@@ -336877,7 +340935,18 @@
      "value": 100,
      "decimals": 0,
      "tag1": "starred",
-     "tag2": "marque:rebalancing",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
      "revoked": false,
      "number": 100,
      "unit": ""
@@ -336889,153 +340958,42 @@
       "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
       "value": 100,
       "unit": "",
-      "window": "marque:rebalancing",
-      "index": 2
+      "window": "marque:yield",
+      "index": 1
      },
      {
       "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
       "value": 100,
       "unit": "",
-      "window": "marque:rebalancing",
+      "window": "marque:yield",
       "index": 1
      },
      {
       "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
       "value": 100,
       "unit": "",
-      "window": "marque:rebalancing",
+      "window": "marque:yield",
       "index": 1
      },
      {
       "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
       "value": 100,
       "unit": "",
-      "window": "marque:rebalancing",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
       "index": 1
      },
      {
       "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
       "value": 100,
       "unit": "",
-      "window": "marque:rebalancing",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
-   "id": 341554,
-   "name": "Lattice",
-   "clients": [
-    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a"
-   ],
-   "feedback": [
-    {
-     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-     "index": 1,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 2,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "starred": [
-     {
-      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 2
-     },
-     {
-      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-      "value": 80,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
+      "window": "marque:yield",
       "index": 1
      }
     ]
@@ -337573,90 +341531,6 @@
    }
   },
   {
-   "id": 266933,
-   "name": "BNB Lending Guardian",
-   "clients": [
-    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92"
-   ],
-   "feedback": [
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 1,
-     "value": 9651,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "2d",
-     "revoked": false,
-     "number": 96.51,
-     "unit": "%"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 2,
-     "value": 9790,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "5d",
-     "revoked": false,
-     "number": 97.9,
-     "unit": "%"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 3,
-     "value": 261,
-     "decimals": 0,
-     "tag1": "responseTime",
-     "tag2": "5d",
-     "revoked": false,
-     "number": 261,
-     "unit": "ms"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 4,
-     "value": 9856,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "9d",
-     "revoked": false,
-     "number": 98.56,
-     "unit": "%"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 5,
-     "value": 237,
-     "decimals": 0,
-     "tag1": "responseTime",
-     "tag2": "9d",
-     "revoked": false,
-     "number": 237,
-     "unit": "ms"
-    }
-   ],
-   "latest": {
-    "uptime": [
-     {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-      "value": 98.56,
-      "unit": "%",
-      "window": "9d",
-      "index": 4
-     }
-    ],
-    "responseTime": [
-     {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-      "value": 237,
-      "unit": "ms",
-      "window": "9d",
-      "index": 5
-     }
-    ]
-   }
-  },
-  {
    "id": 265876,
    "name": "BNB Yield Optimizer",
    "clients": [
@@ -337741,215 +341615,85 @@
    }
   },
   {
-   "id": 341556,
-   "name": "Keel",
+   "id": 266933,
+   "name": "BNB Lending Guardian",
    "clients": [
-    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a"
+    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92"
    ],
    "feedback": [
     {
-     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
      "index": 1,
-     "value": 60,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:health_factor",
+     "value": 9651,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "2d",
      "revoked": false,
-     "number": 60,
-     "unit": ""
+     "number": 96.51,
+     "unit": "%"
     },
     {
-     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:health_factor",
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 2,
+     "value": 9790,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "5d",
      "revoked": false,
-     "number": 100,
-     "unit": ""
+     "number": 97.9,
+     "unit": "%"
     },
     {
-     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-     "index": 1,
-     "value": 100,
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 3,
+     "value": 261,
      "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:health_factor",
+     "tag1": "responseTime",
+     "tag2": "5d",
      "revoked": false,
-     "number": 100,
-     "unit": ""
+     "number": 261,
+     "unit": "ms"
     },
     {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 1,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:health_factor",
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 4,
+     "value": 9856,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "9d",
      "revoked": false,
-     "number": 80,
-     "unit": ""
+     "number": 98.56,
+     "unit": "%"
     },
     {
-     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-     "index": 1,
-     "value": 100,
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 5,
+     "value": 237,
      "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:health_factor",
+     "tag1": "responseTime",
+     "tag2": "9d",
      "revoked": false,
-     "number": 100,
-     "unit": ""
+     "number": 237,
+     "unit": "ms"
     }
    ],
    "latest": {
-    "starred": [
+    "uptime": [
      {
-      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "value": 80,
-      "unit": "",
-      "window": "marque:health_factor",
-      "index": 1
-     },
-     {
-      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-      "value": 100,
-      "unit": "",
-      "window": "marque:health_factor",
-      "index": 1
-     },
-     {
-      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-      "value": 100,
-      "unit": "",
-      "window": "marque:health_factor",
-      "index": 1
-     },
-     {
-      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-      "value": 60,
-      "unit": "",
-      "window": "marque:health_factor",
-      "index": 1
-     },
-     {
-      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-      "value": 100,
-      "unit": "",
-      "window": "marque:health_factor",
-      "index": 1
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 98.56,
+      "unit": "%",
+      "window": "9d",
+      "index": 4
      }
-    ]
-   }
-  },
-  {
-   "id": 341555,
-   "name": "Sluicegate",
-   "clients": [
-    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a"
-   ],
-   "feedback": [
-    {
-     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "starred": [
+    ],
+    "responseTime": [
      {
-      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 237,
+      "unit": "ms",
+      "window": "9d",
+      "index": 5
      }
     ]
    }
@@ -338648,6 +342392,99 @@
    }
   },
   {
+   "id": 304493,
+   "name": "Brain on BNB — Venus Yield Ranking",
+   "clients": [
+    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+    "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 1,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    },
+    {
+     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+     "index": 2,
+     "value": 236,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 236,
+     "unit": "ms"
+    },
+    {
+     "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+     "index": 1,
+     "value": 41,
+     "decimals": 0,
+     "tag1": "mandate-assay",
+     "tag2": "9 carat",
+     "revoked": false,
+     "number": 41,
+     "unit": ""
+    },
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "uptime": [
+     {
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 100,
+      "unit": "%",
+      "window": "7d",
+      "index": 1
+     }
+    ],
+    "responseTime": [
+     {
+      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+      "value": 236,
+      "unit": "ms",
+      "window": "7d",
+      "index": 2
+     }
+    ],
+    "mandate-assay": [
+     {
+      "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
+      "value": 41,
+      "unit": "",
+      "window": "9 carat",
+      "index": 1
+     }
+    ],
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
    "id": 100,
    "name": "8004AI",
    "clients": [
@@ -339114,78 +342951,6 @@
       "unit": "ms",
       "window": "4d",
       "index": 2
-     }
-    ]
-   }
-  },
-  {
-   "id": 304493,
-   "name": "Brain on BNB — Venus Yield Ranking",
-   "clients": [
-    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-    "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90"
-   ],
-   "feedback": [
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 1,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "7d",
-     "revoked": false,
-     "number": 100,
-     "unit": "%"
-    },
-    {
-     "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-     "index": 2,
-     "value": 236,
-     "decimals": 0,
-     "tag1": "responseTime",
-     "tag2": "7d",
-     "revoked": false,
-     "number": 236,
-     "unit": "ms"
-    },
-    {
-     "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-     "index": 1,
-     "value": 41,
-     "decimals": 0,
-     "tag1": "mandate-assay",
-     "tag2": "9 carat",
-     "revoked": false,
-     "number": 41,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "uptime": [
-     {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-      "value": 100,
-      "unit": "%",
-      "window": "7d",
-      "index": 1
-     }
-    ],
-    "responseTime": [
-     {
-      "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
-      "value": 236,
-      "unit": "ms",
-      "window": "7d",
-      "index": 2
-     }
-    ],
-    "mandate-assay": [
-     {
-      "client": "0x54c06cC2623aAA2Dcc38B17fA07aD2e99b363C90",
-      "value": 41,
-      "unit": "",
-      "window": "9 carat",
-      "index": 1
      }
     ]
    }
@@ -339745,6 +343510,48 @@
    }
   },
   {
+   "id": 172459,
+   "name": "Bit Monk",
+   "clients": [
+    "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6"
+   ],
+   "feedback": [
+    {
+     "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
+     "index": 1,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    },
+    {
+     "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
+     "index": 2,
+     "value": 10000,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "7d",
+     "revoked": false,
+     "number": 100,
+     "unit": "%"
+    }
+   ],
+   "latest": {
+    "uptime": [
+     {
+      "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
+      "value": 100,
+      "unit": "%",
+      "window": "7d",
+      "index": 2
+     }
+    ]
+   }
+  },
+  {
    "id": 198999,
    "name": "bubbleai",
    "clients": [
@@ -339796,48 +343603,6 @@
    }
   },
   {
-   "id": 172459,
-   "name": "Bit Monk",
-   "clients": [
-    "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6"
-   ],
-   "feedback": [
-    {
-     "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
-     "index": 1,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "7d",
-     "revoked": false,
-     "number": 100,
-     "unit": "%"
-    },
-    {
-     "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
-     "index": 2,
-     "value": 10000,
-     "decimals": 2,
-     "tag1": "uptime",
-     "tag2": "7d",
-     "revoked": false,
-     "number": 100,
-     "unit": "%"
-    }
-   ],
-   "latest": {
-    "uptime": [
-     {
-      "client": "0xC61a3adA490a6fB352A6ff81DD5a0A02b42A31d6",
-      "value": 100,
-      "unit": "%",
-      "window": "7d",
-      "index": 2
-     }
-    ]
-   }
-  },
-  {
    "id": 341557,
    "name": "Redcell",
    "clients": [
@@ -339880,32 +343645,127 @@
    }
   },
   {
-   "id": 14,
-   "name": "BTCAI",
+   "id": 363709,
+   "name": "Brain on BNB — DeFi Agent",
    "clients": [
-    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
    ],
    "feedback": [
     {
-     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
      "index": 1,
      "value": 100,
      "decimals": 0,
-     "tag1": "get top 1 rank >",
-     "tag2": "t.me/agent_bldr",
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
      "revoked": false,
      "number": 100,
      "unit": ""
     }
    ],
    "latest": {
-    "get top 1 rank >": [
+    "starred": [
      {
-      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
       "value": 100,
       "unit": "",
-      "window": "t.me/agent_bldr",
-      "index": 1
+      "window": "pokter",
+      "index": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": 374112,
+   "name": "Cresthold by Pokter",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": 374114,
+   "name": "Gridloom by Pokter",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 2
      }
     ]
    }
@@ -339973,70 +343833,8 @@
    }
   },
   {
-   "id": 17,
-   "name": "BIGAI",
-   "clients": [
-    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
-   ],
-   "feedback": [
-    {
-     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "get top 1 rank >",
-     "tag2": "t.me/agent_bldr",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "get top 1 rank >": [
-     {
-      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-      "value": 100,
-      "unit": "",
-      "window": "t.me/agent_bldr",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
-   "id": 19,
-   "name": "BASICAI",
-   "clients": [
-    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
-   ],
-   "feedback": [
-    {
-     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "get top 1 rank >",
-     "tag2": "t.me/agent_bldr",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "get top 1 rank >": [
-     {
-      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-      "value": 100,
-      "unit": "",
-      "window": "t.me/agent_bldr",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
-   "id": 18,
-   "name": "TIMEAI",
+   "id": 14,
+   "name": "BTCAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340097,8 +343895,70 @@
    }
   },
   {
-   "id": 90,
-   "name": "oai",
+   "id": 18,
+   "name": "TIMEAI",
+   "clients": [
+    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+   ],
+   "feedback": [
+    {
+     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "get top 1 rank >",
+     "tag2": "t.me/agent_bldr",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "get top 1 rank >": [
+     {
+      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "value": 100,
+      "unit": "",
+      "window": "t.me/agent_bldr",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 19,
+   "name": "BASICAI",
+   "clients": [
+    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+   ],
+   "feedback": [
+    {
+     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "get top 1 rank >",
+     "tag2": "t.me/agent_bldr",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "get top 1 rank >": [
+     {
+      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "value": 100,
+      "unit": "",
+      "window": "t.me/agent_bldr",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 17,
+   "name": "BIGAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340130,6 +343990,37 @@
   {
    "id": 22,
    "name": "DAAI",
+   "clients": [
+    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+   ],
+   "feedback": [
+    {
+     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "get top 1 rank >",
+     "tag2": "t.me/agent_bldr",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "get top 1 rank >": [
+     {
+      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "value": 100,
+      "unit": "",
+      "window": "t.me/agent_bldr",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 90,
+   "name": "oai",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340221,8 +344112,8 @@
    }
   },
   {
-   "id": 97,
-   "name": "8004AI",
+   "id": 95,
+   "name": "botai",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340252,8 +344143,8 @@
    }
   },
   {
-   "id": 95,
-   "name": "botai",
+   "id": 97,
+   "name": "8004AI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340469,37 +344360,6 @@
    }
   },
   {
-   "id": 126,
-   "name": "SCANAI",
-   "clients": [
-    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
-   ],
-   "feedback": [
-    {
-     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "get top 1 rank >",
-     "tag2": "t.me/agent_bldr",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "get top 1 rank >": [
-     {
-      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-      "value": 100,
-      "unit": "",
-      "window": "t.me/agent_bldr",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
    "id": 125,
    "name": "NANAAI",
    "clients": [
@@ -340531,8 +344391,8 @@
    }
   },
   {
-   "id": 127,
-   "name": "LAOAI",
+   "id": 126,
+   "name": "SCANAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340562,8 +344422,8 @@
    }
   },
   {
-   "id": 129,
-   "name": "AGENTSAI",
+   "id": 127,
+   "name": "LAOAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340655,8 +344515,8 @@
    }
   },
   {
-   "id": 131,
-   "name": "AgentLISA",
+   "id": 129,
+   "name": "AGENTSAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340686,8 +344546,8 @@
    }
   },
   {
-   "id": 251,
-   "name": "UUUAI5",
+   "id": 131,
+   "name": "AgentLISA",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340748,8 +344608,8 @@
    }
   },
   {
-   "id": 254,
-   "name": "Ninja",
+   "id": 251,
+   "name": "UUUAI5",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -340781,6 +344641,37 @@
   {
    "id": 253,
    "name": "UUUAI3",
+   "clients": [
+    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+   ],
+   "feedback": [
+    {
+     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "get top 1 rank >",
+     "tag2": "t.me/agent_bldr",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "get top 1 rank >": [
+     {
+      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "value": 100,
+      "unit": "",
+      "window": "t.me/agent_bldr",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 254,
+   "name": "Ninja",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -341244,6 +345135,37 @@
    }
   },
   {
+   "id": 331625,
+   "name": "SMEAI Reference Health Factor Monitor",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
    "id": 342379,
    "name": "PancakeSwap LP Range Check",
    "clients": [
@@ -341399,9 +345321,97 @@
    }
   },
   {
-   "id": 44707,
-   "name": "@fls_otc · Ensoul",
-   "error": "HTTP request failed."
+   "id": 374107,
+   "name": "Brinkwatch by Pokter",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 374113,
+   "name": "Centreline by Pokter",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 374115,
+   "name": "Touchstone by Pokter",
+   "clients": [
+    "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f"
+   ],
+   "feedback": [
+    {
+     "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "pokter",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0xdAb12cf15F4385188bE62bda9F00877AF4C1b32f",
+      "value": 100,
+      "unit": "",
+      "window": "pokter",
+      "index": 1
+     }
+    ]
+   }
   }
  ]
 }

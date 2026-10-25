@@ -333,11 +333,13 @@
   const tx = (h, t) => h ? `<a href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener">${t} ↗</a>` : '';
   const ext = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t} ↗</a>`;
   const dt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  let owner05 = null, stats05 = null, buys05 = null, bot05 = 0, goal05 = 0;
+  let owner05 = null, stats05 = null, buys05 = null, bot05 = 0, goal05 = 0, board05 = null;
   const read05 = () => {
     fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data: '0x8da5cb5b' }, 'latest'] }) })
       .then((r) => r.json()).then((j) => { if (typeof j?.result === 'string') owner05 = { v: '0x' + j.result.slice(-40), at: Date.now() }; }).catch(() => {});
     fetch('https://agent.brainonbnb.com/stats').then((r) => r.json()).then((j) => { stats05 = j; }).catch(() => {});
+    // the Brain Board's own counts (2026-10-25: the board joined the map's "Brain" phase)
+    fetch('https://agent.brainonbnb.com/board?limit=1').then((r) => r.json()).then((j) => { if (j && j.total >= 0) board05 = j; }).catch(() => {});
     // the paid answers from the ledger itself (every payment with its transaction), our own test purchases left out
     fetch('https://agent.brainonbnb.com/buys').then((r) => r.json()).then((j) => { const from = Date.now() - 7 * 86400e3; buys05 = (j.payments || []).filter((p) => !p.self_test && String(p.for).startsWith('answer') && Date.parse(p.at) >= from).length; }).catch(() => {});
     fetch('https://logs.brainonbnb.com/health', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const t = Date.parse(j?.buyback); if (t) bot05 = t; }).catch(() => {});
@@ -382,6 +384,7 @@
       [/Brain Plaza/, () => `<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>`],
       [/DeFi agent/, () => `<a href="/defi">its position, gains and losses</a>`],
       [/rug watch/, () => `<a href="/services">how an agent sets one</a>`],
+      [/Brain Board/, () => board05 ? `<a href="/board">${board05.total} threads, ${board05.resolved || 0} resolved</a>, read from the board` : `<a href="/board">the board</a>`],
       [/^Volume/, () => g.vol ? `<b>${g.vol}</b>` : 'the 24-hour figure shows once the terminal has read a full day'],
       [/More agents/, () => g.agents ? `<b>${g.agents}</b>` : ''],
       [/Nov 20/, () => g.pot ? `<b>${g.pot}</b>` : ''],
@@ -397,7 +400,7 @@
   // its name, one sentence, one proof; the phase now open with its goals and their live figures; every step of every
   // phase (with its proof, as before) under one closed Details. Phases are read from the page, so a new one appears.
   const SAY05 = { Build: 'Fair launch on Four.Meme, LP burned, owner renounced', Believe: 'Every trade feeds the bot, around the clock',
-    Brain: 'Terminal, scanner, Brain Plaza, DeFi agent, rug watch', 'Big Brain': 'Volume, more agents, the Giggle pot to the kids' };
+    Brain: 'Terminal, scanner, Brain Plaza, Brain Board, DeFi agent, rug watch', 'Big Brain': 'Volume, more agents, the Giggle pot to the kids' };
   function shape05() {
     const body = $('#w06 .bw-body'), rmg = body && $('.rmg', body), hero = body && $('.bw-hero', body); if (!rmg) return;
     if (!hero) { if ((shape05.tries = (shape05.tries || 0) + 1) < 20) setTimeout(shape05, 300); return; }

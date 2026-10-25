@@ -3362,6 +3362,7 @@ ${pageTail}`;
         }
         const spec = ready.spec;
         const out = await purchaseWatch(env, ctx, payTo, spec, payment || null);
+        missed('mcp:watch', payment, out);
         // A 402 here is not a failure — it is the price list, which is what a
         // first call is for. Reporting it as an error would make every client
         // that checks isError abandon the purchase before it began.
@@ -3473,6 +3474,7 @@ ${pageTail}`;
       const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
       const out = await tipRoute(env, ctx, payTo, url.searchParams.get('usd'), proof);
       note(`tip:${proof ? 'paid:' + out.status : 'terms'}`);
+      missed('tip', proof, out);
       return json(out.body, out.status, out.headers || {});
     }
 

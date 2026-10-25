@@ -22,6 +22,15 @@ pin(rec?.product === 'answer:health_factor' && rec?.status === 402, `product and
 pin(!!rec?.why && rec.why.length > 5, `the reason kept (${rec?.why})`);
 pin(/^x402 v1/.test(rec?.proof || ''), `the proof's shape kept (${rec?.proof})`);
 pin(!!rec && !JSON.stringify(rec).includes(PROOF), 'the proof itself is not kept');
+// the tip door too (it pays through the same path)
+await fetch(`${BASE}/tip?usd=1`, { method: 'POST', headers: { 'user-agent': UA + '-tip', 'X-PAYMENT': '0x' + '00'.repeat(32) } }).catch(() => null);
+let tip = null;
+for (let i = 0; i < 8 && !tip; i++) {
+  await new Promise((s) => setTimeout(s, 1500));
+  const j = await fetch(`${BASE}/buys/refused?r=${Date.now()}`).then((g) => g.json()).catch(() => null);
+  tip = (j?.refused || []).find((x) => x.ua === UA + '-tip') || null;
+}
+pin(tip?.product === 'tip' && tip?.proof === 'tx hash' && !!tip?.why, `a refused tip is kept too (${tip?.product}, ${tip?.proof}, ${tip?.why})`);
 const buys = await (await fetch(`${BASE}/buys?r=${Date.now()}`)).json().catch(() => ({}));
 pin(buys.refused === `${BASE}/buys/refused` && Array.isArray(buys.payments), `/buys links the refused ones beside the payments (${buys.refused})`);
 console.log(fails ?`${fails} FAIL` : 'all pins hold');

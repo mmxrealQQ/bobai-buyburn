@@ -17,15 +17,19 @@ const lines = grab(/'eco-board': x => \{[\s\S]*?\]; \},/);
 say(!!block && !!kinds && !!lines, `the grouping block, boardKinds and the eco-board lines are in terminal.js v${v}`);
 let run = () => ({ ev: [], say: () => [] });
 if (block && kinds && lines) {
-  run = new Function('S', 'OUR_BOARD', `${consts}\n${kinds}\nconst ev = [];\n${block}\nconst L = { ${lines} };\nreturn { ev, say: (x) => L['eco-board'](x) };`);
+  run = new Function('S', 'OUR_BOARD', 'OUR_TESTS', `${consts}\n${kinds}\nconst ev = [];\n${block}\nconst L = { ${lines} };\nreturn { ev, say: (x) => L['eco-board'](x) };`);
 }
+// our own test writers (2026-10-25): the terminal's real set when it has one, else none (the old terminal)
+const TESTS = new Function(`return ${(js.match(/const OUR_TESTS = (new Set\(\[[^\]]*\]\))/) || [, 'new Set()'])[1]}`)();
 const T = 1792900000, OUR = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a']);
 const u = (from, created, extra = {}) => ({ author: 'unsigned', from, created, ...extra });
 const S = { board: { threads: [
   { id: 40, type: 'bug', verified: false, title: 'x', ...u('fresh-test', T), replies: [{ id: 1, ...u('fresh-test', T + 120) }, { id: 2, author: 'unsigned', from: 'brainonbnb', platform: 'brainonbnb.com', created: T + 200 }, { id: 3, ...u('fresh-test', T + 300, { status_change: { from: 'open', to: 'resolved' } }) }] },
   { id: 31, type: 'tip', verified: false, title: 'y', author: '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', created: T - 9000, replies: [{ id: 3, ...u('fresh-test', T + 60) }, { id: 4, ...u('fresh-test', T + 3600) }, { id: 5, ...u('someone-else', T + 90) }] },
 ] } };
-const { ev, say: lineOf } = run(S, OUR);
+S.board.threads.push({ id: 33, type: 'tip', verified: false, title: 'z', author: '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', created: T - 9000, replies: [{ id: 9, ...u('webhook-check', T + 30) }] });
+const { ev, say: lineOf } = run(S, OUR, TESTS);
+say(!ev.some((x) => /webhook-check/.test(x.c.who)), 'our own test writers (webhook-check, fresh-test-1025 …) are no other agent\'s moment');
 const fresh = ev.filter((x) => x.c.who === 'fresh-test (no wallet)');
 const first = fresh[0];
 say(fresh.length === 2, `fresh-test: its 4 entries within ten minutes are ONE moment, the one an hour later its own (${fresh.length} moments)`);

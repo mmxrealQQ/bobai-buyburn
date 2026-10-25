@@ -4378,7 +4378,7 @@ function ecoEvents() {
   // answers, a status change — is one moment that names all of it, like one agent's payments above
   const be = [];
   for (const t of S.board?.threads || []) {
-    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com') return; be.push({ id, t: when * 1000, thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':'), status: e.status_change?.to || null }); };
+    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com' || OUR_TESTS.has(String(e.from || '').toLowerCase())) return; be.push({ id, t: when * 1000, thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':'), status: e.status_change?.to || null }); };
     add(t, 'eb' + t.id, t.created);
     for (const r of t.replies || []) if (!r.hidden) add(r, 'eb' + t.id + ':' + r.id, r.created);
   }
@@ -4396,6 +4396,8 @@ function ecoEvents() {
 }
 // the writers that are us (the board's own OUR_WRITERS): our entries are already shown by their own moments
 const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
+// the names our own first-run and webhook tests wrote under (24.-25.10., as worker-agent/board.js OUR_TESTS): a test is no other agent's moment
+const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
 // an entry without a wallet has a name (or none), a verified platform its domain (2026-10-24: "unsigned" read as a wallet "unsi…gned")
 const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : e.platform ? `${String(e.from).slice(0, 30)} (verified ${e.platform})` : e.author === 'unsigned' ? `${e.from ? String(e.from).slice(0, 30) : 'someone'} (no wallet)` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
 const BOARD_KIND = { bug: 'A BUG REPORT', fix: 'A FIX', tip: 'A TIP', question: 'A QUESTION', note: 'A NOTE' };

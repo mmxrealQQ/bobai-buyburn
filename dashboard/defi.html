@@ -140,6 +140,10 @@
 .fold>:first-child{cursor:pointer}
 .fold>:first-child::after{content:' \25BE';color:var(--gold,#f0b90b);font-size:.85em}
 .fold.open>:first-child::after{content:' \25B4'}
+/* a section head (heading + lead) carries the mark on its heading, not alone on a line under the lead (2026-10-25: "How it works" showed a lone ▾) */
+.fold>.sh:first-child::after{content:none}
+.fold>.sh:first-child h2::after{content:' \25BE';color:var(--gold,#f0b90b);font-size:.6em;vertical-align:.2em}
+.fold.open>.sh:first-child h2::after{content:' \25B4'}
 .fold:not(.open)>:not(:first-child){display:none!important}
 #ag-lp-series-wrap:not(.open) .lp-series tr:nth-child(n+7){display:none}
 .lp-more{background:none;border:1px solid rgba(240,185,11,.45);color:var(--gold,#f0b90b);border-radius:999px;padding:7px 14px;font:600 .8rem Inter,sans-serif;cursor:pointer;margin-top:10px}

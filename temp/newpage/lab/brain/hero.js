@@ -64,8 +64,10 @@
     h.dataset.nousd = '1';   // its dollars are its own: app.js would add a second ≈$ after every BOBAI amount
     const fig3 = (k, v, s, c) => `<div class="hf hf3"><span>${k}</span><b${c ? ' class="c"' : ''}>${v}</b><small>${s}</small></div>`;
     h.innerHTML = (dead ? fig3('GONE FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', cmp(dead) + ' BOBAI at the dead address' + usd(dead), 1) : '')
-      + fig3('BURNED BY THE BOT', cmp(tot) + ' BOBAI', nf(b.length) + ' runs' + usd(tot))
-      + fig3('LAST 7 DAYS', cmp(w7) + ' BOBAI', 'last burn ' + new Date(last).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC' + usd(w7))
+      // the dollars beside the amount they price (2026-10-25: under it they followed "440 runs" and the last burn's time,
+      // and read as the runs' cost or that burn's worth)
+      + fig3('BURNED BY THE BOT', '<i class="hfa">' + cmp(tot) + ' BOBAI</i>' + (px ? `<em class="hfu">${usd(tot)}</em>` : ''), nf(b.length) + ' runs')
+      + fig3('LAST 7 DAYS', '<i class="hfa">' + cmp(w7) + ' BOBAI</i>' + (px ? `<em class="hfu">${usd(w7)}</em>` : ''), 'last burn ' + new Date(last).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC')
       + `<div class="hd"><div class="ht">BOBAI BURNED BY THE BOT · ONE BAR A DAY · 30 DAYS · HOVER OR TAP A DAY</div><div class="bbw"><canvas height="90" role="img" aria-label="BOBAI burned by the bot per day, last 30 days: ${cmp(A.reduce((x, y) => x + y, 0))} BOBAI in all, the biggest day ${cmp(Math.max(...A))} BOBAI"></canvas><div class="bbt" hidden></div></div></div>`;
     const cv = $('canvas', h), tip = $('.bbt', h);
     let hi = -1;

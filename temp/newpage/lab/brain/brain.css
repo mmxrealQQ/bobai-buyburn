@@ -180,6 +180,8 @@ button.bw-card .bw-n{color:var(--c)}
 .bw-hero .hf span{display:block;font:700 9px var(--bp-mono);letter-spacing:.18em;color:var(--bp-muted)}
 .bw-hero .hf b{display:block;margin-top:4px;font:800 22px 'Space Grotesk',sans-serif;color:#f3efe6;font-variant-numeric:tabular-nums;text-shadow:0 0 18px color-mix(in srgb,var(--c) 40%,transparent)}
 .bw-hero .hf b.c{color:var(--c)}
+.bw-hero .hf b .hfa{white-space:nowrap;font-style:normal} /* an <i>, not a <span>: .hf span is the small label */
+.bw-hero .hf b .hfu{font:600 12px var(--bp-mono);font-style:normal;color:var(--bp-muted);text-shadow:none;margin-left:6px;white-space:nowrap}
 .bw-hero .hd{flex:1 1 100%;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 22%,transparent);background:rgba(255,255,255,.02)}
 .bw-hero .hd .ht{font:700 9px var(--bp-mono);letter-spacing:.2em;color:var(--c);margin-bottom:8px}
 /* 03 PROOF: a day's figures under the pointer or finger (2026-10-01) */

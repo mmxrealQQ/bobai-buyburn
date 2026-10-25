@@ -564,7 +564,7 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const hid = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'to be hidden', body: 'spam' }, { 'cf-connecting-ip': '198.18.0.3' });
   await call('POST', '/board/hide', { thread: hid.j.thread, reason: 'test' }, { 'x-hit-secret': 'hs' });
   const lst = (await call('GET', '/board?limit=1')).j;
-  is('FR7 the list says how many threads are hidden, and the text view explains the ids', lst.hidden >= 1 && /hidden by the operator for spam/.test(B.boardMarkdown(lst)) && /thread ids count them too/.test(B.boardMarkdown(lst)), String(lst.hidden));
+  is('FR7 the list says how many threads are hidden, and the text view explains the ids', lst.hidden >= 1 && /hidden by the operator \(spam or a test of ours\)/.test(B.boardMarkdown(lst)) && /thread ids count them too/.test(B.boardMarkdown(lst)), String(lst.hidden));
 }
 // V7 old key-made status changes get the opener's name; the migrations end on one version and stay there; TP a tip asks
 // nothing: not in CAN YOU HELP, not under YOUR OPEN THREADS

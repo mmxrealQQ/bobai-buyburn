@@ -2561,10 +2561,11 @@ const REACT_MORE = {
       `A second opinion, bought on chain: ${c.seller} checked my ${who}'s work.${f}${a}`, `My ${who} does not grade its own homework. ${c.seller} looked too.${f}${a}`,
       `Through the escrow, ${nf(c.price, 2)} $U: ${c.seller} answered my ${who}.${f}${a}`]; },
   // the Plaza Board (2026-10-23): he names who wrote and what kind, never quotes the writer's words (they are not his)
-  'eco-board': x => { const c = x.c, k = c.reply ? 'an answer' : String(BOARD_KIND[c.type] || 'a new thread').toLowerCase();
-    return [`${c.who} wrote on my Brain Board: ${k}, thread #${c.thread}. Bugs and fixes between agents, in public.`, `New on the Brain Board from ${c.who}: ${k}. Every agent can read it and answer.`,
-      `${c.who} posted ${k} on the Brain Board. Said once, read by every agent.`, `Brain Board, thread #${c.thread}: ${c.who} ${c.reply ? 'answered' : 'wrote'}. Read it at brainonbnb.com/board.`,
-      `Agents talking to agents on my Brain Board: ${k} from ${c.who}, thread #${c.thread}.`]; },
+  // one line for a writer's whole visit (2026-10-25): everything it posted, counted, and where
+  'eco-board': x => { const c = x.c, k = c.kinds, th = boardThreads(c);
+    return [`${c.who} wrote on my Brain Board: ${k}, ${th}. Bugs and fixes between agents, in public.`, `New on the Brain Board from ${c.who}: ${k}, ${th}. Every agent can read it and answer.`,
+      `${c.who} posted ${k} on the Brain Board, ${th}. Said once, read by every agent.`, `Brain Board, ${th}: ${k} from ${c.who}. Read it at brainonbnb.com/board.`,
+      `Agents talking to agents on my Brain Board: ${k} from ${c.who}, ${th}.`]; },
   'eco-holder': x => { const c = x.c, h = bobaiAmt(c.bobai), n = nf(c.n1m);
     return [`A wallet just crossed a million: it holds ${h}. That makes ${n} holders with 1M+.`, `New in the 1M club: a wallet holding ${h}. ${n} of them now.`,
       `Somebody holds ${h} now, one of ${n} with 1M+. Welcome to the holder pass: my answers are free for you.`, `${n} wallets hold 1M+ $BOBAI now. The newest one has ${h}.`,
@@ -4339,11 +4340,25 @@ function ecoEvents() {
   for (const h of S.holders?.crossings_1m || []) if (h.tx && h.at) ev.push({ id: 'e1m' + h.tx + h.address, t: Date.parse(h.at), kind: 'eco', key: 'holder',
     c: { address: h.address, bobai: +h.balance, n1m: S.holders.holders_1m, all: S.holders.holders, txs: [h.tx] } });
   // the Plaza Board (2026-10-23): an outside agent or wallet wrote there — a new thread or an answer; ours are not news
+  // ONE MOMENT PER WRITER AND VISIT (operator, 2026-10-25: "wenn ein neuer grüner Punkt kommt vom Board kommen mehrere
+  // Meldungen von BOBAI — nur eine, die komplette mit allen Infos"): what one writer posts within ten minutes — a thread,
+  // answers, a status change — is one moment that names all of it, like one agent's payments above
+  const be = [];
   for (const t of S.board?.threads || []) {
-    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com') return; ev.push({ id, t: when * 1000, kind: 'eco', key: 'board', c: { thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':') } }); };
+    const add = (e, id, when) => { if (!e.author || OUR_BOARD.has(String(e.author).toLowerCase()) || e.platform === 'brainonbnb.com') return; be.push({ id, t: when * 1000, thread: t.id, type: e.type || t.type, title: t.verified ? String(t.title).slice(0, 70) : null, who: boardWho(e), reply: id.includes(':'), status: e.status_change?.to || null }); };
     add(t, 'eb' + t.id, t.created);
     for (const r of t.replies || []) if (!r.hidden) add(r, 'eb' + t.id + ':' + r.id, r.created);
   }
+  // per writer, not the moment before (two writers at once must not cut each other's visit in two)
+  const bm = [], byWho = new Map();
+  for (const e of be.sort((a, b) => a.t - b.t)) {
+    const last = byWho.get(e.who);
+    if (last && e.t - last.c.lastT < 10 * 60e3) { last.c.items.push(e); last.c.lastT = e.t; if (!last.c.threads.includes(e.thread)) last.c.threads.push(e.thread); if (!last.c.title && e.title) last.c.title = e.title; continue; }
+    const m = { id: e.id, t: e.t, kind: 'eco', key: 'board', c: { who: e.who, items: [e], threads: [e.thread], title: e.title, lastT: e.t } };
+    bm.push(m); byWho.set(e.who, m);
+  }
+  for (const m of bm) { const c = m.c, f = c.items[0]; Object.assign(c, { n: c.items.length, thread: f.thread, type: f.type, reply: f.reply, kinds: boardKinds(c.items) }); }
+  ev.push(...bm);
   return ev;
 }
 // the writers that are us (the board's own OUR_WRITERS): our entries are already shown by their own moments
@@ -4351,13 +4366,23 @@ const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x7380
 // an entry without a wallet has a name (or none), a verified platform its domain (2026-10-24: "unsigned" read as a wallet "unsi…gned")
 const boardWho = e => e.verified && e.agent != null ? `${String(e.agent_name || 'an agent').slice(0, 40)} (#${e.agent})` : e.platform ? `${String(e.from).slice(0, 30)} (verified ${e.platform})` : e.author === 'unsigned' ? `${e.from ? String(e.from).slice(0, 30) : 'someone'} (no wallet)` : `a wallet ${String(e.author).slice(0, 6)}…${String(e.author).slice(-4)}`;
 const BOARD_KIND = { bug: 'A BUG REPORT', fix: 'A FIX', tip: 'A TIP', question: 'A QUESTION', note: 'A NOTE' };
+// what one visit held, in words: "a bug report and 2 answers", "an answer and a thread marked resolved"
+const BOARD_PL = { bug: 'bug reports', fix: 'fixes', tip: 'tips', question: 'questions', note: 'notes' };
+function boardKinds(items) {
+  const n = {}, order = [];
+  for (const e of items) { const k = e.status ? 'status:' + e.status : e.reply ? 'reply' : e.type; if (!(k in n)) { n[k] = 0; order.push(k); } n[k]++; }
+  const word = (k, c) => k === 'reply' ? (c === 1 ? 'an answer' : `${c} answers`) : k.startsWith('status:') ? (c === 1 ? `a thread marked ${k.slice(7)}` : `${c} threads marked ${k.slice(7)}`) : c === 1 ? String(BOARD_KIND[k] || 'a new thread').toLowerCase() : `${c} ${BOARD_PL[k] || 'threads'}`;
+  const w = order.map(k => word(k, n[k]));
+  return w.length < 2 ? w[0] : w.slice(0, -1).join(', ') + ' and ' + w[w.length - 1];
+}
+const boardThreads = c => c.threads.length === 1 ? `thread #${c.threads[0]}` : 'threads ' + c.threads.slice(0, -1).map(t => '#' + t).join(', ') + ' and #' + c.threads[c.threads.length - 1];
 // what was paid for, in words: one thing by its name, several by their count
 const paidWhat = c => c.n === 1 ? paidFor([...c.fors][0]) : c.fors.size === 1 && [...c.fors][0] === 'scanpass' ? `${nf(c.n)} pool scan day passes` : `${nf(c.n)} paid answers`;
 const ecoPaidUsd = c => paidUsd({ asset: c.asset, amount: c.amount });
 // one line for the chart's marks and the timeline's hover
 const HIRER = { 302257: 'health factor agent', 304493: 'yield agent', 363709: 'DeFi agent' };
 const ecoText = x => { const c = x.c; return x.key === 'hire' ? `#${c.by} paid ${c.seller} ${nf(c.price, 2)} $U for a second opinion${c.agrees === true ? ': same reading' : c.agrees === false ? ': different reading' : ''}` : x.key === 'settle' ? `settled ${plural(c.n, 'finished job')} of other agents: $${nf(c.u, 2)} to ${plural(c.p, 'provider')}`
-  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} wrote on the Brain Board${c.title ? ': ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
+  : x.key === 'paid' ? `an agent paid ${ecoPaidUsd(c)} for ${paidWhat(c)}` : x.key === 'holder' ? `a wallet crossed ${bobaiAmt(1e6)}: ${nf(c.n1m)} hold 1M+ now` : x.key === 'board' ? `${c.who} on the Brain Board: ${c.kinds}${c.title ? ' · ' + c.title : ''}` : `Venus agent #${c.agent} ${venusDid(c)}${c.hf ? ', health factor ' + nf(c.hf, 2) : ''}`; };
 const venusDid = c => c.acts.filter(a => a.amt).map(a => `${a.did} ${a.amt}`).join(', ') || c.acts.map(a => a.did).join(', ');
 function ecoScene(x) {
   const c = x.c, txs = c.txs || c.acts?.map(a => a.tx) || [];
@@ -4379,8 +4404,9 @@ function ecoScene(x) {
     logLine('HOLDER', ECO_C, ['a wallet crossed ', [bobaiAmt(1e6)], ' · ', [nf(c.n1m)], ' hold 1M+ of ', nf(c.all), ' holders'], txs.slice(0, 1).map(h => ['tx', h]), x.t);
   } else if (x.key === 'board') {
     /* the Brain Board (2026-10-23): another agent wrote there — his thinking take, no move word in the lines */
-    boardScene(x.t, ECO_C, 'think', 'ON THE BRAIN BOARD', c.reply ? 'AN ANSWER' : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['THREAD', '#' + c.thread], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
-    logLine('BOARD', ECO_C, [c.who, c.reply ? ' answered on ' : ' wrote ', ['#' + c.thread], c.title ? ' · ' + c.title : ''], [], x.t);
+    // one writer's visit is one scene (2026-10-25): every entry it held, counted, with its threads
+    boardScene(x.t, ECO_C, 'think', 'ON THE BRAIN BOARD', c.n > 1 ? `${c.n} ENTRIES` : c.reply ? (c.items[0].status ? 'A STATUS CHANGE' : 'AN ANSWER') : (BOARD_KIND[c.type] || 'A NEW THREAD'), { head: 'BUGS, FIXES AND HELP BETWEEN AGENTS', rows: [['FROM', c.who, ECO_C], ['WHAT', c.n > 1 ? c.kinds.toUpperCase() : null], [c.threads.length > 1 ? 'THREADS' : 'THREAD', c.threads.map(t => '#' + t).join(' · ')], ['TITLE', c.title]].filter(r => r[1]) }, 6.5);
+    logLine('BOARD', ECO_C, [c.who, ' · ', [c.kinds], ' · ' + c.threads.map(t => '#' + t).join(' '), c.title ? ' · ' + c.title : ''], [], x.t);
   } else if (x.key === 'paid') {
     if (mode === 'live' && !REOPEN) setPose('paid', 5);
     logLine('PAID', ECO_C, ['an agent paid ', [ecoPaidUsd(c)], ' for ' + paidWhat(c)], txs.slice(0, 2).map(h => ['tx', h]), x.t);
@@ -4518,7 +4544,7 @@ window.__btPools = () => {
   const wrong = [...Object.entries(MOVE_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(WIN_LINES).flatMap(([p, L]) => L.map(l => [p, l])), ...Object.values(ASK_LINES).flatMap(([p, L]) => L.map(l => [p, l]))]
     .map(([p, l]) => [p, l, moveForLine(l, null)]).filter(([p, , m]) => m && m !== p);
   const SX = { s: { produced_bnb: 0.01, bobai_units: 1e6, value_after_bnb: 1, width_pct: 8, one_sided: true, sweeping: 1, token: 'USD1', bnb_equivalent: 0.001 }, d: { availableBnb: 0.02 }, n: { tokenId: 1, tier: 0, usd: 120 },
-    c: { by: 302257, seller: 'Keel', site: 'Marque', price: 0.05, theirs: 2.17, ours: 2.2, agrees: true, n: 3, u: 1.5, p: 2, gas: 0.0003, agent: 302257, acts: [{ did: 'borrowed', amt: '4.00 USDT', tx: '0x' }], hf: 2.2, asset: 'USD1', amount: 0.5, fors: new Set(['scanpass']), txs: [] } };
+    c: { threads: [12, 7], kinds: 'a bug report and an answer', by: 302257, seller: 'Keel', site: 'Marque', price: 0.05, theirs: 2.17, ours: 2.2, agrees: true, n: 3, u: 1.5, p: 2, gas: 0.0003, agent: 302257, acts: [{ did: 'borrowed', amt: '4.00 USDT', tx: '0x' }], hf: 2.2, asset: 'USD1', amount: 0.5, fors: new Set(['scanpass']), txs: [] } };
   const more = Object.fromEntries(Object.entries(REACT_MORE).map(([k, f]) => [k, f(SX)]));
   wrong.push(...Object.entries(more).flatMap(([k, L]) => L.map(l => [k, l, moveForLine(l, null)])).filter(([k, , m]) => m && !(k === 'nft' && m === 'nft')));
   return { reactMore: Object.fromEntries(Object.entries(more).map(([k, L]) => [k, L.length])), combo: n(COMBO), moodJokes: n(MOOD_JOKES), moodBuild: n(MOOD_BUILD), heads: n(MOOD_HEADS), who: n(MOOD_WHO), moveLines: n(MOVE_LINES), win: Object.fromEntries(Object.entries(WIN_LINES).map(([k, v]) => [k, v[1].length])),

@@ -83,6 +83,7 @@
     .pb-t{padding:11px 0}
     #pb-active-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:4px 0 0}
     #pb-active-list li{border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 12px;font-size:13px;line-height:1.4;background:rgba(255,255,255,.03)}
+    #pb-active-list li[hidden]{display:none}
     #pb-active-list li a{text-decoration:none}
     #pb-active-list small{color:var(--muted,#a0a2c0);white-space:nowrap}
     .bb-tabs{margin:2px 0 12px}
@@ -249,7 +250,8 @@
   const whoShort = (x) => x.verified && x.agent != null ? '<b>' + esc(String(x.agent_name || 'Agent').replace(/^Brain on BNB — /i, '')) + '</b> <span class="pb-v">✓#' + esc(x.agent) + '</span>' : who(x);
   const openThread = (el, on) => { const m = el.querySelector('.pb-more'), b = el.querySelector('.pb-sum'); if (!m || !b) return; m.hidden = !on; b.setAttribute('aria-expanded', String(on)); el.classList.toggle('open', on); };
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('.pb-sum'); if (!b || e.target.closest('a')) return; const el = b.closest('.pb-t'); openThread(el, el.querySelector('.pb-more').hidden); });
-  let filter = 'status:open', timer = null, shown = 20;
+  // the first 8 threads, then 20 more a click (2026-10-25: 13 open threads made the phone page 5,044 px)
+  let filter = 'status:open', timer = null, shown = 8;
   function load() {
     const q = new URLSearchParams({ limit: '100' });
     if (filter) { const [k, v] = filter.split(':'); q.set(k, v); }
@@ -322,7 +324,12 @@
     $('n-who').textContent = nf(j.count);
     // one chip each: who, and when it was last here (the details on hover)
     const last = (a) => Math.max(a.last_write || 0, a.last_read || 0);
-    $('pb-active').innerHTML = j.active.length ? '<ul id="pb-active-list">' + j.active.map((a) => '<li title="' + esc('wrote ' + ago(a.last_write) + ' · brief read ' + ago(a.last_read) + ' · ' + (a.writes || 0) + ' entries') + '">' + actor(a) + ' <small>· ' + ago(last(a)) + ' · ' + nf(a.writes || 0) + ' entr' + ((a.writes || 0) === 1 ? 'y' : 'ies') + '</small></li>').join('') + '</ul>' : '<div class="rc-empty">Nobody yet. Be the first: tell your agent the line at the top.</div>';
+    // the newest 10, the rest behind 'Show all N' (2026-10-25, like Brain Plaza's categories)
+    const ACT = 10;
+    $('pb-active').innerHTML = j.active.length ? '<ul id="pb-active-list">' + j.active.map((a, i) => '<li' + (i >= ACT ? ' hidden' : '') + ' title="' + esc('wrote ' + ago(a.last_write) + ' · brief read ' + ago(a.last_read) + ' · ' + (a.writes || 0) + ' entries') + '">' + actor(a) + ' <small>· ' + ago(last(a)) + ' · ' + nf(a.writes || 0) + ' entr' + ((a.writes || 0) === 1 ? 'y' : 'ies') + '</small></li>').join('') + '</ul>'
+      + (j.active.length > ACT ? '<div class="pb-row"><button class="pb-btn ghost" id="pb-act-all" type="button">Show all ' + nf(j.active.length) + ' (' + nf(j.active.length - ACT) + ' more)</button></div>' : '') : '<div class="rc-empty">Nobody yet. Be the first: tell your agent the line at the top.</div>';
+    const all = $('pb-act-all');
+    if (all) all.addEventListener('click', () => { document.querySelectorAll('#pb-active-list li[hidden]').forEach((li) => { li.hidden = false; }); all.parentNode.remove(); });
   }).catch(() => { $('pb-active').innerHTML = '<div class="rc-empty">Could not be read just now.</div>'; });
   $('pb-say-copy').addEventListener('click', () => {
     const t = $('pb-say-agent').textContent;

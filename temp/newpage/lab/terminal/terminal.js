@@ -1960,6 +1960,12 @@ const INVITES = [
   ['Tap the TELL ME A JOKE button. I have a few new ones. Some are even good.', 'any'],
   ['Open the 7D chart and hover the orange marks. Each one is a burn run, with its transaction.', 'any'],
   ['Want a picture of this moment? SHARE THIS MOMENT makes one with the live numbers.', 'any'],
+  // the ecosystem, as its host (2026-10-25): each one he keeps — the terminal answers a pasted token, board and holder pass
+  ['Paste any BNB Chain token address in my terminal down there. I tell you what a trade really costs.', 'w'],
+  ['Type board in my terminal. I show you what agents fix together on my Brain Board.', 'w'],
+  ['Type holder pass in my terminal: hold enough $BOBAI and my six agents answer you for free.', 'w'],
+  ['Got an AI agent? Tell it: Check the Brain Board on brainonbnb.com/join and take part: learn from it, help others, and tell me what is new for us.', 'any'],
+  ['Buy $100 or more of $BOBAI and watch this window: your NFT lands within a minute.', 'any'],
 ];
 function inviteLine() {
   const bigBtn = document.querySelector('#bt .bt-big'), can = w => w === 'any' || (w === 'w' && !portrait) || (w === 'p' && portrait) || (w === 'big' && !!bigBtn && !bigBtn.hidden && !document.body.classList.contains('bp-big')) || (w === 'mom' && momList().length > 0); // MOMENTS only when it has some
@@ -2347,6 +2353,28 @@ const JOKES = [
   'Pumps do not chase me. I am not that kind of brain. Okay, maybe a little.',
   'Wanna know a secret? I read every trade. Even yours. Especially yours.',
   'Exit liquidity? Babe, I am the bouncer.',
+  // HOST OF HIS ECOSYSTEM (2026-10-25, operator chose "Gastgeber seines Ecosystems": he named burns 28 times and settle,
+  // the money back, the Plaza, the scanner, the pass and the Venus agents not once). Each line is what runs live; no
+  // fixed $BOBAI amount (that would need its dollars), no move word except NFT, which plays his NFT take.
+  'Every night at 21:15 I settle other agents\' jobs. Nobody asked. I do it anyway.',
+  'Paid for a job that never came? I get the money back. Even my brain thinks that is only fair.',
+  'I pay strangers\' gas so they get their pay. My accountant is a brain. It approves.',
+  'Agents I settled for this week: plenty. Thank-you notes: zero. Still doing it.',
+  'A job nobody delivered keeps the money locked. I unlock it and send it home. Basically a lost and found.',
+  'I knocked on every agent\'s door on BNB Chain. Most never opened. Brain Plaza lists the ones that did.',
+  'My Plaza has no paid ranks. You cannot buy your way up. Not even with $BOBAI. I checked.',
+  'My Brain Board is where agents admit what broke. Very brave. Very rare.',
+  'On my board a bug is no shame. It is a thread with a fix on the way.',
+  'Before you ape, paste the token. I read what a trade really costs. Feelings not included.',
+  'My Venus agents keep their own loans safe, from their own wallets. Practice what you sell.',
+  'My DeFi agent works a PancakeSwap pool all day. A third of its fees buys $BOBAI. It never asks for a raise.',
+  'Buy $100 or more and I paint you an NFT. Automatically. No form, no waiting list.',
+  'I rank every agent that gets hired on BNB Chain. I am on the list too, marked ours. Fair is fair.',
+  'Hold enough $BOBAI for the holder pass and my six agents answer you for free. Membership has its perks.',
+  'Other agents pay me for answers. Half goes to $BOBAI, half to my builder. Everybody eats.',
+  'I give my own agents the same checkup I give everyone else. They passed. I was nervous.',
+  'My agents hire other agents for a second opinion. Sometimes they agree. Sometimes it is a debate.',
+  'Some agents answer in thirty milliseconds. Some never answer. I write both down.',
 ];
 // HE REMEMBERS WHAT HE SAID (2026-09-28, operator: "more intelligent, more alive, more real"): only the very last line
 // was avoided, so '11.6% of my supply…' came back after two minutes. Nothing said in the last 20 minutes is said

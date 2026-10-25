@@ -613,7 +613,11 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // "message/send not validated") and answers ok:false for every agent, ours and others' alike — red every day while all
   // six stayed listed (the listing has its own check below). Red here: a stale round, or an agent Marque could not even
   // discover (unbound, down, an error) — the faults that are ours to fix.
-  const mpReal = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok && v.liveness !== 'discovered').map(([k, v]) => `#${k} ${v.liveness || v.detail || 'no answer'}`) : [];
+  // SINCE 25.10. EVERY AGENT MUST BE CALLABLE: Marque's answer to our report — the probe sends message/send only with
+  // taskConsent: true, which our round now sends; so "discovered" again means our message/send was not validated. A
+  // round from before the change (no taskConsent) is still judged the old way until the first new one.
+  const mpNew = mp?.at && Date.parse(mp.at) > Date.parse('2026-10-25T12:00:00Z');
+  const mpReal = mp ? Object.entries(mp.agents || {}).filter(([, v]) => !v.ok && (mpNew || v.liveness !== 'discovered')).map(([k, v]) => `#${k} ${v.liveness || v.detail || 'no answer'}`) : [];
   ok('Agents', 'Marque probes all six agents every 8 h, each found', mpAge != null && mpAge < 9 && Object.keys(mp.agents || {}).length === 6 && !mpReal.length, mp ? `${mpAge.toFixed(1)} h ago · ${mpReal.length ? 'failing: ' + mpReal.join(', ') : mpBad.length ? `all found (Marque only discovers since 21.10., ${mpBad.length} not validated)` : 'all ok'}` : 'no probe round yet');
   // THE VENUS AGENTS AT WORK (2026-10-22, venus-work.js): once a day at 05:00 UTC from their own wallets. The newest run
   // within 26 h, no error in it, and the health factor agent's loan read back inside its band's floor and ceiling.

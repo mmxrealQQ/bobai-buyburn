@@ -122,6 +122,9 @@ import { watchFundedJobs } from './job-watch.js';
 // sent to its web page (405). Every eight hours Marque is asked to call each agent's A2A card — Marque itself reads
 // the card and sends message/send; nothing is signed, nothing is claimed that the agent does not answer. The last
 // round is kept in KV marque:probe (and shown at /jobs/watch).
+// taskConsent: true (2026-10-25, Marque's answer to our report: "a discovery-only request doesn't send a message"):
+// without it every round read "message/send not validated" and counted against our availability (1 of 4 on 25.10.);
+// with it all six read "callable — message/send validated" (checked by hand the same morning).
 const MARQUE_PROBE = 'https://marque.trade/api/v1/builders/probe';
 export const marqueProbeDue = (d) => d.getUTCHours() % 8 === 0 && d.getUTCMinutes() < 15;
 export async function keepMarqueListed(env) {
@@ -132,7 +135,7 @@ export async function keepMarqueListed(env) {
     // Marque takes 6 probes a minute (it said so when two rounds met, 2026-10-06): one every 11 s stays under it
     if (!first) await new Promise((r) => setTimeout(r, 11000)); first = false;
     try {
-      const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json` }) });
+      const r = await fetch(MARQUE_PROBE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chainId: 56, tokenId: String(a.id), endpoint: `${SELF_ORIGIN}/${slug}/.well-known/agent-card.json`, taskConsent: true }) });
       const j = await r.json().catch(() => ({}));
       out[a.id] = { ok: j.ok === true, liveness: j.liveness || null, ms: j.latencyMs ?? null, detail: j.ok ? null : String(j.detail || r.status).slice(0, 160) };
     } catch (e) { out[a.id] = { ok: false, detail: String(e && e.message || e).slice(0, 160) }; }

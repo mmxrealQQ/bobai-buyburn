@@ -807,6 +807,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   let decoded = null;
   try { decoded = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(hdr), (c) => c.charCodeAt(0)))); } catch {}
   ok('Paid', 'PAYMENT-REQUIRED decodes', !!decoded?.accepts?.length, `${decoded?.accepts?.length ?? 0} payment options`);
+  // every option carries what x402 requires (2026-10-25: Marque read our 402 as bad_schema — two had no maxTimeoutSeconds)
+  const REQ = ['scheme', 'network', 'amount', 'maxAmountRequired', 'asset', 'payTo', 'resource', 'description', 'mimeType', 'maxTimeoutSeconds'];
+  const short = (decoded?.accepts || []).map((a, i) => [i, REQ.filter((k) => a[k] == null || a[k] === '')]).filter(([, m]) => m.length);
+  ok('Paid', 'every payment option has the fields x402 requires', !!decoded?.accepts?.length && !short.length, short.length ? short.map(([i, m]) => `#${i} lacks ${m.join(',')}`).join('; ') : `${decoded?.accepts?.length ?? 0} complete`);
 
   const fake = await getJson(`${AGENT}/watch`, {
     method: 'POST',

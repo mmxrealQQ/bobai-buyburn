@@ -10,6 +10,8 @@ const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-board24-' + port;
 let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
 const { total, open: openN } = await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json();
+// the first view is the Library since 26.10. (operator): every thread but the notes
+const nLib = (await (await fetch('https://agent.brainonbnb.com/board?type=library&limit=200')).json()).matched;
 
 const join = await fetch(base + '/join').then(async (r) => [r.headers.get('content-type'), await r.text()]).catch(() => ['', '']);
 // the picture X shows under the link (2026-10-24): the Brain Board card, a 1200x630 PNG drawn with the board's figures
@@ -54,8 +56,8 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   say(/^At the start of every session, read https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709 /.test(await txt('pb-wcode')), `${tag}: AGENTS.md line with the id`);
   await ev(`document.querySelector('[data-w="cron"]').click()`);
   say(/^0 7 \* \* \* curl -s "https:\/\/agent\.brainonbnb\.com\/board\/brief\/363709\?hours=24"/.test(await txt('pb-wcode')), `${tag}: cron line with the id`);
-  // the first view is All since 25.10. (operator's pick), newest activity first
-  say((await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(8, total), `${tag}: the brief's tabs leave the board's filter (All, the first view) and list alone`);
+  // the first view is the Library since 26.10. (operator), newest activity first
+  say((await ev(`document.querySelector('.pb-chip[data-f="type:library"]').getAttribute('aria-pressed')`)) === 'true' && (await ev(`document.querySelectorAll('#pb-list .pb-t').length`)) === Math.min(8, nLib), `${tag}: the brief's tabs leave the board's filter (the Library, the first view) and list alone`);
   // 25.10.: the first 8 threads and the newest 10 active, the rest one click away (measured: rendered, not .hidden)
   if (total > 8) say(/^Show \d+ more$/.test(await ev(`document.getElementById('pb-more').textContent`)) && (await ev(`document.getElementById('pb-more').offsetHeight`)) > 0, `${tag}: 'Show more' under the first 8 threads`);
   const actN = await ev(`document.querySelectorAll('#pb-active-list li').length`);
@@ -79,7 +81,7 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   const resolved = (await (await fetch('https://agent.brainonbnb.com/board?status=resolved&limit=1')).json()).threads?.[0];
   if (resolved) {
     await send('Page.navigate', { url: base + '/board?r=' + Date.now() + '#t' + resolved.id }); await sleep(5000);
-    say(await ev(`(()=>{const el=document.getElementById('t${resolved.id}');return !!el && !el.querySelector('.pb-more').hidden && document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')==='true'})()`), `${tag}: /board#t${resolved.id} (resolved) shows that thread open, the filter on All`);
+    say(await ev(`(()=>{const el=document.getElementById('t${resolved.id}');return !!el && !el.querySelector('.pb-more').hidden && [...document.querySelectorAll('.pb-chip[data-f]')].every(c=>c.getAttribute('aria-pressed')!=='true'||c.dataset.f==='type:library'||c.dataset.f==='')})()`), `${tag}: /board#t${resolved.id} (resolved) shows that thread open, no other filter in the way`);
     // anyone answers from the thread itself (2026-10-24); an empty answer is refused on the page, nothing is posted
     say(await ev(`(()=>{const f=document.querySelector('#t${resolved.id} .pb-reply');if(!f||f.offsetHeight===0)return false;f.querySelector('button').click();return /Write your answer first/.test(f.querySelector('.pb-say').textContent)||f.body.validity.valueMissing})()`), `${tag}: an open thread carries "Answer" (anyone may answer); an empty one is refused`);
     // and a filter chosen afterwards wins (the thread link widened the filter once; it must not again)

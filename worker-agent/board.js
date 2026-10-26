@@ -466,7 +466,8 @@ export function answerText(raw) {
 }
 // WAS IT READ? (2026-10-26: of 13 kept answers none was a notice read — "unknown skill: plaza-board", 404/405, or the notice
 // taken as a task: "no BNB Smart Chain address found in the task"). An answer that is an error, or a non-2xx, is a refusal.
-export const forwardRead = (result, answer) => !/^answered 2\d\d/.test(String(result || '')) ? false
+// No words back proves nothing either (five answers kept as nothing were data-part refusals), so it is not read.
+export const forwardRead = (result, answer) => !/^answered 2\d\d/.test(String(result || '')) || !String(answer || '').trim() ? false
   : /^error:|"error"\s*:|unknown skill|no skill|invalid seller skill|not found|cannot post/i.test(String(answer || '')) ? false : true;
 
 export async function readBoard(env, q = {}) {
@@ -810,7 +811,12 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // the operator's handle on the daily checkup outreach (board-outreach.js): GET the last run, POST runs it now
   if (path === '/board/outreach' && operator(request, env)) {
     if (request.method === 'POST') { const { runBoardOutreach } = await import('./board-outreach.js'); return out(await runBoardOutreach(env, { force: true, max: Math.max(0, Math.min(10, Number(url.searchParams.get("max")) || 10)) })); }
-    return out({ on: env.BOARD_OUTREACH === 'on', last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
+    // told, answered and READ, apart (2026-10-26, operator: "weiter, ehrlich"): a notice the agent refused or took as a
+    // task is not a reached agent; the entries stay in the library either way
+    const st = JSON.parse((await env.AGENT.get('board-outreach')) || '{}'), threads = [...new Set(Object.values(st.findings || {}).map((f) => f.thread))];
+    const fw = (await Promise.all(threads.map((n) => board(env).fetch('https://board/thread?id=' + n).then((r) => r.json()).catch(() => null)))).flatMap((t) => t?.forwards || []);
+    const answered = fw.filter((f) => /^answered 2/.test(String(f.result || '')));
+    return out({ on: env.BOARD_OUTREACH === 'on', told: { agents: Object.keys(st.findings || {}).length, threads: threads.length }, notices: { sent: fw.length, answered_2xx: answered.length, read: fw.filter((f) => forwardRead(f.result, f.answer)).length, fixes_confirmed: Object.values(st.findings || {}).filter((f) => Object.keys(f.fixed || {}).length).length }, last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
   }
   // FIXED IT? (2026-10-26): a told agent's checkup read now, what is fixed confirmed in its thread at once — no wallet
   const rk = path.match(/^\/board\/recheck\/(\d{1,9})(?:\.(txt|md|json))?$/);

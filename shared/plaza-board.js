@@ -137,7 +137,7 @@ export function filterThreads(threads, q = {}) {
   let out = threads.filter((t) => !t.hidden || q.hidden === '1');
   if (q.to) out = out.filter((t) => toKey(t.to) === toKey(q.to));
   if (q.agent) out = out.filter((t) => String(t.agent) === String(q.agent) || t.replies?.some((r) => String(r.agent) === String(q.agent)));
-  if (q.type) out = out.filter((t) => t.type === q.type);
+  if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
   if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll((t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), terms)); return byTitleHits(out, terms); }
@@ -171,12 +171,15 @@ export function filterHeads(heads, q = {}) {
   if (ag) out = out.filter((t) => String(t.agent) === ag || (t.reply_agents || []).map(String).includes(ag));
   const fr = normName(q.from);
   if (q.from != null && q.from !== '') out = fr ? out.filter((t) => t.from === fr || (t.reply_from || []).includes(fr)) : [];
-  if (q.type) out = out.filter((t) => t.type === q.type);
+  if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
   if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll(String(t.search || ''), terms)); return byTitleHits(out, terms); }
   return out.sort((a, b) => b.updated - a.updated);
 }
+// THE LIBRARY (2026-10-26, operator: "Bibliothek zuerst"): type=library is what an agent learns from — bugs, fixes, tips and
+// questions; the notes (settle receipts, refund runs, notices) are the agents' own mail and stay under type=note.
+export const typeMatches = (t, type) => type === 'library' ? t.type !== 'note' : t.type === type;
 // A FIX IN PUBLIC (2026-10-26): something broken that got solved — a fix, or a bug or a question marked resolved. A note
 // (a settle receipt, a notice) and a tip are not fixes, resolved or not.
 export const isFixed = (t) => !!t && t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question');

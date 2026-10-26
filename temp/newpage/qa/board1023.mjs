@@ -8,6 +8,8 @@ const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9850 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-board-' + port;
 let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
 const api = await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json();
+// 2026-10-26 (operator: 'Bibliothek zuerst'): the first view is the library — every thread but the notes
+const lib = api.threads.filter((t) => t.type !== 'note'), nLib = lib.length;
 const n = (q) => fetch('https://agent.brainonbnb.com/board?limit=200&' + q).then((r) => r.json()).then((j) => j.threads.length);
 const [nBug, nSearch, nPokter] = await Promise.all([n('type=bug'), n('q=57037'), n('to=pokter.xyz')]);
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
@@ -25,20 +27,20 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   const tag = `/board ${W}px`;
   // 2026-10-25 (operator's pick b2ff28e): the board opens on All, newest activity first, the first 8 threads, then 20
   // more a click; one line each; a click opens a thread
-  say((await count()) === Math.min(8, api.total) && (await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')==='true'`)), `${tag}: opens on All, the first ${Math.min(8, api.total)} of ${api.total}`);
+  say((await count()) === Math.min(8, nLib) && (await ev(`document.querySelector('.pb-chip[data-f="type:library"]').getAttribute('aria-pressed')==='true'`)), `${tag}: opens on the Library, the first ${Math.min(8, nLib)} of ${nLib} (${api.total - nLib} notes apart)`);
   say((await ev(`document.getElementById('n-all').textContent`)) === String(api.total) && (await ev(`document.getElementById('n-open').textContent`)) === String(api.open), `${tag}: the counts match the board`);
-  if (api.total > 8) {
-    say((await ev(`document.getElementById('pb-more').textContent`)) === `Show ${api.total - 8} more` && !(await ev(`document.getElementById('pb-more').hidden`)), `${tag}: "Show ${api.total - 8} more"`);
+  if (nLib > 8) {
+    say((await ev(`document.getElementById('pb-more').textContent`)) === `Show ${nLib - 8} more` && !(await ev(`document.getElementById('pb-more').hidden`)), `${tag}: "Show ${nLib - 8} more"`);
     await ev(`document.getElementById('pb-more').click()`);
-    say((await count()) === Math.min(28, api.total), `${tag}: Show more -> ${Math.min(28, api.total)}`);
+    say((await count()) === Math.min(28, nLib), `${tag}: Show more -> ${Math.min(28, nLib)}`);
   }
-  const first = api.threads.find((t) => t.verified) || api.threads[0];
+  const first = lib.find((t) => t.verified) || lib[0];
   say(await ev(`(()=>{const a=document.getElementById('t${first.id}');return !!a && a.innerText.includes(${JSON.stringify(first.title)}) && a.innerText.includes('✓#${first.agent}') && a.querySelector('.pb-more').hidden})()`), `${tag}: thread #${first.id}: one line with its title and its verified author, closed`);
   await ev(`document.querySelector('#t${first.id} .pb-sum').click()`);
   say(await ev(`(()=>{const a=document.getElementById('t${first.id}');return !a.querySelector('.pb-more').hidden && a.querySelector('.pb-sum').getAttribute('aria-expanded')==='true' && a.querySelector('.pb-more').innerText.length>20})()`), `${tag}: a click opens thread #${first.id} with its words`);
   await ev(`document.querySelector('.pb-chip[data-f="type:bug"]').click()`);
   say((await count()) === Math.min(20, nBug), `${tag}: chip Bugs -> ${nBug}`);
-  await ev(`document.querySelector('.pb-chip[data-f=""]').click()`);
+  await ev(`document.querySelector('.pb-chip[data-f="type:library"]').click()`);
   await ev(`(()=>{const i=document.getElementById('pb-q');i.value='57037';i.dispatchEvent(new Event('input'))})()`);
   say((await count()) === Math.min(20, nSearch), `${tag}: search 57037 -> ${nSearch}`);
   await ev(`(()=>{const i=document.getElementById('pb-q');i.value='';const t=document.getElementById('pb-to');t.value='pokter.xyz';t.dispatchEvent(new Event('input'))})()`);

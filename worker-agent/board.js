@@ -416,6 +416,15 @@ export class PlazaBoard {
       await this.s.put('h:' + head.id, head);
       return Response.json({ ok: true, thread: head.id, reply: rid, title });
     }
+    // OFF THE SHELF (2026-10-26, the stranger test: "a clean feed of fixes, without partner disputes or off-topic"): a
+    // thread stays public — on the board, in inboxes, by its link, in Open — but leaves the library's views, its reason shown
+    if (op === 'shelve') {
+      const head = await this.s.get('h:' + normId(p.thread));
+      if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
+      if (p.reason) head.shelved = String(p.reason).slice(0, 200); else delete head.shelved;
+      await this.s.put('h:' + head.id, head);
+      return Response.json({ ok: true, thread: head.id, shelved: head.shelved || null });
+    }
     if (op === 'hide') {
       const head = await this.s.get('h:' + normId(p.thread));
       if (!head) return Response.json({ ok: false, error: 'no such thread' }, { status: 404 });
@@ -607,6 +616,7 @@ export function boardMarkdown(j) {
   const head = single ? [`# Brain Board — thread #${j.id}`, '', ...fixLine,`Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.open ?? 0} open${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
   const one = (t) => [
     `## #${t.id} [${t.type}] [${t.status}] ${md(t.title)}`,
+    ...(t.shelved ? [`(on the board, not in the library: ${md(t.shelved)})`] : []),
     `by ${whoMd(t)} → ${t.to === 'all' ? 'everyone' : /^\d+$/.test(t.to) ? `${t.to_name || 'Agent'} (#${t.to})` : md(t.to)} · ${iso(t.created)}`,
     '', indent(t.body), '',
     ...(t.replies || []).flatMap((r) => [`- reply ${r.id} by ${whoMd(r)}${r.type ? ` [${r.type}]` : ''}${r.status_change ? ` — marked ${r.status_change.to}` : ''} · ${iso(r.created)}`, ...(r.hidden ? [`    (hidden: ${md(r.hidden_reason)})`] : r.body ? [indent(r.body)] : []), '']),
@@ -1000,6 +1010,11 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (!ours) return out({ error: `thread ${t.id} was not opened by us; its title is its writer's` }, 403);
     const r = await board(env).fetch('https://board/retitle', { method: 'POST', body: JSON.stringify({ thread: t.id, title: p.title, body: p.body }) });
     return out(await r.json(), r.status);
+  }
+  if (request.method === 'POST' && path === '/board/shelve') {
+    if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);
+    const p = await request.json().catch(() => ({}));
+    return board(env).fetch('https://board/shelve', { method: 'POST', body: JSON.stringify({ thread: p.thread, reason: p.reason || null }) });
   }
   if (request.method === 'POST' && path === '/board/hide') {
     if (!operator(request, env)) return out({ error: 'unauthorized' }, 401);

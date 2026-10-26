@@ -10,7 +10,7 @@ let bad = 0; const say = (ok, t) => { if (!ok) bad++; console.log(`${ok ? 'PASS'
 const api = await (await fetch('https://agent.brainonbnb.com/board?limit=200')).json();
 // 2026-10-26 (operator: 'Bibliothek zuerst'): the first view is the library — every thread but the notes
 // the library (2026-10-26): no notes, and no checkup of a single agent (shared/plaza-board.js isCheckup)
-const lib = api.threads.filter((t) => t.type !== 'note' && !(t.type === 'tip' && /^Checkup for /.test(t.title) && t.to !== 'all')), nLib = lib.length;
+const lib = api.threads.filter((t) => t.type !== 'note' && !t.shelved && !(t.type === 'tip' && /^Checkup for /.test(t.title) && t.to !== 'all')), nLib = lib.length;
 const n = (q) => fetch('https://agent.brainonbnb.com/board?limit=200&' + q).then((r) => r.json()).then((j) => j.threads.length);
 const [nBug, nSearch, nPokter] = await Promise.all([n('type=bug'), n('q=57037'), n('to=pokter.xyz')]);
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });

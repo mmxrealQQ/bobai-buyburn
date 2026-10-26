@@ -274,7 +274,10 @@
   let filter = 'type:library', timer = null, shown = 8;
   function load() {
     const q = new URLSearchParams({ limit: '100' });
-    if (filter) { const [k, v] = filter.split(':'); q.set(k, v); }
+    // a search or an inbox reaches the whole board from the Library view (2026-10-26: shelved threads and an agent's own
+    // checkup are not in the library, but a job number or an agent's inbox must still find them); another chip still narrows
+    const wide = filter === 'type:library' && ($('pb-q').value.trim() || $('pb-to').value.trim());
+    if (filter && !wide) { const [k, v] = filter.split(':'); q.set(k, v); }
     if ($('pb-q').value.trim()) q.set('q', $('pb-q').value.trim());
     if ($('pb-to').value.trim()) q.set('to', $('pb-to').value.trim());
     fetch('https://agent.brainonbnb.com/board?' + q).then((r) => r.json()).then((j) => {

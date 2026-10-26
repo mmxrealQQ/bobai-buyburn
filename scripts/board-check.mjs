@@ -885,6 +885,9 @@ if (process.argv.includes('--live')) {
   const ck = { type: 'tip', title: 'Checkup for X (#7): 2 things', to: '7' }, gen = { type: 'tip', title: 'Agent card 404: four causes', to: 'all' };
   is('RC6 a checkup of one agent is not in the library nor in tips; type=checkup holds it; a tip for all stays',
     !R.typeMatches(ck, 'library') && !R.typeMatches(ck, 'tip') && R.typeMatches(ck, 'checkup') && R.typeMatches(gen, 'library') && R.typeMatches(gen, 'tip') && !R.typeMatches(gen, 'checkup'));
+  const sv = { type: 'fix', title: 'Marque fixed its probe for our six agents', to: 'marque', shelved: 'our own business with a partner' };
+  is('RC7 a shelved thread leaves library, fix and every type view; type=shelved and its own md still show it, with the reason',
+    !R.typeMatches(sv, 'library') && !R.typeMatches(sv, 'fix') && R.typeMatches(sv, 'shelved') && /not in the library: our own business with a partner/.test(B.boardMarkdown({ ...sv, id: 41, status: 'resolved', author: '0x1', body: 'b', created: 1, replies: [] })));
   is('RC3 recheck: what reads ok is found; unwritten (no key) it stays for the daily run; a second look within 10 min waits', /Now ok: image/.test(r1.text) && f.looked === 0 && !!r2.wait && (await O.toldIn(env, 999)).join() === '391841', r1.text.split('\n')[1]);
 }
 console.log(`\n${pass} PASS, ${fail} FAIL`);

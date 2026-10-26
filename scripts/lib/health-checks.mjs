@@ -224,7 +224,7 @@ const tgEvidenceHolds = () => {
 // token or signer, input missing, a hash not found, the facilitator's own policy — is the payer's; any other reason
 // (an RPC that failed, a settle we could not send, a reason this list does not know) is ours to look at and reads red.
 // Our own checks (brainonbnb- user agents) and our site are left out; the last 24 h. Pure; pinned below.
-export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `/i;
+export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `|the pass needs [\d,]+ \$BOBAI/i;   // 26.10.: "holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI" read red
 export function refusedVerdict(list, now = Date.now()) {
   if (!Array.isArray(list)) return { good: false, detail: 'the agent server did not report /buys/refused' };
   const day = list.filter((r) => r && !/^brainonbnb-/i.test(r.ua || '') && !r.own_site && now - Date.parse(r.at) < 864e5);
@@ -243,6 +243,9 @@ const refusedHolds = () => {
     && g([{ at, ua: 'brainonbnb-paycheck/1', product: 'answer:x', why: 'HTTP request failed' }]) === true
     && g([{ at: '2026-10-24T10:00:00Z', ua: 'node', product: 'answer:x', why: 'HTTP request failed' }]) === true
     && g([{ at, ua: 'x', product: 'tip', why: 'transaction not found — if it was just sent, wait for it to confirm' }]) === true
+    // a wallet below the holder-pass line is the payer's (26.10.: two such read red in the morning message)
+    && g([{ at, ua: 'Mozilla/5.0', product: 'answer:health_factor', proof: 'holder pass', why: '0x68a6c61bc99b7113cbc8765fa548ebca0a033101 holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI.' }]) === true
+    && g([{ at, ua: 'node', product: 'answer:x', why: 'the pass needs a reading of the chain that failed' }]) === false
     && g(null) === false;
 };
 
@@ -358,8 +361,9 @@ export function dispatchNote(failing, ages = {}, lookLateMin = 0) {
 // `rpc`: explicit, so the gas section reads the same node the bots spend
 // against. `tgFetch`: how to reach the Telegram bot — a worker cannot fetch a
 // sibling's workers.dev address (it gets a 404 from Cloudflare's own router),
-// so the health worker hands in its service binding here.
-export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch, buybackPrior = null } = {}) {
+// so the health worker hands in its service binding here. `nftFetch`: the same for the NFT minter (2026-10-26: its
+// drop log was asked at its workers.dev address and every morning read "the minter did not report its drops").
+export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch, nftFetch = fetch, buybackPrior = null } = {}) {
 const RPC = rpc;
 const results = [];
 const ok = (area, name, good, detail = '') => results.push({ area, name, good, detail });
@@ -426,7 +430,7 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     for (const v of tgEvidenceVerdicts(j)) ok('Bots', v.name, v.good, v.detail);
     // ONE NFT PER BUY (2026-10-25, operator: "es gab wieder zwei NFT"): the drop log of the minter, the last 36 h (wider
     // than the day between two reports); two drops for one buy transaction is the double mint MintGate stops (23.10.)
-    { const dr = await getJson('https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops'), D = dr.json && Array.isArray(dr.json.drops) ? dr.json.drops : null; // getJson, the module's: runHealth's getJ is declared further down
+    { const dr = await getJson('https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops', undefined, nftFetch), D = dr.json && Array.isArray(dr.json.drops) ? dr.json.drops : null; // getJson, the module's: runHealth's getJ is declared further down
       if (!D) ok('Bots', 'no buy got two NFTs in the last 36 h', false, 'the minter did not report its drops');
       else { const since = Date.now() - 36 * 3600e3, n = new Map();
         for (const d of D) { const t = d.ts < 1e12 ? d.ts * 1000 : d.ts; if (t >= since && d.buyTx) n.set(String(d.buyTx).toLowerCase(), (n.get(String(d.buyTx).toLowerCase()) || 0) + 1); }

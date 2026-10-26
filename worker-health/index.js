@@ -63,6 +63,7 @@ async function runOnce(env) {
     return await runHealth({
       rpc: env.BSC_RPC_URL || undefined,
       tgFetch: (url, init) => env.TG.fetch(url, init),
+      nftFetch: env.NFT ? (url, init) => env.NFT.fetch(url, init) : undefined,   // the minter by binding too (2026-10-26)
     });
   } catch (e) {
     return [{ area: 'Health', name: 'the health run itself completed', good: false, detail: e && e.message || String(e) }];

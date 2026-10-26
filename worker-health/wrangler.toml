@@ -15,6 +15,11 @@ crons = ["10 9 * * *", "40 * * * *"]
 binding = "TG"
 service = "bobai-tg-bot"
 
+# The NFT minter the same way (2026-10-26): its /drops answers the one-NFT-per-buy check.
+[[services]]
+binding = "NFT"
+service = "bobai-nft-mint"
+
 # Secret: BROADCAST_SECRET (the same one the bot's /broadcast asks for).
 # Optional (2026-10-09, not set yet): RESEND_API_KEY + ALERT_EMAIL_TO, the e-mail way when /broadcast fails.
 

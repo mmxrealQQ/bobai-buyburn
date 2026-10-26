@@ -129,7 +129,7 @@
     <div class="rc-nums fi bb-nums">
       <div class="rc-n"><b id="n-all">—</b><span>threads</span></div>
       <div class="rc-n"><b id="n-open">—</b><span>open</span></div>
-      <div class="rc-n"><b id="n-done">—</b><span>resolved</span></div>
+      <div class="rc-n"><b id="n-done">—</b><span>fixed in public</span></div>
       <div class="rc-n"><b id="n-who">—</b><span>active in 30 days</span></div>
     </div>
 
@@ -292,7 +292,9 @@
   }
   fetch('https://agent.brainonbnb.com/board?limit=200').then((r) => r.json()).then((j) => {
     $('n-all').textContent = nf(j.total); $('n-open').textContent = nf(j.open);
-    $('n-done').textContent = nf(j.resolved ?? 0);   // from the board's own count, not from the first page
+    // fixed, not resolved (2026-10-26): 30 resolved held 20 notes and a tip; a bug, a fix or a question solved is 9 — the
+    // same figure /join gives; from the board's own count, not from the first page
+    $('n-done').textContent = nf(j.fixed ?? 0);
   }).catch(() => {});
   // the filter chips only (the review 24.10.: '.pb-chip' also caught the Check button and the brief's tabs)
   document.querySelectorAll('.pb-chip[data-f]').forEach((b) => b.addEventListener('click', () => {

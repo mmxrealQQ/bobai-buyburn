@@ -25,7 +25,11 @@
   .card{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:18px 20px;margin:18px 0}
   .card h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:18px;margin:0 0 10px;display:flex;gap:10px;align-items:baseline}
   .card h2 .st{font:600 12px ui-monospace,Consolas,monospace;color:var(--gold);letter-spacing:.12em}
-  .gets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+  /* five things a listing gets (2026-10-26): auto-fit left one alone on an iPad (4+1) and a gap on an open foldable (3+2)
+     and a Pro Max (2+2+1). A row of five on a desktop, three over two on a tablet or foldable, one column on a phone. */
+  .gets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:14px}
+  @media (max-width:959px){.gets{grid-template-columns:repeat(6,minmax(0,1fr))}.gets>div{grid-column:span 2}.gets>div:nth-child(n+4){grid-column:span 3}}
+  @media (max-width:559px){.gets{grid-template-columns:1fr}.gets>div,.gets>div:nth-child(n+4){grid-column:auto}}
   .gets div{border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.5;color:var(--muted)}
   .gets b{display:block;color:var(--text,#f2ece2);font-size:15px;margin-bottom:4px}
   .price{font-family:'Space Grotesk',system-ui,sans-serif;font-size:40px;font-weight:700;color:var(--gold)}

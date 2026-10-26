@@ -29,6 +29,15 @@ async function ethCall(data, keyed) {
   }
   return answered ? { result: null } : { unread: true };
 }
+// A PRICE A PERSON CAN READ (2026-10-26): a quote names its price in the token's smallest unit — Lattice's read
+// "price 100000000000000000" in the checkup, which is 0.10 $U. The stablecoins an ERC-8183 job is paid in on BNB Chain
+// (hire.js TOKENS), all 18 decimals there; another token stays raw, with its address, never a guessed figure.
+const QUOTE_TOKENS = { '0xce24439f2d9c6a2289f741120fe202248b666666': '$U', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d': 'USD1', '0x55d398326f99059ff775485246999027b3197955': 'USDT', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC' };
+export const priceText = (raw, currency) => {
+  const sym = QUOTE_TOKENS[String(currency || '').toLowerCase()], s = String(raw).trim();
+  if (sym && /^\d{1,40}$/.test(s)) { const v = Number(BigInt(s)) / 1e18; return `${v >= 0.01 ? v.toFixed(2) : v.toPrecision(2)} ${sym}`; }
+  return s.slice(0, 30) + (currency ? ` (in token ${String(currency).slice(0, 6)}…${String(currency).slice(-4)})` : '');
+};
 const addrOf = (w) => (w && w.length >= 66 && !/^0x0*$/.test(w) ? '0x' + w.slice(26, 66).toLowerCase() : null);
 function str(hex) { try { const d = hex.slice(2), len = parseInt(d.slice(64, 128), 16); return new TextDecoder().decode(Uint8Array.from(d.slice(128, 128 + len * 2).match(/../g) || [], (h) => parseInt(h, 16))); } catch { return ''; } }
 
@@ -157,8 +166,9 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
       const flat = JSON.stringify(d);
       const declined = d.accepted === false || d.response?.accepted === false;
       const signed = /"(provider_sig|signature|negotiation_hash|response_hash)"\s*:\s*"0x[0-9a-fA-F]{20,}/.test(flat);
-      const price = d.price || d.response?.terms?.price || d.terms?.price || null;
-      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + String(price).slice(0, 30) : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : price ? ` (a price, ${String(price).slice(0, 30)}, without a signature)` : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
+      const rawPrice = d.price || d.response?.terms?.price || d.terms?.price || null;
+      const price = rawPrice == null ? null : priceText(rawPrice, d.response?.terms?.currency || d.terms?.currency || d.currency);
+      add('quotes a price when asked', !declined && signed, declined ? `declined: ${String(d.reason || d.response?.reason || d.reason_code || '').slice(0, 140)}` : signed ? `signed quote (${dialect})${price ? ', price ' + price : ''}` : `no signed quote in the answer to ${dialect}${d.unsigned_reason ? ` (it says: ${String(d.unsigned_reason).slice(0, 120)})` : d.signed === false ? ' (it marks its quote unsigned)' : price ? ` (a price, ${price}, without a signature)` : ''}`, 'answer a plain price request ("Quote your standard deliverable…") with a signed quote — Pokter marks agents that decline it "seller-declined"');
     }
   }
   // THE x402 SERVICE, when one is declared (2026-10-25: Marque read ours as bad_schema and never once good — two of five

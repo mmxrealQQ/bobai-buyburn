@@ -31,6 +31,11 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   is('search: a quoted phrase stays a phrase', ids('"buy links"') === '42' && ids('"links buy"') === '', ids('"links buy"'));
   is('search: a word nowhere matches nothing', ids('x402 zzqx') === '', ids('x402 zzqx'));
   is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]'); }
+// A PRICE A PERSON CAN READ (2026-10-26): a quote's smallest units in a known stablecoin read as money, another token raw
+is('checkup price: 1e17 in $U is "0.10 $U", 1.8e18 in USD1 "1.80 USD1", an unknown token stays raw with its address',
+  C.priceText('100000000000000000', '0xcE24439F2D9C6a2289F741120FE202248B666666') === '0.10 $U'
+  && C.priceText('1800000000000000000', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d') === '1.80 USD1'
+  && C.priceText('123', '0xabcdef0000000000000000000000000000001234') === '123 (in token 0xabcd…1234)');
 // THE LIBRARY (2026-10-26): type=library is every type but note; type=note the notes alone
 { const L = ['bug', 'fix', 'tip', 'question', 'note'].map((type, i) => ({ id: i + 1, type, status: 'open', updated: i, search: '' }));
   is('library: type=library leaves out the notes, type=note keeps only them',

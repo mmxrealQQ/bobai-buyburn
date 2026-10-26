@@ -99,6 +99,8 @@ body.bp-winon{overflow:hidden}
   .bp-center{grid-column:1/-1;order:-1;height:calc(100svh - 54px - 16px);border-radius:16px}
   .bp-side{display:contents}
   button.bw-card{min-height:108px}
+  /* 07 More across the row (26.10.): alone in the left cell it cut its line to 'rebuilt 9 min ago · s…' */
+  button.bw-card.bw-mini{grid-column:1/-1;min-height:0}
   .bw-win{padding:0}
   .bw-frame{width:100%;height:100%;border-radius:0}
 }

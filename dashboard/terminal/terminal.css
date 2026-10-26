@@ -116,6 +116,8 @@
 #bt .wk{text-align:center;transition:opacity .4s}
 #bt .wk b{display:block;font:700 .56rem var(--mono);letter-spacing:.12em;color:var(--c)}
 #bt .wk i{display:block;font:normal .56rem var(--mono);color:var(--dim)}
+/* with the Halloween ghosts on the bots' places the name rides above its ghost: the ghost sat on 'beat 10m ago' (26.10.) */
+#bt .hw-on .wk{margin-top:-12px}
 #bt .flt{position:absolute;z-index:4;pointer-events:none;font:700 13px var(--mono);color:var(--c);text-shadow:0 0 10px var(--c);transform:translate(-50%,-50%);animation:bt-flt 2.4s ease-out forwards;white-space:nowrap}
 @keyframes bt-flt{0%{opacity:0;transform:translate(-50%,-20%)}12%{opacity:1}100%{opacity:0;transform:translate(-50%,-260%)}}
 #bt .hud{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:14px;padding:16px 18px;pointer-events:none}

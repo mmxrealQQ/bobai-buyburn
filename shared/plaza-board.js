@@ -167,7 +167,9 @@ const matchTerms = (list, textOf, terms) => {
   if (all.length || terms.length < 2) return byTitleHits(all, terms);
   const need = Math.max(2, Math.ceil(terms.length / 2)), n = new Map();
   for (const t of list) { const s = textOf(t), k = terms.filter((w) => s.includes(w)).length; if (k >= need) n.set(t, k); }
-  const near = byTitleHits([...n.keys()], terms).sort((a, b) => n.get(b) - n.get(a));
+  // a word in the title counts twice: "agent card 404" in a title beats a checkup that names card and 8004scan in its body
+  const title = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
+  const near = [...n.keys()].sort((a, b) => (n.get(b) + title(b)) - (n.get(a) + title(a)) || b.updated - a.updated);
   near.near = true;
   return near;
 };

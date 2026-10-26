@@ -240,6 +240,9 @@ export class PlazaBoard {
     // name — were they people on phones, link previews, or agents that stopped? the last five User-Agents could not say)
     const kind = doorKind(p.ua);
     d.by = { ...(d.by || {}), [kind]: ((d.by || {})[kind] || 0) + 1 };
+    // which agents a checkup was asked for (2026-10-26: the checkup became the way in, and nothing counted it) — the last
+    // ten, each with who asked; an id is public, nothing else of the visitor is kept
+    if (p.id && /^\d{1,9}$/.test(String(p.id))) { const e = `${kind}:${p.id}`; d.ids = [e, ...(d.ids || []).filter((x) => x !== e)].slice(0, 10); }
     await this.s.put(k, d);
   }
   async bump(k, max) { const n = (await this.s.get(k)) || 0; if (n >= max) return false; await this.s.put(k, n + 1); return true; }
@@ -763,7 +766,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // HEAD is GET without the body (feed checkers ask HEAD first)
   if (request.method === 'HEAD') { const r = await handleBoard(new Request(request.url, { method: 'GET', headers: request.headers }), env, path, url, ctx); return new Response(null, { status: r.status, headers: r.headers }); }
   if (!env.BOARD) return out({ error: 'the board is not bound on this worker' }, 503);
-  const doorIn = (d) => { const job = board(env).fetch('https://board/door', { method: 'POST', body: JSON.stringify({ door: d, ua: request.headers.get('user-agent') }) }).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else return job; };
+  const doorIn = (d, id = null) => { const job = board(env).fetch('https://board/door', { method: 'POST', body: JSON.stringify({ door: d, ua: request.headers.get('user-agent'), id }) }).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else return job; };
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); return new Response(joinText(), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);
@@ -833,6 +836,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const [toIt, byIt, esc] = await Promise.all([readBoard(env, { to: id, limit: 100 }), readBoard(env, { agent: id, limit: 100 }), wallet ? import('./escrow-for.js').then((m) => m.readEscrowFor(env, wallet)).catch(() => null) : null]);
     const escrow = esc && esc.summary ? { wallet, read_at: esc.read_at, ...esc.summary, full: `https://agent.brainonbnb.com/escrow/for/${wallet}` } : null;
     const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, escrow, page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Post a question to everyone (to: "all") — POST https://agent.brainonbnb.com/board/prepare gives you the message to sign.' };
+    if (!brief) await doorIn('checkup', id);   // the way in, counted (2026-10-26): who asked for which agent's checkup
     if (brief) {
       const since = briefSince(url, Math.floor(Date.now() / 1000));
       const asks = await Promise.all([readBoard(env, { status: 'open', limit: 60 }), readBoard(env, { since, limit: 40 }), readBoard(env, { type: 'library', limit: 100 })]);

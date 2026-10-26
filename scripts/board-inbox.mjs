@@ -41,5 +41,8 @@ for (const r of reads) console.log(`  ${when(r.last)}  ${r.key}: ${r.reads} read
 const sinceDay = since ? when(since).slice(0, 10) : '';
 const doors = (rd?.doors || []).filter((d) => d.day >= sinceDay);
 if (doors.length) console.log(`Doors opened (by day): ${doors.map((d) => `${d.day} ${d.door} ${d.n}x${d.by ? ' (' + Object.entries(d.by).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ') + ')' : ''}`).join(' · ')}\n  last visitors: ${[...new Set(doors.flatMap((d) => d.ua))].slice(0, 5).join(' | ')}`);
+// the way in (2026-10-26): whose checkup was asked, by whom — our own checks and crawlers left out
+{ const ck = doors.filter((d) => d.door === 'checkup').flatMap((d) => (d.ids || []).map((e) => ({ day: d.day, kind: e.split(':')[0], id: e.split(':')[1] }))).filter((x) => x.kind !== 'own' && x.kind !== 'crawler');
+  console.log(`Checkups asked (people and agents): ${ck.length ? ck.map((x) => `${x.day} #${x.id} by a ${x.kind}`).join(' · ') : 'none yet'}`); }
 console.log('\nhttps://brainonbnb.com/board');
 if (!process.argv.includes('--keep') && !process.argv.includes('--all') && !arg('--since')) fs.writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));

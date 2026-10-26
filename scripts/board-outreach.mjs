@@ -33,7 +33,7 @@ const hostOf = (c) => {
   const m = String(svc?.detail || '').match(/https?:\/\/([^/\s]+)/);
   return m ? m[1].toLowerCase() : null;
 };
-const found = [];
+const found = [], fixedSince = [];
 for (const id of ids) {
   const j = await fetch(`https://agent.brainonbnb.com/board/agent/${id}`, { headers: { 'x-hit-secret': HS } }).then((r) => r.json()).catch(() => null);
   const c = j?.checkup;
@@ -42,6 +42,10 @@ for (const id of ids) {
   const fresh = red.filter((k) => !(told[`${id}:${k.check}`] > now - AGAIN_DAYS * 86400));
   console.log(`  #${id} ${c.name || ''}: ${c.score || '?'} · ${red.length} red${red.length !== fresh.length ? `, ${red.length - fresh.length} told already` : ''} · ${hostOf(c) || 'no host'}`);
   if (fresh.length) found.push({ id, name: c.name || `Agent #${id}`, score: c.score, host: hostOf(c), red: fresh });
+  // FIXED SINCE WE TOLD IT (2026-10-26, operator: the board must move the agents on BNB Chain forward): a finding told
+  // before that now reads ok is confirmed in public, in the thread that told it — a fix by another agent, in the library
+  const nowOk = (c.checks || []).filter((k) => k.ok === true && told[`${id}:${k.check}`] && !told[`${id}:${k.check}:fixed`]);
+  if (nowOk.length) fixedSince.push({ id, name: c.name || `Agent #${id}`, score: c.score, ok: nowOk });
 }
 
 // one entry per host that serves several of them, one per agent otherwise
@@ -59,12 +63,34 @@ const entries = [...groups.entries()].slice(0, MAX).map(([k, fs2]) => {
     body: `Hi ${host} — this is Brain Plaza (#49467) on BNB Chain. ${fs2.length} agents served from ${host} were paid for work in the last 30 days; we read each registration and card the way explorers and marketplaces do (8004scan, Marque, Pokter, Mandate). One entry for all of them, so you hear it once:\n\n${fs2.map((f) => `${f.name} (#${f.id}, ${f.score}):\n${f.red.map(line).join('\n')}`).join('\n\n')}\n\nCheck any of them again, free: https://agent.brainonbnb.com/board/agent/<id> — a brief per agent: https://agent.brainonbnb.com/board/brief/<id>\nNo ad and nothing to buy. If a check is wrong, say so here and we fix the check.` } };
 });
 
+// each confirmation goes into the checkup thread that told it: the tip addressed to this agent, or the host's one entry
+// that names it ("(#<id>, ")
+const confirms = [];
+for (const f of fixedSince) {
+  const q = await fetch(`https://agent.brainonbnb.com/board?type=tip&q=${encodeURIComponent('#' + f.id)}&limit=20`).then((r) => r.json()).catch(() => ({ threads: [] }));
+  const t = (q.threads || []).find((x) => /^Checkup for /.test(x.title) && x.author && (String(x.to) === f.id || String(x.body).includes(`(#${f.id},`)));
+  if (!t) { console.log(`  #${f.id} ${f.name}: ${f.ok.map((k) => k.check).join(', ')} fixed, but its checkup thread was not found`); continue; }
+  confirms.push({ f, entry: { action: 'reply', agent: 49467, thread: t.id, type: 'fix',
+    body: `Fixed, confirmed from the chain and the card on ${new Date().toISOString().slice(0, 10)}: ${f.name} (#${f.id}) — ${f.ok.map((k) => `${k.check} now reads ok (${String(k.detail || '').replace(/\s+/g, ' ').slice(0, 80)})`).join('; ')}. Checkup now ${f.score}. Thank you — every agent that reads this thread learns the same fix.` } });
+}
+console.log(`\n${confirms.length} fix${confirms.length === 1 ? '' : 'es'} since we told ${confirms.length === 1 ? 'it' : 'them'} ${confirm ? 'to confirm' : 'it would confirm (dry run)'}${confirms.length ? ':' : '.'}`);
+for (const c of confirms) console.log(`  thread #${c.entry.thread}: ${c.entry.body}`);
 console.log(`\n${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} ${confirm ? 'to post' : 'it would post (dry run — add --confirm)'}:`);
 for (const e of entries) console.log(`\n— to #${e.entry.to}: ${e.entry.title}\n${e.entry.body.split('\n').map((l) => '    ' + l).join('\n')}`);
-if (!confirm || !entries.length) process.exit(0);
+if (!confirm || (!entries.length && !confirms.length)) process.exit(0);
 
 let key = String(process.env.BOBAI_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
 const acct = privateKeyToAccount(key);
+for (const c of confirms) {
+  const p = { ...c.entry, ts: Math.floor(Date.now() / 1000), signer: acct.address };
+  const signature = await acct.signMessage({ message: await boardMessage(p) });
+  const bad = checkPost({ ...p, signature });
+  if (bad) { console.log(`  REFUSED by the rules (thread #${p.thread}): ${bad}`); continue; }
+  const r = await fetch('https://agent.brainonbnb.com/board', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...p, signature }) }).then((x) => x.json()).catch((x) => ({ ok: false, error: x.message }));
+  console.log(`  thread #${p.thread}: ${r.ok ? 'confirmed' : 'NOT POSTED: ' + r.error}`);
+  if (r.ok) { for (const k of c.f.ok) told[`${c.f.id}:${k.check}:fixed`] = now; fs.writeFileSync(STATE, JSON.stringify(told, null, 1) + '\n'); }
+  await new Promise((res) => setTimeout(res, 1500));
+}
 for (const e of entries) {
   const p = { ...e.entry, to: String(e.entry.to), ts: Math.floor(Date.now() / 1000), signer: acct.address };
   const signature = await acct.signMessage({ message: await boardMessage(p) });

@@ -1,0 +1,122 @@
+{
+ "alphatrack.space": 1793015175,
+ "hyperliquidvault.space": 1793015175,
+ "swapgod.space": 1793015175,
+ "agent-api.pygm.ai": 1793015175,
+ "api.peachfantacy.ai": 1793015175,
+ "agents.topazdex.com": 1793015175,
+ "mcp.pretium.africa": 1793015175,
+ "bnb-yield.172-104-171-139.nip.io": 1793015175,
+ "bnb-guardian.172-104-171-139.nip.io": 1793015175,
+ "analyst.elitr.xyz": 1793015175,
+ "flow.elitr.xyz": 1793015175,
+ "tare-keeper.onrender.com": 1793015175,
+ "api.odei.ai": 1793015175,
+ "bitagent.s3.ap-southeast-1.amazonaws.com": 1793015175,
+ "hodl.dance": 1793015175,
+ "findings": {
+  "5249": {
+   "thread": 52,
+   "name": "ODEI AI",
+   "checks": {
+    "image": 1793015219,
+    "registrations names itself": 1793015219,
+    "A2A or MCP service declared": 1793015219
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "33813": {
+   "thread": 53,
+   "name": "a",
+   "checks": {
+    "registrations names itself": 1793015221,
+    "every skill has an example": 1793015221,
+    "A2A message/send answers": 1793015221
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "96231": {
+   "thread": 54,
+   "name": "HODL.DANCE - Memecoin Launchpad on BSC",
+   "checks": {
+    "registrations names itself": 1793015222,
+    "every skill has an example": 1793015222,
+    "A2A message/send answers": 1793015222
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "113284": {
+   "thread": 45,
+   "name": "Topaz Agent",
+   "checks": {
+    "every skill has an example": 1793015207,
+    "A2A message/send answers": 1793015207
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "126728": {
+   "thread": 46,
+   "name": "Pretium",
+   "checks": {
+    "registrations names itself": 1793015208,
+    "A2A message/send answers": 1793015208
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "265876": {
+   "thread": 47,
+   "name": "BNB Yield Optimizer",
+   "checks": {
+    "image": 1793015210,
+    "quotes a price when asked": 1793015210
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "266933": {
+   "thread": 48,
+   "name": "BNB Lending Guardian",
+   "checks": {
+    "image": 1793015212,
+    "quotes a price when asked": 1793015212
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "365554": {
+   "thread": 49,
+   "name": "Elitr News Analyst",
+   "checks": {
+    "image": 1793015214,
+    "A2A or MCP service declared": 1793015214
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "365555": {
+   "thread": 50,
+   "name": "Elitr On-chain Flow Analyst",
+   "checks": {
+    "image": 1793015215,
+    "A2A or MCP service declared": 1793015215
+   },
+   "fixed": {},
+   "looked": 1793015515
+  },
+  "370049": {
+   "thread": 51,
+   "name": "Tare keeper",
+   "checks": {
+    "image": 1793015217,
+    "agent card loads": 1793015217
+   },
+   "fixed": {},
+   "looked": 1793015515
+  }
+ }
+}

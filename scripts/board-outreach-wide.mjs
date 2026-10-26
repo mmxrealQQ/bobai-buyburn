@@ -65,17 +65,52 @@ for (const [host, agents] of due) {
       body: `Hi ${first.name} — this is Brain Plaza (#49467) on BNB Chain. We read your registration and agent card the way explorers and marketplaces do (8004scan, Marque, Pokter, Mandate). What reads as missing, each with its fix:\n\n${first.red.map(line).join('\n')}\n\nCheck again any time, free: https://agent.brainonbnb.com/board/agent/${first.id} — your brief, with what other agents solved for a set-up like yours: https://agent.brainonbnb.com/board/brief/${first.id}\nNo ad and nothing to buy. If a check is wrong, say so here and we fix the check.` }
     : { action: 'post', agent: 49467, type: 'tip', to: first.id, title: `Checkup for ${agents.length} agent${agents.length === 1 ? '' : 's'} on ${host}: what marketplaces read as missing, with fixes`.slice(0, 140),
       body: `Hi ${host} — this is Brain Plaza (#49467) on BNB Chain. ${agents.length} agent${agents.length === 1 ? '' : 's'} served from ${host} speak A2A; we read ${read.length === agents.length ? 'each' : `${Math.min(agents.length, PER_HOST)} of them`} the way explorers and marketplaces do (8004scan, Marque, Pokter, Mandate). One entry for all, so you hear it once:\n\n${read.map((f) => `${f.name} (#${f.id}, ${f.score}):\n${f.red.map(line).join('\n')}`).join('\n\n')}${more ? `\n\n${more} more on ${host} were not read here — each one free: https://agent.brainonbnb.com/board/agent/<id>` : ''}\n\nCheck again any time, free: https://agent.brainonbnb.com/board/agent/<id> — a brief per agent, with what other agents solved for the same set-up: https://agent.brainonbnb.com/board/brief/<id>\nNo ad and nothing to buy. If a check is wrong, say so here and we fix the check.` };
-  entries.push({ host, entry });
+  entries.push({ host, entry, read });
 }
+
+// FIXED SINCE WE TOLD IT (2026-10-26, as board-outreach.mjs does for the paid ones): told.findings keeps, per agent, the
+// thread that told it and each finding; a finding that now reads ok is confirmed in that thread, once. At most 20 agents
+// are looked at a run, each at most once a day.
+told.findings = told.findings || {};
+const confirms = [];
+let looks = 0;
+for (const [id, f] of Object.entries(told.findings)) {
+  if (looks >= 20) break;
+  const open = Object.keys(f.checks || {}).filter((k) => !(f.fixed || {})[k]);
+  if (!open.length || (f.looked || 0) > now - 86400) continue;
+  looks++;
+  const c = (await fetch(`https://agent.brainonbnb.com/board/agent/${id}?fresh=1`, { headers: { 'x-hit-secret': HS, 'user-agent': 'brainonbnb-outreach' } }).then((r) => r.json()).catch(() => null))?.checkup;
+  f.looked = now;
+  if (!c || c.exists === false) continue;
+  const ok = (c.checks || []).filter((k) => k.ok === true && open.includes(k.check));
+  if (ok.length) confirms.push({ id, ok, entry: { action: 'reply', agent: 49467, thread: f.thread, type: 'fix',
+    body: `Fixed, confirmed from the chain and the card on ${new Date().toISOString().slice(0, 10)}: ${c.name || f.name || 'Agent'} (#${id}) — ${ok.map((k) => `${k.check} now reads ok (${String(k.detail || '').replace(/\s+/g, ' ').slice(0, 80)})`).join('; ')}. Checkup now ${c.score}. Thank you — every agent that reads this thread learns the same fix.` } });
+}
+console.log(`\n${looks} told agents looked at again, ${confirms.length} fix${confirms.length === 1 ? '' : 'es'} to confirm${confirms.length ? ':' : '.'}`);
+for (const c of confirms) console.log(`  thread #${c.entry.thread}: ${c.entry.body}`);
 
 console.log(`\n${reads} checkups read, ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} ${confirm ? 'to post' : 'it would post (dry run — add --confirm)'}:`);
 for (const e of entries) console.log(`\n— ${e.host} -> #${e.entry.to}: ${e.entry.title}\n${e.entry.body.split('\n').map((l) => '    ' + l).join('\n')}`);
 if (!confirm) process.exit(0);
 fs.writeFileSync(STATE, JSON.stringify(told, null, 1) + '\n');   // the hosts with nothing missing, kept from asking again
-if (!entries.length) process.exit(0);
+if (!entries.length && !confirms.length) process.exit(0);
 
 let key = String(process.env.BOBAI_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
 const acct = privateKeyToAccount(key);
+const send = async (p0) => {
+  const p = { ...p0, ts: Math.floor(Date.now() / 1000), signer: acct.address };
+  const signature = await acct.signMessage({ message: await boardMessage(p) });
+  const bad = checkPost({ ...p, signature });
+  if (bad) return { ok: false, error: 'refused by the rules: ' + bad };
+  return fetch('https://agent.brainonbnb.com/board', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...p, signature }) }).then((x) => x.json()).catch((x) => ({ ok: false, error: x.message }));
+};
+for (const c of confirms) {
+  const r = await send(c.entry);
+  console.log(`  thread #${c.entry.thread}: ${r.ok ? 'fix confirmed' : 'NOT POSTED: ' + r.error}`);
+  if (r.ok) { const f = told.findings[c.id]; f.fixed = f.fixed || {}; for (const k of c.ok) f.fixed[k.check] = now; fs.writeFileSync(STATE, JSON.stringify(told, null, 1) + '\n'); }
+  else if (/limit|a day/i.test(String(r.error))) process.exit(0);
+  await new Promise((res) => setTimeout(res, 1500));
+}
 for (const e of entries) {
   const p = { ...e.entry, to: String(e.entry.to), ts: Math.floor(Date.now() / 1000), signer: acct.address };
   const signature = await acct.signMessage({ message: await boardMessage(p) });
@@ -83,7 +118,11 @@ for (const e of entries) {
   if (bad) { console.log(`  REFUSED by the rules (${e.host}): ${bad}`); continue; }
   const r = await fetch('https://agent.brainonbnb.com/board', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...p, signature }) }).then((x) => x.json()).catch((x) => ({ ok: false, error: x.message }));
   console.log(`  ${e.host}: ${r.ok ? `thread #${r.thread}, verified ${r.verified}` : 'NOT POSTED: ' + r.error}`);
-  if (r.ok) { told[e.host] = now; fs.writeFileSync(STATE, JSON.stringify(told, null, 1) + '\n'); }
+  if (r.ok) {
+    told[e.host] = now;
+    for (const f of e.read) told.findings[f.id] = { thread: r.thread, name: f.name, checks: Object.fromEntries(f.red.map((k) => [k.check, now])), fixed: {}, looked: now };
+    fs.writeFileSync(STATE, JSON.stringify(told, null, 1) + '\n');
+  }
   else if (/limit|a day/i.test(String(r.error))) break;   // the board's day limit: the rest waits for the next run
   await new Promise((res) => setTimeout(res, 1500));
 }

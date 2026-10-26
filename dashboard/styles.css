@@ -615,6 +615,13 @@
     .txl:hover{text-decoration-color:var(--gold)}
     /* Four columns at a phone's width: less padding so a burn row (time, tag, amount, tx) fits 390px without pushing the table out of its wrapper. */
     @media (max-width:480px){table th,table td{padding:8px 7px;font-size:.7rem}.txl{font-size:.64rem}
+      /* Liq Boost III on /token, a phone (2026-10-26): "0.0084 BNB ≈$6.19" broke over three lines and every tx hash over
+         two. The per-add LP column goes (its total sits in the tile above); time, BNB and tx keep one line each. */
+      .lb-bb3 th:nth-child(3),.lb-bb3 td:nth-child(3){display:none}
+      .lb-bb3 td{white-space:nowrap}.lb-bb3 th,.lb-bb3 td{padding:8px 5px}.lb-bb3 th:nth-child(1){width:auto!important}
+      .lb-bb3 td .tc-z{display:none}.lb-bb3 th:nth-child(1)::after{content:' (UTC)'}   /* said once, not on every row */
+      .lb-bb3 th{white-space:nowrap}
+      .lb-bb3-stats .lb-stat{padding:14px 6px}.lb-bb3-stats .lb-stat .v{font-size:.78rem;white-space:nowrap}.lb-bb3-stats .lb-stat .v .usdv{display:block;font-size:.7rem}
       /* Live Burns on a phone (2026-09-19). Its four columns cannot be narrower
          than about 285px — a type badge, "1,019,870,471" and a tx link do not
          break — and the card kept its desktop side padding of 28px, which left

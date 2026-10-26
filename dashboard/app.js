@@ -319,7 +319,7 @@ async function rpcBatch(calls){
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
 // a log row's time (2026-10-10): the year and the seconds sit in their own spans, which a phone hides — the full
 // '2026-10-10 04:00:59 UTC' wrapped onto four lines there and left room for six rows
-const tcell=v=>{const s=new Date(v).toISOString();return '<span class="tc-y">'+s.slice(0,5)+'</span>'+s.slice(5,10)+' '+s.slice(11,16)+'<span class="tc-s">'+s.slice(16,19)+'</span> UTC'};
+const tcell=v=>{const s=new Date(v).toISOString();return '<span class="tc-y">'+s.slice(0,5)+'</span>'+s.slice(5,10)+' '+s.slice(11,16)+'<span class="tc-s">'+s.slice(16,19)+'</span><span class="tc-z"> UTC</span>'};
 function setBig(id,v,sym){put(id,nf(v)+' '+sym)}
 // Sets a value and takes the field out of its "loading" state at the same time.
 function put(id,txt){const e=document.getElementById(id);if(!e)return;

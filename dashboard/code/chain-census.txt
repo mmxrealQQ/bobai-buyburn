@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4938 lines.
+# one fetch. 7 files, 4940 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1949,6 +1949,8 @@ const page = `<!doctype html>
   @media(max-width:720px){.aw-tiles{grid-template-columns:1fr 1fr;gap:8px}}
   .aw-box{display:flex;flex-direction:column;gap:14px}
   .aw-sec{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;align-items:start}
+  /* 'Show the 8 newest' under its own list, on one line — in the 150 px label column it broke in two (26.10.) */
+  @media(min-width:621px){.aw-sec > .pz-more{grid-column:2;justify-self:start;margin:2px 0 4px;white-space:nowrap}}
   @media(max-width:620px){.aw-sec{grid-template-columns:1fr}}
   .aw-k{font:700 11px/1.6 'Space Grotesk',Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
   .aw-rows{display:flex;flex-direction:column;gap:6px;min-width:0}

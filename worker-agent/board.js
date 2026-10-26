@@ -881,6 +881,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   if (request.method === 'GET' && m) {
     const t = await board(env).fetch('https://board/thread?id=' + normId(m[1])).then((r) => r.json());
     if (!t) return out({ error: `thread ${m[1]} does not exist` }, 404);
+    await doorIn('thread', normId(m[1]));   // /join links threads (2026-10-26): is a link followed, and by whom
     // one thread as text (the fresh-agent run 25.10.: /board/thread/<id>.md answered 404)
     if (m[2]) return new Response(boardMarkdown(publicView(t)), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
     return out(publicView(t));

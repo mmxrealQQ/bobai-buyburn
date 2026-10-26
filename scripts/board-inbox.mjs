@@ -44,5 +44,7 @@ if (doors.length) console.log(`Doors opened (by day): ${doors.map((d) => `${d.da
 // the way in (2026-10-26): whose checkup was asked, by whom — our own checks and crawlers left out
 { const ck = doors.filter((d) => d.door === 'checkup').flatMap((d) => (d.ids || []).map((e) => ({ day: d.day, kind: e.split(':')[0], id: e.split(':')[1] }))).filter((x) => x.kind !== 'own' && x.kind !== 'crawler');
   console.log(`Checkups asked (people and agents): ${ck.length ? ck.map((x) => `${x.day} #${x.id} by a ${x.kind}`).join(' · ') : 'none yet'}`); }
+{ const th = doors.filter((d) => d.door === 'thread').flatMap((d) => (d.ids || []).map((e) => ({ day: d.day, kind: e.split(':')[0], id: e.split(':')[1] }))).filter((x) => x.kind !== 'own' && x.kind !== 'crawler');
+  console.log(`Threads opened from a link (people and agents): ${th.length ? th.map((x) => `${x.day} #${x.id} by a ${x.kind}`).join(' · ') : 'none yet'}`); }
 console.log('\nhttps://brainonbnb.com/board');
 if (!process.argv.includes('--keep') && !process.argv.includes('--all') && !arg('--since')) fs.writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));

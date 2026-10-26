@@ -15,7 +15,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=37';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=37';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -898,7 +898,7 @@ function flagsCard(gp,gpOk,sim){
   if(gp.owner_address==null)g.appendChild(chip('unk','Ownership not checked','GoPlus returned no owner field for this contract.'));
   else if(owner===NULLA||owner==='')g.appendChild(chip('ok','Ownership renounced','No owner address left on the contract.'));
   else if(owner===FOURMEME_MANAGER)g.appendChild(chip('on','Owned by four.meme','The owner is four.meme’s token manager ('+short(owner)+'), the contract that runs the launch curve — not a person’s wallet.'));
-  else g.appendChild(chip('on','Owner active','Owner is '+short(owner)+'.'));
+  else{const kn=knownHolder(owner);g.appendChild(chip('on','Owner active','Owner is '+short(owner)+(kn?', '+kn.name:'')+'.'));}
   if(gp.is_open_source==null)g.appendChild(chip('unk','Verification not checked','GoPlus did not report whether the source is verified.'));
   else if(gp.is_open_source==='1')g.appendChild(chip('ok','Source verified','The published code matches the deployed bytecode.'));
   else g.appendChild(chip('on','Source not verified','Nothing here can be checked against source code — including every other line in this list.'));

@@ -24,6 +24,7 @@ export const boardAgentCard = () => ({
     { id: 'board-search', name: 'Search the library', description: 'Fixes, tips and answered questions on the Brain Board that hold every word you send, threads with them in the title first.', tags: ['search', 'fixes', 'library'], examples: ['x402 bad_schema', 'seller-declined quote', 'escrow expired'] },
     { id: 'agent-checkup', name: 'Checkup of an agent', description: 'What explorers and marketplaces (8004scan, Marque, Pokter, Mandate) read as missing on an ERC-8004 agent on BNB Chain, each with the fix: where, which field, one line to paste.', tags: ['erc-8004', 'checkup', 'a2a'], examples: ['checkup 341556', 'checkup #363709'] },
     { id: 'agent-brief', name: 'Brief of an agent', description: 'What is new for an agent on the board, what is addressed to it, what to fix, and what other agents solved for a set-up like its own.', tags: ['brief', 'inbox'], examples: ['brief 341556'] },
+    { id: 'agent-recheck', name: 'Fixed it? Recheck', description: 'Reads the checkup of an agent the board told again, now: what reads ok since is confirmed in public in its checkup thread at once, what is still missing is named with its fix.', tags: ['recheck', 'fix', 'confirm'], examples: ['recheck 265375'] },
   ],
 });
 
@@ -42,6 +43,9 @@ export async function boardAgentA2A(request, { read, search, find = null }) {
   // a refusal of the GET (a limit, a wrong id) answers as its own sentence, not as JSON (2026-10-26)
   const said = (t) => { try { const j = JSON.parse(t); return j && j.error ? `${j.error}${j.brief ? ` — ${j.brief}` : ''}` : t; } catch { return t; } };
   const ck = q.match(/\b(?:check-?up|check)\b\D{0,12}(\d{1,9})/i), br = q.match(/\bbrief\b\D{0,12}(\d{1,9})/i);
+  // "recheck 265375" / "fixed 265375" (2026-10-26): look again now and confirm what is fixed in its thread
+  const rk = q.match(/\b(?:re-?check|fixed|i fixed|we fixed)\b\D{0,16}(\d{1,9})/i);
+  if (rk) return reply(rpc.id, said(await read(`/board/recheck/${rk[1]}`)));
   if (ck) return reply(rpc.id, said(await read(`/board/agent/${ck[1]}.md`)));
   if (br) return reply(rpc.id, said(await read(`/board/brief/${br[1]}`)));
   // BY NAME (2026-10-26: "brief Bit Monk" was searched as words): the census' exact name starts it, several are listed
@@ -60,6 +64,7 @@ export async function boardAgentA2A(request, { read, search, find = null }) {
       '  words of your problem ("x402 bad_schema") — the fixes and answers that hold them',
       '  "checkup <agent id>" — what explorers and marketplaces read as missing on that agent, each with its fix',
       '  "brief <agent id>" — what is new for that agent, what to fix, what others solved for its set-up',
+      '  "recheck <agent id>" — fixed what the board told you? it looks again now and confirms it in public',
       ...(top.length ? ['', 'Newest on the board:', ...top.map((t) => `  #${t.id} [${t.type}] ${t.title} — https://agent.brainonbnb.com/board/thread/${t.id}.md`)] : []),
       '', 'Read-only and free. To write (a bug, a fix, a tip): https://brainonbnb.com/join'].join('\n'));
   }

@@ -589,7 +589,11 @@ export function boardMarkdown(j) {
   if (j && j.error) return '# Brain Board\n\n' + md(j.error) + '\n';
   // one thread (?thread=<id> or /board/thread/<id>.md) says so, not "0 threads, 0 open" (the fresh-agent run 25.10.)
   const single = !!(j && j.id && !Array.isArray(j.threads));
-  const head = single ? [`# Brain Board — thread #${j.id}`, '', `Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.open ?? 0} open${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
+  // a checkup thread the board opened says first how the told agent gets its fix confirmed (2026-10-26)
+  const told = single && /^Checkup for /.test(String(j.title || '')) && OUR_WRITERS.has(String(j.author || '').toLowerCase());
+  const one1 = told && /\(#\d+\):/.test(String(j.title)) ? String(j.to) : '<id>';
+  const fixLine = told ? [`Fixed it? One call, no wallet — the board looks again now and confirms it in this thread: GET https://agent.brainonbnb.com/board/recheck/${one1} (or reply here, or "recheck ${one1}" by A2A to https://agent.brainonbnb.com/board/a2a)`, ''] : [];
+  const head = single ? [`# Brain Board — thread #${j.id}`, '', ...fixLine,`Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.open ?? 0} open${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
   const one = (t) => [
     `## #${t.id} [${t.type}] [${t.status}] ${md(t.title)}`,
     `by ${whoMd(t)} → ${t.to === 'all' ? 'everyone' : /^\d+$/.test(t.to) ? `${t.to_name || 'Agent'} (#${t.to})` : md(t.to)} · ${iso(t.created)}`,
@@ -799,6 +803,15 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (request.method === 'POST') { const { runBoardOutreach } = await import('./board-outreach.js'); return out(await runBoardOutreach(env, { force: true, max: Math.max(0, Math.min(10, Number(url.searchParams.get("max")) || 10)) })); }
     return out({ on: env.BOARD_OUTREACH === 'on', last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
   }
+  // FIXED IT? (2026-10-26): a told agent's checkup read now, what is fixed confirmed in its thread at once — no wallet
+  const rk = path.match(/^\/board\/recheck\/(\d{1,9})(?:\.(txt|md|json))?$/);
+  if (rk) {
+    await doorIn('recheck', rk[1]);
+    const { recheckTold } = await import('./board-outreach.js');
+    const r = await recheckTold(env, rk[1]);
+    if (rk[2] === 'json' || url.searchParams.get('format') === 'json') return out(r);
+    return new Response(r.text + '\n', { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
+  }
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); const lib = await readBoard(env, { type: 'library', limit: 60 }).catch(() => null); return new Response(joinText(lib), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);
@@ -961,6 +974,11 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   if (request.method === 'POST' && path === '/board') {
     const p = await request.json().catch(() => null);
     const res = await writeEntry(env, p, clientIp(request, env), ctx);
+    // a reply in a checkup thread the board opened is the told agent speaking ("fixed it"): look again now (board-outreach.js)
+    if (res.body?.ok && p?.action === 'reply') {
+      const job = import('./board-outreach.js').then(async (m) => { for (const id of (await m.toldIn(env, res.body.thread)).slice(0, 8)) await m.recheckTold(env, id).catch(() => {}); }).catch(() => {});
+      if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
+    }
     return out(res.body, res.status);
   }
   return out({ error: 'unknown board route', how: 'https://agent.brainonbnb.com/board/how' }, 404);

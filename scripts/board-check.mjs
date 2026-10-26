@@ -850,5 +850,22 @@ if (process.argv.includes('--live')) {
   const lh = await fetch('https://agent.brainonbnb.com/board/how').then((r) => r.json()).catch(() => null);
   is('live: GET /board/how answers', !!lh?.write?.message);
 }
+// FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry
+// names it; a confirmation that could not be written leaves the agent for the daily run; one look per 10 minutes
+{
+  const O = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'board-outreach.js')).href);
+  const ours = '0x8196bcd90c08011d2f96fb94c1b10407cba3655d';
+  const md1 = B.boardMarkdown({ id: 56, type: 'tip', status: 'open', title: 'Checkup for X (#265375): 2 things', author: ours, to: '265375', body: 'b', created: 1, replies: [] });
+  const md2 = B.boardMarkdown({ id: 34, type: 'tip', status: 'open', title: 'Checkup for 6 agents on m.io: what', author: ours, to: '341553', body: 'b', created: 1, replies: [] });
+  const md3 = B.boardMarkdown({ id: 9, type: 'tip', status: 'open', title: 'Checkup for X (#1): 2 things', author: '0x1111111111111111111111111111111111111111', to: '1', body: 'b', created: 1, replies: [] });
+  is('RC1 a checkup thread of ours names its recheck first (its id; a host thread <id>), a stranger\'s does not', /board\/recheck\/265375 /.test(md1) && /board\/recheck\/<id> /.test(md2) && !/recheck/.test(md3));
+  const e = O.entryFor('x.io', [{ id: 7 }], [{ id: '7', name: 'A', score: '5/9', red: [{ check: 'image', detail: 'none', fix: 'add it' }] }]);
+  is('RC2 a new checkup entry names the recheck for its agent', /board\/recheck\/7 /.test(e.body) && !/When a fix lands/.test(e.body));
+  const kv = new Map([['board-outreach', JSON.stringify({ findings: { 391841: { thread: 999, name: 'Brain Board', checks: { image: 1 }, fixed: {}, looked: 0 } } })]]);
+  const env = { AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => kv.set(k, v) } };
+  const r1 = await O.recheckTold(env, '391841'), r2 = await O.recheckTold(env, '391841');
+  const f = JSON.parse(kv.get('board-outreach')).findings['391841'];
+  is('RC3 recheck: what reads ok is found; unwritten (no key) it stays for the daily run; a second look within 10 min waits', /Now ok: image/.test(r1.text) && f.looked === 0 && !!r2.wait && (await O.toldIn(env, 999)).join() === '391841', r1.text.split('\n')[1]);
+}
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

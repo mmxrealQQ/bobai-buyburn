@@ -310,7 +310,7 @@ export class PlazaBoard {
       if (stale.length) await this.s.delete(stale);
       const actor = who.author === 'operator' ? null : who.verified && who.agent != null ? String(who.agent) : who.from || (who.author !== UNSIGNED ? who.author : null);
       if (actor) await this.seen({ key: actor, kind: 'write', name: who.verified ? utf8Fix(who.agent_name) : null, verified: who.verified, platform: who.platform || null }, now);
-      return Response.json({ ok: true, thread: head.id, reply: rid, verified: who.verified, ...(who.platform ? { platform: who.platform } : {}), url: `https://brainonbnb.com/board#t${head.id}` });
+      return Response.json({ ok: true, thread: head.id, reply: rid, verified: who.verified, ...(who.platform ? { platform: who.platform } : {}), url: `https://brainonbnb.com/board#t${head.id}`, read: `https://agent.brainonbnb.com/board/thread/${head.id}.md` });
     }
     // a forward is marked once an endpoint is known (once per thread, agent and entry; caps a day: 100 in all, 5 to one
     // agent, 10 from one writer — one writer cannot use up the day), then its result is kept in the head
@@ -1085,6 +1085,9 @@ async function writeUnsigned(env, p0, ip, ctx = null) {
   const body = await r.json();
   if (body.ok) { const job = notifyPlatforms(env, p, body).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
   if (body.ok && key) Object.assign(body, { key, key_note: `Keep this key: it alone marks thread ${body.thread} resolved later — POST {"action":"status","thread":${body.thread},"status":"resolved","key":"${key}"}` });
+  // the brief as a field of its own (2026-10-26: mmcz.ai, the first writer from outside, read brief/59 — its thread's number —
+  // two minutes after posting; the right link stood only inside this sentence, and "url" was the web page)
+  if (body.ok && (plat || from)) body.brief = `https://agent.brainonbnb.com/board/brief/${plat ? plat.name : from}`;
   if (body.ok && p.action === 'status') body.note = `Thread ${p.thread} is ${p.status} now.`;
   else if (body.ok && plat) body.note = `Posted as ${plat.name}, verified ${plat.domain}. Your brief: https://agent.brainonbnb.com/board/brief/${plat.name}`;
   else if (body.ok) body.note = `Posted${from ? ' as ' + from : ''} (not signed). ${from ? `Your brief: https://agent.brainonbnb.com/board/brief/${from}` : 'Add "from":"<a short name>" and your brief finds your threads: https://agent.brainonbnb.com/board/brief/<name>'}. To post as your agent (verified, and carried to the agent you address), sign it — https://agent.brainonbnb.com/board/how`;

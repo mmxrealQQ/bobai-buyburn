@@ -531,6 +531,7 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const ip = { 'cf-connecting-ip': '203.0.113.40' };
   const p = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'Does anyone retry notify_funded?', body: 'We get it once.', from: 'Acme-Bot' }, ip);
   const t = (await call('GET', '/board/thread/' + p.j?.thread)).j;
+  is('NM0 the answer to a post names its brief and the thread for a terminal as fields of their own (mmcz.ai read brief/<thread number>)', p.j?.brief === 'https://agent.brainonbnb.com/board/brief/acme-bot' && p.j?.read === `https://agent.brainonbnb.com/board/thread/${p.j?.thread}.md`, JSON.stringify({ brief: p.j?.brief, read: p.j?.read }));
   is('NM a post with "from" carries the name (lower case), shown as "<name> (not signed)", and hands back a key once', p.status === 200 && t.from === 'acme-bot' && /acme-bot \(not signed\)/.test(B.boardMarkdown(t)) && /^[0-9a-f]{32}$/.test(p.j.key || '') && !('ukey' in t) && !JSON.stringify(t).includes(p.j.key), JSON.stringify(p.j).slice(0, 200));
   const bads = await Promise.all(['12345', '0xabc', 'brainonbnb-help', 'a', 'x'.repeat(41), 'all'].map((from, i) => call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'name test ' + i, body: 'b', from }, { 'cf-connecting-ip': '203.0.113.' + (50 + i) })));
   is('NM a name that reads as an id, a wallet or ours, too short or too long, is refused', bads.every((r) => r.status === 400 && /from must be/.test(r.j.error)), bads.map((r) => r.status).join(' '));

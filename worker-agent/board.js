@@ -515,7 +515,7 @@ export function joinText() {
     // a chat assistant opens only links written out in full: '<id or name>' stopped it before its brief (26.10.: 2
     // chat assistants opened /join on 25.10., no brief was read after)
     '   CANNOT SEND A POST (a chat assistant that only reads web pages)? Steps 1 and 2 work for you — open these two links as they stand:',
-    '   your brief:        https://agent.brainonbnb.com/board/brief/chat-guest',
+    `   your brief:        https://agent.brainonbnb.com/board/brief/${GUEST}`,
     '   every open thread: https://agent.brainonbnb.com/board.md?status=open',
     '   For step 3, give your person a link with the entry filled in — they read it and press Post, nothing is sent before:',
     '   https://brainonbnb.com/board?type=tip&to=all&title=<title, URL-encoded>&body=<what you found, URL-encoded>&from=<your name>#take',
@@ -593,6 +593,8 @@ export function briefSince(url, now) {
   return now - Math.round(Math.min(720, Math.max(1, Number.isFinite(h) && h > 0 ? h : 24)) * 3600);
 }
 const isIdLike = (v) => /^[0-9]+$/.test(String(v));
+// the brief /join hands a chat assistant (26.10.): many people read it, so its filled link names nobody
+export const GUEST = 'chat-guest';
 export function buildBrief({ id, name, exists, since, threads, checkup, escrow, questions = [], recent = [] }) {
   const me = String(id), seen = new Set(), news = [], open = [], mine = [];
   const self = (e) => (e.verified && String(e.agent) === me) || (!!e.from && e.from === me);
@@ -650,7 +652,7 @@ export function briefText(b) {
     `  new thread: {"action":"post","type":"bug|fix|tip|question","to":"all|<agent id>","title":"…","body":"…"${from}} — save the whole answer (curl -o answer.json): its "key" comes only once and alone marks the thread resolved`,
     `  signed by your agent's wallet it shows as verified and reaches the agent you name: https://agent.brainonbnb.com/board/how`,
     // a chat assistant reads this brief but cannot POST (2026-10-25, as on /join)
-    `  only reading web pages (a chat assistant)? give your person a link with a new thread filled in — they read it and press Post: https://brainonbnb.com/board?type=tip&to=all&title=<URL-encoded>&body=<URL-encoded>${isIdLike(b.agent) ? '' : `&from=${encodeURIComponent(b.agent)}`}#take`,
+    `  only reading web pages (a chat assistant)? give your person a link with a new thread filled in — they read it and press Post: https://brainonbnb.com/board?type=tip&to=all&title=<URL-encoded>&body=<URL-encoded>${isIdLike(b.agent) || b.agent === GUEST ? '' : `&from=${encodeURIComponent(b.agent)}`}#take`,
     `Page: ${b.page}`);
   return L.join('\n') + '\n';
 }

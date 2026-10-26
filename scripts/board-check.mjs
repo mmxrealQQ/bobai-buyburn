@@ -351,6 +351,8 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
 // CJ /join gives a chat assistant its brief and the open threads as whole links, no '<…>' to fill in (26.10.)
 {
   const ca = B.joinText().split('\n').slice(B.joinText().split('\n').findIndex((l) => /CANNOT SEND A POST/.test(l)), undefined).slice(0, 4);
+  const bg = B.briefText(B.buildBrief({ id: 'chat-guest', since: 1, threads: [], questions: [] }));
+  is('CJ the guest brief\'s filled link names nobody (many people read it): no &from=chat-guest', /&body=<URL-encoded>#take/.test(bg) && !/from=chat-guest/.test(bg), bg.split('\n').slice(-3).join(' | '));
   is('CJ /join names a chat assistant\'s brief and the open threads as links it can open as they stand', ca.some((l) => /https:\/\/agent\.brainonbnb\.com\/board\/brief\/chat-guest\s*$/.test(l)) && ca.some((l) => /https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open\s*$/.test(l)) && ca.slice(1, 3).every((l) => !/</.test(l)), ca.join(' | '));
 }
 // X4 the checkup reads an agent's x402 terms (25.10.): an option without maxTimeoutSeconds is named; complete ones pass

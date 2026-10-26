@@ -1196,6 +1196,7 @@ function render(d){
       l.appendChild(r);
     });
     ov.appendChild(l);
+    ov.dataset.k=(shown.length+hidden)+' other pool'+(shown.length+hidden===1?'':'s');
     // The cutoff scales with the pool being measured, so it has to be named
     // rather than assumed: writing "$100" while actually hiding everything
     // under $606 states a number that is not the one used.
@@ -1220,6 +1221,35 @@ function render(d){
   if(d.holders)o.appendChild(holdersCard(d.holders,d.symb,addr));
   o.appendChild(flagsCard(gp,gpOk,d.sim));
   o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties and the holder list come from GoPlus and are attributed as such; every holder balance is read on-chain. This page describes a pool — it does not check the deployer’s history, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+  const ref=(d.rows||[]).filter(r=>r.buyCost!=null).sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500))[0];
+  foldCards(o,{dep:d.up!=null?'1% at '+usd(d.up):null,lad:ref?'$'+nf(ref.usd)+' buy: '+pc(ref.buyCost,2):null});
+}
+
+// ONE LINE PER CARD ON A PHONE (operator's pick, 26.10.): after a scan the phone page ran ~10,600 px. Below the
+// short answer and the three figures, every card closes to its title, its one live figure and an arrow; a tap opens
+// it. Only CSS hides anything (max-width 640px) — the cards keep their children, so a tool card's later answer lands
+// where it always did, and the desktop page is unchanged.
+function foldCards(o,given){
+  const stV=(c,i=0)=>c.querySelectorAll('.st-v')[i];
+  [...o.querySelectorAll(':scope > section.cd:not(.vd-card)')].forEach(c=>{
+    const h=c.querySelector('.cd-h h3');if(!h)return;
+    const t=h.textContent;let k=null,tone='';
+    const take=(e,pre='',post='')=>{if(e){k=pre+e.textContent.trim()+post;tone=(e.className.match(/\b(good|mid|bad)\b/)||[''])[0]}};
+    if(/^How deep/.test(t))k=given.dep;
+    else if(/^What a trade does/.test(t))k=given.lad;
+    else if(/^The transfer tax/.test(t)){const a=stV(c),b=stV(c,1);if(a&&b){k=a.textContent.trim()+' / '+b.textContent.trim();tone=(a.className+' '+b.className).match(/\bbad\b/)?'bad':(a.className.match(/\b(good|mid)\b/)||[''])[0]}}
+    else if(/^Who holds the LP/.test(t))take(stV(c),'',' burned');
+    else if(c.dataset.k)k=c.dataset.k;
+    else if(/^Who is selling/.test(t))take(stV(c),'deployer sold ');
+    else if(/^Can you sell/.test(t)){const f=c.querySelector('.f');if(f){k=f.querySelector('b').textContent.trim();tone=f.classList.contains('f-ok')?'good':f.classList.contains('f-bad')?'bad':''}}
+    else if(c.querySelector('.st-v'))take(stV(c));
+    const b=el('button','fx-h');b.type='button';b.setAttribute('aria-expanded','false');
+    b.appendChild(el('span','fx-t',t));
+    if(k)b.appendChild(el('span','fx-k'+(tone?' '+tone:''),k));
+    b.appendChild(el('span','fx-c','›'));
+    b.onclick=()=>b.setAttribute('aria-expanded',String(c.classList.toggle('fx-open')));
+    c.classList.add('fx');c.prepend(b);
+  });
 }
 function holdersCard(h,symb,token){
   // Unknown is a state, not a blank (2026-09-27): a token minutes old has no holder list anywhere yet, and the
@@ -1233,6 +1263,7 @@ function holdersCard(h,symb,token){
   const fig=(v,lab)=>{const b=el('div','hd-f');b.appendChild(el('b','',v));b.appendChild(el('span','',lab));k.appendChild(b)};
   const rows=h.top||[];
   fig(h.top10PctOfCirculating.toFixed(1)+'%','held by the top '+Math.min(10,h.wallets||rows.length));
+  c.dataset.k=h.top10PctOfCirculating.toFixed(1)+'% top '+Math.min(10,h.wallets||rows.length);
   fig(rows.length?rows[0].pct.toFixed(1)+'%':'—','the largest single wallet');
   fig(h.count!=null?h.count.toLocaleString('en-US'):'—','holders');
   c.appendChild(k);

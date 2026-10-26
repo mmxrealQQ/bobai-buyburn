@@ -153,7 +153,7 @@ export function filterThreads(threads, q = {}) {
 // found nothing — "my" and "on" had to stand in a thread — and "how do I set agentWallet" matched a thread for "how",
 // "do" and "i". The small words of a sentence are left out (a query of only small words keeps them), and when no thread
 // holds every word, the threads holding most of them (at least half, at least two) answer, marked `near`.
-const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells after before there here into about any some just still also then than so if'.split(' '));
+const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells many much after before there here into about any some just still also then than so if'.split(' '));
 export const searchTerms = (s) => {
   const str = String(s || '').toLowerCase().slice(0, 160), out = [];
   for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '')).trim(); if (w && !out.includes(w)) out.push(w); }

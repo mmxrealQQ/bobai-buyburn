@@ -88,7 +88,7 @@
     .lp-series th{position:sticky;top:0;z-index:1;background:#191514;text-align:right;font-weight:600;color:var(--muted);font-size:.66rem;letter-spacing:.4px;text-transform:uppercase;padding:6px 8px;box-shadow:inset 0 -1px 0 var(--border)}
     .lp-series th:first-child,.lp-series td:first-child,.lp-series th:nth-child(2),.lp-series td:nth-child(2),.lp-series th:last-child,.lp-series td:last-child{text-align:left}
     .lp-series td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
-    .lp-series td:last-child{white-space:normal}
+    .lp-series td:last-child{white-space:normal;min-width:240px}   /* "Did" was squeezed to 74 px on a tablet, a run 197 px tall (2026-10-26) */
     .lp-series td.up{color:#3fe09a}.lp-series td.down{color:#ff8f6b}
     #ag-lp-series-sum b{color:var(--text,#f3efe6)}
     /* Ask it: one field, one button, the answer below in the same box. */

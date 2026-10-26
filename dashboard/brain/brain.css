@@ -86,6 +86,8 @@ body.bp-winon{overflow:hidden}
   .bp-center{grid-column:1/-1;grid-row:1;order:-1;height:calc(100svh - 54px - 24px - 2*96px - 20px);min-height:440px}
   .bp-side{display:contents}
   button.bw-card{min-height:96px}
+  /* 07 More takes the two cells left in the second row (26.10.: 05, 06, 07 and an empty fourth on an open Fold) */
+  button.bw-card.bw-mini{grid-column:span 2;min-height:0}
   .bp-tick{display:none}
 }
 /* ---- tall: a phone, a foldable closed ---- */

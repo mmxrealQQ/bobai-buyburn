@@ -361,7 +361,9 @@ function page() {
   .sv .primer-do{grid-template-columns:1fr}
   @media (min-width:560px){.sv .primer-do{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (min-width:960px){.sv .primer-do{grid-template-columns:repeat(4,minmax(0,1fr))}}
-  .sv-nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0 0}
+  /* four figures: four in a row or two over two (2026-10-26: auto-fit left the fourth alone on an open Fold, 3+1) */
+  .sv-nums{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr));margin:18px 0 0}
+  @media(max-width:759px){.sv-nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
   .sv-num{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:13px 15px;min-width:0}
   .sv-num b{display:block;font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.5rem;color:var(--gold);
     font-variant-numeric:tabular-nums;line-height:1.1}

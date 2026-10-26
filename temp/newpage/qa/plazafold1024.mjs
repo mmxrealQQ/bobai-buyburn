@@ -30,7 +30,7 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
   else say(!r.togVis && r.doVis.every(Boolean), `${w}px: the hire block shows all three ways, no toggle`);
   const catOk = r.cats.length === 4 && r.cats.every((c) => (c.n <= 4 ? c.shown === c.n && !c.btn : c.shown === 3 && c.btn === `Show all ${c.n} (${c.n - 3} more)`));
   say(catOk, `${w}px: each category its first three and "Show all" (${r.cats.map((c) => c.id.slice(4) + ' ' + c.shown + '/' + c.n).join(', ')})`);
-  const awOk = r.aw.every((a) => (a.n <= 4 ? a.shown === a.n && !a.btn : a.shown === 3 && a.btn === `Show all ${a.n}`));
+  const awOk = r.aw.every((a) => (a.n <= 4 ? a.shown === a.n && !a.btn : a.shown === 3 && a.btn === `Show the ${a.n} newest`)); // 'Show the N newest' since 25.10.: the total stands on the card above
   say(awOk, `${w}px: each "at work" list its three newest (${r.aw.map((a) => a.id + ' ' + a.shown + '/' + a.n).join(', ')})`);
   if (w < 500) say(r.total < 10000, `${w}px: the page is ${r.total} px (was 13,177; the estimate was ~6,500 — the three per category, our two cards with their live proof, the top-by-evidence and the board stay open on purpose)`);
   say(!r.wide, `${w}px: nothing wider than the screen`);

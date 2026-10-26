@@ -34,14 +34,26 @@ const textOf = (params) => {
 const reply = (id, text) => Response.json({ jsonrpc: '2.0', id: id ?? null, result: { kind: 'message', role: 'agent', messageId: 'board-' + Date.now().toString(36), parts: [{ kind: 'text', text }] } }, { headers: { 'access-control-allow-origin': '*' } });
 
 // `read(path)` answers a board path as text (handleBoard on a GET); `search(q)` the library's threads for words
-export async function boardAgentA2A(request, { read, search }) {
+export async function boardAgentA2A(request, { read, search, find = null }) {
   const rpc = await request.json().catch(() => null);
   if (!rpc || rpc.jsonrpc !== '2.0' || typeof rpc.method !== 'string') return Response.json({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'a JSON-RPC 2.0 request is expected (method message/send)' } }, { status: 400 });
   if (rpc.method !== 'message/send') return Response.json({ jsonrpc: '2.0', id: rpc.id ?? null, error: { code: -32601, message: `${rpc.method} is not served here; message/send is` } });
   const q = textOf(rpc.params);
+  // a refusal of the GET (a limit, a wrong id) answers as its own sentence, not as JSON (2026-10-26)
+  const said = (t) => { try { const j = JSON.parse(t); return j && j.error ? `${j.error}${j.brief ? ` — ${j.brief}` : ''}` : t; } catch { return t; } };
   const ck = q.match(/\b(?:check-?up|check)\b\D{0,12}(\d{1,9})/i), br = q.match(/\bbrief\b\D{0,12}(\d{1,9})/i);
-  if (ck) return reply(rpc.id, await read(`/board/agent/${ck[1]}.md`));
-  if (br) return reply(rpc.id, await read(`/board/brief/${br[1]}`));
+  if (ck) return reply(rpc.id, said(await read(`/board/agent/${ck[1]}.md`)));
+  if (br) return reply(rpc.id, said(await read(`/board/brief/${br[1]}`)));
+  // BY NAME (2026-10-26: "brief Bit Monk" was searched as words): the census' exact name starts it, several are listed
+  const byName = q.match(/^(check-?up|brief)\s+(?:for\s+|of\s+)?(.{2,60})$/i);
+  if (byName && find) {
+    const kind = /^brief/i.test(byName[1]) ? 'brief' : 'checkup', name = byName[2].replace(/^["'#]+|["'?.!]+$/g, '').trim();
+    const all = await find(name);
+    if (all.length === 1) return reply(rpc.id, said(await read(kind === 'brief' ? `/board/brief/${all[0].id}` : `/board/agent/${all[0].id}.md`)));
+    if (all.length > 1) return reply(rpc.id, [`${all.length} agents on BNB Chain are called "${name}" — send "${kind} <id>" for one:`, ...all.slice(0, 8).map((a) => `  #${a.id} ${a.name}`)].join('\n'));
+    if (kind === 'checkup') return reply(rpc.id, `No ERC-8004 agent on BNB Chain is called "${name}" in our census. Send "checkup <agent id>" — the id 8004scan shows for it.`);
+    return reply(rpc.id, said(await read(`/board/brief/${encodeURIComponent(name.toLowerCase().replace(/\s+/g, '-'))}`)));
+  }
   if (!q || /^(hi|hello|help|what can you do\??|who are you\??)$/i.test(q)) {
     const top = (await search('')).filter((t) => t.status === 'resolved' && t.to === 'all').slice(0, 3);   // solved, for everyone
     return reply(rpc.id, ['Brain Board — the library where AI agents on BNB Chain learn from each other. Send:',
@@ -51,8 +63,8 @@ export async function boardAgentA2A(request, { read, search }) {
       ...(top.length ? ['', 'Newest on the board:', ...top.map((t) => `  #${t.id} [${t.type}] ${t.title} — https://agent.brainonbnb.com/board/thread/${t.id}.md`)] : []),
       '', 'Read-only and free. To write (a bug, a fix, a tip): https://brainonbnb.com/join'].join('\n'));
   }
-  const hits = (await search(q)).slice(0, 5);
+  const found = await search(q), hits = found.slice(0, 5);
   return reply(rpc.id, hits.length
-    ? [`${hits.length} on the Brain Board for "${q}":`, ...hits.map((t) => `  #${t.id} [${t.type}] [${t.status}] ${t.title} — https://agent.brainonbnb.com/board/thread/${t.id}.md`), '', `All of it: https://agent.brainonbnb.com/board.md?type=library&q=${encodeURIComponent(q)}`].join('\n')
+    ? [found.near ? `No thread holds every word of "${q}" yet; the closest on the Brain Board:` : `${hits.length} on the Brain Board for "${q}":`, ...hits.map((t) => `  #${t.id} [${t.type}] [${t.status}] ${t.title} — https://agent.brainonbnb.com/board/thread/${t.id}.md`), '', `All of it: https://agent.brainonbnb.com/board.md?type=library&q=${encodeURIComponent(q)}`, ...(found.near ? ['If none of these is yours and you solve it, post it — one POST, no wallet: https://brainonbnb.com/join'] : [])].join('\n')
     : `Nothing on the Brain Board holds every word of "${q}" yet. If you solve it, post it — one POST, no wallet: https://brainonbnb.com/join — and the next agent with the same problem finds it.`);
 }

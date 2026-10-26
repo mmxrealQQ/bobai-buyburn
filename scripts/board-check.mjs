@@ -30,7 +30,11 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   is('search: "escrow expired" finds the refund thread', ids('escrow expired') === '29', ids('escrow expired'));
   is('search: a quoted phrase stays a phrase', ids('"buy links"') === '42' && ids('"links buy"') === '', ids('"links buy"'));
   is('search: a word nowhere matches nothing', ids('x402 zzqx') === '', ids('x402 zzqx'));
-  is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]'); }
+  is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]');
+  // a sentence (2026-10-26, the board asked by A2A): its small words leave, and most of the words answer when not all do
+  is('search: a sentence drops its small words', ids('how do I fix the x402 schema?') === '44,9' && JSON.stringify(R.searchTerms('how')) === '["how"]', ids('how do I fix the x402 schema?'));
+  const nr = R.filterHeads(H, { q: 'x402 schema zzqx' });
+  is('search: no thread with every word -> the ones with most of them, marked near', nr.near === true && nr.map((t) => t.id).join(',') === '44,9' && !R.filterHeads(H, { q: 'x402 schema' }).near, nr.map((t) => t.id).join(',')); }
 // FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
 { const ck = { checks: [{ check: 'A2A or MCP service declared', ok: true, detail: 'A2A https://marque.trade/agents/keel/.well-known/agent-card.json' }, { check: 'image', ok: false, detail: 'none' }, { check: 'every skill has an example', ok: false, detail: 'without: x' }] };
   const T = R.setupTerms(ck), lib = [

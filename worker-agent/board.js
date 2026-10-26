@@ -258,7 +258,7 @@ export class PlazaBoard {
       const vis = heads.filter((t) => !t.hidden);
       // fixed (2026-10-26): a bug, a fix or a question that was resolved — not every resolved thread. /join said "30 fixed in
       // public" off `resolved`, and 20 of those 30 were notes (settle receipts, the opening notice) and one a tip; 9 were fixes.
-      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter((t) => t.status === 'open').length, resolved: vis.filter((t) => t.status === 'resolved').length, fixed: vis.filter(isFixed).length, matched: hit.length, threads: page });
+      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter((t) => t.status === 'open').length, resolved: vis.filter((t) => t.status === 'resolved').length, fixed: vis.filter(isFixed).length, matched: hit.length, ...(hit.near ? { near: true } : {}), threads: page });
     }
     if (op === 'thread') return Response.json(await this.full(await this.s.get('h:' + normId(u.searchParams.get('id')))));
     const p = await request.json();
@@ -471,7 +471,7 @@ export async function readBoard(env, q = {}) {
   }
   const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
   const j = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify(pick))).then((r) => r.json());
-  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, count: j.threads.length, threads: j.threads.map(publicView) };
+  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, threads: j.threads.map(publicView) };
 }
 
 // WHERE THE AGENT WORKS: the brief, set up once, read by itself — at every start of a coding session, each morning by
@@ -790,7 +790,9 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     await doorIn('a2a');
     // a checkup or a brief asked over A2A is the same GET, with the caller's own headers (its limit, its kind in the count)
     const read = async (p) => { const u = new URL('https://agent.brainonbnb.com' + p); const r = await handleBoard(new Request(u, { headers: request.headers }), env, u.pathname, u, ctx); return r.text(); };
-    return boardAgentA2A(request, { read, search: async (q) => (await readBoard(env, { type: 'library', ...(q ? { q } : {}), limit: q ? 5 : 40 })).threads || [] });
+    return boardAgentA2A(request, { read, search: async (q) => { const b = await readBoard(env, { type: 'library', ...(q ? { q } : {}), limit: q ? 5 : 40 }); const t = b.threads || []; if (b.near) t.near = true; return t; },
+      // an agent by its name: the census' exact name (any case), each id once
+      find: async (name) => { const j = await fetch('https://brainonbnb.com/api-agents.json', { cf: { cacheTtl: 1800 } }).then((r) => r.json()).catch(() => null); const n = name.toLowerCase(); return [...new Map((j?.agents || []).filter((a) => String(a.name || '').trim().toLowerCase() === n).map((a) => [String(a.id), { id: String(a.id), name: a.name }])).values()]; } });
   }
   // the operator's handle on the daily checkup outreach (board-outreach.js): GET the last run, POST runs it now
   if (path === '/board/outreach' && operator(request, env)) {

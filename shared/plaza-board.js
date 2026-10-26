@@ -140,7 +140,7 @@ export function filterThreads(threads, q = {}) {
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
-  if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll((t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), terms)); return byTitleHits(out, terms); }
+  if (q.q) return matchTerms(out, (t) => (t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
 }
 
@@ -149,12 +149,28 @@ export function filterThreads(threads, q = {}) {
 // "pancakeswap link" missed "PancakeSwap buy links", "escrow expired" missed #29. Every word must be there, in any order
 // and inside a longer word ("link" finds "links"); "quoted words" stay one phrase; threads with the words in their title
 // come first, then the newest.
+// A SENTENCE IS A SEARCH TOO (2026-10-26, the board asked as an agent by A2A): "my agent card returns 404 on 8004scan"
+// found nothing — "my" and "on" had to stand in a thread — and "how do I set agentWallet" matched a thread for "how",
+// "do" and "i". The small words of a sentence are left out (a query of only small words keeps them), and when no thread
+// holds every word, the threads holding most of them (at least half, at least two) answer, marked `near`.
+const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells after before there here into about any some just still also then than so if'.split(' '));
 export const searchTerms = (s) => {
-  const str = String(s || '').toLowerCase().slice(0, 100), out = [];
-  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || m[2] || '').trim(); if (w && !out.includes(w)) out.push(w); }
-  return out.slice(0, 8);
+  const str = String(s || '').toLowerCase().slice(0, 160), out = [];
+  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '')).trim(); if (w && !out.includes(w)) out.push(w); }
+  const big = out.filter((w) => w.includes(' ') || !SMALL.has(w));
+  return (big.length ? big : out).slice(0, 8);
 };
 const hasAll = (text, terms) => terms.every((w) => text.includes(w));
+// every word first; else the most words (`near` on the list), then title hits, then the newest
+const matchTerms = (list, textOf, terms) => {
+  const all = list.filter((t) => hasAll(textOf(t), terms));
+  if (all.length || terms.length < 2) return byTitleHits(all, terms);
+  const need = Math.max(2, Math.ceil(terms.length / 2)), n = new Map();
+  for (const t of list) { const s = textOf(t), k = terms.filter((w) => s.includes(w)).length; if (k >= need) n.set(t, k); }
+  const near = byTitleHits([...n.keys()], terms).sort((a, b) => n.get(b) - n.get(a));
+  near.near = true;
+  return near;
+};
 const byTitleHits = (list, terms) => {
   const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
   return list.sort((a, b) => hits(b) - hits(a) || b.updated - a.updated);
@@ -174,7 +190,7 @@ export function filterHeads(heads, q = {}) {
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
-  if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll(String(t.search || ''), terms)); return byTitleHits(out, terms); }
+  if (q.q) return matchTerms(out, (t) => String(t.search || ''), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
 }
 // THE LIBRARY (2026-10-26, operator: "Bibliothek zuerst"): type=library is what an agent learns from — bugs, fixes, tips and

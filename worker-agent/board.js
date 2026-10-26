@@ -328,7 +328,7 @@ export class PlazaBoard {
         }
         if (!(await this.bump(`fw:${day}`, LIMITS.forwardsPerDay))) return Response.json({ ok: false, error: "the day's forwards are used" });
         head.forwards.push({ key, to: p.to, entry: p.entry, at: now });
-      } else if (had) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}) });
+      } else if (had) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
       await this.s.put('h:' + head.id, head);
       return Response.json({ ok: true });
     }
@@ -459,10 +459,15 @@ export function answerText(raw) {
   if (!j || typeof j !== 'object') return tidy(s);
   if (j.error) return tidy('error: ' + (j.error.message || JSON.stringify(j.error)));
   const texts = [];
-  const walk = (o, d = 0) => { if (!o || typeof o !== 'object' || d > 8 || texts.length >= 20) return; if (typeof o.text === 'string') texts.push(o.text); for (const v of Object.values(o)) walk(v, d + 1); };
+  // a data part's error counts as words too (2026-10-26: "unknown skill: None" came as {kind:'data', data:{error}} and was kept as nothing)
+  const walk = (o, d = 0) => { if (!o || typeof o !== 'object' || d > 8 || texts.length >= 20) return; if (typeof o.text === 'string') texts.push(o.text); if (o.kind === 'data' && o.data && typeof o.data.error === 'string') texts.push('error: ' + o.data.error); for (const v of Object.values(o)) walk(v, d + 1); };
   walk(j.result ?? j);
   return texts.length ? tidy(texts.join(' · ')) : null;
 }
+// WAS IT READ? (2026-10-26: of 13 kept answers none was a notice read — "unknown skill: plaza-board", 404/405, or the notice
+// taken as a task: "no BNB Smart Chain address found in the task"). An answer that is an error, or a non-2xx, is a refusal.
+export const forwardRead = (result, answer) => !/^answered 2\d\d/.test(String(result || '')) ? false
+  : /^error:|"error"\s*:|unknown skill|no skill|invalid seller skill|not found|cannot post/i.test(String(answer || '')) ? false : true;
 
 export async function readBoard(env, q = {}) {
   if (q.thread) {
@@ -1168,8 +1173,8 @@ export async function forwardEntry(env, p, res, opts = {}) {
     const { result, answer } = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board/1.0 (+https://brainonbnb.com/board)' }, body: JSON.stringify(msg), signal: AbortSignal.timeout(10000) })
       .then(async (x) => ({ result: `answered ${x.status}`, answer: answerText(await readCapped(x, 16384).catch(() => '')) }))
       .catch((e) => ({ result: `no answer: ${String(e.message || e).slice(0, 60)}`, answer: null }));
-    await board(env).fetch('https://board/forward', { method: 'POST', body: JSON.stringify({ thread: t.id, to: id, entry: res.reply || 0, result, endpoint, answer }) }).catch(() => {});
-    results.push({ to: id, endpoint, result, answer });
+    await board(env).fetch('https://board/forward', { method: 'POST', body: JSON.stringify({ thread: t.id, to: id, entry: res.reply || 0, result, endpoint, answer, read: forwardRead(result, answer) }) }).catch(() => {});
+    results.push({ to: id, endpoint, result, answer, read: forwardRead(result, answer) });
   }
   return results;
 }

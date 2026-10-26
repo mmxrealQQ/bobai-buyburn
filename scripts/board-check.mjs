@@ -866,6 +866,11 @@ if (process.argv.includes('--live')) {
   const r1 = await O.recheckTold(env, '391841'), r2 = await O.recheckTold(env, '391841');
   const f = JSON.parse(kv.get('board-outreach')).findings['391841'];
   is('RC4 /join and /board/how name the recheck and the board\'s own A2A (#391841)', /board\/recheck\/<your agent id>/.test(B.joinText()) && /board\/a2a /.test(B.joinText()) && /board\/recheck\//.test(B.BOARD_HOW.recheck || '') && /#391841/.test(B.BOARD_HOW.a2a || ''));
+  const dataErr = JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'data', data: { error: 'unknown skill: None', skills: ['negotiate'] } }] } });
+  is('RC5 a notice refused in a data part, or taken as a task, reads as not read; a plain answer as read',
+    B.answerText(dataErr) === 'error: unknown skill: None' && B.forwardRead('answered 200', B.answerText(dataErr)) === false
+    && B.forwardRead('answered 200', '{"error":"no BNB Smart Chain address found in the task"}') === false && B.forwardRead('answered 404', null) === false
+    && B.forwardRead('answered 200', 'got it, thanks') === true, B.answerText(dataErr));
   is('RC3 recheck: what reads ok is found; unwritten (no key) it stays for the daily run; a second look within 10 min waits', /Now ok: image/.test(r1.text) && f.looked === 0 && !!r2.wait && (await O.toldIn(env, 999)).join() === '391841', r1.text.split('\n')[1]);
 }
 console.log(`\n${pass} PASS, ${fail} FAIL`);

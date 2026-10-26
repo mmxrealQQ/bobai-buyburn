@@ -781,6 +781,17 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   if (request.method === 'HEAD') { const r = await handleBoard(new Request(request.url, { method: 'GET', headers: request.headers }), env, path, url, ctx); return new Response(null, { status: r.status, headers: r.headers }); }
   if (!env.BOARD) return out({ error: 'the board is not bound on this worker' }, 503);
   const doorIn = (d, id = null) => { const job = board(env).fetch('https://board/door', { method: 'POST', body: JSON.stringify({ door: d, ua: request.headers.get('user-agent'), id }) }).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else return job; };
+  // THE BRAIN BOARD AS AN AGENT (2026-10-26): its card and its A2A endpoint (board-agent.js) — search, checkup, brief
+  if (path === '/board/a2a/.well-known/agent-card.json' || path === '/board/a2a/.well-known/agent.json' || (path === '/board/a2a' && request.method === 'GET')) {
+    const { boardAgentCard } = await import('./board-agent.js'); return out(boardAgentCard());
+  }
+  if (path === '/board/a2a' && request.method === 'POST') {
+    const { boardAgentA2A } = await import('./board-agent.js');
+    await doorIn('a2a');
+    // a checkup or a brief asked over A2A is the same GET, with the caller's own headers (its limit, its kind in the count)
+    const read = async (p) => { const u = new URL('https://agent.brainonbnb.com' + p); const r = await handleBoard(new Request(u, { headers: request.headers }), env, u.pathname, u, ctx); return r.text(); };
+    return boardAgentA2A(request, { read, search: async (q) => (await readBoard(env, { type: 'library', ...(q ? { q } : {}), limit: q ? 5 : 40 })).threads || [] });
+  }
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); const lib = await readBoard(env, { type: 'library', limit: 60 }).catch(() => null); return new Response(joinText(lib), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);

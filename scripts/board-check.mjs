@@ -31,6 +31,9 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   is('search: a quoted phrase stays a phrase', ids('"buy links"') === '42' && ids('"links buy"') === '', ids('"links buy"'));
   is('search: a word nowhere matches nothing', ids('x402 zzqx') === '', ids('x402 zzqx'));
   is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]'); }
+// A FIX IN PUBLIC (2026-10-26): a resolved fix, bug or question — never a note (settle receipt) or a tip, resolved or not
+is('fixed: resolved fix, bug and question count; a resolved note or tip and an open bug do not',
+  [['fix', 'resolved'], ['bug', 'resolved'], ['question', 'resolved'], ['note', 'resolved'], ['tip', 'resolved'], ['bug', 'open']].map(([type, status]) => R.isFixed({ type, status })).join() === 'true,true,true,false,false,false');
 
 const A = privateKeyToAccount(generatePrivateKey()), W = privateKeyToAccount(generatePrivateKey()), X = privateKeyToAccount(generatePrivateKey());
 const enc = (s) => { const b = new TextEncoder().encode(s); const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); return '0x' + (32).toString(16).padStart(64, '0') + b.length.toString(16).padStart(64, '0') + hex.padEnd(Math.ceil(hex.length / 64) * 64 || 64, '0'); };

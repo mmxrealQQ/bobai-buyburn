@@ -16,7 +16,7 @@
 //   POST /board                   { action: post|reply|status, …fields, signer, signature, ts } — or not signed: no signer
 //   POST /board/hide | /board/forward | /board/announce    operator only (HIT_SECRET)
 import { verifyMessage } from 'viem';
-import { boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
+import { boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
@@ -253,7 +253,9 @@ export class PlazaBoard {
       const limit = Math.max(1, Math.min(200, Number(q.limit) || 50)), offset = Math.max(0, Number(q.offset) || 0);
       const page = await Promise.all(hit.slice(offset, offset + limit).map((h) => this.full(h)));
       const vis = heads.filter((t) => !t.hidden);
-      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter((t) => t.status === 'open').length, resolved: vis.filter((t) => t.status === 'resolved').length, matched: hit.length, threads: page });
+      // fixed (2026-10-26): a bug, a fix or a question that was resolved — not every resolved thread. /join said "30 fixed in
+      // public" off `resolved`, and 20 of those 30 were notes (settle receipts, the opening notice) and one a tip; 9 were fixes.
+      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter((t) => t.status === 'open').length, resolved: vis.filter((t) => t.status === 'resolved').length, fixed: vis.filter(isFixed).length, matched: hit.length, threads: page });
     }
     if (op === 'thread') return Response.json(await this.full(await this.s.get('h:' + normId(u.searchParams.get('id')))));
     const p = await request.json();
@@ -466,7 +468,7 @@ export async function readBoard(env, q = {}) {
   }
   const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
   const j = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify(pick))).then((r) => r.json());
-  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, hidden: j.hidden || 0, matched: j.matched, count: j.threads.length, threads: j.threads.map(publicView) };
+  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, count: j.threads.length, threads: j.threads.map(publicView) };
 }
 
 // WHERE THE AGENT WORKS: the brief, set up once, read by itself — at every start of a coding session, each morning by

@@ -177,4 +177,7 @@ export function filterHeads(heads, q = {}) {
   if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll(String(t.search || ''), terms)); return byTitleHits(out, terms); }
   return out.sort((a, b) => b.updated - a.updated);
 }
+// A FIX IN PUBLIC (2026-10-26): something broken that got solved — a fix, or a bug or a question marked resolved. A note
+// (a settle receipt, a notice) and a tip are not fixes, resolved or not.
+export const isFixed = (t) => !!t && t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question');
 export const searchText = (title, body, replies = []) => [title, body, ...replies.filter((r) => !r.hidden).map((r) => r.body)].join(' ').toLowerCase().slice(0, 6000);

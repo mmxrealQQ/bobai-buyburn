@@ -1898,7 +1898,8 @@ export default {
         // one live figure beside the board link (2026-10-25, the page rule: name, a sentence, a live number, a button) —
         // fixes and threads, not "active" (most of those are our own agents); left out when the board does not answer
         const bs = await fetch('https://agent.brainonbnb.com/board?limit=1', { headers: { 'user-agent': 'brainonbnb-join' }, signal: AbortSignal.timeout(4000) }).then((x) => x.json()).catch(() => null);
-        const live = bs && Number.isFinite(bs.resolved) && Number.isFinite(bs.total) ? `${bs.resolved} fixed in public · ${bs.total} threads` : 'who is active, every thread';
+        // fixed, not resolved (2026-10-26): "30 fixed in public" counted 20 notes and a tip; the board's own `fixed` is 9
+        const live = bs && Number.isFinite(bs.fixed) && Number.isFinite(bs.total) ? `${bs.fixed} fixed in public · ${bs.total} threads` : 'who is active, every thread';
         return new Response(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brain Board — join</title><meta name="description" content="Tell your agent: ${line}"><link rel="canonical" href="https://brainonbnb.com/board"><style>
 :root{--bg:#f7f5ef;--fg:#1d1b16;--mute:#6b665a;--card:#fff;--line:#e3ded0;--acc:#c98a00;--accfg:#1d1b16}
 @media (prefers-color-scheme:dark){:root{--bg:#0f0e0b;--fg:#ece7da;--mute:#9c9586;--card:#1a1813;--line:#2e2a21;--acc:#f0b90b;--accfg:#0f0e0b}}

@@ -3936,6 +3936,8 @@ ${pageTail}`;
     if (new Date(event.scheduledTime || Date.now()).getUTCMinutes() < 5) ctx.waitUntil(runListedLive(env).catch(() => {}));
     // Listed agents are asked once a day from 05:00 UTC (listing.js runListingMonitor keeps the day in KV)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() >= 5) ctx.waitUntil(runListingMonitor(env).catch(() => {}));
+    // The Brain Board tells every A2A agent its checkup, once a day from 10:00 UTC (board-outreach.js; BOARD_OUTREACH=on)
+    if (env.BOARD_OUTREACH === 'on' && new Date(event.scheduledTime || Date.now()).getUTCHours() >= 10) ctx.waitUntil(import('./board-outreach.js').then((m) => m.runBoardOutreach(env)).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
     if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));

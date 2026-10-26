@@ -32,6 +32,10 @@ VENUS_WORK = "on"
 # Our agents hire outside agents for their own work (agent-hires.js), switched on by the operator 2026-10-22 ("a vom
 # Relayer"): once a day at 05:30 UTC, Keel for #302257, Sluicegate for #304493, Bound for #363709. "off" stops it.
 AGENT_HIRES = "on"
+# The Brain Board (#391841) tells every reachable A2A agent its checkup and confirms its fixes (board-outreach.js),
+# switched on by the operator 2026-10-26 ("Board als eigener Agent", "Schrittweise auf alle"): once a day from 10:00
+# UTC, at most 25 checkups and 10 entries, a host every 14 days. "off" stops it; POST /board/outreach (operator) runs it.
+BOARD_OUTREACH = "on"
 # mirrored from worker-lp (2026-10-07): the width and re-set mode the agent mints with, so the /defi card says it
 LP_WIDTH_PCT = "20"
 LP_RESET_MODE = "centred"

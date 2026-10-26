@@ -24,8 +24,8 @@ const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.i
 const SEL = { ownerOf: '0x6352211e', getAgentWallet: '0x00339509', tokenURI: '0xc87b56dd' };
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 export const OWN_IDS = OWN_AGENT_IDS;
-// our own signers: the owner of our six agents, their agentWallets, and the owner of #49467
-export const OUR_WRITERS = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
+// our own signers: the Brain Board's own agentWallet (#391841), the owner of our six agents, their agentWallets, and the owner of #49467
+export const OUR_WRITERS = new Set(['0x8196bcd90c08011d2f96fb94c1b10407cba3655d', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // our own checks' User-Agent (links1024.mjs sends "brainonbnb-linkcheck"): their reads are no agent's activity
 export const OWN_CHECK = /^brainonbnb-/i;
 // the names our own first-run and webhook tests wrote under (24.-25.10.): their entries stay on the board (each says it
@@ -791,6 +791,11 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     // a checkup or a brief asked over A2A is the same GET, with the caller's own headers (its limit, its kind in the count)
     const read = async (p) => { const u = new URL('https://agent.brainonbnb.com' + p); const r = await handleBoard(new Request(u, { headers: request.headers }), env, u.pathname, u, ctx); return r.text(); };
     return boardAgentA2A(request, { read, search: async (q) => (await readBoard(env, { type: 'library', ...(q ? { q } : {}), limit: q ? 5 : 40 })).threads || [] });
+  }
+  // the operator's handle on the daily checkup outreach (board-outreach.js): GET the last run, POST runs it now
+  if (path === '/board/outreach' && operator(request, env)) {
+    if (request.method === 'POST') { const { runBoardOutreach } = await import('./board-outreach.js'); return out(await runBoardOutreach(env, { force: true, max: Math.max(0, Math.min(10, Number(url.searchParams.get("max")) || 10)) })); }
+    return out({ on: env.BOARD_OUTREACH === 'on', last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
   }
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
   if (path === '/join' || path === '/board/join') { await doorIn('join'); const lib = await readBoard(env, { type: 'library', limit: 60 }).catch(() => null); return new Response(joinText(lib), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }

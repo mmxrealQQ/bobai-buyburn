@@ -1481,7 +1481,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1792990569'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793017511'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

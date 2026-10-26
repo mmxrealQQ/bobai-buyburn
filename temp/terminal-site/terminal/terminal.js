@@ -4435,7 +4435,7 @@ function ecoEvents() {
   return ev;
 }
 // the writers that are us (the board's own OUR_WRITERS): our entries are already shown by their own moments
-const OUR_BOARD = new Set(['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
+const OUR_BOARD = new Set(['0x8196bcd90c08011d2f96fb94c1b10407cba3655d', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // the names our own first-run and webhook tests wrote under (24.-25.10., as worker-agent/board.js OUR_TESTS): a test is no other agent's moment
 const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
 let paidPoseAt = 0; // when the last payment moved him (the replay's 20 s spacing, the 'paid' moment below)

@@ -11,7 +11,7 @@
 // never as "not registered".
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
-export const OWN_AGENT_IDS = new Set(['302257', '302258', '304493', '304494', '310460', '363709', '49467']);
+export const OWN_AGENT_IDS = new Set(['302257', '302258', '304493', '304494', '310460', '363709', '49467', '391841']);   // 391841: the Brain Board itself (26.10.)
 const MAX_BYTES = 256 * 1024;
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 const isSelfHost = (url) => { try { return new URL(url).hostname.toLowerCase() === 'agent.brainonbnb.com'; } catch { return false; } };

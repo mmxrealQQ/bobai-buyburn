@@ -16,7 +16,7 @@ import { boardMessage, checkPost } from '../shared/plaza-board.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const STATE = path.join(ROOT, 'data', 'board-outreach.json');
-const OURS = new Set(['302257', '302258', '304493', '304494', '310460', '363709', '49467']);
+const OURS = new Set(['302257', '302258', '304493', '304494', '310460', '363709', '49467', '391841']);
 const confirm = process.argv.includes('--confirm'), MAX = 10, AGAIN_DAYS = 14;
 const HS = process.env.HIT_SECRET;
 if (!HS) { console.error('HIT_SECRET missing in .env (the checkups are read as the operator, past the per-address limit)'); process.exit(1); }

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4940 lines.
+# one fetch. 7 files, 4944 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1947,6 +1947,8 @@ const page = `<!doctype html>
   /* BOBAI at work (2026-10-22) */
   .aw-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
   @media(max-width:720px){.aw-tiles{grid-template-columns:1fr 1fr;gap:8px}}
+  /* three tiles are three columns (2026-10-26): the board's three stood in a grid of four on an iPad, 2+1 on a Fold */
+  .aw-tiles:has(> :nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
   .aw-box{display:flex;flex-direction:column;gap:14px}
   .aw-sec{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;align-items:start}
   /* 'Show the 8 newest' under its own list, on one line — in the 150 px label column it broke in two (26.10.) */
@@ -1972,7 +1974,9 @@ const page = `<!doctype html>
      in styles.css) rather than an approximation of it: same radius, same
      1.85rem Space Grotesk with -1px tracking, same label and caption sizes.
      A page that is nearly the house style reads as a page from somewhere else. */
-  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:26px 0 14px}
+  /* four figures: a row of four, or two over two (2026-10-26: auto-fit left "995 actually answer" alone on an iPad) */
+  .rg-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:26px 0 14px}
+  @media(max-width:900px){.rg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   /* a phone: the four figures two by two (2026-10-13: one under the other they took a whole screen) */
   @media(max-width:520px){.rg-grid{grid-template-columns:1fr 1fr;gap:8px}.rg-grid .rg-card{padding:12px}.rg-grid .rg-n{font-size:1.45rem}}
   .rg-card{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
@@ -2210,7 +2214,7 @@ const page = `<!doctype html>
   .rg-ctab[aria-selected="true"]{border-color:var(--gold,#f0b90b);color:var(--gold,#f0b90b);background:rgba(240,185,11,.08)}
   .rg-chip:hover{border-color:rgba(240,185,11,.45);background:rgba(240,185,11,.06)}
   .rg-try{display:flex;gap:9px;flex-wrap:wrap}
-  .rg-try input{flex:1;min-width:220px;background:rgba(255,255,255,.04);color:var(--fg);
+  .rg-try input{flex:1 1 170px;min-width:0;background:rgba(255,255,255,.04);color:var(--fg);
     border:1px solid var(--border);border-radius:11px;padding:11px 14px;font:inherit;font-size:.85rem}
   .rg-try input:focus{outline:none;border-color:var(--gold)}
   .rg-try button{background:rgba(240,185,11,.1);border:1px solid rgba(240,185,11,.3);color:var(--gold);

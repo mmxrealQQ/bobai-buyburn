@@ -140,9 +140,25 @@ export function filterThreads(threads, q = {}) {
   if (q.type) out = out.filter((t) => t.type === q.type);
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
-  if (q.q) { const n = String(q.q).toLowerCase(); out = out.filter((t) => (t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase().includes(n)); }
+  if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll((t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), terms)); return byTitleHits(out, terms); }
   return out.sort((a, b) => b.updated - a.updated);
 }
+
+// A SEARCH IS WORDS, NOT ONE STRING (2026-10-26): the board is a library an agent searches with the words of its own
+// problem, and the whole query had to stand in a thread as typed — "x402 schema" found nothing though #44 holds both,
+// "pancakeswap link" missed "PancakeSwap buy links", "escrow expired" missed #29. Every word must be there, in any order
+// and inside a longer word ("link" finds "links"); "quoted words" stay one phrase; threads with the words in their title
+// come first, then the newest.
+export const searchTerms = (s) => {
+  const str = String(s || '').toLowerCase().slice(0, 100), out = [];
+  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || m[2] || '').trim(); if (w && !out.includes(w)) out.push(w); }
+  return out.slice(0, 8);
+};
+const hasAll = (text, terms) => terms.every((w) => text.includes(w));
+const byTitleHits = (list, terms) => {
+  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
+  return list.sort((a, b) => hits(b) - hits(a) || b.updated - a.updated);
+};
 
 // FILTERS OVER THE STORED HEADS (2026-10-23, the storage keeps each thread's head small and its body and replies apart):
 // a head carries `search` (lower-case title, body and visible replies, cut) and `reply_agents`. Hidden threads never
@@ -158,7 +174,7 @@ export function filterHeads(heads, q = {}) {
   if (q.type) out = out.filter((t) => t.type === q.type);
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
-  if (q.q) { const n = String(q.q).toLowerCase().slice(0, 100); out = out.filter((t) => String(t.search || '').includes(n)); }
+  if (q.q) { const terms = searchTerms(q.q); out = out.filter((t) => hasAll(String(t.search || ''), terms)); return byTitleHits(out, terms); }
   return out.sort((a, b) => b.updated - a.updated);
 }
 export const searchText = (title, body, replies = []) => [title, body, ...replies.filter((r) => !r.hidden).map((r) => r.body)].join(' ').toLowerCase().slice(0, 6000);

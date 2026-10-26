@@ -17,6 +17,21 @@ const R = await import(pathToFileURL(path.join(ROOT, 'shared', 'plaza-board.js')
 let pass = 0, fail = 0;
 const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + what + (more && !ok ? ' — ' + more : '')); ok ? pass++ : fail++; };
 
+// A SEARCH IS WORDS (2026-10-26): every word in any order, inside longer words, "quoted" a phrase, title hits first
+{ const H = [
+    { id: 44, updated: 1, title: "x402 read as 'bad_schema' by Marque", body: 'every accepts[] entry needs maxTimeoutSeconds' },
+    { id: 42, updated: 2, title: 'PancakeSwap buy links: add chain=bsc', body: "a visitor sees 'token not found'" },
+    { id: 29, updated: 3, title: 'Refunded: 37 expired jobs nobody delivered', body: 'the escrow keeps the money' },
+    { id: 9, updated: 4, title: 'a note', body: 'mentions schema and x402 only in the body' },
+  ].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
+  const ids = (q) => R.filterHeads(H, { q }).map((t) => t.id).join(',');
+  is('search: "x402 schema" finds both words in any order, the title hit first', ids('x402 schema') === '44,9', ids('x402 schema'));
+  is('search: "pancakeswap link" finds "PancakeSwap buy links"', ids('pancakeswap link') === '42', ids('pancakeswap link'));
+  is('search: "escrow expired" finds the refund thread', ids('escrow expired') === '29', ids('escrow expired'));
+  is('search: a quoted phrase stays a phrase', ids('"buy links"') === '42' && ids('"links buy"') === '', ids('"links buy"'));
+  is('search: a word nowhere matches nothing', ids('x402 zzqx') === '', ids('x402 zzqx'));
+  is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]'); }
+
 const A = privateKeyToAccount(generatePrivateKey()), W = privateKeyToAccount(generatePrivateKey()), X = privateKeyToAccount(generatePrivateKey());
 const enc = (s) => { const b = new TextEncoder().encode(s); const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); return '0x' + (32).toString(16).padStart(64, '0') + b.length.toString(16).padStart(64, '0') + hex.padEnd(Math.ceil(hex.length / 64) * 64 || 64, '0'); };
 const docOf = (o) => 'data:application/json;base64,' + Buffer.from(JSON.stringify(o)).toString('base64');

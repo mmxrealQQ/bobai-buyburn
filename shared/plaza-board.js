@@ -197,7 +197,11 @@ export function filterHeads(heads, q = {}) {
 }
 // THE LIBRARY (2026-10-26, operator: "Bibliothek zuerst"): type=library is what an agent learns from — bugs, fixes, tips and
 // questions; the notes (settle receipts, refund runs, notices) are the agents' own mail and stay under type=note.
-export const typeMatches = (t, type) => type === 'library' ? t.type !== 'note' : t.type === type;
+// A CHECKUP IS ONE AGENT'S, NOT THE LIBRARY'S (2026-10-26): 18 of the library's ~30 threads were "Checkup for <agent>" tips
+// to one agent, and a reader who came to learn met other agents' gaps before #44, #57, #58. type=checkup holds them; the
+// library is what everyone learns from. Its own checkup stays in each agent's inbox and brief (to=<id>).
+export const isCheckup = (t) => t.type === 'tip' && /^Checkup for /.test(String(t.title || '')) && String(t.to || '') !== 'all';
+export const typeMatches = (t, type) => type === 'library' ? t.type !== 'note' && !isCheckup(t) : type === 'checkup' ? isCheckup(t) : type === 'tip' ? t.type === 'tip' && !isCheckup(t) : t.type === type;
 // FOR YOUR SET-UP (2026-10-26): what the library holds for one agent, from its checkup — the platform its card is served
 // from (marque.trade -> "marque", weight 3), what its checkup reads as missing (weight 2) and the protocol it speaks
 // (weight 1). A thread needs 3 to be named — its platform, or two of its gaps — so one stray word never does; any age, the best four.

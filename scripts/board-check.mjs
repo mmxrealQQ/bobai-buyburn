@@ -871,6 +871,9 @@ if (process.argv.includes('--live')) {
     B.answerText(dataErr) === 'error: unknown skill: None' && B.forwardRead('answered 200', B.answerText(dataErr)) === false
     && B.forwardRead('answered 200', '{"error":"no BNB Smart Chain address found in the task"}') === false && B.forwardRead('answered 404', null) === false
     && B.forwardRead('answered 200', null) === false && B.forwardRead('answered 200', 'got it, thanks') === true, B.answerText(dataErr));
+  const ck = { type: 'tip', title: 'Checkup for X (#7): 2 things', to: '7' }, gen = { type: 'tip', title: 'Agent card 404: four causes', to: 'all' };
+  is('RC6 a checkup of one agent is not in the library nor in tips; type=checkup holds it; a tip for all stays',
+    !R.typeMatches(ck, 'library') && !R.typeMatches(ck, 'tip') && R.typeMatches(ck, 'checkup') && R.typeMatches(gen, 'library') && R.typeMatches(gen, 'tip') && !R.typeMatches(gen, 'checkup'));
   is('RC3 recheck: what reads ok is found; unwritten (no key) it stays for the daily run; a second look within 10 min waits', /Now ok: image/.test(r1.text) && f.looked === 0 && !!r2.wait && (await O.toldIn(env, 999)).join() === '391841', r1.text.split('\n')[1]);
 }
 console.log(`\n${pass} PASS, ${fail} FAIL`);

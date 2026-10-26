@@ -34,9 +34,13 @@ async function ethCall(data, keyed) {
 // (hire.js TOKENS), all 18 decimals there; another token stays raw, with its address, never a guessed figure.
 const QUOTE_TOKENS = { '0xce24439f2d9c6a2289f741120fe202248b666666': '$U', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d': 'USD1', '0x55d398326f99059ff775485246999027b3197955': 'USDT', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC' };
 export const priceText = (raw, currency) => {
-  const sym = QUOTE_TOKENS[String(currency || '').toLowerCase()], s = String(raw).trim();
+  // the currency named by its symbol too (2026-10-26: BNB Yield Optimizer quotes in "U") — the same four, by name
+  const cur = String(currency || '').trim(), bySym = { U: '$U', $U: '$U', USD1: 'USD1', USDT: 'USDT', USDC: 'USDC' };
+  const sym = QUOTE_TOKENS[cur.toLowerCase()] || bySym[cur.toUpperCase()] || bySym[cur], s = String(raw).trim();
+  if (sym && /^\d{1,9}$/.test(s)) return `${s} ${sym}`;   // a whole number of units, not 18-decimal smallest units
   if (sym && /^\d{1,40}$/.test(s)) { const v = Number(BigInt(s)) / 1e18; return `${v >= 0.01 ? v.toFixed(2) : v.toPrecision(2)} ${sym}`; }
-  return s.slice(0, 30) + (currency ? ` (in token ${String(currency).slice(0, 6)}…${String(currency).slice(-4)})` : '');
+  if (!cur) return s.slice(0, 30);
+  return s.slice(0, 30) + (/^0x[0-9a-f]{40}$/i.test(cur) ? ` (in token ${cur.slice(0, 6)}…${cur.slice(-4)})` : ` ${cur.slice(0, 12)}`);
 };
 const addrOf = (w) => (w && w.length >= 66 && !/^0x0*$/.test(w) ? '0x' + w.slice(26, 66).toLowerCase() : null);
 function str(hex) { try { const d = hex.slice(2), len = parseInt(d.slice(64, 128), 16); return new TextDecoder().decode(Uint8Array.from(d.slice(128, 128 + len * 2).match(/../g) || [], (h) => parseInt(h, 16))); } catch { return ''; } }
@@ -114,7 +118,10 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   add('registrations names itself', selfReg, selfReg ? 'yes' : 'missing', `add "registrations": [{ "agentId": ${id}, "agentRegistry": "eip155:56:${REGISTRY}" }] — 8004scan counts it toward completeness`);
   add('agentWallet', !!wallet, wallet || 'not set', `call setAgentWallet for agent ${id} on the ERC-8004 registry ${REGISTRY} (BNB Chain) with the wallet that signs your quotes — SDK buyers check your signed quotes against it`);
   const a2a = serviceUrl(doc, ['a2a']), mcp = serviceUrl(doc, ['mcp']);
-  add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || 'none', 'in the registration JSON (the agent\'s tokenURI): "services": [{ "name": "A2A", "endpoint": "https://…/.well-known/agent-card.json" }] — the name exactly "A2A", the SDK matches it case-sensitively (an MCP server: "name": "MCP" and its endpoint)');
+  // what IS declared, when neither is (2026-10-26: ODEI's four services have no name, Elitr's are web, x402, info — "none"
+  // read as if the registration were empty)
+  const named = (doc?.services || doc?.endpoints || []).map((s) => String(s?.name || '').trim() || '(no name)').slice(0, 6);
+  add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || (named.length ? `${named.length} service${named.length === 1 ? '' : 's'}, none named "A2A" or "MCP" (named: ${named.join(', ')})` : 'none'), 'in the registration JSON (the agent\'s tokenURI): "services": [{ "name": "A2A", "endpoint": "https://…/.well-known/agent-card.json" }] — the name exactly "A2A", the SDK matches it case-sensitively (an MCP server: "name": "MCP" and its endpoint)');
   // the MCP endpoint, when one is declared (2026-10-23: Pokter and 8004scan measure it; the checkup did not): tools/list
   // as a client sends it, stateless first, then with initialize when the server wants a session
   // an answer as JSON or as a server-sent event stream (both are allowed by MCP and A2A): the last JSON data line
@@ -140,7 +147,7 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     // a card behind credentials is there, only not for a reader: a fix of its own, not "serve it at /.well-known"
     const locked = !card && (c.status === 401 || c.status === 403);
     const shown = cardUrl.length > 100 ? cardUrl.slice(0, 99) + '…' : cardUrl; // a long URL cut visibly, not mid-word
-    add('agent card loads', !!card, card ? `${shown} · ${(card.skills || []).length} skills` : `${shown} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
+    add('agent card loads', !!card, card ? `${shown} · ${(card.skills || []).length} skills` : `${shown} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.status >= 500 ? ' — the server was down when read' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : c.status >= 500 ? 'keep the server up (a sleeping free tier answers 503 to the first call) — marketplaces read the card once and move on' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
       const noEx = (card.skills || []).filter((s) => !(s.examples || []).length).map((s) => String(s.id || s.name).slice(0, 40));
       // the fix says where and how (2026-10-26): the card's own host, the field, one line to paste
@@ -153,8 +160,24 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     const t0 = Date.now();
     const r = await get(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'plaza-board-checkup (+https://brainonbnb.com/board)' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'plaza-checkup-' + Date.now(), kind: 'message', parts: [{ kind: 'text', text: 'What can you do?' }] } } }) });
     const rj = sse(r);
-    const ok = !!(rj && (rj.result || rj.error?.code));
-    add('A2A message/send answers', ok, ok ? `${rj.result ? 'a result' : 'a JSON-RPC error ' + rj.error.code} in ${Date.now() - t0} ms` : `${String(rpcUrl).slice(0, 100)} answered ${r.status || r.error}`, 'answer JSON-RPC message/send at the card\'s url — marketplaces send exactly this ("What can you do?")');
+    // a 402 with x402 terms is an answer (2026-10-26): AlphaTrack's A2A asks to be paid per call — a model of its own,
+    // not a broken endpoint; told "answer message/send" it would have been told to give its work away
+    const paywall = r.status === 402 && /x402Version|"accepts"|payment/i.test(String(r.text || JSON.stringify(r.json || '')));
+    const ok = paywall ? null : !!(rj && (rj.result || rj.error?.code));
+    if (paywall) add('A2A message/send answers', null, `${String(rpcUrl).slice(0, 100)} asks to be paid per call (x402, HTTP 402) — a free probe like a marketplace's gets the price, not the answer`);
+    // why it failed, in words (2026-10-26: "answered 200" read like success — bitagent's said {"status": "OK"}, not JSON-RPC;
+    // an http:// endpoint and a server that was down each get their own detail and fix)
+    else {
+      const url100 = String(rpcUrl).slice(0, 100), body = String(r.text || (r.json ? JSON.stringify(r.json) : '')).replace(/\s+/g, ' ').slice(0, 60);
+      const why = r.error === 'not an https URL' ? `${url100} is http://, not https — marketplaces and the SDK call https only`
+        : r.status >= 500 ? `${url100} answered ${r.status} — the server was down when read`
+        : r.status === 200 ? `${url100} answered 200, but not with a JSON-RPC result${body ? ` (${body})` : ''}`
+        : `${url100} answered ${r.status || r.error}`;
+      const fix = r.error === 'not an https URL' ? 'serve the A2A endpoint over https and name the https URL in the card and the registration'
+        : r.status >= 500 ? 'keep the server up (a sleeping free tier answers 503 to the first call) — marketplaces read it once and move on'
+        : 'answer JSON-RPC message/send at the card\'s url — marketplaces send exactly this ("What can you do?")';
+      add('A2A message/send answers', ok, ok ? `${rj.result ? 'a result' : 'a JSON-RPC error ' + rj.error.code} in ${Date.now() - t0} ms` : why, fix);
+    }
     // the dialect the agent itself offers: BNB's SDK skill if its card has it, else the older "negotiate" (Marque's
     // reference agents, 2026-10-23 — asked in the wrong dialect they looked as if they quoted nothing)
     const skills = (card?.skills || []).map((s) => String(s.id || ''));

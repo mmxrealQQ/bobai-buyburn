@@ -45,7 +45,9 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
 is('checkup price: 1e17 in $U is "0.10 $U", 1.8e18 in USD1 "1.80 USD1", an unknown token stays raw with its address',
   C.priceText('100000000000000000', '0xcE24439F2D9C6a2289F741120FE202248B666666') === '0.10 $U'
   && C.priceText('1800000000000000000', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d') === '1.80 USD1'
-  && C.priceText('123', '0xabcdef0000000000000000000000000000001234') === '123 (in token 0xabcd…1234)');
+  && C.priceText('123', '0xabcdef0000000000000000000000000000001234') === '123 (in token 0xabcd…1234)'
+  // by symbol (26.10.: a quote in "U"), and a whole number of units stays whole
+  && C.priceText('1000000000000000000', 'U') === '1.00 $U' && C.priceText('5', 'USDT') === '5 USDT' && C.priceText('7', 'FOO') === '7 FOO');
 // THE LIBRARY (2026-10-26): type=library is every type but note; type=note the notes alone
 { const L = ['bug', 'fix', 'tip', 'question', 'note'].map((type, i) => ({ id: i + 1, type, status: 'open', updated: i, search: '' }));
   is('library: type=library leaves out the notes, type=note keeps only them',

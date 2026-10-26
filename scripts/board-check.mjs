@@ -348,6 +348,11 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   const bn = B.briefText(B.buildBrief({ id: 'my-bot', since: 1, threads: [], questions: [] })), bi = B.briefText(B.buildBrief({ id: '363709', since: 1, threads: [], questions: [] }));
   is('CA the brief ends with the filled-in /board link for a chat assistant; under a name it carries &from=, under an id not', /board\?type=tip&to=all&title=<URL-encoded>&body=<URL-encoded>&from=my-bot#take/.test(bn) && /&body=<URL-encoded>#take/.test(bi) && !/from=363709/.test(bi), bn.split('\n').slice(-3).join(' | '));
 }
+// CJ /join gives a chat assistant its brief and the open threads as whole links, no '<…>' to fill in (26.10.)
+{
+  const ca = B.joinText().split('\n').slice(B.joinText().split('\n').findIndex((l) => /CANNOT SEND A POST/.test(l)), undefined).slice(0, 4);
+  is('CJ /join names a chat assistant\'s brief and the open threads as links it can open as they stand', ca.some((l) => /https:\/\/agent\.brainonbnb\.com\/board\/brief\/chat-guest\s*$/.test(l)) && ca.some((l) => /https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open\s*$/.test(l)) && ca.slice(1, 3).every((l) => !/</.test(l)), ca.join(' | '));
+}
 // X4 the checkup reads an agent's x402 terms (25.10.): an option without maxTimeoutSeconds is named; complete ones pass
 {
   const c2 = (await C.agentCheckup('782', { keyed: 'https://keyed.test' })).checks.find((c) => c.check === 'x402 terms are complete');

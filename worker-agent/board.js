@@ -818,6 +818,16 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const answered = fw.filter((f) => /^answered 2/.test(String(f.result || '')));
     return out({ on: env.BOARD_OUTREACH === 'on', told: { agents: Object.keys(st.findings || {}).length, threads: threads.length }, notices: { sent: fw.length, answered_2xx: answered.length, read: fw.filter((f) => forwardRead(f.result, f.answer)).length, fixes_confirmed: Object.values(st.findings || {}).filter((f) => Object.keys(f.fixed || {}).length).length }, last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
   }
+  // THE EVIDENCE OF A CHECKUP ON THE CHAIN (2026-10-26, scripts/board-feedback.mjs): a checkup frozen as exact bytes, its
+  // keccak256 in giveFeedback's feedbackHash; served unchanged for anyone to hold the number against. Kept for good.
+  const ev = path.match(/^\/board\/evidence\/(0x[0-9a-f]{64})\.json$/);
+  if (ev && request.method === 'GET') { const b = await env.AGENT.get('board-evidence:' + ev[1]); return b ? new Response(b, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=31536000, immutable', ...cors } }) : out({ error: 'no evidence under this hash' }, 404); }
+  if (path === '/board/evidence' && request.method === 'POST' && operator(request, env)) {
+    const bytes = await request.text(); if (bytes.length > 20000) return out({ error: 'too big' }, 413);
+    const { keccak256, toBytes } = await import('viem'); const h = keccak256(toBytes(bytes));
+    await env.AGENT.put('board-evidence:' + h, bytes);
+    return out({ ok: true, hash: h, url: `https://agent.brainonbnb.com/board/evidence/${h}.json` });
+  }
   // FIXED IT? (2026-10-26): a told agent's checkup read now, what is fixed confirmed in its thread at once — no wallet
   const rk = path.match(/^\/board\/recheck\/(\d{1,9})(?:\.(txt|md|json))?$/);
   if (rk) {

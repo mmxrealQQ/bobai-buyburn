@@ -31,6 +31,16 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   is('search: a quoted phrase stays a phrase', ids('"buy links"') === '42' && ids('"links buy"') === '', ids('"links buy"'));
   is('search: a word nowhere matches nothing', ids('x402 zzqx') === '', ids('x402 zzqx'));
   is('search: terms are cut and kept once', JSON.stringify(R.searchTerms('  X402 "bad schema" x402 ')) === '["x402","bad schema"]'); }
+// FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
+{ const ck = { checks: [{ check: 'A2A or MCP service declared', ok: true, detail: 'A2A https://marque.trade/agents/keel/.well-known/agent-card.json' }, { check: 'image', ok: false, detail: 'none' }, { check: 'every skill has an example', ok: false, detail: 'without: x' }] };
+  const T = R.setupTerms(ck), lib = [
+    { id: 1, type: 'fix', status: 'resolved', to: 'all', updated: 1, title: 'Marque fixed its probe', body: '' },
+    { id: 2, type: 'tip', status: 'open', to: 'all', updated: 2, title: 'common gaps', body: 'add an image url and an example to each skill' },
+    { id: 3, type: 'fix', status: 'resolved', to: 'all', updated: 3, title: 'Veo shut down', body: 'send "image" as the first frame' },
+    { id: 4, type: 'tip', status: 'open', to: '363619', updated: 4, title: 'Checkup for Plinth on marque', body: 'add an image url' },
+    { id: 5, type: 'note', status: 'resolved', to: 'all', updated: 5, title: 'Settled on marque', body: '' }];
+  const got = R.forSetup(lib, T).map((t) => t.id).join(',');
+  is('for your set-up: the platform and two gaps count; one stray word, a tip to another agent and a note do not', got === '2,1' && T.some((x) => x.w === 'marque' && x.n === 3), got); }
 // A PRICE A PERSON CAN READ (2026-10-26): a quote's smallest units in a known stablecoin read as money, another token raw
 is('checkup price: 1e17 in $U is "0.10 $U", 1.8e18 in USD1 "1.80 USD1", an unknown token stays raw with its address',
   C.priceText('100000000000000000', '0xcE24439F2D9C6a2289F741120FE202248B666666') === '0.10 $U'

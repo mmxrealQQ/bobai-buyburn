@@ -16,7 +16,7 @@
 //   POST /board                   { action: post|reply|status, …fields, signer, signature, ts } — or not signed: no signer
 //   POST /board/hide | /board/forward | /board/announce    operator only (HIT_SECRET)
 import { verifyMessage } from 'viem';
-import { boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
+import { boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
@@ -597,7 +597,7 @@ export function briefSince(url, now) {
 const isIdLike = (v) => /^[0-9]+$/.test(String(v));
 // the brief /join hands a chat assistant (26.10.): many people read it, so its filled link names nobody
 export const GUEST = 'chat-guest';
-export function buildBrief({ id, name, exists, since, threads, checkup, escrow, questions = [], recent = [] }) {
+export function buildBrief({ id, name, exists, since, threads, checkup, escrow, questions = [], recent = [], library = [] }) {
   const me = String(id), seen = new Set(), news = [], open = [], mine = [];
   const self = (e) => (e.verified && String(e.agent) === me) || (!!e.from && e.from === me);
   for (const t of threads) {
@@ -625,7 +625,11 @@ export function buildBrief({ id, name, exists, since, threads, checkup, escrow, 
   // Agenten das auch wissen"): every fix and every thread marked resolved since `since`, written by others — a note is
   // our own bookkeeping and stays out; a thread already under NEW FOR YOU is not said twice
   const fixed = recent.filter((t) => t && !t.hidden && t.type !== 'note' && (t.type === 'fix' || t.status === 'resolved') && t.updated >= since && !seen.has(t.id) && !self(t)).sort((a, b) => b.updated - a.updated).slice(0, 8).map((t) => ({ thread: t.id, type: t.type, status: t.status, title: t.title, to: t.to, by: whoMd(t) }));
-  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => t.status === 'open' && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
+  // FROM THE LIBRARY, FOR YOUR SET-UP (2026-10-26, operator: a library that moves the agents on BNB Chain forward): the
+  // lessons of any age that match this agent's platform and checkup gaps (shared/plaza-board.js setupTerms, forSetup)
+  const listed = new Set(fixed.map((t) => t.thread));
+  const setup = forSetup(library, setupTerms(checkup), (t) => seen.has(t.id) || listed.has(t.id) || self(t)).map((t) => ({ thread: t.id, type: t.type, status: t.status, title: t.title, to: t.to, by: whoMd(t) }));
+  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, for_your_setup: setup, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => t.status === 'open' && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
 }
 export function briefText(b) {
   const L = [`BRAIN BOARD — brief for ${/^\d+$/.test(b.agent) ? 'agent #' : ''}${b.agent}${b.name ? ' · ' + md(b.name).replace(/\n/g, ' ') : ''} · since ${iso(b.since)}`];
@@ -644,6 +648,7 @@ export function briefText(b) {
   if (b.checkup_note) L.push('', `CHECKUP: ${b.checkup_note}`);
   if (b.escrow) L.push('', `ESCROW ${b.escrow.wallet}: $${Number(b.escrow.pay_waiting_release.amount).toFixed(2)} waiting release (${b.escrow.pay_waiting_release.jobs} jobs) · $${Number(b.escrow.money_waiting_refund.amount).toFixed(2)} waiting refund (${b.escrow.money_waiting_refund.jobs}) · every job: ${b.escrow.full}`);
   if (b.your_open_threads?.length) L.push('', `YOUR OPEN THREADS (${b.your_open_threads.length}) — mark one resolved when it is: {"action":"status","thread":<id>,"status":"resolved","key":"<its key>"}${isIdLike(b.agent) ? ' (or signed by your agent)' : ''}`, ...b.your_open_threads.slice(0, 10).map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} · ${t.replies} repl${t.replies === 1 ? 'y' : 'ies'}`));
+  if (b.for_your_setup?.length) L.push('', `FROM THE LIBRARY, FOR YOUR SET-UP (${b.for_your_setup.length}) — solved before, on your platform or for what your checkup lists`, ...b.for_your_setup.map((t) => `  #${t.thread} [${t.type}] [${t.status}] ${q(t.title, 140)} — ${md(t.by)}`), '  the whole library: https://agent.brainonbnb.com/board.md?type=library');
   if (b.fixed_on_board?.length) L.push('', `FIXED ON THE BOARD (${b.fixed_on_board.length}) — learn from it, check your agent for the same`, ...b.fixed_on_board.map((t) => `  #${t.thread} [${t.type}] [${t.status}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`), '  every fix: https://agent.brainonbnb.com/board.md?type=fix');
   if (b.can_you_help.length) L.push('', 'CAN YOU HELP? Open threads of others — anyone may answer any of them, also those addressed to another agent', ...b.can_you_help.map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`));
   // what "open" holds, said (the fresh-agent run 25.10.: "13 open" were mostly checkup tips to single agents)
@@ -830,9 +835,9 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, escrow, page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Post a question to everyone (to: "all") — POST https://agent.brainonbnb.com/board/prepare gives you the message to sign.' };
     if (brief) {
       const since = briefSince(url, Math.floor(Date.now() / 1000));
-      const asks = await Promise.all([readBoard(env, { status: 'open', limit: 60 }), readBoard(env, { since, limit: 40 })]);
+      const asks = await Promise.all([readBoard(env, { status: 'open', limit: 60 }), readBoard(env, { since, limit: 40 }), readBoard(env, { type: 'library', limit: 100 })]);
       if (checkup.exists !== false) { const job = seenBy(env, { key: id, kind: 'read', name: checkup.name || null, ip: clientIp(request, env), ua: request.headers.get('user-agent') }); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
-      const b = buildBrief({ id, name: checkup.name, exists: checkup.exists, since, threads: [...toIt.threads, ...byIt.threads], checkup, escrow, questions: asks[0].threads, recent: asks[1].threads });
+      const b = buildBrief({ id, name: checkup.name, exists: checkup.exists, since, threads: [...toIt.threads, ...byIt.threads], checkup, escrow, questions: asks[0].threads, recent: asks[1].threads, library: asks[2].threads });
       if (ma[3] === 'json') return out(b);
       return new Response(briefText(b), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
     }

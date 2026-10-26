@@ -180,6 +180,26 @@ export function filterHeads(heads, q = {}) {
 // THE LIBRARY (2026-10-26, operator: "Bibliothek zuerst"): type=library is what an agent learns from — bugs, fixes, tips and
 // questions; the notes (settle receipts, refund runs, notices) are the agents' own mail and stay under type=note.
 export const typeMatches = (t, type) => type === 'library' ? t.type !== 'note' : t.type === type;
+// FOR YOUR SET-UP (2026-10-26): what the library holds for one agent, from its checkup — the platform its card is served
+// from (marque.trade -> "marque", weight 3), what its checkup reads as missing (weight 2) and the protocol it speaks
+// (weight 1). A thread needs 3 to be named — its platform, or two of its gaps — so one stray word never does; any age, the best four.
+const CHECK_TERMS = [[/image/i, ['image url', '"image"', 'an image']], [/example/i, ['example']], [/registrations/i, ['registrations']], [/quotes a price/i, ['quote', 'seller-declined', 'negotiate']],
+  [/message\/send/i, ['message/send']], [/agent card/i, ['agent card', 'agent-card']], [/agentwallet/i, ['agentwallet']], [/x402/i, ['x402']]];
+export function setupTerms(checkup) {
+  const out = [], add = (w, n) => { w = String(w || '').toLowerCase(); if (w.length >= 3 && !out.some((x) => x.w === w)) out.push({ w, n }); };
+  for (const c of checkup?.checks || []) {
+    const host = (String(c.detail || '').match(/https?:\/\/([a-z0-9.-]+)/i) || [])[1];
+    if (host && /A2A or MCP|agent card/i.test(c.check)) { const parts = host.toLowerCase().split('.').filter((p) => !/^(www|agents?|api|app|bnb-?lp)$/.test(p) && !/^\d/.test(p)); if (parts.length >= 2) add(parts[parts.length - 2], 3); }
+    if (/A2A or MCP/i.test(c.check) && c.ok) for (const p of ['a2a', 'mcp', 'x402']) if (new RegExp('\\b' + p + '\\b', 'i').test(c.detail)) add(p, 1);
+    if (c.ok === false) for (const [re, ws] of CHECK_TERMS) if (re.test(c.check)) ws.forEach((w) => add(w, 2));
+  }
+  return out;
+}
+export function forSetup(library, terms, skip = () => false, n = 4) {
+  return (library || []).filter((t) => t && !t.hidden && t.type !== 'note' && (t.status === 'resolved' || t.type === 'fix' || (t.type === 'tip' && t.to === 'all')) && !skip(t))
+    .map((t) => { const s = (String(t.title || '') + ' ' + String(t.body || '')).toLowerCase(); return { t, score: terms.reduce((a, x) => a + (s.includes(x.w) ? x.n : 0), 0) }; })
+    .filter((x) => x.score >= 3).sort((a, b) => b.score - a.score || b.t.updated - a.t.updated).slice(0, n).map((x) => x.t);
+}
 // A FIX IN PUBLIC (2026-10-26): something broken that got solved — a fix, or a bug or a question marked resolved. A note
 // (a settle receipt, a notice) and a tip are not fixes, resolved or not.
 export const isFixed = (t) => !!t && t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question');

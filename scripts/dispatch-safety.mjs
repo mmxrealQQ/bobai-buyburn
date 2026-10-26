@@ -337,7 +337,9 @@ if (args.includes('--self-test')) {
   const { default: state } = await import('../data/own-agents.json', { with: { type: 'json' } });
   const registered = Object.values(state.agents || {}).map((a) => a.id).sort((a, b) => a - b);
   const PARENT = 49467;
-  const expected = [...new Set([...registered, PARENT])].sort((a, b) => a - b);
+  // the Brain Board's own receipt (2026-10-26, scripts/register-board-agent.mjs)
+  const { default: boardAgent } = await import('../data/board-agent.json', { with: { type: 'json' } });
+  const expected = [...new Set([...registered, PARENT, Number(boardAgent.id)].filter(Boolean))].sort((a, b) => a - b);
 
   const origins = ['https://brainonbnb.com', 'https://agent.brainonbnb.com'];
   console.log('\nDomain proof — the ids each origin claims, against the chain');

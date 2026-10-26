@@ -34,9 +34,14 @@ export const DEFI_AGENT_ID = 363709;
 // telemetry, which is why the two lists are not the same length.
 export const PARENT_AGENT_ID = 49467;
 
+// The Brain Board as an agent of its own (2026-10-26, scripts/register-board-agent.mjs, receipt data/board-agent.json):
+// owner d38, its A2A on agent.brainonbnb.com/board/a2a, its web on brainonbnb.com/board. Not hireable, so not in
+// OWN_AGENT_IDS (telemetry, live lines); in the proof it was missing on both hosts until 8004scan read it unverified.
+export const BOARD_AGENT_ID = 391841;
+
 // Everything this operator claims on-chain, in the shape the proof document
 // wants. Parent first: it is the id a reader recognises.
-export const PROOF_IDS = [PARENT_AGENT_ID, ...OWN_AGENT_IDS];
+export const PROOF_IDS = [PARENT_AGENT_ID, ...OWN_AGENT_IDS, BOARD_AGENT_ID];
 
 // The registries a reader can check us against, one copy for every card that
 // declares them (2026-09-19: the agent origin's card carried them as literals,

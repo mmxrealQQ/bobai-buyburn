@@ -793,6 +793,16 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const r = await B.handleBoard(new Request('https://agent.brainonbnb.com/board/brief/777', { headers: { 'cf-connecting-ip': ip } }), env, '/board/brief/777', new URL('https://agent.brainonbnb.com/board/brief/777'));
   const t = await r.text();
   is('CN past 20 different agents the brief still names the agent and says the checkup is back tomorrow', /^BRAIN BOARD — brief for agent #777 · Test Agent 777 — ü/.test(t) && /CHECKUP: this address had checkups of 20 different agents/.test(t), t.split('\n')[0]);
+  // CL (2026-10-26, the stranger test got 429 on its first checkup): past the limit, the day's last read answers with its
+  // time; with none, the refusal says this agent was not read here today; a chat assistant's shared servers get 200
+  const kv2 = new Map([['board-ck-last:888', JSON.stringify({ agent: '888', exists: true, name: 'Read Earlier', score: '7/9', checks: [], read_at: '2026-10-26T10:00:00.000Z' })]]);
+  const env2 = { ...env, AGENT: { get: async (k) => kv2.get(k) ?? null, put: async (k, v) => kv2.set(k, v) } };
+  const at = (p, h = {}) => B.handleBoard(new Request('https://agent.brainonbnb.com' + p, { headers: { 'cf-connecting-ip': ip, ...h } }), env2, p, new URL('https://agent.brainonbnb.com' + p)).then(async (r) => ({ s: r.status, j: await r.json().catch(() => null) }));
+  const l1 = await at('/board/agent/888'), l2 = await at('/board/agent/889');
+  is('CL1 past the limit, an agent read today answers from that read, with its time', l1.s === 200 && l1.j?.checkup?.score === '7/9' && /last read/.test(l1.j?.checkup?.served_from || ''), JSON.stringify(l1.j?.checkup || l1.j).slice(0, 120));
+  is('CL2 past the limit, an agent not read today is refused in words that say so', l2.s === 429 && /#889 was not read here today/.test(l2.j?.error || ''), l2.j?.error);
+  const sh = await stub.fetch('https://board/ckslot', { method: 'POST', body: JSON.stringify({ ip: B.ipKey(ip) + '|shared', id: '9100', max: 200 }) }).then((r) => r.json());
+  is('CL3 a chat assistant\'s shared servers count apart from the address, at 200', sh.ok === true);
   // CS the same agent again never runs out: 25 briefs of #777 from one fresh address all carry the checkup
   const ip2 = '198.18.9.2';
   let skipped = 0;

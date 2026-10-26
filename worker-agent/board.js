@@ -890,16 +890,23 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (!checkup) {
       // 20 DIFFERENT agents a day from one address (2026-10-24: a hook that reads its own brief at every session start
       // ran out after 20 sessions; the limit is there against sweeping many ids, the same id again costs no slot)
-      const allowed = await board(env).fetch('https://board/ckslot', { method: 'POST', body: JSON.stringify({ ip: ipKey(clientIp(request, env)), id, max: 20 }) }).then((r) => r.json()).then((j) => j.ok).catch(() => false);
+      // SHARED ADDRESSES (2026-10-26, the stranger test: a builder's first checkup came back 429 — many people's chat
+      // assistants fetch from the same few servers, and twenty agents a day was theirs together): 200 for those
+      const ua = request.headers.get('user-agent') || '', shared = /Claude-User|ChatGPT-User|Perplexity-User|MistralAI-User|Google-Agent|Gemini/i.test(ua);
+      const allowed = await board(env).fetch('https://board/ckslot', { method: 'POST', body: JSON.stringify({ ip: ipKey(clientIp(request, env)) + (shared ? '|shared' : ''), id, max: shared ? 200 : 20 }) }).then((r) => r.json()).then((j) => j.ok).catch(() => false);
+      // over the limit, the last read of the day still answers, with its time (KV board-ck-last:<id>, 24 h)
+      if (!allowed && !operator(request, env)) { const last = await Promise.resolve(env.AGENT?.get?.('board-ck-last:' + id)).catch(() => null); if (last) checkup = { ...JSON.parse(last), served_from: 'the last read of this agent today (this address is at its limit of different agents for today)' }; }
       // a brief read at every session start never fails on the checkup's limit: it comes without the checkup then
-      if (!allowed && !operator(request, env) && !brief) return out({ error: 'checkups of twenty different agents a day per address (the same agent again is always served); a checkup read in the last 15 minutes is served from memory' }, 429);
+      if (!checkup && !allowed && !operator(request, env) && !brief) return out({ error: `this address has had checkups of ${shared ? 200 : 20} different agents today, and #${id} was not read here today — it is back tomorrow, or run it from your own address. A checkup read in the last 24 hours, by anyone, is always served.` }, 429);
       // its name stays (2026-10-24: a hook that starts many sessions lost the agent's name with the checkup) — from the
       // board's own row, no registry read
-      if (!allowed && !operator(request, env)) { const row = await board(env).fetch('https://board/row', { method: 'POST', body: JSON.stringify({ key: id }) }).then((r) => r.json()).catch(() => null); checkup = { agent: id, exists: null, name: row?.name || null, checks: [], score: null, skipped: 'this address had checkups of 20 different agents today; it is back tomorrow' }; }
+      if (checkup) { /* the last read, above */ }
+      else if (!allowed && !operator(request, env)) { const row = await board(env).fetch('https://board/row', { method: 'POST', body: JSON.stringify({ key: id }) }).then((r) => r.json()).catch(() => null); checkup = { agent: id, exists: null, name: row?.name || null, checks: [], score: null, skipped: 'this address had checkups of 20 different agents today; it is back tomorrow' }; }
       else {
         const { agentCheckup } = await import('./board-checkup.js');
         checkup = await agentCheckup(id, { keyed: env.BSC_RPC_KEYED_URL_2, self: env.SELF });
         if (globalThis.caches && checkup.exists !== null) await caches.default.put(memo, new Response(JSON.stringify(checkup), { headers: { 'cache-control': 'max-age=900' } })).catch(() => {});
+        if (checkup.exists) await Promise.resolve(env.AGENT?.put?.('board-ck-last:' + id, JSON.stringify({ ...checkup, read_at: new Date().toISOString() }), { expirationTtl: 86400 })).catch(() => {});
       }
     }
     // its escrow beside its checkup (2026-10-23): the agentWallet's jobs and what waits — escrow-for.js, no chain read

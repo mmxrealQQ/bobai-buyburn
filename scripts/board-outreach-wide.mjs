@@ -18,6 +18,10 @@ import { boardMessage, checkPost } from '../shared/plaza-board.js';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const STATE = path.join(ROOT, 'data', 'board-outreach-wide.json'), PAID = path.join(ROOT, 'data', 'board-outreach.json');
 const OUR_HOSTS = new Set(['agent.brainonbnb.com', 'brainonbnb.com']);
+// RETIRED FOR POSTING (2026-10-26): the worker does this itself every day (worker-agent/board-outreach.js, state in KV
+// board-outreach, signed by the Brain Board #391841). This file's state is no longer read there, so a post from here
+// could tell a host twice; a dry run still shows what the rules would pick. Status: GET /board/outreach (operator).
+if (process.argv.includes('--confirm')) { console.error('retired: worker-agent/board-outreach.js posts these now (POST /board/outreach runs it)'); process.exit(1); }
 const confirm = process.argv.includes('--confirm'), MAX_ENTRIES = 10, MAX_READS = 40, PER_HOST = 8, AGAIN_DAYS = 14;
 const HS = process.env.HIT_SECRET;
 if (!HS) { console.error('HIT_SECRET missing in .env (the checkups are read as the operator, past the per-address limit)'); process.exit(1); }

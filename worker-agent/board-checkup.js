@@ -108,13 +108,13 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
   const reg = await registration(str(u.result || '0x'), get);
   const doc = reg.doc || null;
   add('registration document', !!doc, doc ? (reg.inline ? 'inline data: URI, readable without a server' : 'readable') : reg.error, 'serve valid JSON at the tokenURI (an inline data: URI cannot go offline)');
-  add('name and description', !!(doc?.name && doc?.description), doc?.name ? `"${String(doc.name).slice(0, 60)}"` : 'no name', 'set name and a description that says what the agent does');
-  add('image', !!doc?.image, doc?.image ? 'set' : 'none', 'add an image URL (https) — explorers and marketplaces show it');
+  add('name and description', !!(doc?.name && doc?.description), doc?.name ? `"${String(doc.name).slice(0, 60)}"` : 'no name', 'in the registration JSON (the agent\'s tokenURI): "name": "…", "description": "what it does, for whom, what it costs"');
+  add('image', !!doc?.image, doc?.image ? 'set' : 'none', 'in the registration JSON (the agent\'s tokenURI): "image": "https://…/logo.png" — a square https picture; explorers and marketplaces show it');
   const selfReg = Array.isArray(doc?.registrations) && doc.registrations.some((r) => String(r.agentId) === id);
   add('registrations names itself', selfReg, selfReg ? 'yes' : 'missing', `add "registrations": [{ "agentId": ${id}, "agentRegistry": "eip155:56:${REGISTRY}" }] — 8004scan counts it toward completeness`);
-  add('agentWallet', !!wallet, wallet || 'not set', 'setAgentWallet: SDK buyers check your signed quotes against it');
+  add('agentWallet', !!wallet, wallet || 'not set', `call setAgentWallet for agent ${id} on the ERC-8004 registry ${REGISTRY} (BNB Chain) with the wallet that signs your quotes — SDK buyers check your signed quotes against it`);
   const a2a = serviceUrl(doc, ['a2a']), mcp = serviceUrl(doc, ['mcp']);
-  add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || 'none', 'declare a service named "A2A" (exactly, the SDK matches it case-sensitively) with its endpoint');
+  add('A2A or MCP service declared', !!(a2a || mcp), [a2a && `A2A ${String(a2a).slice(0, 100)}`, mcp && `MCP ${String(mcp).slice(0, 100)}`].filter(Boolean).join(' · ') || 'none', 'in the registration JSON (the agent\'s tokenURI): "services": [{ "name": "A2A", "endpoint": "https://…/.well-known/agent-card.json" }] — the name exactly "A2A", the SDK matches it case-sensitively (an MCP server: "name": "MCP" and its endpoint)');
   // the MCP endpoint, when one is declared (2026-10-23: Pokter and 8004scan measure it; the checkup did not): tools/list
   // as a client sends it, stateless first, then with initialize when the server wants a session
   // an answer as JSON or as a server-sent event stream (both are allowed by MCP and A2A): the last JSON data line
@@ -143,7 +143,9 @@ export async function agentCheckup(id, { keyed = null, self = null, budgetMs = 3
     add('agent card loads', !!card, card ? `${shown} · ${(card.skills || []).length} skills` : `${shown} answered ${c.status || c.error}${locked ? ' (asks for credentials)' : c.text ? ' (not JSON — a site answering every path with HTML?)' : ''}`, locked ? 'let the card be read without credentials — marketplaces and explorers send none; the task endpoint behind it may stay authenticated' : 'serve the A2A card as JSON at the endpoint\'s /.well-known/agent-card.json');
     if (card) {
       const noEx = (card.skills || []).filter((s) => !(s.examples || []).length).map((s) => String(s.id || s.name).slice(0, 40));
-      add('every skill has an example', !noEx.length, noEx.length ? `without: ${noEx.slice(0, 8).join(', ')}` : 'yes', 'add examples to each skill — 8004scan grades A2A quality on it (ours went 77 -> 87)');
+      // the fix says where and how (2026-10-26): the card's own host, the field, one line to paste
+      const cardHost = (() => { try { return new URL(cardUrl).host; } catch { return 'your card'; } })();
+      add('every skill has an example', !noEx.length, noEx.length ? `without: ${noEx.slice(0, 8).join(', ')}` : 'yes', `in the agent card (served at ${cardHost}), give every skill an "examples" list — for ${noEx[0] || 'each skill'}: "examples": ["<one request a buyer would send>"] — 8004scan grades A2A quality on it (ours went 77 -> 87)`);
       rpcUrl = card.url || (isCardUrl(a2a) ? null : a2a);
     }
   }

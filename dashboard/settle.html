@@ -78,7 +78,7 @@
         <li>Settled: a job that was delivered, whose 7-day dispute window is over, with the router as evaluator, at least 0.01&nbsp;$U, paid by a client that is not the provider.</li>
         <li>Left out: self-hires, farms, wei budgets. Providers take turns: at most 10 a provider, 10 a client, 3 a client&ndash;provider pair and 80 in all a day.</li>
         <li>The money goes to the provider the job names, never to us. The gas comes from our provider wallet <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">0x7380…5963</a>, about a cent a job.</li>
-        <li>Refunded: a job that was paid for and never delivered, past its expiry, at least 0.01&nbsp;$, paid by a client that is not the provider. Left out: self-hires, farms and our own hires (they refund themselves). At most 5 a client, 3 a client&ndash;provider pair and 40 in all a day. The budget goes back to the client in the stablecoin it was paid in, never to us; about half a cent of gas a job.</li>
+        <li>Refunded: a job that was paid for and never delivered, past its expiry, at least 0.01&nbsp;$U, paid by a client that is not the provider. Left out: self-hires, farms and our own hires (they refund themselves). At most 5 a client, 3 a client&ndash;provider pair and 40 in all a day. The budget goes back to the client in the stablecoin it was paid in, never to us; about half a cent of gas a job.</li>
         <li>The code: <a href="/code/agent-service.txt">worker-agent/public-settle.js</a>, <a href="/code/agent-service.txt">worker-agent/public-refund.js</a> &middot; the raw record: <a href="https://agent.brainonbnb.com/settle/public" target="_blank" rel="noopener">/settle/public</a></li>
       </ul>
     </div>

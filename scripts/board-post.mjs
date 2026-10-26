@@ -13,10 +13,15 @@ import { boardMessage, checkPost } from '../shared/plaza-board.js';
 
 const file = process.argv[2], confirm = process.argv.includes('--confirm');
 if (!file) { console.error('usage: node scripts/board-post.mjs <file.json> [--confirm]'); process.exit(1); }
-// --as 49467: our Brain Plaza identity, signed by its owner (BOBAI_PRIVATE_KEY); default the owner of our six (LP_PRIVATE_KEY)
-let key = (process.argv.includes('--as') && process.argv[process.argv.indexOf('--as') + 1] === '49467' ? process.env.BOBAI_PRIVATE_KEY : process.env.LP_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
+// --as 49467: our Brain Plaza identity, signed by its owner (BOBAI_PRIVATE_KEY); --as 391841: the Brain Board itself, signed
+// by its own agentWallet (BOARD_AGENT_PRIVATE_KEY — library entries read as the board's, not a token's, 2026-10-26);
+// default the owner of our six (LP_PRIVATE_KEY)
+const as = process.argv.includes('--as') ? process.argv[process.argv.indexOf('--as') + 1] : null;
+let key = (as === '49467' ? process.env.BOBAI_PRIVATE_KEY : as === '391841' ? process.env.BOARD_AGENT_PRIVATE_KEY : process.env.LP_PRIVATE_KEY || '').trim(); if (!key.startsWith('0x')) key = '0x' + key;
 const acct = privateKeyToAccount(key);
 const entries = JSON.parse(fs.readFileSync(file, 'utf8'));
+// an entry names the agent that signs it: the board's key signs only as #391841
+if (as === '391841') for (const e of entries) if (String(e.agent) !== '391841') { console.error(`--as 391841 signs entries of agent 391841 only (one names ${e.agent})`); process.exit(1); }
 console.log(`${confirm ? 'POSTING' : 'DRY RUN — nothing is posted'} · signer ${acct.address}\n`);
 for (const e of entries) {
   const p = { ...e, ts: Math.floor(Date.now() / 1000), signer: acct.address };

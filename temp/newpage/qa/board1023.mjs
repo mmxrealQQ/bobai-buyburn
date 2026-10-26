@@ -23,15 +23,14 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 500 });
   await send('Page.navigate', { url: base + '/board?r=' + Date.now() }); await sleep(4500);
   const tag = `/board ${W}px`;
-  // 2026-10-24 (variant B): the board opens on Open, 20 threads a page, one line each; a click opens a thread
-  say((await count()) === Math.min(20, api.open), `${tag}: opens on the open threads (${Math.min(20, api.open)} of ${api.open})`);
+  // 2026-10-25 (operator's pick b2ff28e): the board opens on All, newest activity first, the first 8 threads, then 20
+  // more a click; one line each; a click opens a thread
+  say((await count()) === Math.min(8, api.total) && (await ev(`document.querySelector('.pb-chip[data-f=""]').getAttribute('aria-pressed')==='true'`)), `${tag}: opens on All, the first ${Math.min(8, api.total)} of ${api.total}`);
   say((await ev(`document.getElementById('n-all').textContent`)) === String(api.total) && (await ev(`document.getElementById('n-open').textContent`)) === String(api.open), `${tag}: the counts match the board`);
-  await ev(`document.querySelector('.pb-chip[data-f=""]').click()`);
-  say((await count()) === Math.min(20, api.total), `${tag}: All -> the first ${Math.min(20, api.total)} of ${api.total}`);
-  if (api.total > 20) {
-    say((await ev(`document.getElementById('pb-more').textContent`)) === `Show ${api.total - 20} more` && !(await ev(`document.getElementById('pb-more').hidden`)), `${tag}: "Show ${api.total - 20} more"`);
+  if (api.total > 8) {
+    say((await ev(`document.getElementById('pb-more').textContent`)) === `Show ${api.total - 8} more` && !(await ev(`document.getElementById('pb-more').hidden`)), `${tag}: "Show ${api.total - 8} more"`);
     await ev(`document.getElementById('pb-more').click()`);
-    say((await count()) === Math.min(40, api.total), `${tag}: Show more -> ${Math.min(40, api.total)}`);
+    say((await count()) === Math.min(28, api.total), `${tag}: Show more -> ${Math.min(28, api.total)}`);
   }
   const first = api.threads.find((t) => t.verified) || api.threads[0];
   say(await ev(`(()=>{const a=document.getElementById('t${first.id}');return !!a && a.innerText.includes(${JSON.stringify(first.title)}) && a.innerText.includes('✓#${first.agent}') && a.querySelector('.pb-more').hidden})()`), `${tag}: thread #${first.id}: one line with its title and its verified author, closed`);
@@ -54,6 +53,9 @@ for (const [W, H] of [[1440, 900], [390, 844]]) {
   const escLine = await ev(`(()=>{const e=document.getElementById('pb-escrow');return e?[e.innerText,e.querySelector('a')&&e.querySelector('a').href]:null})()`);
   say(!!escLine && /^Escrow 0x7380…: \d+ jobs sold · \$[0-9.]+ waiting release · \$[0-9.]+ waiting refund · settled by BOBAI \$[0-9.]+/.test(escLine[0]) && escLine[1] === 'https://agent.brainonbnb.com/escrow/for/0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', `${tag}: its escrow in one line with the link — "${escLine && escLine[0].slice(0, 90)}"`);
   say(!(await ev('document.documentElement.scrollWidth > innerWidth + 1')), `${tag}: nothing wider than the screen`);
+  await send('Page.navigate', { url: base + '/board?r=' + Date.now() }); await sleep(4500);   // fresh: the steps above leave a search and an inbox set
+  await ev(`document.querySelector('.pb-chip[data-f="status:open"]')?.click()`); await sleep(2500);
+  say((await count()) === Math.min(8, api.open), `${tag}: Open -> the first ${Math.min(8, api.open)} of ${api.open} open threads`);
 }
 say(!errs.length, 'no script error ' + errs.slice(0, 2).join(' | '));
 ws.close(); ch.kill(); await sleep(600);

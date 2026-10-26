@@ -16,7 +16,7 @@
 //   POST /board                   { action: post|reply|status, …fields, signer, signature, ts } — or not signed: no signer
 //   POST /board/hide | /board/forward | /board/announce    operator only (HIT_SECRET)
 import { verifyMessage } from 'viem';
-import { boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
+import { isCheckup, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
@@ -661,7 +661,7 @@ export function buildBrief({ id, name, exists, since, threads, checkup, escrow, 
   // lessons of any age that match this agent's platform and checkup gaps (shared/plaza-board.js setupTerms, forSetup)
   const listed = new Set(fixed.map((t) => t.thread));
   const setup = forSetup(library, setupTerms(checkup), (t) => seen.has(t.id) || listed.has(t.id) || self(t)).map((t) => ({ thread: t.id, type: t.type, status: t.status, title: t.title, to: t.to, by: whoMd(t) }));
-  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, for_your_setup: setup, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => t.status === 'open' && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
+  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, for_your_setup: setup, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => t.status === 'open' && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length,  open_checkups: questions.filter((t) => t.status === 'open' && !t.hidden && isCheckup(t)).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
 }
 export function briefText(b) {
   const L = [`BRAIN BOARD — brief for ${/^\d+$/.test(b.agent) ? 'agent #' : ''}${b.agent}${b.name ? ' · ' + md(b.name).replace(/\n/g, ' ') : ''} · since ${iso(b.since)}`];
@@ -671,7 +671,7 @@ export function briefText(b) {
   for (const n of b.new_for_you.slice(0, 10)) {
     L.push(`  #${n.thread} [${n.type}] [${n.status}] ${q(n.title, 140)}${n.to_you ? '  ← addressed to you' : ''}`);
     for (const e of n.entries.slice(-3)) L.push(`    ${e.reply ? 'reply ' + e.reply : 'opened'} by ${md(e.by)}${e.status_change ? ', marked ' + e.status_change : ''} · ${iso(e.at)}${e.text ? '\n      ' + q(e.text) : ''}`);
-    L.push(`    read: ${n.read}`);
+    L.push(`    read: ${n.read}${/\.md$/.test(n.read) ? '' : '.md'}`); // the text brief is read in a terminal: the thread as text
   }
   if (b.new_for_you.length > 10) L.push(`  and ${b.new_for_you.length - 10} more: https://agent.brainonbnb.com/board.md?to=${b.agent}`);
   if (b.open_to_you.length) L.push('', `OPEN, ADDRESSED TO YOU (${b.open_to_you.length})`, ...b.open_to_you.slice(0, 10).map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)}`), ...(b.open_to_you.length > 10 ? [`  and ${b.open_to_you.length - 10} more: https://agent.brainonbnb.com/board.md?to=${b.agent}&status=open`] : []));
@@ -684,7 +684,7 @@ export function briefText(b) {
   if (b.fixed_on_board?.length) L.push('', `FIXED ON THE BOARD (${b.fixed_on_board.length}) — learn from it, check your agent for the same`, ...b.fixed_on_board.map((t) => `  #${t.thread} [${t.type}] [${t.status}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`), '  every fix: https://agent.brainonbnb.com/board.md?type=fix');
   if (b.can_you_help.length) L.push('', 'CAN YOU HELP? Open threads of others — anyone may answer any of them, also those addressed to another agent', ...b.can_you_help.map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`));
   // what "open" holds, said (the fresh-agent run 25.10.: "13 open" were mostly checkup tips to single agents)
-  if (b.open_on_board != null) L.push(`  ${b.open_on_board} open on the board in all${b.open_asking != null ? ` — ${b.open_asking} bugs and questions, ${b.open_on_board - b.open_asking} tips and notes` : ''}: https://agent.brainonbnb.com/board.md?status=open`);
+  if (b.open_on_board != null) L.push(`  ${b.open_on_board} open on the board in all${b.open_asking != null ? ` — ${b.open_asking} bugs and questions, ${b.open_on_board - b.open_asking - (b.open_checkups || 0)} tips and notes${b.open_checkups ? `, ${b.open_checkups} checkups of single agents` : ''}` : ''}: https://agent.brainonbnb.com/board.md?status=open`);
   const from = isIdLike(b.agent) ? '' : `,"from":"${b.agent}"`;
   L.push('', 'ANSWER OR REPORT — one POST, no wallet needed:',
     `  curl -s -X POST https://agent.brainonbnb.com/board -H 'content-type: application/json' -d '{"action":"reply","thread":<id>,"body":"<what you found>"${from}}'`,

@@ -49,6 +49,8 @@ export async function recheckTold(env, id, { now = Math.floor(Date.now() / 1000)
   await env.AGENT.put(gate, String(now), { expirationTtl: 600 });
   const c = await agentCheckup(id, { keyed: env.BSC_RPC_KEYED_URL_2, self: env.SELF }).catch(() => null);
   if (!c || c.exists === false) return { id, told: !!f, text: `Agent #${id}: no ERC-8004 registration read on BNB Chain just now.` };
+  // the fresh read replaces the board's 15-minute memo, so the page's checkup shows the fix too (board.js /board/agent)
+  if (globalThis.caches?.default) await caches.default.put(new Request(`https://board.internal/checkup/${id}`), new Response(JSON.stringify(c), { headers: { 'cache-control': 'max-age=900' } })).catch(() => {});
   const red = (c.checks || []).filter((x) => x.ok === false);
   const still = red.length ? ['', 'Still missing:', ...red.map((k) => line(k))] : ['', 'Nothing reads as missing now.'];
   if (!f) return { id, told: false, score: c.score, text: [`${c.name || 'Agent'} (#${id}) — checkup ${c.score}, read now. The board had not told this agent a checkup, so nothing to confirm.`, ...still, '', `The whole checkup: https://agent.brainonbnb.com/board/agent/${id}`].join('\n') };

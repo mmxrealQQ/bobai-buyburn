@@ -105,9 +105,10 @@
     const m = b.most_clients_30d;
     // a tie names every agent at that count (2026-10-25: Keel, Sluicegate and 0x8176 all had 9; the line named Keel alone)
     const top = m ? (b.ranking || []).filter((r) => r.clients_30d === m.clients_30d) : [];
-    const who = (r) => '<b>' + (r.ours ? 'Brain on BNB' : esc((r.agents && r.agents[0] && r.agents[0].name) || short(r.provider))) + '</b> (#' + nf(r.rank) + ')';
+    // its own name: as 'who' it hid the row builder above, and every row lost its checkup and escrow links (26.10.)
+    const tied = (r) => '<b>' + (r.ours ? 'Brain on BNB' : esc((r.agents && r.agents[0] && r.agents[0].name) || short(r.provider))) + '</b> (#' + nf(r.rank) + ')';
     $('jb-head').innerHTML = 'Read ' + esc(String(b.measured_at).slice(0, 16).replace('T', ' ')) + ' UTC, through job ' + nf(b.run ? b.run.read_through : 0) + '. '
-      + (m ? (top.length > 1 ? 'Most different paying clients in 30 days, ' + nf(m.clients_30d) + ' each: ' + top.map(who).join(', ') + ' (# = rank by jobs paid).'
+      + (m ? (top.length > 1 ? 'Most different paying clients in 30 days, ' + nf(m.clients_30d) + ' each: ' + top.map(tied).join(', ') + ' (# = rank by jobs paid).'
         : 'Most different paying clients in 30 days: <b>' + (m.ours ? 'Brain on BNB' : esc((m.agents && m.agents[0] && m.agents[0].name) || short(m.provider))) + '</b>, ' + nf(m.clients_30d) + ' (#' + nf(m.rank) + ' by jobs paid).') : '')
       + (b.run && b.run.unread ? ' <span class="no">' + nf(b.run.unread) + ' jobs could not be read this time; they are read again tomorrow.</span>' : '');
     const rows = (b.ranking || []).filter((r) => r.delivered_30d > 0 || r.paid_ever > 0);

@@ -107,6 +107,10 @@
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;color:var(--text);overflow-wrap:anywhere}
   .sv-limit{font-style:italic;opacity:.85}
   .sv-limit a{overflow-wrap:anywhere;word-break:break-all}
+  /* four ways: 4 in a row, or 2 + 2 — never 3 + 1 with the holder way alone below (26.10.) */
+  .sv .primer-do{grid-template-columns:1fr}
+  @media (min-width:560px){.sv .primer-do{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (min-width:960px){.sv .primer-do{grid-template-columns:repeat(4,minmax(0,1fr))}}
   .sv-nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0 0}
   .sv-num{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:13px 15px;min-width:0}
   .sv-num b{display:block;font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.5rem;color:var(--gold);
@@ -148,7 +152,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids registered on BNB Chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">572,454</b><span>requests answered for others — people, agents and registries</span></div>
+      <div class="sv-num"><b id="sv-asked">574,364</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
     <!-- A WAY THROUGH A LONG PAGE (2026-10-13: 14,000 px on a phone): one row of jumps to its parts -->

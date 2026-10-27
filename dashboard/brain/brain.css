@@ -32,7 +32,7 @@ body.brainpage{margin:0;min-height:100vh;min-height:100svh;color:var(--bp-text);
 .bp-buy{background:var(--bp-gold);color:#0b090a;box-shadow:0 0 22px rgba(240,185,11,.3)}
 
 /* ---- the grid: wide screens ---- */
-.bp-grid{display:grid;grid-template-columns:minmax(200px,clamp(250px,17vw,330px)) 1fr minmax(200px,clamp(250px,17vw,330px));gap:12px;padding:12px;height:calc(100vh - 54px);height:calc(100svh - 54px);box-sizing:border-box}
+.bp-grid{display:grid;grid-template-columns:minmax(200px,clamp(250px,17vw,330px)) 1fr minmax(200px,clamp(250px,17vw,330px));gap:12px;padding:12px;height:calc(100vh - var(--bp-top));height:calc(100svh - var(--bp-top));box-sizing:border-box}
 .bp-side{display:flex;flex-direction:column;gap:10px;min-height:0}
 .bp-side.r{justify-content:flex-start}
 .bp-center{position:relative;min-height:0;border-radius:20px;border:1px solid var(--bp-line2)}
@@ -82,8 +82,8 @@ body.bp-winon{overflow:hidden}
 
 /* ---- almost square: a foldable opened, a tablet upright ---- */
 @media (max-aspect-ratio:5/4) and (min-aspect-ratio:3/4) and (min-width:560px){
-  .bp-grid{grid-template-columns:repeat(4,1fr);grid-template-rows:minmax(0,1fr) auto auto;height:auto;min-height:calc(100svh - 54px)}
-  .bp-center{grid-column:1/-1;grid-row:1;order:-1;height:calc(100svh - 54px - 24px - 2*96px - 20px);min-height:440px}
+  .bp-grid{grid-template-columns:repeat(4,1fr);grid-template-rows:minmax(0,1fr) auto auto;height:auto;min-height:calc(100svh - var(--bp-top))}
+  .bp-center{grid-column:1/-1;grid-row:1;order:-1;height:calc(100svh - var(--bp-top) - 24px - 2*96px - 20px);min-height:440px}
   .bp-side{display:contents}
   button.bw-card{min-height:96px}
   /* 07 More takes the two cells left in the second row (26.10.: 05, 06, 07 and an empty fourth on an open Fold) */
@@ -98,7 +98,7 @@ body.bp-winon{overflow:hidden}
   .bp-sw{margin-left:auto} /* phone (operator, 2026-10-05): logo and socials left, Classic and Buy at the right edge — the ticker that pushed them there is hidden here (Classic left the header 2026-10-18 and came back 2026-10-20) */
   .bp-logo span{display:none}
   .bp-grid{display:grid;grid-template-columns:1fr 1fr;height:auto;padding:8px;gap:8px}
-  .bp-center{grid-column:1/-1;order:-1;height:calc(100svh - 54px - 16px);border-radius:16px}
+  .bp-center{grid-column:1/-1;order:-1;height:calc(100svh - var(--bp-top) - 16px);border-radius:16px}
   .bp-side{display:contents}
   button.bw-card{min-height:108px}
   /* 07 More across the row (26.10.): alone in the left cell it cut its line to 'rebuilt 9 min ago · s…' */
@@ -110,14 +110,14 @@ body.bp-winon{overflow:hidden}
    each other; the terminal gets a full screen of its own (at least 520 px) and the cards follow below, three across ---- */
 @media (orientation:landscape) and (max-height:500px){
   .bp-grid{grid-template-columns:repeat(3,1fr);height:auto;padding:8px;gap:8px}
-  .bp-center{grid-column:1/-1;order:-1;height:max(calc(100svh - 54px - 16px),520px);border-radius:16px}
+  .bp-center{grid-column:1/-1;order:-1;height:max(calc(100svh - var(--bp-top) - 16px),520px);border-radius:16px}
   .bp-side{display:contents}
   button.bw-card{min-height:120px}
   .bp-tick{display:none}
 }
 /* ---- two screens side by side (dual-screen foldables): the terminal on one, the cards on the other ---- */
 @media (horizontal-viewport-segments:2){
-  .bp-grid{grid-template-columns:env(viewport-segment-width 0 0) 1fr;height:calc(100svh - 54px)}
+  .bp-grid{grid-template-columns:env(viewport-segment-width 0 0) 1fr;height:calc(100svh - var(--bp-top))}
   .bp-center{grid-column:1;grid-row:1/span 7}
   .bp-side{display:contents}
 }
@@ -550,3 +550,32 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 #w07 .cx7{margin:12px 16px 0}
 #w07 .cx7-more>summary{font-size:12.5px}
 #w07 .faq-search{margin:12px 16px 0}
+
+/* THE BUY LINE (2026-10-27, operator's choice after a trader read the front page: "in 10 seconds I do not see why to
+   buy — put price, MC, liquidity, volume, the tax and the buy button above the fold, the character and windows below").
+   One line under the header, fixed height; on a narrow screen it scrolls sideways inside itself, never the page. */
+:root{--bp-top:88px}
+.bp-buyline{height:34px;display:flex;align-items:center;gap:14px;padding:0 14px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;
+  scrollbar-width:none;border-bottom:1px solid var(--bp-line);background:rgba(240,185,11,.05);font:600 12px/1 'Space Grotesk',Inter,sans-serif;color:var(--bp-text)}
+.bp-buyline::-webkit-scrollbar{display:none}
+.bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-right:5px}
+.bp-buyline .f{flex:0 0 auto}
+.bp-buyline .why{flex:0 0 auto;color:var(--bp-muted);font-weight:500}
+.bp-buyline .why b{color:var(--bp-text);font-weight:600}
+.bp-buyline .go{flex:0 0 auto;margin-left:auto;padding:5px 10px;border-radius:8px;background:var(--bp-gold);color:#120c02;text-decoration:none;font:700 11px var(--bp-mono);letter-spacing:.06em}
+.bp-buyline .go:hover{filter:brightness(1.08)}
+
+/* WIDE SCREENS: THE LINE SITS IN THE HEADER (2026-10-27): on a desktop the header's middle is empty (the old ticker went
+   on 26.9.) and a row of its own took 34 px from every card — card 05's last line was cut at 1440x900. From 1180 px the
+   figures and the sentence stand in the header itself; the header already has the Buy button, so the line's own goes. */
+@media (min-width:1180px){
+  :root{--bp-top:54px}
+  .bp-buyline{position:absolute;top:10px;left:490px;right:340px;z-index:21;height:34px;
+    border:1px solid var(--bp-line);border-radius:10px;background:rgba(240,185,11,.06);gap:12px;padding:0 12px;font-size:11.5px}
+  .bp-buyline .go{display:none}
+}
+/* what goes first when the header narrows: the volume, the LP line, liquidity, the market cap, "owner renounced" —
+   the sentence and the price stay */
+@media (min-width:1180px) and (max-width:1599px){ .bp-buyline .v,.bp-buyline .why .x{display:none} }
+@media (min-width:1180px) and (max-width:1379px){ .bp-buyline .m{display:none} }
+@media (min-width:1180px) and (max-width:1299px){ .bp-buyline .l,.bp-buyline .why .r{display:none} }

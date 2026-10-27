@@ -245,7 +245,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793086760711">
+<link rel="stylesheet" href="brain/brain.css?v=1793115876108">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1793085638">
@@ -259,6 +259,30 @@
   <a class="bp-sw" href="/classic" title="The classic page — the same figures">Classic</a>
   <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
 </div>
+<div class="bp-buyline" role="region" aria-label="$BOBAI at a glance">
+  <span class="why"><b>3% tax</b> buys back &amp; burns<span class="x"> · LP <b data-bl="lp">99.98%</b> burned</span><span class="r"> · owner renounced</span></span>
+  <span class="f p"><span class="k">Price</span><b data-bl="price">—</b></span>
+  <span class="f m"><span class="k">MC</span><b data-bl="mc">—</b></span>
+  <span class="f l"><span class="k">Liq</span><b data-bl="liq">—</b></span>
+  <span class="f v"><span class="k">24h vol</span><b data-bl="vol">—</b></span>
+  <a class="go" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Buy on PancakeSwap</a>
+</div>
+<script>
+/* the buy line's figures: the site's own on-chain reads (/api/price, /api/liquidity) and the 10-minute candle ledger
+   the terminal reads (pool Swap events) for the last 24 h; a figure that does not arrive keeps its dash */
+(() => {
+  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t) e.textContent = t; };
+  const usd = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K' : '$' + Math.round(n));
+  const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  get('/api/price').then((j) => { if (!j) return; if (j.price_usd) set('price', '$' + Number(j.price_usd).toPrecision(3)); if (j.market_cap_usd) set('mc', usd(j.market_cap_usd)); });
+  get('/api/liquidity').then((j) => { if (!j) return; if (j.liquidity_usd) set('liq', usd(j.liquidity_usd)); if (j.lp_burned_percent != null) set('lp', j.lp_burned_percent + '%'); });
+  get('https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles').then((j) => {
+    const rows = (j && j.rows) || [], since = Date.now() - 86400000;
+    let v = 0, n = 0; for (const r of rows) if (r.t > since) { v += (r.v || 0) * (r.u || 0); n += (r.b || 0) + (r.s || 0); }
+    if (rows.length) set('vol', usd(v) + ' · ' + n + (n === 1 ? ' trade' : ' trades'));
+  });
+})();
+</script>
 <div class="bp-grid" role="main">
   <div class="bp-side l"><button class="bw-card" style="--c:#F0B90B" type="button" data-open="w01"><span class="bw-n">01</span><span class="bw-k">THE TOKEN</span><b class="bw-t">What $BOBAI is</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">of the supply burned for good</span><i class="bw-go" aria-hidden="true">⤢</i></button>
 <button class="bw-card" style="--c:#2dd4bf" type="button" data-open="w02"><span class="bw-n">02</span><span class="bw-k">TOKENOMICS</span><b class="bw-t">Where the 3% goes</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">until this split ends</span><i class="bw-go" aria-hidden="true">⤢</i></button>

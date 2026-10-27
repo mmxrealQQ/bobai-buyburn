@@ -34,9 +34,18 @@ export const INDEXNOW_KEY = '8555be53d87e74fb45c089e41d725265';
 export async function indexNow(urls, f = fetch) {
   const list = [...new Set(urls)].filter((u) => /^https:\/\/brainonbnb\.com\//.test(u)).slice(0, 1000);
   if (!list.length) return { sent: 0 };
-  const r = await f('https://api.indexnow.org/indexnow', { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify({ host: 'brainonbnb.com', key: INDEXNOW_KEY, keyLocation: `https://brainonbnb.com/${INDEXNOW_KEY}.txt`, urlList: list }), signal: AbortSignal.timeout(8000) }).catch((e) => ({ status: 0, e }));
-  return { sent: list.length, status: r.status };
+  // api.indexnow.org answered 429 to every ping from the worker (the shared Cloudflare egress) and 200 to the same ping
+  // from a desk (27.10.): each engine takes the protocol and shares what it gets, so the next one is asked
+  const body = JSON.stringify({ host: 'brainonbnb.com', key: INDEXNOW_KEY, keyLocation: `https://brainonbnb.com/${INDEXNOW_KEY}.txt`, urlList: list });
+  const tried = [];
+  for (const ep of INDEXNOW_ENDPOINTS) {
+    const r = await f(ep, { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body, signal: AbortSignal.timeout(8000) }).catch(() => ({ status: 0 }));
+    tried.push(`${new URL(ep).host} ${r.status}`);
+    if (r.status === 200 || r.status === 202) return { sent: list.length, status: r.status, by: new URL(ep).host, tried };
+  }
+  return { sent: list.length, status: 0, tried };
 }
+export const INDEXNOW_ENDPOINTS = ['https://api.indexnow.org/indexnow', 'https://www.bing.com/indexnow', 'https://yandex.com/indexnow'];
 export const OUR_WRITERS = new Set(['0x8196bcd90c08011d2f96fb94c1b10407cba3655d', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // our own checks' User-Agent (links1024.mjs sends "brainonbnb-linkcheck"): their reads are no agent's activity
 export const OWN_CHECK = /^brainonbnb-/i;

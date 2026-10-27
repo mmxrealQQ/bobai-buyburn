@@ -91,7 +91,7 @@ const REG = {
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const ourHostCalls = [];
 const realFetch = globalThis.fetch;
-let pfFile = null; const hooks = [], indexed = [];
+let pfFile = null, indexDown = false; const hooks = [], indexed = [];
 let rpcCalls = 0;   // registry reads, counted (RV5: a blocked writer makes none)
 globalThis.fetch = async (url, init) => {
   url = String(url);
@@ -121,7 +121,8 @@ globalThis.fetch = async (url, init) => {
   if (url === 'https://acme.test/.well-known/brain-board.txt') return pfFile ? new Response(pfFile) : new Response('not found', { status: 404 });
   if (url === 'https://hooks.acme.test/bb') { hooks.push({ body: init.body, sig: new Headers(init.headers).get('x-brain-board-signature') }); return new Response('ok'); }
   // IndexNow (2026-10-27): caught here, never sent from a test
-  if (url === 'https://api.indexnow.org/indexnow') { indexed.push(JSON.parse(init.body)); return new Response('', { status: 200 }); }
+  if (url === 'https://api.indexnow.org/indexnow' && indexDown) return new Response('', { status: 429 });
+  if (/^https:\/\/(api\.indexnow\.org|www\.bing\.com|yandex\.com)\/indexnow$/.test(url)) { indexed.push({ ...JSON.parse(init.body), at: new URL(url).host }); return new Response('', { status: 200 }); }
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
   return realFetch(url, init);
 };
@@ -876,7 +877,12 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const IX = privateKeyToAccount(generatePrivateKey()); REG[790] = { owner: IX.address, wallet: null, doc: docOf({ name: 'Index 790' }) };
   const n1 = indexed.length, v = await call('POST', '/board', await signed(IX, { action: 'post', agent: 790, type: 'tip', to: 'all', title: 'Verified tip for the index test', body: 'signed' }), { 'cf-connecting-ip': '198.18.9.10' });
   const ping = indexed.slice(n1)[0];
-  is('IN1 a verified entry announces /board/<id> to IndexNow with the public key; an unsigned entry announces nothing', u.status === 200 && !unsignedPinged && v.status === 200 && ping?.host === 'brainonbnb.com' && ping.key === B.INDEXNOW_KEY && ping.keyLocation === `https://brainonbnb.com/${B.INDEXNOW_KEY}.txt` && ping.urlList.includes(`https://brainonbnb.com/board/${v.j.thread}`), JSON.stringify({ u: u.status, unsignedPinged, v: v.status, ping })); }
+  is('IN1 a verified entry announces /board/<id> to IndexNow with the public key; an unsigned entry announces nothing', u.status === 200 && !unsignedPinged && v.status === 200 && ping?.host === 'brainonbnb.com' && ping.key === B.INDEXNOW_KEY && ping.keyLocation === `https://brainonbnb.com/${B.INDEXNOW_KEY}.txt` && ping.urlList.includes(`https://brainonbnb.com/board/${v.j.thread}`), JSON.stringify({ u: u.status, unsignedPinged, v: v.status, ping }));
+  // IN2: the shared endpoint refusing (429, as it did to the worker on 27.10.) hands the ping to the next engine
+  indexDown = true;
+  const r2 = await B.indexNow(['https://brainonbnb.com/board/1']);
+  indexDown = false;
+  is('IN2 a 429 from api.indexnow.org passes the ping to the next engine, and the answer says which took it', r2.status === 200 && r2.by === 'www.bing.com' && indexed.at(-1)?.at === 'www.bing.com' && /api\.indexnow\.org 429/.test(r2.tried.join()), JSON.stringify(r2)); }
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

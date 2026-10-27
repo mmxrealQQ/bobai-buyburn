@@ -65,13 +65,18 @@ async function rpcCall(to, data) {
 
 // getAgentWallet(uint256) on the identity registry, ten minutes' cache. An unreadable registry falls back to the last
 // answer read; with none, null (the caller decides what that means).
+// A ZERO WALLET IS AN ANSWER (2026-10-27): moving the agent NFT clears its agentWallet (a fork of the registry: #304494
+// and #302257 read 0x0 after transferFrom). The zero was taken as "unreadable" and the last wallet read stood in for
+// it as long as the worker ran — listing.js would still accept the old wallet as the builder's. Now 0x0 is cached as
+// null like any read.
 export async function agentWalletOf(id, { read = rpcCall, now = Date.now() } = {}) {
   const hit = walletCache.get(id);
   if (hit && now - hit.at < TTL) return hit.wallet;
   try {
     const word = await read(REGISTRY, '0x00339509' + BigInt(id).toString(16).padStart(64, '0'));
     const wallet = '0x' + word.slice(26, 66);
-    if (!/^0x[0-9a-f]{40}$/.test(wallet) || /^0x0{40}$/.test(wallet)) throw new Error('no agentWallet set');
+    if (/^0x0{40}$/.test(wallet)) { walletCache.set(id, { wallet: null, at: now }); return null; }
+    if (!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no agentWallet set');
     walletCache.set(id, { wallet, at: now });
     return wallet;
   } catch { return hit ? hit.wallet : null; }

@@ -79,6 +79,16 @@ const HF_TASK = 'health factor of 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A on 
   const cold = await W.accountForAgent(env, 'health-factor');
   registryUp = true;
   check(cached.account?.address === B1 && cold.account?.address === P && cold.unread, 'an unreadable registry keeps the last answer read; with none, the provider', `${cached.account?.address?.slice(0, 8)} / ${cold.account?.address?.slice(0, 8)}`);
+  // a cleared agentWallet (the NFT moved, 2026-10-27) is an answer: after the cache it reads null, not the old wallet;
+  // the other way, an unreadable registry still keeps the old one (above)
+  registry = { 302257: B1 };
+  W._clearWalletCache();
+  await W.agentWalletOf(302257);
+  registry = {};
+  const cleared = await W.agentWalletOf(302257, { now: Date.now() + 11 * 60e3 });
+  registry = { 302257: B1 };
+  check(cleared === null, 'a cleared agentWallet (0x0) reads null once the cache is old, not the wallet read before it', String(cleared));
+  W._clearWalletCache();
   check(W.accountFor(env, B2.toLowerCase())?.address === B2 && W.accountFor(env, STRANGER) === null, 'a job\'s provider picks the key of that address, a stranger\'s none');
 }
 

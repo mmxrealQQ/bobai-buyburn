@@ -102,7 +102,10 @@ export async function agentChart(env, idRaw) {
   const shared = jobs?.shared_provider ? jobsAll.providers?.[jobs.shared_provider] || null : null;
   const pz = plaza?.agents?.[id] || null;
   const r = (rep?.agents || []).find((x) => String(x.id) === id) || null;
-  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client }))).slice(0, 12) : [];
+  // a rating from the agent's own agentWallet says so (2026-10-27, library #98: the registry stops the owner rating its
+  // agent, not its agentWallet)
+  const ownWallet = String(agentWallet || '').toLowerCase();
+  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client, ...(ownWallet && String(v.client || '').toLowerCase() === ownWallet ? { from_own_wallet: true } : {}) }))).slice(0, 12) : [];
   const blog = listing && listing.status !== 'removed' ? await readLog(env, id).catch(() => []) : [];
   const listed = listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified', since: listing.since, ...(listing.house ? { ours: true } : {}), verified_builder: !!listing.signer && listing.builder_ok !== false && listing.status === 'verified', builder_log: blog.slice(-5).reverse(), profile: `https://agent.brainonbnb.com/listed/${id}` } : null;
   return { status: 200, body: {

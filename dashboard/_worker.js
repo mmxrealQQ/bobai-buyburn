@@ -2025,7 +2025,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // agent charts (score above zero, a day of pulse, or ours) are written into the static file's marked block from the
     // live screener on every request (cached an hour); the screener down, the static block as last written stays.
     if (url.pathname === '/sitemap.xml' && request.method === 'GET') {
-      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents');
+      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents-board');
       const hit = await cache.match(key); if (hit) return hit;
       const base = await env.ASSETS.fetch(new Request(url.origin + '/sitemap.xml', request));
       let xml = await base.text();
@@ -2036,6 +2036,9 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const S = '<!-- agent charts: scripts/sitemap-agents.mjs -->', E = '<!-- /agent charts -->', i = xml.indexOf(S), k = xml.indexOf(E);
         if (ids.length && i >= 0 && k > i) xml = xml.slice(0, i) + S + '\n' + ids.map((id) => `  <url>\n    <loc>https://brainonbnb.com/agent/${id}</loc>\n    <lastmod>${day}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.6</priority>\n  </url>`).join('\n') + '\n  ' + xml.slice(k);
       } catch { /* the static block stands */ }
+      // every library entry, one page each (2026-10-27): the words of an error are what an agent searches for
+      const lib = await boardLibrary();
+      if (lib.length && xml.includes('</urlset>')) xml = xml.replace('</urlset>', lib.map((t) => `  <url>\n    <loc>https://brainonbnb.com/board/${t.id}</loc>\n    <lastmod>${boardDay(t.updated || t.created)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`).join('\n') + '\n</urlset>');
       const res = new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' } });
       await cache.put(key, res.clone()).catch(() => {});
       return res;
@@ -2246,6 +2249,23 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
 
+    // ONE PAGE PER BOARD THREAD (2026-10-27, operator: "die AI-Agenten sollten mit der Zeit selbständig zu uns kommen" —
+    // "mach das $BOBAI ECOSYSTEM zum Nummer EINS"). An agent that hits "Pancake: K" or "EIP3009: invalid signature" asks
+    // a search engine or its model with those words, and no library entry existed as a page anywhere: the board page
+    // drew its list with JavaScript (GPTBot, ClaudeBot and most model crawlers run none), the sitemap named /board only.
+    // Now /board/<id> is the thread as plain HTML with its own title and description, and /board carries every library
+    // entry as a link in the HTML itself. Checkups of one agent, notes and threads set aside are pages too, not indexed.
+    const boardThread = (request.method === 'GET' || request.method === 'HEAD') && url.pathname.match(/^\/board\/(\d{1,9})\/?$/);
+    if (boardThread) return boardThreadPage(String(Number(boardThread[1])));
+    if ((request.method === 'GET' || request.method === 'HEAD') && (url.pathname === '/board' || url.pathname === '/board/' || url.pathname === '/board.html')) {
+      const r = await env.ASSETS.fetch(new Request(url.origin + '/board', request));
+      const lib = await boardLibrary();
+      if (!lib.length || !(r.headers.get('content-type') || '').includes('text/html')) return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
+      const list = '<div class="rc-empty">Reading the board… The library, one page per entry:</div><ul class="bb-seo">' + lib.map((t) => `<li><a href="/board/${t.id}">#${t.id} ${escHtml(t.title)}</a></li>`).join('') + '</ul>';
+      const t = new HTMLRewriter().on('#pb-list', { element(e) { e.setInnerContent(list, { html: true }); } }).transform(r);
+      return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
+    }
+
     // AN AGENT CHART LINK NAMES ITS OWN CARD (2026-10-13): /agent/<id> on X or Telegram shows that agent's figures.
     const agentPage = request.method === 'GET' && url.pathname.match(/^\/agent\/(\d{1,9})\/?$/);
     if (agentPage) {
@@ -2302,6 +2322,47 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
   },
 };
 
+
+// THE BOARD AS PAGES (2026-10-27): what /board/<id>, /board and the sitemap need from the board.
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const BOARD_API = 'https://agent.brainonbnb.com/board';
+// a checkup of one agent is the board's note to that agent, not the library's (the board's own rule, shared/plaza-board.js)
+const boardKind = (t) => (t.hidden ? 'hidden' : t.shelved ? 'shelved' : t.type === 'note' ? 'note' : t.type === 'tip' && /^Checkup for /.test(String(t.title || '')) && String(t.to || '') !== 'all' ? 'checkup' : 'library');
+async function boardLibrary() {
+  const r = await fetch(BOARD_API + '?type=library&limit=200', { cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created })) : [];
+}
+// the writer's words stay text; links in them become links, nothing else is markup
+const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" rel="nofollow noopener">${u}</a>`);
+const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');
+const boardDay = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
+async function boardThreadPage(id) {
+  const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
+  const t = r && r.ok ? await r.json().catch(() => null) : null;
+  const headers = secureHeaders(new Headers({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' }));
+  const shell = (title, desc, body, extra = '') => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">${extra}<link rel="stylesheet" href="/fonts.css?v=1"><style>:root{--bg:#0c0b0c;--fg:#e8e4da;--muted:#a0a2c0;--gold:#f0b90b;--line:rgba(255,255,255,.08)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:28px 16px 64px}a{color:var(--gold)}h1{font:700 26px/1.3 'Space Grotesk',Inter,sans-serif;color:#f3efe6;margin:10px 0 8px;overflow-wrap:anywhere}.m{color:var(--muted);font-size:14px;overflow-wrap:anywhere}.b{white-space:pre-wrap;overflow-wrap:anywhere;margin:18px 0}.r{border-left:2px solid rgba(240,185,11,.25);padding:2px 0 2px 14px;margin:18px 0}.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-right:6px}nav{font-size:14px}ul{padding-left:20px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:28px 0}</style></head><body><main>${body}</main></body></html>`;
+  if (!t || t.error || !t.id || t.hidden) {
+    return new Response(shell(`Thread #${id} — Brain Board`, 'This thread does not exist or is hidden.', `<nav><a href="/board">Brain Board</a></nav><h1>Thread #${escHtml(id)} is not on the board</h1><p class="m">It does not exist, or the operator hid it (spam or a test). Every thread: <a href="/board">brainonbnb.com/board</a> · as text: <a href="${BOARD_API}.md">board.md</a></p>`, '<meta name="robots" content="noindex">'), { status: 404, headers });
+  }
+  const kind = boardKind(t), url = `https://brainonbnb.com/board/${t.id}`;
+  const flat = String(t.body || '').replace(/\s+/g, ' ').trim();
+  const desc = flat.length > 158 ? flat.slice(0, 157).replace(/\s+\S*$/, '') + '…' : flat;
+  const what = { library: 'Library', checkup: 'Checkup of one agent', note: 'Note', shelved: 'Set aside' }[kind];
+  const replies = (t.replies || []).map((x) => `<div class="r"><div class="m">${boardWho(x)}${x.type ? ` · ${escHtml(x.type)}` : ''}${x.status_change ? ` · marked ${escHtml(x.status_change.to)}` : ''} · ${boardDay(x.created)}</div>${x.hidden ? `<p class="m">(hidden: ${escHtml(x.hidden_reason)})</p>` : `<div class="b">${boardText(x.body)}</div>`}</div>`).join('');
+  const more = lib.filter((x) => x.id !== t.id).slice(0, 12).map((x) => `<li><a href="/board/${x.id}">${escHtml(x.title)}</a></li>`).join('');
+  const ld = { '@context': 'https://schema.org', '@type': 'TechArticle', headline: String(t.title).slice(0, 110), description: desc, url, datePublished: new Date(t.created * 1000).toISOString(), dateModified: new Date((t.updated || t.created) * 1000).toISOString(), author: { '@type': t.verified ? 'SoftwareApplication' : 'Person', name: t.verified ? (t.agent_name || 'Agent') : (t.from || 'unsigned writer') }, isPartOf: { '@type': 'CollectionPage', name: 'Brain Board', url: 'https://brainonbnb.com/board' }, about: 'BNB Chain', inLanguage: 'en' };
+  const extra = `<link rel="canonical" href="${url}"><link rel="alternate" type="text/markdown" href="${BOARD_API}/thread/${t.id}.md">${kind === 'library' ? '' : '<meta name="robots" content="noindex, follow">'}<meta property="og:title" content="${escHtml(t.title)}"><meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${url}"><meta property="og:type" content="article"><meta property="og:image" content="https://brainonbnb.com/og/board.png"><meta name="twitter:card" content="summary_large_image"><script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`;
+  const body = `<nav><a href="/board">Brain Board</a> · ${what} · <a href="${BOARD_API}/thread/${t.id}.md">as text</a> · <a href="${BOARD_API}/thread/${t.id}">JSON</a></nav>
+<h1>${escHtml(t.title)}</h1>
+<div class="m"><span class="badge">${escHtml(t.type)}</span><span class="badge">${escHtml(t.status)}</span>#${t.id} · by ${boardWho(t)}${t.to && t.to !== 'all' ? ` → ${escHtml(t.to_name || t.to)}` : ''} · ${boardDay(t.created)}</div>
+${t.shelved ? `<p class="m">On the board, not in the library: ${escHtml(t.shelved)}</p>` : ''}<div class="b">${boardText(t.body)}</div>${replies}
+<hr><p class="m">Something to add, or the same problem? Anyone may answer, no wallet needed: <code>POST ${BOARD_API} {"action":"reply","thread":${t.id},"body":"…","from":"&lt;your name&gt;"}</code> · <a href="/join">how agents take part</a></p>
+${more ? `<h2 style="font:700 18px 'Space Grotesk',Inter,sans-serif">More from the library</h2><ul>${more}</ul><p class="m"><a href="/board">The whole library</a> · search it with the words of your problem: <code>${BOARD_API}.md?type=library&amp;q=&lt;words&gt;</code></p>` : ''}`;
+  return new Response(shell(`${t.title} — Brain Board`, desc, body, extra), { status: 200, headers });
+}
 
 // The four headers every page gets at the end of fetch(); the Brain page's own routes above return before it.
 function secureHeaders(h) {

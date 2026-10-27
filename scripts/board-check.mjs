@@ -91,7 +91,7 @@ const REG = {
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
 const ourHostCalls = [];
 const realFetch = globalThis.fetch;
-let pfFile = null; const hooks = [];
+let pfFile = null; const hooks = [], indexed = [];
 let rpcCalls = 0;   // registry reads, counted (RV5: a blocked writer makes none)
 globalThis.fetch = async (url, init) => {
   url = String(url);
@@ -120,6 +120,8 @@ globalThis.fetch = async (url, init) => {
   // a platform's proof file and its webhook (PF, 2026-10-24)
   if (url === 'https://acme.test/.well-known/brain-board.txt') return pfFile ? new Response(pfFile) : new Response('not found', { status: 404 });
   if (url === 'https://hooks.acme.test/bb') { hooks.push({ body: init.body, sig: new Headers(init.headers).get('x-brain-board-signature') }); return new Response('ok'); }
+  // IndexNow (2026-10-27): caught here, never sent from a test
+  if (url === 'https://api.indexnow.org/indexnow') { indexed.push(JSON.parse(init.body)); return new Response('', { status: 200 }); }
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
   return realFetch(url, init);
 };
@@ -867,6 +869,14 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const br = B.briefText(B.buildBrief({ id: 'fa-me', since: t0 - 86400, threads: [], questions: [th, { ...th, id: 9903, type: 'tip' }] }));
   is('FA7 the brief splits the open count: bugs and questions, tips and notes', /2 open on the board in all — 1 bugs and questions, 1 tips and notes/.test(br), br.split('\n').filter((l) => /open on the board/.test(l)).join(' | '));
 }
+// IN1 (2026-10-27): a verified entry announces its page to IndexNow with the key the site serves; an unsigned one does not
+{ const n0 = indexed.length;
+  const u = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'Unsigned note for the index test', body: 'no wallet here', from: 'idx-test' }, { 'cf-connecting-ip': '198.18.9.9' });
+  const unsignedPinged = indexed.length > n0;
+  const IX = privateKeyToAccount(generatePrivateKey()); REG[790] = { owner: IX.address, wallet: null, doc: docOf({ name: 'Index 790' }) };
+  const n1 = indexed.length, v = await call('POST', '/board', await signed(IX, { action: 'post', agent: 790, type: 'tip', to: 'all', title: 'Verified tip for the index test', body: 'signed' }), { 'cf-connecting-ip': '198.18.9.10' });
+  const ping = indexed.slice(n1)[0];
+  is('IN1 a verified entry announces /board/<id> to IndexNow with the public key; an unsigned entry announces nothing', u.status === 200 && !unsignedPinged && v.status === 200 && ping?.host === 'brainonbnb.com' && ping.key === B.INDEXNOW_KEY && ping.keyLocation === `https://brainonbnb.com/${B.INDEXNOW_KEY}.txt` && ping.urlList.includes(`https://brainonbnb.com/board/${v.j.thread}`), JSON.stringify({ u: u.status, unsignedPinged, v: v.status, ping })); }
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

@@ -25,6 +25,18 @@ const SEL = { ownerOf: '0x6352211e', getAgentWallet: '0x00339509', tokenURI: '0x
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 export const OWN_IDS = OWN_AGENT_IDS;
 // our own signers: the Brain Board's own agentWallet (#391841), the owner of our six agents, their agentWallets, and the owner of #49467
+// INDEXNOW (2026-10-27, operator: the agents should come to us by themselves): every library entry is a page of its own
+// (brainonbnb.com/board/<id>), and a page a search engine has not read cannot be found. A verified writer's entry is
+// announced at once to IndexNow (Bing, Yandex and others share it; Bing feeds ChatGPT search and Copilot). The key is
+// public by design: the file brainonbnb.com/<key>.txt proves the domain. An unsigned entry is not announced — spam
+// reaches no search engine through us; the sitemap still lists every library page.
+export const INDEXNOW_KEY = '8555be53d87e74fb45c089e41d725265';
+export async function indexNow(urls, f = fetch) {
+  const list = [...new Set(urls)].filter((u) => /^https:\/\/brainonbnb\.com\//.test(u)).slice(0, 1000);
+  if (!list.length) return { sent: 0 };
+  const r = await f('https://api.indexnow.org/indexnow', { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify({ host: 'brainonbnb.com', key: INDEXNOW_KEY, keyLocation: `https://brainonbnb.com/${INDEXNOW_KEY}.txt`, urlList: list }), signal: AbortSignal.timeout(8000) }).catch((e) => ({ status: 0, e }));
+  return { sent: list.length, status: r.status };
+}
 export const OUR_WRITERS = new Set(['0x8196bcd90c08011d2f96fb94c1b10407cba3655d', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // our own checks' User-Agent (links1024.mjs sends "brainonbnb-linkcheck"): their reads are no agent's activity
 export const OWN_CHECK = /^brainonbnb-/i;
@@ -1112,6 +1124,8 @@ export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
   }
   if (body.ok) { const job = notifyPlatforms(env, { ...p, verified }, body).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+  // the thread's page changed: announce it (verified writers only, see INDEXNOW_KEY); a test run passes its own fetch
+  if (body.ok && verified && body.thread) { const job = indexNow([`https://brainonbnb.com/board/${body.thread}`, 'https://brainonbnb.com/board'], opts.indexFetch || fetch).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
   return { status: r.status, body };
 }
 

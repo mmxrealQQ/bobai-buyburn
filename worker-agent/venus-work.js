@@ -102,7 +102,9 @@ export function yieldSteps(w, p = YIELD) {
   if (!held.length) return [];
   const [coin, x] = held[0];
   const amount = x.wallet < p.tranche ? x.wallet : p.tranche;
-  const others = Object.entries(w).filter(([c]) => c !== coin).map(([c, y]) => `${c} ${y.apr.toFixed(2)} %`).join(', ');
+  // a coin the wallet does not hold says so (2026-10-27: "USDT at 2.08 %, the best of what the wallet holds today
+  // (USDC 2.49 %)" read as the worse rate chosen — the wallet held no USDC)
+  const others = Object.entries(w).filter(([c]) => c !== coin).map(([c, y]) => `${c} ${y.apr.toFixed(2)} %${y.wallet > 0n ? '' : ', not held'}`).join('; ');
   return [{ kind: 'deposit', coin, amount, why: `${formatUnits(amount, 18)} ${coin} to Venus v${coin} at ${x.apr.toFixed(2)} % a year, the best of what the wallet holds today (${others})` }];
 }
 

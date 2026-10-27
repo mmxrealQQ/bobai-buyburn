@@ -61,6 +61,9 @@ console.log('the decisions (offline)');
   const y = V.yieldSteps({ USDT: { wallet: E(5), apr: 2.0 }, USDC: { wallet: E(5), apr: 2.4 } });
   ok('yield: a tranche of 2 to the better-paying coin it holds', y[0]?.coin === 'USDC' && y[0].amount === E(2));
   ok('a coin it does not hold is not chosen, however well it pays', V.yieldSteps({ USDT: { wallet: E(5), apr: 2.0 }, USDC: { wallet: 0n, apr: 9 } })[0]?.coin === 'USDT');
+  // the why says which other coin is not held (2026-10-27: "USDT at 2.08 % … (USDC 2.49 %)" read as the worse rate chosen)
+  const nh = V.yieldSteps({ USDT: { wallet: E(5), apr: 2.08 }, USDC: { wallet: 0n, apr: 2.49 } })[0]?.why || '', both = y[0]?.why || '';
+  ok('the why names a better-paying coin it does not hold as "not held"; one it holds stays without', /USDC 2\.49 %, not held/.test(nh) && /USDT 2\.00 %\)/.test(both) && !/not held/.test(both), `${nh} | ${both}`);
   ok('the last part smaller than a tranche goes whole; an empty wallet does nothing', V.yieldSteps({ USDT: { wallet: E(0.5), apr: 2 }, USDC: { wallet: 0n, apr: 3 } })[0]?.amount === E(0.5) && V.yieldSteps({ USDT: { wallet: 0n, apr: 2 }, USDC: { wallet: 0n, apr: 3 } }).length === 0);
 }
 

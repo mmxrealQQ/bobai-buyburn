@@ -942,11 +942,17 @@ if (process.argv.includes('--live')) {
   const UA = { headers: { 'user-agent': 'Mozilla/5.0 (compatible; GPTBot/1.4; brainonbnb-test)' } };
   const page = async (p) => { const r = await fetch('https://brainonbnb.com' + p, UA).catch(() => null); return r ? { s: r.status, t: await r.text() } : { s: 0, t: '' }; };
   const lib = await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json()).then((j) => j.threads.filter((t) => R.typeMatches(t, 'library'))).catch(() => []);
-  const one = lib[0], chk = (live?.threads || []).find((t) => R.isCheckup(t));
+  // the checkup thread asked for by its type: the newest 50 of the board held none any more once the library grew (27.10.)
+  const one = lib[0], chk = await fetch('https://agent.brainonbnb.com/board?type=checkup&limit=1', { headers: { 'user-agent': 'brainonbnb-test' } }).then((r) => r.json()).then((j) => j.threads[0]).catch(() => null);
   const [bp, op, cp, hole, sm] = await Promise.all([page('/board'), one ? page('/board/' + one.id) : null, chk ? page('/board/' + chk.id) : null, page('/board/999999'), page('/sitemap.xml')]);
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const linked = lib.filter((t) => bp.t.includes(`href="/board/${t.id}"`)).length, inMap = lib.filter((t) => sm.t.includes(`<loc>https://brainonbnb.com/board/${t.id}</loc>`)).length;
   is('live: every library entry is linked in the HTML of /board and named in the sitemap', lib.length > 0 && linked === lib.length && inMap === lib.length, `${lib.length} entries, ${linked} linked, ${inMap} in the sitemap`);
+  // THE THREE ONE-LINERS (2026-10-27): learn counts the library, a lookup with no match says how to ask, and the examples
+  // of /ask and /fix — copied word for word, with any dash a terminal sends — post nothing (#110 was posted that way once)
+  const T = { headers: { 'user-agent': 'brainonbnb-test' } }, P = (p, d) => fetch('https://brainonbnb.com' + p, { method: 'POST', headers: { 'user-agent': 'brainonbnb-test' }, body: d }).then((r) => r.text()).catch(() => '');
+  const [ln, nm, a1, f1, f2] = await Promise.all([fetch('https://brainonbnb.com/learn', T).then((r) => r.text()), fetch('https://brainonbnb.com/learn/zzqx-wobble-frob', T).then((r) => r.text()), P('/ask', 'your error'), P('/fix', '<the error> — <what fixed it>'), P('/fix', '<the error> â€” <what fixed it>')]);
+  is('live: /learn names its count, a lookup with no match says how to ask, the /ask and /fix examples post nothing', /^BRAIN BOARD LIBRARY — \d+ entries/.test(ln) && /^Nothing in the library for "zzqx wobble frob" yet/.test(nm) && /curl -s https:\/\/brainonbnb\.com\/ask -d/.test(nm) && [a1, f1, f2].every((x) => /^It works\. That was the example text/.test(x)), [ln.slice(0, 60), nm.slice(0, 60), a1.slice(0, 40), f1.slice(0, 40), f2.slice(0, 40)].join(' | '));
   is('live: a library page carries its title and is indexable; a checkup page is noindex; a thread that is not there is 404', op?.s === 200 && op.t.includes(`<title>${esc(one.title)} — Brain Board</title>`) && !/name="robots"/.test(op.t) && cp?.s === 200 && /noindex/.test(cp.t) && hole.s === 404, `${op?.s} ${cp?.s} ${hole.s}`);
 }
 // FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry

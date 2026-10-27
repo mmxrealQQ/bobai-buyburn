@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-24T14:27:11.124Z",
+  "measured_at": "2026-10-27T15:55:01.867Z",
   "asked": 66,
-  "quoted": 29,
+  "quoted": 28,
   "agents": [
     {
       "id": 269223,
@@ -36,16 +36,6 @@
       "reason": null
     },
     {
-      "id": 340471,
-      "label": "Hevo Rebalance",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "8 $U",
-      "endpoint": "https://hevo-rebalance.fly.dev/",
-      "reason": null
-    },
-    {
       "id": 374113,
       "label": "Centreline by Pokter",
       "category": "rebalancing",
@@ -53,6 +43,16 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://pokter.xyz/api/house/centreline/a2a?chain=56",
+      "reason": null
+    },
+    {
+      "id": 340471,
+      "label": "Hevo Rebalance",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "8 $U",
+      "endpoint": "https://hevo-rebalance.fly.dev/",
       "reason": null
     },
     {
@@ -191,7 +191,7 @@
       "category": "rebalancing",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/rebalancer/a2a",
       "reason": null
     },
@@ -201,7 +201,7 @@
       "category": "rebalancing",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
       "reason": null
     },
@@ -342,7 +342,7 @@
       "category": "grid-trading",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/grid-trader/a2a",
       "reason": null
     },
@@ -361,10 +361,10 @@
       "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
+      "quotes": false,
+      "price": null,
       "endpoint": "https://marque.trade/agents/tidemark/a2a",
-      "reason": null
+      "reason": "seller declined: This task needs the amount to deploy before it can be priced. Nothing was signed or charged."
     },
     {
       "id": 340456,
@@ -483,7 +483,7 @@
       "category": "yield-optimization",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
       "reason": null
     },
@@ -493,7 +493,7 @@
       "category": "yield-optimization",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a",
       "reason": null
     },
@@ -579,6 +579,16 @@
       "example_task": "{\"collateral\":{\"ETH\":{\"amount\":10,\"liqThreshold\":0.8}},\"debt\":{\"USDT\":10000},\"prices\":{\"ETH\":2000,\"USDT\":1}}"
     },
     {
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://pokter.xyz/api/house/brinkwatch/a2a?chain=56",
+      "reason": "seller declined: The brief names no wallet address"
+    },
+    {
       "id": 341565,
       "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
@@ -597,16 +607,6 @@
       "price": null,
       "endpoint": "https://hallmark-agents.vercel.app/a2a/health",
       "reason": "health has no skill \"negotiate\""
-    },
-    {
-      "id": 374107,
-      "label": "Brinkwatch by Pokter",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://pokter.xyz/api/house/brinkwatch/a2a?chain=56",
-      "reason": "seller declined: The brief names no wallet address"
     },
     {
       "id": 270183,
@@ -664,7 +664,7 @@
       "category": "health-factor",
       "ours": true,
       "quotes": true,
-      "price": "0.1 $U",
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/health-factor/a2a",
       "reason": null
     }

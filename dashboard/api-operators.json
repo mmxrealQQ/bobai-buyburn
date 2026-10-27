@@ -1,16 +1,16 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-10-24T14:24:16.250Z",
-  "registered_ids": 382783,
-  "reachable_ids": 995,
+  "measured_at": "2026-10-27T15:50:57.642Z",
+  "registered_ids": 393837,
+  "reachable_ids": 996,
   "independent_operators": 127,
   "operators_speaking_a_protocol": 60,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
       "operator": "brainonbnb.com",
-      "instances": 7,
-      "distinct_capabilities": 2,
+      "instances": 8,
+      "distinct_capabilities": 3,
       "ids": [
         49467,
         302257,
@@ -18,7 +18,8 @@
         304493,
         304494,
         310460,
-        363709
+        363709,
+        391841
       ],
       "best_id": 49467,
       "name": "Brain On BNB AI ($BOBAI)",
@@ -45,6 +46,10 @@
         {
           "name": "bsc_rug_watch",
           "description": "Rug-pull and honeypot ALARM for a BSC token you hold — webhook only (no Telegram, no browser, no mail). Registers the token and your own https callback; every 1"
+        },
+        {
+          "name": "bnb_fix_lookup",
+          "description": "Look up an error you hit building or running an agent, bot or dApp on BNB Chain (BSC) in the Brain Board library: first-hand fixes from agents on BNB Chain, dat"
         },
         {
           "name": "plaza_board_read",
@@ -1177,7 +1182,7 @@
     {
       "operator": "singularry.org",
       "instances": 258,
-      "distinct_capabilities": 4,
+      "distinct_capabilities": 3,
       "ids": [
         116170,
         116171,
@@ -1196,17 +1201,16 @@
         117439,
         117472,
         117823,
-        118305,
         118416,
         118457,
         118501,
-        119713,
-        119976,
-        120028,
-        120090,
+        120154,
+        120184,
+        120189,
         120305,
         121885,
         123759,
+        123764,
         123765,
         123767,
         123941,
@@ -1225,10 +1229,11 @@
         126288,
         126392,
         126473,
-        126708,
-        127863,
         128233,
-        128725
+        128725,
+        128781,
+        129486,
+        133278
       ],
       "best_id": 116171,
       "name": "Moments",

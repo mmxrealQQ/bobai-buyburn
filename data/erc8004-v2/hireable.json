@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-24T14:24:16.250Z",
+  "measured_at": "2026-10-27T15:50:57.642Z",
   "agents": [
     {
       "id": 269223,
@@ -215,12 +215,6 @@
       "ours": false
     },
     {
-      "id": 358786,
-      "label": "Tidemark",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -247,6 +241,12 @@
     {
       "id": 340532,
       "label": "Hevo Yield",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -349,14 +349,14 @@
       "ours": false
     },
     {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 374107,
-      "label": "Brinkwatch by Pokter",
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false
     },

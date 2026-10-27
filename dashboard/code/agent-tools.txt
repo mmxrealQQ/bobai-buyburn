@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3478 lines.
+# one fetch. 5 files, 3483 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2987,8 +2987,13 @@ export function shape(s, r, usd, routeError = null, control = null) {
   const lpBurned = s.lp?.burnedPct ?? cu?.burnedPct ?? null;
   return out({
     stop, caution, entry, exit,
+    // each side names the pool it was read on (2026-10-27): the route's pool where the route measured it, the scanned
+    // pool otherwise — the pool scan of the same token reads its own pool and may say "simulated" where this says "measured"
     tax: { buy_pct: taxBuy, sell_pct: taxSell, buy_source: buySource, sell_source: sellSource,
-      source: buySource === sellSource ? buySource : `buy: ${buySource}; sell: ${sellSource}` },
+      source: buySource === sellSource ? buySource : `buy: ${buySource}; sell: ${sellSource}`,
+      measured_on: Object.fromEntries(['buy', 'sell'].map((k) => [k, fromRoute(`${k}_pct`)
+        ? { pool: r.best_route_pool ?? null, venue: r.best_route ? `PancakeSwap ${r.best_route}` : null, from: 'the best route' }
+        : { pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, from: 'the pool scan' }])) },
     // `pool` names what the depth describes — the pool the scan measured, which
     // is not always the pool the best route goes through (entry.pool).
     depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },

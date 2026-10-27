@@ -856,6 +856,10 @@ export async function scan(input, env, timing = null) {
       // true only when BOTH sides were read off executed trades.
       buySource: srcB, sellSource: srcS,
       measured: srcB === 'measured' && srcS === 'measured',
+      // WHERE IT WAS READ (2026-10-27): the preflight reads the tax on the best route's pool and this scan on the pool it
+      // measures — two pools, so one can say "measured" and the other "simulated" for the same token in the same minute
+      // (CAKE: V3 0.05% trades every block, its V2 pool was quiet). Both now name their pool.
+      measured_on: { pool: pool.pair.toLowerCase(), venue: pool.venue || (pool.kind === 'v3' ? 'PancakeSwap V3' : pool.kind === 'v2' ? 'PancakeSwap V2' : null) },
       // Why not, when not: a quiet pool and a throttled log endpoint are
       // different answers for a caller — one is final, the other says retry.
       ...(tax.ok ? {} : { reason: tax.reason || null }),

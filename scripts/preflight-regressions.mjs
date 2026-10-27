@@ -39,6 +39,10 @@ const route = (over = {}) => ({
 
 let o = shape(scan(), route(), 250);
 ok('a healthy pair: nothing stops, nothing to weigh, and the figures are the route’s', o.stop.length === 0 && o.caution.length === 0 && o.entry.slippage_bps_needed === 56 && o.exit.round_trip_cost_pct === 0.6, JSON.stringify([o.stop, o.caution, o.exit]));
+// WHERE THE TAX WAS READ (2026-10-27): a side the route measured names the route's pool, a side only the scan had names
+// the scanned pool — the preflight and the pool scan can then disagree in the open instead of looking contradictory
+{ const o2 = shape(scan({ pool: { address: '0x' + 'a'.repeat(40), venue: 'PancakeSwap V2', liquidityUsd: 1e6 } }), route({ transfer_tax: { buy_pct: 0, sell_pct: null, source: 'measured from executed trades on-chain' } }), 250);
+  ok('the tax names the pool each side was read on: the route’s for a side it measured, the scanned pool otherwise', o2.tax.measured_on?.buy?.from === 'the best route' && o2.tax.measured_on.buy.pool === '0x' + 'b'.repeat(40) && o2.tax.measured_on?.sell?.from === 'the pool scan' && o2.tax.measured_on.sell.pool === '0x' + 'a'.repeat(40), JSON.stringify(o2.tax.measured_on)); }
 // Who else can sell (2026-09-26), both ways: a wallet that could take a quarter of the pool is said, a spread-out
 // token is not. Since 2026-09-27 a scan without a real holder list is NOT silent: holders_unknown (below).
 o = shape(scan({ holders: { wallets: 8, top10PctOfCirculating: 36.3, largestPct: 8.2, largestSellTakesPctOfPool: 31 } }), route(), 250);

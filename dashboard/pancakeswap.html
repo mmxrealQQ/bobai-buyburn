@@ -199,7 +199,7 @@
       $('t-cost').innerHTML = '<span class="big">You keep ' + pct(rt.you_keep_pct) + '</span>'
         + 'of $250 bought and sold straight back on ' + esc(b.best_route || 'the best route')
         + (rt.you_keep_pct_pools_only != null && rt.you_keep_pct_pools_only !== rt.you_keep_pct ? ' (the pools alone: ' + pct(rt.you_keep_pct_pools_only) + ', the rest is the token’s tax)' : '')
-        + (t.buyPct != null ? ' · transfer tax <b>' + pct(t.buyPct, 1) + ' in / ' + pct(t.sellPct, 1) + ' out</b> (' + how(t.buySource) + trades('buys') + (t.sellSource === t.buySource ? '' : ' / ' + how(t.sellSource)) + trades('sells') + ')' : '')
+        + (t.buyPct != null ? ' · transfer tax <b>' + pct(t.buyPct, 1) + ' in / ' + pct(t.sellPct, 1) + ' out</b> (' + how(t.buySource) + trades('buys') + (t.sellSource === t.buySource ? '' : ' / ' + how(t.sellSource)) + trades('sells') + (t.measured_on && t.measured_on.venue ? ', read on ' + esc(t.measured_on.venue) : '') + ')' : '')
         + (lp && lp.burnedPct != null ? ' · LP tokens of ' + esc(j.pool?.venue || 'its main pool') + ': <b>' + pct(lp.burnedPct, 2) + ' burned</b>' + (lp.lockedPct ? ', ' + pct(lp.lockedPct, 1) + ' locked' : '') + (lp.walletPct ? ', ' + pct(lp.walletPct, 1) + ' in wallets' : '') : '');
     }).catch((e) => live() && fail('t-cost', e));
 

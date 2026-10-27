@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23880 lines.
+# one fetch. 73 files, 23925 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8605,7 +8605,7 @@ export async function handleFind(url, env = null) {
   // Nothing asked, nothing ranked: without a query, a category or a protocol
   // the old answer was the first ten ids by number — "ClawNews", "NAMEAI…" —
   // each with match 0, which read as a recommendation (2026-09-12).
-  if (!q.trim() && !wantCategory && !needs.length) {
+  if (!q.trim() && !wantCategory && !needs.length && !/^(1|true|yes)$/i.test(url.searchParams.get('hireable') || '')) {
     return { status: 200, body: {
       usage: 'GET /find?q=<what you need done> — or ?category=<id> — or ?speaks=mcp,a2a. Results are ranked by how well the tools, skills and registration text of each agent match; nothing is ranked without a question.',
       categories_available: CATEGORY_IDS,
@@ -8624,6 +8624,9 @@ export async function handleFind(url, env = null) {
 
   let pool = list.agents || [];
   if (needs.length) pool = pool.filter((a) => needs.every((n) => (a.speaks || []).includes(n)));
+  // hireable=1 (2026-10-27): only agents that answered with a price the last time they were asked through the escrow
+  const onlyQuoting = /^(1|true|yes)$/i.test(url.searchParams.get('hireable') || '');
+  if (onlyQuoting) pool = pool.filter((a) => a.escrow?.answer === 'quotes');
 
   const catOf = new Map();
   if (wantCategory) {
@@ -8636,13 +8639,31 @@ export async function handleFind(url, env = null) {
 
   const ts = terms(q);
   const weights = ts.length ? termWeights(pool, ts) : null;
-  const scored = pool
-    .map((a) => ({ a, s: score(a, ts, weights) }))
+  // THE CATEGORY THE QUESTION NAMES (2026-10-27, a stranger hiring through /find: "plan a grid for a token" put our own
+  // non-grid agent third, ahead of Lattice — 29 tools that say "plan" and "token", none in grid trading). A question
+  // that names one of the four jobs puts the agents filed under it first, by match, then the rest (the same filing
+  // ?category= uses; halving the others' score was not enough: 29 tools outscore one grid agent twice over).
+  const NAMED = [[/\bgrid/i, 'grid-trading'], [/\bhealth[ -]?factor|\bliquidat/i, 'health-factor'], [/\byield|\bapy\b|\bapr\b/i, 'yield-optimization'], [/\brebalanc/i, 'rebalancing']];
+  const asked = wantCategory ? null : (NAMED.find(([re]) => re.test(q)) || [])[1] || null;
+  const inAsked = new Map();
+  const fits = (a) => { if (!asked) return true; if (!inAsked.has(a.id)) inAsked.set(a.id, classifyAgent(a).some((m) => m.category === asked)); return inAsked.get(a.id); };
+  let scored = pool
+    .map((a) => ({ a, s: score(a, ts, weights), f: fits(a) }))
     .filter((x) => (ts.length ? x.s > 0 : true))
     // at an equal match other operators' agents stand before ours, as on the Plaza page (2026-10-05)
-    .sort((x, y) => y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id)
-    .slice(0, limit);
-  const more = pool.filter((a) => (ts.length ? score(a, ts, weights) > 0 : true)).length - scored.length;
+    .sort((x, y) => (y.f - x.f) || y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id);
+  // ONE FLEET, ONE PLACE (2026-10-27, the same stranger: "Grid Agent 1 by 4LPHA" four times in one answer). The same name
+  // on the same host is one operator's fleet: its best-matching id stands, the others are named under fleet.
+  const fleetKey = (a) => { let h = ''; try { h = new URL((a.endpoints || [])[0]).hostname.replace(/^www\./, ''); } catch {} return h ? `${String(a.name || '').trim().toLowerCase()}|${h}` : `#${a.id}`; };
+  const fleets = new Map();
+  const collapsed = [];
+  for (const x of scored) {
+    const k = fleetKey(x.a);
+    if (fleets.has(k)) { fleets.get(k).push(x.a.id); continue; }
+    fleets.set(k, []); collapsed.push(x);
+  }
+  scored = collapsed.slice(0, limit);
+  const more = Math.max(0, collapsed.length - scored.length);
 
   // LISTED ON BRAIN PLAZA (2026-10-12): a listed agent carries its badge and profile in every answer, so another agent
   // sees it too — never a better place: the order above is already set and nothing below reads it
@@ -8657,6 +8678,7 @@ export async function handleFind(url, env = null) {
     body: {
       query: q || null,
       required_protocols: needs.length ? needs : null,
+      ...(onlyQuoting ? { only: 'agents that answered with a price when last asked (hireable=1)' } : {}),
       category: wantCategory ? { id: wantCategory, label: categoryOf(wantCategory)?.label } : null,
       categories_available: CATEGORY_IDS,
       searched: pool.length,
@@ -8665,6 +8687,7 @@ export async function handleFind(url, env = null) {
       ...(more > 0 ? { not_shown: more, more: `add &limit=25 (the most one answer carries); ${more} more matched` } : {}),
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
+      escrow_note: 'escrow.answer per result: "quotes" — it answered with a price (escrow.price) the last time it was asked; "input" — it answered but wanted something not sent (escrow.said, its own words); "none" — it did not answer; "not asked". escrow.asked_at dates it. Add &hireable=1 for the first kind only.',
       note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
       measured_at: list.measured_at || null,
       results: scored.map(({ a, s }) => ({
@@ -8677,7 +8700,10 @@ export async function handleFind(url, env = null) {
         ...(a.skills?.length ? { skills: a.skills.slice(0, 12) } : {}),
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
         ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
+        // the escrow answer the Plaza page shows, so an agent can choose from /find alone (2026-10-27)
+        ...(a.escrow ? { escrow: a.escrow } : { escrow: { answer: 'not asked' } }),
         match: Math.round(s * 10) / 10,
+        ...((fleets.get(fleetKey(a)) || []).length ? { fleet: { size: fleets.get(fleetKey(a)).length + 1, other_ids: fleets.get(fleetKey(a)), note: 'the same name on the same host: one operator, counted once here' } } : {}),
         ...(listedRec.has(String(a.id)) ? { listed: listedRec.get(String(a.id)) } : {}),
         // The next step, per result (2026-09-18): a hit that stops at a score
         // leaves the caller to guess the URL pattern the dispatcher already emits.
@@ -9613,7 +9639,14 @@ export async function handleHire(url, body, env, opts = {}) {
     // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
     // its own 402 states a price. Read it — nothing is paid — and hand it on.
     const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
+    // WHAT IT WANTS, NOT ONLY THAT IT SAID NO (2026-10-27, a stranger hiring through /hire: "the seller declined: the
+    // brief names no asset and budget — with no hint about the input format"). What this agent answered the last time
+    // the Plaza asked it for a price (the census, dated) and the one next step, beside its own words in error.
+    const before = /^\d+$/.test(target) ? ((await loadIndex().catch(() => null))?.agents || []).find((a) => a.id === Number(target))?.escrow || null : null;
+    const next_try = /seller declined|names no|requires|needs|missing|provide|specify/i.test(String(neg.error || ''))
+      ? 'The seller answered and asked for something the task did not say. Put what it names (its words are in error, and what it said when last asked in seller_said_before) into task= — the asset or pool, the amount, the range — and ask again.'
+      : 'The seller did not give a price. If x402 is offered below, that is its per-call price; otherwise try another candidate from https://agent.brainonbnb.com/find?q=<your task>&hireable=1 (agents that answered with a price when last asked).';
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(before ? { seller_said_before: before } : {}), next_try, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
   }
 
   const q = neg.quote;
@@ -11523,6 +11556,14 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
 // The escrow stays for buyers who want a kernel between them and the seller;
 // this is for an agent that wants the answer now and has a wallet.
 const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
+// A DIRECT TRANSFER IS NOT "exact" (2026-10-27, operator's go; a stranger reading our 402 as a stock x402 client:
+// "a generic client that allows $BOBAI would try EIP-3009 on a token that does not support it"). The entries paid by
+// sending the token and handing over the transaction hash carry their own scheme name, so a stock client skips them
+// instead of failing; nothing changes in what is accepted (the hash is verified on chain as before).
+const DIRECT_SCHEME = 'direct-transfer';
+// what to SEND in $BOBAI (2026-10-27, same review: amount said the least that must arrive, 90% of the quote, and a
+// client pays exactly amount): amount is the whole quoted number of tokens; min_arrival keeps the line acceptance uses
+const bobaiSend = (b) => (BigInt(Math.ceil(Number(b.tokens))) * 10n ** 18n).toString();
 
 // WHERE THIS PAYMENT GOES (2026-10-18, operator: every payment buys $BOBAI, visibly). The buy stays in the daily sweep
 // (shared/lp-agent.js executeSweep, untouched): bought one payment at a time, three transactions of gas would take about
@@ -11614,12 +11655,12 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
           // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
           description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
@@ -11642,6 +11683,10 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         holder_pass: holderPassTerms(),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
+        // WHAT HAPPENS TO THE MONEY IF THE ANSWER FAILS (2026-10-27, a stranger reading this 402: "nothing says what happens
+        // to my money if delivery fails" — the code has always kept it; now the offer says so) and the one step Permit2 needs
+        if_the_answer_fails: 'Missing input is refused before any payment is taken (422, nothing charged). If the payment went through and the answer then cannot be built, the payment is kept as a credit on its own transaction: send the same request with the same PAYMENT-SIGNATURE (input fixed) and it is used for that answer, not charged again.',
+        usdc_via_permit2: 'USDC is paid through Permit2: the paying wallet needs a one-time approve of the Permit2 contract (0x000000000022D473030F116dDEE9F6B43aC78BA3) for USDC before its first signature.',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -11736,7 +11781,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
         eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
@@ -11783,12 +11828,12 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
         eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
         dexterAccepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
           description: `${what} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
@@ -11855,7 +11900,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           resource,
         }),
         {
-          scheme: 'exact',
+          scheme: DIRECT_SCHEME,
           network: NETWORK,
           asset: USD1,
           maxAmountRequired: WATCH_PRICE_USD1.toString(),
@@ -11865,7 +11910,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),

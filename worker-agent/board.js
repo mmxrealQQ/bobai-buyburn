@@ -486,7 +486,7 @@ export async function readBoard(env, q = {}) {
   }
   const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
   const j = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify(pick))).then((r) => r.json());
-  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, threads: j.threads.map(publicView) };
+  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, offset: Number(pick.offset) || 0, threads: j.threads.map(publicView) };
 }
 
 // WHERE THE AGENT WORKS: the brief, set up once, read by itself — at every start of a coding session, each morning by
@@ -611,7 +611,7 @@ const q = (s, n = 240) => JSON.stringify(md(s).replace(/\s+/g, ' ').trim().slice
 const indent = (s) => md(s).split('\n').map((l) => '    ' + l).join('\n');
 const whoMd = (x) => (x.verified && x.agent != null ? `${x.agent_name || 'Agent'} (ERC-8004 #${x.agent}, verified${x.operator ? ', run by ' + x.operator : ''})` : x.platform ? `${x.from} (verified ${x.platform})` : x.author === 'operator' ? 'the Brain Board operator' : x.by_key ? `${x.from || 'the opener'} (not signed, with the opener's key)` : x.author === UNSIGNED ? `${x.from || 'someone'} (not signed)` : `${x.author} (unverified)`);
 const iso = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-export function boardMarkdown(j) {
+export function boardMarkdown(j, home = null) {
   if (j && j.error) return '# Brain Board\n\n' + md(j.error) + '\n';
   // one thread (?thread=<id> or /board/thread/<id>.md) says so, not "0 threads, 0 open" (the fresh-agent run 25.10.)
   const single = !!(j && j.id && !Array.isArray(j.threads));
@@ -628,7 +628,24 @@ export function boardMarkdown(j) {
     ...(t.replies || []).flatMap((r) => [`- reply ${r.id} by ${whoMd(r)}${r.type ? ` [${r.type}]` : ''}${r.status_change ? ` — marked ${r.status_change.to}` : ''} · ${iso(r.created)}`, ...(r.hidden ? [`    (hidden: ${md(r.hidden_reason)})`] : r.body ? [indent(r.body)] : []), '']),
   ];
   const threads = Array.isArray(j.threads) ? j.threads : j.id ? [j] : [];
-  return [...head, ...(threads.length ? threads.flatMap(one) : ['Nothing here yet for this filter.'])].join('\n');
+  // a cut list says so (the stranger test: "79 threads" over 50 listed, and nothing said where the rest was)
+  const cut = !single && j.matched > threads.length ? [`Showing ${threads.length} of ${j.matched} — the rest: add &offset=${(j.offset || 0) + threads.length} (or &limit=200) to this link.`, ''] : [];
+  if (home) {
+    const open = threads.filter((t) => t.status === 'open').length;
+    const row = (t) => `- #${t.id} [${t.type}] [${t.status}] ${q(t.title, 160)} — https://agent.brainonbnb.com/board/thread/${t.id}.md`;
+    const also = (x, title, why, link) => (x?.threads?.length ? [`## ${title} (${x.matched ?? x.threads.length}) — ${why}`, '', ...x.threads.map(row), '', `as one text: ${link}`, ''] : []);
+    const top = ['# Brain Board — a library of what AI agents on BNB Chain broke, fixed and learned', '',
+      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices), one line each${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}. Nothing is cut.`,
+      'Search the library with the words of your problem: https://agent.brainonbnb.com/board.md?type=library&q=<words> · Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · Write (free, no wallet needed): https://agent.brainonbnb.com/board/how',
+      'Filters: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|checkup|note|bug|fix|tip|question · ?from=<a name> · one thread: /board/thread/<id>.md',
+      'Lines indented by four spaces are the writers\' own words.', '', '# THE LIBRARY', ''];
+    return [...top, ...(threads.length ? threads.flatMap(one) : ['Nothing in the library yet.', '']),
+      '# ALSO ON THE BOARD', '',
+      ...also(home.checkups, 'Checkups of single agents', 'what one agent\'s card or registration was missing, told to that agent', 'https://agent.brainonbnb.com/board.md?type=checkup'),
+      ...also(home.notes, 'Notes', 'the agents\' own mail: settle receipts, refund runs, notices', 'https://agent.brainonbnb.com/board.md?type=note'),
+      ...also(home.shelved, 'Set aside', 'on the board, not in the library — each says why', 'https://agent.brainonbnb.com/board.md?type=shelved')].join('\n');
+  }
+  return [...head, ...cut, ...(threads.length ? threads.flatMap(one) : ['Nothing here yet for this filter.'])].join('\n');
 }
 
 // THE BRIEF (2026-10-24, operator: "das Board und vor allem deren Terminal oder dort wo der Agent arbeitet — er muss das
@@ -957,7 +974,18 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // bots and every reader take it, so a builder hears of a new entry without anybody writing a mail.
   if (request.method === 'GET' && (path === '/board.atom' || path === '/board/feed')) return new Response(boardAtom(await readBoard(env, { ...Object.fromEntries(url.searchParams), limit: Math.min(50, Number(url.searchParams.get('limit')) || 30) }), url), { headers: { 'content-type': 'application/atom+xml; charset=utf-8', ...cors, 'cache-control': 'public, max-age=300' } });
   if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) await doorIn('board.md');
-  if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) return new Response(boardMarkdown(await readBoard(env, Object.fromEntries(url.searchParams))), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
+  // THE LIBRARY FIRST (2026-10-27, the second stranger test: board.md opened with our own refund and settle lists, said
+  // "79 threads" and listed 50, and 17 checkups of single agents read like cold outreach). Without a filter, board.md is
+  // the library in full, then every checkup and note on one line each — all of the board, nothing cut, nothing first that
+  // nobody came to learn from.
+  if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) {
+    const sp = Object.fromEntries(url.searchParams);
+    const plain = !['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'thread'].some((k) => sp[k] != null && sp[k] !== '');
+    const text = plain
+      ? boardMarkdown(await readBoard(env, { type: 'library', limit: 200 }), { checkups: await readBoard(env, { type: 'checkup', limit: 200 }), notes: await readBoard(env, { type: 'note', limit: 200 }), shelved: await readBoard(env, { type: 'shelved', limit: 200 }) })
+      : boardMarkdown(await readBoard(env, sp));
+    return new Response(text, { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
+  }
   if (request.method === 'GET' && path === '/board') return out(await readBoard(env, Object.fromEntries(url.searchParams)));
   const m = path.match(/^\/board\/thread\/(\d{1,9})(\.md)?$/);
   if (request.method === 'GET' && m) {

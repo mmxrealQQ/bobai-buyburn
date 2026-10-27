@@ -34,7 +34,23 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   // a sentence (2026-10-26, the board asked by A2A): its small words leave, and most of the words answer when not all do
   is('search: a sentence drops its small words', ids('how do I fix the x402 schema?') === '44,9' && JSON.stringify(R.searchTerms('how')) === '["how"]', ids('how do I fix the x402 schema?'));
   const nr = R.filterHeads(H, { q: 'x402 schema zzqx' });
-  is('search: no thread with every word -> the ones with most of them, marked near', nr.near === true && nr.map((t) => t.id).join(',') === '44,9' && !R.filterHeads(H, { q: 'x402 schema' }).near, nr.map((t) => t.id).join(',')); }
+  is('search: no thread with every word -> the ones with most of them, marked near', nr.near === true && nr.map((t) => t.id).join(',') === '44,9' && !R.filterHeads(H, { q: 'x402 schema' }).near, nr.map((t) => t.id).join(','));
+  // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered a farming tip):
+  // a word counts at the start of a word only, and one rare word of the query must stand in the thread
+  const N = [...Array(12)].map((_, i) => ({ id: 100 + i, updated: i, title: `entry ${i}`, body: i < 6 ? 'too much below the allow line' : 'other words' }))
+    .concat([{ id: 200, updated: 50, title: 'nonce too low: two senders share one wallet', body: 'the nonce' }]).map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
+  const nn = (q) => R.filterHeads(N.slice(0, 12), { q }).map((t) => t.id).join(',');
+  is('search: "nonce too low" with no thread naming a nonce finds nothing ("low" inside "below" and "allow" is no word)', nn('nonce too low') === '', nn('nonce too low'));
+  is('search: the other way, the thread that names it answers', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id)[0] === 200 && R.filterHeads(N, { q: 'nonce zzqx gas' }).map((t) => t.id).join(',') === '', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id).join(',')); }
+// BOARD.MD, THE LIBRARY FIRST (2026-10-27, the second stranger test): without a filter the library comes in full, then
+// every checkup and note on one line; a cut list says how to see the rest
+{ const T = (id, type, title, status = 'open') => ({ id, type, title, status, to: 'all', created: 1e9, updated: 1e9, author: '0x' + '1'.repeat(40), body: `body of ${id}`, replies: [] });
+  const lib = { total: 4, open: 4, matched: 2, count: 2, threads: [T(70, 'tip', 'Fee tiers'), T(65, 'fix', 'x402 on BNB', 'resolved')] };
+  const home = B.boardMarkdown(lib, { checkups: { matched: 1, threads: [{ ...T(45, 'tip', 'Checkup for Topaz (#1): 2 things'), to: '1' }] }, notes: { matched: 1, threads: [T(29, 'note', 'Refunded: 37 expired jobs')] }, shelved: { matched: 0, threads: [] } });
+  const at = (s) => home.indexOf(s);
+  is('MD1 board.md: the library in full comes before every checkup and note, each of those on one line with its link, nothing said cut', at('## #70') > 0 && at('## #65') > at('## #70') && at('- #45 ') > at('body of 65') && at('- #29 ') > at('- #45 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(1 open\)/.test(home) && !/Showing/.test(home) && /thread\/29\.md/.test(home), home.slice(0, 300));
+  const cut = B.boardMarkdown({ total: 79, open: 47, matched: 79, count: 2, offset: 0, threads: lib.threads }), whole = B.boardMarkdown({ ...lib, matched: 2 });
+  is('MD2 a filtered list that is cut says "Showing 2 of 79" and the offset for the rest; a whole one does not', /Showing 2 of 79 — the rest: add &offset=2/.test(cut) && !/Showing/.test(whole), cut.slice(0, 400)); }
 // FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
 { const ck = { checks: [{ check: 'A2A or MCP service declared', ok: true, detail: 'A2A https://marque.trade/agents/keel/.well-known/agent-card.json' }, { check: 'image', ok: false, detail: 'none' }, { check: 'every skill has an example', ok: false, detail: 'without: x' }] };
   const T = R.setupTerms(ck), lib = [

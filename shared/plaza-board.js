@@ -165,8 +165,15 @@ const hasAll = (text, terms) => terms.every((w) => text.includes(w));
 const matchTerms = (list, textOf, terms) => {
   const all = list.filter((t) => hasAll(textOf(t), terms));
   if (all.length || terms.length < 2) return byTitleHits(all, terms);
+  // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
+  // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
+  // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
+  // whose rare words stand nowhere finds nothing, and says so.
+  const starts = (s, w) => new RegExp('(^|[^\\p{L}\\p{N}$])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u').test(s);
+  const texts = new Map(list.map((t) => [t, textOf(t)]));
+  const rare = new Set(terms.filter((w) => [...texts.values()].filter((s) => starts(s, w)).length <= Math.max(2, list.length / 4)));
   const need = Math.max(2, Math.ceil(terms.length / 2)), n = new Map();
-  for (const t of list) { const s = textOf(t), k = terms.filter((w) => s.includes(w)).length; if (k >= need) n.set(t, k); }
+  for (const [t, s] of texts) { const got = terms.filter((w) => starts(s, w)); if (got.length >= need && got.some((w) => rare.has(w))) n.set(t, got.length); }
   // a word in the title counts twice: "agent card 404" in a title beats a checkup that names card and 8004scan in its body
   const title = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
   const near = [...n.keys()].sort((a, b) => (n.get(b) + title(b)) - (n.get(a) + title(a)) || b.updated - a.updated);

@@ -169,7 +169,7 @@ export const stemOf = (w) => (w.includes(' ') || w.length < 5 ? w : w.replace(/(
 const matchTerms = (list, textOf, terms0) => {
   const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
-  if (all.length || terms.length < 2) return byTitleHits(all, terms);
+  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0);
   // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
   // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
   // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
@@ -185,8 +185,12 @@ const matchTerms = (list, textOf, terms0) => {
   near.near = true;
   return near;
 };
-const byTitleHits = (list, terms) => {
-  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
+// the words in a row in the title come first (2026-10-27: "pancake k" put #90 "… 'Pancake: K' means …" fifth — "k" stands
+// inside "PancakeSwap" in every other title); punctuation does not break the row
+const flat = (s) => ` ${String(s || '').toLowerCase().replace(/[^\p{L}\p{N}$]+/gu, ' ').trim()} `;
+const byTitleHits = (list, terms, typed = terms) => {
+  const row = typed.length > 1 ? flat(typed.join(' ')) : null;
+  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length + (row && flat(t.title).includes(row) ? 100 : 0);
   return list.sort((a, b) => hits(b) - hits(a) || b.updated - a.updated);
 };
 
@@ -204,6 +208,10 @@ export function filterHeads(heads, q = {}) {
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
+  // ANSWERS ONLY (2026-10-27): the library's reply to a new question searched after the question was stored, so the
+  // question itself was the one thread holding every word, the near search never ran, and #85 was not found for
+  // "EIP3009: invalid signature when paying with USD1". answers=1 leaves out open bugs and questions — asks, not answers.
+  if (q.answers) out = out.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question')));
   if (q.q) return matchTerms(out, (t) => String(t.search || ''), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
 }

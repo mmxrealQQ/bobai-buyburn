@@ -46,6 +46,10 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
 { const S0 = [{ id: 104, updated: 1, title: 'Removing liquidity from a V3 position', body: 'decreaseLiquidity books it' }, { id: 7, updated: 2, title: 'other', body: 'nothing here' }].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
   const f = (q) => R.filterHeads(S0, { q }).map((t) => t.id).join(',');
   is('search: "remove liquidity" finds "Removing liquidity"; "fees" and a quoted phrase stay as typed', f('remove liquidity') === '104' && typeof R.stemOf === 'function' && R.stemOf('fees') === 'fees' && R.stemOf('"remove it"') === '"remove it"' && f('"removing liquidity"') === '104' && f('"remove liquidity"') === '', f('remove liquidity')); }
+// THE WORDS IN A ROW FIRST (2026-10-27): "pancake k" puts "… 'Pancake: K' means …" before titles that only hold PancakeSwap
+{ const S1 = [{ id: 90, updated: 1, title: "Selling a tax token: 'Pancake: K' means use the supporting swap", body: 'x' }, { id: 104, updated: 9, title: 'Removing liquidity from a PancakeSwap V3 position', body: 'k' }].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
+  const o = R.filterHeads(S1, { q: 'pancake k' }).map((t) => t.id).join(',');
+  is('search: the query\'s words in a row in a title rank first ("pancake k" finds "\'Pancake: K\'" before a newer PancakeSwap title)', o === '90,104', o); }
 // BOARD.MD, THE LIBRARY FIRST (2026-10-27, the second stranger test): without a filter the library comes in full, then
 // every checkup and note on one line; a cut list says how to see the rest
 { const T = (id, type, title, status = 'open') => ({ id, type, title, status, to: 'all', created: 1e9, updated: 1e9, author: '0x' + '1'.repeat(40), body: `body of ${id}`, replies: [] });
@@ -899,6 +903,10 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
     const none = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'zzqx wobble frobnicate', body: 'x', from: 'la-test' }, { 'cf-connecting-ip': '198.18.9.22' });
     const noneTh = (await call('GET', '/board/thread/' + none.j.thread)).j;
     is('LA1 an outside question gets its library matches in the POST answer and a verified Brain Board reply in the thread; a tip and a question with no match get neither', q.status === 200 && (q.j.library || []).some((h) => /bad_schema/.test(h.title)) && rep?.verified === true && rep.agent === 391841 && /From the library/.test(rep.body) && /\/board\/\d+/.test(rep.body) && tip.status === 200 && !tip.j.library && none.status === 200 && Array.isArray(none.j.library) && !none.j.library.length && /ASKED, NOT ANSWERED YET/.test(none.j.library_note || '') && !(noneTh?.replies || []).length, JSON.stringify({ q: q.j.library, rep: rep && { v: rep.verified, a: rep.agent }, tip: !!tip.j.library, none: !!none.j.library })); }
+  // LA2: the question itself holds all its words — the library's answer must still find the entry that holds most of them
+  { const tip = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'EIP3009 invalid signature: the domain name is not the symbol', body: 'read eip712Domain()', from: 'la2-writer' }, { 'cf-connecting-ip': '198.18.9.30' });
+    const ask = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'EIP3009: invalid signature when paying with zqcoin', body: 'what is wrong?', from: 'la2-asker' }, { 'cf-connecting-ip': '198.18.9.31' });
+    is('LA2 a question that holds words no entry has still gets the entry holding most of them (the question itself is not the answer)', (ask.j.library || []).some((h) => h.thread === tip.j.thread) && !(ask.j.library || []).some((h) => h.thread === ask.j.thread), JSON.stringify(ask.j.library)); }
   // AS1: the unanswered asks: an outside question with only the library's reply stands; one somebody else answered, ours, a tip, a resolved one do not
   { const T = (o) => ({ id: 1, type: 'question', status: 'open', author: 'unsigned', from: 'asker', title: 't', body: 'b', replies: [], ...o });
     const lib = { author: '0x' + 'a'.repeat(40), agent: 391841, body: 'From the library, maybe the answer:\n- #90 x' };

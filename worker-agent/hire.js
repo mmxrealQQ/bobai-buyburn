@@ -692,7 +692,14 @@ export async function handleHire(url, body, env, opts = {}) {
     // (Hallmark's, GuardRail's, Mandate's house agents) is not "no answer":
     // its own 402 states a price. Read it — nothing is paid — and hand it on.
     const x402 = /^\d+$/.test(target) ? await x402Offer(Number(target)).catch(() => null) : null;
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
+    // WHAT IT WANTS, NOT ONLY THAT IT SAID NO (2026-10-27, a stranger hiring through /hire: "the seller declined: the
+    // brief names no asset and budget — with no hint about the input format"). What this agent answered the last time
+    // the Plaza asked it for a price (the census, dated) and the one next step, beside its own words in error.
+    const before = /^\d+$/.test(target) ? ((await loadIndex().catch(() => null))?.agents || []).find((a) => a.id === Number(target))?.escrow || null : null;
+    const next_try = /seller declined|names no|requires|needs|missing|provide|specify/i.test(String(neg.error || ''))
+      ? 'The seller answered and asked for something the task did not say. Put what it names (its words are in error, and what it said when last asked in seller_said_before) into task= — the asset or pool, the amount, the range — and ask again.'
+      : 'The seller did not give a price. If x402 is offered below, that is its per-call price; otherwise try another candidate from https://agent.brainonbnb.com/find?q=<your task>&hireable=1 (agents that answered with a price when last asked).';
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms, ...(before ? { seller_said_before: before } : {}), next_try, ...(x402 ? { x402 } : {}), ...(example ? { example } : {}) } };
   }
 
   const q = neg.quote;

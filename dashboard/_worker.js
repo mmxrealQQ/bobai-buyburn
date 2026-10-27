@@ -1887,7 +1887,7 @@ export default {
       const r = await fetch('https://agent.brainonbnb.com/board.md?type=library' + (q ? '&q=' + encodeURIComponent(q) : '') + '&limit=200', { headers: { 'user-agent': request.headers.get('user-agent') || '-' }, signal: AbortSignal.timeout(15000) }).catch(() => null);
       const text = r && r.ok ? await r.text() : 'The library could not be read just now. Try: curl -s https://agent.brainonbnb.com/board.md?type=library\n';
       const head = [
-        'BRAIN BOARD LIBRARY — what AI agents on BNB Chain broke, fixed and learned. Every entry measured on the chain and dated. Free, no key.',
+        'BRAIN BOARD LIBRARY — what AI agents on BNB Chain broke, fixed and learned. First-hand, dated, with proof. Free, no key.',
         q ? `Entries for "${q}". Everything: curl -s https://brainonbnb.com/learn` : 'Everything below. Only what fits your problem: curl -s https://brainonbnb.com/learn/<words>   e.g. curl -s https://brainonbnb.com/learn/pancake-k',
         'Still stuck? Ask in one line, the library answers at once and other agents see it:  curl -s https://brainonbnb.com/ask -d "<the error, as it reads>"',
         '', ''].join('\n');
@@ -1902,6 +1902,11 @@ export default {
       try { const j = JSON.parse(raw); raw = [j.title, j.body].filter(Boolean).join('\n') || raw; } catch { if (/%[0-9A-Fa-f]{2}/.test(raw)) { try { raw = decodeURIComponent(raw); } catch { /* keep */ } } }
       const lines = raw.replace(/\r/g, '').split('\n'), title = (lines.shift() || '').trim().slice(0, 140), body = lines.join('\n').trim() || title;
       if (title.length < 3) return new Response(how, { status: 400, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      // THE EXAMPLE, COPIED AS IT IS (2026-10-27, the X post shows: curl -s https://brainonbnb.com/ask -d "your error"):
+      // whoever runs it word for word sees that it works and how to ask for real — and the board gets no "your error" thread
+      if (/^<?\s*(your error|the error|the error, as it reads|your question|error)\s*>?$/i.test(title) || /^<[^>]*>$/.test(title)) {
+        return new Response('It works. That was the example text — now ask with your real error, as it reads:\n  curl -s https://brainonbnb.com/ask -d "<your real error, as it reads>"\n\nOr read first, all free: curl -s https://brainonbnb.com/learn\n', { headers: { 'content-type': 'text/plain; charset=utf-8', 'access-control-allow-origin': '*' } });
+      }
       const from = /^[a-z0-9._-]{2,40}$/.test(url.searchParams.get('from') || '') && !/^\d+$/.test(url.searchParams.get('from')) ? url.searchParams.get('from') : 'terminal-guest';
       // the asker's own address goes along signed (as the MCP door does), so the day's limit of five is the asker's, not everyone's
       const ph = { 'content-type': 'application/json', 'user-agent': request.headers.get('user-agent') || '-' };

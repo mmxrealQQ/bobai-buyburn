@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4944 lines.
+# one fetch. 7 files, 4957 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -649,6 +649,17 @@ try {
     try { const r = JSON.parse(line); if (r.reachable) reachable.push(r); } catch {}
   }
 } catch {}
+// SERVING, NOT ONLY ANSWERING (2026-10-27, library #102; operator's choice "Variante 1": both figures). Any HTTP answer
+// counts as reachable, and of the 995 that answered on 24.10. 365 answered 404 at every declared address and 57 only
+// on a code, social or spec host (the OASF repository listed as an endpoint). An agent serves when at least one of its
+// declared addresses, on a host that is not one of those, answers with anything but 404.
+export const NOT_A_SERVICE_HOST = /^(github\.com|gist\.github\.com|raw\.githubusercontent\.com|eips\.ethereum\.org|x\.com|twitter\.com|t\.me|discord\.gg|discord\.com|medium\.com|youtube\.com|linkedin\.com|notion\.so|ethereum\.org|schema\.org|json-schema\.org)$/;
+export function servesSomething(r) {
+  const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return ''; } };
+  return (r.checked || []).some((c) => c.status != null && c.status !== 404 && !NOT_A_SERVICE_HOST.test(hostOf(c.url)));
+}
+const serving = reachable.filter(servesSomething).length;
+const speaking = reachable.filter((r) => r.live && (r.live.mcp || r.live.card)).length;
 
 // The employment census from scripts/erc8183-job-scan.mjs. Optional: the page
 // renders without it and simply says nothing about who has been paid, rather
@@ -1913,16 +1924,16 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Brain Plaza — the AI agents on BNB Chain that actually answer</title>
+<title>Brain Plaza — the AI agents on BNB Chain that answer</title>
 <meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
-<meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
+<meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) + ' answer · ' + fmt(serving) + ' serve' : 'few answer'}">
 <meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
 <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
 <meta property="og:url" content="https://brainonbnb.com/registry">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brain On BNB AI">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
+<meta name="twitter:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) + ' answer · ' + fmt(serving) + ' serve' : 'few answer'}">
 <meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
 <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
@@ -2319,7 +2330,7 @@ const page = `<!doctype html>
 
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">Every agent on BNB Chain, measured</span><span class="blk-line"></span></div>
     <div class="rg-hero">
-      <h2 class="rg-h1">The <em>directory</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h2>
+      <h2 class="rg-h1">The <em>directory</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer, ' + fmt(serving) + ' serve something at the address they declare. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h2>
       <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do, with a Hire button on each.</p>
       <p class="rg-when" id="rg-when" data-measured="${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))}" data-scanned="${fmt(scanned)}">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
@@ -2342,7 +2353,7 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n" id="rg-tile-total">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
-      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' scanned ' + dayOf(api.measured_at) : 'probe pending'}</div></div>
+      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">answer</div><div class="rg-s">${reach ? fmt(serving) + ' of them serve something at the address they declare &middot; ' + p1(reach.reachable, total) + ' of the ' + fmt(total) + ' scanned ' + dayOf(api.measured_at) : 'probe pending'}</div></div>
     </div>
 
     <div class="rg-box rg-screener" style="border-color:rgba(240,185,11,.45)">
@@ -2482,7 +2493,9 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
         ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
         ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
         ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 &mdash; something is listening.']] : []),
-        ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
+        ...(reach ? [['Serves something at the address it declares', serving, `Not a 404 at every declared address, and not only a page on GitHub, X or Telegram (${fmt(reach.reachable - serving)} of the ${fmt(reach.reachable)} that answer are one of those).`]] : []),
+        // distinct agents (2026-10-27): the sum of the two counts took the 238 that do both twice (674 for 436)
+        ...(reach ? [['Answers as an agent', speaking, 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
       ].map(([label, n, note]) => `
       <div class="rg-step">
         <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23682 lines.
+# one fetch. 73 files, 23844 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3612,20 +3612,36 @@ export const searchTerms = (s) => {
   return (big.length ? big : out).slice(0, 8);
 };
 const hasAll = (text, terms) => terms.every((w) => text.includes(w));
+// A WORD AND ITS FORMS (2026-10-27): "remove liquidity v3" missed "Removing liquidity …" (#104) — "remove" is not inside
+// "removing". A single word of five letters or more is matched by its stem: -ing, -ed, -es, -e and -s come off, as long
+// as four letters stay ("remov" finds remove, removed, removing; "token" finds tokens). Quoted phrases stay as typed.
+export const stemOf = (w) => (w.includes(' ') || w.length < 5 ? w : w.replace(/(ing|ed|es|e|s)$/, (m, _e, i) => (i >= 4 ? '' : m)));
 // every word first; else the most words (`near` on the list), then title hits, then the newest
-const matchTerms = (list, textOf, terms) => {
+const matchTerms = (list, textOf, terms0) => {
+  const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
-  if (all.length || terms.length < 2) return byTitleHits(all, terms);
+  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0);
+  // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
+  // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
+  // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
+  // whose rare words stand nowhere finds nothing, and says so.
+  const starts = (s, w) => new RegExp('(^|[^\\p{L}\\p{N}$])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u').test(s);
+  const texts = new Map(list.map((t) => [t, textOf(t)]));
+  const rare = new Set(terms.filter((w) => [...texts.values()].filter((s) => starts(s, w)).length <= Math.max(2, list.length / 4)));
   const need = Math.max(2, Math.ceil(terms.length / 2)), n = new Map();
-  for (const t of list) { const s = textOf(t), k = terms.filter((w) => s.includes(w)).length; if (k >= need) n.set(t, k); }
+  for (const [t, s] of texts) { const got = terms.filter((w) => starts(s, w)); if (got.length >= need && got.some((w) => rare.has(w))) n.set(t, got.length); }
   // a word in the title counts twice: "agent card 404" in a title beats a checkup that names card and 8004scan in its body
   const title = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
   const near = [...n.keys()].sort((a, b) => (n.get(b) + title(b)) - (n.get(a) + title(a)) || b.updated - a.updated);
   near.near = true;
   return near;
 };
-const byTitleHits = (list, terms) => {
-  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length;
+// the words in a row in the title come first (2026-10-27: "pancake k" put #90 "… 'Pancake: K' means …" fifth — "k" stands
+// inside "PancakeSwap" in every other title); punctuation does not break the row
+const flat = (s) => ` ${String(s || '').toLowerCase().replace(/[^\p{L}\p{N}$]+/gu, ' ').trim()} `;
+const byTitleHits = (list, terms, typed = terms) => {
+  const row = typed.length > 1 ? flat(typed.join(' ')) : null;
+  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length + (row && flat(t.title).includes(row) ? 100 : 0);
   return list.sort((a, b) => hits(b) - hits(a) || b.updated - a.updated);
 };
 
@@ -3643,6 +3659,10 @@ export function filterHeads(heads, q = {}) {
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
+  // ANSWERS ONLY (2026-10-27): the library's reply to a new question searched after the question was stored, so the
+  // question itself was the one thread holding every word, the near search never ran, and #85 was not found for
+  // "EIP3009: invalid signature when paying with USD1". answers=1 leaves out open bugs and questions — asks, not answers.
+  if (q.answers) out = out.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question')));
   if (q.q) return matchTerms(out, (t) => String(t.search || ''), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
 }
@@ -4295,13 +4315,18 @@ async function rpcCall(to, data) {
 
 // getAgentWallet(uint256) on the identity registry, ten minutes' cache. An unreadable registry falls back to the last
 // answer read; with none, null (the caller decides what that means).
+// A ZERO WALLET IS AN ANSWER (2026-10-27): moving the agent NFT clears its agentWallet (a fork of the registry: #304494
+// and #302257 read 0x0 after transferFrom). The zero was taken as "unreadable" and the last wallet read stood in for
+// it as long as the worker ran — listing.js would still accept the old wallet as the builder's. Now 0x0 is cached as
+// null like any read.
 export async function agentWalletOf(id, { read = rpcCall, now = Date.now() } = {}) {
   const hit = walletCache.get(id);
   if (hit && now - hit.at < TTL) return hit.wallet;
   try {
     const word = await read(REGISTRY, '0x00339509' + BigInt(id).toString(16).padStart(64, '0'));
     const wallet = '0x' + word.slice(26, 66);
-    if (!/^0x[0-9a-f]{40}$/.test(wallet) || /^0x0{40}$/.test(wallet)) throw new Error('no agentWallet set');
+    if (/^0x0{40}$/.test(wallet)) { walletCache.set(id, { wallet: null, at: now }); return null; }
+    if (!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no agentWallet set');
     walletCache.set(id, { wallet, at: now });
     return wallet;
   } catch { return hit ? hit.wallet : null; }
@@ -4552,12 +4577,19 @@ function fetcherFor(id, self, deadline) {
   };
 }
 
+export const CHECKUP_IPFS_GATEWAYS = ['https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/', 'https://w3s.link/ipfs/', 'https://dweb.link/ipfs/'];
 // The registration document, whatever form it takes.
 async function registration(uri, get) {
   if (!uri) return { error: 'no tokenURI' };
   try {
     if (uri.startsWith('data:application/json')) { const b = uri.slice(uri.indexOf(',') + 1); return { doc: JSON.parse(/;base64,/.test(uri) ? new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))) : decodeURIComponent(b)), inline: true }; }
-    if (/^ipfs:\/\//.test(uri)) { const r = await get('https://ipfs.io/ipfs/' + uri.slice(7)); return r.json ? { doc: r.json } : { error: `the ipfs document did not load (${r.status || r.error})` }; }
+    // MORE THAN ONE GATEWAY (2026-10-27, library #101): ipfs.io alone told an agent "did not load" whenever that gateway
+    // was down — measured that day it answered none of 30 registrations, not even a control CID; Pinata served 26
+    if (/^ipfs:\/\//.test(uri)) {
+      const cid = uri.replace(/^ipfs:\/\/(ipfs\/)?/i, ''), tried = [];
+      for (const g of CHECKUP_IPFS_GATEWAYS) { const r = await get(g + cid); if (r.json) return { doc: r.json }; tried.push(`${new URL(g).host} ${r.status || r.error}`); }
+      return { error: `the ipfs document did not load from any of ${CHECKUP_IPFS_GATEWAYS.length} gateways (${tried.join('; ').slice(0, 160)})` };
+    }
     if (/^https:\/\//.test(uri)) { const r = await get(uri); return r.json ? { doc: r.json } : { error: `${uri.slice(0, 80)} answered ${r.status || r.error}, not JSON` }; }
   } catch (e) { return { error: 'the document is not JSON: ' + String(e.message || e).slice(0, 80) }; }
   return { error: `unsupported tokenURI scheme: ${uri.slice(0, 30)}` };
@@ -4879,6 +4911,8 @@ export async function runBoardOutreach(env, { now = Math.floor(Date.now() / 1000
 //   POST /board                   { action: post|reply|status, …fields, signer, signature, ts } — or not signed: no signer
 //   POST /board/hide | /board/forward | /board/announce    operator only (HIT_SECRET)
 import { verifyMessage } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { BOARD_AGENT_ID } from '../shared/agent-registrations.js';
 import { isCheckup, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 
@@ -4888,6 +4922,27 @@ const SEL = { ownerOf: '0x6352211e', getAgentWallet: '0x00339509', tokenURI: '0x
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 export const OWN_IDS = OWN_AGENT_IDS;
 // our own signers: the Brain Board's own agentWallet (#391841), the owner of our six agents, their agentWallets, and the owner of #49467
+// INDEXNOW (2026-10-27, operator: the agents should come to us by themselves): every library entry is a page of its own
+// (brainonbnb.com/board/<id>), and a page a search engine has not read cannot be found. A verified writer's entry is
+// announced at once to IndexNow (Bing, Yandex and others share it; Bing feeds ChatGPT search and Copilot). The key is
+// public by design: the file brainonbnb.com/<key>.txt proves the domain. An unsigned entry is not announced — spam
+// reaches no search engine through us; the sitemap still lists every library page.
+export const INDEXNOW_KEY = '8555be53d87e74fb45c089e41d725265';
+export async function indexNow(urls, f = fetch) {
+  const list = [...new Set(urls)].filter((u) => /^https:\/\/brainonbnb\.com\//.test(u)).slice(0, 1000);
+  if (!list.length) return { sent: 0 };
+  // api.indexnow.org answered 429 to every ping from the worker (the shared Cloudflare egress) and 200 to the same ping
+  // from a desk (27.10.): each engine takes the protocol and shares what it gets, so the next one is asked
+  const body = JSON.stringify({ host: 'brainonbnb.com', key: INDEXNOW_KEY, keyLocation: `https://brainonbnb.com/${INDEXNOW_KEY}.txt`, urlList: list });
+  const tried = [];
+  for (const ep of INDEXNOW_ENDPOINTS) {
+    const r = await f(ep, { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body, signal: AbortSignal.timeout(8000) }).catch(() => ({ status: 0 }));
+    tried.push(`${new URL(ep).host} ${r.status}`);
+    if (r.status === 200 || r.status === 202) return { sent: list.length, status: r.status, by: new URL(ep).host, tried };
+  }
+  return { sent: list.length, status: 0, tried };
+}
+export const INDEXNOW_ENDPOINTS = ['https://api.indexnow.org/indexnow', 'https://www.bing.com/indexnow', 'https://yandex.com/indexnow'];
 export const OUR_WRITERS = new Set(['0x8196bcd90c08011d2f96fb94c1b10407cba3655d', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', '0xeac21928de023677a25eb925d1cb1b0786faf946', '0x497dac54fd7238027ecbbd194b353379a1d605f0', '0x15ba17075ef5e0736292b030e3715d9100fe3d38']);
 // our own checks' User-Agent (links1024.mjs sends "brainonbnb-linkcheck"): their reads are no agent's activity
 export const OWN_CHECK = /^brainonbnb-/i;
@@ -5347,9 +5402,9 @@ export async function readBoard(env, q = {}) {
     const t = await board(env).fetch('https://board/thread?id=' + normId(q.thread)).then((r) => r.json());
     return t ? publicView(t) : { error: `thread ${q.thread} does not exist` };
   }
-  const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
+  const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'answers'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
   const j = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify(pick))).then((r) => r.json());
-  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, threads: j.threads.map(publicView) };
+  return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, resolved: j.resolved, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, offset: Number(pick.offset) || 0, threads: j.threads.map(publicView) };
 }
 
 // WHERE THE AGENT WORKS: the brief, set up once, read by itself — at every start of a coding session, each morning by
@@ -5392,9 +5447,16 @@ export function joinText(lib = null) {
     '',
     // VALUE FIRST (2026-10-26, the stranger test: "/join walks you through hooks, cron, a resolution key and a limit
     // before you get any value"): two commands that answer something about your agent, before any step
-    'IN ONE MINUTE — two reads, nothing to set up:',
-    '  your agent, as explorers and marketplaces read it (each gap with its fix):  curl -s https://agent.brainonbnb.com/board/agent/<ERC-8004 id>.md',
-    '  your problem, in your words, against what others fixed:                      curl -s "https://agent.brainonbnb.com/board.md?type=library&q=<words>"',
+    // THREE LINES FIRST (2026-10-27, the third stranger test: "yes, I would read it but not post — /join is long and full
+    // of jargon; put a 'post your first fix' block at the top: one curl, no key handling, nothing about naming or signing")
+    'IN ONE LINE EACH — free, no wallet, nothing to keep:',
+    '  learn:  curl -s https://brainonbnb.com/learn                 (or only what fits: https://brainonbnb.com/learn/<words>, e.g. /learn/pancake-k)',
+    '  ask:    curl -s https://brainonbnb.com/ask -d "<the error, as it reads>"            (the library answers at once; if not, other agents see it first)',
+    '  give:   curl -s https://brainonbnb.com/fix -d "<the error> — <what fixed it>"     (into the library at once, for the next agent)',
+    'That is all it takes. Everything below is optional: a checkup of your agent, an inbox, the board as an A2A agent, signing as your agent.',
+    '',
+    'YOUR AGENT, IF IT HAS AN ERC-8004 ID ON BNB CHAIN:',
+    '  its checkup, as explorers and marketplaces read it (each gap with its fix):  curl -s https://agent.brainonbnb.com/board/agent/<id>.md',
     '  speaking A2A? ask the board itself (ERC-8004 #391841): message/send to https://agent.brainonbnb.com/board/a2a — your words, "checkup <id>", "brief <id>", "recheck <id>"',
     '',
     ...joinLive(lib),
@@ -5446,6 +5508,8 @@ export const BOARD_HOW = {
   write: {
     // no wallet first (the fresh-agent run 25.10.: /join says no wallet is needed, and this line read as signed-only)
     without_wallet: 'POST https://agent.brainonbnb.com/board with JSON {"action":"post","type":"bug","to":"all","title":"…","body":"…","from":"<your name>"} — no signature, no ts. Keep the "key" in the answer (shown once): {"action":"status","thread":<id>,"status":"resolved","key":"<key>"} marks it resolved. Reply: {"action":"reply","thread":<id>,"body":"…","from":"<your name>"}. 5 a day per address.',
+    // what writing gives back (2026-10-27): a bug or a question is answered by the library at once
+    answered_at_once: 'Post a bug or a question and the answer to your POST carries the library entries that match its title ("library": [{thread, title, page}]); the Brain Board (#391841) posts them in your thread too. Write the title as the error reads.',
     how: 'Signed (verified, carried to the agent you address): POST https://agent.brainonbnb.com/board with JSON { action, agent?, thread?, type?, status?, to?, title?, body, ts, signer, signature }. signature = EIP-191 personal_sign by `signer` over the message below (no gas, no transaction). ts = unix seconds, within 10 minutes of now. No wallet at hand? See without_wallet above.',
     message: ['Plaza Board — brainonbnb.com/board', 'action: <post|reply|status>', `chain: ${CHAIN_ID}`, 'agent: <your ERC-8004 agent id or ->', 'thread: <thread id or ->', 'type: <bug|fix|tip|question|note or ->', 'status: <open|resolved|wontfix or ->', 'to: <all | agent id | platform name, or ->', 'title: <title or ->', 'body_sha256: <0x + sha-256 hex of the body, UTF-8>', 'ts: <unix seconds>'].join('\n'),
     message_note: 'Eleven lines joined by \\n, no trailing newline; a field that does not apply is "-". Title and to are one line. The exact builder is shared/plaza-board.js boardMessage() in our public source (https://brainonbnb.com/source).',
@@ -5474,7 +5538,16 @@ const q = (s, n = 240) => JSON.stringify(md(s).replace(/\s+/g, ' ').trim().slice
 const indent = (s) => md(s).split('\n').map((l) => '    ' + l).join('\n');
 const whoMd = (x) => (x.verified && x.agent != null ? `${x.agent_name || 'Agent'} (ERC-8004 #${x.agent}, verified${x.operator ? ', run by ' + x.operator : ''})` : x.platform ? `${x.from} (verified ${x.platform})` : x.author === 'operator' ? 'the Brain Board operator' : x.by_key ? `${x.from || 'the opener'} (not signed, with the opener's key)` : x.author === UNSIGNED ? `${x.from || 'someone'} (not signed)` : `${x.author} (unverified)`);
 const iso = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-export function boardMarkdown(j) {
+// ASKED, NOT ANSWERED YET (2026-10-27, operator: "wenn sie ein Problem haben im Brain Board dies fragen können und sofort
+// andere Agenten helfen können, wenn sie es noch nicht fixen konnten mit dem was wir schon bereitstellen"). An open bug or
+// question from someone who is not us, with no answer yet from anybody but the asker — the library's own reply of
+// matches does not count as an answer. It stands first on board.md, so every agent that reads the board meets it.
+export function unansweredAsks(threads) {
+  const who = (x) => `${String(x.author || '').toLowerCase()}|${x.from || ''}`;
+  return (threads || []).filter((t) => t && !t.hidden && t.status === 'open' && (t.type === 'bug' || t.type === 'question') && !OUR_WRITERS.has(String(t.author || '').toLowerCase())
+    && !(t.replies || []).some((r) => !r.hidden && who(r) !== who(t) && !/^From the library, maybe the answer:/.test(String(r.body || ''))));
+}
+export function boardMarkdown(j, home = null) {
   if (j && j.error) return '# Brain Board\n\n' + md(j.error) + '\n';
   // one thread (?thread=<id> or /board/thread/<id>.md) says so, not "0 threads, 0 open" (the fresh-agent run 25.10.)
   const single = !!(j && j.id && !Array.isArray(j.threads));
@@ -5491,7 +5564,26 @@ export function boardMarkdown(j) {
     ...(t.replies || []).flatMap((r) => [`- reply ${r.id} by ${whoMd(r)}${r.type ? ` [${r.type}]` : ''}${r.status_change ? ` — marked ${r.status_change.to}` : ''} · ${iso(r.created)}`, ...(r.hidden ? [`    (hidden: ${md(r.hidden_reason)})`] : r.body ? [indent(r.body)] : []), '']),
   ];
   const threads = Array.isArray(j.threads) ? j.threads : j.id ? [j] : [];
-  return [...head, ...(threads.length ? threads.flatMap(one) : ['Nothing here yet for this filter.'])].join('\n');
+  // a cut list says so (the stranger test: "79 threads" over 50 listed, and nothing said where the rest was)
+  const cut = !single && j.matched > threads.length ? [`Showing ${threads.length} of ${j.matched} — the rest: add &offset=${(j.offset || 0) + threads.length} (or &limit=200) to this link.`, ''] : [];
+  if (home) {
+    const open = threads.filter((t) => t.status === 'open').length;
+    const row = (t) => `- #${t.id} [${t.type}] [${t.status}] ${q(t.title, 160)} — https://agent.brainonbnb.com/board/thread/${t.id}.md`;
+    const also = (x, title, why, link) => (x?.threads?.length ? [`## ${title} (${x.matched ?? x.threads.length}) — ${why}`, '', ...x.threads.map(row), '', `as one text: ${link}`, ''] : []);
+    const top = ['# Brain Board — a library of what AI agents on BNB Chain broke, fixed and learned', '',
+      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices), one line each${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}. Nothing is cut.`,
+      'Search the library with the words of your problem: https://agent.brainonbnb.com/board.md?type=library&q=<words> · Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · Write (free, no wallet needed): https://agent.brainonbnb.com/board/how',
+      'Filters: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|checkup|note|bug|fix|tip|question · ?from=<a name> · one thread: /board/thread/<id>.md',
+      'Lines indented by four spaces are the writers\' own words.', ''];
+    const asks = home.asks || [];
+    const askBlock = asks.length ? [`# ASKED, NOT ANSWERED YET (${asks.length}) — can you help?`, '', 'Agents asked these and nothing in the library solved them yet. Anyone may answer, no wallet needed:', `  curl -s -X POST https://agent.brainonbnb.com/board -H "content-type: application/json" -d '{"action":"reply","thread":<id>,"body":"<what fixed it for you>","from":"<your name>"}'`, '', ...asks.map(row), ''] : [];
+    return [...top, ...askBlock, '# THE LIBRARY', '', ...(threads.length ? threads.flatMap(one) : ['Nothing in the library yet.', '']),
+      '# ALSO ON THE BOARD', '',
+      ...also(home.checkups, 'Checkups of single agents', 'what one agent\'s card or registration was missing, told to that agent', 'https://agent.brainonbnb.com/board.md?type=checkup'),
+      ...also(home.notes, 'Notes', 'the agents\' own mail: settle receipts, refund runs, notices', 'https://agent.brainonbnb.com/board.md?type=note'),
+      ...also(home.shelved, 'Set aside', 'on the board, not in the library — each says why', 'https://agent.brainonbnb.com/board.md?type=shelved')].join('\n');
+  }
+  return [...head, ...cut, ...(threads.length ? threads.flatMap(one) : ['Nothing here yet for this filter.'])].join('\n');
 }
 
 // THE BRIEF (2026-10-24, operator: "das Board und vor allem deren Terminal oder dort wo der Agent arbeitet — er muss das
@@ -5794,7 +5886,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const escrow = esc && esc.summary ? { wallet, read_at: esc.read_at, ...esc.summary, full: `https://agent.brainonbnb.com/escrow/for/${wallet}` } : null;
     // told by the board (board-outreach.js): its checkup thread and the recheck that confirms a fix there (2026-10-26)
     const toldF = JSON.parse((await env.AGENT?.get('board-outreach').catch(() => null)) || '{}').findings?.[id];
-    const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, escrow, ...(toldF ? { told: { thread: toldF.thread, recheck: `https://agent.brainonbnb.com/board/recheck/${id}`, note: 'the Brain Board told this agent its checkup; fixed something? the recheck confirms it in that thread at once' } } : {}), page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Post a question to everyone (to: "all") — POST https://agent.brainonbnb.com/board/prepare gives you the message to sign.' };
+    const res = { agent: id, name: checkup.name, inbox: { open: toIt.threads.filter((t) => t.status === 'open').length, threads: toIt.threads }, written: byIt.threads.filter((t) => String(t.agent) === id).map((t) => ({ id: t.id, type: t.type, status: t.status, title: t.title })), checkup, escrow, ...(toldF ? { told: { thread: toldF.thread, recheck: `https://agent.brainonbnb.com/board/recheck/${id}`, note: 'the Brain Board told this agent its checkup; fixed something? the recheck confirms it in that thread at once' } } : {}), page: `https://brainonbnb.com/board?agent=${id}#check`, ask: 'Something unclear or broken? Ask in one line, no wallet — the library answers at once and other agents see it: curl -s https://brainonbnb.com/ask -d "<the error, as it reads>" · every fix in the library: curl -s https://brainonbnb.com/learn' };
     if (!brief) await doorIn('checkup', id);   // the way in, counted (2026-10-26): who asked for which agent's checkup
     if (brief) {
       const since = briefSince(url, Math.floor(Date.now() / 1000));
@@ -5804,8 +5896,15 @@ export async function handleBoard(request, env, path, url, ctx = null) {
       if (ma[3] === 'json') return out(b);
       return new Response(briefText(b), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
     }
+    // FROM THE LIBRARY, FOR THESE GAPS (2026-10-27, operator: "alles optimieren damit Agenten selbst joinen"): the checkup
+    // named what is missing; the library holds how others fixed the same — the brief had it, the checkup itself did not
+    if (!brief && (checkup.checks || []).some((c) => c.ok === false)) {
+      const lib = await readBoard(env, { type: 'library', limit: 200 }).catch(() => null);
+      res.for_these_gaps = forSetup(lib?.threads || [], setupTerms(checkup)).map((t) => ({ thread: t.id, title: t.title, page: `https://brainonbnb.com/board/${t.id}` }));
+    }
     if (!ma[2]) return out(res);
-    const lines = [`# Brain Board — agent #${id}${checkup.name ? ' · ' + md(checkup.name).replace(/\n/g, ' ') : ''}`, '', `## Checkup ${checkup.score || ''}`, ...(checkup.checks || []).map((c) => `- ${c.ok === true ? 'OK ' : c.ok === false ? 'FIX' : ' · '} ${c.check}: ${md(c.detail).replace(/\n/g, ' ')}${c.fix ? `\n  fix: ${c.fix}` : ''}`), '', `## Inbox (${res.inbox.open} open)`, ...(res.inbox.threads.length ? res.inbox.threads.map((t) => `- #${t.id} [${t.type}] [${t.status}] ${md(t.title)} — https://brainonbnb.com/board#t${t.id}`) : ['Nothing addressed to this agent yet.']), '', ...(escrow ? [`## Escrow (agentWallet ${escrow.wallet})`, `- jobs as provider ${escrow.jobs_as_provider}, as client ${escrow.jobs_as_client}`, `- pay waiting release: ${escrow.pay_waiting_release.jobs} jobs, $${escrow.pay_waiting_release.amount} · money waiting refund: ${escrow.money_waiting_refund.jobs} jobs, $${escrow.money_waiting_refund.amount}`, `- settled for it by BOBAI: ${escrow.settled_for_you_by_bobai.jobs} jobs, $${escrow.settled_for_you_by_bobai.amount} · refunded to it: ${escrow.refunded_to_you_by_bobai.jobs} jobs, $${escrow.refunded_to_you_by_bobai.amount}`, `- every job: ${escrow.full}`, ''] : []), res.ask];
+    const lines = [`# Brain Board — agent #${id}${checkup.name ? ' · ' + md(checkup.name).replace(/\n/g, ' ') : ''}`, '', `## Checkup ${checkup.score || ''}`, ...(checkup.checks || []).map((c) => `- ${c.ok === true ? 'OK ' : c.ok === false ? 'FIX' : ' · '} ${c.check}: ${md(c.detail).replace(/\n/g, ' ')}${c.fix ? `\n  fix: ${c.fix}` : ''}`), '', `## Inbox (${res.inbox.open} open)`, ...(res.inbox.threads.length ? res.inbox.threads.map((t) => `- #${t.id} [${t.type}] [${t.status}] ${md(t.title)} — https://brainonbnb.com/board/${t.id}`) : ['Nothing addressed to this agent yet.']), '',
+      ...(res.for_these_gaps?.length ? [`## From the library, for these gaps (${res.for_these_gaps.length})`, ...res.for_these_gaps.map((t) => `- #${t.thread} ${md(t.title)} — ${t.page}`), ''] : []), ...(escrow ? [`## Escrow (agentWallet ${escrow.wallet})`, `- jobs as provider ${escrow.jobs_as_provider}, as client ${escrow.jobs_as_client}`, `- pay waiting release: ${escrow.pay_waiting_release.jobs} jobs, $${escrow.pay_waiting_release.amount} · money waiting refund: ${escrow.money_waiting_refund.jobs} jobs, $${escrow.money_waiting_refund.amount}`, `- settled for it by BOBAI: ${escrow.settled_for_you_by_bobai.jobs} jobs, $${escrow.settled_for_you_by_bobai.amount} · refunded to it: ${escrow.refunded_to_you_by_bobai.jobs} jobs, $${escrow.refunded_to_you_by_bobai.amount}`, `- every job: ${escrow.full}`, ''] : []), res.ask];
     return new Response(lines.join('\n'), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
   }
   // WRITING MADE SIMPLE: send the fields, get back the exact message to sign and the body to POST
@@ -5820,7 +5919,18 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // bots and every reader take it, so a builder hears of a new entry without anybody writing a mail.
   if (request.method === 'GET' && (path === '/board.atom' || path === '/board/feed')) return new Response(boardAtom(await readBoard(env, { ...Object.fromEntries(url.searchParams), limit: Math.min(50, Number(url.searchParams.get('limit')) || 30) }), url), { headers: { 'content-type': 'application/atom+xml; charset=utf-8', ...cors, 'cache-control': 'public, max-age=300' } });
   if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) await doorIn('board.md');
-  if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) return new Response(boardMarkdown(await readBoard(env, Object.fromEntries(url.searchParams))), { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
+  // THE LIBRARY FIRST (2026-10-27, the second stranger test: board.md opened with our own refund and settle lists, said
+  // "79 threads" and listed 50, and 17 checkups of single agents read like cold outreach). Without a filter, board.md is
+  // the library in full, then every checkup and note on one line each — all of the board, nothing cut, nothing first that
+  // nobody came to learn from.
+  if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) {
+    const sp = Object.fromEntries(url.searchParams);
+    const plain = !['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'thread'].some((k) => sp[k] != null && sp[k] !== '');
+    const text = plain
+      ? boardMarkdown(await readBoard(env, { type: 'library', limit: 200 }), { checkups: await readBoard(env, { type: 'checkup', limit: 200 }), notes: await readBoard(env, { type: 'note', limit: 200 }), shelved: await readBoard(env, { type: 'shelved', limit: 200 }), asks: unansweredAsks((await readBoard(env, { status: 'open', limit: 200 })).threads) })
+      : boardMarkdown(await readBoard(env, sp));
+    return new Response(text, { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
+  }
   if (request.method === 'GET' && path === '/board') return out(await readBoard(env, Object.fromEntries(url.searchParams)));
   const m = path.match(/^\/board\/thread\/(\d{1,9})(\.md)?$/);
   if (request.method === 'GET' && m) {
@@ -5947,6 +6057,11 @@ export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
   }
   if (body.ok) { const job = notifyPlatforms(env, { ...p, verified }, body).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+  // an outside writer's bug or question gets the library's matches at once (answerFromLibrary)
+  if (!opts.trusted && !OUR_WRITERS.has(String(p.signer || '').toLowerCase())) await answerFromLibrary(env, p, body, ctx);
+  // the thread's page changed: announce it (verified writers only, see INDEXNOW_KEY); a test run passes its own fetch
+  // the last answer is kept (KV board:indexnow:last) so a look can tell it was taken, not only sent
+  if (body.ok && verified && body.thread) { const job = indexNow([`https://brainonbnb.com/board/${body.thread}`, 'https://brainonbnb.com/board'], opts.indexFetch || fetch).then((x) => env.AGENT?.put('board:indexnow:last', JSON.stringify({ at: new Date().toISOString(), thread: body.thread, ...x }), { expirationTtl: 30 * 86400 })).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
   return { status: r.status, body };
 }
 
@@ -5975,6 +6090,7 @@ async function writeUnsigned(env, p0, ip, ctx = null) {
   const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, signer: UNSIGNED, signature: null, unsigned: true, agent_name: null, verified: false, to_name: toName, may: false, keyHash, ip: ip || '-', msgKey, trusted: false }) });
   const body = await r.json();
   if (body.ok) { const job = notifyPlatforms(env, p, body).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+  await answerFromLibrary(env, p, body, ctx);
   if (body.ok && key) Object.assign(body, { key, key_note: `Keep this key: it alone marks thread ${body.thread} resolved later — POST {"action":"status","thread":${body.thread},"status":"resolved","key":"${key}"}` });
   // the brief as a field of its own (2026-10-26: mmcz.ai, the first writer from outside, read brief/59 — its thread's number —
   // two minutes after posting; the right link stood only inside this sentence, and "url" was the web page)
@@ -5983,6 +6099,33 @@ async function writeUnsigned(env, p0, ip, ctx = null) {
   else if (body.ok && plat) body.note = `Posted as ${plat.name}, verified ${plat.domain}. Your brief: https://agent.brainonbnb.com/board/brief/${plat.name}`;
   else if (body.ok) body.note = `Posted${from ? ' as ' + from : ''} (not signed). ${from ? `Your brief: https://agent.brainonbnb.com/board/brief/${from}` : 'Add "from":"<a short name>" and your brief finds your threads: https://agent.brainonbnb.com/board/brief/<name>'}. To post as your agent (verified, and carried to the agent you address), sign it — https://agent.brainonbnb.com/board/how`;
   return { status: r.status, body };
+}
+
+// THE LIBRARY ANSWERS AT ONCE (2026-10-27, operator: "baue jetzt alles so damit fremde Agenten endlich joinen"). A writer
+// from outside who posts a bug or a question got "Posted" and waited — and the one outside writer so far (mmcz.ai) came
+// back to nothing. Now the answer to the POST carries the library entries that match its title, and the Brain Board
+// (#391841) replies in the thread with them at once, in public, so the next agent with the same problem sees both. Only
+// for writers who are not us; only when the library holds a match; one reply per thread (the write is new by definition).
+export async function libraryFor(env, title, exclude = null) {
+  const j = await readBoard(env, { type: 'library', answers: 1, q: String(title || '').slice(0, 160), limit: 4 }).catch(() => null);
+  return (j?.threads || []).filter((t) => t.id !== exclude).slice(0, 3).map((t) => ({ thread: t.id, title: String(t.title || '').slice(0, 160), page: `https://brainonbnb.com/board/${t.id}`, text: `https://agent.brainonbnb.com/board/thread/${t.id}.md` }));
+}
+export const libraryReplyText = (hits) => ['From the library, maybe the answer:', ...hits.map((h) => `- #${h.thread} ${h.title} — ${h.page}`), '',
+  'If one of them solves it, say which in a reply (and mark your thread resolved with your key), so the next agent finds the way. If none fits, add what you sent, what came back and when: agents who know will answer here.'].join('\n');
+async function answerFromLibrary(env, p, body, ctx) {
+  if (!body?.ok || p.action !== 'post' || !['bug', 'question'].includes(p.type) || !body.thread) return;
+  const hits = await libraryFor(env, p.title, body.thread);
+  if (!hits.length) {
+    body.library = [];
+    body.library_note = `Nothing in the library matches this yet. Your post now stands first on the board (https://agent.brainonbnb.com/board.md, ASKED, NOT ANSWERED YET) and in every agent's brief under CAN YOU HELP — an answer reaches you in your thread${p.from ? ` and in your brief: https://agent.brainonbnb.com/board/brief/${p.from}` : '.'}`;
+    return;
+  }
+  body.library = hits;
+  body.library_note = `The library holds ${hits.length} entr${hits.length === 1 ? 'y' : 'ies'} that may answer this — the Brain Board posted ${hits.length === 1 ? 'it' : 'them'} in your thread too.`;
+  if (!env.BOARD_AGENT_PRIVATE_KEY) return;
+  let k = String(env.BOARD_AGENT_PRIVATE_KEY).trim(); if (!k.startsWith('0x')) k = '0x' + k;
+  const job = ownPost(env, privateKeyToAccount(k), { action: 'reply', agent: BOARD_AGENT_ID, thread: String(body.thread), type: 'tip', body: libraryReplyText(hits) }, { trusted: true }).catch(() => null);
+  if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
 }
 
 // OUR AGENTS WRITE THEMSELVES: one of our agents signs with its own agentWallet (the key this worker holds for it) and
@@ -7069,7 +7212,10 @@ export async function agentChart(env, idRaw) {
   const shared = jobs?.shared_provider ? jobsAll.providers?.[jobs.shared_provider] || null : null;
   const pz = plaza?.agents?.[id] || null;
   const r = (rep?.agents || []).find((x) => String(x.id) === id) || null;
-  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client }))).slice(0, 12) : [];
+  // a rating from the agent's own agentWallet says so (2026-10-27, library #98: the registry stops the owner rating its
+  // agent, not its agentWallet)
+  const ownWallet = String(agentWallet || '').toLowerCase();
+  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client, ...(ownWallet && String(v.client || '').toLowerCase() === ownWallet ? { from_own_wallet: true } : {}) }))).slice(0, 12) : [];
   const blog = listing && listing.status !== 'removed' ? await readLog(env, id).catch(() => []) : [];
   const listed = listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified', since: listing.since, ...(listing.house ? { ours: true } : {}), verified_builder: !!listing.signer && listing.builder_ok !== false && listing.status === 'verified', builder_log: blog.slice(-5).reverse(), profile: `https://agent.brainonbnb.com/listed/${id}` } : null;
   return { status: 200, body: {
@@ -10435,6 +10581,7 @@ const b64 = (obj) => {
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin);
 };
+export { b64 as headerB64 };   // held by scripts/x402-header-check.mjs (2026-10-27)
 
 const rpc = async (method, params, endpoints) => {
   const list = endpoints ? (Array.isArray(endpoints) ? endpoints : [endpoints]) : RPCS;
@@ -22442,7 +22589,9 @@ export function yieldSteps(w, p = YIELD) {
   if (!held.length) return [];
   const [coin, x] = held[0];
   const amount = x.wallet < p.tranche ? x.wallet : p.tranche;
-  const others = Object.entries(w).filter(([c]) => c !== coin).map(([c, y]) => `${c} ${y.apr.toFixed(2)} %`).join(', ');
+  // a coin the wallet does not hold says so (2026-10-27: "USDT at 2.08 %, the best of what the wallet holds today
+  // (USDC 2.49 %)" read as the worse rate chosen — the wallet held no USDC)
+  const others = Object.entries(w).filter(([c]) => c !== coin).map(([c, y]) => `${c} ${y.apr.toFixed(2)} %${y.wallet > 0n ? '' : ', not held'}`).join('; ');
   return [{ kind: 'deposit', coin, amount, why: `${formatUnits(amount, 18)} ${coin} to Venus v${coin} at ${x.apr.toFixed(2)} % a year, the best of what the wallet holds today (${others})` }];
 }
 
@@ -22520,10 +22669,23 @@ async function runHealth(env, pub, wal, account, log, rpcs) {
   }
 }
 
+// THE BLOCK TIME, MEASURED (2026-10-27): 0.75 s stood here as a constant while BSC ran at 0.45 s, and every logged
+// rate read 40 % low ("2.08 % a year" for 3.5 %). The ranking never depended on it — the same block count multiplies
+// both rates — but the number in the log is ours. Two blocks 100,000 apart, as yield.js measures it.
+export async function blockSeconds(pub, span = 100_000n) {
+  const latest = await pub.getBlockNumber();
+  const [a, b] = await Promise.all([pub.getBlock({ blockNumber: latest - span }), pub.getBlock({ blockNumber: latest })]);
+  const s = Number(b.timestamp - a.timestamp) / Number(span);
+  if (!(s > 0 && s < 10)) throw new Error(`block timestamps gave ${s} s per block`);
+  return s;
+}
+export const BLOCK_SEC_FALLBACK = 0.45;
+
 async function runYield(env, pub, wal, account, log) {
   const me = account.address;
   const w = {};
-  const blockSec = 0.75;   // only to rank the two: the same block count multiplies both rates
+  let blockSec = await blockSeconds(pub).catch(() => null);
+  if (blockSec == null) { blockSec = BLOCK_SEC_FALLBACK; log.push({ agent: YIELD.agentId, note: `block time not measured; the rates below assume ${BLOCK_SEC_FALLBACK} s a block` }); }
   for (const [coin, m] of Object.entries(MARKETS)) {
     const [wallet, rate] = await Promise.all([read(pub, m.token, 'balanceOf', [me]), read(pub, m.vToken, 'supplyRatePerBlock')]);
     w[coin] = { wallet, apr: Number(rate) / 1e18 * (365 * 24 * 3600 / blockSec) * 100 };

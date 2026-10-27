@@ -101,6 +101,14 @@ for (const d of ['brain', 'terminal']) { fs.rmSync(path.join(OUT, d), { recursiv
 }
 execSync(`node "${path.join(ROOT, 'temp/newpage/build.mjs')}" "${OUT}"`, { stdio: 'inherit' });
 must(!rd(path.join(OUT, 'brain/index.html')).includes('noindex'), 'Brain page carries noindex');
+// THE PREVIEW HAS ITS build.json TOO (2026-10-27, operator: "wenn die Fehler bekannt und harmlos sind, kann man sie auch
+// fixen?"): the pages ask for /build.json (card 07), deploy-dashboard.mjs writes it into its own build, and this preview
+// build had none — errors.mjs read a 404 on every run against the preview. Written the same way, never into dashboard/.
+if (!APPLY) {
+  const m = execSync(`git --git-dir="${path.join(ROOT, 'dashboard', 'source.git')}" log -1 --format="%h %cI"`, { encoding: 'utf8' });
+  const [commit, date] = m.trim().split(' ');
+  fs.writeFileSync(path.join(OUT, 'build.json'), JSON.stringify({ site_deployed_at: new Date().toISOString(), preview: true, source_mirror: commit ? { commit, date, clone: 'git clone https://brainonbnb.com/source.git' } : null }) + '\n');
+}
 // THE LINK CARD OF THE FRONT PAGE IS OUR BANNER (operator, 2026-09-28: "the new og card does not always show current and
 // correct numbers — take the old banner again, it is our banner everywhere, DexScreener and so on"). The live card
 // /m/now.png (27.9.) is gone from the front page; the moment cards of SHARE THIS MOMENT (/m/*) stay as they are.

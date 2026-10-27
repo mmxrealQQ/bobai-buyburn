@@ -1290,6 +1290,14 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
 // The escrow stays for buyers who want a kernel between them and the seller;
 // this is for an agent that wants the answer now and has a wallet.
 const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
+// A DIRECT TRANSFER IS NOT "exact" (2026-10-27, operator's go; a stranger reading our 402 as a stock x402 client:
+// "a generic client that allows $BOBAI would try EIP-3009 on a token that does not support it"). The entries paid by
+// sending the token and handing over the transaction hash carry their own scheme name, so a stock client skips them
+// instead of failing; nothing changes in what is accepted (the hash is verified on chain as before).
+const DIRECT_SCHEME = 'direct-transfer';
+// what to SEND in $BOBAI (2026-10-27, same review: amount said the least that must arrive, 90% of the quote, and a
+// client pays exactly amount): amount is the whole quoted number of tokens; min_arrival keeps the line acceptance uses
+const bobaiSend = (b) => (BigInt(Math.ceil(Number(b.tokens))) * 10n ** 18n).toString();
 
 // WHERE THIS PAYMENT GOES (2026-10-18, operator: every payment buys $BOBAI, visibly). The buy stays in the daily sweep
 // (shared/lp-agent.js executeSweep, untouched): bought one payment at a time, three transactions of gas would take about
@@ -1381,12 +1389,12 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
           // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
           description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
@@ -1409,6 +1417,10 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         holder_pass: holderPassTerms(),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
+        // WHAT HAPPENS TO THE MONEY IF THE ANSWER FAILS (2026-10-27, a stranger reading this 402: "nothing says what happens
+        // to my money if delivery fails" — the code has always kept it; now the offer says so) and the one step Permit2 needs
+        if_the_answer_fails: 'Missing input is refused before any payment is taken (422, nothing charged). If the payment went through and the answer then cannot be built, the payment is kept as a credit on its own transaction: send the same request with the same PAYMENT-SIGNATURE (input fixed) and it is used for that answer, not charged again.',
+        usdc_via_permit2: 'USDC is paid through Permit2: the paying wallet needs a one-time approve of the Permit2 contract (0x000000000022D473030F116dDEE9F6B43aC78BA3) for USDC before its first signature.',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
@@ -1503,7 +1515,7 @@ async function tipRoute(env, ctx, payTo, q, proof) {
         eip3009Accepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
@@ -1550,12 +1562,12 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
         eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
         dexterAccepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource }),
         {
-          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: USD1, maxAmountRequired: SCAN_PASS_PRICE_USD1.toString(), payTo, resource,
           description: `${what} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),
@@ -1622,7 +1634,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           resource,
         }),
         {
-          scheme: 'exact',
+          scheme: DIRECT_SCHEME,
           network: NETWORK,
           asset: USD1,
           maxAmountRequired: WATCH_PRICE_USD1.toString(),
@@ -1632,7 +1644,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
           ...DIRECT_TERMS, extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
         ...(bobai ? [{
-          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
           ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
         }] : []),

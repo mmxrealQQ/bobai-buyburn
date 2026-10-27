@@ -384,6 +384,17 @@ try {
     const q = quotedFor.get(String(d.id));
     if (q) d.quoted_for = [...q].sort();
   }
+  // WHAT HAPPENED WHEN IT WAS ASKED FOR A PRICE (2026-10-27, a stranger hiring through /find: "/find returns no price and
+  // no hireable flag — my agent cannot choose a hireable agent from /find alone; that is only on the HTML page"). The same
+  // answer the Plaza page shows, per agent: quotes (with the price), input (answered, wants something we did not send —
+  // its own words) or none (did not answer), and when it was asked.
+  for (const d of directory) {
+    const all = (hireConfirm?.agents || []).filter((a) => String(a.id) === String(d.id));
+    if (!all.length) continue;
+    const best = all.find((a) => a.quotes) || all[0];
+    d.escrow = { answer: quoteState(best), ...(best.quotes ? { price: best.price || null } : { said: String(best.reason || '').slice(0, 200) || null }),
+      ...(best.category ? { category: best.category } : {}), asked_at: hireConfirm?.measured_at || null };
+  }
 }
 const operators = groupByOperator(directory);
 api.independent_operators = operators.length;

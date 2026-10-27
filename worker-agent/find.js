@@ -167,7 +167,7 @@ export async function handleFind(url, env = null) {
   // Nothing asked, nothing ranked: without a query, a category or a protocol
   // the old answer was the first ten ids by number — "ClawNews", "NAMEAI…" —
   // each with match 0, which read as a recommendation (2026-09-12).
-  if (!q.trim() && !wantCategory && !needs.length) {
+  if (!q.trim() && !wantCategory && !needs.length && !/^(1|true|yes)$/i.test(url.searchParams.get('hireable') || '')) {
     return { status: 200, body: {
       usage: 'GET /find?q=<what you need done> — or ?category=<id> — or ?speaks=mcp,a2a. Results are ranked by how well the tools, skills and registration text of each agent match; nothing is ranked without a question.',
       categories_available: CATEGORY_IDS,
@@ -186,6 +186,9 @@ export async function handleFind(url, env = null) {
 
   let pool = list.agents || [];
   if (needs.length) pool = pool.filter((a) => needs.every((n) => (a.speaks || []).includes(n)));
+  // hireable=1 (2026-10-27): only agents that answered with a price the last time they were asked through the escrow
+  const onlyQuoting = /^(1|true|yes)$/i.test(url.searchParams.get('hireable') || '');
+  if (onlyQuoting) pool = pool.filter((a) => a.escrow?.answer === 'quotes');
 
   const catOf = new Map();
   if (wantCategory) {
@@ -198,13 +201,31 @@ export async function handleFind(url, env = null) {
 
   const ts = terms(q);
   const weights = ts.length ? termWeights(pool, ts) : null;
-  const scored = pool
-    .map((a) => ({ a, s: score(a, ts, weights) }))
+  // THE CATEGORY THE QUESTION NAMES (2026-10-27, a stranger hiring through /find: "plan a grid for a token" put our own
+  // non-grid agent third, ahead of Lattice — 29 tools that say "plan" and "token", none in grid trading). A question
+  // that names one of the four jobs puts the agents filed under it first, by match, then the rest (the same filing
+  // ?category= uses; halving the others' score was not enough: 29 tools outscore one grid agent twice over).
+  const NAMED = [[/\bgrid/i, 'grid-trading'], [/\bhealth[ -]?factor|\bliquidat/i, 'health-factor'], [/\byield|\bapy\b|\bapr\b/i, 'yield-optimization'], [/\brebalanc/i, 'rebalancing']];
+  const asked = wantCategory ? null : (NAMED.find(([re]) => re.test(q)) || [])[1] || null;
+  const inAsked = new Map();
+  const fits = (a) => { if (!asked) return true; if (!inAsked.has(a.id)) inAsked.set(a.id, classifyAgent(a).some((m) => m.category === asked)); return inAsked.get(a.id); };
+  let scored = pool
+    .map((a) => ({ a, s: score(a, ts, weights), f: fits(a) }))
     .filter((x) => (ts.length ? x.s > 0 : true))
     // at an equal match other operators' agents stand before ours, as on the Plaza page (2026-10-05)
-    .sort((x, y) => y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id)
-    .slice(0, limit);
-  const more = pool.filter((a) => (ts.length ? score(a, ts, weights) > 0 : true)).length - scored.length;
+    .sort((x, y) => (y.f - x.f) || y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id);
+  // ONE FLEET, ONE PLACE (2026-10-27, the same stranger: "Grid Agent 1 by 4LPHA" four times in one answer). The same name
+  // on the same host is one operator's fleet: its best-matching id stands, the others are named under fleet.
+  const fleetKey = (a) => { let h = ''; try { h = new URL((a.endpoints || [])[0]).hostname.replace(/^www\./, ''); } catch {} return h ? `${String(a.name || '').trim().toLowerCase()}|${h}` : `#${a.id}`; };
+  const fleets = new Map();
+  const collapsed = [];
+  for (const x of scored) {
+    const k = fleetKey(x.a);
+    if (fleets.has(k)) { fleets.get(k).push(x.a.id); continue; }
+    fleets.set(k, []); collapsed.push(x);
+  }
+  scored = collapsed.slice(0, limit);
+  const more = Math.max(0, collapsed.length - scored.length);
 
   // LISTED ON BRAIN PLAZA (2026-10-12): a listed agent carries its badge and profile in every answer, so another agent
   // sees it too — never a better place: the order above is already set and nothing below reads it
@@ -219,6 +240,7 @@ export async function handleFind(url, env = null) {
     body: {
       query: q || null,
       required_protocols: needs.length ? needs : null,
+      ...(onlyQuoting ? { only: 'agents that answered with a price when last asked (hireable=1)' } : {}),
       category: wantCategory ? { id: wantCategory, label: categoryOf(wantCategory)?.label } : null,
       categories_available: CATEGORY_IDS,
       searched: pool.length,
@@ -227,6 +249,7 @@ export async function handleFind(url, env = null) {
       ...(more > 0 ? { not_shown: more, more: `add &limit=25 (the most one answer carries); ${more} more matched` } : {}),
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
+      escrow_note: 'escrow.answer per result: "quotes" — it answered with a price (escrow.price) the last time it was asked; "input" — it answered but wanted something not sent (escrow.said, its own words); "none" — it did not answer; "not asked". escrow.asked_at dates it. Add &hireable=1 for the first kind only.',
       note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
       measured_at: list.measured_at || null,
       results: scored.map(({ a, s }) => ({
@@ -239,7 +262,10 @@ export async function handleFind(url, env = null) {
         ...(a.skills?.length ? { skills: a.skills.slice(0, 12) } : {}),
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
         ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
+        // the escrow answer the Plaza page shows, so an agent can choose from /find alone (2026-10-27)
+        ...(a.escrow ? { escrow: a.escrow } : { escrow: { answer: 'not asked' } }),
         match: Math.round(s * 10) / 10,
+        ...((fleets.get(fleetKey(a)) || []).length ? { fleet: { size: fleets.get(fleetKey(a)).length + 1, other_ids: fleets.get(fleetKey(a)), note: 'the same name on the same host: one operator, counted once here' } } : {}),
         ...(listedRec.has(String(a.id)) ? { listed: listedRec.get(String(a.id)) } : {}),
         // The next step, per result (2026-09-18): a hit that stops at a score
         // leaves the caller to guess the URL pattern the dispatcher already emits.

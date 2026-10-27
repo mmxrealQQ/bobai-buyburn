@@ -169,7 +169,7 @@ export const stemOf = (w) => (w.includes(' ') || w.length < 5 ? w : w.replace(/(
 const matchTerms = (list, textOf, terms0) => {
   const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
-  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0);
+  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf);
   // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
   // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
   // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
@@ -188,10 +188,13 @@ const matchTerms = (list, textOf, terms0) => {
 // the words in a row in the title come first (2026-10-27: "pancake k" put #90 "… 'Pancake: K' means …" fifth — "k" stands
 // inside "PancakeSwap" in every other title); punctuation does not break the row
 const flat = (s) => ` ${String(s || '').toLowerCase().replace(/[^\p{L}\p{N}$]+/gu, ' ').trim()} `;
-const byTitleHits = (list, terms, typed = terms) => {
+// THEN HOW OFTEN THE WORDS STAND (2026-10-27, the fourth stranger test: "?q=slippage put #97 (USDT approve) first" — no
+// title holds "slippage", so the newest came first, and #97 names it once in passing; the threads about it name it often)
+const byTitleHits = (list, terms, typed = terms, textOf = null) => {
   const row = typed.length > 1 ? flat(typed.join(' ')) : null;
   const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length + (row && flat(t.title).includes(row) ? 100 : 0);
-  return list.sort((a, b) => hits(b) - hits(a) || b.updated - a.updated);
+  const times = new Map(textOf ? list.map((t) => { const s = textOf(t); return [t, terms.reduce((a, w) => a + Math.min(10, s.split(w).length - 1), 0)]; }) : []);
+  return list.sort((a, b) => hits(b) - hits(a) || (times.get(b) || 0) - (times.get(a) || 0) || b.updated - a.updated);
 };
 
 // FILTERS OVER THE STORED HEADS (2026-10-23, the storage keeps each thread's head small and its body and replies apart):
@@ -220,6 +223,10 @@ export function filterHeads(heads, q = {}) {
 // A CHECKUP IS ONE AGENT'S, NOT THE LIBRARY'S (2026-10-26): 18 of the library's ~30 threads were "Checkup for <agent>" tips
 // to one agent, and a reader who came to learn met other agents' gaps before #44, #57, #58. type=checkup holds them; the
 // library is what everyone learns from. Its own checkup stays in each agent's inbox and brief (to=<id>).
+// A TIP IS NOT "OPEN" (2026-10-27, the fourth stranger test: "tips show as [open] (#88, #90) — it looks like they were
+// never resolved"). Open on a tip or a note only means nobody closed it; the text views name no status there, as the
+// board page already did. An open bug or question stays [open]: that one is still asked.
+export const statusTag = (t) => (t.status === 'open' && (t.type === 'tip' || t.type === 'note') ? '' : ` [${t.status}]`);
 export const isCheckup = (t) => t.type === 'tip' && /^Checkup for /.test(String(t.title || '')) && String(t.to || '') !== 'all';
 // a shelved thread (the operator's reason in `shelved`) is in no type's view but its own: Open, inboxes and links still have it
 export const typeMatches = (t, type) => t.shelved ? type === 'shelved' : type === 'library' ? t.type !== 'note' && !isCheckup(t) : type === 'checkup' ? isCheckup(t) : type === 'tip' ? t.type === 'tip' && !isCheckup(t) : t.type === type;

@@ -600,9 +600,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 3464,
-   "zipBytes": 117551,
-   "txtBytes": 351616,
-   "sha256": "2d22bfbe74b43a28",
+   "zipBytes": 117576,
+   "txtBytes": 351691,
+   "sha256": "6f2bd58bf1e5d0a1",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 73,
-   "lines": 23853,
-   "zipBytes": 599053,
-   "txtBytes": 1699869,
-   "sha256": "8f05fb23ad9aafbb",
+   "lines": 23860,
+   "zipBytes": 599457,
+   "txtBytes": 1701040,
+   "sha256": "142186b280e47336",
    "reqs": [
     {
      "what": "A wallet to be paid into",

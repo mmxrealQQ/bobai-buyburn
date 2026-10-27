@@ -56,7 +56,7 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   const lib = { total: 4, open: 4, matched: 2, count: 2, threads: [T(70, 'tip', 'Fee tiers'), T(65, 'fix', 'x402 on BNB', 'resolved')] };
   const home = B.boardMarkdown(lib, { checkups: { matched: 1, threads: [{ ...T(45, 'tip', 'Checkup for Topaz (#1): 2 things'), to: '1' }] }, notes: { matched: 1, threads: [T(29, 'note', 'Refunded: 37 expired jobs')] }, shelved: { matched: 0, threads: [] } });
   const at = (s) => home.indexOf(s);
-  is('MD1 board.md: the library in full comes before every checkup and note, each of those on one line with its link, nothing said cut', at('## #70') > 0 && at('## #65') > at('## #70') && at('- #45 ') > at('body of 65') && at('- #29 ') > at('- #45 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(1 open\)/.test(home) && !/Showing/.test(home) && /thread\/29\.md/.test(home), home.slice(0, 300));
+  is('MD1 board.md: the library in full comes before every checkup and note, each of those on one line with its link, nothing said cut', at('## #70') > 0 && at('## #65') > at('## #70') && at('- #45 ') > at('body of 65') && at('- #29 ') > at('- #45 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(0 bugs and questions open\)/.test(home) && !/Showing/.test(home) && /thread\/29\.md/.test(home), home.slice(0, 300));
   const cut = B.boardMarkdown({ total: 79, open: 47, matched: 79, count: 2, offset: 0, threads: lib.threads }), whole = B.boardMarkdown({ ...lib, matched: 2 });
   is('MD2 a filtered list that is cut says "Showing 2 of 79" and the offset for the rest; a whole one does not', /Showing 2 of 79 — the rest: add &offset=2/.test(cut) && !/Showing/.test(whole), cut.slice(0, 400)); }
 // FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
@@ -921,6 +921,17 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   { const tip = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'EIP3009 invalid signature: the domain name is not the symbol', body: 'read eip712Domain()', from: 'la2-writer' }, { 'cf-connecting-ip': '198.18.9.30' });
     const ask = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'EIP3009: invalid signature when paying with zqcoin', body: 'what is wrong?', from: 'la2-asker' }, { 'cf-connecting-ip': '198.18.9.31' });
     is('LA2 a question that holds words no entry has still gets the entry holding most of them (the question itself is not the answer)', (ask.j.library || []).some((h) => h.thread === tip.j.thread) && !(ask.j.library || []).some((h) => h.thread === ask.j.thread), JSON.stringify(ask.j.library)); }
+  // SR1 (2026-10-27, the fourth stranger test: "?q=slippage put #97 (USDT approve) first"): when no title holds the words,
+  // the thread that names them most comes first, not the newest one that names them once in passing
+  { const H = (id, updated, search, title = 't') => ({ id, updated, title, search, type: 'tip', status: 'open' });
+    const got = R.filterHeads([H(97, 300, 'usdt approve ... guess at gas or slippage'), H(90, 200, 'slippage slippage amountoutmin slippage tax'), H(88, 100, 'tick spacing slippage')], { q: 'slippage' }).map((t) => t.id).join(',');
+    const titled = R.filterHeads([H(90, 200, 'slippage slippage slippage'), H(5, 100, 'slippage in the title', 'Slippage check')], { q: 'slippage' }).map((t) => t.id).join(',');
+    is('SR1 search: no title holds the word -> the thread naming it most comes first (then the newest); a title hit still leads', got === '90,97,88' && titled === '5,90', got + ' | ' + titled); }
+  // ST1 (2026-10-27, the same test: "tips show as [open] — it looks like they were never resolved"): a tip or a note names
+  // no status while open; an open bug or question stays [open]; a resolved tip says [resolved]; board.md counts only the asks open
+  { const T = (id, type, status) => ({ id, type, status, title: 'T' + id, to: 'all', author: '0x1', body: 'b', created: 1, replies: [] });
+    const md = B.boardMarkdown({ total: 4, open: 3, asking: 1, matched: 4, threads: [T(90, 'tip', 'open'), T(91, 'bug', 'open'), T(92, 'tip', 'resolved'), T(93, 'note', 'open')] });
+    is('ST1 board.md: an open tip/note shows no [open], an open bug does, a resolved tip shows [resolved]; the head counts "1 bugs and questions open"', /## #90 \[tip\] T90/.test(md) && /## #91 \[bug\] \[open\] T91/.test(md) && /## #92 \[tip\] \[resolved\] T92/.test(md) && /## #93 \[note\] T93/.test(md) && /4 threads, 1 bugs and questions open/.test(md), md.slice(0, 400)); }
   // AS1: the unanswered asks: an outside question with only the library's reply stands; one somebody else answered, ours, a tip, a resolved one do not
   { const T = (o) => ({ id: 1, type: 'question', status: 'open', author: 'unsigned', from: 'asker', title: 't', body: 'b', replies: [], ...o });
     const lib = { author: '0x' + 'a'.repeat(40), agent: 391841, body: 'From the library, maybe the answer:\n- #90 x' };

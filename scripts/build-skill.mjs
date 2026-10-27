@@ -36,7 +36,10 @@ const PULLED = {
   'dashboard/preflight.js': 'scripts/token-preflight.mjs',
 };
 
-const SKILLS = ['bsc-pool-depth'];
+// bnb-agent-fixes (2026-10-27, operator: "alles optimieren damit Agenten selbst joinen"): the Brain Board library for a
+// coding agent that hits an error building on BNB Chain — nothing pulled, the skill is its SKILL.md
+const SKILLS = ['bsc-pool-depth', 'bnb-agent-fixes'];
+const PULLED_FOR = { 'bsc-pool-depth': PULLED };
 
 const readFrontmatter = (md) => {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -73,14 +76,14 @@ for (const name of SKILLS) {
         fs.copyFileSync(path.join(src, f.name, g), path.join(stage, f.name, g));
     } else fs.copyFileSync(path.join(src, f.name), path.join(stage, f.name));
   }
-  for (const [from, to] of Object.entries(PULLED)) {
+  for (const [from, to] of Object.entries(PULLED_FOR[name] || {})) {
     // Renamed on the way in, and the imports renamed with them. The site serves
     // these as .js; a bare .js inside a folder with no package.json is CommonJS
     // to Node, so the skill needs .mjs or `import` throws on the installer's
     // machine and not on ours. Rewriting the specifier is the other half of
     // that rename — without it the file lands correctly and fails to resolve.
     let src = fs.readFileSync(path.join(ROOT, from), 'utf8');
-    for (const other of Object.values(PULLED)) {
+    for (const other of Object.values(PULLED_FOR[name] || {})) {
       const base = path.basename(other, '.mjs');
       src = src.split("'./" + base + ".js'").join("'./" + base + ".mjs'");
     }

@@ -42,6 +42,10 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   const nn = (q) => R.filterHeads(N.slice(0, 12), { q }).map((t) => t.id).join(',');
   is('search: "nonce too low" with no thread naming a nonce finds nothing ("low" inside "below" and "allow" is no word)', nn('nonce too low') === '', nn('nonce too low'));
   is('search: the other way, the thread that names it answers', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id)[0] === 200 && R.filterHeads(N, { q: 'nonce zzqx gas' }).map((t) => t.id).join(',') === '', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id).join(',')); }
+// A WORD AND ITS FORMS (2026-10-27): "remove liquidity" finds "Removing liquidity"; short words and phrases stay as typed
+{ const S0 = [{ id: 104, updated: 1, title: 'Removing liquidity from a V3 position', body: 'decreaseLiquidity books it' }, { id: 7, updated: 2, title: 'other', body: 'nothing here' }].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
+  const f = (q) => R.filterHeads(S0, { q }).map((t) => t.id).join(',');
+  is('search: "remove liquidity" finds "Removing liquidity"; "fees" and a quoted phrase stay as typed', f('remove liquidity') === '104' && typeof R.stemOf === 'function' && R.stemOf('fees') === 'fees' && R.stemOf('"remove it"') === '"remove it"' && f('"removing liquidity"') === '104' && f('"remove liquidity"') === '', f('remove liquidity')); }
 // BOARD.MD, THE LIBRARY FIRST (2026-10-27, the second stranger test): without a filter the library comes in full, then
 // every checkup and note on one line; a cut list says how to see the rest
 { const T = (id, type, title, status = 'open') => ({ id, type, title, status, to: 'all', created: 1e9, updated: 1e9, author: '0x' + '1'.repeat(40), body: `body of ${id}`, replies: [] });

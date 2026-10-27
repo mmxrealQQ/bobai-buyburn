@@ -132,6 +132,11 @@ const liq = await pub.readContract({ address: V.UNITROLLER, abi: parseAbi(['func
 ok('Venus itself sees the position healthy (no shortfall), and the borrowed USDT is in the wallet', liq[0] === 0n && liq[2] === 0n && (await bal(USDT, B1.address)) === h1.debt, `debt ${formatUnits(h1.debt, 18)} USDT, wallet ${formatUnits(await bal(USDT, B1.address), 18)}`);
 const dep1 = r1.log.find((x) => x.agent === 304493 && x.action === 'deposit');
 ok('day 1, yield: 2 of the better-paying coin it holds supplied', !!dep1 && /^2(\.0+)? (USDT|USDC)$/.test(dep1.amount), dep1 ? `${dep1.amount} — ${dep1.why}` : JSON.stringify(r1.log.filter((x) => x.agent === 304493)));
+// the rate in the log is a year at the MEASURED block time (2026-10-27: 0.75 s stood as a constant at 0.45 s, 40 % low)
+{ const sec = await V.blockSeconds(pub), coin = dep1?.coin || (/ (USDT|USDC)$/.exec(dep1?.amount || '') || [])[1];
+  const rate = coin ? await pub.readContract({ address: V.MARKETS[coin].vToken, abi: parseAbi(['function supplyRatePerBlock() view returns (uint256)']), functionName: 'supplyRatePerBlock' }) : 0n;
+  const want = Number(rate) / 1e18 * (365 * 24 * 3600 / sec) * 100, got = Number((/at ([\d.]+) % a year/.exec(dep1?.why || '') || [])[1]);
+  ok('the logged rate is a year at the measured block time, not 0.75 s', sec > 0.2 && sec < 1 && Math.abs(got - want) <= want * 0.03 && !r1.log.some((x) => /block time not measured/.test(x.note || '')), `measured ${sec} s, want ${want.toFixed(2)} %, logged ${got} % — ${dep1?.why}`); }
 
 const again = await V.runVenusWork(env, { rpcUrl: LOCAL, now: day1 });
 ok('a second run the same day does nothing', !again.log.some((x) => x.tx), String(again.log.length));

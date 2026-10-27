@@ -182,10 +182,23 @@ async function runHealth(env, pub, wal, account, log, rpcs) {
   }
 }
 
+// THE BLOCK TIME, MEASURED (2026-10-27): 0.75 s stood here as a constant while BSC ran at 0.45 s, and every logged
+// rate read 40 % low ("2.08 % a year" for 3.5 %). The ranking never depended on it — the same block count multiplies
+// both rates — but the number in the log is ours. Two blocks 100,000 apart, as yield.js measures it.
+export async function blockSeconds(pub, span = 100_000n) {
+  const latest = await pub.getBlockNumber();
+  const [a, b] = await Promise.all([pub.getBlock({ blockNumber: latest - span }), pub.getBlock({ blockNumber: latest })]);
+  const s = Number(b.timestamp - a.timestamp) / Number(span);
+  if (!(s > 0 && s < 10)) throw new Error(`block timestamps gave ${s} s per block`);
+  return s;
+}
+export const BLOCK_SEC_FALLBACK = 0.45;
+
 async function runYield(env, pub, wal, account, log) {
   const me = account.address;
   const w = {};
-  const blockSec = 0.75;   // only to rank the two: the same block count multiplies both rates
+  let blockSec = await blockSeconds(pub).catch(() => null);
+  if (blockSec == null) { blockSec = BLOCK_SEC_FALLBACK; log.push({ agent: YIELD.agentId, note: `block time not measured; the rates below assume ${BLOCK_SEC_FALLBACK} s a block` }); }
   for (const [coin, m] of Object.entries(MARKETS)) {
     const [wallet, rate] = await Promise.all([read(pub, m.token, 'balanceOf', [me]), read(pub, m.vToken, 'supplyRatePerBlock')]);
     w[coin] = { wallet, apr: Number(rate) / 1e18 * (365 * 24 * 3600 / blockSec) * 100 };

@@ -1125,7 +1125,8 @@ export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
   }
   if (body.ok) { const job = notifyPlatforms(env, { ...p, verified }, body).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
   // the thread's page changed: announce it (verified writers only, see INDEXNOW_KEY); a test run passes its own fetch
-  if (body.ok && verified && body.thread) { const job = indexNow([`https://brainonbnb.com/board/${body.thread}`, 'https://brainonbnb.com/board'], opts.indexFetch || fetch).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+  // the last answer is kept (KV board:indexnow:last) so a look can tell it was taken, not only sent
+  if (body.ok && verified && body.thread) { const job = indexNow([`https://brainonbnb.com/board/${body.thread}`, 'https://brainonbnb.com/board'], opts.indexFetch || fetch).then((x) => env.AGENT?.put('board:indexnow:last', JSON.stringify({ at: new Date().toISOString(), thread: body.thread, ...x }), { expirationTtl: 30 * 86400 })).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
   return { status: r.status, body };
 }
 

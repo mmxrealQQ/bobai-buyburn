@@ -256,6 +256,8 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   const ctlRead = { read: true, block: 4242, has_code: true, owner: null, owner_function: false, proxy: null, mint_selector: false };
   o = shape({ address: '0xc', symbol: 'C', name: 'C', quotable: false, reason: 'curve', curve: { progressPct: 41.5, feePct: 1, sellQuoted: true, tradeCost: [{ sizeUsd: 100, buyCostPct: 1.2, sellCostPct: 1.3 }] } }, null, 100, null, ctlRead);
   ok('the curve answer says kind "curve", a block and measured_at', o.kind === 'curve' && o.block === 4242 && typeof o.measured_at === 'string' && o.gate === 'weigh', JSON.stringify({ k: o.kind, b: o.block, m: o.measured_at, g: o.gate }));
+  // ONE SHAPE (2026-10-27, a stranger wiring preflight into a bot): a curve carries the fields a bot branches on, where a pool has them
+  ok('a curve answer has exit.sellable, exit.round_trip_cost_pct, entry.slippage_bps_needed and tax, as a pool answer does', o.exit.sellable === true && o.exit.round_trip_cost_pct === 2.5 && 'slippage_bps_needed' in o.entry && o.tax && 'buy_pct' in o.tax && 'sell_pct' in o.tax, JSON.stringify({ exit: o.exit, tax: o.tax }));
   o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool.' }, null, 100, null, ctlRead);
   ok('… the unquotable one "unquotable", with them too', o.kind === 'unquotable' && o.block === 4242 && typeof o.measured_at === 'string' && o.gate === 'stop', JSON.stringify({ k: o.kind, b: o.block, m: o.measured_at }));
   o = shape(scan(), route(), 250);

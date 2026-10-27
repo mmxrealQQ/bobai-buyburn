@@ -110,8 +110,14 @@ export function shape(s, r, usd, routeError = null, control = null) {
       : { code: 'on_launch_curve', why: `Still raising on four.meme (${c.progressPct ?? '?'}% of the raise): trades go through four.meme’s contract, not a pool, and the price path changes when the raise completes and the token lists on PancakeSwap.`, ...fig(c.progressPct, 100, 'pct') });
     if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the cost shown is the largest rung’s and the real one is higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
     return out({ venue: flap ? 'flap.sh bonding curve' : 'four.meme bonding curve', stop, caution,
-      entry: { cost_pct: round(buy.pct, 3), fee_pct: c.feePct ?? null },
-      exit: { sell_quoted: !!c.sellQuoted, cost_pct: round(sell.pct, 3) },
+      // ONE SHAPE FOR A POOL AND A CURVE (2026-10-27, a stranger wiring this into a trading bot: "a curve token breaks the
+      // parser — exit.sell_quoted instead of exit.sellable, no tax, round_trip_cost_pct or slippage_bps_needed"). The
+      // fields a bot branches on are always there, null where the curve has no such figure, and the curve's own stay.
+      entry: { cost_pct: round(buy.pct, 3), fee_pct: c.feePct ?? null, slippage_bps_needed: null,
+        slippage_note: 'A curve trade goes through the launchpad’s own contract, which takes its own minimum; size it from cost_pct.' },
+      exit: { sellable: c.sellQuoted ? true : null, sell_quoted: !!c.sellQuoted, cost_pct: round(sell.pct, 3),
+        round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) },
+      tax: { buy_pct: null, sell_pct: null, source: 'not measurable before it lists: a curve has no pool trades to read a transfer tax from' },
       control: ctl,
       cannot_see: ['What the token does after it lists: its transfer tax and its owner’s powers only show once there is a pool to measure.'],
       details, disclaimer: 'Measurement, not advice. Figures are for this block.' });
@@ -262,7 +268,7 @@ export function shape(s, r, usd, routeError = null, control = null) {
   else if (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50) {
     const big = hd.top?.[0];
     const named = (hd.excluded || []).slice(0, 3).map((x) => `${x.name} ${x.pct}%`).join(', ');
-    caution.push({ code: 'holders_concentrated', why: `The largest wallet${big?.contract ? ' (a contract the list does not name)' : ''} holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's${named ? `; left out as exchange, lock or staking wallets: ${named}` : ''}).`,
+    caution.push({ code: 'holders_concentrated', why: `The largest wallet${big?.contract ? ' (a contract the list does not name)' : ''} holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of the hard side of every pool found for it (all of its liquidity, not only the pool measured below)` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's${named ? `; left out as exchange, lock or staking wallets: ${named}` : ''}).`,
       ...(hd.largestSellTakesPctOfPool >= 25 ? fig(hd.largestSellTakesPctOfPool, 25, 'pct') : fig(hd.top10PctOfCirculating, 50, 'pct')) });
   }
   if (flags.length) caution.push({ code: 'contract_flags', why: `GoPlus reads these as true: ${flags.join(', ')}. A label, not a measurement — and none of them has to have been used yet.` });

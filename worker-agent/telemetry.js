@@ -34,6 +34,7 @@
 // measured. The census measures; this quotes.
 
 import { cappedText } from './net.js';
+import { SERVICES } from './sell.js';
 import { isOwnWallet } from './own-wallets.js';
 import { healthFactor } from './venus.js';
 import { gridPlan } from './grid.js';
@@ -605,7 +606,7 @@ export async function refreshTelemetry(env) {
         category: 'health-factor',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('health_factor'),
         ...split('health_factor'),
         ...hf,
@@ -616,7 +617,7 @@ export async function refreshTelemetry(env) {
         category: 'grid-trading',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('grid_plan'),
         ...split('grid_plan'),
         last_delivery: jobs.last.grid_plan || null,
@@ -628,7 +629,7 @@ export async function refreshTelemetry(env) {
         category: 'yield-optimization',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('yield_plan'),
         ...split('yield_plan'),
         last_delivery: jobs.last.yield_plan || null,
@@ -640,7 +641,7 @@ export async function refreshTelemetry(env) {
         category: 'rebalancing',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('rebalance_plan'),
         ...split('rebalance_plan'),
         last_delivery: jobs.last.rebalance_plan || null,
@@ -652,7 +653,7 @@ export async function refreshTelemetry(env) {
         category: 'yield-optimization',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('lp_tier_plan'),
         ...split('lp_tier_plan'),
         last_delivery: jobs.last.lp_tier_plan || null,
@@ -666,7 +667,7 @@ export async function refreshTelemetry(env) {
         category: 'rebalancing',
         origin: 'https://agent.brainonbnb.com/defi-agent',
         hireable: 'ERC-8183 (signed quote, negotiate-erc8183-job)',
-        price: '0.10 $U',
+        price: SERVICES.health_factor.price_display,
         jobs_delivered: delivered('lp_position_plan'),
         ...split('lp_position_plan'),
         last_delivery: jobs.last.lp_position_plan || null,

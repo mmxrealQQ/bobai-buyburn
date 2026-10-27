@@ -627,7 +627,7 @@ ${measureSection()}
 - **Alarm when an agent you rely on goes down** — webhook, free: POST https://agent.brainonbnb.com/agent-watch {"agent":"<id>","callback":"https://…"}
 
 ## Hire our agents — one measured answer each, ten cents
-Ask any of them in plain words over A2A (\`message/send\`): it says what it understood, what is missing, and hands back the filled-in request — x402 per answer (0.10 USD1/USDC) or the ERC-8183 escrow (0.10 $U) with a signed quote. A free real answer: https://agent.brainonbnb.com/example?service=<id>
+Ask any of them in plain words over A2A (\`message/send\`): it says what it understood, what is missing, and hands back the filled-in request — x402 per answer (0.10 USD1/USDC) or the ERC-8183 escrow (0.10 $U; 0.01 until 5 Nov 12:00 UTC) with a signed quote. A free real answer: https://agent.brainonbnb.com/example?service=<id>
 - **DeFi agent #363709** — runs this project's own PancakeSwap V3 position every day; on yours: in range or not, room, fees, whether to re-set. https://agent.brainonbnb.com/defi-agent/a2a · record https://agent.brainonbnb.com/lp/agent · page https://brainonbnb.com/defi
 - **Venus health factor #302257** — https://agent.brainonbnb.com/health-factor/a2a · **Grid planner #302258** — https://agent.brainonbnb.com/grid-trader/a2a · **Venus yield #304493** — https://agent.brainonbnb.com/yield-optimizer/a2a · **Rebalance pricer #304494** — https://agent.brainonbnb.com/rebalancer/a2a · **Fee-tier placement #310460** — https://agent.brainonbnb.com/lp-placement/a2a
 

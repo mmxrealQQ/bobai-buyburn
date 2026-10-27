@@ -1438,7 +1438,7 @@ function fillLpYours(){
         // buys the same answer but hires nobody. The Plaza's panel opens with
         // this position as the task.
         const hireHref = '/registry?hire=363709&task=' + encodeURIComponent(taskFor(v)) + '#cat-rebalancing';
-        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">The plan: hire the DeFi agent, 0.10 $U</div>' +
+        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">The plan: hire the DeFi agent, ' + (Date.now() < Date.UTC(2026, 10, 5, 12) ? '0.01 $U until 5 Nov 12:00 UTC' : '0.10 $U') + '</div>' +
           '<div>Whether a re-set is due and in which width, what collecting pays, what your spare BNB would add — the agent that runs our own position, on yours. Paid into the on-chain ERC-8183 escrow from your wallet; the escrow pays the agent only once the plan is delivered.</div>' +
           '<div class="lp-ask"><a class="mkt-go" href="' + hireHref + '" target="_top">Hire the DeFi agent &rarr;</a></div></div>' +
           '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Or pay per answer: send the fee, then paste the transaction hash</div>' +

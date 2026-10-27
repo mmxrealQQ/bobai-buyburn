@@ -91,7 +91,7 @@ export function understoodReply({ service, text, missing, agentUrl }) {
   const p = understand(service, text), keys = Object.keys(p);
   const got = keys.length ? keys.map((k) => `${k} ${typeof p[k] === 'object' ? JSON.stringify(p[k]) : p[k]}`).join(', ') : null;
   const miss = missing(service.id, p);
-  const price = 'ten cents: 0.10 USD1 or USDC per answer over x402, or 0.10 $U through the ERC-8183 escrow';
+  const price = `0.10 USD1 or USDC per answer over x402, or ${service.price_display.replace('USD1', '$U')} through the ERC-8183 escrow`;
   const sentence = miss
     ? `I read your question as: ${service.name}. ${got ? `From it I took ${got}. ` : ''}Still missing — ${miss}. Ask again with that, and the measured answer costs ${price}.`
     : `I read your question as: ${service.name}${got ? `, for ${got}` : ' (it needs nothing more from you)'}. The measured answer costs ${price}. The request below is filled in: its first reply is a 402 with the price; pay and send it again. Or hire me over the escrow with a signed quote. A real answer in the same format, free: https://agent.brainonbnb.com/example?service=${service.id}`;

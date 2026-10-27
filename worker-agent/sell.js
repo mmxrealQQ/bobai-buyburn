@@ -158,6 +158,23 @@ export const SERVICES = {
   },
 };
 
+// THE SET AND EARN PRICE (2026-10-27, operator's go: "Preis auf 0.01 bis 5.11."). Every BNB Set and Earn entrant has to
+// hire three agents before 5 Nov 12:00 UTC, and the ones hired are the cheap ones (Mandate's at 0.01); ours stood at 0.10.
+// Until then every escrow quote is 0.01; after it, 0.10 again by itself. x402 answers keep their own price (ANSWER_PRICE).
+// A job is held to the price of the hour its quote was signed (negotiated_at in the description it anchors), so a quote
+// signed in the sale and delivered after it is still delivered.
+export const SALE_UNTIL = Date.UTC(2026, 10, 5, 12) / 1000;
+export const onSale = (at = Date.now() / 1000) => at < SALE_UNTIL;
+const BASE_WEI = 100000000000000000n, SALE_WEI = 10000000000000000n;
+export const escrowWei = (at) => (onSale(at) ? SALE_WEI : BASE_WEI);
+// what a funded job owes: the price of the hour its quote was signed, or of now when its description names no hour
+export const dueFor = (description, now = Date.now() / 1000) => escrowWei(Number(String(description || '').match(/"negotiated_at":\s*(\d+)/)?.[1]) || now);
+for (const s of Object.values(SERVICES)) {
+  const unit = s.price_display.split(' ')[1];
+  Object.defineProperty(s, 'price', { enumerable: true, get: () => String(escrowWei()) });
+  Object.defineProperty(s, 'price_display', { enumerable: true, get: () => (onSale() ? `0.01 ${unit} (until 5 Nov 12:00 UTC, then 0.10)` : `0.10 ${unit}`) });
+}
+
 // Quoted in atomic units, because that is what every seller on this chain
 // actually sends and a marketplace that publishes a census of other people's
 // inconsistencies should not add one. price_display carries the human number.
@@ -439,7 +456,7 @@ function exampleLinks(serviceId, service) {
     price: {
       x402: `0.10 USD1 per answer (or half that in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
       escrow: serviceId === 'lp_position_plan'
-        ? '0.10 $U through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
+        ? SERVICES.lp_position_plan.price_display.replace('USD1', '$U') + ' through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
         : `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)`,
     },
     buy: `https://agent.brainonbnb.com/answer?service=${serviceId}`,
@@ -604,12 +621,12 @@ export async function handleA2A(request, env, opts = {}) {
     }
     if (/what (task|tasks|job|jobs) do you (take|do|handle)|what do you do|what can you do|in one sentence/i.test(text)) {
       const sentence = forced === 'lp_position_plan'
-        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, whether a re-set is due, the new range centred on the price and the token amounts to mint it — the same code that runs our own CAKE/BNB position every day (a wide ±20% range, re-set centred with one swap once the price has stayed outside), hireable over ERC-8183 for 0.10 $U.'
+        ? 'I manage PancakeSwap V3 liquidity ranges on BNB Chain: give me a position (and optionally a block and a re-centring policy) and I return whether it is in range, how far it is from its bounds, whether a re-set is due, the new range centred on the price and the token amounts to mint it — the same code that runs our own CAKE/BNB position every day (a wide ±20% range, re-set centred with one swap once the price has stayed outside), hireable over ERC-8183 for ' + SERVICES.lp_position_plan.price_display.replace('USD1', '$U') + '.'
         // Each agent introduces itself (2026-10-12): all five answered with the
         // shared catalogue line, so a marketplace asking "what do you do"
         // could not tell the Venus monitor from the grid planner.
         : forced ? ownSentence(SERVICES[forced])
-        : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for 0.10 $U or per answer over x402.`;
+        : `I sell ${Object.keys(SERVICES).length} on-chain measurements on BNB Chain — Venus health factor, grid break-even, yield after gas, rebalance cost, PancakeSwap fee-tier and position plans — each hireable over ERC-8183 for ${SERVICES.health_factor.price_display} or per answer over x402.`;
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: sentence }] });
     }
     // any other question on an agent's own endpoint: what it understood, what is missing, the filled-in request
@@ -862,8 +879,10 @@ export async function deliverJob(jobId, env, { text = '', data = {} } = {}) {
   const tagged = String(job.description || '').match(/\bservice ([a-z_]+)\b/)?.[1];
   const service = (tagged && SERVICES[tagged]) || pickService(job.description, null) || pickService('', data.service);
   if (!service) return { error: 'the job description does not match anything we sell', permanent: true };
-  if (BigInt(job.budget) < PRICE_WEI(service.price)) {
-    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`, permanent: true };
+  // the price of the hour the quote was signed (a sale quote delivered after the sale is still paid in full)
+  const due = dueFor(job.description);
+  if (BigInt(job.budget) < due) {
+    return { error: `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${Number(due) / 1e18} $U`, permanent: true };
   }
 
   // A signed (SDK) description is JSON whose currency and verifying_contract

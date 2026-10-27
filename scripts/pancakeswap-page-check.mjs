@@ -28,5 +28,10 @@ is('PC7 range-plan: best_range_after_paying_to_put_it_back, pair.token.symbol / 
 is('PC8 lp/look: verdict and in_range for a position id', typeof look.verdict === 'string' && typeof look.in_range === 'boolean', JSON.stringify(look).slice(0, 200));
 is('PC9 lp/portfolio: pool.position, pool.label, pool.in_range', folio.pool?.position && folio.pool?.label && typeof folio.pool?.in_range === 'boolean', JSON.stringify(folio).slice(0, 200));
 is('PC10 the library holds PancakeSwap entries (matched, threads with id and title)', (lib.matched || 0) > 0 && !lib.near && (lib.threads || []).every((t) => t.id && t.title), JSON.stringify(lib).slice(0, 200));
+// THE STRANGER TEST ON THIS PAGE (2026-10-27): one pool across the cards, no winner the tool does not claim, no slippage advice
+is('PC11 best-route carries the round trip the cost card shows (you_keep_pct, you_keep_pct_pools_only)', typeof route.round_trip?.you_keep_pct === 'number' && typeof route.round_trip?.you_keep_pct_pools_only === 'number', JSON.stringify(route.round_trip).slice(0, 160));
+is('PC12 range-plan says whether its window ranks the widths, and why it chose its tier', typeof range.window_ranks_the_widths === 'boolean' && typeof range.tier_chosen_because === 'string', JSON.stringify({ w: range.window_ranks_the_widths, t: range.tier_chosen_because }));
+is('PC13 the page prices the trade on the best route, hides an unranked width, shows no slippage figure, and the result with losses', /you_keep_pct/.test(page.text) && /window_ranks_the_widths === false/.test(page.text) && !/slippage_bps_needed/.test(page.text) && /profit_bnb/.test(page.text));
+is('PC14 lp/portfolio carries the result the page shows (pnl.profit_bnb, change_pct, put_in.bnb)', typeof folio.pnl?.profit_bnb === 'number' && typeof folio.pnl?.change_pct === 'number' && typeof folio.put_in?.bnb === 'number');
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

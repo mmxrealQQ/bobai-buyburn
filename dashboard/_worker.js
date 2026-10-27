@@ -1057,7 +1057,11 @@ async function runTool(rawName, args, caller = {}) {
       }
       try {
         const answer = await feeTiers(m[0].toLowerCase());
-        if (edge && answer && typeof answer === 'object')
+        // AN INCOMPLETE COMPARISON IS NOT KEPT (2026-10-27: USDT came back with three of five tiers unreadable — the node had
+        // refused the logs — and every caller for the next minute got that same half answer from the cache, with no best
+        // tier). Only a comparison of every tier found is kept; a partial one is answered and read afresh next time.
+        const complete = answer && typeof answer === 'object' && answer.comparison_complete !== false && !(answer.tiers_unreadable || []).length;
+        if (edge && complete)
           await edge.put(tierKey, new Response(JSON.stringify({ at: Date.now(), answer }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } })).catch(() => {});
         return answer && typeof answer === 'object' ? { ...answer, cache: { hit: false, age_seconds: 0, max_age_seconds: 60 } } : answer;
       } catch (e) {

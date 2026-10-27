@@ -6097,7 +6097,12 @@ const loopLine = (o, p) => {
   // ONE SOURCE FOR ONE FIGURE (2026-10-15, open list #4): the portfolio this line was given, as every DeFi figure here
   if (p.worth) S.pf = p;
   const { fees, held } = defiNow();
-  logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(fees)], ' in pool fees' + (since ? ` since ${since}` : ''),
+  // THE WHOLE RESULT, NOT ONLY THE FEES (2026-10-27, operator: "ist das aktuell? also alles was beim Start dort steht" —
+  // the line said "earned 0.113 BNB in pool fees" while the agent stood at −6.6% on its capital, the CAKE/BNB price having
+  // cost more than the fees brought): the change on the capital follows the fees, and why when the price outweighed them
+  const pct = Number(pn.change_pct), pair = String(pool.label || '').split(' ')[0] || 'the pair';
+  const whole = Number.isFinite(pct) ? [' · ', [`${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%`], ' on its capital in all' + (pn.from_price_bnb < 0 && -pn.from_price_bnb > fees ? ` — the ${pair} price cost more than the fees brought` : '')] : [];
+  logLine('LOOP', '#7fd1ff', ['DeFi agent earned ', [bnbF(fees)], ' in pool fees' + (since ? ` since ${since}` : ''), ...whole,
     held > 0 ? ' · holds ' : '', held > 0 ? [bobaiAmt(held)] : '', ' · bought an outside check for ', [`${o.price_u} $U (≈$${Number(o.price_u).toFixed(2)})`],
     o.agrees === true ? ' · it agrees · ' : o.agrees === false ? ' · it disagrees, the agent keeps its own reading · ' : ' · ', [does]],
   [], Date.now()); // the portfolio's figures are read now

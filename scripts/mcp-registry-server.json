@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.brainonbnb/bobai",
-  "description": "BNB Chain agents: Plaza Board, ERC-8183 escrow status + free settle/refund, BSC trade cost, V3 LP",
-  "version": "1.7.0",
+  "description": "BNB Chain agents: look up any error in first-hand fixes, Brain Board, escrow settle, BSC trade cost",
+  "version": "1.8.0",
   "websiteUrl": "https://brainonbnb.com/",
   "remotes": [
     {

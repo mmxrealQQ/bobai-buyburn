@@ -41,6 +41,7 @@
     .pc-live b{color:#f3efe6}
     .pc-live .big{display:block;font:700 22px/1.2 'Space Grotesk',Inter,sans-serif;color:#f3efe6;margin-bottom:2px}
     .pc-foot{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;color:var(--muted,#a0a2c0)}
+    .pc-wait{color:var(--muted,#a0a2c0)}
     .pc-foot code{font-size:12px;color:var(--muted,#a0a2c0);overflow-wrap:anywhere}
     @media (max-width:700px){.pc-tools{grid-template-columns:1fr}}
   </style>
@@ -61,36 +62,36 @@
       <div class="rc-k">Any token</div>
       <form class="pc-ask" id="pc-form">
         <label class="sr-only" for="pc-token" style="position:absolute;left:-9999px">Token address</label>
-        <input id="pc-token" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x… a BSC token" value="0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82">
+        <input id="pc-token" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste a token or pool address (0x…)" value="">
         <button class="pc-go" type="submit">Read it</button>
       </form>
-      <div class="rc-note" id="pc-for" style="margin:8px 0 0">Showing CAKE. Paste any token traded on PancakeSwap.</div>
+      <div class="rc-note" id="pc-for" style="margin:8px 0 0">Any token traded on PancakeSwap: the four cards below read it.</div>
     </div>
 
     <div class="pc-tools">
       <div class="rc-card fi">
         <div class="rc-k">Where to trade</div>
         <p class="pc-say">The deepest pool is not always the one that pays most. Every PancakeSwap pool of the token is quoted for the same size, and the best one is named.</p>
-        <div class="pc-live" id="t-route">Reading…</div>
-        <div class="pc-foot"><a class="pc-go" id="b-route" href="/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" target="_blank" rel="noopener">All routes</a><code>pancakeswap_best_route</code></div>
+        <div class="pc-live" id="t-route"><span class="pc-wait">Paste a token above.</span></div>
+        <div class="pc-foot"><a class="pc-go" id="b-route" href="#" hidden target="_blank" rel="noopener">All routes</a><code>pancakeswap_best_route</code></div>
       </div>
       <div class="rc-card fi">
         <div class="rc-k">What a trade really costs</div>
         <p class="pc-say">Swap fee, price impact at six sizes and the transfer tax measured from executed trades, not read off a label. Who can pull the liquidity, too.</p>
-        <div class="pc-live" id="t-cost">Reading…</div>
-        <div class="pc-foot"><a class="pc-go" id="b-cost" href="/scanner?token=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82">Open the scan</a><code>bsc_pool_scan</code></div>
+        <div class="pc-live" id="t-cost"><span class="pc-wait">Paste a token above.</span></div>
+        <div class="pc-foot"><a class="pc-go" id="b-cost" href="#" hidden>Open the scan</a><code>bsc_pool_scan</code></div>
       </div>
       <div class="rc-card fi">
         <div class="rc-k">Which fee tier pays an LP</div>
         <p class="pc-say">A pair lives in up to five pools. Interfaces rank them by money parked; this ranks them by the fees they actually paid in the last hour.</p>
-        <div class="pc-live" id="t-tier">Reading…</div>
-        <div class="pc-foot"><a class="pc-go" id="b-tier" href="/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82" target="_blank" rel="noopener">All tiers</a><code>pancakeswap_fee_tiers</code></div>
+        <div class="pc-live" id="t-tier"><span class="pc-wait">Paste a token above.</span></div>
+        <div class="pc-foot"><a class="pc-go" id="b-tier" href="#" hidden target="_blank" rel="noopener">All tiers</a><code>pancakeswap_fee_tiers</code></div>
       </div>
       <div class="rc-card fi">
         <div class="rc-k">How wide a V3 range</div>
         <p class="pc-say">Every width replayed over the pool's own recent prices, and the cost of putting a range back counted against it.</p>
-        <div class="pc-live" id="t-range">Reading…</div>
-        <div class="pc-foot"><a class="pc-go" id="b-range" href="/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;capitalUsd=1000" target="_blank" rel="noopener">All widths</a><code>pancakeswap_range_plan</code></div>
+        <div class="pc-live" id="t-range"><span class="pc-wait">Paste a token above.</span></div>
+        <div class="pc-foot"><a class="pc-go" id="b-range" href="#" hidden target="_blank" rel="noopener">All widths</a><code>pancakeswap_range_plan</code></div>
       </div>
     </div>
 
@@ -99,10 +100,10 @@
       <p class="pc-say">Any PancakeSwap V3 position, any pair: in range or not, the room to each edge, what it holds and is owed, and whether collecting pays for its gas.</p>
       <form class="pc-ask" id="pos-form">
         <label for="pc-pos" style="position:absolute;left:-9999px">Position id or wallet</label>
-        <input id="pc-pos" inputmode="text" autocomplete="off" spellcheck="false" placeholder="position id, or the wallet that holds it" value="">
+        <input id="pc-pos" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste a V3 position id or the wallet that holds it">
         <button class="pc-go" type="submit">Check it</button>
       </form>
-      <div class="pc-live" id="t-pos" style="margin-top:10px">Reading our own position…</div>
+      <div class="pc-live" id="t-pos" style="margin-top:10px"><span class="pc-wait">Paste a position id or a wallet above.</span></div>
       <div class="pc-foot" style="margin-top:8px"><code>pancakeswap_position_look</code></div>
     </div>
 
@@ -130,7 +131,7 @@
     <div class="rc-card rc-fine fi">
       <div class="rc-k">For agents</div>
       <ul class="rc-list">
-        <li>Every number above is one call: <a href="/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250">/api/best-route</a> &middot; <a href="/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82">/api/pool-scan</a> &middot; <a href="/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82">/api/fee-tiers</a> &middot; <a href="/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;capitalUsd=1000">/api/range-plan</a> &middot; <a href="https://agent.brainonbnb.com/lp/look?position=7637521">/lp/look</a></li>
+        <li>Every number above is one call, for any token: <code>/api/best-route?address=0x…&amp;usd=250</code> &middot; <code>/api/pool-scan?address=0x…</code> &middot; <code>/api/fee-tiers?address=0x…</code> &middot; <code>/api/range-plan?address=0x…&amp;capitalUsd=1000</code> &middot; <code>agent.brainonbnb.com/lp/look?position=&lt;id&gt;</code></li>
         <li>The same as MCP tools at <a href="/mcp">brainonbnb.com/mcp</a>, and in <a href="/llms.txt">llms.txt</a>.</li>
         <li>Read-only: nothing here signs a transaction or asks for a wallet. The pool scan is free up to 1,000 calls a day per caller.</li>
         <li>Pools read: PancakeSwap V2, V3 and Infinity CL (hooks included, priced through PancakeSwap's own quoter); Uniswap and Biswap pools are named beside them.</li>
@@ -162,11 +163,12 @@
     $('b-cost').href = '/scanner?token=' + token;
     $('b-tier').href = '/api/fee-tiers?address=' + token;
     $('b-range').href = '/api/range-plan?address=' + token + '&capitalUsd=1000';
+    for (const b of ['b-route', 'b-cost', 'b-tier', 'b-range']) $(b).hidden = false;
 
     get('/api/best-route?address=' + token + '&usd=250').then((j) => {
       if (!live()) return;
       const sym = j.token?.symbol || 'the token';
-      $('pc-for').textContent = 'Showing ' + sym + '. Paste any token traded on PancakeSwap.';
+      $('pc-for').textContent = 'Showing ' + sym + '. Paste another token to read it instead.';
       const q = (j.routes || []).filter((r) => r.quoted);
       // the whole spread, not only the worst pool (a thin 1% pool alone would flatter the best one)
       const others = q.map((r) => r.worse_than_best_pct || 0).filter((x) => x > 0).sort((a, b) => a - b);
@@ -179,6 +181,9 @@
         + (j.slippage_bps_needed != null ? ' Slippage needed: ' + nf(j.slippage_bps_needed / 100, 2) + '%.' : '');
     }).catch((e) => live() && fail('t-route', e));
 
+    // where each side's tax came from (2026-10-27: a buy simulated on chain and a sell measured from a trade were shown as
+    // "not measured — read as a label", for $BOBAI itself)
+    const how = (src) => (src === 'measured' ? 'measured from trades' : src === 'simulated' ? 'simulated on chain' : src ? 'read as a label' : 'not known');
     get('/api/pool-scan?address=' + token).then((j) => {
       if (!live()) return;
       const row = (j.tradeCost || []).find((r) => r.sizeUsd === 1000) || (j.tradeCost || []).slice(-1)[0];
@@ -186,12 +191,12 @@
       if (!row) { $('t-cost').innerHTML = esc(j.sellability?.verdict || j.headline || 'No PancakeSwap pool this scan can price.'); return; }
       $('t-cost').innerHTML = '<span class="big">' + pct(row.buyCostPct) + ' in, ' + pct(row.sellCostPct) + ' out</span>'
         + 'for a $' + nf(row.sizeUsd) + ' trade on ' + esc(j.pool?.venue || 'PancakeSwap') + ' ' + esc(j.pool?.swapFeePct != null ? j.pool.swapFeePct + '%' : '')
-        + ' · transfer tax <b>' + pct(t.buyPct, 1) + ' / ' + pct(t.sellPct, 1) + '</b> ' + (t.measured ? 'measured from trades' : 'not measured — read as a label');
+        + ' · transfer tax <b>' + pct(t.buyPct, 1) + ' in / ' + pct(t.sellPct, 1) + ' out</b> (' + how(t.buySource) + (t.sellSource === t.buySource ? '' : ' / ' + how(t.sellSource)) + ')';
     }).catch((e) => live() && fail('t-cost', e));
 
     get('/api/fee-tiers?address=' + token).then((j) => {
       if (!live()) return;
-      if (!j.best_paying_tier) { $('t-tier').textContent = 'Only one fee tier of this pair holds money — nothing to choose.'; return; }
+      if (!j.best_paying_tier || (j.tiers_found != null && j.tiers_found <= 1)) { $('t-tier').innerHTML = '<span class="big">' + esc(j.best_paying_tier || 'One tier') + '</span>is the only PancakeSwap fee tier this token trades in — nothing to choose.'; return; }
       $('t-tier').innerHTML = '<span class="big">' + esc(j.best_paying_tier) + '</span>paid its LPs the most in the last hour'
         + (j.capital_is_in_the_best_paying_tier === false ? ' — but most of the money sits in <b>' + esc(j.most_capital_tier) + '</b>.' : ', and most of the money is there too.')
         + (j.working_capital_changes_the_answer && j.best_paying_tier_by_working_capital ? ' Counting only the money near the price: <b>' + esc(j.best_paying_tier_by_working_capital) + '</b>.' : '');
@@ -227,8 +232,6 @@
     if (/^\d+$/.test(v) || ADDR.test(v)) look(v); else $('t-pos').innerHTML = '<span class="no">A position id (a number) or a wallet address (0x…).</span>';
   });
 
-  read('0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82');
-  look('7637521');
 
   get('https://agent.brainonbnb.com/lp/portfolio').then((j) => {
     const since = Date.parse('2026-09-03T00:00:00Z');

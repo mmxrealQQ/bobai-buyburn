@@ -602,7 +602,7 @@
    "lines": 3468,
    "zipBytes": 117868,
    "txtBytes": 352523,
-   "sha256": "a9e7fd044fe9e5de",
+   "sha256": "cb501e5574ce90f2",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

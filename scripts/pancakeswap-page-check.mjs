@@ -12,6 +12,9 @@ const json = (u) => fetch(u, { headers: UA, signal: AbortSignal.timeout(60000) }
 const page = await fetch(SITE + '/pancakeswap', { headers: UA }).then(async (r) => ({ status: r.status, text: await r.text() })).catch(() => ({ status: 0, text: '' }));
 is('PC1 /pancakeswap answers 200', page.status === 200, String(page.status));
 is('PC2 it reads and links every route it shows', ['/api/best-route', '/api/pool-scan', '/api/fee-tiers', '/api/range-plan', '/lp/look', '/lp/portfolio', 'board?type=library&q=pancakeswap'].every((s) => page.text.includes(s)));
+// NO TOKEN CHOSEN FOR THE VISITOR (2026-10-27, operator: "was ist das für ein Token im Feld? mach lieber keinen dort"): both fields
+// start empty with a hint, and nothing is read before something is pasted
+is('PC2b the token and position fields start empty, with a hint', /id="pc-token"[^>]*value=""/.test(page.text) && /id="pc-token"[^>]*placeholder="Paste a token/.test(page.text) && /id="pc-pos"[^>]*placeholder="Paste a V3 position/.test(page.text) && !/value="0x/.test(page.text) && !/read\('0x/.test(page.text) && !/look\('\d/.test(page.text));
 is('PC3 the scanner and the DeFi agent link to it', await Promise.all(['/scanner', '/defi'].map((p) => fetch(SITE + p, { headers: UA }).then((r) => r.text()).then((t) => t.includes('href="/pancakeswap"')).catch(() => false))).then((a) => a.every(Boolean)));
 
 const [route, scan, tiers, range, look, folio, lib] = await Promise.all([

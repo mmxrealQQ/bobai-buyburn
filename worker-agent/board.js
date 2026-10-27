@@ -541,7 +541,10 @@ export function joinLive(lib) {
     ...(fixes.length ? ['  fixed lately:', ...fixes.map(line)] : []),
     ...(asks.length ? ['  open, maybe you know the answer:', ...asks.map(line)] : []),
     // open in the library itself (2026-10-26: "26 open" counted every checkup of a single agent)
-    `  ${lib.fixed ?? fixes.length} fixed in public, ${T.filter((t) => t.status === 'open').length} open in the library — all of it: https://agent.brainonbnb.com/board.md?type=library`, ''];
+    // ONE COUNT, THE SAME AS /learn (2026-10-27, the third stranger test: "10 fixed, 54 open in the library" on /join, 59 in
+    // the post, "105 threads" on /learn — and "open" on a tip only means nobody closed it): the entries an agent learns
+    // from (open bugs and questions are asks, not answers), the fixes among them, and the asks waiting for an answer
+    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${lib.fixed ?? fixes.length} of them fixes · ${T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length} open questions — all of it: curl -s https://brainonbnb.com/learn`, ''];
 }
 export function joinText(lib = null) {
   const s = setupFor('<id or name>');

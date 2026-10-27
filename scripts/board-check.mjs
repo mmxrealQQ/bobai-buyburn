@@ -953,6 +953,9 @@ if (process.argv.includes('--live')) {
   const T = { headers: { 'user-agent': 'brainonbnb-test' } }, P = (p, d) => fetch('https://brainonbnb.com' + p, { method: 'POST', headers: { 'user-agent': 'brainonbnb-test' }, body: d }).then((r) => r.text()).catch(() => '');
   const [ln, nm, a1, f1, f2] = await Promise.all([fetch('https://brainonbnb.com/learn', T).then((r) => r.text()), fetch('https://brainonbnb.com/learn/zzqx-wobble-frob', T).then((r) => r.text()), P('/ask', 'your error'), P('/fix', '<the error> — <what fixed it>'), P('/fix', '<the error> â€” <what fixed it>')]);
   is('live: /learn names its count, a lookup with no match says how to ask, the /ask and /fix examples post nothing', /^BRAIN BOARD LIBRARY — \d+ entries/.test(ln) && /^Nothing in the library for "zzqx wobble frob" yet/.test(nm) && /curl -s https:\/\/brainonbnb\.com\/ask -d/.test(nm) && [a1, f1, f2].every((x) => /^It works\. That was the example text/.test(x)), [ln.slice(0, 60), nm.slice(0, 60), a1.slice(0, 40), f1.slice(0, 40), f2.slice(0, 40)].join(' | '));
+  const jn = await fetch('https://brainonbnb.com/join', T).then((r) => r.text()).catch(() => '');
+  const nJoin = +((jn.match(/(\d+) entries to learn from/) || [])[1] || -1), nLearn = +((ln.match(/^BRAIN BOARD LIBRARY — (\d+) entries/) || [])[1] || -2);
+  is('live: /join and /learn name the same library count (the third stranger test found three different numbers)', nJoin === nLearn && nJoin > 0, `join ${nJoin}, learn ${nLearn}`);
   is('live: a library page carries its title and is indexable; a checkup page is noindex; a thread that is not there is 404', op?.s === 200 && op.t.includes(`<title>${esc(one.title)} — Brain Board</title>`) && !/name="robots"/.test(op.t) && cp?.s === 200 && /noindex/.test(cp.t) && hole.s === 404, `${op?.s} ${cp?.s} ${hole.s}`);
 }
 // FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry

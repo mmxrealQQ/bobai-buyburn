@@ -85,9 +85,11 @@ const skip = (name, why) => {
   ok('CAKE: no transfer tax, so both round-trip figures agree',
     r.round_trip.you_keep_pct === r.round_trip.you_keep_pct_pools_only,
     `${r.round_trip.you_keep_pct}% either way`);
-  ok('CAKE: slippage is sized, not defaulted',
-    r.slippage_bps_needed >= 50 && r.slippage_bps_needed < 1500,
-    `${r.slippage_bps_needed} bps`);
+  // the quote already carries the fee and the impact (2026-10-27): an untaxed pair needs only the drift, 50 bps, and
+  // the note says why — it said 'setting it lower fails the trade', which was not true
+  ok('CAKE: no tax, so the tolerance is the drift alone (50 bps) and the note says the quote already holds fee and impact',
+    r.slippage_bps_needed === 50 && /already includes the pool fee/.test(r.slippage_note || '') && !/fails the trade/.test(r.slippage_note || ''),
+    `${r.slippage_bps_needed} bps · ${String(r.slippage_note).slice(0, 80)}`);
 }
 
 // --- a pair that really does take a cut -------------------------------------

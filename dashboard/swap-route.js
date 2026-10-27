@@ -266,9 +266,14 @@ export async function swapRoute(input, opts = {}) {
   const sideBps = (t) => t == null ? 1500 : Math.ceil((t * 100 + (poolImpactPct || 0) + 0.5) * 100) + 200;
   const mBuy = tax.ok ? tax.buy ?? null : null, mSell = tax.ok ? tax.sell ?? null : null; // null = not measured, never 0
   const slipBuy = fot ? sideBps(mBuy) : null, slipSell = fot ? sideBps(mSell) : null;
+  // NO TAX: ONLY THE DRIFT (2026-10-27, a stranger reading /pancakeswap: "0.56% for a trade that moves the price 0.005%
+  // invites a sandwich"). The minimum out a router checks is taken from a quote, and that quote already carries the
+  // pool fee and the price this size moves — adding them again only widened the room a sandwich can take. What the
+  // tolerance has to cover is the price moving between the quote and the block: 50 bps, the usual default. A taxed
+  // token is different (the router compares a pre-tax quote with a post-tax delivery) and keeps its sizing above.
   const slippageBps = fot
     ? Math.max(slipBuy, slipSell)
-    : Math.max(50, Math.ceil(((impactPct || 0) + 0.5) * 100));
+    : 50;
 
   const refusals = [];
   if (backOut == null)
@@ -326,8 +331,8 @@ export async function swapRoute(input, opts = {}) {
         // A quiet hour is not a clean token. The figure above is right for the
         // pools; it is wrong for a taxed token, and this hour cannot tell the
         // two apart. An agent that took 120 bps into a 3% tax would revert.
-        ? 'Covers the pool fee, the price this size moves, and headroom — for the pools alone. No transfer tax could be measured from recent trades in this window, so if this token takes a cut, anything under about 1500 bps reverts; the figure above cannot see that.'
-        : 'Covers the pool fee, the price this size moves, and headroom. Setting it lower does not save money; it fails the trade.'),
+        ? 'For the pools alone: the quote already includes the pool fee and the price this size moves, so the tolerance only covers the price moving before your transaction lands. No transfer tax could be measured from recent trades in this window, so if this token takes a cut, anything under about 1500 bps reverts; the figure above cannot see that.'
+        : 'The quote already includes the pool fee and the price this size moves, so the tolerance only has to cover the price moving before your transaction lands: 50 bps is the usual default. On a deep pool a tighter one (10-30 bps) leaves less room to a sandwich, at the risk of a revert when the price moves first. A wider one costs nothing on a fair fill but is room someone else can take.'),
     refuse_to_trade: refusals,
     // A tax measured on one side only makes the round trip OPTIMISTIC, and the
     // reader has to be told which way the error runs. Silence here would be the

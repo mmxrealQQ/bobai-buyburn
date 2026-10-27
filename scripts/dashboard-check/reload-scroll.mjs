@@ -8,7 +8,11 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { scratchDir } from '../lib/scratch.mjs';
 
-const BASE = process.argv.includes('--local') ? 'http://127.0.0.1:8899' : 'https://brainonbnb.com';
+const ORIGIN = process.argv.includes('--local') ? 'http://127.0.0.1:8899' : 'https://brainonbnb.com';
+// THE LONG PAGE IS /classic NOW (2026-10-27): since the go-live of 27.9. "/" is the Brain page — the terminal and windows,
+// with #library inside a closed window and no 4000 px to scroll — and the sections this guards live on /classic.
+// A path argument checks another page.
+const BASE = ORIGIN + (process.argv.slice(2).find((a) => a.startsWith('/')) || '/classic');
 const PORT = 9700 + (process.pid % 200);
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -80,7 +84,7 @@ check('a plain load starts at the top', plain.y === 0, `scrollY = ${plain.y}`);
 
 const libTop = await evaluate(`Math.round(document.getElementById('library').getBoundingClientRect().top + scrollY)`);
 
-await send('Page.navigate', { url: BASE + '/#library' });
+await send('Page.navigate', { url: BASE + '#library' });
 await settle();
 const deep = await state();
 check('a shared #library link still jumps there', deep.y > libTop - 400 && deep.y > 1000,

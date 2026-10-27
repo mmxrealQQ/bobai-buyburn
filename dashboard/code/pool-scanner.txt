@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7846 lines.
+# one fetch. 6 files, 7847 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3984,6 +3984,7 @@ export async function scan(input, env, timing = null) {
     <div class="sc-hero">
       <h1>What would buying this token <em>really</em> cost?</h1>
       <p class="sc-lead">Paste any BNB Chain token. You get the real cost of a trade at your size, the hidden tax measured from trades that actually happened, and whether the liquidity can be pulled out. Free, no wallet, nothing is sent from your account.</p>
+      <p class="sc-wip">On PancakeSwap? The route that pays most, the fee tier that pays an LP and a check of any V3 position: <a href="/pancakeswap">all PancakeSwap tools in one place</a>.</p>
       <p class="sc-wip"><b>Still being built.</b> Every figure is our own reading of public chain data, never advice and never a judgement on a token. <a href="#sc-note">Read the note</a></p>
       <div class="sc-form">
         <div class="sc-field">

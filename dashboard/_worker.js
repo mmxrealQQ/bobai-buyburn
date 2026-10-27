@@ -1003,7 +1003,7 @@ async function runTool(rawName, args, caller = {}) {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
       try {
-        return await poolScan(m[0].toLowerCase(), WORKER_ENV);
+        return await poolScan(m[0].toLowerCase(), WORKER_ENV, Array.isArray(args?.__timing) ? args.__timing : null);
       } catch (e) {
         // A scan is a few dozen outbound calls, and this account's plan cuts
         // them off at fifty per request. Measured: 16 for a single-venue token,
@@ -2073,15 +2073,18 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         if (lim?.grant) Object.assign(headers, lim.grant);   // bought with this scan: the pass and the receipt go back with the answer
       }
       try {
+        // the phases of a pool scan, for our own calls only (2026-10-27: CAKE 8-13 s): X-Scan-Timing
+        const scanTiming = WITH_ADDRESS[url.pathname] === 'bsc_pool_scan' && env.HIT_SECRET && request.headers.get('x-hit-secret') === env.HIT_SECRET ? [] : null;
         const out = WITH_ADDRESS[url.pathname]
           // The size is part of the question (2026-09-18): llms.txt, skill.md and
           // the tool descriptions all document ?usd= and ?capitalUsd=, the stdio
           // MCP server forwards them through this route — and only the address
           // was handed on, so every REST caller was answered for $250 and $1,000.
-          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || url.searchParams.get('token') || url.searchParams.get('pool') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}), ...(url.searchParams.get('quote') != null ? { quote: url.searchParams.get('quote') } : {}) })
+          ? await runTool(WITH_ADDRESS[url.pathname], { ...(scanTiming ? { __timing: scanTiming } : {}), address: url.searchParams.get('address') || url.searchParams.get('token') || url.searchParams.get('pool') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}), ...(url.searchParams.get('quote') != null ? { quote: url.searchParams.get('quote') } : {}) })
           : await runTool(REST_TOOLS[url.pathname], {});
         // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
         // required. The site's own pages read these routes for their figures and get them without it.
+        if (scanTiming) headers['X-Scan-Timing'] = JSON.stringify(scanTiming);
         if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers }); // the site's own pages: the reading alone
         const sold = withWatchOffer(WITH_ADDRESS[url.pathname], out);
         // Which scans the watch can be offered on (2026-10-16), and what the others found (scanShape, 2026-10-17).

@@ -218,7 +218,10 @@ const askGoPlus = (a, env) => gpCached(a, async () => {
 // `env` is optional and only ever carries the GoPlus account key. The Worker
 // passes it; the browser page and the packaged skill call scan(input) with one
 // argument and keep running anonymously.
-export async function scan(input, env) {
+export async function scan(input, env, timing = null) {
+  // WHERE A SCAN SPENDS ITS TIME (2026-10-27: CAKE took 8-13 s, $BOBAI 1.6 s, 1.7 s for CAKE on 18.10.): our own calls
+  // pass an array and get the phases back in a header; nobody else's scan carries or pays for it.
+  const t0 = Date.now(), mark = Array.isArray(timing) ? (label) => timing.push([label, Date.now() - t0]) : () => {};
   // Lowercased at the door, for the reason spelled out in tier-scan.js: every
   // address comparison downstream is a string comparison against a value that
   // came back from `addrAt`, which is lowercase. A checksummed address does not
@@ -375,17 +378,29 @@ export async function scan(input, env) {
   // $75 pool as holding a third of the token's liquidity, with a round trip
   // "returning 1%" — a liquid token that read like a honeypot. The right
   // refusal came only on the calls where DexScreener happened to fail.
+  mark('pool');
   const dsAll = (await venues(token)) || [];
   // PancakeSwap Infinity CL pools no index lists (2026-10-19, infinityFind): found from their keys on chain, sized by
   // the quoter, and put beside the index's pools — named as measured, never as an index figure.
   // Measured even when an index lists the pool: GoPlus listed AEON's $1M pool at $127 (19.10.), and that figure would
   // have decided against it. The larger of the index's figure and the measurement stands.
+  mark('venues');
   if (what.kind !== 'v2pair' && what.kind !== 'v3pool') {
     const ids = (await infinityFind(token).catch(() => [])).slice(0, 3);
-    for (const id of ids) {
+    mark('inf_find:' + ids.length);
+    // the pools measured side by side, applied in their order below (2026-10-27, X-Scan-Timing: one after the other they
+    // were 4.5-7.9 s of CAKE's 6-11 s scan — each is a key read, a price and 26 quoter calls, none needing another)
+    const measured = await Promise.all(ids.map(async (id) => {
       const f = await infinityPool(token, tokDec, bnbUsd, { pair: id, probe: true }).catch(() => null);
-      if (!f) continue;
-      const liq = Math.round(2 * (await infReachUsd(f.pool, tokDec, f.px).catch(() => 0)));
+      mark('inf_pool:' + id.slice(2, 6));
+      const out = f ? { id, f, reach: await infReachUsd(f.pool, tokDec, f.px).catch(() => 0) } : null;
+      mark('inf_reach:' + id.slice(2, 6));
+      return out;
+    }));
+    for (const m of measured) {
+      if (!m) continue;
+      const { id, f } = m;
+      const liq = Math.round(2 * m.reach);
       const listed = Math.max(0, ...dsAll.filter((x) => x.pair === id).map((x) => x.liq || 0), ...(gp.dex || []).filter((x) => String(x.pair || '').toLowerCase() === id).map((x) => parseFloat(x.liquidity) || 0));
       if (!(liq > listed)) continue;
       for (let i = dsAll.length - 1; i >= 0; i--) if (dsAll[i].pair === id) dsAll.splice(i, 1);
@@ -393,6 +408,7 @@ export async function scan(input, env) {
     }
     dsAll.sort((a, b) => b.liq - a.liq);
   }
+  mark('infinity');
   // A deeper PancakeSwap pool the factories were not asked about (2026-10-18,
   // indexedPool): quoted in CAKE, BTCB, SOL… Taken when the index ranks it above
   // the pool found and the chain confirms it holds more. A pasted pool stays.
@@ -407,6 +423,7 @@ export async function scan(input, env) {
     const found = ahead.length ? await indexedPool(token, tokDec, bnbUsd, ahead, pool ? (pool.q || 0) * pool.usd : 0).catch(() => null) : null;
     if (found) { pool = found.pool; hop = found.hop; }
   }
+  mark('indexed');
   const mineKey = pool ? pool.pair.toLowerCase() : null;
   const byPair = new Map();
   for (const x of dsAll || [])
@@ -605,6 +622,7 @@ export async function scan(input, env) {
   // built on a pair's own transfers, does not apply yet and says so instead of answering about the wrong thing.
   const inf = pool.kind === 'inf';
   const agesP = contractAges(inf ? [token] : [pool.pair, token]).catch(() => null);
+  mark('before_tax');
   let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
@@ -626,6 +644,7 @@ export async function scan(input, env) {
     tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
     if (!simMeasured(sim)) sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   }
+  mark(secondTry ? 'tax_sim_retry' : 'tax_sim');
   // GoPlus answers buy_tax:"" for a token it has no figure for. Number("") is 0
   // and 0 is finite: the blank was read as a labelled 0% — "unknown is never
   // zero" broken at the last fallback (2026-09-18). Blank, null and garbage
@@ -709,10 +728,12 @@ export async function scan(input, env) {
   // WHO HOLDS THE LP, WHO TRADES IT (2026-09-27): the LP ledger of a V2 pair
   // (lpCustody) and the swaps the tax read already fetched (readActivity) —
   // side by side, each at most two log reads and a balance batch.
+  mark('ladder_lp');
   const [custody, activity] = await Promise.all([
     pool.kind === 'v2' ? lpCustody({ pair: pool.pair, lpTot, feeTo, gp, head: tax.block }).catch(() => null) : null,
     inf ? null : readActivity(token, pool.pair.toLowerCase(), tokenIs0, pool.kind, tax, pool.usd).catch(() => null),
   ]);
+  mark('custody_activity');
   const ages = await agesP;
   // A pair young enough for its whole LP ledger to be in the log window carries
   // its exact creation block (its first mint); the code search is the fallback.
@@ -737,11 +758,13 @@ export async function scan(input, env) {
   // WHO IS SELLING (2026-09-27, readFlow in scanner-chain.js): the deployer, the
   // top holders and the launch snipers, off the swaps activity already read.
   // Its one log read runs beside the holder read; its one batch after it.
+  mark('ages');
   const [holders, flow] = await Promise.all([
     holdersP,
     inf ? null : readFlow({ token, pair: pool.pair, kind: pool.kind, tokenIs0, activity, holders: holdersP, custody, gp,
       ageToken, agePool, supply, burned, tokDec, quoteUsd: pool.usd, pools: others.map((o) => o.pair) }).catch(() => null),
   ]);
+  mark('holders_flow');
 
   return {
     address: token, name, symbol: symb, quotable: true,

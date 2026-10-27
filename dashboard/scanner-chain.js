@@ -710,12 +710,29 @@ export async function infinityFind(token){
 // How much quote money a pool found this way holds, as far as a trade can reach it: what a sell pays out by the time
 // it has halved the price (the quoter, hook included; the largest probe's payout as a floor when none halves it).
 // Twice that stands in for the index's two-sided figure — said as measured, never as the index's.
+// IN STEPS (2026-10-27, X-Scan-Timing: 1-3.8 s a pool, CAKE's three made its scan 6-11 s). The walk below stops at the
+// first size the pool cannot quote or that halves its price, so the sizes are asked in steps: $20 first, then up to
+// $312k, then the five giants (after a lone $20 quote, below), each step only for a pool the one before did not stop. A quote that fails is the slow
+// kind (it runs the pool dry, ~1.5 s each, measured on two near-empty CAKE pools), and the giants cross the most ticks;
+// a near-empty pool now fails once instead of fourteen times. The answer is the same rung for rung (checked against the
+// one-call version on CAKE's and USDT's pools). All quotes of one step come from one block.
 export async function infReachUsd(pool,tokDec,px){
   const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i));
   const dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
-  const q=await infQuotes(pool,[[pool.tokenIs0,dustT],...probes.map(u=>[pool.tokenIs0,BigInt(Math.floor(u/px*Math.pow(10,tokDec)))])]);
+  const leg=u=>[pool.tokenIs0,BigInt(Math.floor(u/px*Math.pow(10,tokDec)))];
+  // the first size alone, without its marginal twin: a pool that cannot quote $20 holds nothing to reach, and says so
+  // with one failed quote instead of two (the walk's answer for it is 0 either way)
+  const [l0,amt0]=leg(probes[0]);
+  const one=await multicall([call(INF_CL_QUOTER,infQuote(pool.key,l0,amt0))]);
+  if(!(one[0]&&one[0].length>=66))return 0;
+  const q=await infQuotes(pool,[[pool.tokenIs0,dustT],leg(probes[0])]);
   const [d,...r]=q.legs;let best=0;
-  for(const x of r){if(x.out==null)break;best=x.out/1e18*pool.usd;if(x.marg&&d.marg&&x.marg/d.marg<=0.5)break}
+  const walk=list=>{for(const x of list){if(x.out==null)return true;best=x.out/1e18*pool.usd;if(x.marg&&d.marg&&x.marg/d.marg<=0.5)return true}return false};
+  if(walk(r))return best;
+  for(const [a,b] of [[1,7],[7,12]]){
+    const more=await infQuotes(pool,probes.slice(a,b).map(leg));
+    if(walk(more.legs))return best;
+  }
   return best;
 }
 // The quoter answers only the amount out, not the price after. The price after a trade is read as the MARGINAL rate

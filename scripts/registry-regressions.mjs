@@ -20,7 +20,7 @@
 //            operator's row>" sentence, or says there is none.
 // 4 phone    every card outside a fold has proven itself (quotes, paid out) or
 //            is ours; the rest are folded.
-// 5 hero     the "actually answer" share names the scanned total and its date.
+// 5 hero     the "answer" share names how many serve, the scanned total and its date.
 // 6 recency  hire chips say "last delivery …" with a unix-seconds timestamp.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -145,8 +145,9 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
 
 // 5 hero wording
 {
-  const sub = (html.match(/actually answer<\/div><div class="rg-s">([^<]*)</) || [])[1] || '';
-  check('5 hero: the answer share names "of the N scanned <date>"', /of the [\d,]+ scanned \d{1,2} [A-Z][a-z]{2}/.test(sub) && !/last full scan/.test(sub), JSON.stringify(sub));
+  // "actually answer" became "answer" with how many of them serve (2026-10-27, operator's choice "Variante 1", library #102)
+  const sub = (html.match(/class="rg-l">answer<\/div><div class="rg-s">([^<]*)</) || [])[1] || '';
+  check('5 hero: the answer share names how many serve, and "of the N scanned <date>"', /of the [\d,]+ scanned \d{1,2} [A-Z][a-z]{2}/.test(sub) && /[\d,]+ of them serve something at the address they declare/.test(sub) && !/last full scan/.test(sub), JSON.stringify(sub));
 }
 
 // 6 recency

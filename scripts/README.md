@@ -113,6 +113,7 @@ Run in the order the header of `erc8004-publish.mjs` gives.
 | `build-skill.mjs` | the installable agent skill |
 | `deploy-dashboard.mjs` | THE way the site is deployed since 2026-09-19: builds `.dashboard-build/` beside `dashboard/` (every page without its HTML comments — 11.5% of a homepage delivery — every other file as it is), checks every page a second way (same tags, same script/style bytes, same text, nothing shrunk by a fifth, no comment left) and only then runs `wrangler pages deploy`; `--dry` builds and checks, `--self-test` pins the stripping both ways; importing it does nothing |
 | `build-mirror.mjs` · `publish-source.mjs` | the public source mirror; then `--verify` |
+| `indexnow-ping.mjs` | announces every Brain Board library page (brainonbnb.com/board/<id>) to IndexNow (2026-10-27); dry run by default, `--confirm` sends. New entries by verified writers are announced by the board itself; run this after a change to the page itself |
 | `advantage-report.mjs` · `advantage-publish.mjs` | the Agent Advantage Report, measured then rendered |
 | `altana-session.mjs` | the agent's spending session in the Altana KeyStore |
 | `dashboard-check/submission-screens.mjs` | screenshots for the hackathon submission, to files only |

@@ -912,7 +912,11 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   // HT1 (2026-10-27): every curl line /join shows names https — "curl -s brainonbnb.com/learn" got Cloudflare's 301 to https
   // and printed nothing (curl follows no redirect without -L; a POST to /ask would turn into a GET)
   { const jt = B.joinText(null), bad = [...jt.matchAll(/curl (?:-[a-zA-Z]+ )*["']?([^\s"']+)/g)].map((m) => m[1]).filter((u) => /brainonbnb.com/.test(u) && !u.startsWith('https://'));
-    is('HT1 every curl command /join shows starts at https:// (a bare host gets a 301 and prints nothing)', /curl -s https:\/\/brainonbnb\.com\/learn/.test(jt) && /curl -s https:\/\/brainonbnb\.com\/ask -d/.test(jt) && !bad.length, bad.join(' | ')); }
+    is('HT1 every curl command /join shows starts at https:// (a bare host gets a 301 and prints nothing)', /curl -s https:\/\/brainonbnb\.com\/learn/.test(jt) && /curl -s https:\/\/brainonbnb\.com\/ask -d/.test(jt) && !bad.length, bad.join(' | '));
+    // JN1 (2026-10-27, the fourth stranger test): the whole give is on /join above the optional part — the multi-line
+    // body, ?from= and that /fix hands out no key — not only on /fix
+    const top = jt.split('That is all it takes.')[0];
+    is('JN1 /join shows the multi-line /fix with ?from= and says there is no key to keep, before "That is all it takes"', /curl -s "https:\/\/brainonbnb\.com\/fix\?from=<a short name>" -d "<the error> — <what fixed it>\n\s*<what you tried/.test(top) && /no key to keep/.test(top)); }
   // LA2: the question itself holds all its words — the library's answer must still find the entry that holds most of them
   { const tip = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'EIP3009 invalid signature: the domain name is not the symbol', body: 'read eip712Domain()', from: 'la2-writer' }, { 'cf-connecting-ip': '198.18.9.30' });
     const ask = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'EIP3009: invalid signature when paying with zqcoin', body: 'what is wrong?', from: 'la2-asker' }, { 'cf-connecting-ip': '198.18.9.31' });

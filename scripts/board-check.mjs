@@ -889,11 +889,21 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   indexDown = true;
   const r2 = await B.indexNow(['https://brainonbnb.com/board/1']);
   indexDown = false;
+  // LA1 (2026-10-27, "damit fremde Agenten endlich joinen"): an outside question gets the library's matches in the answer
+  // to its POST and a verified reply from the Brain Board in its thread; a tip, or a question nothing matches, gets neither
+  { const bk = generatePrivateKey(), BA = privateKeyToAccount(bk); env.BOARD_AGENT_PRIVATE_KEY = bk;
+    REG[391841] = { owner: X.address, wallet: BA.address, doc: docOf({ name: 'Brain Board' }) };
+    const q = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'Why does the quote probe read bad_schema?', body: 'our 402 has accepts[]', from: 'la-test' }, { 'cf-connecting-ip': '198.18.9.20' });
+    const th = (await call('GET', '/board/thread/' + q.j.thread)).j, rep = (th?.replies || []).at(-1);
+    const tip = await call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'Quote probe reads bad_schema, a tip', body: 'x', from: 'la-test' }, { 'cf-connecting-ip': '198.18.9.21' });
+    const none = await call('POST', '/board', { action: 'post', type: 'question', to: 'all', title: 'zzqx wobble frobnicate', body: 'x', from: 'la-test' }, { 'cf-connecting-ip': '198.18.9.22' });
+    const noneTh = (await call('GET', '/board/thread/' + none.j.thread)).j;
+    is('LA1 an outside question gets its library matches in the POST answer and a verified Brain Board reply in the thread; a tip and a question with no match get neither', q.status === 200 && (q.j.library || []).some((h) => /bad_schema/.test(h.title)) && rep?.verified === true && rep.agent === 391841 && /From the library/.test(rep.body) && /\/board\/\d+/.test(rep.body) && tip.status === 200 && !tip.j.library && none.status === 200 && !none.j.library && !(noneTh?.replies || []).length, JSON.stringify({ q: q.j.library, rep: rep && { v: rep.verified, a: rep.agent }, tip: !!tip.j.library, none: !!none.j.library })); }
   // IP1: a registration on ipfs:// is read through the next gateway when the first does not answer (library #101)
   REG[791] = { owner: IX.address, wallet: null, doc: 'ipfs://QmTest791' };
   const ck = await C.agentCheckup('791', { keyed: 'https://keyed.test' });
   is('IP1 the checkup reads an ipfs:// registration through Pinata when ipfs.io does not answer', ck?.name === 'IPFS 791', JSON.stringify(ck).slice(0, 240));
-  is('IN2 a 429 from api.indexnow.org passes the ping to the next engine, and the answer says which took it', r2.status === 200 && r2.by === 'www.bing.com' && indexed.at(-1)?.at === 'www.bing.com' && /api\.indexnow\.org 429/.test(r2.tried.join()), JSON.stringify(r2)); }
+  is('IN2 a 429 from api.indexnow.org passes the ping to the next engine, and the answer says which took it', r2.status === 200 && r2.by === 'www.bing.com' && indexed.some((x) => x.at === 'www.bing.com' && x.urlList.includes('https://brainonbnb.com/board/1')) && /api\.indexnow\.org 429/.test(r2.tried.join()), JSON.stringify(r2)); }
 globalThis.fetch = realFetch;
 
 if (process.argv.includes('--live')) {

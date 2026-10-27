@@ -84,12 +84,19 @@ function fetcherFor(id, self, deadline) {
   };
 }
 
+export const CHECKUP_IPFS_GATEWAYS = ['https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/', 'https://w3s.link/ipfs/', 'https://dweb.link/ipfs/'];
 // The registration document, whatever form it takes.
 async function registration(uri, get) {
   if (!uri) return { error: 'no tokenURI' };
   try {
     if (uri.startsWith('data:application/json')) { const b = uri.slice(uri.indexOf(',') + 1); return { doc: JSON.parse(/;base64,/.test(uri) ? new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))) : decodeURIComponent(b)), inline: true }; }
-    if (/^ipfs:\/\//.test(uri)) { const r = await get('https://ipfs.io/ipfs/' + uri.slice(7)); return r.json ? { doc: r.json } : { error: `the ipfs document did not load (${r.status || r.error})` }; }
+    // MORE THAN ONE GATEWAY (2026-10-27, library #101): ipfs.io alone told an agent "did not load" whenever that gateway
+    // was down — measured that day it answered none of 30 registrations, not even a control CID; Pinata served 26
+    if (/^ipfs:\/\//.test(uri)) {
+      const cid = uri.replace(/^ipfs:\/\/(ipfs\/)?/i, ''), tried = [];
+      for (const g of CHECKUP_IPFS_GATEWAYS) { const r = await get(g + cid); if (r.json) return { doc: r.json }; tried.push(`${new URL(g).host} ${r.status || r.error}`); }
+      return { error: `the ipfs document did not load from any of ${CHECKUP_IPFS_GATEWAYS.length} gateways (${tried.join('; ').slice(0, 160)})` };
+    }
     if (/^https:\/\//.test(uri)) { const r = await get(uri); return r.json ? { doc: r.json } : { error: `${uri.slice(0, 80)} answered ${r.status || r.error}, not JSON` }; }
   } catch (e) { return { error: 'the document is not JSON: ' + String(e.message || e).slice(0, 80) }; }
   return { error: `unsupported tokenURI scheme: ${uri.slice(0, 30)}` };

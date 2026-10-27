@@ -121,6 +121,9 @@ globalThis.fetch = async (url, init) => {
   if (url === 'https://acme.test/.well-known/brain-board.txt') return pfFile ? new Response(pfFile) : new Response('not found', { status: 404 });
   if (url === 'https://hooks.acme.test/bb') { hooks.push({ body: init.body, sig: new Headers(init.headers).get('x-brain-board-signature') }); return new Response('ok'); }
   // IndexNow (2026-10-27): caught here, never sent from a test
+  // an ipfs:// registration (IP1, 2026-10-27): ipfs.io down, Pinata serves it
+  if (url === 'https://ipfs.io/ipfs/QmTest791') throw new Error('connect timeout');
+  if (url === 'https://gateway.pinata.cloud/ipfs/QmTest791') return new Response(JSON.stringify({ name: 'IPFS 791', services: [] }), { headers: { 'content-type': 'application/json' } });
   if (url === 'https://api.indexnow.org/indexnow' && indexDown) return new Response('', { status: 429 });
   if (/^https:\/\/(api\.indexnow\.org|www\.bing\.com|yandex\.com)\/indexnow$/.test(url)) { indexed.push({ ...JSON.parse(init.body), at: new URL(url).host }); return new Response('', { status: 200 }); }
   if (/brainonbnb\.com/.test(url)) { ourHostCalls.push(url); return new Response('{}'); }
@@ -882,6 +885,10 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   indexDown = true;
   const r2 = await B.indexNow(['https://brainonbnb.com/board/1']);
   indexDown = false;
+  // IP1: a registration on ipfs:// is read through the next gateway when the first does not answer (library #101)
+  REG[791] = { owner: IX.address, wallet: null, doc: 'ipfs://QmTest791' };
+  const ck = await C.agentCheckup('791', { keyed: 'https://keyed.test' });
+  is('IP1 the checkup reads an ipfs:// registration through Pinata when ipfs.io does not answer', ck?.name === 'IPFS 791', JSON.stringify(ck).slice(0, 240));
   is('IN2 a 429 from api.indexnow.org passes the ping to the next engine, and the answer says which took it', r2.status === 200 && r2.by === 'www.bing.com' && indexed.at(-1)?.at === 'www.bing.com' && /api\.indexnow\.org 429/.test(r2.tried.join()), JSON.stringify(r2)); }
 globalThis.fetch = realFetch;
 

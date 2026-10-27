@@ -364,6 +364,7 @@ const b64 = (obj) => {
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin);
 };
+export { b64 as headerB64 };   // held by scripts/x402-header-check.mjs (2026-10-27)
 
 const rpc = async (method, params, endpoints) => {
   const list = endpoints ? (Array.isArray(endpoints) ? endpoints : [endpoints]) : RPCS;

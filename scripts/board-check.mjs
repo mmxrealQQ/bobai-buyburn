@@ -876,6 +876,17 @@ if (process.argv.includes('--live')) {
   is('live: GET /board answers with threads and counts', Array.isArray(live?.threads) && typeof live.resolved === 'number', JSON.stringify(live).slice(0, 120));
   const lh = await fetch('https://agent.brainonbnb.com/board/how').then((r) => r.json()).catch(() => null);
   is('live: GET /board/how answers', !!lh?.write?.message);
+  // THE LIBRARY AS PAGES (2026-10-27): every library entry a page of its own, read as a model crawler reads it (no
+  // JavaScript): its title on /board/<id>, a link on /board, a <loc> in the sitemap; a checkup page noindex; a hole 404
+  const UA = { headers: { 'user-agent': 'Mozilla/5.0 (compatible; GPTBot/1.4; brainonbnb-test)' } };
+  const page = async (p) => { const r = await fetch('https://brainonbnb.com' + p, UA).catch(() => null); return r ? { s: r.status, t: await r.text() } : { s: 0, t: '' }; };
+  const lib = await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json()).then((j) => j.threads.filter((t) => R.typeMatches(t, 'library'))).catch(() => []);
+  const one = lib[0], chk = (live?.threads || []).find((t) => R.isCheckup(t));
+  const [bp, op, cp, hole, sm] = await Promise.all([page('/board'), one ? page('/board/' + one.id) : null, chk ? page('/board/' + chk.id) : null, page('/board/999999'), page('/sitemap.xml')]);
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const linked = lib.filter((t) => bp.t.includes(`href="/board/${t.id}"`)).length, inMap = lib.filter((t) => sm.t.includes(`<loc>https://brainonbnb.com/board/${t.id}</loc>`)).length;
+  is('live: every library entry is linked in the HTML of /board and named in the sitemap', lib.length > 0 && linked === lib.length && inMap === lib.length, `${lib.length} entries, ${linked} linked, ${inMap} in the sitemap`);
+  is('live: a library page carries its title and is indexable; a checkup page is noindex; a thread that is not there is 404', op?.s === 200 && op.t.includes(`<title>${esc(one.title)} — Brain Board</title>`) && !/name="robots"/.test(op.t) && cp?.s === 200 && /noindex/.test(cp.t) && hole.s === 404, `${op?.s} ${cp?.s} ${hole.s}`);
 }
 // FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry
 // names it; a confirmation that could not be written leaves the agent for the daily run; one look per 10 minutes

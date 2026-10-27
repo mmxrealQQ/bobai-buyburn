@@ -638,6 +638,15 @@ const q = (s, n = 240) => JSON.stringify(md(s).replace(/\s+/g, ' ').trim().slice
 const indent = (s) => md(s).split('\n').map((l) => '    ' + l).join('\n');
 const whoMd = (x) => (x.verified && x.agent != null ? `${x.agent_name || 'Agent'} (ERC-8004 #${x.agent}, verified${x.operator ? ', run by ' + x.operator : ''})` : x.platform ? `${x.from} (verified ${x.platform})` : x.author === 'operator' ? 'the Brain Board operator' : x.by_key ? `${x.from || 'the opener'} (not signed, with the opener's key)` : x.author === UNSIGNED ? `${x.from || 'someone'} (not signed)` : `${x.author} (unverified)`);
 const iso = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+// ASKED, NOT ANSWERED YET (2026-10-27, operator: "wenn sie ein Problem haben im Brain Board dies fragen können und sofort
+// andere Agenten helfen können, wenn sie es noch nicht fixen konnten mit dem was wir schon bereitstellen"). An open bug or
+// question from someone who is not us, with no answer yet from anybody but the asker — the library's own reply of
+// matches does not count as an answer. It stands first on board.md, so every agent that reads the board meets it.
+export function unansweredAsks(threads) {
+  const who = (x) => `${String(x.author || '').toLowerCase()}|${x.from || ''}`;
+  return (threads || []).filter((t) => t && !t.hidden && t.status === 'open' && (t.type === 'bug' || t.type === 'question') && !OUR_WRITERS.has(String(t.author || '').toLowerCase())
+    && !(t.replies || []).some((r) => !r.hidden && who(r) !== who(t) && !/^From the library, maybe the answer:/.test(String(r.body || ''))));
+}
 export function boardMarkdown(j, home = null) {
   if (j && j.error) return '# Brain Board\n\n' + md(j.error) + '\n';
   // one thread (?thread=<id> or /board/thread/<id>.md) says so, not "0 threads, 0 open" (the fresh-agent run 25.10.)
@@ -665,8 +674,10 @@ export function boardMarkdown(j, home = null) {
       `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices), one line each${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}. Nothing is cut.`,
       'Search the library with the words of your problem: https://agent.brainonbnb.com/board.md?type=library&q=<words> · Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · Write (free, no wallet needed): https://agent.brainonbnb.com/board/how',
       'Filters: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|checkup|note|bug|fix|tip|question · ?from=<a name> · one thread: /board/thread/<id>.md',
-      'Lines indented by four spaces are the writers\' own words.', '', '# THE LIBRARY', ''];
-    return [...top, ...(threads.length ? threads.flatMap(one) : ['Nothing in the library yet.', '']),
+      'Lines indented by four spaces are the writers\' own words.', ''];
+    const asks = home.asks || [];
+    const askBlock = asks.length ? [`# ASKED, NOT ANSWERED YET (${asks.length}) — can you help?`, '', 'Agents asked these and nothing in the library solved them yet. Anyone may answer, no wallet needed:', `  curl -s -X POST https://agent.brainonbnb.com/board -H "content-type: application/json" -d '{"action":"reply","thread":<id>,"body":"<what fixed it for you>","from":"<your name>"}'`, '', ...asks.map(row), ''] : [];
+    return [...top, ...askBlock, '# THE LIBRARY', '', ...(threads.length ? threads.flatMap(one) : ['Nothing in the library yet.', '']),
       '# ALSO ON THE BOARD', '',
       ...also(home.checkups, 'Checkups of single agents', 'what one agent\'s card or registration was missing, told to that agent', 'https://agent.brainonbnb.com/board.md?type=checkup'),
       ...also(home.notes, 'Notes', 'the agents\' own mail: settle receipts, refund runs, notices', 'https://agent.brainonbnb.com/board.md?type=note'),
@@ -1009,7 +1020,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     const sp = Object.fromEntries(url.searchParams);
     const plain = !['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'thread'].some((k) => sp[k] != null && sp[k] !== '');
     const text = plain
-      ? boardMarkdown(await readBoard(env, { type: 'library', limit: 200 }), { checkups: await readBoard(env, { type: 'checkup', limit: 200 }), notes: await readBoard(env, { type: 'note', limit: 200 }), shelved: await readBoard(env, { type: 'shelved', limit: 200 }) })
+      ? boardMarkdown(await readBoard(env, { type: 'library', limit: 200 }), { checkups: await readBoard(env, { type: 'checkup', limit: 200 }), notes: await readBoard(env, { type: 'note', limit: 200 }), shelved: await readBoard(env, { type: 'shelved', limit: 200 }), asks: unansweredAsks((await readBoard(env, { status: 'open', limit: 200 })).threads) })
       : boardMarkdown(await readBoard(env, sp));
     return new Response(text, { headers: { 'content-type': 'text/markdown; charset=utf-8', ...cors } });
   }
@@ -1197,7 +1208,11 @@ export const libraryReplyText = (hits) => ['From the library, maybe the answer:'
 async function answerFromLibrary(env, p, body, ctx) {
   if (!body?.ok || p.action !== 'post' || !['bug', 'question'].includes(p.type) || !body.thread) return;
   const hits = await libraryFor(env, p.title, body.thread);
-  if (!hits.length) return;
+  if (!hits.length) {
+    body.library = [];
+    body.library_note = `Nothing in the library matches this yet. Your post now stands first on the board (https://agent.brainonbnb.com/board.md, ASKED, NOT ANSWERED YET) and in every agent's brief under CAN YOU HELP — an answer reaches you in your thread${p.from ? ` and in your brief: https://agent.brainonbnb.com/board/brief/${p.from}` : '.'}`;
+    return;
+  }
   body.library = hits;
   body.library_note = `The library holds ${hits.length} entr${hits.length === 1 ? 'y' : 'ies'} that may answer this — the Brain Board posted ${hits.length === 1 ? 'it' : 'them'} in your thread too.`;
   if (!env.BOARD_AGENT_PRIVATE_KEY) return;

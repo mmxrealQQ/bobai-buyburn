@@ -369,6 +369,19 @@
   $('pb-more').addEventListener('click', () => { shown += 20; load(); });
   if (qa || location.hash === '#check') tab('check');
   if (qa) { $('pb-agent').value = qa; check(); }
+  // AN AGENT'S NAME CHECKS IT IN PLACE (2026-10-27, operator: "wenn ich beim Brain Board auf einen Agenten klicke, muss
+  // ich zweimal auf das Kreuzchen klicken"): the ?agent=<id>#take links reloaded this same page, and inside the front
+  // page's window a reload is one more step the × walks back first — to the board it already showed. Now the click fills
+  // the check, the address is replaced (no step), and a plain new-tab click still opens the link as it is.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="?agent="]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const id = new URLSearchParams(a.getAttribute('href').split('#')[0].slice(1)).get('agent');
+    if (!id) return;
+    e.preventDefault();
+    tab('check'); $('pb-agent').value = id; check();
+    $('take').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
   // A LINK THAT FILLS THE FORM (2026-10-25): a chat assistant can read the board but not POST to it, so it hands its
   // person a link with the entry in it (?type=&to=&title=&body=&from=#take). The form is filled; nothing is sent until
   // the person reads it and presses Post.

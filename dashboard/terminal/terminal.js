@@ -1763,6 +1763,7 @@ function speak(text, ms = 5200) {
   };
   if (grace) setTimeout(show, grace); else show();
 }
+let sayFloor = null; // { id: the line, top: px } — a line moved below a board's title keeps that place to its end
 function placeBubble() {
   if (!bubble.classList.contains('on')) return;
   if (performance.now() > LIFE.sayUntil) { bubble.classList.remove('on'); win.classList.remove('talking'); underBubble(true); return; }
@@ -1787,7 +1788,17 @@ function placeBubble() {
   const edge = portrait ? wr.width - 12 : Math.min(wr.width - 12, D.burnA.el.getBoundingClientRect().left - wr.left - 16);
   bubble.style.maxWidth = Math.max(170, Math.min(300, edge - x)) + 'px';
   bubble.style.left = clamp(x, 12, edge - (bubble.offsetWidth || 220)) + 'px';
-  bubble.style.top = Math.max(56, y - (bubble.offsetHeight || 40)) + 'px';
+  let top = Math.max(56, y - (bubble.offsetHeight || 40));
+  // UNDER THE BOARD'S TITLE (2026-10-27, operator: "war gerade komisch mit dem Burn"; burnflow: the burn line, why and
+  // next included, is five sentences, and the bubble grew upward over "BIG BURN" and its date line — both unreadable):
+  // while a moment is up, his line starts below the moment's title and grows down beside his head
+  if (win.classList.contains('in-moment')) {
+    const h = win.querySelector('.moment.go .h'), hb = h && h.offsetParent !== null ? h.getBoundingClientRect().bottom - wr.top : 0;
+    if (hb > 0) { top = Math.max(top, hb + 10); sayFloor = { id: typing, top }; }
+  }
+  // the same line stays where it stood when the board goes (it jumped up mid-sentence at the board's end)
+  if (sayFloor && sayFloor.id === typing) top = Math.max(top, sayFloor.top);
+  bubble.style.top = top + 'px';
   underBubble();
 }
 // the bots' names orbit his head, right where the bubble sits: one that passes under it steps back for those seconds

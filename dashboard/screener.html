@@ -28,6 +28,15 @@
   .bar input[type=search]{flex:1 1 260px;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:inherit;padding:10px 13px;font:inherit}
   .chipb{border:1px solid var(--border);border-radius:999px;padding:7px 12px;font:600 12.5px Inter,sans-serif;color:var(--muted);background:none;cursor:pointer}
   .chipb[aria-pressed=true]{color:#0b090a;background:var(--gold);border-color:var(--gold)}
+  /* PAGES (2026-10-28, operator: "screener paging"): 100 agents as cards made the phone page 27,000 px tall; 20 a page on a
+     phone, 50 on a desktop, the way through under the table */
+  .scr-pg{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:14px 0 4px}
+  .scr-pg button{min-width:38px;height:36px;padding:0 11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:inherit;font:600 13px Inter,sans-serif;cursor:pointer;font-variant-numeric:tabular-nums}
+  .scr-pg button:hover:not(:disabled){border-color:var(--gold)}
+  .scr-pg button[aria-current=page]{background:var(--gold);border-color:var(--gold);color:#0b090a}
+  .scr-pg button:disabled{opacity:.35;cursor:default}
+  .scr-pg .gap{color:var(--muted);padding:0 2px}
+  .scr-pg .of{flex-basis:100%;text-align:center;color:var(--muted);font-size:12.5px;margin-top:2px}
   /* ALL TWELVE COLUMNS IN ONE VIEW (operator, 2026-10-19: Delivered, Earned, Price and Speaks sat off to the right and the
      sideways scrollbar only appeared under the last row). Tighter columns fit a window of ~1000 px; narrower than the
      table, the box keeps its own height so its scrollbar is always on screen, the header row staying on top. */
@@ -143,7 +152,7 @@
         </tr></thead>
         <tbody id="tb"><tr><td class="tl" colspan="12">Reading every agent…</td></tr></tbody>
       </table></div>
-      <button class="btn more" id="more" hidden>Show more</button>
+      <div class="scr-pg" id="pg" role="navigation" aria-label="Pages of the screener"></div>
       <p class="muted" id="foot"></p>
     </div>
   </section>
@@ -158,7 +167,7 @@
 <script>
 (function(){
   var A='https://agent.brainonbnb.com',esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
-  var all=[],F=[],shown=100,sortK='score',sortD=-1,cat='',flags={},q='';
+  var all=[],F=[],page=0,sortK='score',sortD=-1,cat='',flags={},q='';
   // a verified listing shows its logo (a.logo, https only, set by the worker); a logo that fails to load falls back to the letter
   var av=function(a,ini,tag){return a.logo?'<'+tag+' class="ini lg"><img src="'+esc(a.logo)+'" alt="" width="30" height="30" loading="lazy" decoding="async" data-l="'+ini+'" onerror="var p=this.parentNode;p.className=&quot;ini&quot;;p.textContent=this.dataset.l"></'+tag+'>':'<'+tag+' class="ini">'+ini+'</'+tag+'>'};
   var num=function(v){return v==null?-1:typeof v==='string'?parseFloat(v)||0:v};
@@ -192,6 +201,18 @@
     return true;
   }
   function spark(s){return '<span class="sp" title="last 14 days: green up, red down, grey not measured">'+String(s||'').split('').map(function(c){return '<i class="'+(c==='1'?'u':c==='0'?'d':'')+'"></i>'}).join('')+'</span>'}
+  // the page size follows the screen: the phone's cards are tall, the desktop's rows are not
+  function PS(){return innerWidth<=640?20:50}
+  // first, last, the current one and its neighbours, gaps between; 'Prev' and 'Next' at the ends, the place in words under them
+  function pager(n,ps,pages,from){
+    var el=document.getElementById('pg');if(!n){el.innerHTML='';return}
+    var nums=[],b=function(p,t,lab){return '<button type="button" data-p="'+p+'"'+(p===page&&t==null?' aria-current="page"':'')+(lab?' aria-label="'+lab+'"':'')+((t!=null&&(p<0||p>=pages))?' disabled':'')+'>'+(t!=null?t:p+1)+'</button>'};
+    for(var p=0;p<pages;p++)if(p===0||p===pages-1||Math.abs(p-page)<=1)nums.push(p);
+    var h=b(page-1,'‹ Prev','Previous page'),last=-1;
+    nums.forEach(function(p){if(p-last>1)h+='<span class="gap">…</span>';h+=b(p);last=p});
+    h+=b(page+1,'Next ›','Next page');
+    el.innerHTML=(pages>1?h:'')+'<span class="of">'+(from+1)+'–'+Math.min(n,from+ps)+' of '+n.toLocaleString('en-US')+' agents</span>';
+  }
   function draw(){
     var list=all.filter(pass).sort(function(x,y){
       if(sortK==='name')return sortD*(x.name>y.name?1:-1);
@@ -202,24 +223,28 @@
       var a=num(va),b=num(vb);
       return (a===b?(num(y.outside_jobs)-num(x.outside_jobs))||(x.id-y.id):sortD*(a-b));
     });
-    var body=list.slice(0,shown).map(function(a,i){
+    var ps=PS(),pages=Math.max(1,Math.ceil(list.length/ps));if(page>=pages)page=pages-1;var from=page*ps;
+    var body=list.slice(from,from+ps).map(function(a,i){
       var ini=esc((a.name||'#').trim().charAt(0).toUpperCase()||'#');
-      return '<tr data-id="'+a.id+'"><td class="tl dim">'+(i+1)+'</td><td class="tl"><div class="ag">'+av(a,ini,'div')+'<div style="min-width:0"><a class="nm" href="/agent/'+a.id+'" title="'+esc(a.name||('Agent #'+a.id))+'">'+esc((a.ours?String(a.name||'').replace(/^Brain on BNB — /,''):a.name)||('Agent #'+a.id))+'</a><small>#'+a.id+(a.ours&&a.listed?'<span class="tg v" title="Brain On BNB&rsquo;s own agent, not a paid listing; the badge stays while our daily check finds it answering">ours · '+(a.listed==='verified'?'✓ maintained':'paused')+'</span>':a.listed?'<span class="tg v"'+(a.listed==='builder'?' title="the wallet that listed it still owns the id, and it answers our daily check"':'')+'>'+(a.listed==='builder'?'✓ verified builder':a.listed==='verified'?'✓ listed':'listed · paused')+'</span>':'')+(a.ours&&!a.listed?'<span class="tg o">Brain On BNB</span>':'')+'</small></div></div></td>'
+      return '<tr data-id="'+a.id+'"><td class="tl dim">'+(from+i+1)+'</td><td class="tl"><div class="ag">'+av(a,ini,'div')+'<div style="min-width:0"><a class="nm" href="/agent/'+a.id+'" title="'+esc(a.name||('Agent #'+a.id))+'">'+esc((a.ours?String(a.name||'').replace(/^Brain on BNB — /,''):a.name)||('Agent #'+a.id))+'</a><small>#'+a.id+(a.ours&&a.listed?'<span class="tg v" title="Brain On BNB&rsquo;s own agent, not a paid listing; the badge stays while our daily check finds it answering">ours · '+(a.listed==='verified'?'✓ maintained':'paused')+'</span>':a.listed?'<span class="tg v"'+(a.listed==='builder'?' title="the wallet that listed it still owns the id, and it answers our daily check"':'')+'>'+(a.listed==='builder'?'✓ verified builder':a.listed==='verified'?'✓ listed':'listed · paused')+'</span>':'')+(a.ours&&!a.listed?'<span class="tg o">Brain On BNB</span>':'')+'</small></div></div></td>'
         +'<td><span class="sb"><i><b style="width:'+a.score+'%"></b></i>'+a.score+'</span></td><td class="tl">'+spark(a.spark14)+'</td>'
         +'<td>'+(a.uptime_30d==null?'<span class="dim">—</span>':a.uptime_30d+'%')+'</td><td>'+(a.median_ms==null?'<span class="dim"'+(a.ours?' title="Our own agent: our check reaches it inside our own server, so its time would not be a response time and is left out"':'')+'>—</span>':a.median_ms<1000?a.median_ms+' ms':(a.median_ms/1000).toFixed(1)+' s')+'</td>'
         +'<td>'+(a.outside_jobs||'<span class="dim">0</span>')+'</td><td>'+(a.outside_buyers||'<span class="dim">0</span>')+'</td><td>'+(a.outside_delivery_pct==null?'<span class="dim">—</span>':a.outside_delivery_pct+'%')+'</td>'
         +'<td>'+(a.earned_u?a.earned_u+' $U':'<span class="dim">0</span>')+'</td><td>'+(a.quote?esc(a.quote):'<span class="dim">—</span>')+'</td><td class="tl dim spk">'+a.speaks.join(' ').toUpperCase()+'</td></tr>';
     }).join('');
     document.getElementById('tb').innerHTML=body||'<tr><td class="tl" colspan="12">No agent matches these filters.</td></tr>';
-    var m=document.getElementById('more'); m.hidden=list.length<=shown; m.textContent='Show more ('+(list.length-shown)+' more)';
+    pager(list.length,ps,pages,from);
     document.querySelectorAll('th[data-k]').forEach(function(th){th.setAttribute('aria-sort',th.dataset.k===sortK?(sortD<0?'descending':'ascending'):'none')});
   }
   document.getElementById('tb').addEventListener('click',function(e){var tr=e.target.closest('tr[data-id]');if(tr&&!e.target.closest('a'))location.href='/agent/'+tr.dataset.id});
-  document.querySelectorAll('th[data-k]').forEach(function(th){th.addEventListener('click',function(){var k=th.dataset.k;if(sortK===k)sortD=-sortD;else{sortK=k;sortD=(k==='name'||k==='median_ms')?1:-1}draw()})});
-  document.querySelectorAll('[data-cat]').forEach(function(b){b.addEventListener('click',function(){cat=b.dataset.cat;document.querySelectorAll('[data-cat]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});shown=100;draw()})});
-  document.querySelectorAll('[data-f]').forEach(function(b){b.addEventListener('click',function(){var on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on?'true':'false');flags[b.dataset.f]=on;shown=100;draw()})});
-  var t;document.getElementById('q').addEventListener('input',function(e){clearTimeout(t);t=setTimeout(function(){q=e.target.value.trim();shown=100;draw()},150)});
-  document.getElementById('more').addEventListener('click',function(){shown+=200;draw()});
+  document.querySelectorAll('th[data-k]').forEach(function(th){th.addEventListener('click',function(){var k=th.dataset.k;if(sortK===k)sortD=-sortD;else{sortK=k;sortD=(k==='name'||k==='median_ms')?1:-1}page=0;draw()})});
+  document.querySelectorAll('[data-cat]').forEach(function(b){b.addEventListener('click',function(){cat=b.dataset.cat;document.querySelectorAll('[data-cat]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});page=0;draw()})});
+  document.querySelectorAll('[data-f]').forEach(function(b){b.addEventListener('click',function(){var on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on?'true':'false');flags[b.dataset.f]=on;page=0;draw()})});
+  var t;document.getElementById('q').addEventListener('input',function(e){clearTimeout(t);t=setTimeout(function(){q=e.target.value.trim();page=0;draw()},150)});
+  // a page turn goes to the top of the table, so the next page starts where the eye is
+  document.getElementById('pg').addEventListener('click',function(e){var x=e.target.closest('button[data-p]');if(!x||x.disabled)return;page=+x.dataset.p;draw();var tw=document.querySelector('.tw');if(tw){tw.scrollTop=0;var y=tw.getBoundingClientRect().top+scrollY-90;if(scrollY>y)scrollTo({top:y,behavior:'smooth'})}});
+  // crossing the phone/desktop line keeps the first agent shown on the page it lands on
+  var lastPS=PS();addEventListener('resize',function(){var n=PS();if(n!==lastPS){page=Math.floor(page*lastPS/n);lastPS=n;draw()}});
 })();
 </script>
 </body>

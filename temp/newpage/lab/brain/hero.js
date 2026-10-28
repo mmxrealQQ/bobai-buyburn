@@ -18,7 +18,10 @@
   function w01(win) {
     const c = N().chain; if (!c || !c.priceUsd) return;
     const dead = c.bobaiDead || 0, circ = 1e9 - dead;
-    strip(win).innerHTML = fig('PRICE', '$' + c.priceUsd.toPrecision(4)) + fig('MARKET CAP', '$' + nf(c.priceUsd * circ)) + fig('BURNED FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', 1) + fig('CIRCULATING', cmp(circ) + ' BOBAI' + usdAt(circ, c.priceUsd))
+    // ONE PRICE ON THE PAGE (2026-10-28: header $0.00033112, window 01 $0.0003310, terminal $0.00033105): the terminal's
+    // live read and the chart's formatting, as the buy line; this page's own read only until the terminal has one
+    let q = null; try { q = window.__btQuote && window.__btQuote(); } catch (e) {}
+    strip(win).innerHTML = fig('PRICE', q ? q.price : '$' + c.priceUsd.toPrecision(5)) + fig('MARKET CAP', q ? q.mc : '$' + nf(c.priceUsd * circ)) + fig('BURNED FOR GOOD', (dead / 1e9 * 100).toFixed(2) + '%', 1) + fig('CIRCULATING', cmp(circ) + ' BOBAI' + usdAt(circ, c.priceUsd))
       + `<div class="hd"><div class="ht">THE SUPPLY · 1,000,000,000 BOBAI${usdAt(1e9, c.priceUsd)}</div><div class="sup"><i style="width:${dead / 1e7}%;background:linear-gradient(90deg,#ff7a3d,#ffb46b);box-shadow:0 0 12px #ff7a3d"></i><i style="flex:1;background:linear-gradient(90deg,rgba(240,185,11,.55),rgba(240,185,11,.25))"></i></div><div class="sup-k"><span>🔥 ${nf(dead)} at the dead address · ≈$${nf(dead * c.priceUsd)}</span><span>${nf(circ)} circulating</span></div></div>`;
   }
   // 02 TOKENOMICS: the 3% of every trade as one ring, every share of the table in force
@@ -114,5 +117,11 @@
     const id = e.detail, win = document.getElementById(id), f = BUILD[id]; if (!win || !f) return;
     f(win); clearInterval(timer); if (id !== 'w07' && id !== 'w06') timer = setInterval(() => { if (!win.hidden) f(win); else clearInterval(timer); }, 20000);
   });
+  // window 01's price and market cap follow the terminal as often as the buy line does (2 s), without redrawing the strip
+  setInterval(() => {
+    const w = document.getElementById('w01'); if (!w || w.hidden) return;
+    let q = null; try { q = window.__btQuote && window.__btQuote(); } catch (e) {} if (!q) return;
+    const b = [...w.querySelectorAll('.bw-hero .hf b')]; if (b[0] && b[0].textContent !== q.price) b[0].textContent = q.price; if (b[1] && b[1].textContent !== q.mc) b[1].textContent = q.mc;
+  }, 2000);
   addEventListener('bobai:nums', () => { const w = $('.bw-win.on'); if (w && BUILD[w.id] && w.id !== 'w07' && w.id !== 'w06') BUILD[w.id](w); });
 })();

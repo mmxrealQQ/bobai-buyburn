@@ -437,7 +437,7 @@ footer a:hover{color:var(--gold)}
 <footer>
   <p>BOBAI Buy Drops · auto-minted on every $BOBAI buy ≥ $100 · contract + drop data read directly from BNB Chain</p>
   <p style="margin-top:8px"><a href="/">← back to brainonbnb</a></p>
-  <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
+  <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
 </footer>
 
 <!-- Lightbox for motif + card click-to-zoom -->

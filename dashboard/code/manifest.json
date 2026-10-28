@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7851,
-   "zipBytes": 175979,
-   "txtBytes": 528203,
-   "sha256": "5ed603c6300dd5f3",
+   "zipBytes": 175992,
+   "txtBytes": 528248,
+   "sha256": "8f3841425518414e",
    "reqs": [
     {
      "what": "A static host",
@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1389,
-   "zipBytes": 30608,
-   "txtBytes": 81121,
-   "sha256": "4f5130f285ecd76c",
+   "zipBytes": 30624,
+   "txtBytes": 81166,
+   "sha256": "66e526c798c1aa9c",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -411,9 +411,9 @@
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
    "lines": 11265,
-   "zipBytes": 187700,
-   "txtBytes": 601955,
-   "sha256": "32478ccdd57d0cb1",
+   "zipBytes": 187858,
+   "txtBytes": 602093,
+   "sha256": "1e8a07c25cab6679",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -523,9 +523,9 @@
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
    "lines": 10225,
-   "zipBytes": 199378,
+   "zipBytes": 199403,
    "txtBytes": 563724,
-   "sha256": "75bf0350da487994",
+   "sha256": "904d1e94043ff8e0",
    "reqs": [
     {
      "what": "A static host",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3507,
-   "zipBytes": 119771,
-   "txtBytes": 358023,
-   "sha256": "29168f7070311e57",
+   "lines": 3509,
+   "zipBytes": 120005,
+   "txtBytes": 358490,
+   "sha256": "a1188027821a704c",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 73,
    "lines": 24003,
-   "zipBytes": 605185,
-   "txtBytes": 1716707,
-   "sha256": "106e70c1c6c8c663",
+   "zipBytes": 605237,
+   "txtBytes": 1716868,
+   "sha256": "6fdb958e14e15974",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -753,9 +753,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4969,
-   "zipBytes": 111556,
-   "txtBytes": 321801,
-   "sha256": "112d75371f180165",
+   "zipBytes": 111570,
+   "txtBytes": 321846,
+   "sha256": "be08ea7726a0ca7c",
    "reqs": [
     {
      "what": "Node 18+ and time",

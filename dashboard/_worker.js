@@ -636,7 +636,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
 - https://brainonbnb.com/api/wallet?address=0x… — BNB + $BOBAI balance of any BSC wallet
 - https://brainonbnb.com/api/links · /api/guide · /api/purchase-guide (the older /api/trade and /api/how-to-buy still answer; renamed because a router that refuses mutating verbs in tool names refused them)
-- https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints)
+- https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints). Total supply as the aggregators define it: minted minus burned (the dead address does not count), so today it equals circulating; the contract's own totalSupply() stays 1,000,000,000 (/api/token)
 
 ## What you can ASK (read-only, all on-chain)
 - \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
@@ -2225,6 +2225,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       return new Response(supply.toString(), {
         headers: {
           'Content-Type': 'text/plain',
+          // what the number is (2026-10-28: beside /api/token's totalSupply 1,000,000,000 it read as a contradiction)
+          'X-Supply-Definition': 'minted (1,000,000,000) minus the balance of the dead address; the contract totalSupply() does not shrink on a burn',
           'Cache-Control': 'public, max-age=300',
           'Access-Control-Allow-Origin': '*',
         },

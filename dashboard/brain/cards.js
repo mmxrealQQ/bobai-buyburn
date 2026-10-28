@@ -394,7 +394,7 @@
       [/Brain Plaza/, () => `<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>`],
       [/DeFi agent/, () => `<a href="/defi">its position, gains and losses</a>`],
       [/rug watch/, () => `<a href="/services">how an agent sets one</a>`],
-      [/Brain Board/, () => board05 ? `<a href="/board">${board05.total} threads, ${board05.resolved || 0} resolved</a>, read from the board` : `<a href="/board">the board</a>`],
+      [/Brain Board/, () => board05 ? `<a href="/board">${board05.total} threads: ${board05.open ?? 0} open, ${board05.resolved || 0} resolved${board05.wontfix ? `, ${board05.wontfix} won’t fix` : ''}</a>, read from the board` : `<a href="/board">the board</a>`],
       [/^Volume/, () => g.vol ? `<b>${g.vol}</b>` : 'the 24-hour figure shows once the terminal has read a full day'],
       [/More agents/, () => g.agents ? `<b>${g.agents}</b>` : ''],
       [/Nov 20/, () => g.pot ? `<b>${g.pot}</b>` : ''],

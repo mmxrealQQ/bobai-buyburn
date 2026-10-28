@@ -46,7 +46,7 @@
       <nav class="nav-links" aria-label="Primary">
         <a href="/brainscreener/">Home</a>
         <a href="/brainscreener/#tests">All tests</a>
-        <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
       </nav>
     </div>
   </header>
@@ -110,7 +110,7 @@
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/adhd">ADHD test</a>
       <a href="/brainscreener/iq">IQ test</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -262,7 +262,7 @@
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/iq">IQ test</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -414,7 +414,7 @@
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -555,7 +555,7 @@
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7089,7 +7089,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7230,7 +7230,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7347,7 +7347,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7488,7 +7488,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7653,7 +7653,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7787,7 +7787,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -7985,7 +7985,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -8126,7 +8126,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -8243,7 +8243,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -8384,7 +8384,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -8529,7 +8529,7 @@ window.TEST_DATA = (function () {
       <a href="#tests">Tests</a>
       <a href="#method">Methodology</a>
       <a href="#notes">Notes</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -8956,7 +8956,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/adhd">ADHD test</a>
       <a href="/brainscreener/iq">IQ test</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9100,7 +9100,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/adhd">ADHD test</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9246,7 +9246,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9387,7 +9387,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9504,7 +9504,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9645,7 +9645,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9762,7 +9762,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -9903,7 +9903,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -10020,7 +10020,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -10161,7 +10161,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -10278,7 +10278,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>
@@ -10419,7 +10419,7 @@ window.TEST_DATA = (function () {
     <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
-      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+      <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
     </nav>
   </div>
 </header>

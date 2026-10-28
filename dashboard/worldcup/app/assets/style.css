@@ -63,7 +63,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filte
   .nav{padding:0 14px;height:50px}
   .nav .brand,.brand-link{font-size:12px}
   .nav .user{font-size:11px}
-  .tabbar{padding:0 8px}
+  .tabbar{padding:0 8px;flex-wrap:wrap;justify-content:center;overflow-x:visible} /* every tab in view on a phone: LEADERBOARD was cut at the edge (2026-10-28) */
   .tabbar a{padding:10px 10px;font-size:10.5px;letter-spacing:.3px}
   .tabbar a .ic{font-size:12px}
 }

@@ -882,7 +882,22 @@ const WATCH_QUOTE_BY_SYMBOL = {
   BNB: WBNB, WBNB, USDT: '0x55d398326f99059fF775485246999027B3197955', BUSD: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
   USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', USD1: '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d',
 };
+// THE GRADUATION DEMAND TEST (2026-10-28, operator's go). One trading bot scanned four.meme curve tokens every two
+// minutes for weeks (2,748 scans in ten days), waiting, it seems, for the moment a token leaves its curve and gets a
+// PancakeSwap pool. Nothing tells anyone that moment. Before building it, the curve answer says so plainly — not built —
+// and where to ask; GET /watch/graduation counts each ask in public. Built only if agents ask for it.
+function withGraduationAsk(out) {
+  const token = String(out?.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0];
+  if (!out?.curve || !token) return out;
+  return { ...out, graduation_alert: {
+    status: 'not built yet',
+    what: `A call the moment this token leaves its ${out.curve.platform || 'launch'} curve and its PancakeSwap pool exists, instead of scanning it again and again.`,
+    ask: `https://agent.brainonbnb.com/watch/graduation?token=${token}`,
+    note: 'We build it if agents ask for it. A GET to that address counts as asking (the token and the day, nothing about you); the count is public at https://agent.brainonbnb.com/watch/graduation.',
+  } };
+}
 function withWatchOffer(name, out) {
+  if ((DEPRECATED_TOOL_NAMES[name] || name) === 'bsc_pool_scan' && out && typeof out === 'object' && out.curve) return withGraduationAsk(out);
   if ((DEPRECATED_TOOL_NAMES[name] || name) !== 'bsc_pool_scan' || !out || typeof out !== 'object' || !out.quotable) return out;
   const token = String(out.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], depth = Number(out.onePercentDepth?.buyUsd);
   const pair = String(out.pool?.address || '').match(/^0x[a-fA-F0-9]{40}$/)?.[0], quote = WATCH_QUOTE_BY_SYMBOL[out.price?.quoteSymbol];

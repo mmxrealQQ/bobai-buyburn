@@ -61,5 +61,25 @@ for (const [label, addr] of [['CAKE (V2 · BNB)', CAKE], ['ETH (PancakeSwap V3)'
   const scanD = Number(j.onePercentDepth?.buyUsd), watchD = Number(ww.depth_now_usd);
   check(scanD > 0 && watchD > 0 && Math.abs(watchD / scanD - 1) < 0.05, `${label}: the watch reads the depth the scan reported`, `watch $${watchD} · scan $${scanD}`);
 }
+// THE GRADUATION DEMAND TEST (2026-10-28): a token still on its launch curve is told, honestly, that an alert for the
+// moment it leaves the curve is not built, and where to ask for it; the ask is counted and the count is public.
+// The newest four.meme token stands in for "a curve token" (four.meme's own public search, read fresh each run).
+{
+  const fm = await fetch('https://four.meme/meme-api/v1/public/token/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pageIndex: 1, pageSize: 5, type: 'NEW', listType: 'NOR' }) }).then((r) => r.json()).catch(() => null);
+  const curveToken = (fm?.data || []).map((t) => t.tokenAddress).find((a) => /^0x[0-9a-fA-F]{40}$/.test(a || ''));
+  if (!curveToken) check(false, 'a fresh four.meme curve token to scan', 'four.meme search did not answer');
+  else {
+    const j = await (await fetch(`${BASE}/api/pool-scan?address=${curveToken}`, { headers: { ...OWN, accept: 'application/json' } })).json().catch(() => null);
+    const g = j?.graduation_alert;
+    check(!!j?.curve && !!g && /not built/i.test(g.status || '') && g.ask === `https://agent.brainonbnb.com/watch/graduation?token=${curveToken}` && !j.watch_this_pool, 'REST: a curve token is told the graduation alert is not built, and where to ask', g ? g.status : `no graduation_alert (curve: ${!!j?.curve})`);
+  }
+  const cake = await (await fetch(`${BASE}/api/pool-scan?address=${CAKE}`, { headers: { ...OWN, accept: 'application/json' } })).json().catch(() => null);
+  check(!!cake && !('graduation_alert' in cake), 'a token with a pool is not offered the graduation alert');
+  const before = await (await fetch(`https://agent.brainonbnb.com/watch/graduation?r=${Date.now()}`)).json().catch(() => null);
+  const ask = await fetch(`https://agent.brainonbnb.com/watch/graduation?token=${curveToken || CAKE}`, { headers: { 'user-agent': 'bobai-smoke-test' } });
+  const a = await ask.json().catch(() => ({}));
+  check(ask.status === 200 && /not built/i.test(a.status || '') && typeof a.asked?.total === 'number' && /counted/i.test(a.what || ''), 'GET /watch/graduation answers honestly: not built, the ask counted, the count public', `${ask.status} ${a.status || a.error || ''} · asked ${JSON.stringify(a.asked || null)}`);
+  check(typeof before?.asked?.total === 'number' && before.asked.total === a.asked?.total, 'our own check is not counted as an ask', `${before?.asked?.total} -> ${a.asked?.total}`);
+}
 console.log(`pool-scan-offer: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

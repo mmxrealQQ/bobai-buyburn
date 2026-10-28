@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23964 lines.
+# one fetch. 73 files, 23993 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -13724,6 +13724,35 @@ ${pageTail}`;
     // so that buyer had no way to reach the thing they paid for. The id is a
     // v4 UUID handed only to the payer, which is what makes it readable
     // without a second credential.
+    // THE GRADUATION DEMAND TEST (2026-10-28, operator's go): the pool scan tells a curve token that an alert for the
+    // moment it leaves its launch curve is not built, and points here. A GET with ?token= is an ask; it is counted once
+    // per caller, token and day (the caller kept only as a hash of the day and its address), and the count is public.
+    // Our own checks (bobai-smoke-test) read it without counting. Built only if agents ask.
+    if (path === '/watch/graduation' && (request.method === 'GET' || request.method === 'HEAD')) {
+      const doc = JSON.parse((await env.AGENT.get('graduation:asks')) || '{"since":"2026-10-28","total":0,"by_day":{},"tokens":{},"seen":{}}');
+      const token = (url.searchParams.get('token') || '').toLowerCase().match(/^0x[0-9a-f]{40}$/)?.[0] || null;
+      let counted = false;
+      if (token && !selfTest) {
+        const day = today();
+        const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}|${request.headers.get('cf-connecting-ip') || '-'}|${token}`)))].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+        doc.seen = Object.fromEntries(Object.entries(doc.seen || {}).filter(([d]) => d === day));
+        const seen = new Set(doc.seen[day] || []);
+        if (!seen.has(h) && seen.size < 5000) {
+          seen.add(h); doc.seen[day] = [...seen]; counted = true;
+          doc.total++; doc.by_day[day] = (doc.by_day[day] || 0) + 1; doc.tokens[token] = (doc.tokens[token] || 0) + 1;
+          if (Object.keys(doc.tokens).length > 200) doc.tokens = Object.fromEntries(Object.entries(doc.tokens).sort((a, b) => b[1] - a[1]).slice(0, 200));
+          await env.AGENT.put('graduation:asks', JSON.stringify(doc));
+        }
+        ctx.waitUntil(Promise.resolve(bumpDetail(env, [`graduation:ask`, `graduation:ua:${uaProduct}`])).catch(() => {}));
+      }
+      return json({
+        status: 'not built yet',
+        what: `An alert the moment a token leaves its four.meme or flap.sh launch curve and its PancakeSwap pool exists, so nobody has to scan it every few minutes. It is not built. Every ask is counted${token ? (counted ? ' — yours is, thank you' : ' — yours was counted already today') : ''}; we build it if agents ask for it.`,
+        ask: 'GET https://agent.brainonbnb.com/watch/graduation?token=<the curve token> — once a day per token is counted',
+        asked: { total: doc.total, since: doc.since, by_day: doc.by_day, tokens: Object.keys(doc.tokens).length },
+        meanwhile: 'The pool scan reads a curve token now: https://brainonbnb.com/api/pool-scan?address=<token> (its progress to graduation is curve.progressPct)',
+      }, 200, { 'Cache-Control': 'no-store' });
+    }
     if (path.startsWith('/watch/') && request.method === 'GET') {
       const id = path.slice(7);
       const raw = id && (await env.AGENT.get(`watch:${id}`));

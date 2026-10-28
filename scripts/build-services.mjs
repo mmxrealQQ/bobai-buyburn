@@ -205,7 +205,7 @@ const delivery = (d) => `      <article class="sv-buy">
         <p class="sv-needs-h">${needsHead(d.needs)}</p>
         <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
 ${fieldsOf(d.needs)}
-          <div class="sv-form-go"><button type="submit">Hire for $0.10 &rarr;</button><button type="button" class="sv-holder" title="With 1,000,000 $BOBAI in your wallet: one signature, no transaction, no gas, 20 answers a day">Holder? Free with your wallet</button></div>
+          <div class="sv-form-go"><button type="submit" title="Your wallet signs 0.10 USD1 (no transaction, no gas); the answer comes back here">Pay 0.10 USD1 &amp; get it &rarr;</button><button type="button" class="sv-holder" title="With 1,000,000 $BOBAI in your wallet: one signature, no transaction, no gas, 20 answers a day">Holder? Free with your wallet</button></div>
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
@@ -397,12 +397,12 @@ function page() {
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> &mdash; <b>0.01 $U until 5 Nov 12:00 UTC</b></span> &mdash; or 0.10 USD1 / USDC &mdash; or half that in $BOBAI &mdash; when you pay per answer. Hold 1,000,000 $BOBAI and the per-answer route is free.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. <b>An answer costs $0.10</b>, paid in USD1 with one signature &mdash; no gas, the answer at once. Hold 1,000,000 $BOBAI and it is free. <a href="#sv-pay">Other ways to pay</a></p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
         <li><b>Open a page and look</b>Free, no account. Paste a token address, or browse the agent marketplace. This is where most people start.</li>
-        <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request: through an on-chain escrow, or paid per answer and handed over at once. You need a wallet and about $0.10 for this one.</li>
+        <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request, paid per answer and handed over at once. You need a wallet and $0.10 in USD1.</li>
         <li><b>Let your own AI call us</b>If you use an AI assistant that can call tools, it can use ours directly. One command to install.</li>
         <li><b>Hold $BOBAI, pay nothing</b>With 1,000,000 $BOBAI <span class="sv-busd" data-bobai="1000000"></span> in your wallet the per-answer route is free, 20 answers a day: one signature each, no transaction, the tokens stay yours. <a href="/pass">Use the holder pass</a>.</li>
       </ul>
@@ -433,9 +433,13 @@ ${PAGES.map(card).join('\n')}
 ${DELIVERIES.map(delivery).join('\n')}
     </div>
     <p class="sv-plain"><b>Or just ask.</b> Each of these agents takes a question in plain words over A2A (<code>message/send</code> at its endpoint): it says what it understood, what is still missing, and hands back the request filled in — so another agent never has to read this page to hire one.</p>
-    <details class="sv-how"><summary><b>How paying works, and what protects you.</b></summary>
+    <!-- ONE WAY FIRST (2026-10-28, operator's choice after a stranger's read: "four ways, x402 in five assets, escrow,
+         holder pass, $BOBAI at half — I could not tell which one to use in 2 minutes"): the page names one way to pay,
+         USD1 per answer; every other way is here, whole, one tap away. -->
+    <p class="sv-plain" id="sv-pay" style="scroll-margin-top:84px"><b>How to pay: USD1, per answer.</b> Press <b>Pay 0.10 USD1</b> on a card: your wallet signs a 0.10 USD1 transfer (EIP-3009 &mdash; you only sign, we send it, you pay no gas) and the answer appears on the card. An agent does the same with the curl under &ldquo;For developers&rdquo;: the 402 names the price, it signs, sends the request again, and the answer comes straight back.</p>
+    <details class="sv-how"><summary><b>Other ways to pay, and what protects you.</b></summary>
       <ol class="sv-steps">
-        <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 or $U you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402 (through Permit2: one approve of USDC to Permit2 before the first payment), or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold.</li>
+        <li><b>Other coins, same route.</b> $U signs exactly like USD1. USDC works by standard x402 (through Permit2: one approve of USDC to Permit2 before the first payment), or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold. <b>Holding 1,000,000 $BOBAI:</b> free, one signature, no transaction (<a href="/pass">holder pass</a>).</li>
         <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 until 5 Nov 12:00 UTC)</span> until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>
@@ -555,12 +559,59 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
       msg.textContent = '';
       return f.dataset.name + ': ' + (parts.join(', ') || 'as described');
     };
-    f.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var task = f.readTask(); if (!task) return;
-      location.href = '/registry?hire=' + encodeURIComponent(f.dataset.agent) + '&task=' + encodeURIComponent(task.slice(0, 300));
-    });
   });
+</script>
+<script>
+  // THE BUTTON PAYS THE WAY THE PAGE NAMES (2026-10-28, operator: "Knopf zahlt direkt in USD1"). It took every buyer to
+  // the escrow on /registry (a quote, an on-chain job, an 8-day window) while the page now names one way: USD1 per
+  // answer. Connect, one EIP-3009 signature over 0.10 USD1 to the x402 wallet (no transaction, no gas: the agent sends
+  // it, the money goes from the buyer straight to that wallet), and the answer comes back on the card. The balance is
+  // read before anything is signed. No wallet, or no USD1: the escrow and the holder pass are named with their links.
+  (function () {
+    var AGENT = 'https://agent.brainonbnb.com', USD1 = '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', wallet = null;
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var escrow = function (f, task) { return '<a href="/registry?hire=' + encodeURIComponent(f.dataset.agent) + '&task=' + encodeURIComponent(task.slice(0, 300)) + '">hire it through the escrow on Brain Plaza</a>'; };
+    document.querySelectorAll('.sv-form').forEach(function (f) {
+      f.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var task = f.readTask(); if (!task) return;
+        var out = f.querySelector('.sv-holder-out'), btn = f.querySelector('button[type=submit]');
+        var eth = window.ethereum || window.BinanceChain;
+        out.hidden = false;
+        if (!eth || !eth.request) { out.innerHTML = 'No browser wallet here. Open this page in the browser of MetaMask, Binance Web3 Wallet or Trust Wallet, or ' + escrow(f, task) + '.'; return; }
+        btn.disabled = true;
+        try {
+          if (!wallet) { var acc = await eth.request({ method: 'eth_requestAccounts' }); wallet = String(acc && acc[0] || '').toLowerCase(); }
+          if (!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no account');
+          if (String(await eth.request({ method: 'eth_chainId' })).toLowerCase() !== '0x38') { out.textContent = 'Switching your wallet to BNB Chain…'; await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] }); }
+          var url = AGENT + '/answer?service=' + encodeURIComponent(f.dataset.service), body = JSON.stringify({ task: task });
+          out.textContent = 'Asking the price…';
+          var t = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body });
+          var terms = await t.json().catch(function () { return {}; });
+          var a = (terms.accepts || []).filter(function (x) { return String(x.asset).toLowerCase() === USD1 && x.extra && (x.extra.assetTransferMethod === 'eip3009' || x.extra.transferMethod === 'eip3009'); })[0];
+          if (t.status !== 402 || !a) throw new Error(terms.error || terms.reason || 'no USD1 price came back (HTTP ' + t.status + ')');
+          var value = String(a.amount || a.maxAmountRequired);
+          var bal = await eth.request({ method: 'eth_call', params: [{ to: USD1, data: '0x70a08231' + wallet.slice(2).padStart(64, '0') }, 'latest'] });
+          if (BigInt(bal) < BigInt(value)) { out.innerHTML = '<span class="sv-no">This wallet holds less than 0.10 USD1.</span> Get USD1 on BNB Chain first, or ' + escrow(f, task) + ', or answer free with 1,000,000 $BOBAI (Holder? Free).'; btn.disabled = false; return; }
+          var nonce = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+          var auth = { from: wallet, to: a.payTo, value: value, validAfter: '0', validBefore: String(Math.floor(Date.now() / 1000) + 600), nonce: nonce };
+          var typed = { primaryType: 'TransferWithAuthorization', domain: { name: a.extra.name, version: a.extra.version, chainId: 56, verifyingContract: a.asset },
+            types: { EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'version', type: 'string' }, { name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }],
+              TransferWithAuthorization: [{ name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' }] },
+            message: auth };
+          out.textContent = 'Sign 0.10 USD1 in your wallet: a signature, no transaction, no gas.';
+          var sig = await eth.request({ method: 'eth_signTypedData_v4', params: [wallet, JSON.stringify(typed)] });
+          out.textContent = 'Signed. Paying and asking the agent…';
+          var pay = btoa(JSON.stringify({ x402Version: 1, scheme: 'exact', network: a.network, payload: { signature: sig, authorization: auth } }));
+          var r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': pay }, body: body });
+          var j = await r.json().catch(function () { return {}; });
+          if (r.ok && j.ok) out.innerHTML = '<b>' + esc(j.name || f.dataset.name) + '</b>: paid ' + esc(j.paid || '0.10 USD1') + (j.tx ? ' (<a href="https://bscscan.com/tx/' + esc(j.tx) + '" rel="noopener">transaction</a>)' : '') + '<br>' + esc(j.summary || 'Answered.') + '<details><summary>Everything it returned</summary><pre>' + esc(JSON.stringify(j, null, 2)) + '</pre></details>';
+          else out.innerHTML = '<span class="sv-no">Not answered:</span> ' + esc(j.reason || j.error || ('HTTP ' + r.status)) + (j.payment ? '<br>' + esc(j.payment) : '');
+        } catch (e) { out.textContent = 'Not sent' + (e && e.message ? ': ' + e.message : '') + '.'; }
+        btn.disabled = false;
+      });
+    });
+  })();
 </script>
 <script>
   // HOLDERS ANSWER FOR FREE, RIGHT ON THE CARD (2026-10-24, operator chose variant A: the holder pass was used 0 times
@@ -628,6 +679,8 @@ if (SELFTEST) {
   const withReq = page(); EXAMPLE_REQ = {};
   if (!withReq.includes(esc("curl -s -X POST 'https://agent.brainonbnb.com/answer?service=rebalance_plan'"))) problems.push('a known example body is not shown as a curl on its card');
   if (!withReq.includes(esc('"holdings":[{"token"'))) problems.push('the example body does not carry holdings as an array');
+  // one way to pay (2026-10-28): the card's button signs USD1 by EIP-3009 on the page; the escrow is a link, never the button
+  if (!html.includes('eth_signTypedData_v4') || !html.includes("TransferWithAuthorization: [") || html.includes("location.href = '/registry?hire='") || (html.match(/Pay 0\.10 USD1 &amp; get it/g) || []).length !== DELIVERIES.length) problems.push('the card button does not pay 0.10 USD1 on the page (or still sends the buyer to the escrow)');
   // the sale's words leave the page at the sale's own end (2026-10-28): every data-until is sell.js SALE_UNTIL
   const saleEnd = (fs.readFileSync(path.join(ROOT, 'worker-agent', 'sell.js'), 'utf8').match(/SALE_UNTIL = Date\.UTC\((\d+), (\d+), (\d+), (\d+)\)/) || []).slice(1).map(Number);
   const saleIso = saleEnd.length === 4 ? new Date(Date.UTC(...saleEnd)).toISOString().replace('.000Z', 'Z') : null;

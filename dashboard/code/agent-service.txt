@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23956 lines.
+# one fetch. 73 files, 23962 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5420,6 +5420,13 @@ export function answerText(raw) {
 // No words back proves nothing either (five answers kept as nothing were data-part refusals), so it is not read.
 export const forwardRead = (result, answer) => !/^answered 2\d\d/.test(String(result || '')) || !String(answer || '').trim() ? false
   : /^error:|"error"\s*:|unknown skill|no skill|invalid seller skill|not found|cannot post/i.test(String(answer || '')) ? false : true;
+// THE NOTICES, COUNTED HONESTLY (2026-10-28): the twelve sent 24.-26.10. went out before the answer was kept, so "read 0"
+// meant never measured, not unread. A forward stored without its read mark is counted apart, as not measured.
+export const noticeCounts = (fw) => {
+  const measured = fw.filter((f) => typeof f.read === 'boolean');
+  return { sent: fw.length, answered_2xx: fw.filter((f) => /^answered 2/.test(String(f.result || ''))).length,
+    measured: measured.length, read: measured.filter((f) => forwardRead(f.result, f.answer)).length, not_measured: fw.length - measured.length };
+};
 
 export async function readBoard(env, q = {}) {
   if (q.thread) {
@@ -5820,8 +5827,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     // task is not a reached agent; the entries stay in the library either way
     const st = JSON.parse((await env.AGENT.get('board-outreach')) || '{}'), threads = [...new Set(Object.values(st.findings || {}).map((f) => f.thread))];
     const fw = (await Promise.all(threads.map((n) => board(env).fetch('https://board/thread?id=' + n).then((r) => r.json()).catch(() => null)))).flatMap((t) => t?.forwards || []);
-    const answered = fw.filter((f) => /^answered 2/.test(String(f.result || '')));
-    return out({ on: env.BOARD_OUTREACH === 'on', told: { agents: Object.keys(st.findings || {}).length, threads: threads.length }, notices: { sent: fw.length, answered_2xx: answered.length, read: fw.filter((f) => forwardRead(f.result, f.answer)).length, fixes_confirmed: Object.values(st.findings || {}).filter((f) => Object.keys(f.fixed || {}).length).length }, last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
+    return out({ on: env.BOARD_OUTREACH === 'on', told: { agents: Object.keys(st.findings || {}).length, threads: threads.length }, notices: { ...noticeCounts(fw), fixes_confirmed: Object.values(st.findings || {}).filter((f) => Object.keys(f.fixed || {}).length).length }, last: JSON.parse((await env.AGENT.get('board-outreach-last')) || 'null') });
   }
   // THE EVIDENCE OF A CHECKUP ON THE CHAIN (2026-10-26, scripts/board-feedback.mjs): a checkup frozen as exact bytes, its
   // keccak256 in giveFeedback's feedbackHash; served unchanged for anyone to hold the number against. Kept for good.

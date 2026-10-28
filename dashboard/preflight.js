@@ -315,7 +315,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
       // from the measured tax as on the route (2026-10-10): that side's tax + this size's cost + 0.5% + 200 bps; unknown = 1500
       slippage_bps_needed: taxBuy == null && taxSell == null ? 1500 : buy.pct == null ? null
         : fot ? Math.max(...[taxBuy, taxSell].map((t) => t == null ? 1500 : Math.ceil((t + buy.pct + 0.5) * 100) + 200))
-        : Math.max(50, Math.ceil((buy.pct + 0.5) * 100)) };
+        // untaxed: the drift alone, as on the route (2026-10-28; the caller's own quote already carries fee and impact)
+        : 50 };
     exit = { sellable: simHere ? sim.sellable !== false : null, cost_pct: round(sell.pct, 3),
       round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) };
   }

@@ -143,6 +143,9 @@ ok('… and on a five-million pool (CAKE burns none of its LP) it is not', !code
 
 o = shape(scan(), null, 750, 'No PancakeSwap route against this pair’s deepest quote.');
 ok('without a route the ladder answers, read between its rungs, and says so', codes(o.caution).includes('no_route_quote') && o.entry.cost_pct === 1.8 && o.exit.cost_pct === 1.9 && o.exit.round_trip_cost_pct === 3.7, JSON.stringify([o.entry, o.exit]));
+// 28.10.: the route's rule (27.10., "0.56% for a 0.005% move invites a sandwich") held on the ladder too: an untaxed token
+// asked 230 bps here — the caller's own quote carries fee and impact, the tolerance covers the drift only
+ok('without a route an untaxed token is told the drift alone, 50 bps, as on the route', o.entry.slippage_bps_needed === 50, JSON.stringify(o.entry));
 o = shape(scan(), null, 90000, 'x');
 ok('a size beyond the ladder is flagged, not extrapolated', codes(o.caution).includes('size_beyond_ladder') && o.entry.cost_pct === 3.3);
 ok('costAtSize: below the first rung is the first rung; no rows is null', costAtSize(ladder, 10, 'buyCostPct').pct === 0.3 && costAtSize([], 10, 'buyCostPct').pct === null);

@@ -278,6 +278,7 @@ function page() {
   .sv-hero h1 em{color:var(--gold);font-style:normal}
   .sv-lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:68ch}
   .sv-lead b{color:var(--text);font-weight:600}
+  .sv-busd{color:var(--muted);font-size:.9em;font-weight:400;white-space:nowrap}
   .sv-sec{margin-top:44px}
   .sv-sec > h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.35rem;margin:0 0 6px}
   .sv-jump{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}

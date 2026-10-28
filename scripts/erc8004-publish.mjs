@@ -1491,6 +1491,7 @@ const page = `<!doctype html>
      A pixel minimum keeps "almost nothing" visible as almost nothing. */
   .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
+  .rg-dates{opacity:.8;white-space:nowrap}.rg-ago{white-space:nowrap;font-variant-numeric:tabular-nums}
   /* The live line. Deliberately not styled like the notes above it: those are
      facts from the last full scan, this one is seconds old and says so. */
   .rg-live{margin-top:6px;font-size:.72rem;line-height:1.5;color:var(--fg)}

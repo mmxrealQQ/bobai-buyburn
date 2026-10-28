@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23925 lines.
+# one fetch. 73 files, 23939 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8654,14 +8654,28 @@ export async function handleFind(url, env = null) {
     .sort((x, y) => (y.f - x.f) || y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id);
   // ONE FLEET, ONE PLACE (2026-10-27, the same stranger: "Grid Agent 1 by 4LPHA" four times in one answer). The same name
   // on the same host is one operator's fleet: its best-matching id stands, the others are named under fleet.
-  const fleetKey = (a) => { let h = ''; try { h = new URL((a.endpoints || [])[0]).hostname.replace(/^www\./, ''); } catch {} return h ? `${String(a.name || '').trim().toLowerCase()}|${h}` : `#${a.id}`; };
+  // A name that differs only in its numbers is the same fleet too (2026-10-28: "Grid Agent 1/2/3 by 4LPHA" took three places).
+  const hostOf = (a) => { try { return new URL((a.endpoints || [])[0]).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const fleetKey = (a) => { const h = hostOf(a); return h ? `${String(a.name || '').trim().toLowerCase().replace(/\d+/g, '#')}|${h}` : `#${a.id}`; };
   const fleets = new Map();
-  const collapsed = [];
+  let collapsed = [];
   for (const x of scored) {
     const k = fleetKey(x.a);
     if (fleets.has(k)) { fleets.get(k).push(x.a.id); continue; }
     fleets.set(k, []); collapsed.push(x);
   }
+  // TWO PLACES PER HOST BEFORE THE OTHERS (2026-10-28: 4lpha.tech held ten of 25 places for "grid" under ten different names).
+  // A host's third result and on stands after every other operator's, in its own order — moved back, never hidden. A shared
+  // cloud host (amazonaws.com) is not one operator, so each of its agents counts on its own.
+  const perHost = new Map();
+  const front = [], back = [];
+  for (const x of collapsed) {
+    const h = hostOf(x.a); const k = h && !/(^|\.)amazonaws\.com$/.test(h) ? h : `#${x.a.id}`;
+    perHost.set(k, (perHost.get(k) || 0) + 1);
+    (perHost.get(k) > 2 ? back : front).push(x);
+  }
+  // the named category still comes first: a host's third grid agent stays ahead of every agent outside grid
+  collapsed = [...front.filter((x) => x.f), ...back.filter((x) => x.f), ...front.filter((x) => !x.f), ...back.filter((x) => !x.f)];
   scored = collapsed.slice(0, limit);
   const more = Math.max(0, collapsed.length - scored.length);
 

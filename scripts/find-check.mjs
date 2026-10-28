@@ -34,5 +34,16 @@ const agents = JSON.parse(data).agents;
 const filed = (id) => classifyAgent(agents.find((a) => a.id === id) || {}).some((m) => m.category === 'grid-trading');
 const ahead = lp.results.slice(0, Math.max(0, idx(341554))).filter((r) => !filed(r.id));
 is('FC4 "plan a grid for a token": nobody outside grid trading stands ahead of Lattice (#341554, filed there)', idx(341554) >= 0 && !ahead.length, `Lattice at ${idx(341554) + 1}; ahead and not grid: ${ahead.map((r) => r.id).join(',')}`);
+// FC5/FC6 (2026-10-28): "Grid Agent 1/2/3 by 4LPHA" still took three places, and 4lpha.tech ten of 25 for "grid"
+const hostOf = (r) => { try { return new URL((r.endpoints || [])[0]).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const numless = gr.results.map((r) => `${String(r.name).trim().toLowerCase().replace(/\d+/g, '#')}|${hostOf(r)}`);
+is('FC5 a numbered fleet stands once: no two results share a host and a name that differs only in its numbers', new Set(numless).size === numless.length, JSON.stringify(numless.filter((k, i) => numless.indexOf(k) !== i)));
+const SHARED = /(^|\.)amazonaws\.com$/;
+const spread = (res) => { const n = new Map(); const nth = res.map((r) => { const h = hostOf(r); const k = h && !SHARED.test(h) ? h : `#${r.id}`; n.set(k, (n.get(k) || 0) + 1); return n.get(k); });
+  const firstThird = nth.findIndex((x) => x > 2); return firstThird < 0 || nth.slice(firstThird).every((x) => x > 2); };
+for (const q of ['grid', 'plan a grid for a token', 'grid trading bot']) {
+  const r = await find('q=' + encodeURIComponent(q) + '&limit=25');
+  is(`FC6 "${q}": no host's third result stands ahead of another operator's first or second`, spread(r.results), r.results.map((x) => hostOf(x).slice(0, 14)).join(' '));
+}
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

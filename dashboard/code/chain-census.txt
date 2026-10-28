@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4968 lines.
+# one fetch. 7 files, 4969 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2031,6 +2031,7 @@ const page = `<!doctype html>
      A pixel minimum keeps "almost nothing" visible as almost nothing. */
   .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
+  .rg-dates{opacity:.8;white-space:nowrap}.rg-ago{white-space:nowrap;font-variant-numeric:tabular-nums}
   /* The live line. Deliberately not styled like the notes above it: those are
      facts from the last full scan, this one is seconds old and says so. */
   .rg-live{margin-top:6px;font-size:.72rem;line-height:1.5;color:var(--fg)}

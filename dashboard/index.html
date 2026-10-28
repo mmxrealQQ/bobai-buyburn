@@ -198,8 +198,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=74" as="style">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="preload" href="styles.css?v=75" as="style">
+  <link rel="stylesheet" href="styles.css?v=75">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -472,7 +472,7 @@
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3-raised">
-            <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 2026</div>
+            <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
@@ -613,7 +613,7 @@
     <div class="band-ov"><div class="band-in"><div class="band-tx">
       <h2>On-Chain <em>Verification</em></h2>
       <p class="burn-sub">Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
-      <p class="burn-lead">Every buyback and every burn lands on BNB Chain with its own transaction hash. Nothing here is summarised or rounded &mdash; the table below is the chain itself, refreshed every 30 seconds.</p>
+      <p class="burn-lead">Every buyback and every burn lands on BNB Chain with its own transaction hash. Nothing here is summarised &mdash; every row below is one transaction on the chain (amounts shown rounded, the exact figures one click away on BscScan), refreshed every 30 seconds.</p>
     </div></div></div>
   </div>
 
@@ -1007,7 +1007,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">17 files &middot; 7,457 lines &middot; 0.2 MB</span>
+          <span class="lib-m">17 files &middot; 7,462 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1194,7 +1194,7 @@
             <span class="lib-t">Worldcup Tipping Game</span>
             <span class="lib-s">A full tournament game that paid out on-chain.</span>
           </span>
-          <span class="lib-m">45 files &middot; 11,282 lines &middot; 0.2 MB</span>
+          <span class="lib-m">45 files &middot; 11,265 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1240,7 +1240,7 @@
             <span class="lib-t">brainScreener</span>
             <span class="lib-s">Thirteen self-tests. No accounts, no tracking, no backend.</span>
           </span>
-          <span class="lib-m">52 files &middot; 10,221 lines &middot; 0.2 MB</span>
+          <span class="lib-m">52 files &middot; 10,225 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1263,7 +1263,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,502 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,507 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1286,7 +1286,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">73 files &middot; 23,996 lines &middot; 0.6 MB</span>
+          <span class="lib-m">73 files &middot; 24,003 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1496,10 +1496,10 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=130" defer></script>
+<script src="app.js?v=131" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1793199566">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793205393">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1550,7 +1550,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793199566'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793205393'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

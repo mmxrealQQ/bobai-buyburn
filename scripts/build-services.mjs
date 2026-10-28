@@ -436,7 +436,7 @@ ${DELIVERIES.map(delivery).join('\n')}
     <!-- ONE WAY FIRST (2026-10-28, operator's choice after a stranger's read: "four ways, x402 in five assets, escrow,
          holder pass, $BOBAI at half — I could not tell which one to use in 2 minutes"): the page names one way to pay,
          USD1 per answer; every other way is here, whole, one tap away. -->
-    <p class="sv-plain" id="sv-pay" style="scroll-margin-top:84px"><b>How to pay: USD1, per answer.</b> Press <b>Pay 0.10 USD1</b> on a card: your wallet signs a 0.10 USD1 transfer (EIP-3009 &mdash; you only sign, we send it, you pay no gas) and the answer appears on the card. An agent does the same with the curl under &ldquo;For developers&rdquo;: the 402 names the price, it signs, sends the request again, and the answer comes straight back.</p>
+    <p class="sv-plain" id="sv-pay" style="scroll-margin-top:84px"><b>How to pay: USD1, per answer.</b> Open a card with <b>Hire for $0.10</b>, then press <b>Pay 0.10 USD1</b>: your wallet signs a 0.10 USD1 transfer (EIP-3009 &mdash; you only sign, we send it, you pay no gas) and the answer appears on the card. An agent does the same with the curl under &ldquo;For developers&rdquo;: the 402 names the price, it signs, sends the request again, and the answer comes straight back.</p>
     <details class="sv-how"><summary><b>Other ways to pay, and what protects you.</b></summary>
       <ol class="sv-steps">
         <li><b>Other coins, same route.</b> $U signs exactly like USD1. USDC works by standard x402 (through Permit2: one approve of USDC to Permit2 before the first payment), or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold. <b>Holding 1,000,000 $BOBAI:</b> free, one signature, no transaction (<a href="/pass">holder pass</a>).</li>
@@ -528,10 +528,10 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
       // a number that has gone stale.
       var fs = d.earned && d.earned.from_strangers, st = d.earned && d.earned.self_tests;
       if (fs) {
-        var own = st && st.totalUsd1 !== '0.00' ? ' Our own test purchases (' + st.totalUsd1 + ' USD1) are counted separately.' : '';
+        var own = st && st.totalUsd1 !== '0.00' ? ' Our own test purchases ($' + st.totalUsd1 + ') are counted separately.' : '';
         el('sv-paid').textContent = fs.totalUsd1 === '0.00'
           ? 'No other agent has paid for an answer yet.' + own
-          : 'Other agents have paid ' + fs.totalUsd1 + ' USD1 for ' + fs.count + ' answer' + (fs.count === 1 ? '' : 's') + ' so far.' + own;
+          : 'Other agents have paid $' + fs.totalUsd1 + ' in stablecoins (USD1, $U, USDC) for ' + fs.count + ' answer' + (fs.count === 1 ? '' : 's') + ' so far.' + own;
       }
     }).catch(function(){});
 })();

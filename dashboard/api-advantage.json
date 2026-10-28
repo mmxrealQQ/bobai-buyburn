@@ -278,7 +278,7 @@
         "requests": 187,
         "answer": {
           "answered": false,
-          "could_not_answer": "no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.",
+          "could_not_answer": "no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.04% of it.",
           "registry_ids_at_measurement": 393507,
           "sampled_ids": 150,
           "ids_with_a_document": 146,

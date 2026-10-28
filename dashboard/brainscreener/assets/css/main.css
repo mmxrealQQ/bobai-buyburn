@@ -1020,3 +1020,6 @@ img { max-width: 100%; height: auto; display: block; }
 .code-details { margin-top: 18px; }
 .code-details > summary { cursor: pointer; color: var(--ink-mute); font-size: .95rem; padding: 6px 0; }
 .code-details[open] > summary { margin-bottom: 10px; }
+
+/* 2026-10-28: .btn display:inline-flex showed the hidden 'Delete previous answers and restart' on every fresh intro */
+.btn[hidden] { display: none; }

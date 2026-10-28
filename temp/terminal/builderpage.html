@@ -109,7 +109,7 @@ table.ov { border-collapse: collapse; width: 100%; font-size: 13px; }
   </header>
   <nav class="tabs" role="tablist" aria-label="Themes">
     <button role="tab" id="t-terminal" data-tab="terminal">BOBAI Terminal <span class="n" id="n-terminal"></span></button>
-    <button role="tab" id="t-halloween" data-tab="halloween" class="hw">Halloween <span class="n">until 1.11.</span></button>
+    <button role="tab" id="t-halloween" data-tab="halloween" class="hw">Halloween <span class="n">until Nov 1</span></button>
     <button role="tab" id="t-wc26" data-tab="wc26">Worldcup '26 <span class="n" id="n-wc"></span></button>
   </nav>
   <main id="panel"></main>
@@ -198,7 +198,7 @@ const OTHER = [['Hand steals the moon', 'Phone', 'The hand with its whole arm re
   ['Bat run', 'All sizes', 'The bat carries a trade to the pumpkin.']];
 function halloween() {
   const has = new Set(D.pics), frames = k => D.pics.filter(p => p === k || p.startsWith(k + '_') || (k === 'back' && p.startsWith('back-')));
-  let h = `<div class="sub">Live 5.10.–1.11. (UTC) · pill ON / OFF right of LIVE · one scene at a time, 22–34 s apart, only while BOBAI stands still</div>
+  let h = `<div class="sub">Live Oct 5 – Nov 1 (UTC) · pill ON / OFF right of LIVE · one scene at a time, 22–34 s apart, only while BOBAI stands still</div>
   <div class="jump"><a href="#hw-scenes"><b>01</b> scenes</a><a href="#hw-clown"><b>02</b> big clown clips</a><a href="#hw-pics"><b>03</b> pictures</a></div>
   <section id="hw-scenes"><h2><span class="c">01</span> Scenes <small>filmed on brainonbnb.com</small></h2>
   <div class="scenes">${SCENES.map(([f, n, w, t]) => `<article class="scene"><video src="hw/${f}#t=0.5" muted loop playsinline preload="metadata" controls></video>

@@ -124,7 +124,7 @@
   function next02Html() {
     const n = next02(); if (!n) return '';
     const $u = '$' + n.usd.toFixed(n.usd >= 1000 ? 0 : 2);
-    const txt = n.ready ? `${$u} ready · split ${n.mins == null ? 'at the bot’s next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}` : `${$u} charging · ${n.pct < 10 ? n.pct.toFixed(1) : n.pct.toFixed(0)}% to the next split`;
+    const txt = n.ready ? `${$u} ready · buyback ${n.mins == null ? 'at the bot’s next run' : n.mins <= 1 ? 'about now' : `in ~${n.mins} min`}` : `${$u} charging · ${n.pct < 10 ? n.pct.toFixed(1) : n.pct.toFixed(0)}% to the next buyback`; /* 'split' meant the tax phase in the line below (28.10.) */
     return `<div class="cv-next${n.ready ? ' ready' : ''}" title="The token sends its tax on at ${cmp(NUMS().chain.minDispatch)} $BOBAI; the bot splits the BNB every 10 min"><div class="cv-next-bar"><i style="width:${n.ready ? 100 : n.pct.toFixed(1)}%"></i></div><span>${txt}</span></div>`;
   }
 
@@ -192,12 +192,14 @@
     const t = (id) => (document.getElementById(id)?.textContent || '').trim(), ok = (s) => s && s !== '--' && s !== '…';
     const card = (k, v, d) => { const c = $(`#w02 .cx2c[data-k="${k}"]`); if (!c) return; if (v) $('[data-v]', c).textContent = v; if (d) $('[data-d]', c).textContent = d; };
     const days = (id) => ok(t(id)) ? `${t(id)} day${t(id) === '1' ? '' : 's'} left` : '';
+    // a BNB figure carries its dollars even when the window opened before the page's USD pass had run (2026-10-28: /#giggle)
+    const withUsd = (s) => { const m = /^([\d.]+) BNB$/.exec(s || ''), u = NUMS().chain?.bnbUsd; return m && u > 0 ? `${s} ≈$${Math.round(+m[1] * u).toLocaleString('en-US')}` : s; };
     // from the end of Boost III (Nov 20, 00:01 UTC) the card is the liquidity for good: counting to Dec 1, then its adds (2026-10-28)
     const lfg = now() >= Date.parse('2026-11-20T00:01:00Z'), bc = $('#w02 .cx2c[data-k="boost"]');
     if (lfg && bc && !bc.dataset.lfg) { bc.dataset.lfg = '1'; $('b', bc).textContent = 'Liquidity for good'; $('p', bc).textContent = '1% of every trade into the BOBAI/BNB pool, its LP burned. No end date.'; }
-    if (lfg) card('boost', now() < Date.parse('2026-12-01T00:01:00Z') ? 'Starts Dec 1, 00:01 UTC' : ok(t('lfg-count')) && t('lfg-count') !== '0' && ok(t('lfg-bnb')) ? `${t('lfg-count')} adds · ${t('lfg-bnb')}` : 'Running since Dec 1', now() < Date.parse('2026-12-01T00:01:00Z') && ok(t('lfg-days')) ? `${t('lfg-days')} day${t('lfg-days') === '1' ? '' : 's'} to go` : 'for good');
-    else card('boost', ok(t('bb3-count')) && ok(t('bb3-bnb')) ? `${t('bb3-count')} adds · ${t('bb3-bnb')}` : '', days('bb3-days'));
-    card('pot', ok(t('gg-bnb')) ? t('gg-bnb') : '', lfg ? 'collection ended Nov 20' : days('gg-days'));   // gg-bnb carries its BNB and its dollars already
+    if (lfg) card('boost', now() < Date.parse('2026-12-01T00:01:00Z') ? 'Starts Dec 1, 00:01 UTC' : ok(t('lfg-count')) && t('lfg-count') !== '0' && ok(t('lfg-bnb')) ? `${t('lfg-count')} adds · ${withUsd(t('lfg-bnb'))}` : 'Running since Dec 1', now() < Date.parse('2026-12-01T00:01:00Z') && ok(t('lfg-days')) ? `${t('lfg-days')} day${t('lfg-days') === '1' ? '' : 's'} to go` : 'for good');
+    else card('boost', ok(t('bb3-count')) && ok(t('bb3-bnb')) ? `${t('bb3-count')} adds · ${withUsd(t('bb3-bnb'))}` : '', days('bb3-days'));
+    card('pot', ok(t('gg-bnb')) ? withUsd(t('gg-bnb')) : '', lfg ? 'collection ended Nov 20' : days('gg-days'));   // gg-bnb carries its BNB and its dollars already
     if (lfg) { const pp = $('#w02 .cx2c[data-k="pot"] p'); if (pp) pp.textContent = '0.3% of every trade from Sep 17 to Nov 20, collected for Giggle Academy.'; }
     if (lfg) { const pc = $('#w02 .cx2c[data-k="pot"] [data-v]'); if (pc && /until Nov 20/.test(pc.textContent)) pc.textContent = 'Collected for Giggle Academy'; }
   }

@@ -22,8 +22,8 @@
   <meta name="twitter:title" content="Venus Agents — doing on chain what they sell">
   <meta name="twitter:description" content="Two agents at work on Venus every day from their own wallets. Every action on BscScan.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=74" as="style">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="preload" href="styles.css?v=75" as="style">
+  <link rel="stylesheet" href="styles.css?v=75">
   <link rel="stylesheet" href="home.css?v=1">
   <link rel="stylesheet" href="record.css?v=4">
 </head>
@@ -50,7 +50,7 @@
       <div class="rc-k">The two agents</div>
       <ul class="rc-list">
         <li><b>Venus Health Factor Monitor</b> <a href="/agent/302257">#302257</a> &middot; wallet <a href="https://bscscan.com/address/0xEAC21928DE023677A25eb925D1cb1b0786FaF946" target="_blank" rel="noopener">0xEAC2…F946</a><br>Holds a small BNB-backed USDT loan at a health factor of 2.2: repays under 2.09, borrows over 2.31.</li>
-        <li><b>Venus Yield Ranking</b> <a href="/agent/304493">#304493</a> &middot; wallet <a href="https://bscscan.com/address/0x497dAc54FD7238027Ecbbd194b353379a1D605F0" target="_blank" rel="noopener">0x497d…05F0</a><br>Supplies its stablecoins in tranches of 2 a day to whichever of USDT and USDC pays more on Venus.</li>
+        <li><b>Venus Yield Ranking</b> <a href="/agent/304493">#304493</a> &middot; wallet <a href="https://bscscan.com/address/0x497dAc54FD7238027Ecbbd194b353379a1D605F0" target="_blank" rel="noopener">0x497d…05F0</a><br>Supplies up to $2 of stablecoins a day to Venus, into whichever of the stablecoins its wallet holds pays more there.</li>
       </ul>
       <div class="rc-live" id="rc-state">Reading the record…</div>
     </div>
@@ -109,10 +109,10 @@
     $('n-days').textContent = nf(new Set(log.map((x) => String(x.at).slice(0, 10))).size);
     const last = log[0];
     $('rc-state').innerHTML = !j.switched_on ? '<span class="no">Switched off.</span>'
-      : last ? 'Last run <b>' + when(last.at) + '</b>. Next at 05:00 UTC.' : 'Switched on. The first run is at 05:00 UTC.';
+      : last ? 'Last run <b>' + when(last.at) + '</b>. Next ' + (new Date().getUTCHours() < 5 ? 'today' : 'tomorrow') + ' at 05:00 UTC.' : 'Switched on. The first run is at 05:00 UTC.';
     $('rc-rows').innerHTML = log.length ? log.map((x) => {
       const who = '<b>' + esc(NAME[x.agent] || '#' + x.agent) + '</b>';
-      if (x.tx) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' ' + esc(VERB[x.action] || x.action) + (x.amount ? ' ' + amt(x.amount, usd) : '') + (x.why ? ' <i>· ' + esc(x.why) + '</i>' : '') + '</span>'
+      if (x.tx) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' ' + esc(VERB[x.action] || x.action) + (x.amount ? ' ' + amt(x.amount, usd) : '') + (x.why ? ' <i>· ' + esc(String(x.why).replace(/(\d+\.\d{2})\d{3,}/g, '$1')) + '</i>' : '') + '</span>'
         + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(x.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(x.tx).slice(0, 10)) + '…</a></span></div>';
       if (x.error) return '<div class="rc-row"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' <span class="no">stopped: ' + esc(x.error) + '</span></span></div>';
       return '<div class="rc-row rc-muted"><span class="rc-t">' + when(x.at) + '</span><span class="rc-what">' + who + ' · ' + esc(x.note || '') + (x.debt_usdt ? ' · loan ' + nf(x.debt_usdt, 2) + ' USDT' : '') + '</span></div>';

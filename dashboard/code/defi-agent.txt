@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7457 lines.
+# one fetch. 17 files, 7462 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5721,15 +5721,18 @@ export async function lpDefaultTarget(payer) {
 }
 // A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
 const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
+// the fees owed as a sentence, BNB with its dollars (2026-10-28: every amount carries its USD)
+const owedSaid = (owed, usd) => { const u = usd > 0 ? ` (≈$${(owed * usd).toFixed(2)})` : ''; return owed >= 0.002 ? `Fees owed: ${owed.toFixed(6)} BNB${u} — collecting pays for its gas.` : `Fees owed: ${owed.toFixed(6)} BNB${u} — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`; };
 export async function lpPositionLook(params = {}, env = null) {
   const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
-  const { facts, poolInfo, owedBnbEquiv } = r;
+  const { facts, poolInfo, owedBnbEquiv, pub } = r;
+  const bnbUsd = owedBnbEquiv != null ? await readBnbUsd(pub).then((x) => x.bnbUsd).catch(() => null) : null;
   const lines = [];
   lines.push(poolInfo.inRange
     ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
-  if (owedBnbEquiv != null) lines.push(owedBnbEquiv >= 0.002 ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`);
+  if (owedBnbEquiv != null) lines.push(owedSaid(owedBnbEquiv, bnbUsd));
   return {
     ...facts,
     service: 'lp_position_look',
@@ -5771,7 +5774,8 @@ export async function lpPositionPlan(params = {}, env = null) {
   lines.push(poolInfo.inRange
     ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
-  lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
+  const bnbUsdNow = owedBnbEquiv != null ? await readBnbUsd(pub).then((x) => x.bnbUsd).catch(() => null) : null;
+  lines.push(owedBnbEquiv != null ? owedSaid(owedBnbEquiv, bnbUsdNow) : 'Fees owed could not be priced.');
   // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with
   // seventeen digits, and ticks shown beside "nothing to re-set" say what they are
   const dot = (s) => (/[.!?]$/.test(String(s).trim()) ? String(s).trim() : `${String(s).trim()}.`);
@@ -5789,6 +5793,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
   return {
     ...facts,
+    ...(bnbUsdNow > 0 ? { bnb_usd: Number(bnbUsdNow.toFixed(2)) } : {}), // the dollars of every BNB figure (2026-10-28)
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
     width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, expected_net_basis: 'the width record\'s own figure: fees net of re-sets over hours_of_prices of recorded prices. It is a different measure from the last week against holding, which stands in rebalance.width_basis', hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,

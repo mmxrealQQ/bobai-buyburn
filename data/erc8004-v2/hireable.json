@@ -136,14 +136,14 @@
       "ours": false
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
+      "id": 374114,
+      "label": "Gridloom by Pokter",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 374114,
-      "label": "Gridloom by Pokter",
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
       "ours": false
     },
@@ -215,6 +215,12 @@
       "ours": false
     },
     {
+      "id": 374112,
+      "label": "Cresthold by Pokter",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -223,12 +229,6 @@
     {
       "id": 269226,
       "label": "Yield Allocator",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 374112,
-      "label": "Cresthold by Pokter",
       "category": "yield-optimization",
       "ours": false
     },

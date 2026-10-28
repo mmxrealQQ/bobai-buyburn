@@ -348,7 +348,7 @@ footer a:hover{color:var(--gold)}
   <div class="hero-inner">
     <!-- 6 motifs as the hero visual -->
     <div class="hero-motifs">
-      <div class="motif-card"><img src="motifs/nice-buy-sm.webp" data-full="motifs/nice-buy.webp" width="384" height="384" alt="NICE BUY motif" decoding="async"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1000 max</div></div></div>
+      <div class="motif-card"><img src="motifs/nice-buy-sm.webp" data-full="motifs/nice-buy.webp" width="384" height="384" alt="NICE BUY motif" decoding="async"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1,000 max</div></div></div>
       <div class="motif-card"><img src="motifs/big-buy-sm.webp" data-full="motifs/big-buy.webp" width="384" height="384" alt="BIG BUY motif" decoding="async"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
       <div class="motif-card"><img src="motifs/huge-buy-sm.webp" data-full="motifs/huge-buy.webp" width="384" height="384" alt="HUGE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
       <div class="motif-card"><img src="motifs/whale-buy-sm.webp" data-full="motifs/whale-buy.webp" width="384" height="384" alt="WHALE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>

@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Agent chart · Brain Plaza">
 <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-<link rel="stylesheet" href="/styles.css?v=74">
+<link rel="stylesheet" href="/styles.css?v=75">
 <style>
   .ch{max-width:1100px;margin:0 auto;display:grid;gap:16px}
   .hd{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start}
@@ -48,6 +48,8 @@
   .tile span{font-size:12.5px;color:var(--muted)}
   svg text{fill:var(--muted);font:11px Inter,sans-serif}
   .wrapx{overflow-x:auto}
+  /* the trades on a phone (2026-10-28: BUYER and DELIVERED sat off-screen): tighter cells, the delivery date goes */
+  @media(max-width:560px){.wrapx th,.wrapx td{padding:7px 6px}.wrapx th:nth-child(5),.wrapx td:nth-child(5){display:none}.wrapx code{font-size:11px}}
   table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
   th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums}
   th{font:600 11px ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0}
@@ -110,9 +112,12 @@
   // — a 90-day axis with one bar at its end read as "nothing here"
   // the days before this agent's pulse began are one quiet zone that says so (2026-10-13: thirteen empty dashes read as
   // thirteen days of silence); a day missing AFTER it began keeps its own dash
+  // the charts are drawn at the width they are shown (2026-10-28: a 1000-wide drawing on a 390 phone shrank its labels
+  // to 3 px); on a desktop as before
+  function CW(){var w=(document.querySelector('main')||document.body).clientWidth||innerWidth;return w<700?Math.max(300,Math.round(w-48)):1000}
   function pulseChart(series,began){
     var since=Math.floor((Date.now()-Date.parse('2026-10-12T00:00:00Z'))/864e5)+1;
-    var W=1000,H=150,P=24,days=Math.max(14,Math.min(90,since)),map={};series.forEach(function(s){map[s.day]=s});
+    var W=CW(),H=150,P=24,days=Math.max(14,Math.min(90,since)),map={};series.forEach(function(s){map[s.day]=s});
     var ms=series.filter(function(s){return s.ok&&s.ms!=null}).map(function(s){return s.ms}),mx=Math.max(1000,ms.length?Math.max.apply(null,ms):1000);
     var bw=(W-P*2)/days,out='',lab='';
     var first=series.reduce(function(m,s){return !m||s.day<m?s.day:m},null),start=String(began||first||new Date().toISOString()).slice(0,10);
@@ -124,19 +129,19 @@
       if(i<pre){if(i%Math.max(1,Math.round(days/6))===0)lab+='<text x="'+x+'" y="'+(H-6)+'">'+d.slice(5)+'</text>';continue}
       if(!s){out+='<rect x="'+(x+1)+'" y="'+(H-P-3)+'" width="'+(bw-2)+'" height="3" fill="rgba(255,255,255,.08)"><title>'+d+': not measured</title></rect>';}
       else{var inner=s.ok&&s.ms==null,h=s.ok?(inner?(H-P*2)/2:Math.max(6,(Math.log(1+s.ms)/Math.log(1+mx))*(H-P*2))):H-P*2;out+='<rect x="'+(x+1)+'" y="'+(H-P-h)+'" width="'+(bw-2)+'" height="'+h+'" rx="1.5" fill="'+(s.ok?'#4cc38a':'#ff7a6e')+'" opacity="'+(s.ok?.9:.75)+'"><title>'+d+': '+(s.ok?(inner?'answered (asked inside our own server, so no comparable time)':'answered in '+fmtMs(s.ms)+' ('+s.via+')'):'no answer')+'</title></rect>';}
-      if(i%Math.max(1,Math.round(days/6))===0)lab+='<text x="'+x+'" y="'+(H-6)+'">'+d.slice(5)+'</text>';
+      if(i%Math.max(1,Math.round(days/6))===0&&i<days-3)lab+='<text x="'+x+'" y="'+(H-6)+'">'+d.slice(5)+'</text>';
     }
     return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Daily pulse since measuring began">'+out+lab+'<text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end">today</text></svg>';
   }
   // paid work over time: cumulative paid-out jobs (line) and the jobs delivered per day (bars)
   function workChart(byDay){
     if(!byDay.length)return '<p class="muted">No escrow job of this agent has been delivered yet.</p>';
-    var W=1000,H=170,P=28,t0=Date.parse(byDay[0][0]),t1=Math.max(Date.now(),t0+864e5),cum=0,pts=[],bars='';
+    var W=CW(),H=170,P=28,t0=Date.parse(byDay[0][0]),t1=Math.max(Date.now(),t0+864e5),cum=0,pts=[],bars='';
     var paid=byDay.reduce(function(a,d){return a+d[2]},0),tot=paid||1,mxd=Math.max.apply(null,byDay.map(function(d){return d[1]}));
     var X=function(t){return P+(t-t0)/(t1-t0)*(W-P*2)};
     byDay.forEach(function(d){var t=Date.parse(d[0]),x=X(t);cum+=d[2];pts.push([x,H-P-(cum/tot)*(H-P*2)]);var h=(d[1]/mxd)*(H-P*2)*.45;bars+='<rect x="'+(x-3)+'" y="'+(H-P-h)+'" width="6" height="'+h+'" fill="rgba(240,185,11,.35)"><title>'+d[0]+': '+d[1]+' delivered, '+d[2]+' paid out, '+d[3]+' $U</title></rect>'});
     var path='M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1)}).join(' L');
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Paid work over time">'+bars+'<path d="'+path+'" fill="none" stroke="#F0B90B" stroke-width="2.5"/><circle cx="'+pts[pts.length-1][0]+'" cy="'+pts[pts.length-1][1]+'" r="4.5" fill="#F0B90B"/><text x="'+P+'" y="'+(H-6)+'">'+esc(byDay[0][0])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end">today</text><text x="'+(W-P)+'" y="16" text-anchor="end">'+(paid?Math.round(paid)+' paid out in all':'none paid out yet')+'</text></svg>';
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Paid work over time">'+bars+'<path d="'+path+'" fill="none" stroke="#F0B90B" stroke-width="2.5"/><circle cx="'+pts[pts.length-1][0]+'" cy="'+pts[pts.length-1][1]+'" r="4.5" fill="#F0B90B"/><text x="'+P+'" y="'+(H-6)+'">'+esc(byDay[0][0])+'</text><text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end">today</text><text x="'+(W-P)+'" y="16" text-anchor="end">'+(paid?Math.round(paid)+' paid out in all':'none paid out yet')+'</text>'+(Date.now()-Date.parse(byDay[byDay.length-1][0])>7*864e5?'<text x="'+(W/2)+'" y="'+(H/2)+'" text-anchor="middle" fill="rgba(255,255,255,.45)">no job delivered since '+esc(byDay[byDay.length-1][0])+'</text>':'')+'</svg>';
   }
 
   function render(c){
@@ -173,7 +178,7 @@
       +(c.description?'<p class="muted" style="max-width:85ch;margin:0">'+esc(c.description)+'</p>':'')
       +'<div class="act">'+hire+'<a class="btn gh" href="'+A+'/chart/'+c.id+'">Raw data (JSON)</a><a class="btn gh" href="https://bscscan.com/address/'+esc(c.owner)+'">Owner on BscScan</a><a class="btn gh" href="https://8004scan.io/agents/bsc/'+c.id+'">8004scan</a>'
       // the shortlisted marketplaces beside us (2026-10-23): each grades every ERC-8004 agent on its own page
-      +'<a class="btn gh" target="_blank" rel="noopener" href="https://pokter.xyz/agents/56/'+c.id+'">Pokter</a><a class="btn gh" target="_blank" rel="noopener" href="https://marque.trade/agents/56/'+c.id+'">Marque</a><a class="btn gh" target="_blank" rel="noopener" href="https://www.mandatemarkets.com/agents/'+c.id+'">Mandate</a>'
+      +'<span class="muted" style="align-self:center;font-size:12px">Its page on:</span><a class="btn gh" target="_blank" rel="noopener" href="https://pokter.xyz/agents/56/'+c.id+'">Pokter</a><a class="btn gh" target="_blank" rel="noopener" href="https://marque.trade/agents/56/'+c.id+'">Marque</a><a class="btn gh" target="_blank" rel="noopener" href="https://www.mandatemarkets.com/agents/'+c.id+'">Mandate</a>'
       // the link carries this agent's card (2026-10-13): one click to post it, neutral words
       +'<a class="btn gh" target="_blank" rel="noopener" href="https://x.com/intent/post?text='+encodeURIComponent(String(c.name||('Agent #'+c.id)).replace(/^Brain on BNB\s*[—-]\s*/i,'')+' on BNB Chain, measured: uptime, paid work, evidence')+'&amp;url='+encodeURIComponent('https://brainonbnb.com/agent/'+c.id)+'">Post on X</a></div>'
       +'<div class="tiles">'+tiles+'</div>'

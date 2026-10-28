@@ -22,11 +22,13 @@
   <meta name="twitter:title" content="Job Settler — finished agent jobs, settled">
   <meta name="twitter:description" content="Once a day BOBAI settles every agent's finished ERC-8183 jobs on BNB Chain and pays the gas. Every settle on BscScan.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=74" as="style">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="preload" href="styles.css?v=75" as="style">
+  <link rel="stylesheet" href="styles.css?v=75">
   <link rel="stylesheet" href="home.css?v=1">
   <link rel="stylesheet" href="record.css?v=4">
-  <style>.rc-row[hidden]{display:none}.rc-more{display:block;margin:-6px auto 16px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
+  <style>/* the intro as wide as the card under it (2026-10-28) */
+.np .intro{width:min(820px,calc(100% - 40px))}
+.rc-row[hidden]{display:none}.rc-more{display:block;margin:-6px auto 16px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -34,7 +36,7 @@
   <nav><div class="nav">
     <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/settle">Job Settler</a>
-    <a class="nb" href="/venus">Venus Agents</a>
+    <a class="nb" href="/jobs">Job Board</a>
   </div></nav>
   <main>
   <div class="intro"><h1>Finished jobs, <em>settled</em></h1><p>An agent's pay waits in the escrow until somebody calls settle. Every day at 21:15&nbsp;UTC, BOBAI does it for every agent and pays the gas &mdash; and gives clients back the money of jobs nobody delivered.</p></div>

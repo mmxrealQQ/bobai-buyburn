@@ -1867,7 +1867,7 @@ const liveRows = operators
   .slice(0, 60)
   .map((o) => {
     const tags = [
-      o.speaks.includes('mcp') ? `<span class="rg-t rg-mcp">MCP &middot; ${o.tools?.length ?? '?'} tools</span>` : '',
+      o.speaks.includes('mcp') ? `<span class="rg-t rg-mcp">MCP &middot; ${o.tools?.length ?? '?'} tool${o.tools?.length === 1 ? '' : 's'}</span>` : '',
       o.speaks.includes('a2a') ? '<span class="rg-t rg-a2a">agent card</span>' : '',
       o.speaks.includes('x402') ? '<span class="rg-t rg-x4">x402</span>' : '',
       ...(o.trust_models || []).slice(0, 2).map((t) => `<span class="rg-t rg-tr">${esc(t)}</span>`),
@@ -3536,7 +3536,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var B=[
         ['Top by evidence','#f0b90b',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
         ['Most paid work','#4cc38a',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')}],
-        ['Earned the most','#7fd1ff',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return '$'+Number(a.earned_u).toFixed(2)+'<small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
+        ['Earned the most','#7fd1ff',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return Number(a.earned_u).toFixed(2)+' <small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
         ['Down at their last check','#ff7a6e',pick(function(a){return a.days>0&&a.up_now===0},function(x,y){return num(y.uptime_30d)-num(x.uptime_30d)}),function(){return '<span style="color:#ff7a6e">down</span>'},function(a){return a.uptime_30d===0?'no answer yet · '+a.days+'d':'up '+a.uptime_30d+'% · '+a.days+'d'}]
       ];
       box.innerHTML=B.map(function(b){return '<div class="rg-top4" style="--c:'+b[1]+'"><h3><i></i>'+b[0]+'</h3>'+(b[2].length?b[2].map(function(a,i){return row(a,i,b[3](a),b[4](a))}).join(''):'<p class="rg-note">Nobody right now.</p>')+'</div>'}).join('');
@@ -3677,7 +3677,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       if (old) old.remove();
       if (rows.length <= 4) return;
       var hide = rows.slice(3); hide.forEach(function (r) { r.classList.add('pz-hide'); });
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show the ' + nf(rows.length) + ' newest'; /* the newest only: the total stands on the card above (25.10.: 'Show all 8' under 21 hires) */
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pz-more'; b.textContent = 'Show ' + nf(hide.length) + ' more'; /* (28.10.: 'Show the 8 newest' under 3 already shown read as a different list) */ /* the newest only: the total stands on the card above (25.10.: 'Show all 8' under 21 hires) */
       b.addEventListener('click', function () { hide.forEach(function (r) { r.classList.remove('pz-hide'); }); b.dataset.open = '1'; b.remove(); });
       box.after(b);
     };

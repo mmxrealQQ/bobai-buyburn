@@ -248,6 +248,9 @@ function usdIn(root){
   }
 }
 function usdAll(){if(!(PX.BNB>0))return;for(const s of document.querySelectorAll('.usdv'))s.textContent=usdOf(s);usdIn(document.body)}
+// WHEN THE CHAIN READ IS SLOW (2026-10-28: one /defi load showed no dollars at all, the public RPC had not answered):
+// after 8 s the site's own on-chain price (/api/price: pair reserves x Chainlink) stands in until chain() arrives
+setTimeout(()=>{if(PX.BNB>0)return;fetch('/api/price',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(PX.BNB>0||!j||!(+j.bnb_usd>0))return;PX.BNB=+j.bnb_usd;PX.BOBAI=+j.price_usd||0;usdAll()}).catch(()=>{})},8000);
 {let q=new Set(),tm=0;new MutationObserver(rs=>{for(const r of rs){if(r.target.closest&&r.target.closest('#bt'))continue;q.add(r.target)}
   if(!tm)tm=setTimeout(()=>{tm=0;const a=[...q];q=new Set();for(const n of a)if(n.isConnected)usdIn(n)},300)}).observe(document.documentElement,{childList:true,subtree:true,characterData:true})}
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
@@ -354,7 +357,7 @@ async function chain(){
   try{const v=u18(q[2]);if(v>0){bobAmt=v;setBig('total-burned',v,'BOB')}}catch(e){}
   let bAmt=0;
   try{const v=u18(q[3]);if(v>0){bAmt=v;setBig('total-bobai-burned',v,'BOBAI');
-    const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}catch(e){}
+    const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(2)+'%'}}catch(e){}
   try{
     const rH=q[4],r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),
       is0=('0x'+q[5].slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,
@@ -1231,7 +1234,7 @@ function fillLpPortfolio(){
     const tiles =
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
-      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost ($BOBAI held, fees)' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost (' + (Array.isArray(m.worth.beside_parts) && m.worth.beside_parts.length ? m.worth.beside_parts.map(function(p){return esc(String(p.label).replace(', at cost',''))}).join(', ') : '$BOBAI held, fees') + ')' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
     const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
     const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'
@@ -1297,7 +1300,7 @@ function lpRange(){
     if(fl && fe && fl.lp_share_now_pct < 87.9) fetch('https://agent.brainonbnb.com/lp/series', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(s => {
       const sm = s && s.summary, fees = sm && sm.profit && +sm.profit.from_fees_bnb; if(!(fees > 0)) return;
       const more = fees * (fl.fees_factor - 1), u = bnbP > 0 ? b => ' <small>≈$' + Math.round(b * bnbP).toLocaleString('en-US') + '</small>' : () => '';
-      fe.innerHTML = '<b>The Flip.</b> This pool pays its LPs <b>' + fl.lp_share_now_pct + '%</b> of the swap fees today, read from the pool. PancakeSwap’s <a href="' + fl.proposal + '" target="_blank" rel="noopener">proposal</a> would make it <b>88%</b>: on this agent’s own record since ' + new Date(sm.since).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ', <b>' + (fees * fl.fees_factor).toFixed(4) + ' BNB</b>' + u(fees * fl.fees_factor) + ' of fees instead of ' + fees.toFixed(4) + ' BNB' + u(fees) + ' — ' + more.toFixed(4) + ' BNB more for the same work. A proposal in discussion, not live; this line follows the pool the day it changes.';
+      fe.innerHTML = '<b>The Flip.</b> This pool pays its LPs <b>' + fl.lp_share_now_pct + '%</b> of the swap fees today, read from the pool. PancakeSwap’s <a href="' + fl.proposal + '" target="_blank" rel="noopener">proposal</a> would make it <b>88%</b>: on this agent’s own record since ' + new Date(sm.since).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ', <b>' + (fees * fl.fees_factor).toFixed(4) + ' BNB</b>' + u(fees * fl.fees_factor) + ' of fees instead of ' + fees.toFixed(4) + ' BNB' + u(fees) + ' — ' + (more >= 0 ? (+(fees + more).toFixed(4) - +fees.toFixed(4)) : more).toFixed(4) + ' BNB more for the same work. A proposal in discussion, not live; this line follows the pool the day it changes.';
       fe.hidden = false;
     });
   });

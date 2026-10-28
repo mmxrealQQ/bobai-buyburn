@@ -546,6 +546,16 @@ section('The written numbers match the measured ones');
   ok('llms.txt states the number of tools the endpoint actually serves',
     !!served && claimed === served,
     served ? `llms.txt says ${claimed || '(none stated)'}, the endpoint serves ${served}` : 'tools/list did not answer');
+  // and its read-only part (2026-10-28: '30 free tools — 27 read-only' + 2 named writers summed to 29; 28 are read-only)
+  const servedRo = await fetch(`${SITE}/mcp`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  }).then((r) => r.json()).then((j) => j?.result?.tools?.filter((t) => t.annotations?.readOnlyHint).length).catch(() => null);
+  const claimedRo = Number((txt.match(/(\d+)\s+read-only,/) || [])[1]);
+  ok('llms.txt states how many of them are read-only',
+    servedRo != null && claimedRo === servedRo,
+    servedRo != null ? `llms.txt says ${claimedRo || '(none stated)'} read-only, the endpoint marks ${servedRo}` : 'tools/list did not answer');
   // Naming a tool that does not exist is the same failure pointing the other
   // way, and it is the one an agent hits hardest: it calls the name and gets
   // an error it cannot act on.

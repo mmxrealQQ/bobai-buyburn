@@ -24,8 +24,8 @@
   <meta name="twitter:title" content="For PancakeSwap traders and LPs — measured on chain, free">
   <meta name="twitter:description" content="The route that pays most, the real cost of a trade, the fee tier that pays an LP, a check of any V3 position.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=74" as="style">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="preload" href="styles.css?v=75" as="style">
+  <link rel="stylesheet" href="styles.css?v=75">
   <link rel="stylesheet" href="home.css?v=1">
   <link rel="stylesheet" href="record.css?v=4">
   <style>
@@ -100,7 +100,7 @@
       <p class="pc-say">Any PancakeSwap V3 position, any pair: in range or not, the room to each edge, what it holds and is owed, and whether collecting pays for its gas.</p>
       <form class="pc-ask" id="pos-form">
         <label for="pc-pos" style="position:absolute;left:-9999px">Position id or wallet</label>
-        <input id="pc-pos" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste a V3 position id or the wallet that holds it">
+        <input id="pc-pos" inputmode="text" autocomplete="off" spellcheck="false" placeholder="V3 position id or wallet">
         <button class="pc-go" type="submit">Check it</button>
       </form>
       <div class="pc-live" id="t-pos" style="margin-top:10px"><span class="pc-wait">Paste a position id or a wallet above.</span></div>
@@ -256,7 +256,9 @@
     $('t-own').innerHTML = 'Position <b>#' + esc(j.pool?.position || '') + '</b> · ' + esc(j.pool?.label || '')
       + (j.pool?.in_range === true ? ' · <span class="ok">in range</span>' : j.pool?.in_range === false ? ' · <span class="no">out of range</span>' : '')
       + ' · checked ' + esc(String(j.checked_at || j.at || '').slice(0, 16).replace('T', ' ')) + ' UTC'
-      + (j.pnl && j.pnl.profit_bnb != null ? '<br>Result since 3 Sep: <b class="' + (j.pnl.profit_bnb < 0 ? 'no' : 'ok') + '">' + (j.pnl.profit_bnb < 0 ? '−' : '+') + nf(Math.abs(j.pnl.profit_bnb), 4) + ' BNB (' + (j.pnl.change_pct < 0 ? '−' : '+') + nf(Math.abs(j.pnl.change_pct), 1) + '%)</b> on ' + nf(j.put_in?.bnb, 4) + ' BNB put in — price ' + (j.pnl.from_price_bnb < 0 ? '−' : '+') + nf(Math.abs(j.pnl.from_price_bnb), 4) + ' BNB, fees +' + nf(j.pnl.from_fees_bnb, 4) + ' BNB.' : '');
+      // every BNB figure with its dollars, and the gas, so the three parts add up to the result (2026-10-28)
+      + (j.pnl && j.pnl.profit_bnb != null ? (() => { const u = +j.bnb_usd || 0, d = (b) => (u ? ' (≈$' + nf(Math.abs(b) * u, 2) + ')' : ''), sg = (b) => (b < 0 ? '−' : '+');
+        return '<br>Result since 3 Sep: <b class="' + (j.pnl.profit_bnb < 0 ? 'no' : 'ok') + '">' + sg(j.pnl.profit_bnb) + nf(Math.abs(j.pnl.profit_bnb), 4) + ' BNB' + d(j.pnl.profit_bnb) + ', ' + sg(j.pnl.change_pct) + nf(Math.abs(j.pnl.change_pct), 1) + '%</b> on ' + nf(j.put_in?.bnb, 4) + ' BNB' + d(j.put_in?.bnb || 0) + ' put in — price ' + sg(j.pnl.from_price_bnb) + nf(Math.abs(j.pnl.from_price_bnb), 4) + ' BNB' + d(j.pnl.from_price_bnb) + ', fees +' + nf(j.pnl.from_fees_bnb, 4) + ' BNB' + d(j.pnl.from_fees_bnb) + (j.pnl.gas_bnb ? ', gas −' + nf(j.pnl.gas_bnb, 4) + ' BNB' + d(j.pnl.gas_bnb) : '') + '.'; })() : '');
   }).catch(() => { $('t-own').textContent = 'The record could not be read just now.'; });
 
   get('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=50').then((j) => {

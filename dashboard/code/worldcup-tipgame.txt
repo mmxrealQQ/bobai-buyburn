@@ -2,7 +2,7 @@
 # A full tournament game that paid out on-chain.
 #
 # This is the complete worldcup-tipgame bundle as a single file, so it can be read in
-# one fetch. 45 files, 11282 lines.
+# one fetch. 45 files, 11265 lines.
 # Download as a zip: https://brainonbnb.com/code/worldcup-tipgame.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3908,7 +3908,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
         <div class="card">
           <div data-card-accent="pool-trophy"></div>
           <h1><span class="accent">Leaderboard</span></h1>
-          <p class="sub">Live shares update with the <a href="./prize-pool.html" style="color:var(--gold)">prize pool</a> · ⚽ = wallet linked · only wallet-linked players are eligible for payouts (next eligible player takes the slot)</p>
+          <p class="sub">Final standings — the game ended on 19 July 2026, every pot was paid on 20 July (<a href="/worldcup/" style="color:var(--gold)">archive with every payout</a>) · ⚽ = wallet linked · only wallet-linked players are eligible for payouts (next eligible player takes the slot)</p>
 
           <!-- WALLET FILTER (toggles between full leaderboard and the exact payout ranking) -->
           <div class="wallet-filter" id="wallet-filter">
@@ -5484,7 +5484,8 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
         <div data-hero="prize-pool-hero"></div>
         <div class="card">
           <h1><span class="accent">Prize Pool</span></h1>
-          <p class="sub">Live BOBAI pool · split into Group / End / Crypto pots</p>
+          <p class="sub">The BOBAI pool, split into Group / End / Crypto pots · <b>finished</b>: every pot was paid on Jul 20, 2026</p>
+          <p class="sub" style="margin-top:6px;padding:10px 12px;border:1px solid rgba(240,185,11,.3);border-radius:10px;background:rgba(240,185,11,.06)">Archive. The game ran 11 June – 19 July 2026. The amounts each winner received, with the value at payout and every transaction, stand on <a href="/worldcup/" style="color:var(--gold)">the archive page</a>; the dollar values on this page are at today's price.</p>
 
           <!-- POOL CARD -->
           <div class="pool">
@@ -5524,28 +5525,12 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
               </div>
             </div>
 
-            <!-- DONATION BOX -->
-            <div style="margin-top:16px;padding:14px;background:rgba(0,0,0,.35);border:1px solid rgba(0,230,118,.15);border-radius:10px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-                <div style="font-family:'Space Grotesk';font-weight:600;font-size:12px;color:#5fffa0;letter-spacing:.5px">💚 DONATIONS WELCOME</div>
-                <a href="./rules.html#donations" style="font-size:11px;color:var(--muted);text-decoration:underline">how it works</a>
-              </div>
-              <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">
-                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to BOBAI and added on-chain. Any amount welcome.
-              </div>
-              <div style="background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-                <a id="prize-addr" href="#" target="_blank" rel="noopener" title="View on BscScan" style="flex:1;font-size:12px;color:var(--text);word-break:break-all;font-family:'Space Grotesk';text-decoration:none">…</a>
-                <button id="copy-addr" class="btn" style="width:auto;padding:7px 12px;font-size:11px">Copy</button>
-              </div>
-              <div style="font-size:10.5px;color:var(--muted);margin-top:8px">
-                BSC (BNB Smart Chain) only. Sending other networks = lost funds.
-              </div>
-            </div>
+            <!-- DONATION BOX removed 2026-10-28: the game ended on Jul 19 and the wallet is now the Giggle Academy pot -->
           </div>
 
           <!-- HOW THE POOL GROWS -->
           <div class="section-h">
-            <span>💧 How the pool grows</span>
+            <span>💧 How the pool grew</span>
             <span class="right">3 transparent sources · all on-chain</span>
           </div>
           <div class="flow" style="margin-bottom:24px">
@@ -5553,7 +5538,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
               <div class="flow-step">
                 <div class="num">1</div>
                 <div class="body">
-                  <b>Donations</b> — any BNB or USDT (BEP-20) sent to the prize-pool wallet is auto-swapped to BOBAI and credited on-chain. No minimum, no cap.
+                  <b>Donations</b> — during the game, BNB or USDT (BEP-20) sent to the prize-pool wallet was swapped to BOBAI and credited on-chain. The game is over: that wallet is now the Giggle Academy pot, so do not send to it for this game.
                   <span class="muted">Live in the credits table below. Every swap verifiable on BscScan.</span>
                 </div>
               </div>
@@ -5561,7 +5546,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
                 <div class="num">2</div>
                 <div class="body">
                   <b>BOBAI tax auto-flow</b> &mdash; from <b>Jun 11, 00:01 UTC</b> until the Final (<b>Jul 19, 23:59 UTC</b>), <b>0.52% of every BOBAI trade tax</b> auto-flows into this wallet: 0.26% redirected from the BOB burn slice + 0.26% from the creator slice. The 3% on-chain tax rate stays fixed; only the off-chain distribution changes for the WC26 window.
-                  <span class="muted">After the Final, distribution returns to standard 1/1/1 split. <a href="https://brainonbnb.ai/#about" target="_blank" rel="noopener">See full tax schedule →</a></span>
+                  <span class="muted">After the Final, the distribution went back to the standard split. <a href="https://brainonbnb.com/token#about" target="_blank" rel="noopener">See full tax schedule →</a></span>
                 </div>
               </div>
               <div class="flow-step">
@@ -5579,8 +5564,8 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
 
           <!-- PER-POSITION PAYOUTS -->
           <div class="section-h">
-            <span>💎 Expected payouts per position</span>
-            <span class="right">live — recalculated as pool grows</span>
+            <span>💎 Shares per position, as the rules set them</span>
+            <span class="right">before the holder cap — the amounts paid are on <a href="/worldcup/" style="color:var(--gold)">the archive page</a></span>
           </div>
           <div class="ptable-wrap">
             <table class="ptable">
@@ -5603,7 +5588,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
           <!-- TX HISTORY -->
           <div class="section-h">
             <span>Pool credits</span>
-            <span class="right">every swap on-chain · auto-refreshes every 30s</span>
+            <span class="right">every swap on-chain</span>
           </div>
           <div class="txwrap">
             <div class="txfilter" id="txfilter">
@@ -6220,11 +6205,10 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
       const addr = window.WC_CONFIG?.PRIZE_WALLET;
       if (!addr) return;
       const linkEl = $('#prize-addr');
-      linkEl.textContent = addr;
-      linkEl.href = `https://bscscan.com/address/${addr}`;
+      if (linkEl) { linkEl.textContent = addr; linkEl.href = `https://bscscan.com/address/${addr}`; }
       $('#addr-link').href = `https://bscscan.com/address/${addr}`;
       $('#rc-wallet-link').href = `https://bscscan.com/address/${addr}`;
-      $('#copy-addr').addEventListener('click', async () => {
+      if ($('#copy-addr')) $('#copy-addr').addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(addr);
           const b = $('#copy-addr');
@@ -6602,7 +6586,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
         <div data-hero="rules-hero"></div>
         <div class="card">
           <h1><span class="accent">Rules &amp; FAQ</span></h1>
-          <p class="sub">Read this before you play. Especially if it's your first crypto-tipgame.</p>
+          <p class="sub">The rules as they were. The game ran 11 June – 19 July 2026 and is finished; final standings and every payout: <a href="/worldcup/" style="color:var(--gold)">the archive</a>.</p>
 
           <nav class="toc">
             <a href="#disclaimer">⚠ Disclaimer</a>
@@ -6793,7 +6777,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
 
           <!-- DONATIONS -->
           <h2 id="donations">8. Donations</h2>
-          <p>The prize-pool wallet accepts <b>BNB</b> and <b>USDT (BEP-20)</b> on BNB Smart Chain. Address is shown on the <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> page with a copy button.</p>
+          <p><b>Closed with the game (19 July 2026).</b> That wallet is now the Giggle Academy pot — do not send to it for this game. During the game, the prize-pool wallet accepted <b>BNB</b> and <b>USDT (BEP-20)</b> on BNB Smart Chain. The address was shown on the <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> page with a copy button.</p>
           <div class="callout danger">
             <b>BSC only.</b> If you send USDT on Ethereum, Tron, Solana or any other network — funds are <b>lost</b>. There's no human in the loop to recover them.
           </div>
@@ -6833,8 +6817,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
             <li>Website: <a href="https://brainonbnb.com" style="color:var(--gold)">brainonbnb.com</a></li>
           </ul>
           <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
-            Last updated: 22 May 2026 (prize-pool tax auto-flow clarified: 0.52 % = 0.26 % BOB-burn + 0.26 % creator). Rules may be refined for clarity before launch on 4 June 2026; any change with material effect on scoring or payouts will be announced in the official Telegram with at least 24 hours' notice.
-          </p>
+            Last updated: 22 May 2026 (prize-pool tax auto-flow clarified: 0.52 % = 0.26 % BOB-burn + 0.26 % creator). The game is finished (11 June – 19 July 2026); these rules are kept as they were played.</p>
         </div>
       </div>
     </main>

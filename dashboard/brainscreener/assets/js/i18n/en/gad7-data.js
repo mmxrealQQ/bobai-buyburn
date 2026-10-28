@@ -4,7 +4,8 @@
 //    generalized anxiety disorder: the GAD-7. Arch Intern Med. 2006;166(10):1092-7.
 //  - Loewe B et al., Validation and standardization of the GAD-7 in the general
 //    German population, J Affect Disord. 2008;114(1-3):163-73.
-//  - NICE NG222 (2022, update 2024): GAD-7 as first-line instrument for generalised anxiety.
+//  - NICE CG113 (generalised anxiety disorder) and CG123 (common mental health problems: identification in primary
+//    care) — NG222 is the depression guideline and was cited here by mistake until 2026-10-28.
 //  - DSM-5-TR criteria for GAD (APA 2022).
 //
 // Response scale 0..3 for all 7 items, reference period: last 2 weeks.
@@ -64,7 +65,7 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>GAD-7 total score</strong> is <strong>${result.total} of 21 points</strong> — a <strong>${result.severity}</strong> level of severity.
       ${result.cutoffReached
-        ? `The established cutoff of ≥&nbsp;10 has been reached; validation studies report a sensitivity of approx.&nbsp;89&nbsp;% and specificity of approx.&nbsp;82&nbsp;% for generalised anxiety disorder at this threshold (Spitzer et al. 2006; Plummer et al. meta-analysis 2016; NICE NG222).`
+        ? `The established cutoff of ≥&nbsp;10 has been reached; validation studies report a sensitivity of approx.&nbsp;89&nbsp;% and specificity of approx.&nbsp;82&nbsp;% for generalised anxiety disorder at this threshold (Spitzer et al. 2006; Plummer et al. meta-analysis 2016).`
         : (result.panicHint
             ? `The GAD cutoff of 10 has not been reached, but the score is ≥&nbsp;8 — in this range, validation studies show additional indications of panic disorder, social phobia or PTSD symptoms (Kroenke et al. 2007).`
             : `The cutoff of ≥&nbsp;10 has not been reached. If the distress persists over several weeks, a specialist assessment is nevertheless advisable.`)}
@@ -83,8 +84,8 @@ window.TEST_DATA = (function () {
       self-report measure internationally for assessing generalised anxiety symptoms and is
       considered the sister instrument of the PHQ-9. It was developed in 2006 by Spitzer, Kroenke & Williams
       and, despite its focus on GAD, also serves as a good initial screener for panic disorder,
-      social phobia and PTSD (Kroenke et al. 2007). NICE NG222 (2022, update 2024) recommends
-      it as the first-line instrument in primary care.
+      social phobia and PTSD (Kroenke et al. 2007). NICE guidance for primary care (CG123, with CG113
+      for generalised anxiety disorder) recommends a short GAD scale as the first check for anxiety.
     `;
 
     const next = [];
@@ -125,7 +126,7 @@ window.TEST_DATA = (function () {
       intro: `This instrument is the <strong>Generalized Anxiety Disorder Scale (GAD-7)</strong> — the most widely used self-report test worldwide for assessing generalised anxiety symptoms. Seven items, reference period: <strong>last 2 weeks</strong>.`,
       durationText: "approx. 2–3 minutes",
       itemsText: "7 items",
-      sources: "Spitzer, Kroenke & Williams 2006 · Löwe et al. (German version) 2008 · NICE NG222 (2024)",
+      sources: "Spitzer, Kroenke & Williams 2006 · Löwe et al. (German version) 2008 · NICE CG113 / CG123",
       testPath: "/brainscreener/gad7",
       retestPath: "/brainscreener/gad7",
       resultPath: "/brainscreener/gad7-result",

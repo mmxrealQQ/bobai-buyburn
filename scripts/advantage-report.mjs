@@ -458,7 +458,8 @@ async function task3Manual() {
     ...m.done(),
     answer: {
       answered: false,
-      could_not_answer: 'no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.',
+      // the share computed, not typed (2026-10-28: 150 of 393,507 is 0.04%, the text said 0.05%)
+      could_not_answer: `no candidate was produced. The registry has no index: ${read} ids were read to measure the rate, and that is ${total ? (read / total * 100).toFixed(2) : '?'}% of it.`,
       registry_ids_at_measurement: total,
       sampled_ids: read,
       ids_with_a_document: withDocument,

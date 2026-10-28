@@ -19,7 +19,7 @@
 <meta property="og:url" content="https://brainonbnb.com/advantage">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=74">
+<link rel="stylesheet" href="/styles.css?v=75">
 <style>
   .adv{max-width:960px;margin:0 auto}
   .hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}
@@ -164,7 +164,7 @@
           <td class="n">$0.00000</td>
         </tr></tbody>
         </table></div>
-        <p class="ev-n">The tier holding the most capital is <strong>V2 0.25%</strong>. The tier that paid best is <strong>V3 0.05%</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single window of 59.3 minutes and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+        <p class="ev-n">The tier holding the most capital is <strong>V2 0.25%</strong>. The tier that paid best is <strong>V3 0.05%</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single window of 59.3 minutes and deliberately not annualised — a window of flow says what happened in that window.</p>
       </div>
       <div class="ev mk">
         <div class="ev-h">Hired through the marketplace</div>
@@ -240,7 +240,7 @@
           <div class="big">6,886 ms</div>
           <div class="sub">187 requests</div>
           <div class="verdict">Did not answer</div>
-          <p class="miss">no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.</p>
+          <p class="miss">no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.04% of it.</p>
         </div>
       </div>
 
@@ -299,13 +299,13 @@
           const verdict = !nx ? '<span class="tr-mu">open</span>' : !judged ? '<span class="tr-mu">not judged</span>' : net > 0 ? '<span class="tr-up">ahead</span>' : '<span class="tr-dn">behind</span>';
           rows.push('<tr><td><a href="https://bscscan.com/token/' + NPM + '?a=' + s.id + '" target="_blank" rel="noopener">#' + s.id + '</a></td><td>' + day(a.at) + ' – ' + day(end.at) + '</td><td>' + pc(lo) + ' / ' + pc(hi) + '</td><td>' + f4(fees) + '</td><td>' + f4(vsHold) + '</td><td>' + f4(net) + '</td><td>' + verdict + '</td></tr>');
         });
-        const usd = (b) => S.profit && S.profit.bnb_usd ? ' (≈$' + Math.round(b * S.profit.bnb_usd).toLocaleString('en-US') + ')' : '';
+        const usd = (b) => S.profit && S.profit.bnb_usd ? ' (≈$' + Math.round(Math.abs(b) * S.profit.bnb_usd).toLocaleString('en-US') + ')' : ''; // every BNB figure with its dollars (28.10.)
         document.getElementById('tr-sum').innerHTML =
           '<div><b>' + day(S.since) + ' – now</b><span>time window · ' + S.days_covered + ' days, ' + S.points + ' runs</span></div>'
           + '<div><b>' + S.value_bnb.now.toFixed(3) + ' BNB</b><span>at risk now' + usd(S.value_bnb.now) + ' · one pool, CAKE/BNB 0.05 %</span></div>'
           + '<div><b>' + (S.time_in_range ? S.time_in_range.in_range_pct + '%' : '–') + '</b><span>of the time in range</span></div>'
-          + (pf && pf.pnl ? '<div><b class="' + (pf.pnl.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.change_pct >= 0 ? '+' : '') + pf.pnl.change_pct + '%</b><span>on the capital, ' + f4(pf.pnl.profit_bnb) + ' BNB · ' + f4(pf.pnl.from_fees_bnb) + ' fees, ' + f4(pf.pnl.from_price_bnb) + ' from the price, ' + f4(-pf.pnl.gas_bnb) + ' gas — the same result as <a href="/defi">/defi</a></span></div>'
-            + (pf.pnl.vs_holding ? '<div><b class="' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? '+' : '') + pf.pnl.vs_holding.vs_holding_pct + '%</b><span>against simply holding 50/50, ' + f4(pf.pnl.vs_holding.vs_holding_bnb) + ' BNB</span></div>' : '')
+          + (pf && pf.pnl ? '<div><b class="' + (pf.pnl.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.change_pct >= 0 ? '+' : '') + pf.pnl.change_pct + '%</b><span>on the capital, ' + f4(pf.pnl.profit_bnb) + ' BNB' + usd(pf.pnl.profit_bnb) + ' · ' + f4(pf.pnl.from_fees_bnb) + usd(pf.pnl.from_fees_bnb) + ' fees, ' + f4(pf.pnl.from_price_bnb) + usd(pf.pnl.from_price_bnb) + ' from the price, ' + f4(-pf.pnl.gas_bnb) + usd(pf.pnl.gas_bnb) + ' gas — the same result as <a href="/defi">/defi</a></span></div>'
+            + (pf.pnl.vs_holding ? '<div><b class="' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? '+' : '') + pf.pnl.vs_holding.vs_holding_pct + '%</b><span>against simply holding 50/50, ' + f4(pf.pnl.vs_holding.vs_holding_bnb) + ' BNB' + usd(pf.pnl.vs_holding.vs_holding_bnb) + '</span></div>' : '')
             : '<div><b>–</b><span>the result could not be read just now: <a href="/defi">/defi</a></span></div>');
         document.getElementById('tr-win').innerHTML = '<p style="margin:10px 0 14px"><b style="font-size:20px">' + ahead + ' of ' + n + '</b> closed ranges ended ahead of holding (' + (n ? Math.round(100 * ahead / n) : 0) + '%)' + (short ? '; ' + short + ' lived too short to judge' : '') + '.</p>';
         document.getElementById('tr-tbl').innerHTML = '<tr><th>Position</th><th>Lived</th><th>Range</th><th>Fees, BNB</th><th>vs holding</th><th>Net</th><th></th></tr>' + rows.reverse().join('');

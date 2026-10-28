@@ -23,7 +23,7 @@ const LOGS_RPC = 'https://bsc.publicnode.com'; // dataseed refuses eth_getLogs r
 const LOGS_RPCS = [LOGS_RPC, 'https://bsc-rpc.publicnode.com'];
 // a swap paid out to one of these is BOBAI acting (buyback, tax swap), not a trader
 const BOTS = ['0xdefc0e900dfc83e207902cf22265ae63f94c01ce', '0x15ba17075ef5e0736292b030e3715d9100fe3d38', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a'];
-const whoTraded = x => x.who === 'tax' ? 'the token contract, swapping its collected tax, ' : x.who === BOTS[2] ? "BOBAI's DeFi agent " : x.who === BOTS[1] ? 'dev bot d38 ' : 'buyback bot 1ce ';
+const whoTraded = x => x.who === 'tax' ? 'the token contract, swapping its collected tax, ' : x.who === BOTS[2] ? "BOBAI's DeFi agent " : x.who === BOTS[1] ? 'the dev wallet ' : 'buyback bot 1ce ';
 // d38 (the dev buyback bot) too: the Telegram bot ignores its buys (IGNORED_WALLETS), so no scene here either (2026-09-29)
 const OURS = ['0xdefc0e900dfc83e207902cf22265ae63f94c01ce', '0x15ba17075ef5e0736292b030e3715d9100fe3d38', '0x245c386dcfed896f5c346107596141e5edcbffff', '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '0x000000000000000000000000000000000000dead'];
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', BW = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
@@ -2958,7 +2958,7 @@ const CMDS = {
       + (f.b || f.s ? ` This hour ${nf(f.b)} buy${f.b === 1 ? '' : 's'} ($${nf(f.bu || 0)}) and ${nf(f.s)} sell${f.s === 1 ? '' : 's'} ($${nf(f.su || 0)}).` : '')
       + (rB > 0 ? ` The pool holds ${bnbR(rB)} a side (≈$${nf(CX.liqUsd)}): a 1 BNB buy moves the price about ${(((1 + 1 / rB) ** 2 - 1) * 100).toFixed(1)}%, plus the 3% tax.` : '')
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
-  bots: () => { say(['buyback bot 1ce: last run ', [ago(W.buyback.last)], ' · dev bot d38: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
+  bots: () => { say(['buyback bot: last run ', [ago(W.buyback.last)], ' · dev wallet: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
 CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
 // AI AND BLOCKCHAIN, ASKED ABOUT (2026-10-14): the six agents we run, and the second opinion our DeFi agent bought from
@@ -3751,11 +3751,11 @@ function paintLogs() {
   const boost = boost3();
   if (S.liq.length) setDest('liq', `${boost.n} adds · ${bnb4(boost.bnb)}`, `${nf(boost.lp, 2)} LP burned · pool ${lpText()} locked`);
   if (S.burns.length) {
-    const gg = ggBnb(), days = Math.max(0, Math.ceil((ggEnd() - Date.now()) / 86400e3));
+    const gg = ggBnb(), days = Math.max(0, Math.floor((ggEnd() - Date.now()) / 86400e3)); // floored as the page counts (28.10.: 23 here, 22 beside it)
     setDest('giggle', bnb4R(gg), GIGGLE_OPEN() ? `≈$${nf(gg * S.bnbP, 2)} · for Giggle Academy in ${days} days` : 'donated to Giggle Academy on Nov 20');
     const cr = S.burns.slice(-1)[0];
     const dv = S.dev[S.dev.length - 1];
-    setDest('creator', pctOf('creator') + ' of each trade', (cr ? `last in: ${bnbF(cr.creatorBnb)}, ${hAgo(Date.parse(cr.time))}` : '') + (dv ? ` · d38 paid out ${bnbF(dv.availableBnb)}, ${hAgo(Date.parse(dv.time))}` : ''));
+    setDest('creator', pctOf('creator') + ' of each trade', (cr ? `last in: ${bnbF(cr.creatorBnb)}, ${hAgo(Date.parse(cr.time))}` : '') + (dv ? ` · the dev wallet paid out ${bnbF(dv.availableBnb)}, ${hAgo(Date.parse(dv.time))}` : ''));
   }
   const lp = S.lp;
   if (lp) {
@@ -5700,7 +5700,7 @@ function near(e) {
   return best;
 }
 function describe(x) {
-  if (x.kind === 'dev') return `d38 paid out ${bnbAmt(x.d.availableBnb, x.t)} of creator share (${x.d.builder5Bnb && x.d.builder6Bnb ? '80% creator, 20% to 6 builders' /* only 1.10.-10.10. paid six; before and since, five (#6 in, then #5 out) */ : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
+  if (x.kind === 'dev') return `the dev wallet paid out ${bnbAmt(x.d.availableBnb, x.t)} of the creator share (${x.d.builder5Bnb && x.d.builder6Bnb ? '80% creator, 20% to 6 builders' /* only 1.10.-10.10. paid six; before and since, five (#6 in, then #5 out) */ : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
   if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${bobaiAmt(x.bobai)} of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
   if (x.kind === 'trade') return x.ours ? `${whoTraded(x)}${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}` : `${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)} · $${nf(x.usd * 0.03, 2)} tax to the brain`;
   if (x.kind === 'run') { const fed = [x.e.lpAgentTx && 'the DeFi agent', x.e.giggleTx && 'the Giggle pot'].filter(Boolean);

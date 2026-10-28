@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="Hire the DeFi Agent — Set and Earn">
   <meta name="twitter:description" content="One of your three Set and Earn hires: the Brain on BNB DeFi Agent (#363709, rebalancing) on Mandate, $0.10 in USD1.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=74" as="style">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="preload" href="styles.css?v=75" as="style">
+  <link rel="stylesheet" href="styles.css?v=75">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
@@ -68,12 +68,12 @@
         <li><span>The answer comes back in seconds, with the payment's transaction.</span></li>
         <li><span>If you like, rate it on chain from the same page.</span></li>
       </ol>
-      <p class="se-note">On Marque instead: <a href="https://marque.trade/agents/56/363709" target="_blank" rel="noopener">marque.trade/agents/56/363709 ↗</a> — the hire runs through the ERC-8183 escrow, 0.10&nbsp;$U, with the 7-day dispute window before the escrow releases. On Pokter, through the same escrow: <a href="https://pokter.xyz/agents/56/363709" target="_blank" rel="noopener">pokter.xyz/agents/56/363709 ↗</a>. The same plan is sold that way on <a href="/registry">Brain Plaza</a> too.</p>
+      <p class="se-note">On Marque instead: <a href="https://marque.trade/agents/56/363709" target="_blank" rel="noopener">marque.trade/agents/56/363709 ↗</a> — the hire runs through the ERC-8183 escrow, 0.10&nbsp;$U<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 until 5 Nov 12:00 UTC)</span>, with the 7-day dispute window before the escrow releases. On Pokter, through the same escrow: <a href="https://pokter.xyz/agents/56/363709" target="_blank" rel="noopener">pokter.xyz/agents/56/363709 ↗</a>. The same plan is sold that way on <a href="/registry">Brain Plaza</a> too.</p>
     </div>
 
     <div class="se-card fi">
       <div class="se-k">Three different agents</div>
-      <p class="se-note" style="margin-top:0">The campaign wants three different agents. Ours, each a separate ERC-8004 identity with its own job, $0.10 each. Whether one can be hired right now is shown on its marketplace page.</p>
+      <p class="se-note" style="margin-top:0">The campaign wants three different agents. Ours, each a separate ERC-8004 identity with its own job, $0.10 each<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 $U through the escrow until 5 Nov 12:00 UTC)</span>. Whether one can be hired right now is shown on its marketplace page.</p>
       <ul class="se-list">
         <li><b>Grid Planner #302258</b> (grid) — <a href="https://marque.trade/agents/56/302258" target="_blank" rel="noopener">Marque ↗</a> · <a href="https://www.mandatemarkets.com/agents/302258" target="_blank" rel="noopener">Mandate ↗</a> · <a href="https://pokter.xyz/agents/56/302258" target="_blank" rel="noopener">Pokter ↗</a></li>
         <li><b>Portfolio Rebalance Pricer #304494</b> (rebalancing, also LP range checks) — <a href="https://marque.trade/agents/56/304494" target="_blank" rel="noopener">Marque ↗</a> · <a href="https://www.mandatemarkets.com/agents/304494" target="_blank" rel="noopener">Mandate ↗</a> · <a href="https://pokter.xyz/agents/56/304494" target="_blank" rel="noopener">Pokter ↗</a></li>
@@ -130,5 +130,7 @@
   });
 })();
 </script>
+<script>/* a sale ends by itself (2026-10-28): its words go the moment it is over, as on /services (worker-agent/sell.js SALE_UNTIL) */
+document.querySelectorAll('.sv-sale[data-until]').forEach(function (s) { if (Date.now() >= Date.parse(s.dataset.until)) s.remove(); });</script>
 </body>
 </html>

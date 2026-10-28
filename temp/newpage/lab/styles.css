@@ -579,7 +579,7 @@
     .pt-note b{color:#ff6a60;font-weight:600}
     .pt-go{flex-shrink:0;color:var(--muted);font-size:.8rem;transition:transform .25s,color .25s}
     a.ptile:hover .pt-go{transform:translate(2px,-2px);color:var(--acc)}
-    @media (max-width:560px){.pt-v{font-size:.62rem}}
+    @media (max-width:560px){.pt-v{font-size:.62rem;white-space:normal;overflow-wrap:anywhere}} /* a phone shows the whole line: the git clone to copy was cut (2026-10-28) */
 
     .vc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden}
     .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),transparent)}

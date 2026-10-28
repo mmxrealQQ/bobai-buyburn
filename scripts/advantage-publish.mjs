@@ -64,7 +64,7 @@ const taskCard = (t) => {
           <thead><tr><th>Tier</th><th class="n">Capital parked</th><th class="n">Swaps</th><th class="n">Fees paid</th><th class="n">Fees per $1,000 parked</th></tr></thead>
           <tbody>${tierRows}</tbody>
         </table></div>
-        <p class="ev-n">The tier holding the most capital is <strong>${esc(a.most_capital_tier)}</strong>. The tier that paid best is <strong>${esc(a.best_paying_tier)}</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single window of ${esc(windowText(a.window))} and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+        <p class="ev-n">The tier holding the most capital is <strong>${esc(a.most_capital_tier)}</strong>. The tier that paid best is <strong>${esc(a.best_paying_tier)}</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single window of ${esc(windowText(a.window))} and deliberately not annualised — a window of flow says what happened in that window.</p>
       </div>` : '';
 
   // Tasks 2 and 3 carry their outputs too. TermiX asks for "the actual outputs
@@ -281,13 +281,13 @@ ${report.tasks.map(taskCard).join('\n')}
           const verdict = !nx ? '<span class="tr-mu">open</span>' : !judged ? '<span class="tr-mu">not judged</span>' : net > 0 ? '<span class="tr-up">ahead</span>' : '<span class="tr-dn">behind</span>';
           rows.push('<tr><td><a href="https://bscscan.com/token/' + NPM + '?a=' + s.id + '" target="_blank" rel="noopener">#' + s.id + '</a></td><td>' + day(a.at) + ' – ' + day(end.at) + '</td><td>' + pc(lo) + ' / ' + pc(hi) + '</td><td>' + f4(fees) + '</td><td>' + f4(vsHold) + '</td><td>' + f4(net) + '</td><td>' + verdict + '</td></tr>');
         });
-        const usd = (b) => S.profit && S.profit.bnb_usd ? ' (≈$' + Math.round(b * S.profit.bnb_usd).toLocaleString('en-US') + ')' : '';
+        const usd = (b) => S.profit && S.profit.bnb_usd ? ' (≈$' + Math.round(Math.abs(b) * S.profit.bnb_usd).toLocaleString('en-US') + ')' : ''; // every BNB figure with its dollars (28.10.)
         document.getElementById('tr-sum').innerHTML =
           '<div><b>' + day(S.since) + ' – now</b><span>time window · ' + S.days_covered + ' days, ' + S.points + ' runs</span></div>'
           + '<div><b>' + S.value_bnb.now.toFixed(3) + ' BNB</b><span>at risk now' + usd(S.value_bnb.now) + ' · one pool, CAKE/BNB 0.05 %</span></div>'
           + '<div><b>' + (S.time_in_range ? S.time_in_range.in_range_pct + '%' : '–') + '</b><span>of the time in range</span></div>'
-          + (pf && pf.pnl ? '<div><b class="' + (pf.pnl.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.change_pct >= 0 ? '+' : '') + pf.pnl.change_pct + '%</b><span>on the capital, ' + f4(pf.pnl.profit_bnb) + ' BNB · ' + f4(pf.pnl.from_fees_bnb) + ' fees, ' + f4(pf.pnl.from_price_bnb) + ' from the price, ' + f4(-pf.pnl.gas_bnb) + ' gas — the same result as <a href="/defi">/defi</a></span></div>'
-            + (pf.pnl.vs_holding ? '<div><b class="' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? '+' : '') + pf.pnl.vs_holding.vs_holding_pct + '%</b><span>against simply holding 50/50, ' + f4(pf.pnl.vs_holding.vs_holding_bnb) + ' BNB</span></div>' : '')
+          + (pf && pf.pnl ? '<div><b class="' + (pf.pnl.change_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.change_pct >= 0 ? '+' : '') + pf.pnl.change_pct + '%</b><span>on the capital, ' + f4(pf.pnl.profit_bnb) + ' BNB' + usd(pf.pnl.profit_bnb) + ' · ' + f4(pf.pnl.from_fees_bnb) + usd(pf.pnl.from_fees_bnb) + ' fees, ' + f4(pf.pnl.from_price_bnb) + usd(pf.pnl.from_price_bnb) + ' from the price, ' + f4(-pf.pnl.gas_bnb) + usd(pf.pnl.gas_bnb) + ' gas — the same result as <a href="/defi">/defi</a></span></div>'
+            + (pf.pnl.vs_holding ? '<div><b class="' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? 'tr-up' : 'tr-dn') + '">' + (pf.pnl.vs_holding.vs_holding_pct >= 0 ? '+' : '') + pf.pnl.vs_holding.vs_holding_pct + '%</b><span>against simply holding 50/50, ' + f4(pf.pnl.vs_holding.vs_holding_bnb) + ' BNB' + usd(pf.pnl.vs_holding.vs_holding_bnb) + '</span></div>' : '')
             : '<div><b>–</b><span>the result could not be read just now: <a href="/defi">/defi</a></span></div>');
         document.getElementById('tr-win').innerHTML = '<p style="margin:10px 0 14px"><b style="font-size:20px">' + ahead + ' of ' + n + '</b> closed ranges ended ahead of holding (' + (n ? Math.round(100 * ahead / n) : 0) + '%)' + (short ? '; ' + short + ' lived too short to judge' : '') + '.</p>';
         document.getElementById('tr-tbl').innerHTML = '<tr><th>Position</th><th>Lived</th><th>Range</th><th>Fees, BNB</th><th>vs holding</th><th>Net</th><th></th></tr>' + rows.reverse().join('');

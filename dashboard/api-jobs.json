@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-10-27T10:32:55.650Z",
+  "measured_at": "2026-10-28T16:09:44.571Z",
   "jobs": {
-    "job_counter": 57112,
-    "read": 57112,
+    "job_counter": 57121,
+    "read": 57121,
     "unread_after_retries": 0,
     "by_status": {
-      "OPEN": 1050,
-      "COMPLETED": 28397,
-      "SUBMITTED": 27266,
-      "FUNDED": 307,
-      "EXPIRED": 83,
+      "OPEN": 1051,
+      "COMPLETED": 28400,
+      "SUBMITTED": 27271,
+      "FUNDED": 306,
+      "EXPIRED": 84,
       "REJECTED": 9
     },
-    "ever_funded": 56042,
-    "escrow_released": 28388,
+    "ever_funded": 56050,
+    "escrow_released": 28391,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27266,
-    "never_funded": 1050,
-    "total_escrowed_u": 642.200677,
-    "distinct_buyers": 32859,
+    "deliverable_never_released": 27271,
+    "never_funded": 1051,
+    "total_escrowed_u": 642.800677,
+    "distinct_buyers": 32861,
     "distinct_providers": 151,
-    "providers_paid_by_more_than_one_buyer": 30,
-    "top_provider_share": 0.9835,
-    "top5_share": 0.9885,
+    "providers_paid_by_more_than_one_buyer": 32,
+    "top_provider_share": 0.9833,
+    "top5_share": 0.9884,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 945,
-      "completed": 212,
-      "escrowed_u": 90.120677,
+      "jobs": 954,
+      "completed": 215,
+      "escrowed_u": 90.720677,
       "providers": 150
     }
   },
@@ -103,20 +103,38 @@
           "name": "Keel"
         }
       ],
-      "jobs": 28,
-      "funded": 24,
+      "jobs": 30,
+      "funded": 26,
       "completed": 13,
-      "submitted_not_released": 8,
+      "submitted_not_released": 10,
       "awaiting_delivery": 1,
       "expired": 2,
       "rejected": 0,
       "never_funded": 4,
-      "distinct_buyers": 12,
-      "escrowed_u": 1.25,
+      "distinct_buyers": 13,
+      "escrowed_u": 1.35,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.5417,
+      "delivery_rate": 0.5,
       "first_job_id": 56810,
-      "last_job_id": 57111
+      "last_job_id": 57120
+    },
+    {
+      "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
+      "agents": [],
+      "jobs": 25,
+      "funded": 25,
+      "completed": 1,
+      "submitted_not_released": 23,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 6,
+      "escrowed_u": 0.41,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0.04,
+      "first_job_id": 56799,
+      "last_job_id": 57113
     },
     {
       "address": "0xe12d7bd7333018c2a2a423bf078255951b934272",
@@ -140,24 +158,6 @@
       "delivery_rate": 0.0909,
       "first_job_id": 56456,
       "last_job_id": 56524
-    },
-    {
-      "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
-      "agents": [],
-      "jobs": 24,
-      "funded": 24,
-      "completed": 1,
-      "submitted_not_released": 22,
-      "awaiting_delivery": 1,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 6,
-      "escrowed_u": 0.4,
-      "median_budget_u": 0.01,
-      "delivery_rate": 0.0417,
-      "first_job_id": 56799,
-      "last_job_id": 57110
     },
     {
       "address": "0x253f7ad5d52099c4a2293418a661e9974dfb5e84",
@@ -263,6 +263,29 @@
       "last_job_id": 56257
     },
     {
+      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
+      "agents": [
+        {
+          "id": 341553,
+          "name": "Bound"
+        }
+      ],
+      "jobs": 20,
+      "funded": 20,
+      "completed": 10,
+      "submitted_not_released": 9,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 0,
+      "distinct_buyers": 9,
+      "escrowed_u": 3,
+      "median_budget_u": 0.15,
+      "delivery_rate": 0.5,
+      "first_job_id": 56809,
+      "last_job_id": 57121
+    },
+    {
       "address": "0xb12a1e4e0e22a97e266ed7a6bfc4133f699b1a1b",
       "agents": [
         {
@@ -284,29 +307,6 @@
       "delivery_rate": 0.5882,
       "first_job_id": 56892,
       "last_job_id": 57045
-    },
-    {
-      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
-      "agents": [
-        {
-          "id": 341553,
-          "name": "Bound"
-        }
-      ],
-      "jobs": 18,
-      "funded": 18,
-      "completed": 10,
-      "submitted_not_released": 7,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 1,
-      "never_funded": 0,
-      "distinct_buyers": 8,
-      "escrowed_u": 2.7,
-      "median_budget_u": 0.15,
-      "delivery_rate": 0.5556,
-      "first_job_id": 56809,
-      "last_job_id": 57112
     },
     {
       "address": "0x5460beed186e1b3786713aff6ed71962c1cbe931",
@@ -357,20 +357,20 @@
     {
       "address": "0x81762d5214fcb6fb3b102bef9d69d13a56c1a2d0",
       "agents": [],
-      "jobs": 15,
-      "funded": 15,
+      "jobs": 16,
+      "funded": 16,
       "completed": 1,
-      "submitted_not_released": 14,
+      "submitted_not_released": 15,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
-      "distinct_buyers": 12,
-      "escrowed_u": 0.23,
+      "distinct_buyers": 13,
+      "escrowed_u": 0.24,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.0667,
+      "delivery_rate": 0.0625,
       "first_job_id": 56800,
-      "last_job_id": 57109
+      "last_job_id": 57116
     },
     {
       "address": "0xc97cec6bd1934ba507f4786047c9bc269639c950",
@@ -448,8 +448,8 @@
       "funded": 11,
       "completed": 3,
       "submitted_not_released": 0,
-      "awaiting_delivery": 2,
-      "expired": 6,
+      "awaiting_delivery": 1,
+      "expired": 7,
       "rejected": 1,
       "never_funded": 0,
       "distinct_buyers": 4,
@@ -528,8 +528,8 @@
       ],
       "jobs": 11,
       "funded": 11,
-      "completed": 9,
-      "submitted_not_released": 2,
+      "completed": 10,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -537,7 +537,7 @@
       "distinct_buyers": 8,
       "escrowed_u": 1.1,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.8182,
+      "delivery_rate": 0.9091,
       "first_job_id": 56808,
       "last_job_id": 57061
     },
@@ -1129,8 +1129,8 @@
       ],
       "jobs": 5,
       "funded": 5,
-      "completed": 1,
-      "submitted_not_released": 4,
+      "completed": 2,
+      "submitted_not_released": 3,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1138,7 +1138,7 @@
       "distinct_buyers": 2,
       "escrowed_u": 0.5,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.2,
+      "delivery_rate": 0.4,
       "first_job_id": 57004,
       "last_job_id": 57096
     },
@@ -1277,6 +1277,29 @@
       "delivery_rate": 0.25,
       "first_job_id": 56748,
       "last_job_id": 56787
+    },
+    {
+      "address": "0x8272ac23f4c14f578b0dd06e6754b0bc84d99c49",
+      "agents": [
+        {
+          "id": 374114,
+          "name": "Gridloom by Pokter"
+        }
+      ],
+      "jobs": 4,
+      "funded": 3,
+      "completed": 2,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.24,
+      "median_budget_u": 0.08,
+      "delivery_rate": 0.6667,
+      "first_job_id": 57007,
+      "last_job_id": 57119
     },
     {
       "address": "0x2222222222222222222222222222222222222222",
@@ -1516,8 +1539,8 @@
       ],
       "jobs": 3,
       "funded": 3,
-      "completed": 2,
-      "submitted_not_released": 1,
+      "completed": 3,
+      "submitted_not_released": 0,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1525,7 +1548,7 @@
       "distinct_buyers": 1,
       "escrowed_u": 0.75,
       "median_budget_u": 0.25,
-      "delivery_rate": 0.6667,
+      "delivery_rate": 1,
       "first_job_id": 56838,
       "last_job_id": 57034
     },
@@ -1569,6 +1592,29 @@
       "delivery_rate": 0,
       "first_job_id": 56981,
       "last_job_id": 56994
+    },
+    {
+      "address": "0xf22217aaac007bf8d076cd3f0819e53e2baf8bff",
+      "agents": [
+        {
+          "id": 374112,
+          "name": "Cresthold by Pokter"
+        }
+      ],
+      "jobs": 3,
+      "funded": 3,
+      "completed": 2,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.3,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.6667,
+      "first_job_id": 57012,
+      "last_job_id": 57117
     },
     {
       "address": "0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee",
@@ -2095,52 +2141,6 @@
       "delivery_rate": 0.5,
       "first_job_id": 56922,
       "last_job_id": 56923
-    },
-    {
-      "address": "0x8272ac23f4c14f578b0dd06e6754b0bc84d99c49",
-      "agents": [
-        {
-          "id": 374114,
-          "name": "Gridloom by Pokter"
-        }
-      ],
-      "jobs": 2,
-      "funded": 2,
-      "completed": 2,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.16,
-      "median_budget_u": 0.08,
-      "delivery_rate": 1,
-      "first_job_id": 57007,
-      "last_job_id": 57014
-    },
-    {
-      "address": "0xf22217aaac007bf8d076cd3f0819e53e2baf8bff",
-      "agents": [
-        {
-          "id": 374112,
-          "name": "Cresthold by Pokter"
-        }
-      ],
-      "jobs": 2,
-      "funded": 2,
-      "completed": 2,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.2,
-      "median_budget_u": 0.1,
-      "delivery_rate": 1,
-      "first_job_id": 57012,
-      "last_job_id": 57015
     },
     {
       "address": "0xeac21928de023677a25eb925d1cb1b0786faf946",

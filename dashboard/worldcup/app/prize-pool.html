@@ -214,7 +214,8 @@
         <div data-hero="prize-pool-hero"></div>
         <div class="card">
           <h1><span class="accent">Prize Pool</span></h1>
-          <p class="sub">Live BOBAI pool · split into Group / End / Crypto pots</p>
+          <p class="sub">The BOBAI pool, split into Group / End / Crypto pots · <b>finished</b>: every pot was paid on Jul 20, 2026</p>
+          <p class="sub" style="margin-top:6px;padding:10px 12px;border:1px solid rgba(240,185,11,.3);border-radius:10px;background:rgba(240,185,11,.06)">Archive. The game ran 11 June – 19 July 2026. The amounts each winner received, with the value at payout and every transaction, stand on <a href="/worldcup/" style="color:var(--gold)">the archive page</a>; the dollar values on this page are at today's price.</p>
 
           <!-- POOL CARD -->
           <div class="pool">
@@ -254,28 +255,12 @@
               </div>
             </div>
 
-            <!-- DONATION BOX -->
-            <div style="margin-top:16px;padding:14px;background:rgba(0,0,0,.35);border:1px solid rgba(0,230,118,.15);border-radius:10px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-                <div style="font-family:'Space Grotesk';font-weight:600;font-size:12px;color:#5fffa0;letter-spacing:.5px">💚 DONATIONS WELCOME</div>
-                <a href="./rules.html#donations" style="font-size:11px;color:var(--muted);text-decoration:underline">how it works</a>
-              </div>
-              <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">
-                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to BOBAI and added on-chain. Any amount welcome.
-              </div>
-              <div style="background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-                <a id="prize-addr" href="#" target="_blank" rel="noopener" title="View on BscScan" style="flex:1;font-size:12px;color:var(--text);word-break:break-all;font-family:'Space Grotesk';text-decoration:none">…</a>
-                <button id="copy-addr" class="btn" style="width:auto;padding:7px 12px;font-size:11px">Copy</button>
-              </div>
-              <div style="font-size:10.5px;color:var(--muted);margin-top:8px">
-                BSC (BNB Smart Chain) only. Sending other networks = lost funds.
-              </div>
-            </div>
+            <!-- DONATION BOX removed 2026-10-28: the game ended on Jul 19 and the wallet is now the Giggle Academy pot -->
           </div>
 
           <!-- HOW THE POOL GROWS -->
           <div class="section-h">
-            <span>💧 How the pool grows</span>
+            <span>💧 How the pool grew</span>
             <span class="right">3 transparent sources · all on-chain</span>
           </div>
           <div class="flow" style="margin-bottom:24px">
@@ -283,7 +268,7 @@
               <div class="flow-step">
                 <div class="num">1</div>
                 <div class="body">
-                  <b>Donations</b> — any BNB or USDT (BEP-20) sent to the prize-pool wallet is auto-swapped to BOBAI and credited on-chain. No minimum, no cap.
+                  <b>Donations</b> — during the game, BNB or USDT (BEP-20) sent to the prize-pool wallet was swapped to BOBAI and credited on-chain. The game is over: that wallet is now the Giggle Academy pot, so do not send to it for this game.
                   <span class="muted">Live in the credits table below. Every swap verifiable on BscScan.</span>
                 </div>
               </div>
@@ -291,7 +276,7 @@
                 <div class="num">2</div>
                 <div class="body">
                   <b>BOBAI tax auto-flow</b> &mdash; from <b>Jun 11, 00:01 UTC</b> until the Final (<b>Jul 19, 23:59 UTC</b>), <b>0.52% of every BOBAI trade tax</b> auto-flows into this wallet: 0.26% redirected from the BOB burn slice + 0.26% from the creator slice. The 3% on-chain tax rate stays fixed; only the off-chain distribution changes for the WC26 window.
-                  <span class="muted">After the Final, distribution returns to standard 1/1/1 split. <a href="https://brainonbnb.ai/#about" target="_blank" rel="noopener">See full tax schedule →</a></span>
+                  <span class="muted">After the Final, the distribution went back to the standard split. <a href="https://brainonbnb.com/token#about" target="_blank" rel="noopener">See full tax schedule →</a></span>
                 </div>
               </div>
               <div class="flow-step">
@@ -309,8 +294,8 @@
 
           <!-- PER-POSITION PAYOUTS -->
           <div class="section-h">
-            <span>💎 Expected payouts per position</span>
-            <span class="right">live — recalculated as pool grows</span>
+            <span>💎 Shares per position, as the rules set them</span>
+            <span class="right">before the holder cap — the amounts paid are on <a href="/worldcup/" style="color:var(--gold)">the archive page</a></span>
           </div>
           <div class="ptable-wrap">
             <table class="ptable">
@@ -333,7 +318,7 @@
           <!-- TX HISTORY -->
           <div class="section-h">
             <span>Pool credits</span>
-            <span class="right">every swap on-chain · auto-refreshes every 30s</span>
+            <span class="right">every swap on-chain</span>
           </div>
           <div class="txwrap">
             <div class="txfilter" id="txfilter">
@@ -950,11 +935,10 @@
       const addr = window.WC_CONFIG?.PRIZE_WALLET;
       if (!addr) return;
       const linkEl = $('#prize-addr');
-      linkEl.textContent = addr;
-      linkEl.href = `https://bscscan.com/address/${addr}`;
+      if (linkEl) { linkEl.textContent = addr; linkEl.href = `https://bscscan.com/address/${addr}`; }
       $('#addr-link').href = `https://bscscan.com/address/${addr}`;
       $('#rc-wallet-link').href = `https://bscscan.com/address/${addr}`;
-      $('#copy-addr').addEventListener('click', async () => {
+      if ($('#copy-addr')) $('#copy-addr').addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(addr);
           const b = $('#copy-addr');

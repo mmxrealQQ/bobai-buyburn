@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 23996 lines.
+# one fetch. 73 files, 24003 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -539,13 +539,13 @@ export function summarize(service, result) {
     if (service === 'lp_position_plan' && r.plan) {
       const p = r.plan;
       if (!p.position) return { headline: p.verdict || 'No position to plan.', facts: [['Address', p.address || '—'], ['Positions', String(p.positions ?? '—')]] };
-      const owed = p.fees_owed && p.fees_owed.bnb_equivalent;
+      const owed = p.fees_owed && p.fees_owed.bnb_equivalent, $b = (b) => (p.bnb_usd > 0 && b != null ? ` (≈$${b * p.bnb_usd < 10 ? (b * p.bnb_usd).toFixed(2) : Math.round(b * p.bnb_usd).toLocaleString('en-US')})` : ''); // BNB with its dollars (2026-10-28)
       return {
-        headline: (p.in_range ? 'In range' : 'Out of range') + ` — position #${p.position} worth ${n(p.value_bnb, 4)} BNB`,
+        headline: (p.in_range ? 'In range' : 'Out of range') + ` — position #${p.position} worth ${n(p.value_bnb, 4)} BNB${$b(p.value_bnb)}`,
         facts: [
           ['Pool', p.pool ? `${pct(p.pool.fee_tier_pct)} tier, ticks ${p.pool.ticks.join(' … ')}, price at ${p.pool.tick}` : '—'],
           ['Room to the edges', p.room ? `${pct(p.room.to_lower_pct)} below, ${pct(p.room.to_upper_pct)} above` : '—'],
-          ['Fees owed', owed == null ? '—' : `${n(owed, 6)} BNB — ${p.collect && p.collect.pays_for_gas ? 'collecting pays for its gas' : 'under the gas floor, left to grow'}`],
+          ['Fees owed', owed == null ? '—' : `${n(owed, 6)} BNB${$b(owed)} — ${p.collect && p.collect.pays_for_gas ? 'collecting pays for its gas' : 'under the gas floor, left to grow'}`],
           ['Re-set', p.rebalance ? (p.rebalance.why || (p.rebalance.new_ticks ? `due: ticks ${p.rebalance.new_ticks.join(' … ')}, ±${p.rebalance.width_pct}%` : '—')) : '—'],
           ['Grow', p.increase ? (p.increase.why || (p.increase.wbnb ? `${p.increase.wbnb} WBNB from spare BNB` : '—')) : '—'],
         ],
@@ -6024,7 +6024,9 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (!normId(p.thread) || !String(p.title || '').trim() || !String(p.body || '').trim()) return out({ error: 'thread, title (the new one) and body (the reason) are needed' }, 400);
     const t = await board(env).fetch('https://board/thread?id=' + normId(p.thread)).then((r) => r.json()).catch(() => null);
     if (!t || !t.id) return out({ error: `thread ${p.thread} does not exist` }, 404);
-    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
+    // 'test-board' is the name our own stranger tests post under (26.-28.10.: thread #114 is one, its title cut by the bug
+    // the test found) — ours too, never a stranger's
+    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.author === 'unsigned' && String(t.from || '') === 'test-board') || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
     if (!ours) return out({ error: `thread ${t.id} was not opened by us; its title is its writer's` }, 403);
     const r = await board(env).fetch('https://board/retitle', { method: 'POST', body: JSON.stringify({ thread: t.id, title: p.title, body: p.body }) });
     return out(await r.json(), r.status);
@@ -10374,7 +10376,7 @@ import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures, onSale } from './sell.js';
 import { gridPlan } from './grid.js';
 import { rebalanceDefaultTarget } from './rebalance.js';
 import { understand } from './understand.js';
@@ -12414,7 +12416,7 @@ export default {
             { id: 'negotiate-erc8183-job', name: `Quote: ${s.name}`, description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor it via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', s.category], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [] },
             NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL, ESCROW_STATUS_SKILL,
             { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'], examples: ['{"skill":"erc8183-job-status","job_id":57045}'] },
-            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [], inputs: s.needs, price: `0.10 $U (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+            { id: s.id, name: s.name, description: s.deliverables, tags: [s.category, 'bnb-chain', 'measured-on-chain'], examples: QUOTE_EXAMPLES[s.id] ? [QUOTE_EXAMPLES[s.id]] : [], inputs: s.needs, price: `${onSale() ? '0.01 $U (until 5 Nov 12:00 UTC, then 0.10)' : '0.10 $U'} (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           ],
           holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
           provider_address: await cardProvider(slug),
@@ -12455,7 +12457,7 @@ export default {
           { id: 'negotiate-erc8183-job', name: 'Quote: the DeFi agent on your PancakeSwap V3 position', description: 'Send a data part {"skill":"negotiate-erc8183-job","task_description":"…","terms":{"deliverables":"…","quality_standards":"…"}} and receive a wallet-signed quote (price, currency, negotiation_hash, provider_sig). Anchor the envelope on-chain via createJob and fund it, then send notify_funded with the job_id and delivery starts at once; without it the agent finds the funded job on the chain within 15 minutes and delivers.', tags: ['erc8183', 'negotiation', 'bnb-chain', 'rebalancing'], examples: ['what should happen to the PancakeSwap V3 positions of wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'] },
           NOTIFY_FUNDED_SKILL, PLAZA_BOARD_SKILL, ESCROW_STATUS_SKILL,
           { id: 'erc8183-job-status', name: 'ERC-8183 job status', description: 'Send {"skill":"erc8183-job-status","job_id":<int>} for a read-only on-chain job lookup.', tags: ['erc8183', 'status'], examples: ['{"skill":"erc8183-job-status","job_id":57045}'] },
-          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], examples: [QUOTE_EXAMPLES.lp_position_plan], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `0.10 $U (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
+          { id: s.id, name: s.name, description: s.deliverables, tags: ['rebalancing', 'pancakeswap-v3', 'bnb-chain', 'measured-on-chain'], examples: [QUOTE_EXAMPLES.lp_position_plan], inputs: { ...s.needs, note: 'name a position id or a wallet in task_description; with neither, the plan is made for the hiring wallet, and if it holds no single V3 position, for the agent\'s own' }, price: `${onSale() ? '0.01 $U (until 5 Nov 12:00 UTC, then 0.10)' : '0.10 $U'} (ERC-8183 escrow) or 0.10 per answer in USD1, USDC or $U (x402), or $0.05 in $BOBAI — half price, a direct transfer at the 402's quote, kept as $BOBAI and never sold — ${HOLDER_PRICE_NOTE}`, pay_in_bobai: { price_usd: 0.05, how: `POST ${SELF_ORIGIN}/answer?service=${s.id} without payment: the 402 quotes the $BOBAI amount (its accepts[] entry with asset $BOBAI); send it, then repeat with the transaction hash in PAYMENT-SIGNATURE` }, escrow: true, x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         ],
         holder_pass: { ...holderPassTerms(), x402: `${SELF_ORIGIN}/answer?service=${s.id}` },
         // What the agent does on its own, every day, where anybody can check it.
@@ -15847,15 +15849,18 @@ export async function lpDefaultTarget(payer) {
 }
 // A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
 const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
+// the fees owed as a sentence, BNB with its dollars (2026-10-28: every amount carries its USD)
+const owedSaid = (owed, usd) => { const u = usd > 0 ? ` (≈$${(owed * usd).toFixed(2)})` : ''; return owed >= 0.002 ? `Fees owed: ${owed.toFixed(6)} BNB${u} — collecting pays for its gas.` : `Fees owed: ${owed.toFixed(6)} BNB${u} — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`; };
 export async function lpPositionLook(params = {}, env = null) {
   const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
-  const { facts, poolInfo, owedBnbEquiv } = r;
+  const { facts, poolInfo, owedBnbEquiv, pub } = r;
+  const bnbUsd = owedBnbEquiv != null ? await readBnbUsd(pub).then((x) => x.bnbUsd).catch(() => null) : null;
   const lines = [];
   lines.push(poolInfo.inRange
     ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
-  if (owedBnbEquiv != null) lines.push(owedBnbEquiv >= 0.002 ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`);
+  if (owedBnbEquiv != null) lines.push(owedSaid(owedBnbEquiv, bnbUsd));
   return {
     ...facts,
     service: 'lp_position_look',
@@ -15897,7 +15902,8 @@ export async function lpPositionPlan(params = {}, env = null) {
   lines.push(poolInfo.inRange
     ? `In range: ${roomSaid(facts.room)}.`
     : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
-  lines.push(owedBnbEquiv != null ? (collectPays ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`) : 'Fees owed could not be priced.');
+  const bnbUsdNow = owedBnbEquiv != null ? await readBnbUsd(pub).then((x) => x.bnbUsd).catch(() => null) : null;
+  lines.push(owedBnbEquiv != null ? owedSaid(owedBnbEquiv, bnbUsdNow) : 'Fees owed could not be priced.');
   // a buyer reads this as sentences and figures (2026-10-05): every line ends as one, dust is not printed with
   // seventeen digits, and ticks shown beside "nothing to re-set" say what they are
   const dot = (s) => (/[.!?]$/.test(String(s).trim()) ? String(s).trim() : `${String(s).trim()}.`);
@@ -15915,6 +15921,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
   return {
     ...facts,
+    ...(bnbUsdNow > 0 ? { bnb_usd: Number(bnbUsdNow.toFixed(2)) } : {}), // the dollars of every BNB figure (2026-10-28)
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
     width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, expected_net_basis: 'the width record\'s own figure: fees net of re-sets over hours_of_prices of recorded prices. It is a different measure from the last week against holding, which stands in rebalance.width_basis', hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,

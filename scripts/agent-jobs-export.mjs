@@ -80,6 +80,8 @@ for (const j of allJobs) {
   else { if (!shared.has(prov)) shared.set(prov, []); shared.get(prov).push(row); }
 }
 
+// the smallest budget counted as paid work (in $U), the same line /settle draws
+const REAL_U = 0.01;
 const summary = (rows) => {
   const by = (s) => rows.filter((r) => r[1] === s).length;
   const funded = rows.filter((r) => r[1] !== 'OPEN').length;
@@ -93,12 +95,15 @@ const summary = (rows) => {
     // subtitle says outside buyers — counted the owner's own test purchases as income)
     earned_u_outside: Math.round(paid.filter((r) => !r[6]).reduce((a, r) => a + r[2], 0) * 100) / 100,
     buyers: new Set(rows.filter((r) => r[1] !== 'OPEN').map((r) => r[3])).size,
-    // our own test purchases are shown, and never counted as somebody else hiring the agent
-    buyers_outside: new Set(rows.filter((r) => r[1] !== 'OPEN' && !r[6]).map((r) => r[3])).size,
-    paid_out_outside: paid.filter((r) => !r[6]).length,
+    // our own test purchases are shown, and never counted as somebody else hiring the agent. OUTSIDE WORK IS PAID WORK
+    // (2026-10-28): a wei budget (under 0.01 $U) is left out as /settle leaves it out — three 0 $U jobs had read as
+    // '3 paid jobs' and 30/30 for delivery — and a buyer is a wallet that PAID (a completed job), not one whose
+    // funded job expired and was refunded ('5 wallets paid it' were 1 that paid and 4 refunded).
+    buyers_outside: new Set(paid.filter((r) => !r[6] && r[2] >= REAL_U).map((r) => r[3])).size,
+    paid_out_outside: paid.filter((r) => !r[6] && r[2] >= REAL_U).length,
     // the delivery rate for outside buyers alone: the chart's score reads this one, so hiring yourself buys nothing
-    funded_outside: rows.filter((r) => r[1] !== 'OPEN' && !r[6]).length,
-    delivery_rate_outside_pct: (() => { const f = rows.filter((r) => r[1] !== 'OPEN' && !r[6]); return f.length ? Math.round((f.filter((r) => r[1] === 'COMPLETED' || r[1] === 'SUBMITTED').length / f.length) * 1000) / 10 : null; })(),
+    funded_outside: rows.filter((r) => r[1] !== 'OPEN' && !r[6] && r[2] >= REAL_U).length,
+    delivery_rate_outside_pct: (() => { const f = rows.filter((r) => r[1] !== 'OPEN' && !r[6] && r[2] >= REAL_U); return f.length ? Math.round((f.filter((r) => r[1] === 'COMPLETED' || r[1] === 'SUBMITTED').length / f.length) * 1000) / 10 : null; })(),
     last_delivery: last ? new Date(last * 1000).toISOString().slice(0, 10) : null,
   };
 };

@@ -1105,7 +1105,9 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     if (!normId(p.thread) || !String(p.title || '').trim() || !String(p.body || '').trim()) return out({ error: 'thread, title (the new one) and body (the reason) are needed' }, 400);
     const t = await board(env).fetch('https://board/thread?id=' + normId(p.thread)).then((r) => r.json()).catch(() => null);
     if (!t || !t.id) return out({ error: `thread ${p.thread} does not exist` }, 404);
-    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
+    // 'test-board' is the name our own stranger tests post under (26.-28.10.: thread #114 is one, its title cut by the bug
+    // the test found) — ours too, never a stranger's
+    const ours = OUR_WRITERS.has(String(t.author || '').toLowerCase()) || (t.author === 'unsigned' && String(t.from || '') === 'test-board') || (t.verified && OWN_AGENT_IDS.has(String(t.agent))) || t.platform === 'brainonbnb.com';
     if (!ours) return out({ error: `thread ${t.id} was not opened by us; its title is its writer's` }, 403);
     const r = await board(env).fetch('https://board/retitle', { method: 'POST', body: JSON.stringify({ thread: t.id, title: p.title, body: p.body }) });
     return out(await r.json(), r.status);

@@ -15,7 +15,7 @@
 <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
 <meta property="og:url" content="https://brainonbnb.com/screener">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=74">
+<link rel="stylesheet" href="/styles.css?v=75">
 <style>
   .scr{max-width:1280px;margin:0 auto;display:grid;gap:14px}
   .scr h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(26px,4.6vw,40px);line-height:1.08;margin:0}
@@ -179,7 +179,7 @@
     var B=[
       ['Top by evidence','#f0b90b','the score of its chart: uptime, outside work, delivery, price',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return (a.uptime_30d!=null&&a.days>=3?a.uptime_30d+'% up · ':'')+a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
       ['Most paid work','#4cc38a','escrow jobs paid by wallets that are not the agent’s own',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')+(a.outside_delivery_pct!=null?' · '+a.outside_delivery_pct+'% delivered':'')}],
-      ['Earned the most','#7fd1ff','paid out to it on-chain by outside buyers, in $U',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return '$'+Number(a.earned_u).toFixed(2)+'<small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
+      ['Earned the most','#7fd1ff','paid out to it on-chain by outside buyers, in $U',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return Number(a.earned_u).toFixed(2)+' <small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
       ['Down at their last check','#ff7a6e','measured agents that did not answer our last call',pick(function(a){return a.days>0&&a.up_now===0},function(x,y){return num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return '<span style="color:#ff7a6e">down</span>'},function(a){return a.uptime_30d===0?'no answer yet · '+a.days+'d':'up '+a.uptime_30d+'% · '+a.days+'d'}]
     ];
     document.getElementById('tops').innerHTML=B.map(function(b){return '<div class="top" style="--c:'+b[1]+'"><h3><i></i>'+b[0]+'</h3><p>'+esc(b[2])+'</p>'+(b[3].length?b[3].map(function(a,i){return row(a,i,b[4](a),b[5](a))}).join(''):'<div class="none">Nobody right now.</div>')+'</div>'}).join('');

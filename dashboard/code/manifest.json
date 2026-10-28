@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7457,
-   "zipBytes": 195369,
-   "txtBytes": 607672,
-   "sha256": "5910a8efeef3a910",
+   "lines": 7462,
+   "zipBytes": 195535,
+   "txtBytes": 608054,
+   "sha256": "4487e8c907e42f0d",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7851,
-   "zipBytes": 175951,
-   "txtBytes": 528082,
-   "sha256": "c203a08b5726d1fc",
+   "zipBytes": 175979,
+   "txtBytes": 528203,
+   "sha256": "5ed603c6300dd5f3",
    "reqs": [
     {
      "what": "A static host",
@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1389,
-   "zipBytes": 30607,
-   "txtBytes": 81120,
-   "sha256": "8da54dd4e3d15547",
+   "zipBytes": 30608,
+   "txtBytes": 81121,
+   "sha256": "4f5130f285ecd76c",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -410,10 +410,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11282,
-   "zipBytes": 187673,
-   "txtBytes": 602558,
-   "sha256": "e04a7803cd6bb4e4",
+   "lines": 11265,
+   "zipBytes": 187700,
+   "txtBytes": 601955,
+   "sha256": "32478ccdd57d0cb1",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -522,10 +522,10 @@
    "title": "brainScreener",
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
-   "lines": 10221,
-   "zipBytes": 199218,
-   "txtBytes": 563401,
-   "sha256": "0bdfe671e8b20d62",
+   "lines": 10225,
+   "zipBytes": 199378,
+   "txtBytes": 563724,
+   "sha256": "75bf0350da487994",
    "reqs": [
     {
      "what": "A static host",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3502,
-   "zipBytes": 119504,
-   "txtBytes": 357071,
-   "sha256": "73954ec09351605a",
+   "lines": 3507,
+   "zipBytes": 119771,
+   "txtBytes": 358023,
+   "sha256": "29168f7070311e57",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 73,
-   "lines": 23996,
-   "zipBytes": 604775,
-   "txtBytes": 1715714,
-   "sha256": "22c56b1181dd7f22",
+   "lines": 24003,
+   "zipBytes": 605185,
+   "txtBytes": 1716707,
+   "sha256": "106e70c1c6c8c663",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -753,9 +753,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4969,
-   "zipBytes": 111521,
-   "txtBytes": 321693,
-   "sha256": "cb4258f18b311b2e",
+   "zipBytes": 111556,
+   "txtBytes": 321801,
+   "sha256": "112d75371f180165",
    "reqs": [
     {
      "what": "Node 18+ and time",

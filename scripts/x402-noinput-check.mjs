@@ -6,6 +6,7 @@
 // usage: node scripts/x402-noinput-check.mjs [base=https://agent.brainonbnb.com]   exit 1 on any FAIL
 const BASE = (process.argv[2] || 'https://agent.brainonbnb.com').replace(/\/$/, '');
 const PAYER = '0xfceafec082f9e8b17cdb51f33c3d5c9759a25e03'; // a stranger's wallet from job 56955 — nothing is signed for it
+const UA = 'brainonbnb-noinput-check'; // marked self_test in /buys/refused (2026-10-28)
 let fail = 0, ran = 0;
 // the total is counted, not written down (it said 7 after two checks were added)
 { const log = console.log; console.log = (...a) => { if (/^(PASS|FAIL)\b/.test(String(a[0]))) ran++; log(...a); }; }
@@ -18,7 +19,7 @@ for (const service of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tie
   const payload = { x402Version: 1, scheme: 'exact', network: acc.network || 'bsc', payload: {
     signature: '0x' + '00'.repeat(65),
     authorization: { from: PAYER, to: acc.payTo || acc.pay_to, value: String(acc.maxAmountRequired || acc.amount || '100000000000000000'), validAfter: '0', validBefore: String(Math.floor(Date.now() / 1000) + 600), nonce: '0x' + '11'.repeat(32) } } };
-  const r = await fetch(`${BASE}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': Buffer.from(JSON.stringify(payload)).toString('base64') }, body: '{}' });
+  const r = await fetch(`${BASE}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-PAYMENT': Buffer.from(JSON.stringify(payload)).toString('base64'), 'user-agent': UA }, body: '{}' });
   const b = await r.json().catch(() => ({}));
   const aboutInput = r.status === 422 && /needs/.test(String(b.error || ''));
   const ok = terms.status === 402 && !aboutInput && r.status !== 200;
@@ -50,7 +51,7 @@ for (const service of ['lp_position_plan', 'health_factor', 'grid_plan', 'lp_tie
   console.log(`${ok ? 'PASS' : 'FAIL'} the pool watch costs half in $BOBAI: ${t.in_bobai ? `${t.in_bobai.tokens} $BOBAI ≈ $${usd.toFixed(4)}` : `no $BOBAI price on the 402 (${r.status})`}`);
   if (!ok) fail++;
   // and a hash that pays nothing still buys nothing (the $BOBAI door must not open the watch for free)
-  const f = await fetch(`${BASE}/watch`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', depthBelowUsd: 1000 }) });
+  const f = await fetch(`${BASE}/watch`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32), 'user-agent': UA }, body: JSON.stringify({ token: '0x245c386dcfed896f5c346107596141e5edcbffff', depthBelowUsd: 1000 }) });
   const fb = await f.json().catch(() => ({}));
   const shut = f.status !== 200 && !fb.watch;
   console.log(`${shut ? 'PASS' : 'FAIL'} a receipt that is no payment buys no watch: ${f.status} ${String(fb.reason || fb.error || '').slice(0, 90)}`);

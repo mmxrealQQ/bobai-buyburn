@@ -23,6 +23,8 @@ pin(!!rec?.why && rec.why.length > 5, `the reason kept (${rec?.why})`);
 pin(/^x402 v1/.test(rec?.proof || ''), `the proof's shape kept (${rec?.proof})`);
 pin(rec?.from === '0x000000000000000000000000000000000000dead', `the payer the signature names kept (${rec?.from})`);
 pin(!!rec && !JSON.stringify(rec).includes(PROOF), 'the proof itself is not kept');
+// 28.10.: our own checks stood in the list as strangers (x402-noinput-check, five "refused" on 27.10. read as a buyer)
+pin(rec?.self_test === true, `our own check is marked self_test (${rec?.self_test})`);
 // the tip door too (it pays through the same path)
 await fetch(`${BASE}/tip?usd=1`, { method: 'POST', headers: { 'user-agent': UA + '-tip', 'X-PAYMENT': '0x' + '00'.repeat(32) } }).catch(() => null);
 let tip = null;

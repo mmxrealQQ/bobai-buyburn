@@ -1011,5 +1011,10 @@ if (process.argv.includes('--live')) {
     !R.typeMatches(sv, 'library') && !R.typeMatches(sv, 'fix') && R.typeMatches(sv, 'shelved') && /not in the library: our own business with a partner/.test(B.boardMarkdown({ ...sv, id: 41, status: 'resolved', author: '0x1', body: 'b', created: 1, replies: [] })));
   is('RC3 recheck: what reads ok is found; unwritten (no key) it stays for the daily run; a second look within 10 min waits', /Now ok: image/.test(r1.text) && f.looked === 0 && !!r2.wait && (await O.toldIn(env, 999)).join() === '391841', r1.text.split('\n')[1]);
 }
+// NC1 (28.10.): a notice stored before the answer was kept is "not measured", never counted as unread
+{
+  const n = B.noticeCounts([{ result: 'answered 200' }, { result: 'answered 404' }, { result: 'answered 200', answer: 'thanks, fixed', read: true }, { result: 'answered 200', answer: 'error: unknown skill', read: false }]);
+  is('NC1 notices: sent, answered 2xx, measured, read and not measured apart', n.sent === 4 && n.answered_2xx === 3 && n.measured === 2 && n.read === 1 && n.not_measured === 2, JSON.stringify(n));
+}
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

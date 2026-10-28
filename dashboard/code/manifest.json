@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1817,
-   "zipBytes": 26119,
-   "txtBytes": 80426,
-   "sha256": "d415bf1a363a3fdf",
+   "lines": 1847,
+   "zipBytes": 26732,
+   "txtBytes": 82322,
+   "sha256": "634c2132749bd2c2",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5772,
-   "zipBytes": 100164,
-   "txtBytes": 298920,
-   "sha256": "b814e0239da47687",
+   "lines": 5780,
+   "zipBytes": 100309,
+   "txtBytes": 299487,
+   "sha256": "c4a5c7e8e24293bf",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3485,
-   "zipBytes": 118842,
-   "txtBytes": 355124,
-   "sha256": "ac58062a49b67979",
+   "lines": 3487,
+   "zipBytes": 119039,
+   "txtBytes": 355796,
+   "sha256": "498b0ca885f6c90d",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 73,
-   "lines": 23962,
-   "zipBytes": 603363,
-   "txtBytes": 1711778,
-   "sha256": "63bc8fa0f947d3ec",
+   "lines": 23964,
+   "zipBytes": 603455,
+   "txtBytes": 1712032,
+   "sha256": "de54dfc2e4377718",
    "reqs": [
     {
      "what": "A wallet to be paid into",

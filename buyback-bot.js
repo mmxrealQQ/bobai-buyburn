@@ -80,6 +80,11 @@ const LP_SHARE_END   = new Date('2026-11-20T00:01:00Z').getTime();
 const GIGGLE_START = new Date('2026-09-17T00:01:00Z').getTime();
 const GIGGLE_END   = new Date('2026-11-20T00:01:00Z').getTime();
 
+// $BOBAI liquidity for good (operator, 2026-10-28: "ab dem ersten dezember werden wir keine $BOB token mehr burnen
+// und die 1% die frei kommt permanent in bobai liq add"): from Dec 1 00:01 UTC the whole BOB-burn slice goes to
+// BOBAI/BNB liquidity + LP burn, with no end. Nov 20 -> Dec 1 is the plain 1/1/1, the last days of the BOB burn.
+const BOBAI_LIQ_PHASE_START = new Date('2026-12-01T00:01:00Z').getTime();
+
 function isLiqBoostActive() {
   const now = Date.now();
   return now >= LIQ_BOOST_START && now <= LIQ_BOOST_END;
@@ -111,6 +116,9 @@ function isLpShareActive() {
 function isGiggleActive() {
   const now = Date.now();
   return now >= GIGGLE_START && now < GIGGLE_END;
+}
+function isBobaiLiqPhaseActive() {
+  return Date.now() >= BOBAI_LIQ_PHASE_START;
 }
 
 // ============================================
@@ -564,6 +572,7 @@ async function main() {
   const bobaiLiqBoost3 = isBobaiLiqBoost3Active();
   const lpShare       = isLpShareActive();
   const giggle        = isGiggleActive();
+  const bobaiLiqPhase = isBobaiLiqPhaseActive();
 
   // Build per-phase BPS allocation from baseline (1/1/1)
   let bobaiBurnBps = 100;
@@ -584,6 +593,8 @@ async function main() {
   // Ten from each of the three, after the programs above have had their cut.
   if (lpShare)       { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; lpAgentBps += 30; }
   if (giggle)        { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; giggleBps  += 30; }
+  // Last: whatever the BOB-burn slice still holds goes to BOBAI liquidity, so it never goes negative.
+  if (bobaiLiqPhase) { bobaiLiqBps += bobBurnBps; bobBurnBps = 0; }
 
   const bpsSum = bobaiBurnBps + bobBurnBps + creatorBps + bobLiqBps + bobaiLiqBps + wc26PoolBps + lpAgentBps + giggleBps;
 
@@ -599,6 +610,7 @@ async function main() {
   if (bobaiLiqBoost3) phases.push('BOBAI Liq Boost III (0.5%)');
   if (lpShare)       phases.push('LP Agent share (0.3%)');
   if (giggle)        phases.push('Giggle Academy pot (0.3%)');
+  if (bobaiLiqPhase) phases.push('BOBAI liq for good (the BOB-burn slice, no BOB burn)');
   console.log(`Active phases: ${phases.length ? phases.join(' + ') : 'Standard 1/1/1'}`);
   console.log(`Split (bps of trade, total=${bpsSum}):`);
   console.log(`  BOBAI burn ${bobaiBurnBps}  |  BOB burn ${bobBurnBps}  |  Creator ${creatorBps}`);
@@ -732,9 +744,12 @@ async function main() {
     }
   }
 
-  // Step 4: Buy & burn $BOB
-  console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
-  const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
+  // Step 4: Buy & burn $BOB (none from Dec 1: the slice is BOBAI liquidity then; a zero swap is not attempted)
+  let bobResult = null;
+  if (bobBurnAmount > 0n) {
+    console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
+    bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
+  }
 
   // Step 5: Buy & burn $BOBAI
   console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);

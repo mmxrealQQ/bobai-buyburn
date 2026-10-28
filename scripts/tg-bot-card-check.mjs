@@ -14,7 +14,7 @@ const tg = src('../worker-tg-bot/index.js'), bot = src('../worker/index.js');
 
 const win = (text, name) => (text.match(new RegExp(`const ${name}\\s*=\\s*(?:new Date|Date\\.parse)\\('([^']+)'\\)`)) || [])[1];
 ok('the card\'s windows are the worker\'s, to the second',
-  win(tg, 'GG_START') === win(bot, 'GIGGLE_START') && win(tg, 'BB3_START') === win(bot, 'BOBAI_LIQ_BOOST3_START') && win(tg, 'GG_END') === win(bot, 'GIGGLE_END') && win(tg, 'GG_END') === win(bot, 'BOBAI_LIQ_BOOST3_END'),
+  win(tg, 'GG_START') === win(bot, 'GIGGLE_START') && win(tg, 'BB3_START') === win(bot, 'BOBAI_LIQ_BOOST3_START') && win(tg, 'GG_END') === win(bot, 'GIGGLE_END') && win(tg, 'GG_END') === win(bot, 'BOBAI_LIQ_BOOST3_END') && !!win(tg, 'LIQ_FOREVER_START') && win(tg, 'LIQ_FOREVER_START') === win(bot, 'BOBAI_LIQ_PHASE_START'),
   `${win(tg, 'GG_START')} · ${win(tg, 'BB3_START')} · ${win(tg, 'GG_END')}`);
 
 // The pieces the two functions need, lifted from the file: the three window
@@ -32,8 +32,11 @@ ok('the second before Liq Boost III the card pays 0.8% BOB burn and lists the bo
 ok('the second it starts the card pays 0.5% BOB burn with the note, 0.3% liq add, and names the raised window as what follows', /now.*\n.*Liq Boost III/.test(t2) && /<b>0\.5%<\/b> Burn \$BOB.*−0\.3% → Liq Boost III/.test(t2) && /<b>0\.3%<\/b> BOBAI liq add \+ LP burn/.test(t2) && /Upcoming<\/b>\n📅 Sep 20, 06:00 UTC → Nov 20, 2026 · \$BOBAI Liq Boost III raised to 0\.5%/.test(t2) && !/Sep 17 → Sep 19/.test(t2.split('Upcoming')[1] || '') && /Sep 17 → Sep 19/.test(t1.split('Upcoming')[0] || ''));
 // 2026-09-20 06:00 UTC: the boost raised to 0.5%, the 0.2% out of the BOB burn — the second before and the second itself.
 const r1 = at('2026-09-20T05:59:59Z'), r2 = at('2026-09-20T06:00:00Z');
-ok('Sep 20 06:00 UTC: the second before pays 0.5% BOB burn + 0.3% liq add, the second itself 0.3% + 0.5%, the standard split next', /<b>0\.5%<\/b> Burn \$BOB/.test(r1.split('Upcoming')[0]) && /<b>0\.3%<\/b> BOBAI liq add/.test(r1.split('Upcoming')[0]) && /now.*\n.*raised to 0\.5%/.test(r2) && /<b>0\.3%<\/b> Burn \$BOB.*−0\.5% → Liq Boost III/.test(r2) && /<b>0\.5%<\/b> BOBAI liq add \+ LP burn/.test(r2) && /Upcoming<\/b>\n📅 from Nov 20, 2026 · Standard/.test(r2));
-ok('the second before Nov 20 00:01 it still pays the boost, the second itself is 1/1/1 with nothing upcoming', /now.*\n.*Liq Boost III/.test(t3) && /now.*\n.*Standard\n👤 <b>1%<\/b> Creator/.test(t4) && !/Upcoming/.test(t4) && !/ends in/.test(t4));
+ok('Sep 20 06:00 UTC: the second before pays 0.5% BOB burn + 0.3% liq add, the second itself 0.3% + 0.5%, the standard split next', /<b>0\.5%<\/b> Burn \$BOB/.test(r1.split('Upcoming')[0]) && /<b>0\.3%<\/b> BOBAI liq add/.test(r1.split('Upcoming')[0]) && /now.*\n.*raised to 0\.5%/.test(r2) && /<b>0\.3%<\/b> Burn \$BOB.*−0\.5% → Liq Boost III/.test(r2) && /<b>0\.5%<\/b> BOBAI liq add \+ LP burn/.test(r2) && /Upcoming<\/b>\n📅 Nov 20 → Dec 1, 00:01 UTC, 2026 · Standard/.test(r2));
+// 2026-10-28: Nov 20 -> Dec 1 the last days of the BOB burn, then BOBAI liquidity for good with nothing after it
+const t5 = at('2026-12-01T00:00:59Z'), t6 = at('2026-12-01T00:01:00Z'), t7 = at('2027-06-01T00:00:00Z');
+ok('the second before Nov 20 00:01 it still pays the boost, the second itself is 1/1/1 and names BOBAI liquidity for good as what follows', /now.*\n.*Liq Boost III/.test(t3) && /now.*\n.*Standard — the last days of the \$BOB burn\n👤 <b>1%<\/b> Creator/.test(t4) && /Upcoming<\/b>\n📅 from Dec 1, 2026, 00:01 UTC — for good · \$BOBAI liquidity for good/.test(t4));
+ok('Dec 1 00:01 UTC: the second before still burns $BOB, the second itself pays 1% liq add and no $BOB burn, with nothing upcoming, half a year later the same', /<b>1%<\/b> Burn \$BOB/.test(t5.split('Upcoming')[0]) && /now.*\n.*\$BOBAI liquidity for good/.test(t6) && /<b>1%<\/b> BOBAI liq add \+ LP burn/.test(t6) && !/Burn \$BOB \(/.test(t6) && !/Upcoming/.test(t6) && !/ends in/.test(t6) && t7 === t6.replace(/ends in[^\n]*/, ''));
 ok('every slice line of the running split adds up to 3%', (() => { const body = t2.split('Upcoming')[0]; const pct = [...body.matchAll(/<b>([0-9.]+)%<\/b>/g)].map((m) => Number(m[1])); return pct.length === 6 && Math.abs(pct.reduce((a, b) => a + b, 0) - 3) < 1e-9; })());
 ok('the card links the wallet the bot pays from and the full schedule', /bscscan\.com\/address\/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(t2) && /brainonbnb\.com\/#tokenomics/.test(t2));
 ok('it never has two blank lines in a row', !/\n\n\n/.test(t1 + t2 + t3 + t4));

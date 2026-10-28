@@ -112,7 +112,7 @@
           {
             "@type": "Question",
             "name": "What is the trading tax on $BOBAI?",
-            "acceptedAnswer": {"@type": "Answer", "text": "3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways: 0.8% creator, 0.8% $BOBAI burn, 0.3% $BOB burn, 0.5% BOBAI/BNB liquidity with the LP burned, 0.3% DeFi agent, 0.3% Giggle Academy pot. From then on it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. The split in force and every earlier phase are in the tax schedule on the Classic page, brainonbnb.com/classic."}
+            "acceptedAnswer": {"@type": "Answer", "text": "3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways: 0.8% creator, 0.8% $BOBAI burn, 0.3% $BOB burn, 0.5% BOBAI/BNB liquidity with the LP burned, 0.3% DeFi agent, 0.3% Giggle Academy pot. Nov 20 to Dec 1 it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. The split in force and every earlier phase are in the tax schedule on the Classic page, brainonbnb.com/classic."}
           },
           {
             "@type": "Question",
@@ -448,9 +448,14 @@
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
-            <div class="ts-when">from Nov 20, 2026</div>
-            <div class="ts-name">Standard</div>
+            <div class="ts-when">Nov 20 &rarr; Dec 1, 00:01 UTC, 2026</div>
+            <div class="ts-name">Standard &mdash; the last days of the $BOB burn</div>
             <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> BOB burn &middot; <b>1%</b> Creator</div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-forever">
+            <div class="ts-when">from Dec 1, 2026, 00:01 UTC &mdash; for good</div>
+            <div class="ts-name">$BOBAI liquidity for good</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
           </div>
         </div>
       </div>
@@ -1337,7 +1342,7 @@
         <div class="faq-body">On <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">PancakeSwap V2</a>, or inside <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>From then on it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>
+        <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>Nov 20 to Dec 1 it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>
       </details>
       <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">A bot does it, not a person. Every trade’s 3% tax collects in the token contract; once it reaches the contract’s threshold, the contract swaps it to BNB and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI and $BOB, adds liquidity and burns the LP, funds the DeFi agent and the Giggle Academy pot, and pays the creator share. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>

@@ -54,15 +54,16 @@ const splitOf = (src, label) => {
   // if the allocation ever starts depending on something outside itself, this
   // throws rather than quietly comparing two different things.
   return new Function(
-    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2', 'bobaiLiqBoost3', 'lpShare', 'giggle',
+    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2', 'bobaiLiqBoost3', 'lpShare', 'giggle', 'bobaiLiqPhase',
     `${body}\nreturn { bobaiBurnBps, bobBurnBps, creatorBps, bobLiqBps, bobaiLiqBps, wc26PoolBps, lpAgentBps, giggleBps };`,
   );
 };
 
-// Eight programs (2026-09-09: the DeFi Agent share and the Giggle pot joined; 2026-09-19: Liq Boost III), so 256 combinations.
+// Nine programs (2026-09-09: the DeFi Agent share and the Giggle pot joined; 2026-09-19: Liq Boost III; 2026-10-28:
+// BOBAI liquidity for good from Dec 1, the BOB-burn slice), so 512 combinations.
 const COMBOS = [];
-for (let i = 0; i < 256; i++) {
-  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64), !!(i & 128)]);
+for (let i = 0; i < 512; i++) {
+  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64), !!(i & 128), !!(i & 256)]);
 }
 
 const compare = (aSrc, bSrc) => {
@@ -108,6 +109,14 @@ if (args.includes('--self-test')) {
   if (movedShare === a) fails.push('the self-test could not plant a changed LP share - the line it edits has moved');
   else if (!compare(a, movedShare).problems.length) fails.push('a changed LP-agent share in one file only was not reported');
 
+  // And the program with no end (2026-10-28): a different date or a different move must be seen.
+  const movedForever = a.replace("new Date('2026-12-01T00:01:00Z')", "new Date('2026-12-02T00:01:00Z')");
+  if (movedForever === a) fails.push('the self-test could not plant a moved BOBAI-liq start - the constant it edits has moved');
+  else if (!compare(a, movedForever).problems.length) fails.push('a moved BOBAI-liq start in one file only was not reported');
+  const halfForever = a.replace('{ bobaiLiqBps += bobBurnBps; bobBurnBps = 0; }', '{ bobaiLiqBps += 50; bobBurnBps -= 50; }');
+  if (halfForever === a) fails.push('the self-test could not plant a changed BOBAI-liq move - the line it edits has moved');
+  else if (!compare(a, halfForever).problems.length) fails.push('a changed BOBAI-liq move in one file only was not reported');
+
   // And an identical file must be quiet.
   if (compare(a, a).problems.length) fails.push('a file compared against itself reported a difference');
 
@@ -133,7 +142,8 @@ const now = Date.now();
 const at = (name) => {
   const w = windowsOf(workerSrc);
   const s = w[`${name}_START`], e = w[`${name}_END`];
-  return s && e ? now >= Date.parse(s) && now <= Date.parse(e) : false;
+  // a program with no end (BOBAI_LIQ_PHASE, from 2026-12-01) is on from its start
+  return s ? now >= Date.parse(s) && (!e || now <= Date.parse(e)) : false;
 };
 const active = {
   bobLiqBoost: at('LIQ_BOOST'),
@@ -144,9 +154,10 @@ const active = {
   bobaiLiqBoost3: at('BOBAI_LIQ_BOOST3'),
   lpShare: at('LP_SHARE'),
   giggle: at('GIGGLE'),
+  bobaiLiqPhase: at('BOBAI_LIQ_PHASE'),
 };
 const on = Object.entries(active).filter(([, v]) => v).map(([k]) => k);
-const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2, active.bobaiLiqBoost3, active.lpShare, active.giggle);
+const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2, active.bobaiLiqBoost3, active.lpShare, active.giggle, active.bobaiLiqPhase);
 const sum = Object.values(split).reduce((s, v) => s + v, 0);
 console.log(`  active today: ${on.length ? on.join(', ') : 'none — standard 1/1/1'}`);
 console.log(`  split: ${Object.entries(split).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ')}`);

@@ -454,7 +454,7 @@ const TOKENOMICS = {
   mechanism: [
     '3% tax on every $BOBAI trade (rate hardcoded, distribution transparent & published)',
     'the tax accumulates in the public buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 20 to Nov 20, 2026: 0.8% creator / 0.3% $BOB burn / 0.8% $BOBAI burn, plus 0.5% to Liquidity Boost III with the LP burned, 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot) — live schedule on the dashboard',
+    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 20 to Nov 20, 2026: 0.8% creator / 0.3% $BOB burn / 0.8% $BOBAI burn, plus 0.5% to Liquidity Boost III with the LP burned, 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot; Nov 20 to Dec 1 the base split; from Dec 1, 2026 for good 1% creator / 1% $BOBAI burn / 1% BOBAI/BNB liquidity with the LP burned, no $BOB burn) — live schedule on the dashboard',
     'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
     'more volume -> more buybacks -> more burned -> lower circulating supply',
   ],
@@ -485,7 +485,9 @@ const TAX_PHASES = [
   { id: 'sunshine', from: '2026-09-17T00:01:00Z', until: '2026-09-19T18:00:00Z', split_pct: { creator: 0.8, bob_burn: 0.8, bobai_burn: 0.8, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
   { id: 'bobai-liq-3', from: '2026-09-19T18:00:00Z', until: '2026-09-20T06:00:00Z', split_pct: { creator: 0.8, bob_burn: 0.5, bobai_burn: 0.8, bobai_liquidity_add: 0.3, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
   { id: 'bobai-liq-3-raised', from: '2026-09-20T06:00:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.3, bobai_burn: 0.8, bobai_liquidity_add: 0.5, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
-  { id: 'standard-final', from: '2026-11-20T00:01:00Z', until: null, split_pct: { creator: 1, bob_burn: 1, bobai_burn: 1 } },
+  // 2026-10-28 (operator): Nov 20 -> Dec 1 are the last days of the BOB burn; from Dec 1 its 1% goes to BOBAI liquidity for good
+  { id: 'standard-final', from: '2026-11-20T00:01:00Z', until: '2026-12-01T00:01:00Z', split_pct: { creator: 1, bob_burn: 1, bobai_burn: 1 } },
+  { id: 'bobai-liq-forever', from: '2026-12-01T00:01:00Z', until: null, split_pct: { creator: 1, bobai_burn: 1, bobai_liquidity_add: 1 } },
 ];
 function taxPhaseAt(nowMs = Date.now()) {
   const i = TAX_PHASES.findIndex((ph) => nowMs >= Date.parse(ph.from) && (ph.until == null || nowMs < Date.parse(ph.until)));

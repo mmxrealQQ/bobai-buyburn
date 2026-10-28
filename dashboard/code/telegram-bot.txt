@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5772 lines.
+# one fetch. 12 files, 5780 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3486,6 +3486,8 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
 const BB3_START = Date.parse('2026-09-19T18:00:00Z');
 // 2026-09-20 06:00 UTC: Liq Boost III raised from 0.3% to 0.5%, the 0.2% out of the BOB burn — the page's schedule (app.js BB3R_START) tells it as two windows, so does this table.
 const BB3R_START = Date.parse('2026-09-20T06:00:00Z');
+// 2026-10-28 (operator): from Dec 1 00:01 UTC the BOB-burn 1% is BOBAI liquidity + LP burn, for good (worker BOBAI_LIQ_PHASE_START).
+const LIQ_FOREVER_START = Date.parse('2026-12-01T00:01:00Z');
 const BOT_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
 const TAX_PHASES_TG = [
   { from: GG_START, until: BB3_START, when: 'Sep 17 → Sep 19, 18:00 UTC, 2026', name: 'Giggle Academy pot + DeFi Agent',
@@ -3514,11 +3516,17 @@ const TAX_PHASES_TG = [
       ['💧', '0.3%', 'DeFi Agent', ''],
       ['☀️', '0.3%', 'Giggle Academy pot', ''],
     ] },
-  { from: GG_END, until: null, when: 'from Nov 20, 2026', name: 'Standard',
+  { from: GG_END, until: LIQ_FOREVER_START, when: 'Nov 20 → Dec 1, 00:01 UTC, 2026', name: 'Standard — the last days of the $BOB burn',
     slices: [
       ['👤', '1%', 'Creator', ''],
       ['👷', '1%', 'Burn $BOB (Build On BNB)', ''],
       ['🧠', '1%', 'Burn $BOBAI', ''],
+    ] },
+  { from: LIQ_FOREVER_START, until: null, when: 'from Dec 1, 2026, 00:01 UTC — for good', name: '$BOBAI liquidity for good',
+    slices: [
+      ['👤', '1%', 'Creator', ''],
+      ['🧠', '1%', 'Burn $BOBAI', ''],
+      ['🔒', '1%', 'BOBAI liq add + LP burn', 'the whole former $BOB burn'],
     ] },
 ];
 // One card: what the bot is, the split it pays right now — the tax-split box of

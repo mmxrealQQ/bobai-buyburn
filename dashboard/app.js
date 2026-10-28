@@ -974,7 +974,9 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     {id:'bobai-liq-3',   start:BB3_START, end:BB3R_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.5%', bobaiPct:'0.8%', liqPct:'0.3%', lpPct:'0.3%', gigglePct:'0.3%'},
     // 2026-09-20 06:00 UTC: Liq Boost III raised to 0.5% — another 0.2% out of the BOB-burn slice (0.5 → 0.3%); creator and BOBAI burn do not move.
     {id:'bobai-liq-3-raised', start:BB3R_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
-    {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
+    // 2026-10-28 (operator): Nov 20 -> Dec 1 the last days of the BOB burn; from Dec 1 its 1% is BOBAI liquidity + LP burn, for good. Same dates as the bots.
+    {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:new Date('2026-12-01T00:01:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
+    {id:'bobai-liq-forever',start:new Date('2026-12-01T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'(the whole 1% → $BOBAI liq add + LP burn, for good — no $BOB burn)', creatorPct:'1%', bobPct:'0%', bobaiPct:'1%', liqPct:'1%'}
   ];
   // The Brain Terminal draws its streams from this same table, so the popup and the schedule can never disagree.
   window.__bobaiPhase=()=>{const n=Date.now();return phases.find(p=>n>=p.start&&n<p.end)||null};

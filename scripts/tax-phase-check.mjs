@@ -33,7 +33,9 @@ const sun = TAX_PHASES.find((p) => p.id === 'sunshine'), bb3 = TAX_PHASES.find((
 // 2026-09-19: Liquidity Boost III splits the pot's window in two — the pot alone, then the pot with the boost, to the same end.
 // 2026-09-20: the boost was raised from 0.3% to 0.5% at 06:00 UTC; the page and the tool tell it as a window of its own (BB3R_START). The bots carry no such window — they pay 0.5% since the deploy of 05:52 UTC, and no run moved money in between.
 ok('the campaign windows are the page\'s own (GG_START … BB3_START … BB3R_START … GG_END)', !!sun && !!bb3 && !!bb3r && iso('GG_START') === sun.from && iso('BB3_START') === sun.until && sun.until === bb3.from && iso('BB3R_START') === bb3.until && bb3.until === bb3r.from && iso('GG_END') === bb3r.until, `${iso('GG_START')} … ${iso('BB3_START')} … ${iso('BB3R_START')} … ${iso('GG_END')}`);
-ok('the standard split begins where the campaign ends', !!fin && fin.from === bb3r.until && fin.until === null);
+// 2026-10-28: the standard split ends Dec 1 00:01 UTC; from then the BOB-burn 1% is BOBAI liquidity, with no end
+const forever = TAX_PHASES.find((p) => p.id === 'bobai-liq-forever');
+ok('the standard split begins where the campaign ends, and BOBAI liquidity for good where it ends', !!fin && fin.from === bb3r.until && fin.until === '2026-12-01T00:01:00Z' && !!forever && forever.from === fin.until && forever.until === null && forever.split_pct.bobai_liquidity_add === 1 && !forever.split_pct.bob_burn);
 const rowOf = (id) => (app.match(new RegExp("\\{id:'" + id + "'[^}]+\\}")) || [''])[0];
 const pctOf = (row, k) => Number((row.match(new RegExp(k + ":'([0-9.]+)%'")) || [])[1]);
 const row = rowOf('sunshine'), pct = (k) => pctOf(row, k);
@@ -46,7 +48,7 @@ ok('every window adds up to the 3% the contract takes', TAX_PHASES.every((p) => 
 ok('the bot carries all three dates', bot.includes('2026-09-17T00:01:00Z') && bot.includes(sun.until) && bot.includes('2026-11-20T00:01:00Z'));
 const at = (d) => taxPhaseAt(Date.parse(d));
 ok('a day inside the campaign answers with it and names what follows', at('2026-10-01T00:00:00Z')?.id === 'bobai-liq-3-raised' && at('2026-10-01T00:00:00Z')?.next?.id === 'standard-final' && at('2026-09-20T05:59:59Z')?.id === 'bobai-liq-3' && at('2026-09-20T06:00:00Z')?.id === 'bobai-liq-3-raised' && at('2026-10-01T00:00:00Z')?.total_pct === 3 && at('2026-09-18T12:00:00Z')?.id === 'sunshine' && at('2026-09-18T12:00:00Z')?.next?.id === 'bobai-liq-3');
-ok('the minute it ends the standard split answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next === null && at('2026-11-20T00:00:59Z')?.id === 'bobai-liq-3-raised');
+ok('the minute it ends the standard split answers and names BOBAI liquidity for good after it; from Dec 1 that answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next?.id === 'bobai-liq-forever' && at('2026-12-01T00:01:00Z')?.id === 'bobai-liq-forever' && at('2026-12-01T00:01:00Z')?.next === null && at('2026-12-01T00:00:59Z')?.id === 'standard-final' && at('2026-11-20T00:00:59Z')?.id === 'bobai-liq-3-raised');
 
 // ── the two bots, run as they stand ─────────────────────────────────────────
 const fallback = src('../buyback-bot.js');
@@ -91,6 +93,12 @@ ok('2026-11-20 00:01:00 UTC: the second before pays the DeFi agent, the Giggle p
 // Liquidity Boost III (2026-09-19, raised from 0.3% to 0.5% on 2026-09-20 without a window of its own — one add had run): the second it starts, 50 bps leave the BOB burn for the pool; creator and BOBAI burn do not move.
 const b3T = Date.parse(sun.until), b3Before = splitOf(bot, b3T - 1000), b3On = splitOf(bot, b3T);
 ok(`${sun.until}: the second before is 80/80/80 + 30 + 30, the second itself 80/30/80 + 50 liq + 30 + 30`, !!b3Before && !!b3On && b3Before.bobBurnBps === 80 && b3Before.bobaiLiqBps === 0 && b3On.bobBurnBps === 30 && b3On.bobaiLiqBps === 50 && b3On.creatorBps === 80 && b3On.bobaiBurnBps === 80 && b3On.lpAgentBps === 30 && b3On.giggleBps === 30);
+// 2026-12-01 00:01 UTC: the BOB burn ends for good, its 100 bps go to the BOBAI liq add; creator and BOBAI burn stay at 100.
+const fT = Date.parse('2026-12-01T00:01:00Z'), fBefore = splitOf(bot, fT - 1000), fOn = splitOf(bot, fT), fLater = splitOf(bot, fT + 400 * 86400000);
+ok('2026-12-01 00:01:00 UTC: the second before is 1/1/1 with the BOB burn, the second itself 100 BOBAI burn / 100 liq add / 100 creator and no BOB burn, a year later still', !!fBefore && !!fOn && !!fLater && fBefore.bobBurnBps === 100 && fBefore.bobaiLiqBps === 0 && fOn.bobBurnBps === 0 && fOn.bobaiLiqBps === 100 && fOn.creatorBps === 100 && fOn.bobaiBurnBps === 100 && JSON.stringify(fLater) === JSON.stringify(fOn));
+// the page tells the same two windows (app.js phases + the row in each schedule)
+const htmls = ['../dashboard/index.html', '../dashboard/token.html', '../dashboard/brain/index.html'].map(src);
+ok('the page schedule has the Dec 1 row: app.js phase and a ts-row in index, token and brain', app.includes("{id:'bobai-liq-forever',start:new Date('2026-12-01T00:01:00Z').getTime(), end:Infinity") && app.includes("{id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:new Date('2026-12-01T00:01:00Z').getTime()") && htmls.every((h) => h.includes('data-phase="bobai-liq-forever"')));
 // Both directions: a fallback bot one window behind has to be caught.
 const stale = fallback.replace("const GIGGLE_END   = new Date('2026-11-20T00:01:00Z')", "const GIGGLE_END   = new Date('2026-11-21T00:01:00Z')");
 ok('a fallback bot with one date a day off is caught (the detector is not blind)', stale !== fallback && JSON.stringify(splitOf(stale, endT)) !== JSON.stringify(splitOf(bot, endT)));

@@ -230,6 +230,29 @@ console.log = (...a) => out.push(a.join(' '));
 try { await worker.scheduled({}, env, {}); } finally { console.log = log; }
 ok('a second tick finds the wallet under its threshold and sends nothing', (await pub.getTransactionCount({ address: bot })) === nonce && JSON.parse(kv.get('burns.json')).length === 1);
 
+// FROM DEC 1 (operator, 2026-10-28): the BOB-burn 1% is BOBAI liquidity for good. The same worker, a fresh throwaway
+// wallet, its clock set to Dec 1 00:02 UTC for the one run (Date.now is what the windows read; restored after).
+console.log('\nthe run on Dec 1, 2026 (BOBAI liquidity for good)');
+{
+  const key2 = generatePrivateKey(), bot2 = privateKeyToAccount(key2).address;
+  await test.setBalance({ address: bot2, value: parseEther('0.1') });
+  const kv2 = new Map();
+  const env2 = { ...env, BUYBACK_PRIVATE_KEY: key2, LOGS: { get: async (k) => (kv2.has(k) ? kv2.get(k) : null), put: async (k, v) => { kv2.set(k, v); }, delete: async (k) => { kv2.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv2.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) } };
+  const c0 = await bal(CREATOR), deadBob0 = await tok(BOB, DEAD), deadBobai0 = await tok(BOBAI, DEAD);
+  const realNow = Date.now; const out2 = [];
+  Date.now = () => Date.parse('2026-12-01T00:02:00Z'); console.log = (...a) => out2.push(a.join(' '));
+  try { await worker.scheduled({}, env2, {}); } finally { console.log = log; Date.now = realNow; }
+  const said = out2.join('\n'), e2 = JSON.parse(kv2.get('burns.json') || '[]')[0] || {}, liq2 = JSON.parse(kv2.get('bobai-liq-log.json') || '[]');
+  const avail2 = parseEther('0.1') - parseEther('0.003');
+  ok('the split is 100 BOBAI burn / 0 BOB burn / 100 creator / 100 BOBAI liq, the phase named', /BOBAI burn 100\s+\|\s+BOB burn 0\s+\|\s+Creator 100/.test(said) && /BOBAI liq\s+100/.test(said) && /BOBAI liq for good/.test(said), (said.match(/BOBAI burn \d+[^\n]*/) || [''])[0]);
+  ok('no $BOB is bought or burned: no swap tried, nothing in the log, the dead address holds no more', !/Buying & Burning \$BOB /.test(said) && !e2.bobSwapTx && !e2.bobBurned && (await tok(BOB, DEAD)) === deadBob0);
+  ok('the creator receives exactly a third of what was available', (await bal(CREATOR)) - c0 === (avail2 * 100n) / 300n, formatEther((await bal(CREATOR)) - c0));
+  const lr = liq2[0] || {};
+  const lrc = liq2.length === 1 ? await Promise.all([lr.addLiqTx, lr.lpBurnTx].map((h) => pub.getTransactionReceipt({ hash: h }).catch(() => null))) : [];
+  ok('a third goes into BOBAI/BNB liquidity, the add and the LP burn in blocks with status success', liq2.length === 1 && lrc.length === 2 && lrc.every((r) => r?.status === 'success') && Math.abs(Number(lr.bnb) - Number(formatEther(avail2 / 3n))) < 0.0005, `${lr.bnb} BNB · ${lr.lpBurned} LP burned`);
+  ok('$BOBAI is still bought and burned', /^0x[0-9a-f]{64}$/.test(e2.bobaiBurnTx || '') && (await tok(BOBAI, DEAD)) > deadBobai0);
+}
+
 // ── the liquidity add, which rests between boosts, same fork ────────────────
 console.log('\nthe liquidity add (dormant path, called by name)');
 {

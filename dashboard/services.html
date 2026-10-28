@@ -71,6 +71,7 @@
   .sv-ask{color:var(--gold);font-size:.84rem;line-height:1.5;margin:0 0 8px}
   .sv-what{color:var(--muted);font-size:.8rem;line-height:1.6;margin:0}
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
+  .sv-curl{margin:6px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;font-size:.72rem;line-height:1.5;max-width:100%}
   .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -141,7 +142,7 @@
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow &mdash; <b>0.01 $U until 5 Nov 12:00 UTC</b> &mdash; or 0.10 USD1 / USDC &mdash; or half that in $BOBAI &mdash; when you pay per answer. Hold 1,000,000 $BOBAI and the per-answer route is free.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> &mdash; <b>0.01 $U until 5 Nov 12:00 UTC</b></span> &mdash; or 0.10 USD1 / USDC &mdash; or half that in $BOBAI &mdash; when you pay per answer. Hold 1,000,000 $BOBAI and the per-answer route is free.</p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
@@ -155,7 +156,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids registered on BNB Chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">580,425</b><span>requests answered for others — people, agents and registries</span></div>
+      <div class="sv-num"><b id="sv-asked">580,708</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
     <!-- A WAY THROUGH A LONG PAGE (2026-10-13: 14,000 px on a phone): one row of jumps to its parts -->
@@ -218,7 +219,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Venus health factor &amp; liquidation distance</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">How close is my Venus position to being liquidated?</p>
@@ -234,7 +235,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=health_factor</code> with the body <code>{&quot;params&quot;:{&quot;address&quot;:&quot;0x…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=health_factor' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;address&quot;:&quot;0xd319e1F8e987cf78333cEA853F455366640929cF&quot;}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302257" rel="noopener">#302257</a> &middot; <a href="https://brainonbnb.com/registry#cat-health-factor" aria-label="Hire Venus health factor &amp; liquidation distance on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=health_factor" rel="noopener">See a real answer, free &rarr;</a>
@@ -242,7 +243,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Grid trading plan, costed against the real pool</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">Can a grid actually make money in this pool, after costs?</p>
@@ -263,7 +264,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=grid_plan</code> with the body <code>{&quot;params&quot;:{&quot;token&quot;:&quot;0x…&quot;,&quot;capitalUsd&quot;:&quot;…&quot;,&quot;levels&quot;:&quot;…&quot;,&quot;bandPct&quot;:&quot;…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=grid_plan' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;levels&quot;:10,&quot;bandPct&quot;:15,&quot;capitalUsd&quot;:1000,&quot;token&quot;:&quot;0x245c386dcfed896f5c346107596141e5edcbffff&quot;}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/302258" rel="noopener">#302258</a> &middot; <a href="https://brainonbnb.com/registry#cat-grid-trading" aria-label="Hire Grid trading plan, costed against the real pool on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=grid_plan" rel="noopener">See a real answer, free &rarr;</a>
@@ -271,7 +272,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Venus yield ranking, and whether moving pays for itself</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">Where should this sit to earn most — and is moving it worth the gas?</p>
@@ -291,7 +292,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=yield_plan</code> with the body <code>{&quot;params&quot;:{&quot;amountUsd&quot;:&quot;…&quot;,&quot;from&quot;:&quot;…&quot;,&quot;currentApyPct&quot;:&quot;…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=yield_plan' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;amountUsd&quot;:1000}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304493" rel="noopener">#304493</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization" aria-label="Hire Venus yield ranking, and whether moving pays for itself on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=yield_plan" rel="noopener">See a real answer, free &rarr;</a>
@@ -299,7 +300,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Portfolio rebalance, priced against the pools that would execute it</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">What would it cost me to get back to my target weights — and which of my LP ranges need re-centring?</p>
@@ -319,7 +320,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=rebalance_plan</code> with the body <code>{&quot;params&quot;:{&quot;holdings&quot;:&quot;0x…&quot;,&quot;targets&quot;:&quot;…&quot;,&quot;position&quot;:&quot;0x…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=rebalance_plan' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;holdings&quot;:[{&quot;token&quot;:&quot;0x245c386dcfed896f5c346107596141e5edcbffff&quot;,&quot;usd&quot;:700},{&quot;token&quot;:&quot;0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82&quot;,&quot;usd&quot;:300}]}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/304494" rel="noopener">#304494</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing" aria-label="Hire Portfolio rebalance, priced against the pools that would execute it on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=rebalance_plan" rel="noopener">See a real answer, free &rarr;</a>
@@ -327,7 +328,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>Which PancakeSwap fee tier is actually paying its liquidity providers</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">Which fee tier should I put liquidity in?</p>
@@ -346,7 +347,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=lp_tier_plan</code> with the body <code>{&quot;params&quot;:{&quot;token&quot;:&quot;0x…&quot;,&quot;capitalUsd&quot;:&quot;…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=lp_tier_plan' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;capitalUsd&quot;:1000,&quot;token&quot;:&quot;0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82&quot;}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/310460" rel="noopener">#310460</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization" aria-label="Hire Which PancakeSwap fee tier is actually paying its liquidity providers on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=lp_tier_plan" rel="noopener">See a real answer, free &rarr;</a>
@@ -354,7 +355,7 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>The DeFi agent, on your position</h3>
-          <span class="sv-price" title="0.01 $U (until 5 Nov 12:00 UTC, then 0.10) through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         <p class="sv-ask">What would the DeFi agent decide about my position?</p>
@@ -370,7 +371,7 @@
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code> with the body <code>{&quot;params&quot;:{&quot;position&quot;:&quot;…&quot;}}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>curl -s -X POST 'https://agent.brainonbnb.com/answer?service=lp_position_plan' -H 'content-type: application/json' -d '{&quot;params&quot;:{&quot;address&quot;:&quot;0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A&quot;}}'</code></pre></details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/363709" rel="noopener">#363709</a> &middot; <a href="https://brainonbnb.com/registry#cat-rebalancing" aria-label="Hire The DeFi agent, on your position on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=lp_position_plan" rel="noopener">See a real answer, free &rarr;</a>
@@ -380,7 +381,7 @@
     <details class="sv-how"><summary><b>How paying works, and what protects you.</b></summary>
       <ol class="sv-steps">
         <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 or $U you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold.</li>
-        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U (0.01 until 5 Nov 12:00 UTC) until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
+        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 until 5 Nov 12:00 UTC)</span> until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>
     <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></details>
@@ -652,6 +653,10 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
       });
     });
   })();
+</script>
+<script>
+  // a sale ends by itself (2026-10-28): its words go the moment it is over, without a rebuild (worker-agent/sell.js SALE_UNTIL)
+  document.querySelectorAll('.sv-sale[data-until]').forEach(function (s) { if (Date.now() >= Date.parse(s.dataset.until)) s.remove(); });
 </script>
 </body>
 </html>

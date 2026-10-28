@@ -1411,7 +1411,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} — or ${fmtUsd1(ANSWER_PRICE)} $U by EIP-3009 like USD1 (the last entry of accepts) — and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs; a filled-in body: GET https://agent.brainonbnb.com/example?service=${serviceId} → request.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, discount: `half price: ${fmtUsd1(ANSWER_PRICE)} USD1 or ${bobai.tokens.toLocaleString('en-US')} $BOBAI, worth ${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD`, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market, never sold. Since 2026-10-14 every payment in USD1, USDC or $U is split when it is swept: half buys $BOBAI that is held there, half is the operator’s revenue.' } } : {}),
         // Hold, don't pay (2026-10-16, holder-pass.js): a wallet with the $BOBAI line uses this without paying.
         holder_pass: holderPassTerms(),
@@ -1419,7 +1419,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         // WHAT HAPPENS TO THE MONEY IF THE ANSWER FAILS (2026-10-27, a stranger reading this 402: "nothing says what happens
         // to my money if delivery fails" — the code has always kept it; now the offer says so) and the one step Permit2 needs
-        if_the_answer_fails: 'Missing input is refused before any payment is taken (422, nothing charged). If the payment went through and the answer then cannot be built, the payment is kept as a credit on its own transaction: send the same request with the same PAYMENT-SIGNATURE (input fixed) and it is used for that answer, not charged again.',
+        if_the_answer_fails: 'Send your input with the payment: missing or malformed input is refused once the signature is checked and before anything is settled (422, nothing charged). A request without a payment gets these terms (402) whatever its input. If the payment went through and the answer then cannot be built, the payment is kept as a credit on its own transaction: send the same request with the same PAYMENT-SIGNATURE (input fixed) and it is used for that answer, not charged again.',
         usdc_via_permit2: 'USDC is paid through Permit2: the paying wallet needs a one-time approve of the Permit2 contract (0x000000000022D473030F116dDEE9F6B43aC78BA3) for USDC before its first signature.',
         accepts: v2Shape(requirements, { url: resource }).accepts,
       },
@@ -3489,7 +3489,7 @@ ${pageTail}`;
         if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer — USD1 by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or half that price in $BOBAI, quoted on each 402`,
+          price: `${fmtUsd1(ANSWER_PRICE)} per answer — USD1 or $U by EIP-3009 (signed, we settle), USDC by standard x402 (Permit2), USD1 by direct transfer, or half that price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST (or GET) /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then repeat with the payment in X-PAYMENT or PAYMENT-SIGNATURE — POST with a body naming the task, or GET with ?task=… in the query.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',

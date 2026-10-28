@@ -454,7 +454,7 @@ const SEED_PARAMS = {
 function exampleLinks(serviceId, service) {
   return {
     price: {
-      x402: `0.10 USD1 per answer (or half that in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
+      x402: `0.10 USD1, USDC or $U per answer (or half that in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
       escrow: serviceId === 'lp_position_plan'
         ? SERVICES.lp_position_plan.price_display.replace('USD1', '$U') + ' through the ERC-8183 escrow from the DeFi Agent #363709 — signed quote at https://agent.brainonbnb.com/defi-agent/a2a (skill negotiate-erc8183-job); $U is United Stables, a dollar stablecoin'
         : `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)`,
@@ -500,7 +500,10 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const out = {
     service: serviceId,
     name: service.name,
-    price_display: service.price_display,
+    // THE REQUEST ITSELF (2026-10-28, a stranger on /services: "no copy-paste request with real values", and the escrow's
+    // sale price stood here beside the x402 link that asks 0.10): the exact body this example ran, ready to send with a
+    // payment; the price of each way is in `price` below.
+    request: { method: 'POST', url: `https://agent.brainonbnb.com/answer?service=${serviceId}`, body: { params: Object.fromEntries(Object.entries(params || {}).filter(([k, v]) => k in (service.needs || {}) && v != null && v !== '')) } },   // only the fields this service names: the extractor fills address, token and holdings for every sentence
     task,
     produced_at: new Date().toISOString(),
     took_ms: Date.now() - t0,

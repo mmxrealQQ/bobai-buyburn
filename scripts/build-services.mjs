@@ -44,6 +44,11 @@ const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'u
 // Declared up here because page() reads it and the self-test calls page() before
 // the build fetches the figure — as a const further down it made --self-test throw.
 let ASKED_FLOOR = 0;
+// THE REAL REQUEST PER CARD (2026-10-28, a stranger on this page: "no copy-paste request with real values", and the body
+// built from the field names showed holdings as "0x…" where the answer takes an array). Read at build time from each
+// service's free example (/example -> request: the body that example ran); a service that does not answer keeps the
+// body built from its field names.
+let EXAMPLE_REQ = {};
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -188,7 +193,7 @@ const leadOf = (t) => { const m = String(t || '').match(/^([\s\S]{60,280}?[.!?])
 const delivery = (d) => `      <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>${esc(d.name)}</h3>
-          <span class="sv-price" title="${esc(String(d.price).replace('USD1', '$U'))} through the ERC-8183 escrow (the escrow pays in $U; USD1 is the per-answer x402 price)">$0.10</span>
+          <span class="sv-price" title="0.10 $U through the ERC-8183 escrow (the escrow pays in $U; USD1, USDC or $U is the per-answer x402 price); a running sale is named at the top of the page">$0.10</span>
           <span class="sv-price sv-bobai" title="Per answer over x402: half the price in $BOBAI, a direct transfer at the 402's quote. What arrives stays $BOBAI, never sold.">or $0.05 in $BOBAI</span>
         </div>
         ${ASKS[d.id] ? `<p class="sv-ask">${esc(ASKS[d.id])}</p>` : `<p class="sv-ask">${esc(leadOf(d.what)[0])}</p>`}
@@ -204,7 +209,7 @@ ${fieldsOf(d.needs)}
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
-        <details class="sv-dev"><summary>For developers: the same answer by one call</summary><p class="sv-cost">Pay per answer (x402): <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p></details>
+        <details class="sv-dev"><summary>For developers: the same answer by one call</summary>${EXAMPLE_REQ[d.id]?.body ? `<p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>${esc(`curl -s -X POST '${String(d.x402).replace(/^POST\s+/, '')}' -H 'content-type: application/json' -d '${JSON.stringify(EXAMPLE_REQ[d.id].body)}'`)}</code></pre>` : `<p class="sv-cost">Pay per answer (x402): <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p>`}</details>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a>
@@ -321,6 +326,7 @@ function page() {
   .sv-ask{color:var(--gold);font-size:.84rem;line-height:1.5;margin:0 0 8px}
   .sv-what{color:var(--muted);font-size:.8rem;line-height:1.6;margin:0}
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
+  .sv-curl{margin:6px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;font-size:.72rem;line-height:1.5;max-width:100%}
   .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -391,7 +397,7 @@ function page() {
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
-    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow &mdash; <b>0.01 $U until 5 Nov 12:00 UTC</b> &mdash; or 0.10 USD1 / USDC &mdash; or half that in $BOBAI &mdash; when you pay per answer. Hold 1,000,000 $BOBAI and the per-answer route is free.</p>
+    <p class="sv-lead">We measure things on BNB Chain and tell you what we found. <b>Nothing here signs anything, and nothing needs your wallet</b> until you decide to buy something. Prices are in dollar stablecoins: <b>$0.10</b> an answer, paid as 0.10 $U (United Stables) through the escrow<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> &mdash; <b>0.01 $U until 5 Nov 12:00 UTC</b></span> &mdash; or 0.10 USD1 / USDC &mdash; or half that in $BOBAI &mdash; when you pay per answer. Hold 1,000,000 $BOBAI and the per-answer route is free.</p>
     <section class="primer" style="margin-top:20px">
       <p class="primer-what"><b>Ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
@@ -430,7 +436,7 @@ ${DELIVERIES.map(delivery).join('\n')}
     <details class="sv-how"><summary><b>How paying works, and what protects you.</b></summary>
       <ol class="sv-steps">
         <li><b>Pay per answer (x402).</b> POST the answer URL on a card. You get a 402 reply with the price; pay 0.10 and send the same request again &mdash; the answer comes straight back. With USD1 or $U you only sign (EIP-3009, a signed transfer we send for you, so you pay no gas); USDC works by standard x402, or a plain transfer whose hash you send. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold.</li>
-        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U (0.01 until 5 Nov 12:00 UTC) until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
+        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 until 5 Nov 12:00 UTC)</span> until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>
     <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></details>
@@ -589,6 +595,10 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
     });
   })();
 </script>
+<script>
+  // a sale ends by itself (2026-10-28): its words go the moment it is over, without a rebuild (worker-agent/sell.js SALE_UNTIL)
+  document.querySelectorAll('.sv-sale[data-until]').forEach(function (s) { if (Date.now() >= Date.parse(s.dataset.until)) s.remove(); });
+</script>
 </body>
 </html>
 `;
@@ -613,6 +623,16 @@ if (SELFTEST) {
     // The service description must be the catalog's, not a retyped one.
     if (!html.includes(esc(d.what).slice(0, 60))) problems.push(`${d.id} does not carry the catalog's own description`);
   }
+  // the real request (2026-10-28): with an example body known, the card shows it as a curl, holdings as an array
+  EXAMPLE_REQ = { rebalance_plan: { body: { params: { holdings: [{ token: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', usd: 700 }] } } } };
+  const withReq = page(); EXAMPLE_REQ = {};
+  if (!withReq.includes(esc("curl -s -X POST 'https://agent.brainonbnb.com/answer?service=rebalance_plan'"))) problems.push('a known example body is not shown as a curl on its card');
+  if (!withReq.includes(esc('"holdings":[{"token"'))) problems.push('the example body does not carry holdings as an array');
+  // the sale's words leave the page at the sale's own end (2026-10-28): every data-until is sell.js SALE_UNTIL
+  const saleEnd = (fs.readFileSync(path.join(ROOT, 'worker-agent', 'sell.js'), 'utf8').match(/SALE_UNTIL = Date\.UTC\((\d+), (\d+), (\d+), (\d+)\)/) || []).slice(1).map(Number);
+  const saleIso = saleEnd.length === 4 ? new Date(Date.UTC(...saleEnd)).toISOString().replace('.000Z', 'Z') : null;
+  const untils = [...html.matchAll(/class="sv-sale" data-until="([^"]+)"/g)].map((m) => m[1]);
+  if (!untils.length || !untils.every((u) => u === saleIso) || /0\.01[^<]{0,40}5 Nov/.test(html.replace(/<span class="sv-sale"[\s\S]*?<\/span>/g, ''))) problems.push(`the sale text is not all inside .sv-sale spans ending at sell.js SALE_UNTIL (${saleIso}): ${untils.join(', ') || 'none'}`);
   for (const group of Object.keys(CAPABILITIES)) {
     for (const c of CAPABILITIES[group]) {
       if (!html.includes(esc(c.name))) problems.push(`capability "${c.name}" (${group}) is not rendered`);
@@ -648,6 +668,10 @@ if (problems.length) {
 ASKED_FLOOR = await fetch('https://agent.brainonbnb.com/stats', { signal: AbortSignal.timeout(20000) })
   .then((r) => (r.ok ? r.json() : null)).then((d) => Number(d?.asked?.total) || 0).catch(() => 0);
 if (!ASKED_FLOOR) console.warn('  /stats did not answer at build time — the requests tile opens with a dash until the live figure arrives');
+await Promise.all(DELIVERIES.map((d) => fetch(`https://agent.brainonbnb.com/example?service=${d.id}`, { signal: AbortSignal.timeout(30000) })
+  .then((r) => (r.ok ? r.json() : null)).then((j) => { if (j?.request?.body?.params) EXAMPLE_REQ[d.id] = j.request; }).catch(() => {})));
+const missingReq = DELIVERIES.filter((d) => !EXAMPLE_REQ[d.id]).map((d) => d.id);
+if (missingReq.length) console.warn(`  no example request for ${missingReq.join(', ')}: those cards keep the body built from the field names`);
 const html = page();
 fs.writeFileSync(OUT, html);
 console.log(`wrote ${path.relative(ROOT, OUT)} (${(Buffer.byteLength(html) / 1024).toFixed(1)} KB)`);

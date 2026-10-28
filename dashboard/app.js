@@ -661,7 +661,7 @@ function bdata(b){try{if(b&&b.length>0){BOB_OURS=b.reduce((s,x)=>s+(parseFloat(x
 async function logs(){
   const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
   if(burns)NUMS.burns=burns;if(bb)NUMS.liq=bb;
-  bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);bbsrc(bb);ggdata(burns);
+  bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);lfgdata(bb);bbsrc(bb);ggdata(burns);
   return !!(burns&&bb);
 }
 // Static file, appended once per manual run: read once at load, and fetched
@@ -707,6 +707,10 @@ const BB3_START=new Date('2026-09-19T18:00:00Z').getTime();
 const BB3_END=new Date('2026-11-20T00:01:00Z').getTime();
 // 2026-09-20 06:00 UTC: the boost raised from 0.3% to 0.5% (the 0.2% out of the BOB burn). The schedule tells it as two windows; the card and its log are one.
 const BB3R_START=new Date('2026-09-20T06:00:00Z').getTime();
+// $BOBAI LIQUIDITY FOR GOOD (operator, 2026-10-28: "no boost any more but the standard"): from Dec 1, 00:01 UTC the 1% that
+// burned $BOB goes into the BOBAI/BNB pool, LP burned, with no end. Its own card replaces Boost III the moment the boost
+// ends (Nov 20, counting down to the start until Dec 1); Boost III moves to the archive. Same log, from LFG_START on.
+const LFG_START=new Date('2026-12-01T00:01:00Z').getTime();
 // DeFi Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
@@ -721,7 +725,10 @@ function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter
 function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
 
 // === BOBAI LIQ BOOST III DATA (live campaign, from BB3_START; the same log as I and II) ===
-function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const cEl=document.getElementById('bb3-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.bb3={count:entries.length,bnb:totalBnb,lp:totalLp,start:BB3_START,end:BB3_END};document.getElementById('bb3-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb3-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb3-tx-body',rows)}catch(e){console.error('bb3data error:',e)}}
+function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const put=(k,v)=>{for(const p of['bb3-','bb3a-']){const e=document.getElementById(p+k);if(e)e.textContent=v}};put('count',entries.length);let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.bb3={count:entries.length,bnb:totalBnb,lp:totalLp,start:BB3_START,end:BB3_END};put('bnb',totalBnb.toFixed(4)+' BNB');put('lp',nf(totalLp,2));if(rows.length){paintRows('bb3-tx-body',rows);paintRows('bb3a-tx-body',rows)}}catch(e){console.error('bb3data error:',e)}}
+
+// === $BOBAI LIQUIDITY FOR GOOD DATA (from LFG_START, no end; the same log as the boosts) ===
+function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.time).getTime()>=LFG_START);let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.lfg={count:entries.length,bnb:totalBnb,lp:totalLp,start:LFG_START,end:Infinity};const cEl=document.getElementById('lfg-count');if(!cEl)return;cEl.textContent=entries.length;document.getElementById('lfg-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lfg-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('lfg-tx-body',rows)}catch(e){console.error('lfgdata error:',e)}}
 
 // === THE LIBRARY: copy buttons and the in-page code viewer ===
 // Reading the code should not cost a download. The viewer fetches the bundle's
@@ -953,6 +960,30 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   tick();setInterval(tick,60000);
 }();
 
+// === WHICH LIQUIDITY CARD STANDS: Boost III until it ends, then LIQUIDITY FOR GOOD (counting down to Dec 1, then running);
+// the archived Boost III card (archive page) shows from the same instant. A ?at=<ISO> in the address shows the page at
+// that moment (for checks), the figures stay today's.
+!function(){
+  const at=Date.parse(new URLSearchParams(location.search).get('at')||'');
+  const now=()=>isFinite(at)?at:Date.now();
+  window.__bobaiNow=now;
+  function tick(){
+    const n=now(),lfg=n>=BB3_END;
+    const show=(id,on)=>{const e=document.getElementById(id);if(e)e.style.display=on?'':'none'};
+    show('liq-boost-bobai-3',!lfg);show('liq-for-good',lfg);show('liq-boost-bobai-3-arch',lfg);
+    document.querySelectorAll('a[data-liq-link]').forEach(a=>{a.setAttribute('href','#'+(lfg?'liq-for-good':'liq-boost-bobai-3'))});
+    document.querySelectorAll('a[data-b3-link]').forEach(a=>{a.setAttribute('href',lfg?a.dataset.b3Link:'#liq-boost-bobai-3')});
+    const dEl=document.getElementById('lfg-days');if(!dEl)return;
+    const before=n<LFG_START,diff=Math.max(0,LFG_START-n);
+    show('lfg-cd',before);show('lfg-cd-label',before);
+    dEl.textContent=Math.floor(diff/86400000);
+    document.getElementById('lfg-hours').textContent=Math.floor((diff%86400000)/3600000);
+    document.getElementById('lfg-mins').textContent=Math.floor((diff%3600000)/60000);
+    document.getElementById('lfg-phase').textContent=before?'starts Dec 1, 00:01 UTC':'running since Dec 1, 2026 — for good';
+  }
+  tick();setInterval(tick,60000);
+}();
+
 // A link into a folded archive card (the schedule points at the finished campaigns) opens the fold, then scrolls.
 !function(){function open(){try{const h=location.hash;if(!h||h.length<2)return;const t=document.getElementById(decodeURIComponent(h.slice(1)));if(!t)return;const d=t.tagName==='DETAILS'?t:t.closest('details');if(d&&!d.open){d.open=true;t.scrollIntoView()}}catch(e){}}addEventListener('hashchange',open);addEventListener('load',open)}();
 
@@ -979,7 +1010,7 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     {id:'bobai-liq-forever',start:new Date('2026-12-01T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'(the whole 1% → $BOBAI liq add + LP burn, for good — no $BOB burn)', creatorPct:'1%', bobPct:'0%', bobaiPct:'1%', liqPct:'1%'}
   ];
   // The Brain Terminal draws its streams from this same table, so the popup and the schedule can never disagree.
-  window.__bobaiPhase=()=>{const n=Date.now();return phases.find(p=>n>=p.start&&n<p.end)||null};
+  window.__bobaiPhase=()=>{const n=window.__bobaiNow();return phases.find(p=>n>=p.start&&n<p.end)||null};
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.
   // Capped at MAX_VISIBLE so long schedules stay compact; older phases remain reachable by scrolling.
   // Measured from live row heights so it also works on mobile, where rows wrap to multiple lines.
@@ -1009,7 +1040,7 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   // the Brain page opens this block in a window; a hidden window forgets its scroll, so each opening fits anew
   window.__bobaiFitSchedule=()=>{scrolledFor=null;fitSchedule()};
   function apply(){
-    const now=Date.now();
+    const now=window.__bobaiNow();
     let active=null;
     phases.forEach(p=>{if(now>=p.start&&now<p.end)active=p});
     document.querySelectorAll('.ts-row').forEach(r=>{

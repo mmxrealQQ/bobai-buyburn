@@ -350,6 +350,35 @@
     </div>
   </section>
 
+  <!-- $BOBAI LIQUIDITY FOR GOOD (operator, 2026-10-28: "no boost any more but the standard"): from Dec 1, 2026, 00:01 UTC
+       the tax splits 1% $BOBAI burn / 1% creator / 1% into the BOBAI/BNB pool, LP burned — with no end date. app.js shows
+       this card instead of Boost III from the moment the boost ends (Nov 20, 00:01 UTC; until Dec 1 it counts down to the
+       start) and moves Boost III to the archive. Own IDs (lfg-*); the adds come from the same bobai-liq-log.json. -->
+  <section class="liq-boost fi" id="liq-for-good" style="display:none">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Liquidity for good</em></div>
+      <div class="lb-sub">From Dec 1, 2026: 1% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; no end date &middot; <span style="color:var(--gold)" id="lfg-phase">&hellip;</span></div>
+      <div class="lb-countdown" id="lfg-cd">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="lfg-cd-label">until it starts</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lfg-count">--</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lfg-bnb">--</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lfg-lp">--</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="lfg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first add lands with the first bot run after Dec 1, 00:01 UTC&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+      <p class="lb-note">The split for good: 1% buys $BOBAI and burns it, 1% deepens this pool with its LP burned, 1% goes to the creator. Not a campaign: nothing here ends. Every add is a transaction of the buyback bot.</p>
+    </div>
+  </section>
+
   <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
   <section class="sec" id="about">
@@ -385,7 +414,7 @@
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">0.8%</div><div class="d">Burn $BOBAI<br><span class="ts-inline" id="ts-inline-bobai"></span></div></div>
         <div class="ta" id="tf-liq-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
+        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a data-liq-link href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
@@ -440,12 +469,12 @@
           <div class="ts-row" data-phase="bobai-liq-3">
             <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3-raised">
             <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">Nov 20 &rarr; Dec 1, 00:01 UTC, 2026</div>
@@ -455,7 +484,7 @@
           <div class="ts-row" data-phase="bobai-liq-forever">
             <div class="ts-when">from Dec 1, 2026, 00:01 UTC &mdash; for good</div>
             <div class="ts-name">$BOBAI liquidity for good</div>
-            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-for-good">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
           </div>
         </div>
       </div>
@@ -646,6 +675,35 @@
             <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- $BOBAI Permalocked Liquidity Boost III — ARCHIVED from its end (Nov 20, 2026, 00:01 UTC): app.js shows this card
+         from that instant, when the homepage's live card gives way to LIQUIDITY FOR GOOD (operator, 2026-10-28). -->
+    <div class="burns-wrap fi" id="liq-boost-bobai-3-arch" style="margin-top:24px;display:none">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive" id="liq-boost-bobai-3-done">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
+              <div class="lb-arch-meta">Sep 19 &ndash; Nov 20, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3a-count">--</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3a-bnb">--</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3a-lp">--</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="bb3a-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -1438,10 +1496,10 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=129" defer></script>
+<script src="app.js?v=130" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1793197333">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793199566">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1492,7 +1550,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793197333'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793199566'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

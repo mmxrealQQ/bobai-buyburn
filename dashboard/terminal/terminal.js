@@ -511,6 +511,7 @@ function applyPhase() {
   const pct = { burnA: n(p.bobaiPct), burnB: n(p.bobPct), liq: n(p.liqPct), defi: n(p.lpPct), giggle: n(p.gigglePct), creator: n(p.creatorPct) };
   for (const d of DEST) {
     d.pct = pct[d.k]; const on = d.pct > 0;
+    if (d.k === 'liq' && d.el.querySelector('.n')) { d.name = liqProg().short; d.el.querySelector('.n').firstChild.textContent = d.name; }
     d.el.style.display = on ? '' : 'none'; if (d.obj) d.obj.visible = on; d.orb.visible = on && !d.obj; d.halo.visible = on;
     d.el.querySelector('.pc').textContent = d.pct + '%';
   }
@@ -659,7 +660,7 @@ function info(k) {
       note: pctOf('burnB') + ' of every trade buys $BOB (Build On BNB) and burns it — BOBAI feeding the chain it was born on.',
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
-      ['Liq Boost III adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (Boost III)', nf(boost.lp, 2)],
+      [boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)],
       ['All bot adds', nf(S.liq.length)], ['Pool LP burned', lpText()]],
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
@@ -2943,7 +2944,7 @@ const CMDS = {
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
   liq: () => { setFocus('liq'); const b = boost3();
-    say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
+    say([b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
     // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
@@ -3409,8 +3410,8 @@ function motifOf(k, now) {
       label: 'BOBAI JUST ADDED LIQUIDITY', value: bnb4(l.bnb), sub: `half bought ${bobaiAmt(l.bobaiBought)}, paired with the rest  ·  the LP is burned`,
       cards: [['LP BURNED', nf(l.lpBurned, 2) + ' LP', 'sent to the dead address', D.liq.c],
         ['POOL LOCKED', lpText(), 'of all LP, forever', D.liq.c],
-        ['LIQ BOOST III', b.n + ' adds', 'since Sep 19', '#F0B90B'],
-        ['BOOST III TOTAL', bnb4(b.bnb), nf(b.lp, 2) + ' LP burned', '#F0B90B']],
+        [b.short, b.n + ' adds', b.since, '#F0B90B'],
+        [b.total, bnb4(b.bnb), nf(b.lp, 2) + ' LP burned', '#F0B90B']],
       text: `$BOBAI just added ${bnb4(l.bnb)} of liquidity and burned the LP: ${lpText()} of the pool is locked forever. On-chain: https://bscscan.com/tx/${l.addLiqTx} 💧`,
     };
   }
@@ -3656,10 +3657,16 @@ const pcEdge = v => v == null ? '—' : v > 0 && v < 0.001 ? '<0.001%' : (v >= 9
 const supplyPct = v => (v / 1e9 * 100).toFixed(1);
 const lpText = () => NUMS().lpLocked || (S.lpPct ? pcEdge(S.lpPct) : '…');
 const BB3_FALLBACK = { start: Date.parse('2026-09-19T18:00:00Z'), end: GIGGLE_DAY };
+// THE LIQUIDITY PROGRAM IN FORCE (operator, 2026-10-28: 'no boost any more but the standard'): Liq Boost III until Nov 20,
+// then the liquidity for good (from Dec 1, 00:01 UTC, no end) — the same switch as the homepage's cards (app.js)
+const LFG_START = Date.parse('2026-12-01T00:01:00Z');
+const pageNow = () => (typeof window.__bobaiNow === 'function' ? window.__bobaiNow() : Date.now());
+const liqProg = () => pageNow() >= GIGGLE_DAY ? { key: 'lfg', name: 'Liquidity for good', short: 'LIQ FOR GOOD', since: 'since Dec 1', total: 'FOR GOOD TOTAL', fb: { start: LFG_START, end: Infinity } }
+  : { key: 'bb3', name: 'Liq Boost III', short: 'LIQ BOOST III', since: 'since Sep 19', total: 'BOOST III TOTAL', fb: BB3_FALLBACK };
 function boost3() {
-  const w = NUMS().bb3 || BB3_FALLBACK, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
-  const b = NUMS().bb3;
-  return { list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
+  const p = liqProg(), w = NUMS()[p.key] || p.fb, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
+  const b = NUMS()[p.key];
+  return { name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
 }
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;

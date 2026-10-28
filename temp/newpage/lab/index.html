@@ -5,7 +5,7 @@
      as a bright flash or a white screen. Value = --bg from the stylesheet. -->
 <html lang="en" style="background:#0a0814">
 <head>
-<meta name="robots" content="noindex,nofollow">  <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow">  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Load the fonts WITHOUT blocking rendering. A plain <link rel=stylesheet>
        holds up the FIRST PAINT until the file arrives, and for googleapis that
@@ -198,8 +198,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=67" as="style">
-  <link rel="stylesheet" href="styles.css?v=67">
+  <link rel="preload" href="styles.css?v=74" as="style">
+  <link rel="stylesheet" href="styles.css?v=74">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -889,6 +889,12 @@
           <span class="ec-live" data-eclive="pass">1,000 free a day, then a day pass</span>
           <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
         </a>
+        <a class="ec" href="/pancakeswap">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7" rx="8" ry="2.5"/><path d="M4 7v3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V7"/><path d="M4 12v3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-3"/></svg><h3>PancakeSwap Tools</h3></div>
+          <p>The route that pays most, the real cost, the fee tier that pays an LP.</p>
+          <span class="ec-live" data-eclive="pancakeswap">Any token · any V3 position</span>
+          <div class="ec-foot"><span class="ec-go">Read <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
       </div>
       <!-- THE LATEST (operator, 2026-10-22): the newest thing the three did for others, with its time and transaction
            (app.js, from the same records). Hidden until there is one. -->
@@ -920,7 +926,7 @@
             <span class="lib-t">Buyback &amp; Burn Bot</span>
             <span class="lib-s">The bot that has run every ten minutes since launch.</span>
           </span>
-          <span class="lib-m">3 files &middot; 1,817 lines &middot; 26 KB</span>
+          <span class="lib-m">3 files &middot; 1,847 lines &middot; 26 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -943,7 +949,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">17 files &middot; 7,448 lines &middot; 0.2 MB</span>
+          <span class="lib-m">17 files &middot; 7,457 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1012,7 +1018,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,767 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,780 lines &middot; 98 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1084,7 +1090,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,758 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,851 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1107,7 +1113,7 @@
             <span class="lib-t">NFT Buy Drops</span>
             <span class="lib-s">The contract, the metadata server and the collection page.</span>
           </span>
-          <span class="lib-m">10 files &middot; 1,382 lines &middot; 30 KB</span>
+          <span class="lib-m">10 files &middot; 1,389 lines &middot; 30 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1199,7 +1205,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,276 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,487 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1222,7 +1228,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">71 files &middot; 23,017 lines &middot; 0.5 MB</span>
+          <span class="lib-m">73 files &middot; 23,964 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1245,7 +1251,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,938 lines &middot; 0.1 MB</span>
+          <span class="lib-m">7 files &middot; 4,969 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1432,7 +1438,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=126" defer></script>
+<script src="app.js?v=129" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
 <link rel="stylesheet" href="terminal/terminal.css?v=1793085638">

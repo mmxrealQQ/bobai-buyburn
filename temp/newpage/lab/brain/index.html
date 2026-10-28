@@ -6,7 +6,7 @@
 <html lang="en" style="background:#0a0814">
 <head>
 <base href="/">
-<meta name="robots" content="noindex,nofollow">  <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow">  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Load the fonts WITHOUT blocking rendering. A plain <link rel=stylesheet>
        holds up the FIRST PAINT until the file arrives, and for googleapis that
@@ -199,8 +199,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=67" as="style">
-  <link rel="stylesheet" href="styles.css?v=67">
+  <link rel="preload" href="styles.css?v=74" as="style">
+  <link rel="stylesheet" href="styles.css?v=74">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -245,7 +245,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793085638952">
+<link rel="stylesheet" href="brain/brain.css?v=1793115876108">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1793085638">
@@ -259,6 +259,30 @@
   <a class="bp-sw" href="/classic" title="The classic page — the same figures">Classic</a>
   <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
 </div>
+<div class="bp-buyline" role="region" aria-label="$BOBAI at a glance">
+  <span class="why"><b>3% tax</b> buys back &amp; burns<span class="x"> · LP <b data-bl="lp">99.98%</b> burned</span><span class="r"> · owner renounced</span></span>
+  <span class="f p"><span class="k">Price</span><b data-bl="price">—</b></span>
+  <span class="f m"><span class="k">MC</span><b data-bl="mc">—</b></span>
+  <span class="f l"><span class="k">Liq</span><b data-bl="liq">—</b></span>
+  <span class="f v"><span class="k">24h vol</span><b data-bl="vol">—</b></span>
+  <a class="go" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Buy on PancakeSwap</a>
+</div>
+<script>
+/* the buy line's figures: the site's own on-chain reads (/api/price, /api/liquidity) and the 10-minute candle ledger
+   the terminal reads (pool Swap events) for the last 24 h; a figure that does not arrive keeps its dash */
+(() => {
+  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t) e.textContent = t; };
+  const usd = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K' : '$' + Math.round(n));
+  const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  get('/api/price').then((j) => { if (!j) return; if (j.price_usd) set('price', '$' + Number(j.price_usd).toPrecision(3)); if (j.market_cap_usd) set('mc', usd(j.market_cap_usd)); });
+  get('/api/liquidity').then((j) => { if (!j) return; if (j.liquidity_usd) set('liq', usd(j.liquidity_usd)); if (j.lp_burned_percent != null) set('lp', j.lp_burned_percent + '%'); });
+  get('https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles').then((j) => {
+    const rows = (j && j.rows) || [], since = Date.now() - 86400000;
+    let v = 0, n = 0; for (const r of rows) if (r.t > since) { v += (r.v || 0) * (r.u || 0); n += (r.b || 0) + (r.s || 0); }
+    if (rows.length) set('vol', usd(v) + ' · ' + n + (n === 1 ? ' trade' : ' trades'));
+  });
+})();
+</script>
 <div class="bp-grid" role="main">
   <div class="bp-side l"><button class="bw-card" style="--c:#F0B90B" type="button" data-open="w01"><span class="bw-n">01</span><span class="bw-k">THE TOKEN</span><b class="bw-t">What $BOBAI is</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">of the supply burned for good</span><i class="bw-go" aria-hidden="true">⤢</i></button>
 <button class="bw-card" style="--c:#2dd4bf" type="button" data-open="w02"><span class="bw-n">02</span><span class="bw-k">TOKENOMICS</span><b class="bw-t">Where the 3% goes</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">until this split ends</span><i class="bw-go" aria-hidden="true">⤢</i></button>
@@ -883,6 +907,12 @@
           <span class="ec-live" data-eclive="pass">1,000 free a day, then a day pass</span>
           <div class="ec-foot"><span class="ec-go">Scan <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
         </a>
+        <a class="ec" href="/pancakeswap">
+          <div class="ec-top"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="7" rx="8" ry="2.5"/><path d="M4 7v3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V7"/><path d="M4 12v3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-3"/></svg><h3>PancakeSwap Tools</h3></div>
+          <p>The route that pays most, the real cost, the fee tier that pays an LP.</p>
+          <span class="ec-live" data-eclive="pancakeswap">Any token · any V3 position</span>
+          <div class="ec-foot"><span class="ec-go">Read <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+        </a>
       </div>
       <!-- THE LATEST (operator, 2026-10-22): the newest thing the three did for others, with its time and transaction
            (app.js, from the same records). Hidden until there is one. -->
@@ -937,7 +967,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">17 files &middot; 7,448 lines &middot; 0.2 MB</span>
+          <span class="lib-m">17 files &middot; 7,457 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1006,7 +1036,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,767 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,772 lines &middot; 98 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1078,7 +1108,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,758 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,806 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1101,7 +1131,7 @@
             <span class="lib-t">NFT Buy Drops</span>
             <span class="lib-s">The contract, the metadata server and the collection page.</span>
           </span>
-          <span class="lib-m">10 files &middot; 1,382 lines &middot; 30 KB</span>
+          <span class="lib-m">10 files &middot; 1,389 lines &middot; 30 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1193,7 +1223,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,276 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,324 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1216,7 +1246,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">71 files &middot; 23,017 lines &middot; 0.5 MB</span>
+          <span class="lib-m">73 files &middot; 23,682 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1239,7 +1269,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,938 lines &middot; 0.1 MB</span>
+          <span class="lib-m">7 files &middot; 4,944 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1385,13 +1415,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=126" defer></script>
+<script src="app.js?v=129" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1793085638')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793085638952" defer></script>
-<script src="brain/cards.js?v=1793085638952" defer></script>
-<script src="brain/hero.js?v=1793085638952" defer></script>
+<script src="brain/brain.js?v=1793107519006" defer></script>
+<script src="brain/cards.js?v=1793086760712" defer></script>
+<script src="brain/hero.js?v=1793086760712" defer></script>
 </body></html>

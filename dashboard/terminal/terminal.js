@@ -1087,6 +1087,16 @@ window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRE
 window.__btCircles = () => Object.fromEntries(['burnA','burnB','liq','defi','giggle','creator','src','core','buyback','dev','lp','agent','nft'].map(k => [k, circleLine(k)])); // checks: what each circle says now
 window.__btVol24 = () => { const from = Date.now() - 86400e3; return { usd: CH.rows.filter(r => r.t >= from).reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP || 0), 0), first: CH.rows.length ? CH.rows[0].t : null, src: CH.src }; }; // the day's traded dollars from his own chart ledger (the Brainmap's "Volume" goal, 2026-10-12): first = how far back the ledger reaches
 window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the terminal read from the chain, for the Brain page's windows (03 PROOF)
+// THE BUY LINE SHOWS THE CHART'S FIGURES (operator, 2026-10-28: "always stale and not exactly the ones of the chart"): the
+// same reads and the same formatting as the chart view's head (cxStats), refreshed with them; liquidity is read again once a minute
+window.__btQuote = () => {
+  if (!(S.price > 0)) return null;
+  if (S.bnbP > 0 && !(CX.liqAt > Date.now() - 60e3)) { CX.liqAt = Date.now(); cxLiq(); }
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), trades = day.reduce((a, r) => a + (r.b || 0) + (r.s || 0), 0);
+  // burned for good, of the 1B supply: the dead address's balance the MC is taken without
+  return { burned: S.deadA > 0 ? (S.deadA / 1e9 * 100).toFixed(2) + '% of supply' : null, price: '$' + S.price.toPrecision(5), mc: '$' + nf(S.price * (1e9 - (S.deadA || 0))), liq: CX.liqUsd ? '$' + nf(CX.liqUsd) : null,
+    vol: CH.rows.length ? '$' + nf(day.reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP), 0)) + ' · ' + trades + (trades === 1 ? ' trade' : ' trades') : null, lp: S.lpPct ? lpText().replace(/(\.\d*?)0+%$/, '$1%').replace(/\.%$/, '%') : null }; // 100.000% -> 100%, 99.980% -> 99.98%
+};
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : kind.includes(':') ? e.kind + ':' + e.key === kind : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
@@ -5161,7 +5171,7 @@ function drawChart(now) {
 // show: BOBAI's own work on the candles where it happened. A burn, a liquidity add, a step of the DeFi agent, an NFT
 // drop sit as marks under their candle, so the chart says not only how the price moved but what BOBAI did meanwhile.
 // 24H and 6H are the ledger's ten-minute candles; 1H is one-minute candles from the swaps this page read itself.
-const CX = { on: false, tf: '24H', hover: -1, liqUsd: 0 };
+const CX = { on: false, tf: '24H', hover: -1, liqUsd: 0, liqAt: 0 };
 const cxEl = document.createElement('div'); cxEl.className = 'chartx'; cxEl.setAttribute('role', 'dialog'); cxEl.setAttribute('aria-label', 'The $BOBAI chart');
 cxEl.innerHTML = `<div class="cx-h"><div class="cx-t"><b>$BOBAI</b><span>/ BNB · PANCAKESWAP · LIVE FROM THE POOL</span></div>
   <div class="cx-p"><b class="cx-px">…</b><i class="cx-ch"></i></div>

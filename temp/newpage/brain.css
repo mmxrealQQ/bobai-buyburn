@@ -562,8 +562,6 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .bp-buyline .f{flex:0 0 auto}
 .bp-buyline .why{flex:0 0 auto;color:var(--bp-muted);font-weight:500}
 .bp-buyline .why b{color:var(--bp-text);font-weight:600}
-.bp-buyline .go{flex:0 0 auto;margin-left:auto;padding:5px 10px;border-radius:8px;background:var(--bp-gold);color:#120c02;text-decoration:none;font:700 11px var(--bp-mono);letter-spacing:.06em}
-.bp-buyline .go:hover{filter:brightness(1.08)}
 
 /* WIDE SCREENS: THE LINE SITS IN THE HEADER (2026-10-27): on a desktop the header's middle is empty (the old ticker went
    on 26.9.) and a row of its own took 34 px from every card — card 05's last line was cut at 1440x900. From 1180 px the
@@ -571,11 +569,13 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 @media (min-width:1180px){
   :root{--bp-top:54px}
   .bp-buyline{position:absolute;top:10px;left:490px;right:340px;z-index:21;height:34px;
-    border:1px solid var(--bp-line);border-radius:10px;background:rgba(240,185,11,.06);gap:12px;padding:0 12px;font-size:11.5px}
-  .bp-buyline .go{display:none}
+    border:1px solid var(--bp-line);border-radius:10px;background:rgba(240,185,11,.06);gap:12px;padding:0 12px;font-size:11.5px;
+    /* as wide as what it holds, centred in the gap (operator, 2026-10-28: "otherwise there is just empty space") */
+    width:fit-content;max-width:calc(100% - 830px);margin:0 auto}
 }
-/* what goes first when the header narrows: the volume, the LP line, liquidity, the market cap, "owner renounced" —
-   the sentence and the price stay */
+/* what goes first when the header narrows: the burns, the volume, the LP line, liquidity, the market cap, "owner
+   renounced" — the sentence and the price stay */
+@media (min-width:1180px) and (max-width:1799px){ .bp-buyline .bn{display:none} }
 @media (min-width:1180px) and (max-width:1599px){ .bp-buyline .v,.bp-buyline .why .x{display:none} }
 @media (min-width:1180px) and (max-width:1379px){ .bp-buyline .m{display:none} }
 @media (min-width:1180px) and (max-width:1299px){ .bp-buyline .l,.bp-buyline .why .r{display:none} }

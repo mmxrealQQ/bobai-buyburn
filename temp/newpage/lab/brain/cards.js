@@ -5,7 +5,9 @@
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const GOLD = '#F0B90B', UP = '#35e07a', DOWN = '#ff4d6d';
   const NUMS = () => window.__bobaiNums || {};
-  const cmp = (n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+  // the page's clock (app.js: ?at=<ISO> shows the page at that moment, for checks)
+  const now = () => (typeof window.__bobaiNow === 'function' ? window.__bobaiNow() : Date.now());
+  const cmp =(n) => Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
   // $BOBAI with its dollars (2026-10-09), at the price the homepage read from its own pool
   const usdOf = (n) => { const p = NUMS().chain?.priceUsd; return p > 0 ? ` <small class="cv-usd">≈$${cmp(n * p)}</small>` : ''; };
   const viz = (n) => { const c = $(`[data-open="w${n}"] .bw-viz`); return c; };
@@ -181,7 +183,7 @@
       const more = document.createElement('details'); more.className = 'cx2-more';
       more.innerHTML = '<summary>Details · every liquidity add, the pot’s payments, how deep the pool is</summary>';
       sec.insertAdjacentElement('afterend', more);
-      more.append(boost, pot); if (lqd) more.append(lqd);
+      more.append(boost); const lfg = $('#liq-for-good', body); if (lfg) more.append(lfg); more.append(pot); if (lqd) more.append(lqd);
       setInterval(() => { const w = $('#w02'); if (w && !w.hidden) fill02(); }, 30e3);
     }
     fill02();
@@ -190,8 +192,14 @@
     const t = (id) => (document.getElementById(id)?.textContent || '').trim(), ok = (s) => s && s !== '--' && s !== '…';
     const card = (k, v, d) => { const c = $(`#w02 .cx2c[data-k="${k}"]`); if (!c) return; if (v) $('[data-v]', c).textContent = v; if (d) $('[data-d]', c).textContent = d; };
     const days = (id) => ok(t(id)) ? `${t(id)} day${t(id) === '1' ? '' : 's'} left` : '';
-    card('boost', ok(t('bb3-count')) && ok(t('bb3-bnb')) ? `${t('bb3-count')} adds · ${t('bb3-bnb')}` : '', days('bb3-days'));
-    card('pot', ok(t('gg-bnb')) ? t('gg-bnb') : '', days('gg-days'));   // gg-bnb carries its BNB and its dollars already
+    // from the end of Boost III (Nov 20, 00:01 UTC) the card is the liquidity for good: counting to Dec 1, then its adds (2026-10-28)
+    const lfg = now() >= Date.parse('2026-11-20T00:01:00Z'), bc = $('#w02 .cx2c[data-k="boost"]');
+    if (lfg && bc && !bc.dataset.lfg) { bc.dataset.lfg = '1'; $('b', bc).textContent = 'Liquidity for good'; $('p', bc).textContent = '1% of every trade into the BOBAI/BNB pool, its LP burned. No end date.'; }
+    if (lfg) card('boost', now() < Date.parse('2026-12-01T00:01:00Z') ? 'Starts Dec 1, 00:01 UTC' : ok(t('lfg-count')) && t('lfg-count') !== '0' && ok(t('lfg-bnb')) ? `${t('lfg-count')} adds · ${t('lfg-bnb')}` : 'Running since Dec 1', now() < Date.parse('2026-12-01T00:01:00Z') && ok(t('lfg-days')) ? `${t('lfg-days')} day${t('lfg-days') === '1' ? '' : 's'} to go` : 'for good');
+    else card('boost', ok(t('bb3-count')) && ok(t('bb3-bnb')) ? `${t('bb3-count')} adds · ${t('bb3-bnb')}` : '', days('bb3-days'));
+    card('pot', ok(t('gg-bnb')) ? t('gg-bnb') : '', lfg ? 'collection ended Nov 20' : days('gg-days'));   // gg-bnb carries its BNB and its dollars already
+    if (lfg) { const pp = $('#w02 .cx2c[data-k="pot"] p'); if (pp) pp.textContent = '0.3% of every trade from Sep 17 to Nov 20, collected for Giggle Academy.'; }
+    if (lfg) { const pc = $('#w02 .cx2c[data-k="pot"] [data-v]'); if (pc && /until Nov 20/.test(pc.textContent)) pc.textContent = 'Collected for Giggle Academy'; }
   }
   new MutationObserver(() => { const w2 = $('#w02'); if (w2 && !w2.hidden) where02(); }).observe(document.getElementById('w02') || document.body, { attributes: true, attributeFilter: ['hidden'] });
   new MutationObserver(() => { const w3 = $('#w03'); if (w3 && !w3.hidden) proof03(); }).observe(document.getElementById('w03') || document.body, { attributes: true, attributeFilter: ['hidden'] });
@@ -533,7 +541,10 @@
   function figs() {
     const ph = typeof window.__bobaiPhase === 'function' && window.__bobaiPhase(), v2 = $('[data-open="w02"] .bw-v');
     const end = ph && (typeof ph.end === 'number' ? ph.end : Date.parse(ph.end)) || window.__bobaiNums?.gg?.end;
-    if (v2 && end) { const ms = Math.max(0, end - Date.now()), d = Math.floor(ms / 86400e3), h = Math.floor(ms % 86400e3 / 3600e3); v2.textContent = d + ' d ' + h + ' h'; } /* as the window counts it (2026-10-10: card 41 days, window 40 days 19 hours) */
+    // the split for good has no end (from Dec 1, 2026): the card says so instead of counting ('Infinity d NaN h')
+    const l2 = $('[data-open="w02"] .bw-l');
+    if (v2 && end === Infinity) { v2.textContent = 'For good'; if (l2) l2.textContent = '1% burn · 1% liquidity · 1% creator'; }
+    else if (v2 && end) { if (l2) l2.textContent = 'until this split ends'; const ms = Math.max(0, end - now()), d = Math.floor(ms / 86400e3), h = Math.floor(ms % 86400e3 / 3600e3); v2.textContent = d + ' d ' + h + ' h'; } /* as the window counts it (2026-10-10: card 41 days, window 40 days 19 hours) */
     const b = window.__bobaiNums?.burns || burnsOwn, v3 = $('[data-open="w03"] .bw-v');
     if (v3 && Array.isArray(b)) v3.textContent = cmp(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0)) + ' BOBAI'; /* the dollars beside it */ if (v3 && Array.isArray(b) && NUMS().chain?.priceUsd > 0) v3.textContent += ' ≈$' + ((u) => u < 1e4 ? Math.round(u).toLocaleString('en-US') : cmp(u))(b.filter((e) => Date.parse(e.time) >= Date.now() - 7 * 86400e3).reduce((a, e) => a + (+e.bobaiBurned || 0), 0) * NUMS().chain.priceUsd) /* whole dollars, not $404.2 */;
   }

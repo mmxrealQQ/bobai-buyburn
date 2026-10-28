@@ -511,6 +511,7 @@ function applyPhase() {
   const pct = { burnA: n(p.bobaiPct), burnB: n(p.bobPct), liq: n(p.liqPct), defi: n(p.lpPct), giggle: n(p.gigglePct), creator: n(p.creatorPct) };
   for (const d of DEST) {
     d.pct = pct[d.k]; const on = d.pct > 0;
+    if (d.k === 'liq' && d.el.querySelector('.n')) { d.name = liqProg().short; d.el.querySelector('.n').firstChild.textContent = d.name; }
     d.el.style.display = on ? '' : 'none'; if (d.obj) d.obj.visible = on; d.orb.visible = on && !d.obj; d.halo.visible = on;
     d.el.querySelector('.pc').textContent = d.pct + '%';
   }
@@ -659,7 +660,7 @@ function info(k) {
       note: pctOf('burnB') + ' of every trade buys $BOB (Build On BNB) and burns it — BOBAI feeding the chain it was born on.',
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
-      ['Liq Boost III adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (Boost III)', nf(boost.lp, 2)],
+      [boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)],
       ['All bot adds', nf(S.liq.length)], ['Pool LP burned', lpText()]],
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
@@ -1087,6 +1088,16 @@ window.__btWave = () => waveHello(); window.__btWaveLines = () => ({ HELLO, STRE
 window.__btCircles = () => Object.fromEntries(['burnA','burnB','liq','defi','giggle','creator','src','core','buyback','dev','lp','agent','nft'].map(k => [k, circleLine(k)])); // checks: what each circle says now
 window.__btVol24 = () => { const from = Date.now() - 86400e3; return { usd: CH.rows.filter(r => r.t >= from).reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP || 0), 0), first: CH.rows.length ? CH.rows[0].t : null, src: CH.src }; }; // the day's traded dollars from his own chart ledger (the Brainmap's "Volume" goal, 2026-10-12): first = how far back the ledger reaches
 window.__btPrice = () => (S.price > 0 ? S.price : null); // the BOBAI price the terminal read from the chain, for the Brain page's windows (03 PROOF)
+// THE BUY LINE SHOWS THE CHART'S FIGURES (operator, 2026-10-28: "always stale and not exactly the ones of the chart"): the
+// same reads and the same formatting as the chart view's head (cxStats), refreshed with them; liquidity is read again once a minute
+window.__btQuote = () => {
+  if (!(S.price > 0)) return null;
+  if (S.bnbP > 0 && !(CX.liqAt > Date.now() - 60e3)) { CX.liqAt = Date.now(); cxLiq(); }
+  const day = CH.rows.filter(r => r.t >= Date.now() - 86400e3), trades = day.reduce((a, r) => a + (r.b || 0) + (r.s || 0), 0);
+  // burned for good, of the 1B supply: the dead address's balance the MC is taken without
+  return { burned: S.deadA > 0 ? (S.deadA / 1e9 * 100).toFixed(2) + '% of supply' : null, price: '$' + S.price.toPrecision(5), mc: '$' + nf(S.price * (1e9 - (S.deadA || 0))), liq: CX.liqUsd ? '$' + nf(CX.liqUsd) : null,
+    vol: CH.rows.length ? '$' + nf(day.reduce((a, r) => a + (r.v || 0) * (r.u || S.bnbP), 0)) + ' · ' + trades + (trades === 1 ? ' trade' : ' trades') : null, lp: S.lpPct ? lpText().replace(/(\.\d*?)0+%$/, '$1%').replace(/\.%$/, '%') : null }; // 100.000% -> 100%, 99.980% -> 99.98%
+};
 window.__btRecall = () => recallLine(); // checks: what he would remember right now
 window.__btCam = () => [camera.position.x, camera.position.y, camera.position.z, cam.look.x, cam.look.y]; // shake.mjs: the view never jolts
 window.__btTestEv = kind => { const l = S.liq.at(-1), x = [...events].reverse().find(e => kind === 'devliq' ? e.kind === 'liq' && e.l?.dev : kind.includes(':') ? e.kind + ':' + e.key === kind : e.kind === kind) || (kind === 'liq' && l ? { kind: 'liq', id: 'test-liq', t: Date.parse(l.time), l } : null); if (x) run(x, false); return !!x; }; // the last real event of a kind, played again (layout.mjs)
@@ -2933,7 +2944,7 @@ const CMDS = {
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
   liq: () => { setFocus('liq'); const b = boost3();
-    say(['Liq Boost III: ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
+    say([b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
     // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
@@ -3399,8 +3410,8 @@ function motifOf(k, now) {
       label: 'BOBAI JUST ADDED LIQUIDITY', value: bnb4(l.bnb), sub: `half bought ${bobaiAmt(l.bobaiBought)}, paired with the rest  ·  the LP is burned`,
       cards: [['LP BURNED', nf(l.lpBurned, 2) + ' LP', 'sent to the dead address', D.liq.c],
         ['POOL LOCKED', lpText(), 'of all LP, forever', D.liq.c],
-        ['LIQ BOOST III', b.n + ' adds', 'since Sep 19', '#F0B90B'],
-        ['BOOST III TOTAL', bnb4(b.bnb), nf(b.lp, 2) + ' LP burned', '#F0B90B']],
+        [b.short, b.n + ' adds', b.since, '#F0B90B'],
+        [b.total, bnb4(b.bnb), nf(b.lp, 2) + ' LP burned', '#F0B90B']],
       text: `$BOBAI just added ${bnb4(l.bnb)} of liquidity and burned the LP: ${lpText()} of the pool is locked forever. On-chain: https://bscscan.com/tx/${l.addLiqTx} 💧`,
     };
   }
@@ -3646,10 +3657,16 @@ const pcEdge = v => v == null ? '—' : v > 0 && v < 0.001 ? '<0.001%' : (v >= 9
 const supplyPct = v => (v / 1e9 * 100).toFixed(1);
 const lpText = () => NUMS().lpLocked || (S.lpPct ? pcEdge(S.lpPct) : '…');
 const BB3_FALLBACK = { start: Date.parse('2026-09-19T18:00:00Z'), end: GIGGLE_DAY };
+// THE LIQUIDITY PROGRAM IN FORCE (operator, 2026-10-28: 'no boost any more but the standard'): Liq Boost III until Nov 20,
+// then the liquidity for good (from Dec 1, 00:01 UTC, no end) — the same switch as the homepage's cards (app.js)
+const LFG_START = Date.parse('2026-12-01T00:01:00Z');
+const pageNow = () => (typeof window.__bobaiNow === 'function' ? window.__bobaiNow() : Date.now());
+const liqProg = () => pageNow() >= GIGGLE_DAY ? { key: 'lfg', name: 'Liquidity for good', short: 'LIQ FOR GOOD', since: 'since Dec 1', total: 'FOR GOOD TOTAL', fb: { start: LFG_START, end: Infinity } }
+  : { key: 'bb3', name: 'Liq Boost III', short: 'LIQ BOOST III', since: 'since Sep 19', total: 'BOOST III TOTAL', fb: BB3_FALLBACK };
 function boost3() {
-  const w = NUMS().bb3 || BB3_FALLBACK, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
-  const b = NUMS().bb3;
-  return { list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
+  const p = liqProg(), w = NUMS()[p.key] || p.fb, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
+  const b = NUMS()[p.key];
+  return { name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
 }
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;
@@ -5161,7 +5178,7 @@ function drawChart(now) {
 // show: BOBAI's own work on the candles where it happened. A burn, a liquidity add, a step of the DeFi agent, an NFT
 // drop sit as marks under their candle, so the chart says not only how the price moved but what BOBAI did meanwhile.
 // 24H and 6H are the ledger's ten-minute candles; 1H is one-minute candles from the swaps this page read itself.
-const CX = { on: false, tf: '24H', hover: -1, liqUsd: 0 };
+const CX = { on: false, tf: '24H', hover: -1, liqUsd: 0, liqAt: 0 };
 const cxEl = document.createElement('div'); cxEl.className = 'chartx'; cxEl.setAttribute('role', 'dialog'); cxEl.setAttribute('aria-label', 'The $BOBAI chart');
 cxEl.innerHTML = `<div class="cx-h"><div class="cx-t"><b>$BOBAI</b><span>/ BNB · PANCAKESWAP · LIVE FROM THE POOL</span></div>
   <div class="cx-p"><b class="cx-px">…</b><i class="cx-ch"></i></div>

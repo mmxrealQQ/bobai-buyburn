@@ -245,10 +245,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793115876108">
+<link rel="stylesheet" href="brain/brain.css?v=1793200057300">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793085638">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793199566">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -260,27 +260,26 @@
   <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
 </div>
 <div class="bp-buyline" role="region" aria-label="$BOBAI at a glance">
-  <span class="why"><b>3% tax</b> buys back &amp; burns<span class="x"> · LP <b data-bl="lp">99.98%</b> burned</span><span class="r"> · owner renounced</span></span>
+  <span class="why"><b>3% tax</b> buys back &amp; burns<span class="x"> · LP <b data-bl="lp">—</b> burned</span><span class="r"> · owner renounced</span></span>
   <span class="f p"><span class="k">Price</span><b data-bl="price">—</b></span>
   <span class="f m"><span class="k">MC</span><b data-bl="mc">—</b></span>
   <span class="f l"><span class="k">Liq</span><b data-bl="liq">—</b></span>
   <span class="f v"><span class="k">24h vol</span><b data-bl="vol">—</b></span>
-  <a class="go" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Buy on PancakeSwap</a>
+  <span class="f bn"><span class="k">Burned</span><b data-bl="burned">—</b></span>
 </div>
 <script>
-/* the buy line's figures: the site's own on-chain reads (/api/price, /api/liquidity) and the 10-minute candle ledger
-   the terminal reads (pool Swap events) for the last 24 h; a figure that does not arrive keeps its dash */
 (() => {
-  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t) e.textContent = t; };
-  const usd = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K' : '$' + Math.round(n));
-  const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  get('/api/price').then((j) => { if (!j) return; if (j.price_usd) set('price', '$' + Number(j.price_usd).toPrecision(3)); if (j.market_cap_usd) set('mc', usd(j.market_cap_usd)); });
-  get('/api/liquidity').then((j) => { if (!j) return; if (j.liquidity_usd) set('liq', usd(j.liquidity_usd)); if (j.lp_burned_percent != null) set('lp', j.lp_burned_percent + '%'); });
-  get('https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles').then((j) => {
-    const rows = (j && j.rows) || [], since = Date.now() - 86400000;
-    let v = 0, n = 0; for (const r of rows) if (r.t > since) { v += (r.v || 0) * (r.u || 0); n += (r.b || 0) + (r.s || 0); }
-    if (rows.length) set('vol', usd(v) + ' · ' + n + (n === 1 ? ' trade' : ' trades'));
-  });
+  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t && e.textContent !== t) e.textContent = t; };
+  let fromChart = false;
+  const tick = () => { let q = null; try { q = window.__btQuote && window.__btQuote(); } catch (e) {} if (!q) return; fromChart = true; for (const k of ['price', 'mc', 'liq', 'vol', 'burned', 'lp']) set(k, q[k]); };
+  setInterval(() => { if (!document.hidden) tick(); }, 2000);
+  setTimeout(() => {
+    if (fromChart) return;
+    const usd = (n) => '$' + Math.round(n).toLocaleString('en-US');
+    const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    get('/api/price').then((j) => { if (!j || fromChart) return; if (j.price_usd) set('price', '$' + Number(j.price_usd).toPrecision(5)); if (j.market_cap_usd) set('mc', usd(j.market_cap_usd)); });
+    get('/api/liquidity').then((j) => { if (!j || fromChart) return; if (j.liquidity_usd) set('liq', usd(j.liquidity_usd)); if (j.lp_burned_percent != null) set('lp', j.lp_burned_percent + '%'); });
+  }, 15000);
 })();
 </script>
 <div class="bp-grid" role="main">
@@ -372,7 +371,7 @@
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">0.8%</div><div class="d">Burn $BOBAI<br><span class="ts-inline" id="ts-inline-bobai"></span></div></div>
         <div class="ta" id="tf-liq-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
+        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a data-liq-link href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
@@ -427,12 +426,12 @@
           <div class="ts-row" data-phase="bobai-liq-3">
             <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3-raised">
             <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">Nov 20 &rarr; Dec 1, 00:01 UTC, 2026</div>
@@ -442,7 +441,7 @@
           <div class="ts-row" data-phase="bobai-liq-forever">
             <div class="ts-when">from Dec 1, 2026, 00:01 UTC &mdash; for good</div>
             <div class="ts-name">$BOBAI liquidity for good</div>
-            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-for-good">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
           </div>
         </div>
       </div>
@@ -496,6 +495,29 @@
           <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
         </div>
       </div>
+    </div>
+  </section><section class="liq-boost fi" id="liq-for-good" style="display:none">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Liquidity for good</em></div>
+      <div class="lb-sub">From Dec 1, 2026: 1% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; no end date &middot; <span style="color:var(--gold)" id="lfg-phase">&hellip;</span></div>
+      <div class="lb-countdown" id="lfg-cd">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="lfg-cd-label">until it starts</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lfg-count">--</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lfg-bnb">--</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lfg-lp">--</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="lfg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first add lands with the first bot run after Dec 1, 00:01 UTC&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+      <p class="lb-note">The split for good: 1% buys $BOBAI and burns it, 1% deepens this pool with its LP burned, 1% goes to the creator. Not a campaign: nothing here ends. Every add is a transaction of the buyback bot.</p>
     </div>
   </section><section class="liq-boost fi" id="giggle">
     <div class="lb-card">
@@ -683,6 +705,35 @@
             <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- $BOBAI Permalocked Liquidity Boost III — ARCHIVED from its end (Nov 20, 2026, 00:01 UTC): app.js shows this card
+         from that instant, when the homepage's live card gives way to LIQUIDITY FOR GOOD (operator, 2026-10-28). -->
+    <div class="burns-wrap fi" id="liq-boost-bobai-3-arch" style="margin-top:24px;display:none">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive" id="liq-boost-bobai-3-done">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
+              <div class="lb-arch-meta">Sep 19 &ndash; Nov 20, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3a-count">--</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3a-bnb">--</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3a-lp">--</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="bb3a-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -944,7 +995,7 @@
             <span class="lib-t">Buyback &amp; Burn Bot</span>
             <span class="lib-s">The bot that has run every ten minutes since launch.</span>
           </span>
-          <span class="lib-m">3 files &middot; 1,817 lines &middot; 26 KB</span>
+          <span class="lib-m">3 files &middot; 1,847 lines &middot; 26 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1036,7 +1087,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,772 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,780 lines &middot; 98 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1108,7 +1159,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 7,806 lines &middot; 0.2 MB</span>
+          <span class="lib-m">6 files &middot; 7,851 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1223,7 +1274,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,324 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,502 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1246,7 +1297,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">73 files &middot; 23,682 lines &middot; 0.6 MB</span>
+          <span class="lib-m">73 files &middot; 23,996 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1269,7 +1320,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,944 lines &middot; 0.1 MB</span>
+          <span class="lib-m">7 files &middot; 4,969 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1415,13 +1466,13 @@
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
-<script src="app.js?v=129" defer></script>
+<script src="app.js?v=130" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793085638')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793199566')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793107519006" defer></script>
-<script src="brain/cards.js?v=1793086760712" defer></script>
-<script src="brain/hero.js?v=1793086760712" defer></script>
+<script src="brain/brain.js?v=1793200057300" defer></script>
+<script src="brain/cards.js?v=1793200057300" defer></script>
+<script src="brain/hero.js?v=1793200057300" defer></script>
 </body></html>

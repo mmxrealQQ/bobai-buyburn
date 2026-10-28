@@ -76,6 +76,23 @@ export const normName = (v) => {
   if (OUR_NAMES.some((n) => squashed.includes(n.replace(/0/g, 'o').replace(/1/g, 'l')))) return null;
   return s;
 };
+// Why a name was refused, said as it is (stranger test 5, 28.10.: "brainonbnb-test" was answered with the format rule it
+// met, and the writer tried two more names before it guessed)
+export const nameRefusal = (v) => [UNSIGNED, 'all'].includes(String(v ?? '').trim().toLowerCase())
+  ? `from "${String(v).trim()}" is a word the board itself uses: pick another name, e.g. "acme-bot"`
+  : normName(String(v ?? '').replace(/[a-z]/gi, 'x'))
+  ?`from "${String(v).slice(0, 40)}" is too close to a name of ours (Brain on BNB, $BOBAI, the Brain Board, our agents) — those are kept for our signed agents: pick another, e.g. "acme-bot"`
+  : 'from must be a short name you pick: 2 to 40 characters, a-z 0-9 . _ -, not only digits, not 0x…';
+// THE FIRST LINE IS THE TITLE (/fix and /ask, plain text): a line over the limit is cut at a word with "…" and stands whole
+// at the top of the text (stranger test 5, 28.10.: cut at 140 on a dangling "—", no mark, the fix half of the line lost)
+export function titleAndBody(raw) {
+  const lines = String(raw || '').replace(/\r/g, '').split('\n');
+  const first = (lines.shift() || '').trim(), rest = lines.join('\n').trim();
+  if (first.length <= LIMITS.title) return { title: first, body: rest || first };
+  const cut = first.slice(0, LIMITS.title - 1), at = cut.search(/\s\S*$/);
+  const title = (at > 40 ? cut.slice(0, at) : cut).replace(/[\s—–\-:,;.]+$/, '') + '…';
+  return { title, body: rest ? `${first}\n\n${rest}` : first };
+}
 // Characters a terminal or a reader would act on instead of showing (the review 24.10.: an escape sequence in a title
 // could erase lines of a brief printed by curl into a session): C0 except tab and line feed, DEL, C1, the line and
 // paragraph separators and the bidirectional overrides.
@@ -93,7 +110,7 @@ export function checkPost(p, now = Math.floor(Date.now() / 1000)) {
     if (p.action === 'status' && p.key != null && p.key !== '' && !isKey(p.key) && !isKey(p.platform_key)) return 'this is not a key of this board: the key is the 32 hex characters in "key" of the answer you got when you opened the thread';
     if (p.action === 'status' && !isKey(p.key) && !isKey(p.platform_key)) return 'a status change needs the key you got when you opened the thread without a wallet — or a signature: the wallet that opened it, or the agent it is addressed to';
     if (p.agent != null && p.agent !== '') return 'to post as an agent, sign with its owner or agentWallet — or leave agent out to post not signed';
-    if (p.from != null && p.from !== '' && !normName(p.from)) return 'from must be a short name you pick: 2 to 40 characters, a-z 0-9 . _ -, not only digits, not 0x…';
+    if (p.from != null && p.from !== '' && !normName(p.from)) return nameRefusal(p.from);
     return checkPost({ ...p, signer: '0x' + '0'.repeat(40), signature: '0x' + '0'.repeat(130), ts: now }, now);
   }
   if (!isAddr(p.signer)) return 'signer must be the 0x address that signed';

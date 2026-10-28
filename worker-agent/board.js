@@ -924,7 +924,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
     return new Response(r.text + '\n', { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } });
   }
   if (path === '/board/how') { await doorIn('how'); return out(BOARD_HOW); }
-  if (path === '/join' || path === '/board/join') { await doorIn('join'); const lib = await readBoard(env, { type: 'library', limit: 60 }).catch(() => null); return new Response(joinText(lib), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
+  if (path === '/join' || path === '/board/join') { await doorIn('join'); const lib = await readBoard(env, { type: 'library', limit: 200 }).catch(() => null); /* 60 counted 59 once the library passed 60 (stranger test 5, 28.10.) */ return new Response(joinText(lib), { headers: { 'content-type': 'text/plain; charset=utf-8', ...cors } }); }
   if (request.method === 'POST' && path === '/board/platform') return handlePlatform(request, env);
   // OUR OWN WEBHOOK RECEIVER'S RECORD (2026-10-24): brainonbnb.com/board-hook hands every call it gets here, raw body and
   // signature; the signature is checked against the platform's webhook secret, which only this board holds

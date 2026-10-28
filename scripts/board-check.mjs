@@ -564,7 +564,7 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   is('NM0 the answer to a post names its brief and the thread for a terminal as fields of their own (mmcz.ai read brief/<thread number>)', p.j?.brief === 'https://agent.brainonbnb.com/board/brief/acme-bot' && p.j?.read === `https://agent.brainonbnb.com/board/thread/${p.j?.thread}.md`, JSON.stringify({ brief: p.j?.brief, read: p.j?.read }));
   is('NM a post with "from" carries the name (lower case), shown as "<name> (not signed)", and hands back a key once', p.status === 200 && t.from === 'acme-bot' && /acme-bot \(not signed\)/.test(B.boardMarkdown(t)) && /^[0-9a-f]{32}$/.test(p.j.key || '') && !('ukey' in t) && !JSON.stringify(t).includes(p.j.key), JSON.stringify(p.j).slice(0, 200));
   const bads = await Promise.all(['12345', '0xabc', 'brainonbnb-help', 'a', 'x'.repeat(41), 'all'].map((from, i) => call('POST', '/board', { action: 'post', type: 'tip', to: 'all', title: 'name test ' + i, body: 'b', from }, { 'cf-connecting-ip': '203.0.113.' + (50 + i) })));
-  is('NM a name that reads as an id, a wallet or ours, too short or too long, is refused', bads.every((r) => r.status === 400 && /from must be/.test(r.j.error)), bads.map((r) => r.status).join(' '));
+  is('NM a name that reads as an id, a wallet or ours, too short or too long, is refused', bads.every((r) => r.status === 400 && /^from /.test(r.j.error)), bads.map((r) => r.status).join(' '));
   const wrong = await call('POST', '/board', { action: 'status', thread: p.j.thread, status: 'resolved', key: 'f'.repeat(32) }, ip);
   const right = await call('POST', '/board', { action: 'status', thread: p.j.thread, status: 'resolved', key: p.j.key }, ip);
   const t2 = (await call('GET', '/board/thread/' + p.j.thread)).j;
@@ -673,6 +673,15 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   // RV11 names close to ours are refused
   const near = ['brain_on_bnb', 'brain.on.bnb', 'b0bai', 'defi-agent', 'health-factor', 'BrainBoard', 'p1aza'].map(R.normName);
   is('RV11 names close to ours (separators, look-alike digits, our agents\' slugs) are refused; an ordinary name is not', near.every((n) => n === null) && R.normName('acme-bot') === 'acme-bot', JSON.stringify(near));
+  // RV12 (stranger test 5, 28.10.: "brainonbnb-test" was refused as if it broke the format — two names tried before it guessed why)
+  const p12 = (from) => R.checkPost({ action: 'post', type: 'fix', to: 'all', title: 'a title', body: 'b', from });
+  const kept = p12('brainonbnb-test'), shape = p12('a b');
+  is('RV12 a name close to ours is told so (kept for our signed agents), a malformed one gets the format rule', /kept for our/.test(kept || '') && !/2 to 40/.test(kept || '') && /2 to 40/.test(shape || ''), JSON.stringify([kept, shape]));
+  // RV13 (stranger test 5: the title stopped at 140 on a dangling "—" with no mark, the fix half of the line lost)
+  const long = 'WBNB withdraw() reverts with no reason from a contract wallet — WETH9 sends with transfer(), 2300 gas, so a receive() that writes storage fails every time';
+  const tb = R.titleAndBody(long + '\nmore text');
+  const sh = R.titleAndBody('short title\nthe text');
+  is('RV13 a first line over the title limit is cut at a word with "…", and kept whole at the top of the text; a short one is untouched', tb.title.length <= R.LIMITS.title && tb.title.endsWith('…') && !/[\s—-]…$/.test(tb.title) && long.startsWith(tb.title.slice(0, -1)) && tb.body.startsWith(long) && tb.body.endsWith('more text') && sh.title === 'short title' && sh.body === 'the text' && R.titleAndBody('one line').body === 'one line', JSON.stringify([tb, sh]));
 }
 // FR1-FR7 the first-run check of 24.10. (a fresh agent given only the one sentence), each finding as a pin
 {

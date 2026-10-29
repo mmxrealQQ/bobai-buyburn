@@ -194,6 +194,16 @@ section('Free surface');
     else broken.push(t.name + (res.error?.message ? ' (' + String(res.error.message).slice(0, 60) + ')' : ''));
   }
   ok('every MCP tool returns data', broken.length === 0, broken.join(', '));
+  // WHAT A REAL AGENT SENDS (29.10.): the board list fits a context (it came to 65,000 characters), and the token
+  // tools take the token under its other names ({"token": "0x…"} was refused as "give an address")
+  const call = (name, args) => fetch(`${SITE}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } }), signal: AbortSignal.timeout(40000) })
+    .then((x) => x.json()).then((r) => r.result?.content?.[0]?.text || '').catch(() => '');
+  const board = await call('plaza_board_read', {});
+  let bj = null; try { bj = JSON.parse(board); } catch {}
+  ok('plaza_board_read: a list of heads under 30,000 characters, each with the call for its whole thread, one thread still whole', board.length < 30000 && (bj?.threads || []).length > 0 && bj.threads.every((x) => !x.replies && !x.sig && String(x.body).length <= 401 && /"thread": \d+/.test(x.whole))
+    && /"replies"/.test(await call('plaza_board_read', { thread: bj?.threads?.find((x) => x.nreplies)?.id || bj?.threads?.[0]?.id })), board.length + ' chars');
+  const viaToken = await call('bsc_pool_scan', { token: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });
+  ok('bsc_pool_scan takes {"token": "0x…"} as well as address', viaToken && !/Give a BSC token/.test(viaToken) && !/"error"/.test(viaToken), viaToken.slice(0, 120));
 }
 for (const p of ['/api/price', '/api/liquidity', '/api/token', '/api/activity', '/api/tokenomics', '/api/trade', '/api/links', '/api/guide', '/api/how-to-buy', '/api/smart-money', '/api/nft-drop']) {
   const { r, body, isHtml } = await getText(SITE + p);

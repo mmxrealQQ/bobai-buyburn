@@ -147,6 +147,31 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('a made-up name that reads as a tool name is counted under its name, and the answer names the closest tools', details().includes('mcp:call:unknown') && details().includes('mcp:unknown:get_bobai_price') && /Closest: bobai_price/.test(un.result?.content?.[0]?.text || '') && un.result?.isError === true, details().join() + ' | ' + JSON.stringify(un).slice(0, 300));
   const un2 = await (await rpc('tools/call', { name: 'get_token_price' })).json();
   ok('a tie between the closest names puts the plainer one first (get_token_price -> bobai_price among them)', /Closest: [^.]*bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 300));
+  // 29.10.: who calls what — the client of an initialize, kept for its address, names each tool call and each failed one
+  {
+    const store = new Map(), had = globalThis.caches;
+    globalThis.caches = { default: { put: async (k, r) => { store.set(k.url, await r.text()); }, match: async (k) => (store.has(k.url) ? new Response(store.get(k.url)) : undefined) } };
+    try {
+      const ipH = { 'cf-connecting-ip': '198.51.100.7' };
+      await rpc('initialize', { clientInfo: { name: 'Hans Agent' } }, ipH);
+      await rpc('tools/call', { name: 'bobai_links' }, ipH);
+      const by = details().join();
+      await rpc('tools/call', { name: 'bobai_wallet_balance', arguments: { address: 'nope' } }, ipH);
+      const err = details().join();
+      await rpc('tools/call', { name: 'bobai_links' }, { 'cf-connecting-ip': '198.51.100.8' });
+      const stranger = details().join();
+      ok('a tool call is counted by the client of its address (mcp:by:<client>:<tool>), a failed one as mcp:byerr, an address without initialize as noinit', by.includes('mcp:by:hansagent:bobai_links') && !by.includes('byerr') && err.includes('mcp:byerr:hansagent:bobai_wallet_balance') && stranger.includes('mcp:by:noinit:bobai_links'), [by, err, stranger].join(' | '));
+    } finally { globalThis.caches = had; }
+  }
+  // 29.10.: {"token": "0x…"} to bsc_pool_scan was refused as "give a BSC token or pool address" (bsc_rug_watch calls it token)
+  {
+    const said = async (name, args) => { const r = await (await rpc('tools/call', { name, arguments: args })).json(); return r.result?.content?.[0]?.text || ''; };
+    const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
+    const viaToken = await said('bsc_pool_scan', { token: CAKE });
+    const viaCa = await said('bsc_token_preflight', { ca: CAKE });
+    const none = await said('bsc_pool_scan', { foo: CAKE });
+    ok('the token tools take it as token or ca too (no "give an address" refusal), and a missing one names the argument "address"', !/Give a BSC token/.test(viaToken) && !/Give a BSC token/.test(viaCa) && /as the argument "address"/.test(none), [viaToken, viaCa, none].map((t) => t.slice(0, 120)).join(' | '));
+  }
   await rpc('tools/call', { name: 'bobai_trade_info' });
   ok('a deprecated name of ours is counted as ours, not unknown', details().includes('mcp:call:bobai_trade_info') && !details().includes('mcp:call:unknown'), details().join());
   await call('/api/links', { headers: { 'sec-fetch-site': 'same-origin', 'user-agent': 'Mozilla/5.0 Chrome' } });

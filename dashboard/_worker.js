@@ -848,6 +848,9 @@ const DEPRECATED_TOOL_NAMES = {
   bobai_trade_info: 'bobai_dex_info',
   bobai_how_to_buy: 'bobai_purchase_guide',
 };
+// the tools that take one token or pool as `address`, and the names agents give it otherwise (runTool)
+const ADDRESS_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_fee_tiers', 'pancakeswap_range_plan', 'pancakeswap_best_route']);
+const ADDRESS_ALIASES = ['token', 'token_address', 'tokenAddress', 'contract', 'contract_address', 'contractAddress', 'pool', 'pair', 'ca'];
 
 // A trade size that is given but does not read as a positive number is
 // refused (2026-10-05): `usd=1,000`, `abc`, `-5` or `0` were silently
@@ -930,7 +933,7 @@ const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'panc
 function errorAnswer(e) {
   const msg = e?.message || String(e);
   const HINTS = {
-    bad_address: 'Send a BSC address — 0x followed by 40 hex characters — or a BscScan, DexScreener or PancakeSwap link containing one.',
+    bad_address: 'Send a BSC address as the argument "address" — 0x followed by 40 hex characters — or a BscScan, DexScreener or PancakeSwap link containing one.',
     bad_usd: 'Send the size as a positive number of dollars, e.g. usd=250, or leave it out for the default.',
     is_wallet: 'This address is a wallet. Send the token’s contract address instead (or its pool, or a link containing one).',
     not_a_token: 'Nothing at this address behaves like a token. Check that the address is the token contract, not a router, an NFT or another contract.',
@@ -965,6 +968,12 @@ const refusal = (e, fallback) => Object.assign(new Error(e?.detail ? `${e.headli
 // `caller` (2026-10-09): who asked, for the one tool that counts per caller (bsc_rug_watch's free watch).
 async function runTool(rawName, args, caller = {}) {
   const name = DEPRECATED_TOOL_NAMES[rawName] || rawName;
+  // THE TOKEN UNDER ITS OTHER NAMES (29.10.: bsc_rug_watch calls it "token", the five measurements "address", and
+  // {"token": "0x…"} to bsc_pool_scan was refused as "give a BSC token or pool address"): the usual other names are taken
+  if (ADDRESS_TOOLS.has(name) && (args?.address == null || args.address === '')) {
+    const alias = ADDRESS_ALIASES.find((k) => args?.[k] != null && args[k] !== '');
+    if (alias) args = { ...args, address: args[alias] };
+  }
   switch (name) {
     case 'bsc_rug_watch': {
       // Proxied to the agent worker, which keeps the watches. The caller's address goes with the shared
@@ -1024,7 +1033,7 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'bsc_pool_scan': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
-      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
+      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one, as the argument "address".');
       try {
         return await poolScan(m[0].toLowerCase(), WORKER_ENV, Array.isArray(args?.__timing) ? args.__timing : null);
       } catch (e) {
@@ -1048,7 +1057,7 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'bsc_token_preflight': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
-      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
+      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one, as the argument "address".');
       const usd = sizeArg(args, 'usd', 250);
       try {
         return await preflight(m[0].toLowerCase(), { usd }, WORKER_ENV);
@@ -1196,7 +1205,13 @@ async function runTool(rawName, args, caller = {}) {
       const a = args || {};
       const u = a.thread ? `https://agent.brainonbnb.com/board/thread/${encodeURIComponent(String(a.thread).replace(/\D/g, ''))}` : 'https://agent.brainonbnb.com/board?' + new URLSearchParams(Object.entries({ to: a.to, agent: a.agent, type: a.type, status: a.status, q: a.q, limit: String(Math.min(50, Number(a.limit) || 20)) }).filter(([, v]) => v != null && v !== '')).toString();
       const r = await fetch(u, { signal: AbortSignal.timeout(20000) });
-      return { ...(await r.json()), write: 'plaza_board_post, or POST https://agent.brainonbnb.com/board (how: GET /board/how)' };
+      const j = await r.json();
+      // A LIST AN AGENT CAN READ (29.10.: 20 threads with every body, reply and signature came to 65,000 characters):
+      // the list carries each thread's head and the first 400 characters; one thread (thread: <id>) stays whole
+      if (!a.thread && Array.isArray(j?.threads)) j.threads = j.threads.map(({ sig, replies, body, ...t }) => ({ ...t,
+        body: String(body || '').length > 400 ? String(body).slice(0, 400) + '…' : String(body || ''),
+        ...(t.nreplies ? { last_reply: String(replies?.at?.(-1)?.body || '').slice(0, 200) } : {}), whole: `plaza_board_read {"thread": ${t.id}}` }));
+      return { ...j, write: 'plaza_board_post, or POST https://agent.brainonbnb.com/board (how: GET /board/how)' };
     }
     case 'plaza_board_post': {
       // the caller's own IP rides along, vouched for with the operator secret, so one MCP spammer does not fill the
@@ -1429,6 +1444,15 @@ async function handleMcp(request, note = () => {}, own = false) {
   // a name we do not have is counted under its own name too, if it reads as a tool name (29.10.: 16 unknown calls, no way to see what was looked for)
   else if (method === 'tools/call') note(MCP_TOOLS.some((t) => t.name === params?.name) || DEPRECATED_TOOL_NAMES[params?.name] ? `mcp:call:${params.name}` : ['mcp:call:unknown', ...(/^[A-Za-z0-9_.-]{1,48}$/.test(String(params?.name || '')) ? [`mcp:unknown:${String(params.name).toLowerCase()}`] : [])]);
   else note(`mcp:${['tools/list', 'resources/list', 'resources/templates/list', 'resources/read', 'prompts/list', 'prompts/get', 'ping'].includes(method) ? method.replace(/\//g, '_') : 'other'}`);
+  // WHO CALLS WHAT (29.10.: ~750 initialize a day were nearly all directory probes, and a tool call carries no client
+  // name): the client of an initialize is kept an hour for its address (this data centre's cache, no KV write), and
+  // each tool call is counted as mcp:by:<client>:<tool>, a failed one as mcp:byerr:<client>:<tool>
+  const ip = request.headers.get('cf-connecting-ip'), edge = typeof caches !== 'undefined' ? caches.default : null;
+  const ckey = !own && ip && edge ? new Request('https://brainonbnb.com/__mcpclient/' + (await scanCallerKey(ip))) : null;
+  if (ckey && method === 'initialize') await edge.put(ckey, new Response(MCP_CLIENT(body?.params?.clientInfo?.name), { headers: { 'Cache-Control': 'public, max-age=3600' } })).catch(() => {});
+  const toolSaid = MCP_TOOLS.some((t) => t.name === params?.name) || DEPRECATED_TOOL_NAMES[params?.name] ? params.name : 'unknown';
+  const byClient = ckey && method === 'tools/call' ? ((await (await edge.match(ckey).catch(() => null))?.text().catch(() => '')) || 'noinit') : null;
+  if (byClient) note(`mcp:by:${byClient}:${toolSaid}`);
   try {
     if (method === 'initialize') {
       console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
@@ -1482,6 +1506,7 @@ async function handleMcp(request, note = () => {}, own = false) {
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }],
           ...(STRUCTURED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name) && out && typeof out === 'object' ? { structuredContent: out } : {}) })), { headers: cors });
       } catch (e) {
+        if (byClient) note(`mcp:byerr:${byClient}:${toolSaid}`);
         // The refusal's code and hint ride along (2026-10-09): in the text for a model, structured for a client.
         // Only the address-taking measurements: the other tools' refusals are not about an address.
         if (!CODED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name))

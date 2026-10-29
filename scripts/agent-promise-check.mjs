@@ -79,5 +79,17 @@ const mcp = async (slug, method, params) => (await (await fetch(`${AGENT}/${slug
   const w = await (await fetch(`${AGENT}/watch`)).json().catch(() => ({}));
   check(/1,000 scans per caller a day/.test(w.free_alternative || ''), 'the watch\'s free alternative names the 1,000 a day', w.free_alternative);
 }
+// THE PROMISE CHECK OF 29.10. (three read-only reviews of llms.txt, the whitepaper, /services, /pancakeswap and the cards;
+// every finding checked again): each sentence that said more than the system does, pinned so it cannot come back
+{
+  const txt = async (u) => fetch(u, { headers: { 'user-agent': 'brainonbnb-check' } }).then((r) => r.text()).catch(() => '');
+  const [wp, llms, toko, svc, pcs, defiCard] = await Promise.all([txt('https://brainonbnb.com/whitepaper'), txt('https://brainonbnb.com/llms.txt'), txt('https://brainonbnb.com/api/tokenomics'), txt('https://brainonbnb.com/services'), txt('https://brainonbnb.com/pancakeswap'), txt('https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json')]);
+  check(!/where the marketplace honors ERC-2981/.test(wp) && /no ERC-2981/.test(wp), 'whitepaper: no royalty claimed on chain (the NFT contract has no ERC-2981)');
+  check(!/runs entirely in the visitor.s browser/.test(wp) && /Every tool but two is/.test(wp) && !/Nine of them are about this chain/.test(wp), 'whitepaper: the scanner asks this site\'s APIs; two tools write, not one; sixteen are about the chain');
+  check(!/51st scan/.test(llms) && /1,001st scan/.test(llms) && /up to 2,000 scans/.test(llms) && /most recent 400 tasks/.test(llms) && /up to 10 per provider and 80 a day/.test(llms), 'llms.txt: the free scans are 1,000, the pass ends at 2,000, /sessions is the last 400, settle and refund name their caps');
+  check(/collects in the token contract itself/.test(toko) && !/accumulates in the public buyback wallet/.test(toko), '/api/tokenomics: the tax collects in the token, not the wallet');
+  check(/not in USDC/.test(svc), '/services: a plain transfer by hash is taken in USD1 or $BOBAI, not USDC');
+  check(!/came out ahead when every width was replayed/.test(pcs) && !/±20% came out ahead/.test(defiCard) && /none came out ahead of holding/.test(defiCard), 'DeFi agent: no width claimed ahead of holding (the width record says none is)');
+}
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 24029 lines.
+# one fetch. 73 files, 24039 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6538,7 +6538,7 @@ export const DELIVERIES = Object.values(SERVICES).map((s) => ({
   price: s.price_display,
   agent: SOLD_BY[s.id]?.agent ?? null,
   where: SOLD_BY[s.id] ? `https://brainonbnb.com/registry#cat-${s.category === 'health-factor-monitoring' ? 'health-factor' : s.category}` : null,
-  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day); a shorter one cannot be delivered. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain transfer whose hash you send — and the same document comes straight back.',
+  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day); a shorter one cannot be delivered. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain USD1 transfer whose hash you send — and the same document comes straight back.',
   x402: `POST https://agent.brainonbnb.com/answer?service=${s.id}`,
 }));
 
@@ -10496,7 +10496,9 @@ import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, su
 const SELF_ORIGIN = 'https://agent.brainonbnb.com';
 // one brief per service that its agent quotes as it stands (card examples; scripts/quote-examples-check.mjs signs each)
 export const QUOTE_EXAMPLES = {
-  health_factor: 'Health factor of the Venus position of 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, its liquidation distance and the repay that restores 2.0',
+  // 29.10. (the promise check): 0xbFAA has no Venus position (a buyer would pay for 'no position'), and the answer gives the
+  // drawdown that liquidates and a stress table, no repay figure; 0xEAC2 is our health-factor keeper's wallet, a real loan
+  health_factor: 'Health factor of the Venus position of 0xEAC21928DE023677A25eb925D1cb1b0786FaF946, the collateral drawdown that would liquidate it and a stress table',
   grid_plan: 'Grid plan for WBNB/USDT (token 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c): 1000 USD capital, 10 levels',
   yield_plan: 'Best stablecoin yield on Venus for 1000 USDT',
   rebalance_plan: 'Rebalance my holdings to 50/50: [{"token":"0x55d398326f99059fF775485246999027B3197955","usd":600},{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":400}]',
@@ -12467,7 +12469,7 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain on BNB — DeFi Agent',
-        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with one swap back to the range’s mix — wide, because every re-set locks in what the range lost against holding, and on the recorded prices ±20% came out ahead of narrower ranges and of simply holding. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with one swap back to the range’s mix — wide, because every re-set locks in what the range lost against holding. On the recorded prices the wider ranges lost less against simply holding than the narrow ones, and none came out ahead of holding (the width record: https://agent.brainonbnb.com/lp/windows). Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
         url: `${SELF_ORIGIN}/defi-agent/a2a`,
         preferredTransport: 'JSONRPC',
         version: '1.0.0',
@@ -22471,6 +22473,10 @@ const num = (a, k) => parseFloat(String(a).replace(/,/g, '')) * (k ? 1000 : 1);
 // The figure stands on the side the sentence puts it: an address written before the first figure takes the figure after
 // it. Only a reading that gives EVERY address its figure counts; anything less is not a portfolio read correctly.
 export function readHoldings(t) {
+  // THE CARD'S OWN EXAMPLE (2026-10-29, the promise check: "[{"token":"0x55d3…","usd":600},{"token":"0xbb4C…","usd":400}]"
+  // was read as 500/500 — the figures stood as "usd":600, which no wording below matches): a JSON list of {token, usd}
+  const js = t.match(/\[\s*\{[^\]]*\}\s*\]/);
+  if (js) { try { const a = JSON.parse(js[0]); const h = Array.isArray(a) ? a.filter((x) => /^0x[a-fA-F0-9]{40}$/.test(String(x?.token || '')) && Number(x.usd) > 0).map((x) => ({ token: x.token, usd: Number(x.usd) })) : []; if (h.length === a.length && h.length) return h; } catch { /* not JSON: the wordings below */ } }
   const addrs = new Set((t.match(ADDR) || []).map((a) => a.toLowerCase()));
   const firstAddr = t.search(/0x[a-fA-F0-9]{40}/), firstAmt = t.replace(ADDR, (a) => 'x'.repeat(a.length)).search(new RegExp(AMT, 'i'));
   const addrFirst = firstAddr >= 0 && (firstAmt < 0 || firstAddr < firstAmt);
@@ -22536,6 +22542,8 @@ export function understand(service, text = '') {
     const h = readHoldings(t);
     if (h.length) p.holdings = h; else if (addrs.length) p.holdings = addrs.map((a) => ({ token: a, usd: usd(t) ? usd(t) / addrs.length : 1000 / addrs.length }));
     if (need.includes('targets') && p.holdings) { const tg = readTargets(t, p.holdings); if (tg) p.targets = tg; }
+    // a token of the holdings is not the wallet to read (2026-10-29: the card's example set address to USDT's contract)
+    if (p.address && (p.holdings || []).some((h) => String(h.token).toLowerCase() === String(p.address).toLowerCase())) delete p.address;
   }
   return p;
 }
@@ -22554,9 +22562,11 @@ export function understoodReply({ service, text, missing, agentUrl }) {
     data: {
       understood: { service: service.id, params: p },
       missing: miss || null,
-      price: service.price_display,
-      pay_per_answer: { method: 'POST', url: `https://agent.brainonbnb.com/answer?service=${service.id}`, body: { params: p }, note: 'the first reply is HTTP 402 with the price and how to pay; pay, then send the same request again' },
-      escrow: { endpoint: agentUrl, send: { kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: text, terms: { deliverables: service.deliverables } } } },
+      // each route with its own price (2026-10-29, the promise check: 'price: 0.01 USD1' stood next to /answer, which asks
+      // 0.10; the 0.01 is the escrow's, in $U)
+      price,
+      pay_per_answer: { method: 'POST', url: `https://agent.brainonbnb.com/answer?service=${service.id}`, body: { params: p }, price: '0.10 USD1 or USDC over x402 (half price in $BOBAI)', note: 'the first reply is HTTP 402 with the price and how to pay; pay, then send the same request again' },
+      escrow: { endpoint: agentUrl, price: service.price_display.replace('USD1', '$U'), send: { kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: text, terms: { deliverables: service.deliverables } } } },
       example: `https://agent.brainonbnb.com/example?service=${service.id}`,
     },
   };

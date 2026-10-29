@@ -17,6 +17,10 @@ const num = (a, k) => parseFloat(String(a).replace(/,/g, '')) * (k ? 1000 : 1);
 // The figure stands on the side the sentence puts it: an address written before the first figure takes the figure after
 // it. Only a reading that gives EVERY address its figure counts; anything less is not a portfolio read correctly.
 export function readHoldings(t) {
+  // THE CARD'S OWN EXAMPLE (2026-10-29, the promise check: "[{"token":"0x55d3…","usd":600},{"token":"0xbb4C…","usd":400}]"
+  // was read as 500/500 — the figures stood as "usd":600, which no wording below matches): a JSON list of {token, usd}
+  const js = t.match(/\[\s*\{[^\]]*\}\s*\]/);
+  if (js) { try { const a = JSON.parse(js[0]); const h = Array.isArray(a) ? a.filter((x) => /^0x[a-fA-F0-9]{40}$/.test(String(x?.token || '')) && Number(x.usd) > 0).map((x) => ({ token: x.token, usd: Number(x.usd) })) : []; if (h.length === a.length && h.length) return h; } catch { /* not JSON: the wordings below */ } }
   const addrs = new Set((t.match(ADDR) || []).map((a) => a.toLowerCase()));
   const firstAddr = t.search(/0x[a-fA-F0-9]{40}/), firstAmt = t.replace(ADDR, (a) => 'x'.repeat(a.length)).search(new RegExp(AMT, 'i'));
   const addrFirst = firstAddr >= 0 && (firstAmt < 0 || firstAddr < firstAmt);
@@ -82,6 +86,8 @@ export function understand(service, text = '') {
     const h = readHoldings(t);
     if (h.length) p.holdings = h; else if (addrs.length) p.holdings = addrs.map((a) => ({ token: a, usd: usd(t) ? usd(t) / addrs.length : 1000 / addrs.length }));
     if (need.includes('targets') && p.holdings) { const tg = readTargets(t, p.holdings); if (tg) p.targets = tg; }
+    // a token of the holdings is not the wallet to read (2026-10-29: the card's example set address to USDT's contract)
+    if (p.address && (p.holdings || []).some((h) => String(h.token).toLowerCase() === String(p.address).toLowerCase())) delete p.address;
   }
   return p;
 }
@@ -100,9 +106,11 @@ export function understoodReply({ service, text, missing, agentUrl }) {
     data: {
       understood: { service: service.id, params: p },
       missing: miss || null,
-      price: service.price_display,
-      pay_per_answer: { method: 'POST', url: `https://agent.brainonbnb.com/answer?service=${service.id}`, body: { params: p }, note: 'the first reply is HTTP 402 with the price and how to pay; pay, then send the same request again' },
-      escrow: { endpoint: agentUrl, send: { kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: text, terms: { deliverables: service.deliverables } } } },
+      // each route with its own price (2026-10-29, the promise check: 'price: 0.01 USD1' stood next to /answer, which asks
+      // 0.10; the 0.01 is the escrow's, in $U)
+      price,
+      pay_per_answer: { method: 'POST', url: `https://agent.brainonbnb.com/answer?service=${service.id}`, body: { params: p }, price: '0.10 USD1 or USDC over x402 (half price in $BOBAI)', note: 'the first reply is HTTP 402 with the price and how to pay; pay, then send the same request again' },
+      escrow: { endpoint: agentUrl, price: service.price_display.replace('USD1', '$U'), send: { kind: 'data', data: { skill: 'negotiate-erc8183-job', task_description: text, terms: { deliverables: service.deliverables } } } },
       example: `https://agent.brainonbnb.com/example?service=${service.id}`,
     },
   };

@@ -165,7 +165,9 @@ import { runListedLive, houseListing, checkAgent, quoteListing, verifySigner, su
 const SELF_ORIGIN = 'https://agent.brainonbnb.com';
 // one brief per service that its agent quotes as it stands (card examples; scripts/quote-examples-check.mjs signs each)
 export const QUOTE_EXAMPLES = {
-  health_factor: 'Health factor of the Venus position of 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, its liquidation distance and the repay that restores 2.0',
+  // 29.10. (the promise check): 0xbFAA has no Venus position (a buyer would pay for 'no position'), and the answer gives the
+  // drawdown that liquidates and a stress table, no repay figure; 0xEAC2 is our health-factor keeper's wallet, a real loan
+  health_factor: 'Health factor of the Venus position of 0xEAC21928DE023677A25eb925D1cb1b0786FaF946, the collateral drawdown that would liquidate it and a stress table',
   grid_plan: 'Grid plan for WBNB/USDT (token 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c): 1000 USD capital, 10 levels',
   yield_plan: 'Best stablecoin yield on Venus for 1000 USDT',
   rebalance_plan: 'Rebalance my holdings to 50/50: [{"token":"0x55d398326f99059fF775485246999027B3197955","usd":600},{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":400}]',
@@ -2136,7 +2138,7 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain on BNB — DeFi Agent',
-        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with one swap back to the range’s mix — wide, because every re-set locks in what the range lost against holding, and on the recorded prices ±20% came out ahead of narrower ranges and of simply holding. Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
+        description: 'Rebalancing agent for PancakeSwap V3 liquidity: the agent that runs the $BOBAI project\'s own PancakeSwap V3 position (CAKE/BNB, 0.05 %) on BNB Chain, by itself, every day: it collects the fees, and it keeps a wide range (±20%) centred on the price, and once the price has stayed outside it for its set wait it re-sets the range centred on the price again with one swap back to the range’s mix — wide, because every re-set locks in what the range lost against holding. On the recorded prices the wider ranges lost less against simply holding than the narrow ones, and none came out ahead of holding (the width record: https://agent.brainonbnb.com/lp/windows). Hired, it runs the same code on your position and delivers its decision on-chain: in range or not and how much room is left, what the position holds and is owed, whether collecting pays for its gas, whether a re-set is due and in which width. It reads and plans; it signs nothing on your position.',
         url: `${SELF_ORIGIN}/defi-agent/a2a`,
         preferredTransport: 'JSONRPC',
         version: '1.0.0',

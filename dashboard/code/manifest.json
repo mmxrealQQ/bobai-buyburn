@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3550,
-   "zipBytes": 121922,
-   "txtBytes": 364097,
-   "sha256": "0e1573055874e857",
+   "lines": 3551,
+   "zipBytes": 122158,
+   "txtBytes": 364732,
+   "sha256": "0c05d1d399fa53be",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -634,10 +634,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 73,
-   "lines": 24029,
-   "zipBytes": 606665,
-   "txtBytes": 1720426,
-   "sha256": "7747d0140b1e0054",
+   "lines": 24039,
+   "zipBytes": 607263,
+   "txtBytes": 1721931,
+   "sha256": "a16494513df31b6c",
    "reqs": [
     {
      "what": "A wallet to be paid into",

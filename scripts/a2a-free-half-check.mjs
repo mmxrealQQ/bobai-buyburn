@@ -87,5 +87,17 @@ await gridOk('grid agent, a data part {token, levels, bandPct, capitalUsd}',
   const d = (await a2a('defi-agent', [{ kind: 'text', text: 'what can you do' }]))?.result?.parts?.[0]?.text || '';
   check(/PancakeSwap V3/.test(d), '"what can you do" still answers in one sentence', d.slice(0, 60));
 }
+// THE CARD'S OWN EXAMPLE, AS WRITTEN (2026-10-29, the promise check: the rebalancer read its example's 600/400 as 500/500
+// and took USDT's contract for the wallet; and each "just ask" reply put the escrow's 0.01 next to /answer, which asks 0.10)
+{
+  const card = await fetch(`${BASE}/rebalancer/.well-known/agent-card.json`).then((r) => r.json()).catch(() => null);
+  const ex = card?.skills?.find((s) => s.id === 'rebalance_plan')?.examples?.[0] || '';
+  const d = dataOf(await a2a('rebalancer', [{ kind: 'text', text: ex }]));
+  const hs = d?.understood?.params?.holdings || [];
+  check(hs.length === 2 && hs.map((h) => h.usd).join('/') === '600/400' && !hs.some((h) => String(h.token).toLowerCase() === String(d?.understood?.params?.address || '').toLowerCase()),
+    'rebalancer: its own card example is read as written (600/400), and a holdings token is not taken for the wallet', JSON.stringify(d?.understood?.params || d).slice(0, 220));
+  check(/0\.10/.test(d?.pay_per_answer?.price || '') && /\$U/.test(d?.escrow?.price || '') && !/USD1/.test(d?.escrow?.price || ''),
+    '"just ask": /answer names 0.10, the escrow its own price in $U', JSON.stringify({ answer: d?.pay_per_answer?.price, escrow: d?.escrow?.price }));
+}
 console.log(`a2a-free-half: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

@@ -195,7 +195,7 @@
       <tr><td>Decimals</td><td>18</td></tr>
       <tr><td>Launch</td><td>100% Fair Launch via Four.Meme</td></tr>
       <tr><td>Presale / Team / Vesting</td><td>None</td></tr>
-      <tr><td>Liquidity</td><td>LP burned to the dead address (PancakeSwap V2) &mdash; nobody can withdraw it</td></tr>
+      <tr><td>Liquidity</td><td>LP burned to the dead address (PancakeSwap V2): 99.999% of it, which nobody can withdraw</td></tr>
       <tr><td>Ownership</td><td>Renounced</td></tr>
     </table>
   </div>
@@ -207,7 +207,7 @@
     <li><span class="highlight">1% Burn (BOB)</span> &mdash; used to buy and burn <a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank" rel="noopener">BOB (Build on BNB)</a>, sent to the dead address</li>
     <li><span class="highlight">1% Burn (BOBAI)</span> &mdash; used to buy and burn BOBAI, sent to the dead address</li>
   </ul>
-  <p>The result: <span class="highlight">2% of every trade is permanently burned</span> under the standard split until Dec 1, 2026 (from then on 1% is burned and 1% deepens the BOBAI/BNB pool for good, see below), continuously reducing the circulating supply. The <strong>3% tax rate is hardcoded</strong> in the smart contract and cannot be changed after deployment.</p>
+  <p>The result: under the standard split <span class="highlight">2% of every trade is permanently burned</span> until Dec 1, 2026 (a dated campaign phase re-routes part of it while it runs: the split in force is at /api/tokenomics) (from then on 1% is burned and 1% deepens the BOBAI/BNB pool for good, see below), continuously reducing the circulating supply. The <strong>3% tax rate is hardcoded</strong> in the smart contract and cannot be changed after deployment.</p>
 
   <h3>Dynamic Tax Allocation</h3>
   <p>While the <span class="highlight">3% rate is immutable on-chain</span>, the <em>distribution</em> of those 3% across buckets (BOBAI burn / BOB burn / Creator / programs) is executed <strong>off-chain by the autonomous buyback bot</strong>. This allows the project to run time-boxed transparency programs that temporarily redirect a portion of the tax flow &mdash; without ever touching the contract.</p>
@@ -247,7 +247,7 @@
 
   <div class="card">
     <h3>Bot Infrastructure</h3>
-    <p style="margin-bottom:8px">The buyback bot runs on Cloudflare Workers with a cron trigger &mdash; no server to maintain, no downtime. Every run it makes is logged publicly.</p>
+    <p style="margin-bottom:8px">The buyback bot runs on Cloudflare Workers with a cron trigger &mdash; no server to maintain, no downtime. Every run that moves money is logged publicly (logs/burns.json; the liquidity adds in logs/bobai-liq-log.json); a run with nothing to split writes nothing.</p>
     <p><span class="tag">Serverless</span> <span class="tag">24/7</span> <span class="tag">Public Log</span> <span class="tag">Autonomous</span></p>
   </div>
 
@@ -273,8 +273,8 @@
     <li><strong>Total supply:</strong> 1,925 NFTs, fixed and capped on-chain.</li>
     <li><strong>Six buy-tier motifs</strong> determined by USD-value of the buy: NICE BUY ($100+, 1,000 max), BIG BUY ($150+, 500), HUGE BUY ($250+, 250), WHALE BUY ($500+, 100), THUNDER BUY ($1,000+, 50), KRAKEN BUY ($2,500+, 25).</li>
     <li><strong>Seven rarities</strong> drawn from a weighted matrix per tier, generating the per-NFT visual identity.</li>
-    <li><strong>Ownership renounced.</strong> The mint contract was deployed by the BOBAI team and ownership has been renounced &mdash; no further admin actions are possible, no minting beyond the cap, no metadata changes.</li>
-    <li><strong>Marketplace discoverable:</strong> auto-indexed by NFTScan, OKX, and Element. Royalty 8% (40% creator / 40% BOB burn / 20% BOBAI burn) where the marketplace honors ERC-2981.</li>
+    <li><strong>Ownership renounced.</strong> The mint contract was deployed by the project and ownership has been renounced &mdash; no further admin actions are possible and no minting beyond the cap. The metadata is served by the project's own worker (tokenURI points to it), so it is off chain.</li>
+    <li><strong>Marketplace discoverable:</strong> auto-indexed by NFTScan, OKX, and Element. No royalty on chain: the contract has no ERC-2981 (supportsInterface(0x2a55205a) is false). A creator fee a marketplace shows is that marketplace's own setting.</li>
   </ul>
   <p>Contract: <span class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</span> &bull; Live drops feed and rarity browser: <a href="https://brainonbnb.com/nft/" target="_blank" rel="noopener">brainonbnb.com/nft</a>.</p>
 
@@ -285,7 +285,7 @@
   <p>Six hireable agents are run by this project, registered on-chain under their own identities and attributed to agent #49467 through a domain proof published on both origins: <span class="addr">#302257</span> Venus health factor, <span class="addr">#302258</span> BSC grid planner, <span class="addr">#304493</span> Venus yield ranking, <span class="addr">#304494</span> portfolio rebalance pricer, <span class="addr">#310460</span> PancakeSwap fee-tier placement, and <span class="addr">#363709</span> the DeFi Agent, which plans a PancakeSwap V3 position with the same code that runs the project&rsquo;s own &mdash; the last two for liquidity providers, a side of the market the other four do not serve. Each costs 0.10 $U per job (0.01 until 5 Nov 2026, 12:00 UTC) and writes its deliverable on-chain in full rather than as a link.</p>
 
   <h3>4.4 Pool Scanner</h3>
-  <p>A free tool at <a href="https://brainonbnb.com/scanner" target="_blank" rel="noopener">brainonbnb.com/scanner</a> that reads any BNB Chain token or pool the way a trader meets it: real cost per trade size, the transfer tax measured from executed trades, whether the LP is burned, and which PancakeSwap fee tier is actually paying its liquidity providers. It runs entirely in the visitor's browser &mdash; no backend, no account, no key &mdash; and the identical measurement is available as an MCP tool, a plain GET, and an installable skill (<code>npx skills add https://brainonbnb.com</code>). One implementation behind all of them, so the page and the API cannot drift apart.</p>
+  <p>A free tool at <a href="https://brainonbnb.com/scanner" target="_blank" rel="noopener">brainonbnb.com/scanner</a> that reads any BNB Chain token or pool the way a trader meets it: real cost per trade size, the transfer tax measured from executed trades, whether the LP is burned, and which PancakeSwap fee tier is actually paying its liquidity providers. It runs in the visitor's browser, reads the chain directly and asks this site's free APIs for the fee tiers, the best route and the range plan; GoPlus flags are shown as GoPlus's, marked "not verified here" &mdash; no account, no key &mdash; and the identical measurement is available as an MCP tool, a plain GET, and an installable skill (<code>npx skills add https://brainonbnb.com</code>). One implementation behind all of them, so the page and the API cannot drift apart.</p>
   <p>It refuses rather than guesses. A pool too thin to describe honestly returns no depth figures at all, a venue whose swap fee has not been derived on-chain is not priced, and a tax that could be neither measured nor labelled reads as unknown rather than as zero &mdash; because zero is a claim, not a missing value.</p>
 
   <h3>4.5 The Brain Terminal</h3>
@@ -336,7 +336,7 @@
   <!-- 7. AI AGENT INTERFACE -->
   <h2>7. Machine-Readable AI Agent Interface</h2>
   <p>BOBAI is not just built by AI &mdash; it is built to be <span class="highlight">read by AI</span>. The token exposes a verifiable, on-chain agent identity and a live query interface so that other AI agents can pull BOBAI's real on-chain data <em>straight from the source</em> before they act, rather than relying on second-hand or cached third-party data.</p>
-  <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool but one is <strong>read-only</strong> &mdash; nothing here can move funds, and the one exception only registers a webhook alarm (below) &mdash; and every value returned is independently verifiable on-chain.</p>
+  <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool but two is <strong>read-only</strong> &mdash; nothing here can move funds; the two exceptions register a webhook alarm (below) and post to the public Brain Board &mdash; and every value returned is independently verifiable on-chain.</p>
 
   <h3>On-Chain Agent Identity (ERC-8004)</h3>
   <p>BOBAI holds a registered <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">ERC-8004 agent identity</a>, <span class="highlight">Agent #49467</span>, on the BNB Chain Identity Registry <span class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</span> (<span class="addr">eip155:56:0x8004A169&hellip;a432#49467</span>). The registration metadata &mdash; name, token, official services, and agent wallet &mdash; lives on-chain and is the only editable copy, so what an agent reads is what the project actually signed.</p>
@@ -352,7 +352,7 @@
   </div>
 
   <p>The MCP endpoint exposes <span class="highlight">30 free tools</span>, all served from Cloudflare's edge (always-on, no server). 28 of them only read and declare <code>readOnlyHint</code>, so another agent's router can tell what is safe to call without guessing from the name; the two that do not declare <code>readOnlyHint: false</code>: <strong>bsc_rug_watch</strong> registers a webhook alarm for a token the agent holds, and <strong>plaza_board_post</strong> writes an entry to the public <a href="/board">Brain Board</a>.</p>
-  <p>Nine of them are about this chain rather than about this token, and are the ones most likely to be useful to somebody with no interest in BOBAI at all:</p>
+  <p>Sixteen of them are about this chain rather than about this token (the Brain Board, ERC-8183 escrow and agent-chart tools among them, see /llms.txt); the ten below are the ones most likely to be useful to somebody with no interest in BOBAI at all:</p>
   <ul>
     <li><strong>bsc_token_preflight</strong> &mdash; the check to run before any trade on a BNB Chain token, in one call and at the agent&rsquo;s own size: can it get in, can it get out again, and what the trip costs. It returns one word to branch on (stop, weigh or no_known_stop) with the facts behind it, built from bsc_pool_scan and pancakeswap_best_route below.</li>
     <li><strong>bsc_rug_watch</strong> &mdash; the alarm described in section 4.7: a webhook for a token the agent holds, read again every 15 minutes and called as soon as something dangerous changes.</li>

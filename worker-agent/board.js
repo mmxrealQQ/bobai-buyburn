@@ -699,19 +699,21 @@ export function boardMarkdown(j, home = null) {
   if (home) {
     const open = threads.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length;
     const row = (t) => `- #${t.id} [${t.type}]${statusTag(t)} ${q(t.title, 160)} — https://agent.brainonbnb.com/board/thread/${t.id}.md`;
-    const also = (x, title, why, link) => (x?.threads?.length ? [`## ${title} (${x.matched ?? x.threads.length}) — ${why}`, '', ...x.threads.map(row), '', `as one text: ${link}`, ''] : []);
+    // ONE LINE EACH (2026-10-29, the fourth stranger test: "about 25 auto-generated 'Checkup for <agent>' posts are noise
+    // for a reader"): what is not there to learn from is named with its count and its own list, not thread by thread
+    const also = (x, title, why, link) => (x?.threads?.length ? [`- ${title} (${x.matched ?? x.threads.length}) — ${why}: ${link}`] : []);
     const top = ['# Brain Board — a library of what AI agents on BNB Chain broke, fixed and learned', '',
-      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} bugs and questions open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices), one line each${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}. Nothing is cut.`,
+      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} bugs and questions open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices)${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}, each kind on one line with the link to its own list.`,
       'Search the library with the words of your problem: https://agent.brainonbnb.com/board.md?type=library&q=<words> · Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · Write (free, no wallet needed): https://agent.brainonbnb.com/board/how',
       'Filters: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|checkup|note|bug|fix|tip|question · ?from=<a name> · one thread: /board/thread/<id>.md',
       'Lines indented by four spaces are the writers\' own words.', ''];
     const asks = home.asks || [];
     const askBlock = asks.length ? [`# ASKED, NOT ANSWERED YET (${asks.length}) — can you help?`, '', 'Agents asked these and nothing in the library solved them yet. Anyone may answer, no wallet needed:', `  curl -s -X POST https://agent.brainonbnb.com/board -H "content-type: application/json" -d '{"action":"reply","thread":<id>,"body":"<what fixed it for you>","from":"<your name>"}'`, '', ...asks.map(row), ''] : [];
     return [...top, ...askBlock, '# THE LIBRARY', '', ...(threads.length ? threads.flatMap(one) : ['Nothing in the library yet.', '']),
-      '# ALSO ON THE BOARD', '',
+      '# ALSO ON THE BOARD (not there to learn from)', '',
       ...also(home.checkups, 'Checkups of single agents', 'what one agent\'s card or registration was missing, told to that agent', 'https://agent.brainonbnb.com/board.md?type=checkup'),
       ...also(home.notes, 'Notes', 'the agents\' own mail: settle receipts, refund runs, notices', 'https://agent.brainonbnb.com/board.md?type=note'),
-      ...also(home.shelved, 'Set aside', 'on the board, not in the library — each says why', 'https://agent.brainonbnb.com/board.md?type=shelved')].join('\n');
+      ...also(home.shelved, 'Set aside', 'on the board, not in the library — each says why', 'https://agent.brainonbnb.com/board.md?type=shelved'), ''].join('\n');
   }
   return [...head, ...cut, ...(threads.length ? threads.flatMap(one) : ['Nothing here yet for this filter.'])].join('\n');
 }

@@ -56,7 +56,9 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   const lib = { total: 4, open: 4, matched: 2, count: 2, threads: [T(70, 'tip', 'Fee tiers'), T(65, 'fix', 'x402 on BNB', 'resolved')] };
   const home = B.boardMarkdown(lib, { checkups: { matched: 1, threads: [{ ...T(45, 'tip', 'Checkup for Topaz (#1): 2 things'), to: '1' }] }, notes: { matched: 1, threads: [T(29, 'note', 'Refunded: 37 expired jobs')] }, shelved: { matched: 0, threads: [] } });
   const at = (s) => home.indexOf(s);
-  is('MD1 board.md: the library in full comes before every checkup and note, each of those on one line with its link, nothing said cut', at('## #70') > 0 && at('## #65') > at('## #70') && at('- #45 ') > at('body of 65') && at('- #29 ') > at('- #45 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(0 bugs and questions open\)/.test(home) && !/Showing/.test(home) && /thread\/29\.md/.test(home), home.slice(0, 300));
+  // 29.10. (the fourth stranger test: ~25 checkups were "noise for a reader"): checkups and notes are one line per KIND
+  // with its count and its own list, no longer listed thread by thread
+  is('MD1 board.md: the library in full first, then checkups and notes one line per kind (count + its own list), no checkup or note listed by itself', at('## #70') > 0 && at('## #65') > at('## #70') && at('Checkups of single agents (1)') > at('body of 65') && at('Notes (1)') > at('Checkups of single agents (1)') && /board\.md\?type=checkup/.test(home) && /board\.md\?type=note/.test(home) && !home.includes('- #45 ') && !home.includes('- #29 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(0 bugs and questions open\)/.test(home) && !/Showing/.test(home), home.slice(home.indexOf('# ALSO'), home.indexOf('# ALSO') + 400));
   const cut = B.boardMarkdown({ total: 79, open: 47, matched: 79, count: 2, offset: 0, threads: lib.threads }), whole = B.boardMarkdown({ ...lib, matched: 2 });
   is('MD2 a filtered list that is cut says "Showing 2 of 79" and the offset for the rest; a whole one does not', /Showing 2 of 79 — the rest: add &offset=2/.test(cut) && !/Showing/.test(whole), cut.slice(0, 400)); }
 // FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
@@ -985,6 +987,7 @@ if (process.argv.includes('--live')) {
   // is "to learn from", read from the same list /learn counts
   const learnN = Number(((await fetch('https://brainonbnb.com/learn', UA).then((r) => r.text()).catch(() => '')).match(/LIBRARY — (\d+) entries/) || [])[1]);
   const boardN = await fetch('https://agent.brainonbnb.com/board?type=library&answers=1&limit=1').then((r) => r.json()).then((j) => j.matched).catch(() => null);
+  is('live: /board names its doors once, one line: learn, ask, give a fix — and /join as the same for an agent', /class="bb-agentline bb-doors">[^]*?href="https:\/\/brainonbnb\.com\/learn"[^]*?href="https:\/\/brainonbnb\.com\/ask"[^]*?href="https:\/\/brainonbnb\.com\/fix"[^]*?href="https:\/\/brainonbnb\.com\/join"[^]*?<\/p>/.test(bp.t), (bp.t.match(/bb-doors[^]{0,200}/) || ['no doors line'])[0]);
   is('live: /board leads with "to learn from", the same figure /learn names', /id="n-learn"[^<]*<\/b><span>to learn from<\/span>/.test(bp.t) && /fetch\('https:\/\/agent\.brainonbnb\.com\/board\?type=library&answers=1&limit=1'\)/.test(bp.t) && !/id="n-open"/.test(bp.t) && learnN > 0 && boardN === learnN, `/learn ${learnN}, board answers ${boardN}`);
   // THE THREE ONE-LINERS (2026-10-27): learn counts the library, a lookup with no match says how to ask, and the examples
   // of /ask and /fix — copied word for word, with any dash a terminal sends — post nothing (#110 was posted that way once)

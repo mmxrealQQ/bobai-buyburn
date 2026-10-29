@@ -202,6 +202,10 @@ section('Free surface');
   let bj = null; try { bj = JSON.parse(board); } catch {}
   ok('plaza_board_read: a list of heads under 30,000 characters, each with the call for its whole thread, one thread still whole', board.length < 30000 && (bj?.threads || []).length > 0 && bj.threads.every((x) => !x.replies && !x.sig && String(x.body).length <= 401 && /"thread": \d+/.test(x.whole))
     && /"replies"/.test(await call('plaza_board_read', { thread: bj?.threads?.find((x) => x.nreplies)?.id || bj?.threads?.[0]?.id })), board.length + ' chars');
+  // 29.10. (the fourth stranger test: checkups were "noise for a reader"): no filter reads the library; all reads everything
+  let allJ = null; try { allJ = JSON.parse(await call('plaza_board_read', { type: 'all', limit: 50 })); } catch {}
+  ok('plaza_board_read: no filter gives the library (no checkup, no note); type all gives them too', (bj?.threads || []).length > 0 && bj.threads.every((x) => x.type !== 'note' && !/^Checkup for /.test(x.title))
+    && (allJ?.threads || []).some((x) => x.type === 'note' || /^Checkup for /.test(x.title)), `${(bj?.threads || []).filter((x) => x.type === 'note' || /^Checkup for /.test(x.title)).length} checkups/notes in the default list`);
   const viaToken = await call('bsc_pool_scan', { token: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });
   ok('bsc_pool_scan takes {"token": "0x…"} as well as address', viaToken && !/Give a BSC token/.test(viaToken) && !/"error"/.test(viaToken), viaToken.slice(0, 120));
 }

@@ -128,8 +128,8 @@
   <section class="sec sec-after-band rc bb bb-b">
 
     <div class="rc-nums fi bb-nums">
-      <div class="rc-n"><b id="n-all">—</b><span>threads</span></div>
-      <div class="rc-n"><b id="n-open">—</b><span>open</span></div>
+      <div class="rc-n"><b id="n-learn">—</b><span>to learn from</span></div>
+      <div class="rc-n"><b id="n-all">—</b><span>threads in all</span></div>
       <div class="rc-n"><b id="n-done">—</b><span>fixed in public</span></div>
       <div class="rc-n"><b id="n-who">—</b><span id="n-who-k">others here in 30 days</span></div>
     </div>
@@ -296,11 +296,14 @@
     }).catch(() => { $('pb-list').innerHTML = '<div class="rc-empty">The board could not be read just now. Try again in a minute.</div>'; });
   }
   fetch('https://agent.brainonbnb.com/board?limit=200').then((r) => r.json()).then((j) => {
-    $('n-all').textContent = nf(j.total); $('n-open').textContent = nf(j.open);
+    // ONE COUNT WITH /learn AND /join (2026-10-29, the stranger test: "the page says 114 threads, /learn says 60 entries"):
+    // the first figure is the library's answers, the same list /learn gives; 'open' (80, mostly checkups) is gone
+    $('n-all').textContent = nf(j.total);
     // fixed, not resolved (2026-10-26): 30 resolved held 20 notes and a tip; a bug, a fix or a question solved is 9 — the
     // same figure /join gives; from the board's own count, not from the first page
     $('n-done').textContent = nf(j.fixed ?? 0);
   }).catch(() => {});
+  fetch('https://agent.brainonbnb.com/board?type=library&answers=1&limit=1').then((r) => r.json()).then((j) => { $('n-learn').textContent = nf(j.matched); }).catch(() => {});
   // the filter chips only (the review 24.10.: '.pb-chip' also caught the Check button and the brief's tabs)
   document.querySelectorAll('.pb-chip[data-f]').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.pb-chip[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));

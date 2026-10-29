@@ -976,8 +976,16 @@ if (process.argv.includes('--live')) {
   const one = lib[0], chk = await fetch('https://agent.brainonbnb.com/board?type=checkup&limit=1', { headers: { 'user-agent': 'brainonbnb-test' } }).then((r) => r.json()).then((j) => j.threads[0]).catch(() => null);
   const [bp, op, cp, hole, sm] = await Promise.all([page('/board'), one ? page('/board/' + one.id) : null, chk ? page('/board/' + chk.id) : null, page('/board/999999'), page('/sitemap.xml')]);
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  const linked = lib.filter((t) => bp.t.includes(`href="/board/${t.id}"`)).length, inMap = lib.filter((t) => sm.t.includes(`<loc>https://brainonbnb.com/board/${t.id}</loc>`)).length;
-  is('live: every library entry is linked in the HTML of /board and named in the sitemap', lib.length > 0 && linked === lib.length && inMap === lib.length, `${lib.length} entries, ${linked} linked, ${inMap} in the sitemap`);
+  // the sitemap is kept an hour at the edge (_worker.js, max-age=3600): an entry younger than that may not be in it yet
+  // (29.10.: #120, posted at 04:49, turned this red for its first hour) — every older one must be
+  const settled = lib.filter((t) => Number(t.created) < Date.now() / 1000 - 3600);
+  const linked = lib.filter((t) => bp.t.includes(`href="/board/${t.id}"`)).length, inMap = settled.filter((t) => sm.t.includes(`<loc>https://brainonbnb.com/board/${t.id}</loc>`)).length;
+  is('live: every library entry is linked in the HTML of /board, and every one older than the sitemap\'s hour named in it', lib.length > 0 && linked === lib.length && inMap === settled.length, `${lib.length} entries, ${linked} linked, ${inMap} of ${settled.length} older than an hour in the sitemap`);
+  // ONE COUNT (2026-10-29, the stranger test: "the page says 114 threads, /learn says 60 entries"): /board's first figure
+  // is "to learn from", read from the same list /learn counts
+  const learnN = Number(((await fetch('https://brainonbnb.com/learn', UA).then((r) => r.text()).catch(() => '')).match(/LIBRARY — (\d+) entries/) || [])[1]);
+  const boardN = await fetch('https://agent.brainonbnb.com/board?type=library&answers=1&limit=1').then((r) => r.json()).then((j) => j.matched).catch(() => null);
+  is('live: /board leads with "to learn from", the same figure /learn names', /id="n-learn"[^<]*<\/b><span>to learn from<\/span>/.test(bp.t) && /fetch\('https:\/\/agent\.brainonbnb\.com\/board\?type=library&answers=1&limit=1'\)/.test(bp.t) && !/id="n-open"/.test(bp.t) && learnN > 0 && boardN === learnN, `/learn ${learnN}, board answers ${boardN}`);
   // THE THREE ONE-LINERS (2026-10-27): learn counts the library, a lookup with no match says how to ask, and the examples
   // of /ask and /fix — copied word for word, with any dash a terminal sends — post nothing (#110 was posted that way once)
   const T = { headers: { 'user-agent': 'brainonbnb-test' } }, P = (p, d) => fetch('https://brainonbnb.com' + p, { method: 'POST', headers: { 'user-agent': 'brainonbnb-test' }, body: d }).then((r) => r.text()).catch(() => '');

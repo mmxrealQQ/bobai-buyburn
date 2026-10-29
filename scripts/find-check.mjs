@@ -45,5 +45,10 @@ for (const q of ['grid', 'plan a grid for a token', 'grid trading bot']) {
   const r = await find('q=' + encodeURIComponent(q) + '&limit=25');
   is(`FC6 "${q}": no host's third result stands ahead of another operator's first or second`, spread(r.results), r.results.map((x) => hostOf(x).slice(0, 14)).join(' '));
 }
+// FC7 (2026-10-29, the board stranger test: "/find?q=Pancake: K returns an agent directory, not the library"): an error
+// message is pointed at the library's fixes first; a task is not
+const ek = await find('q=' + encodeURIComponent('Pancake: K'));
+const tk = await find('q=' + encodeURIComponent('plan a grid for a token'));
+is('FC7 a query that reads like an error points first at the library (/learn/<the words>); a task does not', Object.keys(ek)[0] === 'looking_for_a_fix' && ek.looking_for_a_fix.learn === 'https://brainonbnb.com/learn/Pancake%3A%20K' && !tk.looking_for_a_fix, JSON.stringify(ek.looking_for_a_fix || Object.keys(ek)).slice(0, 200));
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

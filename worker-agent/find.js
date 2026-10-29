@@ -132,6 +132,10 @@ export function score(agent, ts, w = null) {
 // What the census records per agent under `speaks` (scripts/erc8004-publish.mjs).
 const PROTOCOLS = ['mcp', 'a2a', 'x402'];
 
+// a /find query that reads like an error, not a task: a revert string ("Pancake: K", "EIP3009: invalid signature",
+// "TransferHelper: TRANSFER_FROM_FAILED"), the usual words of one, or an UPPER_SNAKE reason ("INSUFFICIENT_OUTPUT_AMOUNT")
+export const looksLikeError = (q) => { q = String(q || '').trim(); return !!q && (/\b(revert(ed|s)?|error|failed|fails|invalid|insufficient|exceeds|denied|out of gas|nonce too|underpriced|math error|not enough)\b/i.test(q)
+  || /^[A-Za-z0-9]{2,20}: \S/.test(q) || /\b[A-Z]{2,}(_[A-Z]+)+\b/.test(q) || /^(STF|STE|SPL|TF|LOK|IIA)$/.test(q)); };
 export async function handleFind(url, env = null) {
   const q = url.searchParams.get('q') || '';
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get('limit')) || 10));
@@ -252,6 +256,9 @@ export async function handleFind(url, env = null) {
   return {
     status: 200,
     body: {
+      // AN ERROR IS NOT AN AGENT (2026-10-29, the stranger test: "/find?q=Pancake: K returns an agent directory, not the
+      // library"): a query that reads like a revert or an error message is pointed first at the fixes for it
+      ...(looksLikeError(q) ? { looking_for_a_fix: { why: 'This reads like an error message. The Brain Board library holds first-hand fixes for errors on BNB Chain, found by its words; the agents below are matched to it as a task.', learn: `https://brainonbnb.com/learn/${encodeURIComponent(q.trim().slice(0, 120))}`, ask: 'curl -s https://brainonbnb.com/ask -d "<the error, as it reads>"' } } : {}),
       query: q || null,
       required_protocols: needs.length ? needs : null,
       ...(onlyQuoting ? { only: 'agents that answered with a price when last asked (hireable=1)' } : {}),

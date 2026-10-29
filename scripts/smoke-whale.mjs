@@ -136,6 +136,8 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   const rest = '<b>☄️ APOCALYPSE BURN!</b>\n\n🪙 <b>+1,234,567 BOBAI</b> burned <b>($284.12)</b>\n📊 Total burned: <b>104,512,345 BOBAI</b>\n🔥 <b>10.5%</b> of total supply\n\n🔗 <a href="https://bscscan.com/token/0x0?a=0xdead">View Burns</a> · <a href="https://dexscreener.com/bsc/0x0">Chart</a>';
   const count = (s) => [...s].filter((ch) => ch === '🔥').length;
   ok(count(burnBar(10, rest)) === 5, 'a small burn draws one flame per $2');
+  // 29.10. (the post fact-check: burn alerts fire from ~1,000 BOBAI, and a $0.35 burn drew one flame): exact below $2 too
+  ok(count(burnBar(1.99, rest)) === 0 && count(burnBar(0.35, rest)) === 0 && count(burnBar(2, rest)) === 1, 'a burn under $2 draws no flame (one flame is $2), $2 draws one');
   ok(count(burnBar(248, rest)) === 124, 'a $248 burn, just under SUPERNOVA, draws all 124 flames (it stopped at 60)');
   ok(count(burnBar(250, rest)) === 125 && count(burnBar(400, rest)) === 200 && count(burnBar(1000, rest)) === 500, 'a SUPERNOVA burn is its amount too: $250 is 125 flames, $400 is 200, $1,000 is 500');
   ok(count(burnBar(9000, rest)) === count(burnBar(50000, rest)) && count(burnBar(9000, rest)) > 800, 'past the room the row stops at what fits');

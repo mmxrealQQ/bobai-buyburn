@@ -816,7 +816,7 @@ export function formatMarketCard(ledger, burns, { now = Date.now(), priceUsd = 0
 💰 Largest sell: ${tradeLine(ts, 'sell')}
 🔥 Burned by the bot: ${burnLine}
 
-<i>From the pool's own Swap events, read every ten minutes. Every swap counts, the project's bots included; the largest two leave them out.</i>`;
+<i>From the pool's own Swap events, read every ten minutes. Every Swap event counts, the token's own tax swap and the project's bots included, and a trade split over several swaps once per swap; the largest two leave the bots and the tax swap out.</i>`;
 }
 
 async function postDailyMarketCard(env, now = Date.now()) {
@@ -1087,7 +1087,8 @@ export function emojiBar(emoji, count, restHtml) {
 }
 const KRAKEN_USD = 2500, SUPERNOVA_USD = 250;
 export const buyBar = (usdValue, restHtml) => emojiBar('🧠', Math.max(Math.floor(usdValue / 10), 1), restHtml);
-export const burnBar = (usdValue, restHtml) => emojiBar('🔥', Math.max(Math.floor(usdValue / 2), 1), restHtml);
+// the count exact below $2 as well (2026-10-29, the post fact-check: a $0.35 burn drew one flame; the rule is 1 per $2)
+export const burnBar = (usdValue, restHtml) => emojiBar('🔥', Math.max(Math.floor(usdValue / 2), 0), restHtml);
 
 function getBuyEmojis(usdValue) {
   let icon;
@@ -1241,7 +1242,7 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID,
 
   const rest = `<b>${icon}</b>
 
-🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
+🪙 <b>${formatNumber(bobaiAmount * 0.97)} BOBAI</b>
 💎 ${bnbAmount.toFixed(4)} BNB <b>(${formatUsd(usdValue)})</b>
 💵 Price: $${pricePerToken.toFixed(8)}
 👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>${ctxLine}${nftLine}
@@ -1832,7 +1833,7 @@ export function renderDailyRecap(events, tracked, price, withDateStamp, holdings
       row('🟠', c.TRANSFER_OUT, 'cascade out', 'TRANSFER_OUT', '−'),
       c.INTERNAL_T ? `🟣 ${c.INTERNAL_T} internal move${c.INTERNAL_T === 1 ? '' : 's'} · ${formatNumber(amtBy('INTERNAL_T'))} BOBAI (neutral)` : null,
     ]) if (r) lines.push(r);
-    if (c.NEW_WHALE) lines.push(`💡 ${c.NEW_WHALE} new whale${c.NEW_WHALE === 1 ? '' : 's'} crossed 10M`);
+    if (c.NEW_WHALE) lines.push(`💡 ${c.NEW_WHALE} new holder${c.NEW_WHALE === 1 ? '' : 's'} crossed 5M`);
     if (c.EX_WHALE)  lines.push(`💀 ${c.EX_WHALE} ex-whale${c.EX_WHALE === 1 ? '' : 's'} dropped below 10M`);
     if (sum.quiet)   lines.push(`🔕 ${sum.quiet} under $${WHALE_QUIET_USD} — logged, not alerted`);
     if (sum.folded)  lines.push(`🧩 ${sum.folded} more folded into a pattern alert`);
@@ -1860,7 +1861,7 @@ export function renderDailyRecap(events, tracked, price, withDateStamp, holdings
   // What the watch-set did to itself today.
   if (retired && retired.length) {
     lines.push('');
-    lines.push(`🧹 Retired ${retired.length} wallet${retired.length === 1 ? '' : 's'} empty for ${WHALE_RETIRE_EMPTY_DAYS} days: ${retired.map(shortenAddress).join(', ')} — back on the list the moment they move`);
+    lines.push(`🧹 Retired ${retired.length} wallet${retired.length === 1 ? '' : 's'} empty for ${WHALE_RETIRE_EMPTY_DAYS} days: ${retired.map(shortenAddress).join(', ')} — back on the list when one crosses 5M again or receives from a watched wallet`);
   }
 
   lines.push('');
@@ -2273,8 +2274,9 @@ async function postDailyWhaleRecap(env) {
       chat_id: TG_INTERNAL_CHAT_ID,
       text, parse_mode: 'HTML', disable_web_page_preview: true,
     });
-    // the same recap in the official group (operator, 2026-10-12); the internal send decides "posted"
-    await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => {});
+    // the same recap in the official group (operator, 2026-10-12); the internal send decides "posted", so the official copy
+    // goes only with it (2026-10-29: a failed internal send is retried every minute, and each retry posted it again)
+    if (r?.ok === true) await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => {});
     return r?.ok === true;
   } catch (e) {
     console.error('[WHALE DAILY ERROR]', e.message || e);
@@ -2342,7 +2344,7 @@ export function renderWhaleAlert(data) {
 ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
 📊 Holds: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}${rankLine}
 
-<i>Added to watch-set. All future activity will alert.</i>
+<i>Added to watch-set: its moves of $5 or more are alerted (a run of the same move in a day is folded unless it is big).</i>
 
 🔗 ${txLink}`;
     return msg;
@@ -2354,7 +2356,7 @@ ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
 📉 ${moverDownLink}
 📊 Balance now: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}
 
-<i>Still in watch-set — use /whalerm to drop.</i>
+<i>Still in the watch-set.</i>
 
 🔗 ${txLink}`;
     return msg;
@@ -2410,10 +2412,10 @@ ${what} ${moverLink} just crossed <b>${whale ? '10M' : '5M'} BOBAI</b>.
         contextLine = `→ ${otherLink} · <i>a contract — a locker, a bridge or another pool; not added to the watch-set</i>`;
       } else if (isDust) {
         headline = `🟡 <b>PRE-FUNDING</b> · ${usdStr} <i>(dust)</i>`;
-        contextLine = `→ ${otherLink} · <i>fresh wallet — bigger TX likely incoming</i>`;
+        contextLine = `→ ${otherLink} · <i>a wallet not on the watch list; a dust send often comes before a bigger one</i>`;
       } else {
         headline = `🟠 <b>TRANSFER OUT</b> · ${usdStr}`;
-        contextLine = `→ ${otherLink} · <i>new wallet, auto-added to watch-set</i>`;
+        contextLine = `→ ${otherLink} · <i>not on the watch list yet, auto-added to the watch-set</i>`;
       }
       break;
     case 'TRANSFER_IN':

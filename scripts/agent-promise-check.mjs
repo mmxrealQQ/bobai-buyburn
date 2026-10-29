@@ -91,5 +91,16 @@ const mcp = async (slug, method, params) => (await (await fetch(`${AGENT}/${slug
   check(/not in USDC/.test(svc), '/services: a plain transfer by hash is taken in USD1 or $BOBAI, not USDC');
   check(!/came out ahead when every width was replayed/.test(pcs) && !/±20% came out ahead/.test(defiCard) && /none came out ahead of holding/.test(defiCard), 'DeFi agent: no width claimed ahead of holding (the width record says none is)');
 }
+// THE MCP FACT-CHECK OF 29.10. (27 tools called against their descriptions; 11 said more): pinned live
+{
+  const rpc = (body) => fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'brainonbnb-check' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, ...body }) }).then((r) => r.json()).catch(() => null);
+  const tools = (await rpc({ method: 'tools/list' }))?.result?.tools || [];
+  const d = (n) => tools.find((t) => t.name === n)?.description || '';
+  check(!/MEASURED from executed trades applied/.test(d('bsc_token_preflight')) && /simulated on chain at that block/.test(d('bsc_token_preflight')) && /simulated on chain when there was no trade to measure/.test(d('pancakeswap_best_route')), 'MCP: the preflight and the route say the tax is simulated when the pool did not trade');
+  check(!/read from the chain: PancakeSwap V2 router/.test(d('bobai_dex_info')) && !/1%-of-supply/.test(d('bobai_smart_money')) && !/by the autonomous 24\/7 buyback-and-burn bot\)/.test(d('bobai_burned')), 'MCP: dex_info is fixed facts, smart money tracks 0.5% holders, burned is what the dead address holds');
+  check(!!tools.find((t) => t.name === 'find_agents_on_bnb_chain')?.inputSchema?.properties?.limit, 'MCP: find_agents takes limit (and hireable), as its answer tells the caller');
+  const g = JSON.stringify((await rpc({ method: 'tools/call', params: { name: 'bobai_guide' } }))?.result || {});
+  check(!/Every tool on this server is free\./.test(g), 'MCP: bobai_guide no longer says every tool is free (the pool scan is free to 1,000 a day)');
+}
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

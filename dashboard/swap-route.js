@@ -319,7 +319,7 @@ export async function swapRoute(input, opts = {}) {
       // THE figure: what actually comes back, transfer tax included.
       you_keep_pct: roundTripPct == null ? null : +(100 + roundTripPct).toFixed(2),
       you_keep_pct_pools_only: poolOnly == null ? null : +((poolOnly / amountIn) * 100).toFixed(2),
-      note: 'Buy at this size, sell the proceeds straight back on the same route. Both legs quoted by the venue; the measured transfer tax is applied to the amounts carried between them, because it is taken outside the pool where no quoter can see it. Two pool fees and the price your own trade moves are in it too, so a healthy untaxed pair does not return 100% either.',
+      note: 'Buy at this size, sell the proceeds straight back on the same route. Both legs quoted by the venue; the transfer tax (measured, or simulated when the pool did not trade: transfer_tax.source says which) is applied to the amounts carried between them, because it is taken outside the pool where no quoter can see it. Two pool fees and the price your own trade moves are in it too, so a healthy untaxed pair does not return 100% either.',
     },
     transfer_tax: tax.ok
       ? { buy_pct: tax.buy == null ? null : +(tax.buy * 100).toFixed(2),

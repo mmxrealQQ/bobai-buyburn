@@ -128,7 +128,7 @@
           {
             "@type": "Question",
             "name": "Does $BOBAI have a team allocation? Is it a fair launch?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It is a fair launch, and there is no team allocation. $BOBAI launched on Four.Meme with no presale, no private sale, and no pre-mine: the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. Nothing is locked for a team and nothing is waiting to vest. The project is funded by the creator slice of the trade tax (1%, and 0.8% until Nov 20, 2026) plus whatever other people's agents pay for the paid services. Never from a reserved token bag."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It is a fair launch, and there is no team allocation. $BOBAI launched on Four.Meme with no presale, no private sale, and no pre-mine: everyone bought on the same public bonding curve, from the same starting point, and when it completed, Four.Meme put the remaining 200,000,000 $BOBAI with the raised BNB into the PancakeSwap pool, the LP burned. Nothing is locked for a team and nothing is waiting to vest. The project is funded by the creator slice of the trade tax (1%, and 0.8% until Nov 20, 2026) plus whatever other people's agents pay for the paid services. Never from a reserved token bag."}
           },
           {
             "@type": "Question",
@@ -148,7 +148,7 @@
           {
             "@type": "Question",
             "name": "What does the DeFi agent do?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
           },
           {
             "@type": "Question",
@@ -245,7 +245,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793255863477">
+<link rel="stylesheet" href="brain/brain.css?v=1793256740203">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1793209612">
@@ -477,7 +477,7 @@
 <div class="bw-win" style="--c:#2dd4bf" id="w02" role="dialog" aria-modal="true" aria-label="02 TOKENOMICS: Where the 3% goes" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>02</b> · TOKENOMICS<em>Where the 3% goes</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="liq-boost fi" id="liq-boost-bobai-3">
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
-      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.5% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
+      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% (0.5% from Sep 20, 06:00 UTC) of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
       <div class="lb-countdown">
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
@@ -577,7 +577,7 @@
       </div>
       <div class="lqi">
         <div class="lqi-h">Where the locked liquidity comes from
-          <span>Every LP transfer into the dead address was read off the chain. There are exactly three origins and they add up to the locked total to the decimal &mdash; no fourth party has ever put liquidity in here.</span></div>
+          <span>Every LP transfer into the dead address was read off the chain. Three origins account for it: the two bots' adds are summed from their own transactions, and the dev wallet&rsquo;s share is the rest of the locked total (the chain read reaches Aug 10, 2026). 99.999% of the pool&rsquo;s LP is at the dead address.</span></div>
         <div class="lqsrc">
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
@@ -669,7 +669,7 @@
            every token on the chain, which buries ours in noise. -->
       <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
         <span class="pt-ico t-red">&#x25CF;</span>
-        <span class="pt-body"><span class="pt-l">Burn Address &mdash; $BOBAI only</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
+        <span class="pt-body"><span class="pt-l">Burn Address &mdash; $BOBAI and $BOB</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
         <span class="pt-go">&#x2197;</span>
       </a>
       <div class="ptile is-ok">
@@ -1404,7 +1404,7 @@
         <div class="faq-body">The contract is verified and the usual rug-pull levers are gone; the price is not protected. What you can check on-chain: the source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, there is no proxy and no upgrade path, no mint and no pause function, and ownership is renounced. The LP tokens are burned (permanently locked): they sit at the dead address. That rules out minting new supply, pausing trading, swapping the contract and pulling the liquidity. It says nothing about the price: like any token, $BOBAI can go to zero. Independent trackers reading the same contract: <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
       </details>
       <details class="faq-item"><summary>Does $BOBAI have a team allocation? Is it a fair launch?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It is a fair launch, and there is no team allocation. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine: the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. Nothing is locked for a team and nothing is waiting to vest. The project is funded by the creator slice of the trade tax (1%, and 0.8% until Nov 20, 2026) plus whatever other people's agents pay for the paid services. Never from a reserved token bag.</div>
+        <div class="faq-body">It is a fair launch, and there is no team allocation. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine: everyone bought on the same public bonding curve, from the same starting point, and when it completed, Four.Meme put the remaining 200,000,000 $BOBAI with the raised BNB into the PancakeSwap pool, the LP burned. Nothing is locked for a team and nothing is waiting to vest. The project is funded by the creator slice of the trade tax (1%, and 0.8% until Nov 20, 2026) plus whatever other people's agents pay for the paid services. Never from a reserved token bag.</div>
       </details>
       <details class="faq-item"><summary>Who built $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">$BOBAI was built entirely with AI tooling and launched on Four.Meme. That covers the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. You can read the work instead of trusting the claim: the contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, every buyback-and-burn run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>, and the full stack is open source at <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank" rel="noopener">github.com/mmxrealQQ/bobai-buyburn</a>.</div>
@@ -1416,7 +1416,7 @@
         <div class="faq-body">Yes, when the buy is worth $100 or more. One NFT is minted automatically, straight to the buyer's wallet: no claim step, no gas for the holder. The size of the buy sets the motif: NICE BUY from $100, BIG BUY from $150, HUGE BUY from $250, WHALE BUY from $500, THUNDER BUY from $1,000, KRAKEN BUY from $2,500. The rarity, one of seven, is a weighted draw. The collection is capped at 1,925 and every tier has its own fixed cap; how many are out is counted live on the <a href="/nft/">NFT page</a>.</div>
       </details>
       <details class="faq-item"><summary>What does the DeFi agent do?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
+        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
       </details>
       <details class="faq-item"><summary>Can my own AI agent use these tools?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Yes. The <a href="/mcp">MCP server</a> at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 1,000 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow — see <a href="/services">Agent Services</a>. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the <a href="/pass">holder pass</a>.</div>
@@ -1472,7 +1472,7 @@
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1793255511')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793255863478" defer></script>
-<script src="brain/cards.js?v=1793255863478" defer></script>
-<script src="brain/hero.js?v=1793255863478" defer></script>
+<script src="brain/brain.js?v=1793256740204" defer></script>
+<script src="brain/cards.js?v=1793256740204" defer></script>
+<script src="brain/hero.js?v=1793256740204" defer></script>
 </body></html>

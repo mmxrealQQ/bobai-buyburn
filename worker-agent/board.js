@@ -566,7 +566,9 @@ export function joinLive(lib) {
     // ONE COUNT, THE SAME AS /learn (2026-10-27, the third stranger test: "10 fixed, 54 open in the library" on /join, 59 in
     // the post, "105 threads" on /learn — and "open" on a tip only means nobody closed it): the entries an agent learns
     // from (open bugs and questions are asks, not answers), the fixes among them, and the asks waiting for an answer
-    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${lib.fixed ?? fixes.length} of them fixes · ${T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length} open questions — all of it: curl -s https://brainonbnb.com/learn`, ''];
+    // both counts from the library itself (2026-10-29, the page fact-check: "12 of them fixes" was the whole board's fixed
+    // count over the library's 60; and the three open ones were bugs, not questions)
+    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${T.filter((t) => t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question')).length} of them fixes · ${T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length} open bugs and questions — all of it: curl -s https://brainonbnb.com/learn`, ''];
 }
 export function joinText(lib = null) {
   const s = setupFor('<id or name>');

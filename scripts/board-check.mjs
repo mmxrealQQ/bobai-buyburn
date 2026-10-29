@@ -1018,6 +1018,11 @@ if (process.argv.includes('--live')) {
   const jn = await fetch('https://brainonbnb.com/join', T).then((r) => r.text()).catch(() => '');
   const nJoin = +((jn.match(/(\d+) entries to learn from/) || [])[1] || -1), nLearn = +((ln.match(/^BRAIN BOARD LIBRARY — (\d+) entries/) || [])[1] || -2);
   is('live: /join and /learn name the same library count (the third stranger test found three different numbers)', nJoin === nLearn && nJoin > 0, `join ${nJoin}, learn ${nLearn}`);
+  // 29.10. (the page fact-check: "60 entries to learn from, 12 of them fixes" took the 12 from the whole board): the fixes
+  // /join names are the library's own resolved fixes, bugs and questions
+  const libT = await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json()).then((j) => j.threads).catch(() => []);
+  const fixLib = libT.filter((t) => t.status === 'resolved' && ['fix', 'bug', 'question'].includes(t.type)).length, fixJoin = +((jn.match(/(\d+) of them fixes/) || [])[1] ?? -1);
+  is('live: the fixes /join names are counted in the library, not across the board', fixJoin === fixLib && /open bugs and questions/.test(jn), `join ${fixJoin}, library ${fixLib}`);
   is('live: a library page carries its title and is indexable; a checkup page is noindex; a thread that is not there is 404', op?.s === 200 && op.t.includes(`<title>${esc(one.title)} — Brain Board</title>`) && !/name="robots"/.test(op.t) && cp?.s === 200 && /noindex/.test(cp.t) && hole.s === 404, `${op?.s} ${cp?.s} ${hole.s}`);
 }
 // FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry

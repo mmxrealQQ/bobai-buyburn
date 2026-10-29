@@ -291,7 +291,7 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "provider": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
       "quoted_for": [
         "health-factor"
       ],
@@ -435,7 +435,7 @@
         }
       ],
       "ours": true,
-      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "provider": "0x497dAc54FD7238027Ecbbd194b353379a1D605F0",
       "quoted_for": [
         "yield-optimization"
       ],

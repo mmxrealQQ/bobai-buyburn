@@ -9,7 +9,7 @@
       "block": 117989307,
       "registered_at": "2026-08-25T11:09:13.039Z",
       "updated_at": "2026-10-19T11:43:30.672Z",
-      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "agent_wallet": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
       "moved": {
         "at": "2026-10-14T17:34:00.000Z",
         "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",
@@ -43,7 +43,7 @@
       "block": 118146201,
       "registered_at": "2026-08-26T06:46:49.211Z",
       "updated_at": "2026-10-19T11:43:33.288Z",
-      "agent_wallet": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "agent_wallet": "0x497dAc54FD7238027Ecbbd194b353379a1D605F0",
       "moved": {
         "at": "2026-10-14T17:34:00.000Z",
         "why": "Mandate Custody: owner separate from the signing wallet; agentWallet stays the provider that signs quotes and deliveries",

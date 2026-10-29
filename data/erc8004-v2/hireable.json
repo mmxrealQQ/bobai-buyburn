@@ -287,18 +287,18 @@
       "ours": false
     },
     {
-      "id": 304493,
-      "label": "Brain on BNB — Venus Yield Ranking",
-      "category": "yield-optimization",
-      "ours": true,
-      "seed": "where is the best stablecoin yield on BNB Chain right now"
-    },
-    {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
       "ours": true,
       "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
+    },
+    {
+      "id": 304493,
+      "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true,
+      "seed": "where is the best stablecoin yield on BNB Chain right now"
     },
     {
       "id": 116171,

@@ -127,7 +127,7 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   const quiet = console.log; // the worker logs each MCP call
   const call = async (p, init = {}) => {
     posted.length = 0; console.log = () => {};
-    try { await worker.fetch(new Request('https://brainonbnb.com' + p, init), env, ctx); await Promise.all(waits); } finally { console.log = quiet; }
+    try { const r = await worker.fetch(new Request('https://brainonbnb.com' + p, init), env, ctx); await Promise.all(waits); return r; } finally { console.log = quiet; }
   };
   const rpc = (method, params, headers = {}) => call('/mcp', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
   const kinds = () => posted.filter((p) => p.kind).map((p) => p.kind).join();
@@ -142,6 +142,13 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('a tool of ours is named', details().includes('mcp:call:bobai_links'), details().join());
   await rpc('tools/call', { name: 'evil:<x>' });
   ok('a tool a caller made up is "unknown"', details().includes('mcp:call:unknown') && !details().some((d) => d.includes('evil')), details().join());
+  // 29.10.: 16 unknown calls on 28.10. and no way to see what was looked for; the caller got "Unknown tool" and nothing else
+  const un = await (await rpc('tools/call', { name: 'get_bobai_price' })).json();
+  ok('a made-up name that reads as a tool name is counted under its name, and the answer names the closest tools', details().includes('mcp:call:unknown') && details().includes('mcp:unknown:get_bobai_price') && /Closest: bobai_price/.test(un.result?.content?.[0]?.text || '') && un.result?.isError === true, details().join() + ' | ' + JSON.stringify(un).slice(0, 300));
+  const un2 = await (await rpc('tools/call', { name: 'get_token_price' })).json();
+  ok('a tie between the closest names puts the plainer one first (get_token_price -> bobai_price among them)', /Closest: [^.]*bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 300));
+  await rpc('tools/call', { name: 'bobai_trade_info' });
+  ok('a deprecated name of ours is counted as ours, not unknown', details().includes('mcp:call:bobai_trade_info') && !details().includes('mcp:call:unknown'), details().join());
   await call('/api/links', { headers: { 'sec-fetch-site': 'same-origin', 'user-agent': 'Mozilla/5.0 Chrome' } });
   ok('a page of ours: rest:site, and no caller family', details().join() === 'rest:site:links' && kinds() === 'rest', details().join());
   await call('/api/links', { headers: { referer: 'https://brainonbnb.com/token', 'user-agent': 'Mozilla/5.0 Safari' } });

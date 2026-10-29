@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3509 lines.
+# one fetch. 5 files, 3521 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1242,8 +1242,19 @@ async function runTool(rawName, args, caller = {}) {
     case 'bobai_activity': return await getActivity();
     case 'bobai_nft_drop': return await getNftDrop();
     case 'bobai_smart_money': return await getSmartMoney();
-    default: throw new Error('Unknown tool: ' + name);
+    default: throw new Error(unknownToolText(name));
   }
+}
+
+// A TOOL WE DO NOT HAVE, ANSWERED WITH THE ONES WE DO (29.10.: 16 calls of a made-up name on 28.10. got
+// "Unknown tool" and nothing else): the closest three by the words of the name, and where the full list is
+function unknownToolText(name) {
+  const said = String(name ?? '').slice(0, 60);
+  const words = said.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !['bsc', 'bnb', 'get', 'tool'].includes(w));
+  const near = MCP_TOOLS.map((t) => { const hay = (t.name + ' ' + (t.description || '')).toLowerCase();
+    return { n: t.name, s: words.reduce((a, w) => a + (t.name.includes(w) ? 3 : hay.includes(w) ? 1 : 0), 0) }; })
+    .filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.n.length - b.n.length).slice(0, 3).map((x) => x.n); // a tie: the plainer name first
+  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}This server has ${MCP_TOOLS.length} tools; tools/list names them all (start with bobai_guide for a map).`;
 }
 
 // MCP resources — documents an MCP client can read/subscribe to directly.
@@ -1431,7 +1442,8 @@ async function handleMcp(request, note = () => {}, own = false) {
   if (typeof method !== 'string') return new Response(JSON.stringify(rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.')), { headers: cors });
   if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
   if (method === 'initialize') note(['mcp:initialize', `mcp:client:${MCP_CLIENT(body?.params?.clientInfo?.name)}`]);
-  else if (method === 'tools/call') note(`mcp:call:${MCP_TOOLS.some((t) => t.name === params?.name) ? params.name : 'unknown'}`);
+  // a name we do not have is counted under its own name too, if it reads as a tool name (29.10.: 16 unknown calls, no way to see what was looked for)
+  else if (method === 'tools/call') note(MCP_TOOLS.some((t) => t.name === params?.name) || DEPRECATED_TOOL_NAMES[params?.name] ? `mcp:call:${params.name}` : ['mcp:call:unknown', ...(/^[A-Za-z0-9_.-]{1,48}$/.test(String(params?.name || '')) ? [`mcp:unknown:${String(params.name).toLowerCase()}`] : [])]);
   else note(`mcp:${['tools/list', 'resources/list', 'resources/templates/list', 'resources/read', 'prompts/list', 'prompts/get', 'ping'].includes(method) ? method.replace(/\//g, '_') : 'other'}`);
   try {
     if (method === 'initialize') {

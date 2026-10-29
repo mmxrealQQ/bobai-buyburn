@@ -33,7 +33,7 @@
   <nav><div class="nav">
     <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/token">The Token</a>
-    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
   </div></nav>
   <main>
   <div class="intro"><h1>The <em>token</em></h1><p>How the 3% tax becomes burned supply, which phase is running, and how deep the pool is right now.</p></div>
@@ -57,7 +57,7 @@
 
     <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
     <div class="fl">
-      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap with 6% slippage: the 3% tax counts against it.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax collects in the token contract, then goes out as BNB.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>

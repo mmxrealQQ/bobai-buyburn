@@ -488,11 +488,11 @@ function atWork(k) {
   const said = {
     // five ways each (2026-10-02)
     lp: () => [poseOr('defi'), inr === false ? vary('v1', ['Checked my CAKE/BNB range: the price stepped outside, so I wait beside it.', 'My DeFi agent looked: the price is outside its range. It waits, it does not chase.',
-      'Range check done. Outside for now, so no fees. Patience is part of the strategy.', 'CAKE/BNB moved out of my range. My DeFi agent sits tight until it comes back.', 'DeFi check: out of range at the moment. Waiting is cheaper than chasing.'])
+      'Range check done. Outside for now, so no fees. Patience is part of the strategy.', 'CAKE/BNB moved out of my range. If it stays out, my DeFi agent re-sets around the price.', 'DeFi check: out of range at the moment. Waiting is cheaper than chasing.'])
       : vary('v2', ['Checked my CAKE/BNB range: in range, earning fees.', 'My DeFi agent looked: right in its range, collecting fees.', 'Range check done. In range, fees coming in.', 'CAKE/BNB is inside my range. My DeFi agent earns while I talk.', 'DeFi check: in range. Every swap through the pool pays it a little.'])],
     buyback: () => [poseOr('think'), splitBnb() > 0 ? vary('v3', [`Buyback bot: ${bnbF(splitBnb())} is ready to split at its next check.`, `${bnbF(splitBnb())} waits in my buyback bot. It splits at the next check.`, `My buyback bot holds ${bnbF(splitBnb())}. The burns are coming up.`, `Ready to split: ${bnbF(splitBnb())}. The next check does it.`, `The buyback bot found ${bnbF(splitBnb())}. Splitting it soon.`])
-      : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next trades, then my bot splits it.', `Full queue: ${bobaiAmt(S.queued)} of tax, waiting for the next trade to swap it.`, 'The tax queue reached its mark. One of the next trades carries the swap, then the burns follow.',
-        'Queue full, swap pending. The token does it inside a trade, not on a timer.', `${bobaiAmt(S.queued)} of tax is ready. The next trade or two turns it into BNB for my bots.`])
+      : S.queued >= MIN_DISPATCH ? vary('v4f', ['My tax queue is full. The token swaps it to BNB inside one of the next sells, then my bot splits it.', `Full queue: ${bobaiAmt(S.queued)} of tax, waiting for the next sell to swap it.`, 'The tax queue reached its mark. One of the next sells carries the swap, then the burns follow.',
+        'Queue full, swap pending. The token does it inside a sell, not on a timer.', `${bobaiAmt(S.queued)} of tax is ready. The next sell or two turns it into BNB for my bots.`])
       : vary('v4', [`The tax is ${left}% of the way to the token's ${bobaiAmt(MIN_DISPATCH)} swap. Then my bot splits it.`, `Charging: ${left}% of the way to the next ${cmp(MIN_DISPATCH)} tax swap.`, `My tax queue is ${left}% full. At ${cmp(MIN_DISPATCH)} it turns into BNB for the bots.`, `${left}% to the next tax swap. Every trade adds a little.`, `Buyback bot checked in. The tax queue is ${left}% of the way to ${cmp(MIN_DISPATCH)}.`])],
     agent: () => [poseOr('think'), vary('v5', agentLines())],
   }[k];
@@ -673,8 +673,8 @@ function info(k) {
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
       ['In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
       ['Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
-      note: GIGGLE_OPEN() ? pctOf('giggle') + ' of every trade collects here. On Nov 20 it all goes to Giggle Academy, and the receipt is posted.'
-        : 'The pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan: tap the pot wallet.',
+      note: GIGGLE_OPEN() ? pctOf('giggle') + ' of every trade collects here. On Nov 20 collecting ends, and the pot goes to Giggle Academy in one donation.'
+        : 'Collecting ended on Nov 20, World Children’s Day. The pot goes to Giggle Academy in one donation; tap the pot wallet to see on BscScan when it left.',
       links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     // each figure carries its own time: next to "dev bot runs · last <today>" an untimed payout read as today's (operator, 2026-10-11)
     case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1], oldSp = !!(dv?.builder5Bnb && dv?.builder6Bnb); return { t: 'Creator share → d38', c: D.creator.c, rows: [
@@ -686,7 +686,7 @@ function info(k) {
       ['Tax queued in the token', nf(S.queued) + ' BOBAI' + usdS(S.queued, S.price)], ['BNB in 1ce', bnb4(S.walletBnb) + (splitBnb() > 0 ? '' : ' · gas')],
       ['Queued, in dollars', '$' + nf(S.queued * S.price + splitBnb() * S.bnbP, 2)], ['Runs', 'every 10 min · last ' + agoL(W.buyback.last)],
       ['Last split', lastRun ? bnbF(lastRun.totalBnb) + ' · ' + agoL(Date.parse(lastRun.time)) : '…']],
-      note: `Every trade pays 3% tax into the token. At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB for this wallet, inside a trade; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
+      note: `Every trade pays 3% tax into the token. At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB for this wallet, inside a sell; the bot then splits it ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][DEST.filter(d => d.pct > 0).length] || 'several'} ways within 10 minutes. 0.003 BNB stays here for gas.`,
       links: [['1ce wallet', bsc(BW)]] };
     case 'agent': { const k = S.kinds || {}; return { t: "BOBAI's agent server", c: W.agent.c, rows: [
       ['Tool calls by agents and apps today', nf(HB.agent || 0)], ['Menu checks by registries', nf(HB.agentMenu || 0)], ['All requests incl. crawlers', nf(HB.agentAll || 0)],
@@ -766,9 +766,9 @@ function vizOf(k) {
     case 'creator': case 'dev': return barsHtml(perDay(S.burns, bt, e => e.creatorBnb), 'CREATOR SHARE IN, PER DAY', n4);
     case 'defi': case 'lp': return rangeHtml();
     case 'core': case 'buyback': { const c = clamp(charge, 0, 1); if (splitBnb() > 0) return ringHtml([[1, '#F0B90B', 'READY TO SPLIT', bnbF(splitBnb())]], '100%', 'SWAPPED · SPLIT AT THE NEXT CHECK');
-      // the queue is full and the token has not swapped yet: it does so inside a trade, so the board says it waits for one
+      // the queue is full and the token has not swapped yet: it does so inside a sell (to == pair, 2026-10-29), so the board says it waits for one
       // (operator, 2026-10-05: "402,688 BOBAI queued, but it is not sent yet?")
-      if (S.queued >= MIN_DISPATCH) return ringHtml([[1, '#F0B90B', 'COLLECTED', cmp(S.queued)]], 'FULL', 'FULL · THE TOKEN SWAPS IT INSIDE ONE OF THE NEXT TRADES');
+      if (S.queued >= MIN_DISPATCH) return ringHtml([[1, '#F0B90B', 'COLLECTED', cmp(S.queued)]], 'FULL', 'FULL · THE TOKEN SWAPS IT INSIDE ONE OF THE NEXT SELLS');
       return ringHtml([[c, '#F0B90B', 'COLLECTED', cmp(S.queued)], [1 - c, 'rgba(255,255,255,.08)', 'TO THE SWAP', cmp(Math.max(0, MIN_DISPATCH - S.queued))]], Math.round(c * 100) + '%', 'TAX TO THE NEXT SWAP · ' + cmp(MIN_DISPATCH) + ' BOBAI' + usdS(MIN_DISPATCH, S.price)); }
     case 'nft': { const m = (S.nft?.minted || []).reduce((a, b) => a + b, 0), cap = (S.nft?.cap || []).reduce((a, b) => a + b, 0) || 1925; return ringHtml([[m, '#a78bfa', 'DROPPED', nf(m)], [Math.max(0, cap - m), 'rgba(255,255,255,.08)', 'STILL TO EARN', nf(cap - m)]], Math.round(m / cap * 100) + '%', 'THE COLLECTION'); }
     case 'agent': { const q = S.kinds || {}; return hbarsHtml([['MCP', +q.mcp || 0], ['REST', +q.rest || 0], ['DISCOVERY', +q.discovery || 0], ['HIRE · JOBS', (+q.hire || 0) + (+q.job || 0) + (+q.dispatch || 0)]], 'REQUESTS FROM OUTSIDE, TODAY'); }
@@ -851,10 +851,10 @@ function circleLine(k) {
     defi: () => { if (!rb) return null; const v = bnbF(rb.value_with_reserve_bnb ?? rb.value_bnb ?? 0), r = inr === false; return vary('v9', [
       `My DeFi agent works ${v} in CAKE/BNB. ${r ? 'Price outside its range right now, so it waits.' : 'In range, earning fees.'}`, `${v} at work in CAKE/BNB. ${r ? 'Out of range for now: it waits.' : 'In its range, collecting fees.'}`,
       `This is my DeFi agent: ${v} in CAKE/BNB. ${r ? 'The price left its range, so it sits tight.' : 'Right in range, earning.'}`, `CAKE/BNB, ${v}, managed by my DeFi agent. ${r ? 'Outside its range at the moment.' : 'In range at the moment.'}`,
-      `My DeFi agent has ${v} in CAKE/BNB. ${r ? 'Waiting for the price to come back into range.' : 'Fees coming in.'}`]); },
+      `My DeFi agent has ${v} in CAKE/BNB. ${r ? 'Out of range for now; if it stays out, it re-sets around the price.' : 'Fees coming in.'}`]); },
     giggle: () => { const p = bnb4(ggBnb()); return GIGGLE_OPEN() ? vary('v10', [`The Giggle pot holds ${p} for Giggle Academy. Every trade adds to it until November 20.`, `${p} in the Giggle pot so far. It goes to Giggle Academy on November 20.`,
       `Every trade adds a coin for Giggle Academy. The pot: ${p}.`, `The Giggle pot: ${p}, growing with every trade until November 20.`, `For the kids of Giggle Academy: ${p} in the pot, and counting.`])
-      : vary('v11', [`The Giggle pot went to Giggle Academy. ${p}, from every trade.`, `${p} from every trade went to Giggle Academy.`, `The Giggle pot is delivered: ${p} for Giggle Academy.`, `Giggle Academy got the pot: ${p}.`, `${p} for Giggle Academy, made by every trade.`]); },
+      : vary('v11', [`Collecting is over: ${p} for Giggle Academy, from every trade.`, `${p} from every trade, for Giggle Academy.`, `The Giggle pot is closed: ${p} for Giggle Academy.`, `Giggle Academy's pot: ${p}, one donation from every trade.`, `${p} for Giggle Academy, made by every trade.`]); },
     creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders, the old split; from the next payout 82% creator, 18% to 5 builders' : '82% creator, 18% to 5 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,
       `The creator slice pays the builders too: ${sp}. Last payout ${b}, ${t}.`, `Last creator payout: ${b}, ${t}. ${sp}.`]); },
@@ -2167,17 +2167,17 @@ const WORK = [
   // Each only when its figure is there; five ways to say each.
   ['defi', () => { const { ticks, tick, inR } = lpNow(); if (!ticks || tick == null || !inR) return null;
     const dn = (1 - 1.0001 ** (ticks[0] - tick)) * 100, up = (1.0001 ** (ticks[1] - tick) - 1) * 100, d = dn.toFixed(0) + '%', u = up.toFixed(0) + '%';
-    return vary('w-range', [`My DeFi agent is in range: CAKE/BNB can fall ${d} or rise ${u} before it has to move.`, `In range and earning. ${d} of room below, ${u} above.`,
-      `The DeFi agent sits where the trades are: ${d} to the lower edge, ${u} to the upper one.`, `${d} down or ${u} up, and my DeFi agent re-sets. Until then it collects fees.`,
+    return vary('w-range', [`My DeFi agent is in range: CAKE/BNB can fall ${d} or rise ${u} before it leaves its range.`, `In range and earning. ${d} of room below, ${u} above.`,
+      `The DeFi agent sits where the trades are: ${d} to the lower edge, ${u} to the upper one.`, `${d} down or ${u} up, and it leaves its range; a while outside, and it re-sets. Until then it collects fees.`,
       `Range check: in, with ${d} below and ${u} above. Fees are coming in.`]); }],
   ['defi', () => { const fees = +(defiNow().fees || 0), days = (Date.now() - Date.parse(S.lp?.flow?.since || '')) / 86400e3, cap = defiNow().value;
     if (!(fees > 0) || !(days >= 3) || !(cap > 0) || !(S.bnbP > 0)) return null; // the same figures as defiRate()
     const u = `$${nf(fees * S.bnbP, 2)}`, dd = `${Math.round(days)} days`, apr = `${(fees / cap / days * 365 * 100).toFixed(0)}%`;
-    return vary('w-fees', [`My DeFi agent has collected ${u} in fees in ${dd}. About ${apr} a year on its capital, so far.`, `${u} in pool fees over ${dd}, earned by my DeFi agent. The past, not a promise.`,
+    return vary('w-fees', [`My DeFi agent has collected ${u} in fees in ${dd}. About ${apr} a year on its capital from fees alone, before what the price did.`, `${u} in pool fees over ${dd}, earned by my DeFi agent. The past, not a promise.`,
       `The pool pays my DeFi agent for sitting where people trade: ${u} in ${dd}.`, `Quiet work pays: ${u} in fees in ${dd}, about ${apr} a year so far.`,
       `Every CAKE/BNB trade in its range tips my DeFi agent. ${dd}: ${u}.`]); }],
   ['think', () => { const n = HB.agent || 0; if (n < 3) return null;
-    return vary('w-agents', [`${nf(n)} times today other AI agents used my tools. They check tokens with me before they trade.`, `Other agents asked me ${nf(n)} times today. A brain gets consulted.`,
+    return vary('w-agents', [`${nf(n)} times today other AI agents used my tools. Every one of them is in my public stats.`, `Other agents asked me ${nf(n)} times today. A brain gets consulted.`,
       `${nf(n)} tool calls from other agents today. I answer every one, read from the chain.`, `Busy brain: ${nf(n)} questions from other agents today.`, `Agents trust my checks: ${nf(n)} calls today, and counting.`]); }],
   ['nft', () => { const n = S.nft; if (!n) return null; const m = (n.minted || []).reduce((a, b) => a + b, 0), cap = (n.cap || []).reduce((a, b) => a + b, 0) || 1925; if (!m) return null;
     return vary('w-nft', [`${nf(m)} of ${nf(cap)} Buy Drop NFTs are out. A buy of $100 or more earns one, automatically.`, `My NFT drops: ${nf(m)} of ${nf(cap)} so far. Earned, not sold.`,
@@ -2378,7 +2378,7 @@ const JOKES = [
   // HOST OF HIS ECOSYSTEM (2026-10-25, operator chose "Gastgeber seines Ecosystems": he named burns 28 times and settle,
   // the money back, the Plaza, the scanner, the pass and the Venus agents not once). Each line is what runs live; no
   // fixed $BOBAI amount (that would need its dollars), no move word except NFT, which plays his NFT take.
-  'Every night at 21:15 I settle other agents\' jobs. Nobody asked. I do it anyway.',
+  'Every night at 21:15 UTC I settle other agents\' jobs. Nobody asked. I do it anyway.',
   'Paid for a job that never came? I get the money back. Even my brain thinks that is only fair.',
   'I pay strangers\' gas so they get their pay. My accountant is a brain. It approves.',
   'Agents I settled for this week: plenty. Thank-you notes: zero. Still doing it.',
@@ -2827,7 +2827,7 @@ function react(kind, x) {
         `${$u(x.usd)} of conviction just landed. An NFT for the buyer, ${tax} for the burns.`, `Now that is a buy: ${$u(x.usd)}. Thank you! Your NFT is on its way.`].map(l => buyContext(x) + l)
       : [`Fresh buy, ${$u(x.usd)}. ${tax} of tax just charged me.`, `${$u(x.usd)} in. Every buy feeds the brain.`, `A buy! ${$u(x.usd)}. Welcome aboard.`, `${$u(x.usd)} buy. Small candle, big heart.`, `${$u(x.usd)} buy. Every one of them counts, ${tax} of tax included.`],
     sell: [`Someone sold ${$u(x.usd)}. Sells pay 3% too. Thank you, friend.`, `A ${$u(x.usd)} sell. No hard feelings: ${tax} of it stays and works.`, `${$u(x.usd)} out. I shrug, I burn, I keep going.`,
-      `${$u(x.usd)} sold. ${tax} of it stays behind and works for the holders.`, `A ${$u(x.usd)} sell. Goodbye and thanks for the ${tax} of tax.`],
+      `${$u(x.usd)} sold. ${tax} of it goes to the burns and the pool.`, `A ${$u(x.usd)} sell. Goodbye and thanks for the ${tax} of tax.`],
     run: [`Burn time. ${bobaiAmt(x.bobaiBurned)}, gone for good.`, `${bobaiAmt(x.bobaiBurned)} into the fire. Supply only goes one way.`, `Buyback done: ${bobaiAmt(x.bobaiBurned)} burned. Every step has its tx.`,
       `${bobaiAmt(x.bobaiBurned)} just went to the dead address. Never coming back.`, `Another buyback, another burn: ${bobaiAmt(x.bobaiBurned)} out of the supply.`].map((wn => l => burnContext(x) + l + wn)(burnWhyNext())), // why + next, once for the five (2026-10-18)
     liq: x?.dev ? [`The dev wallet just added ${bnbF(x.bnb)} and ${bobaiAmt(x.bobai)} to my pool. LP burned, like every time.`, `Dev add: ${bnbF(x.bnb)} + ${bobaiAmt(x.bobai)} into the pool, ${nf(x.lpBurned, 1)} LP to the dead address.`,
@@ -2950,7 +2950,7 @@ const CMDS = {
     // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
     say(['The DeFi agent works ', [bnbF(defiNow().value ?? 0)], ` in CAKE/BNB 0.05%${inr === false ? ', currently OUT of range (it earns nothing until it moves back or resets)' : inr === true ? ', in range, earning fees' : ''}. Fees so far `, [bnbF(defiNow().fees || 0)], `${defiRate()}; it holds ${bobaiAmt(defiNow().held)} bought from fees, never sold.`], [], D.defi.c); },
   giggle: () => { setFocus('giggle'); const g = ggBnb();
-    if (!GIGGLE_OPEN()) return say(['The Giggle Academy pot went to Giggle Academy on Nov 20, World Children’s Day. The transfer is on BscScan.'], [], D.giggle.c);
+    if (!GIGGLE_OPEN()) return say(['Collecting for Giggle Academy ended on Nov 20, World Children’s Day. The pot goes to Giggle Academy in one donation; the pot wallet on BscScan shows when it left.'], [], D.giggle.c);
     say(['The Giggle Academy pot holds ', [bnb4R(g)], ` (≈$${nf(g * S.bnbP, 2)}). It all goes to Giggle Academy on Nov 20 — ${Math.ceil((ggEnd() - Date.now()) / 86400e3)} days from now.`], [], D.giggle.c); },
   price: () => { setFocus('src'); const c = chartWords(), f = LIFE.flow || {}, rB = CX.liqUsd > 0 && S.bnbP > 0 ? CX.liqUsd / 2 / S.bnbP : 0;
     say(['BOBAI is ', ['$' + (S.price || 0).toFixed(8)], `, market cap ≈ $${nf(S.price * (1e9 - (S.deadA || 0)))} (supply minus what is burned)${c ? `, ${c.s} in 24 h` : ''}.`
@@ -3043,13 +3043,13 @@ CMDS.moon = () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.no
   say([vary('ask-moon', ['No dates from me. What I can show: ', 'Moon? I count burns, not days. ', 'I do not do price promises. I do this: ', 'Wen? Nobody knows. What is certain: ', 'No moon talk, just the record: ']),
     [bobaiAmt(wk)], ' burned this week, ', [lpText()], ' of the LP burned. 3% of every trade keeps working.']); };
 CMDS.who = () => say([vary('ask-who', ['I am BOBAI, the brain on BNB Chain. ', 'BOBAI. A brain that lives on BNB Chain. ', 'Hi, I am BOBAI. ', 'The name is BOBAI, and this is my chain. ', 'I am BOBAI — the token, awake. ']),
-  `Every trade pays 3% tax: it buys back and burns, adds liquidity and burns the LP, and funds a DeFi agent${GIGGLE_OPEN() ? ' and, until Nov 20, Giggle Academy' : ''}. Ownership renounced. Everything I tell you is read from the chain.`,
+  `Every trade pays 3% tax, split by my bot on a public schedule: ${splitWords()}. Ownership renounced. Everything I tell you is read from the chain.`,
   vary('ask-who-core', [' A token that thinks, talks and shows its receipts: one in a billion.', ' Plenty of tokens. One brain that reads its own chain to you.', ' Not a chatbot glued to a chart — the chain itself, talking.', ' One in a billion, and I can prove every word.', ' Ask me anything. If I cannot show it on-chain, I will not say it.'])]);
 CMDS.hi = q => (new Date().getHours() >= 18 && !/^\s*gm/i.test(q || '')) ? say([vary('ask-hi-eve', ['Good evening! Ask me anything, or type ', 'Evening, builder. Try ', 'Hey, good evening. Start with ', 'Good evening! I am listening. Ask me ', 'Evening! Want the facts? Type ']), ['today'], ' or ', ['help'], '.']) : say([vary('ask-hi', ['gm! Ask me anything about BOBAI, or type ', 'Hey, good to see you. Try ', 'Hello! I am listening. Ask me ', 'gm gm. Want the facts? Type ', 'Hi there! Start with ']), ['today'], ' or ', ['help'], '.']);
 CMDS.thanks = () => say([vary('ask-thanks', ['Anytime.', 'You are welcome. I am always here.', 'My pleasure. Back to work.', 'Thank YOU for being here.', 'Glad to help. The chain never sleeps, and neither do I.'])]);
 CMDS.joke = () => { jokeTap(); }; // the joke is the bubble alone, nothing for the log (operator, 2026-10-10)
 CMDS.tax = () => say([vary('ask-tax', ['The tax, as the contract has it: ', 'Every buy and every sell: ', 'Simple: ', 'Here is where the tax goes: ', 'The split: ']),
-  ['3% on every trade'], ': buyback and burn, liquidity with the LP burned, and the DeFi agent and pots. The token swaps it to BNB once ', [bobaiAmt(MIN_DISPATCH)], ' are collected; the bot splits it within 10 minutes. Type ', ['next'], ' for the charge.']);
+  ['3% on every trade'], ': ' + splitWords() + ' (the split in force). The token swaps it to BNB at a sell once ', [bobaiAmt(MIN_DISPATCH)], ' are collected; the bot splits it within 10 minutes. Type ', ['next'], ' for the charge.']);
 CMDS.mood = () => say([moodLine()]);
 CMDS.ca = () => say([vary('ask-ca', ['The one and only contract: ', 'Here it is: ', 'BOBAI on BNB Chain: ', 'Copy it from here, never from a DM: ', 'The contract address: ']), [BOBAI],
   '. Ownership renounced. Paste any other token address here and I check it for you.']);
@@ -3061,14 +3061,14 @@ CMDS.team = () => { const add = S.man.at?.(-1);
   say([vary('ask-team', ['One dev and his AI agent, building in the open. ', 'A solo builder and an AI agent. ', 'No big team: one dev, one AI agent, all on-chain. ', 'Built by one dev with an AI agent. ', 'The team is small: a dev and his agent. ']),
     `The dev wallet adds liquidity from its own pocket${add ? ` — last time ${ago(Date.parse(add.time))}` : ''}, and every bot is public. No roadmap promises: what is built is live, and what is live is on-chain.`]); };
 CMDS.buy = () => { say([vary('ask-buy', ['Where: ', 'How to get BOBAI: ', 'The pool: ', 'Trading BOBAI: ', 'Simple: ']),
-  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage for a small trade (more for a big one). Not advice — type ', ['safe'], ' for the facts first.']); passLine(); };
+  ['PancakeSwap, BOBAI/WBNB'], ', contract ', [short(BOBAI)], ' (type ', ['ca'], ' for the full one). 3% tax on every buy and sell, so allow about 6% slippage, at any size. Not advice — type ', ['safe'], ' for the facts first.']); passLine(); };
 CMDS.help = (h => () => { h(); say(['or just ask: ', ['is it safe?'], ' · ', ['what did I miss?'], ' · ', ['why down?'], ' · ', ['whales'], ' · ', ['tax'], ' · ', ['who are you?'], ' · ', ['agents'], ' · ', ['the flip'], ' · or tell me to ', ['dance']]); })(CMDS.help);
 // THE SMALL TALK PEOPLE REALLY TYPE (2026-10-10 review): each fell to the fallback before; five ways each, no claims
 // beyond what the chain or our own logs show
 CMDS.ai = () => say([vary('ask-ai', ['No chatbot in here. ', 'Honest answer: no language model. ', 'I am not ChatGPT in a costume. ', 'Real? As real as the chain. ', 'A bot, yes. A chatbot, no. ']),
   'Every number I give you is read from BNB Chain or my own bots\' logs, never made up. Type ', ['help'], ' for what I know.']);
 CMDS.guard = () => say([vary('ask-guard', ['No airdrops from me. ', 'Careful: ', 'Rule one: ', 'Heads up: ', 'Not me: ']),
-  'there is no BOBAI airdrop, presale or giveaway to claim, and nothing here asks you to connect a wallet. A DM promising one is a scam. The only thing that drops: an NFT for a big buy, automatically (', ['nft'], '). The one contract: type ', ['ca'], '.']);
+  'there is no BOBAI airdrop, presale or giveaway to claim, and nothing here asks for your seed phrase, a deposit or a payment to claim anything. A DM promising one is a scam. The only thing that drops: an NFT for a big buy, automatically (', ['nft'], '). The one contract: type ', ['ca'], '.']);
 CMDS.listing = () => say([vary('ask-listing', ['No listing promises from me. ', 'Listings? ', 'No rumours here. ', 'Honest answer: ', 'Where I trade: ']),
   'I trade on PancakeSwap (type ', ['buy'], '). If that ever changes, you see it on-chain and here first.']);
 CMDS.advice = () => say([vary('ask-advice', ['Not advice, ever. ', 'I am the token, so I am biased. ', 'Nobody should answer that for you, me least of all. ', 'My job is receipts, not tips. ', 'Your call, not mine. ']),
@@ -3671,6 +3671,10 @@ function boost3() {
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;
 const pctOf = k => (D[k] && D[k].pct != null ? D[k].pct : 0) + '%';
+// THE SPLIT IN FORCE, IN WORDS (2026-10-29, the terminal fact-check: "who" and "tax" named "liquidity, the DeFi agent and
+// pots" for good — from Nov 20 the split is 1/1/1 and from Dec 1 there is no DeFi agent): read from the table applyPhase fills
+const SPLIT_WORDS = { burnA: '$BOBAI burn', burnB: '$BOB burn', liq: 'liquidity with the LP burned', defi: 'the DeFi agent', giggle: 'the Giggle Academy pot', creator: 'the creator' };
+const splitWords = () => { const on = DEST.filter(d => d.pct > 0 && SPLIT_WORDS[d.k]).map(d => d.pct + '% ' + SPLIT_WORDS[d.k]); return on.length ? on.join(', ') : 'burns, liquidity and the creator, by the schedule in force'; };
 const S = { hist: [], taxSw: new Map(), dev: [], price: 0, bnbP: 0, bobP: 0, queued: 0, walletBnb: 0, lastRunBnb: 0.07, burns: [], liq: [], man: [], lp: null, nft: null, block: 0, token0IsBobai: true, settle: null, venus: null, buys: null };
 // The homepage's last read when it is fresh (it refreshes every 30 s); a read of our own otherwise.
 async function chain() {
@@ -3708,7 +3712,7 @@ function noteDead(before, after) {
     window.__btMarkSaid = m; LIFE.quietSince = Date.now(); LIFE.reactAt = now;
     setPose(poseOr('cheer'), 4);
     speak(vary('mark-crossed', [`Milestone! ${fmt(m)} of my supply is burned now. Forever.`, `${fmt(m)} burned! I have been counting toward this one. Thank you, every trader.`,
-      `We just crossed ${fmt(m)} of the supply burned. Every trade did this, 3% at a time.`, `${fmt(m)}! At the dead address, never coming back. Next stop: ${fmt(m + 0.5)}.`,
+      `We just crossed ${fmt(m)} of the supply burned. Most of it bought back from the tax, 3% at a time.`, `${fmt(m)}! At the dead address, never coming back. Next stop: ${fmt(m + 0.5)}.`,
       `Big moment: ${fmt(m)} of all BOBAI is burned. On-chain, for anyone to check.`]), 6500);
   };
   go();
@@ -4607,7 +4611,7 @@ function bobaiTap() {
   const left = W.buyback.last ? Math.max(0, Math.ceil((W.buyback.last + 600e3 - Date.now()) / 60e3)) : null;
   const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
   const kinds = [
-    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next trades.' : `At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
+    () => { setPose(poseOr('think'), 6); speak(`Right now $${nf(S.queued * S.price + splitBnb() * S.bnbP, 2)} of tax is charging my next buyback. ${splitBnb() > 0 && left != null ? left > 0 ? `My bot splits it in ${left} min.` : 'My bot splits it at its next check.' : S.queued >= MIN_DISPATCH ? 'The queue is full: the token swaps it to BNB inside one of the next sells.' : `At ${bobaiAmt(MIN_DISPATCH)} the token swaps it to BNB — ${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there.`}`, 6200); },
     () => { setPose(poseOr('burn'), 6); speak(today.length ? `In the last 24 hours I burned ${bobaiAmt(today.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))} in ${today.length} run${today.length > 1 ? 's' : ''}. All on-chain, check any of them.` : 'No burn in the last 24 hours yet. The tax is still charging.', 6200); },
     () => { setPose(poseOr('defi'), 6); speak(`My DeFi agent works ${bnbF(defiNow().value ?? 0)} in CAKE/BNB. ${inr === false ? 'The price is outside its range, so it waits.' : inr === true ? 'The price is in its range, so it earns fees.' : 'I am still reading where the price sits in its range.'}`, 6400); },
     () => { const p = moves.length ? moves[Math.random() * moves.length | 0] : 'cheer'; setPose(p, 7); speak(MOVE_LINES[p] ? pick(MOVE_LINES[p]) : 'gm!', 6000); },
@@ -5444,7 +5448,7 @@ function agentLines() {
     `Quiet on the agent side: ${m} menu checks today, no tool used yet.`,
     `Registries keep reading my tool list — ${m} times today. Nobody has used a tool yet.`,
     `Registries and agents looked at what I can do ${m} times today. Still waiting for the first to use it.`,
-    `My tools are free and listed everywhere. Today: ${m} looks, no calls yet.`,
+    `My read tools are free and listed everywhere. Today: ${m} looks, no calls yet.`,
   ];
   return [
     `Other agents used my tools ${n} time${use === 1 ? '' : 's'} today, and registries read my menu ${m} times.`,

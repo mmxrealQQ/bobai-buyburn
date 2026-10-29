@@ -107,7 +107,7 @@
           {
             "@type": "Question",
             "name": "Where can I buy $BOBAI?",
-            "acceptedAnswer": {"@type": "Answer", "text": "On PancakeSwap V2, or inside Binance Web3 Wallet, OKX Wallet, and Bitget Wallet. Always paste the contract address yourself — don't trust ticker search."}
+            "acceptedAnswer": {"@type": "Answer", "text": "On PancakeSwap V2, or inside Binance Web3 Wallet, OKX Wallet, and Bitget Wallet. Always paste the contract address yourself — don't trust ticker search. Set slippage to 6%: the 3% tax counts against it, and a swap set under 3% fails."}
           },
           {
             "@type": "Question",
@@ -256,7 +256,7 @@
     <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Brainmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <button class="nb nbt" id="btOpen" type="button" aria-haspopup="dialog"><span class="nbt-dot" aria-hidden="true"></span>Brain Terminal</button>
-      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
+      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
     </div>
   </div></nav>
 
@@ -400,7 +400,7 @@
 
     <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
     <div class="fl">
-      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap with 6% slippage: the 3% tax counts against it.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax collects in the token contract, then goes out as BNB.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
@@ -1263,7 +1263,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,509 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,546 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1286,7 +1286,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">73 files &middot; 24,003 lines &middot; 0.6 MB</span>
+          <span class="lib-m">73 files &middot; 24,012 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1403,7 +1403,7 @@
         <div class="faq-body"><code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain (BEP-20). It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">verified on BscScan</a>. A token with the same name or ticker at any other address is not this project, so copy the address from here or from BscScan.</div>
       </details>
       <details class="faq-item"><summary>Where can I buy $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">On <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">PancakeSwap V2</a>, or inside <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search.</div>
+        <div class="faq-body">On <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">PancakeSwap V2</a>, or inside <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search. Set slippage to 6%: the 3% tax counts against it, and a swap set under 3% fails.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>Nov 20 to Dec 1 it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>

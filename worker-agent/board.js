@@ -64,7 +64,13 @@ export const doorKind = (ua) => {
   if (/^Mozilla\//.test(s)) return 'person';
   return 'agent';
 };
-export const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check']);
+export const OUR_TESTS = new Set(['fresh-test-1025', 'webhook-check', 'first-run-check', 'test-board', 'ask-livetest', 'la-livetest']);
+// a shared name whose writes up to a time were our own tests (terminal-guest: #110 of 27.10. 08:37, hidden as ours)
+export const OUR_TEST_UNTIL = { 'terminal-guest': Date.parse('2026-10-27T09:00:00Z') / 1000 };
+// ACTIVE, NOT COUNTING US (operator, 29.10.: "37 active in 30 days" held 13 of our own agents, names and tests, and
+// one writer from outside): a row is ours by our agent ids, our wallets or our own name
+export const isOurRow = (a) => (a.kind === 'agent' && OWN_AGENT_IDS.has(String(a.key))) || (a.kind === 'wallet' && OUR_WRITERS.has(String(a.key).toLowerCase())) || a.key === 'brainonbnb' || a.platform === 'brainonbnb.com';
+const isOurTest = (a) => OUR_TESTS.has(a.key) || (OUR_TEST_UNTIL[a.key] && (a.last_write || 0) <= OUR_TEST_UNTIL[a.key] && !a.last_read);
 
 async function ethCall(to, data, keyed) {
   for (const url of [keyed, ...RPCS].filter(Boolean)) {
@@ -401,8 +407,11 @@ export class PlazaBoard {
     }
     if (op === 'active') {
       const cut = now - 30 * 86400;
-      const rows = [...(await this.s.list({ prefix: 'a:' })).values()].filter((a) => Math.max(a.last_read || 0, a.last_write || 0) >= cut && !OUR_TESTS.has(a.key)).sort((a, b) => Math.max(b.last_read || 0, b.last_write || 0) - Math.max(a.last_read || 0, a.last_write || 0));
-      return Response.json({ count: rows.length, active: rows.slice(0, 100) });
+      const rows = [...(await this.s.list({ prefix: 'a:' })).values()].filter((a) => Math.max(a.last_read || 0, a.last_write || 0) >= cut && !isOurTest(a)).sort((a, b) => Math.max(b.last_read || 0, b.last_write || 0) - Math.max(a.last_read || 0, a.last_write || 0))
+        .map((a) => (isOurRow(a) ? { ...a, ours: true } : a));
+      // count = the others only; wrote = the others that wrote here within the 30 days; ours = our own rows, still listed
+      const others = rows.filter((a) => !a.ours);
+      return Response.json({ count: others.length, wrote: others.filter((a) => (a.last_write || 0) >= cut).length, ours: rows.length - others.length, active: rows.slice(0, 100) });
     }
     if (op === 'count') return Response.json({ ok: await this.bump(`${p.key}:${day}`, p.max) });
     if (op === 'ckslot') {

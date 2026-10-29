@@ -415,6 +415,12 @@ function Z0() { return privateKeyToAccount(generatePrivateKey()); }
   for (const key of ['fresh-test-1025', 'real-writer']) await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key, kind: 'write', ip: '192.0.2.9' }) }));
   const act3 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
   is('OC3 our own test writers (fresh-test-1025 …) are not "Active here"; another writer is', act3.active.some((a) => a.key === 'real-writer') && !act3.active.some((a) => a.key === 'fresh-test-1025'), JSON.stringify(act3.active.map((a) => a.key)));
+  // OC6 (29.10.: "37 active in 30 days" held 13 of ours): our agents and wallets are listed as ours and not counted,
+  // our test names not at all; the count is the others, and "wrote" the others that wrote
+  for (const [key, kind] of [['363709', 'read'], ['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', 'write'], ['test-board', 'write'], ['brainonbnb', 'write'], ['5249', 'read']]) await o3.fetch(new Request('https://board/seen', { method: 'POST', body: JSON.stringify({ key, kind, ip: '192.0.2.10' }) }));
+  const act6 = await (await o3.fetch(new Request('https://board/active', { method: 'POST', body: '{}' }))).json();
+  const others6 = act6.active.filter((a) => !a.ours).map((a) => a.key).sort();
+  is('OC6 the active count leaves us out: our agent, wallet and name are marked ours, test-board is gone, count = the others, wrote = the others that wrote', others6.includes('5249') && others6.includes('real-writer') && act6.active.filter((a) => a.ours).map((a) => a.key).sort().join() === ['0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', '363709', 'brainonbnb'].join() && act6.count === others6.length && act6.wrote === act6.active.filter((a) => !a.ours && a.writes).length && act6.ours === 3 && !act6.active.some((a) => a.key === 'test-board'), JSON.stringify({ count: act6.count, wrote: act6.wrote, ours: act6.ours, keys: act6.active.map((a) => a.key + (a.ours ? '*' : '')) }));
 }
 // CA a chat assistant reading its brief finds the filled link for its person (25.10.)
 {

@@ -569,7 +569,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. ' + hourlyNote(env) + ' The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: `:50 — rebalance (${env.LP_RESET_MODE === 'centred' ? 'centred, one swap, since 2026-10-07' : 'one-sided, no trade'}), ladder (${ladderActive(env) ? 'on' : 'off'}), then increase`, deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   await tellOperator(env, entry).catch(() => {});
@@ -617,3 +617,21 @@ export default {
       .catch((e) => env.AGENT.put('x402:settle:last', JSON.stringify({ at: new Date().toISOString(), error: String(e && e.message || e).slice(0, 300) }))));
   },
 };
+
+// THE RECORD'S OWN WORDS, FROM THE SETTINGS IN FORCE (2026-10-29, the promise check: the note still said "re-set beside
+// the price, one-sided, the width the replay put most ahead" while the cadence beside it said "centred, one swap" and the
+// re-sets minted ±20% by hand since 2026-10-07): the hourly sentence is built from LP_RESET_MODE, LP_WIDTH_PCT and the
+// ladder gate, the same values the code acts on, so the two cannot part again. Text only; no step reads it.
+function hourlyNote(env) {
+  const centred = env.LP_RESET_MODE === 'centred', width = Number(env.LP_WIDTH_PCT) || 0;
+  const how = centred
+    ? 'is re-set centred on the price, with one trade back to the range\'s mix (centred since 2026-10-07)'
+    : 'is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade (one-sided)';
+  const wide = width
+    ? `the width is ±${width}%, set by hand in LP_WIDTH_PCT; the width record (/lp/windows) replays every width against holding, and on the recorded prices none came out ahead of holding, the wider ones losing less`
+    : 'the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth';
+  const ladder = ladderActive(env)
+    ? 'BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade (ladder, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token.'
+    : 'The buy ladder (a reserve range below the price) is off while re-sets are centred.';
+  return `Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) ${how}; ${wide} (rebalance). ${ladder}`;
+}

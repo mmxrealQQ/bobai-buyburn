@@ -141,6 +141,14 @@ const skip = (name, why) => {
         && r.slippage_bps_needed === Math.max(sb, ss) && r.slippage_bps_needed < 1500,
       `buy ${sb} bps, sell ${ss} bps, headline ${r.slippage_bps_needed} bps`);
 
+    // THE QUOTE CARRIES THE IMPACT (2026-10-29: on chain a $50-$5,000 buy goes through at 3% and reverts at 2.9%; the
+    // answer said 10% at $2,000): the figure is the tax + 100 + 200 bps at any size, not more for a bigger trade
+    const big = await swapRoute(BOBAI, { usd: 2000 });
+    const want = (p) => Math.ceil(((p || 0) + 1) * 100) + 200;
+    ok('BOBAI: the slippage is the tax + 100 + 200 bps whatever the size ($100 and $2,000 alike)',
+      sb === want(t.buy_pct) && ss === want(t.sell_pct) && big.slippage_bps_needed_buy === sb && big.slippage_bps_needed_sell === ss,
+      `$100: buy ${sb}, sell ${ss} · $2,000: buy ${big.slippage_bps_needed_buy}, sell ${big.slippage_bps_needed_sell} · tax ${t.buy_pct}/${t.sell_pct}`);
+
     // A tax measured on one side only makes the answer optimistic, and the reader
     // has to be told which way the error runs.
     const oneSided = t.buy_pct == null || t.sell_pct == null;

@@ -312,9 +312,10 @@ export function shape(s, r, usd, routeError = null, control = null) {
     if (buy.beyondLadder || sell.beyondLadder) caution.push({ code: 'size_beyond_ladder', why: `$${usd} is larger than the largest size measured; the costs shown are the largest rung’s and the real ones are higher.`, ...fig(usd, buy.largestUsd ?? sell.largestUsd, 'usd') });
     const fot = (taxBuy ?? 0) > 0.1 || (taxSell ?? 0) > 0.1;
     entry = { route: null, pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, cost_pct: round(buy.pct, 3),
-      // from the measured tax as on the route (2026-10-10): that side's tax + this size's cost + 0.5% + 200 bps; unknown = 1500
+      // from the measured tax as on the route: that side's tax + 1% + 200 bps; unknown = 1500 (2026-10-29: no longer
+      // this size's cost on top — the caller's own quote carries it, as swap-route.js says)
       slippage_bps_needed: taxBuy == null && taxSell == null ? 1500 : buy.pct == null ? null
-        : fot ? Math.max(...[taxBuy, taxSell].map((t) => t == null ? 1500 : Math.ceil((t + buy.pct + 0.5) * 100) + 200))
+        : fot ? Math.max(...[taxBuy, taxSell].map((t) => t == null ? 1500 : Math.ceil((t + 1) * 100) + 200))
         // untaxed: the drift alone, as on the route (2026-10-28; the caller's own quote already carries fee and impact)
         : 50 };
     exit = { sellable: simHere ? sim.sellable !== false : null, cost_pct: round(sell.pct, 3),

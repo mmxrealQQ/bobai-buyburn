@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7851,
-   "zipBytes": 175992,
-   "txtBytes": 528248,
-   "sha256": "8f3841425518414e",
+   "zipBytes": 176019,
+   "txtBytes": 528298,
+   "sha256": "c35e65f1b4af0fb0",
    "reqs": [
     {
      "what": "A static host",
@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1389,
-   "zipBytes": 30624,
-   "txtBytes": 81166,
-   "sha256": "66e526c798c1aa9c",
+   "zipBytes": 30621,
+   "txtBytes": 81182,
+   "sha256": "faf59725f8064e11",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3546,
-   "zipBytes": 121409,
-   "txtBytes": 362535,
-   "sha256": "a61dacb61880b2b9",
+   "lines": 3547,
+   "zipBytes": 121565,
+   "txtBytes": 363128,
+   "sha256": "d1c51f981898cd3d",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -753,9 +753,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4969,
-   "zipBytes": 111570,
-   "txtBytes": 321846,
-   "sha256": "be08ea7726a0ca7c",
+   "zipBytes": 111595,
+   "txtBytes": 321896,
+   "sha256": "0a887780933bb683",
    "reqs": [
     {
      "what": "Node 18+ and time",

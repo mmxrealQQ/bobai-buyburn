@@ -261,9 +261,12 @@ export async function swapRoute(input, opts = {}) {
   // that sells its own collected tax inside the transfer. A side whose tax
   // could not be measured keeps the 1500 floor.
   const fot = taxBuy > 0.001 || taxSell > 0.001;
-  const impactPct = roundTripPct == null ? null : Math.abs(roundTripPct) / 2;
-  const poolImpactPct = poolOnly == null ? impactPct : Math.max(0, (1 - poolOnly / amountIn) * 100) / 2;
-  const sideBps = (t) => t == null ? 1500 : Math.ceil((t * 100 + (poolImpactPct || 0) + 0.5) * 100) + 200;
+  // THE QUOTE ALREADY MOVED THE PRICE (2026-10-29, on chain with eth_call: a $BOBAI buy of $50 to $5,000 and a sell of
+  // $50 to $500 go through at exactly 3% and revert at 2.9%; a $2,000 sell passes even at 2.9%): the minimum out is taken from the
+  // router's quote, which carries the pool fee and the price this size moves, so only the tax is outside it. Adding the
+  // impact again told 10% for a $2,000 trade of a 3% token — room a sandwich takes. Each side: its measured tax, 1%
+  // for the price moving before the block (a taxed token trades in thin pools), and the 200 bps buffer for a token that sells its own tax inside the transfer.
+  const sideBps = (t) => t == null ? 1500 : Math.ceil((t * 100 + 1) * 100) + 200;
   const mBuy = tax.ok ? tax.buy ?? null : null, mSell = tax.ok ? tax.sell ?? null : null; // null = not measured, never 0
   const slipBuy = fot ? sideBps(mBuy) : null, slipSell = fot ? sideBps(mSell) : null;
   // NO TAX: ONLY THE DRIFT (2026-10-27, a stranger reading /pancakeswap: "0.56% for a trade that moves the price 0.005%
@@ -326,7 +329,7 @@ export async function swapRoute(input, opts = {}) {
     slippage_bps_needed: slippageBps,
     ...(fot ? { slippage_bps_needed_buy: slipBuy, slippage_bps_needed_sell: slipSell } : {}),
     slippage_note: fot
-      ? `This token takes a cut on transfer, so a router compares its pre-tax quote against a post-tax delivery: the tolerance must cover that side's measured tax, the price this size moves, the pool fee and a 200 bps buffer — buy ${slipBuy} bps, sell ${slipSell} bps at this size. Less reverts; the tolerance is not the loss, the tax is taken either way.${mBuy == null || mSell == null ? ' A side whose tax could not be measured is held at 1500 bps.' : ''}`
+      ? `This token takes a cut on transfer, so a router compares its pre-tax quote against a post-tax delivery: the tolerance must cover that side's measured tax (the quote already carries the pool fee and the price this size moves), 100 bps for the price moving before your transaction lands and a 200 bps buffer for a token that sells its own tax inside the transfer — buy ${slipBuy} bps, sell ${slipSell} bps. Under the tax it reverts; the tolerance is not the loss, the tax is taken either way.${mBuy == null || mSell == null ? ' A side whose tax could not be measured is held at 1500 bps.' : ''}`
       : (!tax.ok
         // A quiet hour is not a clean token. The figure above is right for the
         // pools; it is wrong for a taxed token, and this hour cannot tell the

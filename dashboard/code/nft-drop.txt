@@ -341,7 +341,7 @@ footer a:hover{color:var(--gold)}
 <nav><div class="nav">
   <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
   <a class="brand-link" href="/nft/">BOBAI Buy Drops</a>
-  <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $BOBAI</a>
+  <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
 </div></nav>
 
 <header class="hero">
@@ -366,7 +366,7 @@ footer a:hover{color:var(--gold)}
     <a class="live-pill trust-pill" href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d#code" target="_blank" rel="noopener">Ownership renounced &middot; supply hard-capped</a>
     <ol class="earn" aria-label="How to earn one">
       <li><b>Buy $BOBAI on PancakeSwap</b> with a little more than $100 of BNB &mdash; wallet or aggregator fees come off first, and only what reaches the pool counts.</li>
-      <li><b>Set slippage to about 6% for a ~$100 buy</b> (more for larger ones). $BOBAI has a 3% tax; slippage covers the tax, the price impact of your trade and a small buffer. The <a href="/scanner">scanner</a> gives the exact figure for your size.</li>
+      <li><b>Set slippage to 6%</b>, at any size. $BOBAI has a 3% tax and PancakeSwap's quote already carries the price impact of your trade, so the slippage covers the tax and a small buffer; under 3% the swap fails.</li>
       <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier.</li>
     </ol>
     <a class="earn-btn" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $100+ on PancakeSwap &rarr;</a>

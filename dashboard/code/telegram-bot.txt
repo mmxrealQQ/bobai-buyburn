@@ -3540,7 +3540,7 @@ export function formatBotCard(nowMs = Date.now()) {
   const out = [
     '⚙️ <b>What the BOBAI bot does</b>',
     '',
-    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in that wallet → the bot splits it → burns, liquidity, creator, agent, pot. No hand on the switch.`,
+    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → burns, liquidity, creator, agent, pot. No hand on the switch.`,
     '',
   ];
   if (now) {
@@ -3866,7 +3866,7 @@ async function handleCommand(msg, env) {
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}&amp;chain=bsc">PancakeSwap</a>
 
-<b>Step 3:</b> Set slippage to about 6% (3% tax + price move + buffer; a big buy needs more)
+<b>Step 3:</b> Set slippage to 6%, at any size (the 3% tax + a buffer: the quote already carries your price impact; under 3% the swap fails)
 <i>(3% on-chain tax on every trade)</i>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;

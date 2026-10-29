@@ -191,9 +191,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 5780,
-   "zipBytes": 100309,
-   "txtBytes": 299487,
-   "sha256": "c4a5c7e8e24293bf",
+   "zipBytes": 100347,
+   "txtBytes": 299584,
+   "sha256": "5ccba64c0b750609",
    "reqs": [
     {
      "what": "A bot token",

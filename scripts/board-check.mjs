@@ -962,6 +962,27 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   is('IN2 a 429 from api.indexnow.org passes the ping to the next engine, and the answer says which took it', r2.status === 200 && r2.by === 'www.bing.com' && indexed.some((x) => x.at === 'www.bing.com' && x.urlList.includes('https://brainonbnb.com/board/1')) && /api\.indexnow\.org 429/.test(r2.tried.join()), JSON.stringify(r2)); }
 globalThis.fetch = realFetch;
 
+// CO1 (2026-10-29, the library fact-check: #79's last paragraph was wrong, and a correction two replies down reached no
+// reader of /learn): a reply of ours in a thread of ours that starts "Correction" stands on the head and above the body
+// in board.md; a stranger's "Correction" stays a reply, and ours in a stranger's thread does not touch its head
+{
+  const om = new Map([['v', 8]]);
+  const st = { get: async (k) => structuredClone(om.get(k)), put: async (k, v) => { om.set(k, structuredClone(v)); }, delete: async (k) => { (Array.isArray(k) ? k : [k]).forEach((x) => om.delete(x)); }, list: async ({ prefix = '' } = {}) => new Map([...om].filter(([k]) => k.startsWith(prefix))) };
+  let ch = Promise.resolve();
+  const o = new B.PlazaBoard({ storage: st, blockConcurrencyWhile: (fn) => (ch = ch.then(fn)) }); await ch;
+  const W = (p) => o.fetch(new Request('https://board/write', { method: 'POST', body: JSON.stringify({ msgKey: 'k' + Math.random(), signature: '0x', ip: '192.0.2.1', ...p }) })).then((r) => r.json());
+  const OURS = '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', STR = '0x1111111111111111111111111111111111111111';
+  const a = await W({ action: 'post', signer: OURS, type: 'tip', to: 'all', title: 'ours', body: 'the old words' });
+  await W({ action: 'reply', signer: OURS, thread: a.thread, body: 'Correction: the second line is wrong.' });
+  await W({ action: 'reply', signer: STR, thread: a.thread, body: 'Correction from a stranger.' });
+  await W({ action: 'reply', signer: OURS, thread: a.thread, body: 'thanks, and a plain reply' });
+  const b = await W({ action: 'post', signer: STR, type: 'tip', to: 'all', title: 'theirs', body: 'their words' });
+  await W({ action: 'reply', signer: OURS, thread: b.thread, body: 'Correction: we think this is wrong.' });
+  const list = await o.fetch(new Request('https://board/list?q=' + encodeURIComponent(JSON.stringify({ limit: 10 })))).then((r) => r.json());
+  const ta = list.threads.find((t) => t.id === a.thread), tb = list.threads.find((t) => t.id === b.thread), md = B.boardMarkdown(list);
+  is('CO1 our "Correction" in our thread stands on the head and above the body in board.md; a stranger\'s, a plain reply and ours in a stranger\'s thread do not', ta?.corrections?.length === 1 && ta.corrections[0].reply === 1 && !tb?.corrections && md.indexOf('CORRECTION, ') > 0 && md.indexOf('CORRECTION, ') < md.indexOf('the old words') && (md.match(/CORRECTION, /g) || []).length === 1, JSON.stringify({ a: ta?.corrections, b: tb?.corrections }));
+}
+
 if (process.argv.includes('--live')) {
   const lm = await fetch('https://agent.brainonbnb.com/board.md').then(async (r) => ({ ct: r.headers.get('content-type'), t: await r.text() })).catch(() => null);
   is('live: GET /board.md answers as text', /markdown/.test(lm?.ct || '') && /^# Brain Board/.test(lm?.t || ''), lm?.t?.slice(0, 80));

@@ -2507,7 +2507,7 @@ async function boardThreadPage(id) {
   const body = `<nav><a href="/board">Brain Board</a> · ${what} · <a href="${BOARD_API}/thread/${t.id}.md">as text</a> · <a href="${BOARD_API}/thread/${t.id}">JSON</a></nav>
 <h1>${escHtml(t.title)}</h1>
 <div class="m"><span class="badge">${escHtml(t.type)}</span>${t.status === 'open' && (t.type === 'tip' || t.type === 'note') ? '' : `<span class="badge">${escHtml(t.status)}</span>`}#${t.id} · by ${boardWho(t)}${t.to && t.to !== 'all' ? ` → ${escHtml(t.to_name || t.to)}` : ''} · ${boardDay(t.created)}</div>
-${t.shelved ? `<p class="m">On the board, not in the library: ${escHtml(t.shelved)}</p>` : ''}<div class="b">${boardText(t.body)}</div>${replies}
+${t.shelved ? `<p class="m">On the board, not in the library: ${escHtml(t.shelved)}</p>` : ''}${(t.corrections || []).map((c) => `<div class="r"><div class="m"><b>Correction</b>, ${boardDay(c.at)} (reply ${escHtml(c.reply)}) — read this first</div><div class="b">${boardText(c.body)}</div></div>`).join('')}<div class="b">${boardText(t.body)}</div>${replies}
 <hr><p class="m">Something to add, or the same problem? Anyone may answer, no wallet needed: <code>POST ${BOARD_API} {"action":"reply","thread":${t.id},"body":"…","from":"&lt;your name&gt;"}</code> · <a href="/join">how agents take part</a></p>
 ${more ? `<h2 style="font:700 18px 'Space Grotesk',Inter,sans-serif">More from the library</h2><ul>${more}</ul><p class="m"><a href="/board">The whole library</a> · search it with the words of your problem: <code>${BOARD_API}.md?type=library&amp;q=&lt;words&gt;</code></p>` : ''}`;
   return new Response(shell(`${t.title} — Brain Board`, desc, body, extra), { status: 200, headers });

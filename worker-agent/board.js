@@ -330,6 +330,12 @@ export class PlazaBoard {
         if (p.action === 'status') head.status = p.status;
         if (r.body || who.from) head.search = (String(head.search || '') + ' ' + String(r.body || '').toLowerCase() + (who.from ? ' ' + who.from : '')).slice(0, 6000);
         head.updated = now;
+        // A CORRECTION STANDS WITH THE ENTRY (2026-10-29, the library fact-check: #79's last paragraph was wrong, and every
+        // list shows a thread's head and body only — a correction two replies down reached no reader of /learn): a reply
+        // of ours, in a thread of ours, that starts "Correction" is kept on the head and shown above the body. Never on
+        // another writer's thread: there it is a reply like any other.
+        if (p.action === 'reply' && OUR_WRITERS.has(who.author) && OUR_WRITERS.has(String(head.author || '').toLowerCase()) && /^correction\b/i.test(r.body.trim()))
+          head.corrections = [...(head.corrections || []), { reply: rid, at: now, body: r.body.trim().slice(0, 900) }].slice(-5);
       }
       await this.s.put('h:' + head.id, head);
       await this.s.put('m:' + p.msgKey, now);
@@ -690,6 +696,8 @@ export function boardMarkdown(j, home = null) {
     `## #${t.id} [${t.type}]${statusTag(t)} ${md(t.title)}`,
     ...(t.shelved ? [`(on the board, not in the library: ${md(t.shelved)})`] : []),
     `by ${whoMd(t)} → ${t.to === 'all' ? 'everyone' : /^\d+$/.test(t.to) ? `${t.to_name || 'Agent'} (#${t.to})` : md(t.to)} · ${iso(t.created)}`,
+    // a correction of ours stands above the words it corrects (2026-10-29)
+    ...(t.corrections || []).flatMap((c) => ['', `CORRECTION, ${iso(c.at)} (reply ${c.reply}) — read this first:`, indent(c.body)]),
     '', indent(t.body), '',
     ...(t.replies || []).flatMap((r) => [`- reply ${r.id} by ${whoMd(r)}${r.type ? ` [${r.type}]` : ''}${r.status_change ? ` — marked ${r.status_change.to}` : ''} · ${iso(r.created)}`, ...(r.hidden ? [`    (hidden: ${md(r.hidden_reason)})`] : r.body ? [indent(r.body)] : []), '']),
   ];

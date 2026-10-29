@@ -38,7 +38,7 @@ import {
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
 import { alertsOf, nodeHiccupOnly } from '../shared/lp-alerts.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch, ladderActive } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch, ladderActive, MIN_SWEEP_BNB } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -569,7 +569,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. ' + hourlyNote(env) + ' The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = dailyNote(env) + ' the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. ' + hourlyNote(env) + ' The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: `:50 — rebalance (${env.LP_RESET_MODE === 'centred' ? 'centred, one swap, since 2026-10-07' : 'one-sided, no trade'}), ladder (${ladderActive(env) ? 'on' : 'off'}), then increase`, deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   await tellOperator(env, entry).catch(() => {});
@@ -634,4 +634,15 @@ function hourlyNote(env) {
     ? 'BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade (ladder, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token.'
     : 'The buy ladder (a reserve range below the price) is off while re-sets are centred.';
   return `Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) ${how}; ${wide} (rebalance). ${ladder}`;
+}
+
+// THE DAILY SENTENCE, FROM THE RULES IN FORCE (2026-10-29, the page fact-check: the note still said the AI income is
+// "sold for BNB and sent to the DeFi wallet" and the fees split "kept / $BOBAI" — since 2026-10-14 half of a sweep goes
+// to the operator in the coin it was paid in and half buys $BOBAI held in the income wallet, the fees go in thirds, and
+// since 2026-10-22 (SWEEP_LIQ "on") half of the $BOBAI half deepens the $BOBAI pool). Text only; no step reads it.
+function dailyNote(env) {
+  const bobai = env.SWEEP_LIQ === 'on'
+    ? 'half buys $BOBAI: half of that stays in the income wallet, never sold, and half is paired into the $BOBAI/WBNB pool with the LP burned when its gas is at most 5% of it'
+    : 'half buys $BOBAI that stays in the income wallet, never sold';
+  return `Once a day: what the AI side earned (the income wallets) is split once it is over ${MIN_SWEEP_BNB} BNB — half goes to the operator in the coin it was paid in, ${bobai} (sweep; the DeFi capital is not touched by it); the fees the PancakeSwap V3 position earned are sold for BNB and split in thirds — a third stays as capital, a third is paid out to the operator, a third buys $BOBAI that the agent holds in its own wallet, never sold (collect, thirds since 2026-10-14); BNB above the reserve — the kept fees and what the operator puts in — grows the same position (increase);`;
 }

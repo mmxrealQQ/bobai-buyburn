@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5026 lines.
+# one fetch. 7 files, 5031 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3114,7 +3114,9 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       return window.ethereum.request({method:'eth_requestAccounts'})
         .then(function(a){account=a&&a[0];return chain();})
         .then(function(){
-          if(current&&elTask.value===seeded){elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;dropPlan();}
+          // only a sentence that gains the address changes: a connect must not throw away a quote for the same words
+          var v=current?seedFor(current.cat,current.seed):'';
+          if(current&&elTask.value===seeded&&v!==elTask.value){elTask.value=v;seeded=v;dropPlan();}
           walletRow();wallet();
         })
         .catch(function(e){say('Wallet: '+esc(e.message||e),'rg-err');});
@@ -4324,6 +4326,7 @@ import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
 // can never state different numbers for the same measurement.
 import { censusDirArg } from './lib/census-dir.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
+import { OWN_WALLETS } from '../worker-agent/own-wallets.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'data', 'erc8183');
@@ -4690,6 +4693,8 @@ if (pendingRetry.length) {
 async function recheckOpen() {
   if (!fs.existsSync(OWNERS_FILE)) { console.log('  recheck skipped: no owners file (run --owners)'); return; }
   const owners = new Set(Object.keys(JSON.parse(fs.readFileSync(OWNERS_FILE, 'utf8')).owners || {}).map((a) => a.toLowerCase()));
+  // our own sellers too (2026-10-30): the agents' owner moved to 0xbFAA, so 0x7380 was no owner, and job 57001 stayed SUBMITTED here long after it paid
+  for (const w of OWN_WALLETS) owners.add(w);
   const lines = fs.readFileSync(JOBS_FILE, 'utf8').split('\n').filter(Boolean);
   const idx = new Map();
   const ids = [];

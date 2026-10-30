@@ -41,6 +41,7 @@ import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
 // can never state different numbers for the same measurement.
 import { censusDirArg } from './lib/census-dir.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
+import { OWN_WALLETS } from '../worker-agent/own-wallets.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'data', 'erc8183');
@@ -407,6 +408,8 @@ if (pendingRetry.length) {
 async function recheckOpen() {
   if (!fs.existsSync(OWNERS_FILE)) { console.log('  recheck skipped: no owners file (run --owners)'); return; }
   const owners = new Set(Object.keys(JSON.parse(fs.readFileSync(OWNERS_FILE, 'utf8')).owners || {}).map((a) => a.toLowerCase()));
+  // our own sellers too (2026-10-30): the agents' owner moved to 0xbFAA, so 0x7380 was no owner, and job 57001 stayed SUBMITTED here long after it paid
+  for (const w of OWN_WALLETS) owners.add(w);
   const lines = fs.readFileSync(JOBS_FILE, 'utf8').split('\n').filter(Boolean);
   const idx = new Map();
   const ids = [];

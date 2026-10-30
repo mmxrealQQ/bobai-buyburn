@@ -79,7 +79,7 @@ const TASK = {
 // x402, not through the escrow) since 2026-09-18. `<ADDR>` is the page's
 // placeholder for the visitor's wallet; without one the page falls back to the
 // same token address.
-const SEED_ADDR = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const SEED_ADDR = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'; // the DeFi wallet (2026-10-30): the position plan declines an address that holds no position
 const taskFor = (a) => (a.seed ? String(a.seed).replace('<ADDR>', SEED_ADDR) : (TASK[a.category] || TASK.rebalancing));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

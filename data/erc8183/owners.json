@@ -1,7 +1,7 @@
 {
-  "resolvedAt": "2026-10-25T07:30:35.969Z",
+  "resolvedAt": "2026-10-30T10:56:44.208Z",
   "population": "ERC-8004 agents carrying an http endpoint",
-  "agents": 2064,
+  "agents": 2065,
   "unread": 0,
   "owners": {
     "0x89e9e1ab11dd1b138b1dce6d6a4a0926aafd5029": [
@@ -6160,6 +6160,10 @@
       {
         "id": 49467,
         "name": "Brain On BNB AI ($BOBAI)"
+      },
+      {
+        "id": 391841,
+        "name": "Brain Board"
       }
     ],
     "0x1b634b1aefff672f9250844d5c5262e7493596b1": [

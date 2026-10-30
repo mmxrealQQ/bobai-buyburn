@@ -36,7 +36,8 @@ const owners = JSON.parse(fs.readFileSync(OWNERS, 'utf8')).owners || {};
 const own = JSON.parse(fs.readFileSync(OWN, 'utf8')).agents || {};
 const idsOf = new Map(); // provider -> Set(agent ids)
 for (const [addr, list] of Object.entries(owners)) idsOf.set(addr.toLowerCase(), new Set(list.map((a) => Number(a.id))));
-const ourProvider = Object.values(own).map((a) => String(a.owner || '').toLowerCase()).find(Boolean);
+// a constant since 2026-10-30: read from the agents' owner it became 0xbFAA after the move, and four of our six showed no jobs at all
+const ourProvider = '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963';
 if (ourProvider) { const s = idsOf.get(ourProvider) || new Set(); Object.values(OUR_SERVICE).forEach((id) => s.add(id)); idsOf.set(ourProvider, s); }
 // The two Venus agents' own agentWallets (worker-agent/agent-wallets.js, 2026-10-21): a job funded to one of them is
 // that agent's alone.

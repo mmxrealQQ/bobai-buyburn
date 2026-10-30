@@ -236,13 +236,13 @@ async function getActivity() {
   return {
     buyback_bot: 'autonomous, checks every 10 minutes 24/7 — executes a buyback+burn whenever the collected 3% tax reaches the swap threshold',
     buyback_wallet: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    buyback_wallet_note: 'The 3% trade tax accumulates in this public wallet between burn runs — check its live balance (bobai_wallet_balance / BscScan) to watch the next buyback charging up.',
+    buyback_wallet_note: 'The 3% trade tax collects in the token contract first, then reaches this public wallet, where a bot turns it into burns on its run. Pending tax: balanceOf(the token contract).',
     last_burn: last ? { time: last.time, bobai_burned: Math.round(parseFloat(last.bobaiBurned) || 0), burn_tx: 'https://bscscan.com/tx/' + last.bobaiBurnTx, bnb_spent: last.totalBnb } : null,
     last_7_days: period(within(7)),
     last_30_days: period(within(30)),
     bot_burn_runs_total: runs.length,
     audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
-    note: 'Burn cadence follows trading volume — the 3% tax funds the buybacks, so more volume means more frequent burns. $BOB is the sister token (1% of the tax burns $BOB). Every burn_tx is verifiable on BscScan. Not financial advice.',
+    note: 'Burn cadence follows trading volume — the 3% tax funds the buybacks, so more volume means more frequent burns. $BOB is the sister token (part of the tax burns $BOB; the split: /api/tokenomics). Every burn_tx is verifiable on BscScan. Not financial advice.',
   };
 }
 

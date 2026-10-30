@@ -175,8 +175,9 @@ textarea.hp-in{resize:vertical}
       const w = j.address;
       if (!w) { out.textContent = 'The holder list could not be read just now. Try again in a minute.'; return; }
       if (w.contract) { out.innerHTML = 'That address is a contract, not a wallet: it holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b>.'; return; }
+      if (w.bobai && !w.rank) { out.innerHTML = 'That address holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b>, but it is not counted among the holders: the burn address and the pool are left out.'; return; }
       if (!w.bobai) { out.innerHTML = 'This wallet holds no $BOBAI. ' + fmt(j.holders) + ' wallets do. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>'; return; }
-      out.innerHTML = 'Holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b> &middot; <b>#' + fmt(w.rank) + '</b> of ' + fmt(w.of) + ' holders.<br>'
+      out.innerHTML = 'Holds <b>' + fmt(w.bobai) + ' $BOBAI' + usd(w.bobai) + '</b> &middot; <b>#' + fmt(w.rank) + '</b> of ' + fmt(w.of) + ' holders (wallets only, no contracts).<br>'
         + (w.holder_pass ? '<span class="ok">Holder pass: yes.</span> Connect this wallet below and the agents answer free, 20 a day.'
           : 'Holder pass: <b>' + fmt(w.short_of_pass) + ' $BOBAI' + usd(w.short_of_pass) + '</b> short of 1,000,000. <a href="' + BUY + '" target="_blank" rel="noopener">Buy on PancakeSwap ↗</a>');
     }).catch(() => { out.textContent = 'The holder list could not be read just now. Try again in a minute.'; });

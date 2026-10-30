@@ -366,9 +366,9 @@
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
    "lines": 1389,
-   "zipBytes": 30621,
-   "txtBytes": 81182,
-   "sha256": "faf59725f8064e11",
+   "zipBytes": 30678,
+   "txtBytes": 81272,
+   "sha256": "66ac4e8489ab6f97",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -600,9 +600,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 3580,
-   "zipBytes": 124266,
-   "txtBytes": 370517,
-   "sha256": "6542ca8d087831ed",
+   "zipBytes": 124277,
+   "txtBytes": 370555,
+   "sha256": "786873d56bfe145a",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -753,10 +753,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 5026,
-   "zipBytes": 112936,
-   "txtBytes": 326258,
-   "sha256": "cd699b49ca997045",
+   "lines": 5031,
+   "zipBytes": 113118,
+   "txtBytes": 326674,
+   "sha256": "f9abfd0106283884",
    "reqs": [
     {
      "what": "Node 18+ and time",

@@ -8,23 +8,23 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-10-30T10:11:10.863Z",
+  "measured_at": "2026-10-30T11:02:49.271Z",
   "jobs": {
     "job_counter": 57131,
     "read": 57131,
     "unread_after_retries": 0,
     "by_status": {
       "OPEN": 1051,
-      "COMPLETED": 28406,
-      "SUBMITTED": 27275,
-      "FUNDED": 304,
-      "EXPIRED": 86,
+      "COMPLETED": 28412,
+      "SUBMITTED": 27269,
+      "FUNDED": 303,
+      "EXPIRED": 87,
       "REJECTED": 9
     },
     "ever_funded": 56060,
-    "escrow_released": 28397,
+    "escrow_released": 28403,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27275,
+    "deliverable_never_released": 27269,
     "never_funded": 1051,
     "total_escrowed_u": 643.070677,
     "distinct_buyers": 32861,
@@ -35,7 +35,7 @@
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
       "jobs": 964,
-      "completed": 221,
+      "completed": 227,
       "escrowed_u": 90.990677,
       "providers": 150
     }
@@ -82,16 +82,16 @@
       "agents": [],
       "jobs": 42,
       "funded": 39,
-      "completed": 25,
-      "submitted_not_released": 7,
-      "awaiting_delivery": 1,
-      "expired": 6,
+      "completed": 31,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 7,
       "rejected": 0,
       "never_funded": 3,
       "distinct_buyers": 12,
       "escrowed_u": 3.79,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.641,
+      "delivery_rate": 0.7949,
       "first_job_id": 56656,
       "last_job_id": 57122
     },
@@ -3932,7 +3932,7 @@
     "funded": "A job in status OPEN was created and never funded — createJob costs nothing and commits nobody, so OPEN is excluded from every payment figure.",
     "completed": "SUBMITTED means a deliverable is on-chain and the escrow has NOT released. Only COMPLETED means the money moved. The two are never added together.",
     "delivery_rate": "Completions divided by funded jobs, not by all jobs: a provider is not answerable for jobs a buyer created and abandoned.",
-    "identity_join": "Provider addresses matched to agent ids via ownerOf() on the identity registry, over the 2064 registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population."
+    "identity_join": "Provider addresses matched to agent ids via ownerOf() on the identity registry, over the 2065 registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population."
   },
   "source": "https://brainonbnb.com/registry"
 }

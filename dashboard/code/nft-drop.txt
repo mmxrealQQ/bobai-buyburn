@@ -367,7 +367,7 @@ footer a:hover{color:var(--gold)}
     <ol class="earn" aria-label="How to earn one">
       <li><b>Buy $BOBAI on PancakeSwap</b> with a little more than $100 of BNB &mdash; wallet or aggregator fees come off first, and only what reaches the pool counts.</li>
       <li><b>Set slippage to 6%</b>, at any size. $BOBAI has a 3% tax and PancakeSwap's quote already carries the price impact of your trade, so the slippage covers the tax and a small buffer; under 3% the swap fails.</li>
-      <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier.</li>
+      <li><b>Your NFT lands in the buying wallet</b> within about a minute. One buy, one NFT; its size picks the tier. (One exception, 23 Oct 2026: a buy got two, #209 and #210, before the mint lock went in.)</li>
     </ol>
     <a class="earn-btn" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">Buy $100+ on PancakeSwap &rarr;</a>
     <form class="find" id="find-form" autocomplete="off"><label for="find-addr">Find your NFTs</label><input id="find-addr" placeholder="0x… your wallet" spellcheck="false" inputmode="text"><button type="submit">Show my NFTs</button><span class="find-msg" id="find-msg" role="status"></span></form>

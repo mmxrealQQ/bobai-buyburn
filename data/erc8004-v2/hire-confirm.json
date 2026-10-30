@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-30T10:13:56.784Z",
+  "measured_at": "2026-10-30T10:51:46.405Z",
   "asked": 66,
-  "quoted": 28,
+  "quoted": 29,
   "agents": [
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://plinth-relay.vercel.app/agent",
+      "reason": null
+    },
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
@@ -63,16 +73,6 @@
       "quotes": true,
       "price": "1 $U",
       "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
-      "reason": null
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "0.01 $U",
-      "endpoint": "https://plinth-relay.vercel.app/agent",
       "reason": null
     },
     {
@@ -200,10 +200,10 @@
       "label": "Brain on BNB — DeFi Agent",
       "category": "rebalancing",
       "ours": true,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
-      "reason": "seller declined: This wallet holds no PancakeSwap V3 position. Nothing to plan. Nothing was quoted."
+      "reason": null
     },
     {
       "id": 341554,

@@ -245,10 +245,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793258497255">
+<link rel="stylesheet" href="brain/brain.css?v=1793348638421">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793209612">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793348456">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -260,7 +260,7 @@
   <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
 </div>
 <div class="bp-buyline" role="region" aria-label="$BOBAI at a glance">
-  <span class="why"><b>3% tax</b> buys back &amp; burns<span class="s"> · buy with <b>6% slippage</b></span><span class="x"> · LP <b data-bl="lp">—</b> burned</span><span class="r"> · owner renounced</span></span>
+  <span class="why"><b>3% tax</b><span class="w"> buys back &amp; burns</span><span class="s"> · buy with <b>6% slippage</b></span><span class="x"> · LP <b data-bl="lp">—</b> burned</span><span class="r"> · owner renounced</span></span>
   <span class="f p"><span class="k">Price</span><b data-bl="price">—</b></span>
   <span class="f m"><span class="k">MC</span><b data-bl="mc">—</b></span>
   <span class="f l"><span class="k">Liq</span><b data-bl="liq">—</b></span>
@@ -269,7 +269,18 @@
 </div>
 <script>
 (() => {
-  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t && e.textContent !== t) e.textContent = t; };
+  // WHAT DOES NOT FIT GOES WHOLE, NEVER CUT (2026-10-30, operator: cut off at "supply"): the old width steps were set by
+  // hand and the longer sentence of 29.10. outgrew nine of fifteen widths; the figures change length too, so the line
+  // measures itself. From 1180 px it stands in the header; below that it scrolls sideways inside itself, as before.
+  const line = document.querySelector('.bp-buyline'), order = ['.bn', '.v', '.why .x', '.m', '.l', '.why .r', '.why .w'].map((s) => line.querySelector(s));
+  const fit = () => {
+    order.forEach((e) => e.classList.remove('bl-off'));
+    if (innerWidth < 1180) return;
+    for (const e of order) { if (line.scrollWidth <= line.clientWidth) break; e.classList.add('bl-off'); }
+  };
+  const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t && e.textContent !== t) { e.textContent = t; fit(); } };
+  addEventListener('resize', fit); fit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   let fromChart = false;
   const tick = () => { let q = null; try { q = window.__btQuote && window.__btQuote(); } catch (e) {} if (!q) return; fromChart = true; for (const k of ['price', 'mc', 'liq', 'vol', 'burned', 'lp']) set(k, q[k]); };
   setInterval(() => { if (!document.hidden) tick(); }, 2000);
@@ -1087,7 +1098,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,780 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,782 lines &middot; 98 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1274,7 +1285,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,555 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 3,580 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1297,7 +1308,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">73 files &middot; 24,041 lines &middot; 0.6 MB</span>
+          <span class="lib-m">74 files &middot; 24,122 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1470,9 +1481,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793255511')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793348456')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793258497256" defer></script>
-<script src="brain/cards.js?v=1793258497256" defer></script>
-<script src="brain/hero.js?v=1793258497256" defer></script>
+<script src="brain/brain.js?v=1793348638422" defer></script>
+<script src="brain/cards.js?v=1793348638422" defer></script>
+<script src="brain/hero.js?v=1793348638422" defer></script>
 </body></html>

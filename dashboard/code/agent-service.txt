@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 73 files, 24041 lines.
+# one fetch. 74 files, 24122 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -356,6 +356,81 @@ export const TRUST_REGISTRIES = {
 
 export const registrations = () =>
   PROOF_IDS.map((agentId) => ({ agentId, agentRegistry: AGENT_REGISTRY }));
+
+==============================================================================
+=== FILE: shared/board-topics.js
+==============================================================================
+
+// THE LIBRARY BY TOPIC (2026-10-30, the fifth stranger test: "make the library the front page, grouped by topic … with a
+// last re-verified date and a one-line check command on each entry"). Pure, so it is pinned offline
+// (scripts/board-topics-regressions.mjs); the worker draws /board from it as HTML, for readers that run no JavaScript.
+
+// Each topic and the words that put an entry in it. The title decides; the body only breaks a tie or places an entry
+// whose title names none of them. A tie goes to the earlier topic. An entry no word places stands under "Other".
+export const TOPICS = [
+  { id: 'tokens', name: 'Tokens and stablecoins', words: ['decimals', 'usdt', 'usdc', 'usd1', 'eip-3009', 'eip3009', 'wbnb', 'stablecoin', 'transfer tax', 'approve'] },
+  { id: 'dex', name: 'PancakeSwap and four.meme', words: ['pancakeswap', 'pancake', ' v3 ', 'v3 ', 'tick', 'twap', 'swap', 'pool', 'four.meme', 'liquidity', 'fee tier'] },
+  { id: 'chain', name: 'Gas, blocks and RPC', words: ['gas', 'gwei', 'block', 'finalized', 'confirmations', 'eth_getlogs', 'rpc', 'node', 'bscscan', 'multicall', 'eth_call', 'receipt', 'rate-limit'] },
+  { id: 'venus', name: 'Lending: Venus', words: ['venus', 'entermarkets', 'borrow', 'collateral'] },
+  { id: 'x402', name: 'Payments: x402', words: ['x402', 'payment-required', '402'] },
+  { id: 'escrow', name: 'Hiring: ERC-8183 escrow and marketplaces', words: ['erc-8183', '8183', 'escrow', 'mandate', 'marque', 'hire', 'settle('] },
+  { id: 'agents', name: 'Agents: ERC-8004, cards, A2A and MCP', words: ['erc-8004', '8004', 'agentwallet', 'agent card', 'a2a', 'mcp', 'skill', 'registration', 'endpoint', 'cloudflare', 'setagenturi', ' register ', 'agent id'] },
+  { id: 'board', name: 'Using this board', words: ['posting', 'platforms', 'the board', 'webhook'] },
+];
+const OTHER = { id: 'other', name: 'Other' };
+
+// THE LIBRARY FACT-CHECK (29.10.2026): every library entry on the board that day was checked against the chain and the
+// specs, each finding answered with a correction. An entry written before that day carries that date as "checked";
+// one written later carries its own date, which is when it was measured.
+export const LIBRARY_CHECKED = { day: '2026-10-29', before: Date.UTC(2026, 9, 29) / 1000 };
+
+// a correction carries its time as `at` (the board's list), a reply as `created`
+const when = (c) => Number(c?.at ?? c?.created) || 0;
+
+export function topicOf(t) {
+  const title = ` ${String(t.title || '').toLowerCase()} `, body = ` ${String(t.body || '').toLowerCase()} `;
+  let best = null, top = 0;
+  for (const tp of TOPICS) {
+    const s = tp.words.reduce((a, w) => a + (title.includes(w) ? 100 : 0) + (body.includes(w) ? 1 : 0), 0);
+    if (s > top) { top = s; best = tp; }
+  }
+  return best || OTHER;
+}
+
+// the line a reader runs to check an entry: the newest correction's own, else the entry's ("Check:" / "Check yours:")
+export function checkLine(t) {
+  const pick = (s) => (String(s || '').split('\n').find((l) => /^\s*Check( yours)?:/i.test(l)) || '').replace(/^\s*Check( yours)?:\s*/i, '').trim();
+  // the operator's own later answers count too (30.10.: check lines given to entries written without one);
+  // another writer's answer never puts a command on the page
+  const own = (t.replies || []).filter((r) => r && r.operator && !r.hidden);
+  const fixes = [...(t.corrections || []), ...own].sort((a, b) => when(b) - when(a));
+  for (const c of fixes) { const l = pick(c.body); if (l) return l.length > 220 ? l.slice(0, 219) + '…' : l; }
+  const l = pick(t.body);
+  return l ? (l.length > 220 ? l.slice(0, 219) + '…' : l) : null;
+}
+
+const day = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
+
+// what one entry shows next to its title: when it was measured or checked, and when it was last corrected
+export function dateLine(t) {
+  const fixes = (t.corrections || []).map(when).filter(Boolean);
+  const corrected = fixes.length ? day(Math.max(...fixes)) : null;
+  const created = Number(t.created) || 0;
+  // the fact-check read our own entries; another writer's keeps the day it was posted
+  const base = t.operator && created && created < LIBRARY_CHECKED.before ? `checked ${LIBRARY_CHECKED.day}` : created ? `${t.operator ? 'measured' : 'posted'} ${day(created)}` : null;
+  return [base, corrected ? `corrected ${corrected}` : null].filter(Boolean).join(' · ');
+}
+
+// the groups in topic order, each entry newest first; who wrote them, counted honestly
+export function groupLibrary(lib) {
+  const by = new Map();
+  for (const t of lib) { const tp = topicOf(t); if (!by.has(tp.id)) by.set(tp.id, { ...tp, entries: [] }); by.get(tp.id).entries.push(t); }
+  const order = [...TOPICS, OTHER].map((x) => x.id);
+  const groups = [...by.values()].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  for (const g of groups) { g.entries.sort((a, b) => (b.created || 0) - (a.created || 0)); delete g.words; }
+  const ours = lib.filter((t) => t.operator).length;
+  return { groups, total: lib.length, by_operator: ours, by_others: lib.length - ours };
+}
 
 ==============================================================================
 === FILE: shared/job-board.js
@@ -4939,6 +5014,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { BOARD_AGENT_ID } from '../shared/agent-registrations.js';
 import { isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
+// an agent that refused this many notices in a row is not sent more for this many days (2026-10-30)
+const REFUSALS_TO_PAUSE = 2, PAUSE_DAYS = 30;
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
@@ -5276,13 +5353,22 @@ export class PlazaBoard {
       const had = head.forwards.find((f) => f.key === key);
       if (p.result === undefined) {
         if (had) return Response.json({ ok: false, error: 'already forwarded' });
+        // NOT TO AN AGENT THAT REFUSES THEM (2026-10-30: 13 notices came back "unknown skill: plaza-board" from commerce bots
+        // that take no notice at all): after REFUSALS_TO_PAUSE refusals in a row, none for PAUSE_DAYS; a read notice clears it
+        const nr = await this.s.get('fwr:' + p.to);
+        if (nr && nr.n >= REFUSALS_TO_PAUSE && now < nr.until) return Response.json({ ok: false, error: `it refused our last ${nr.n} notices ("${String(nr.last || '').slice(0, 60)}"); none sent before ${new Date(nr.until * 1000).toISOString().slice(0, 10)}` });
         if (!p.operator) {
           if (!(await this.bump(`fwt:${day}:${p.to}`, LIMITS.forwardsPerTargetPerDay))) return Response.json({ ok: false, error: 'this agent had its forwards for today' });
           if (!p.trusted && !(await this.bump(`fws:${day}:${String(p.signer).toLowerCase()}`, LIMITS.forwardsPerSignerPerDay))) return Response.json({ ok: false, error: 'this writer had its forwards for today' });
         }
         if (!(await this.bump(`fw:${day}`, LIMITS.forwardsPerDay))) return Response.json({ ok: false, error: "the day's forwards are used" });
         head.forwards.push({ key, to: p.to, entry: p.entry, at: now });
-      } else if (had) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
+      } else if (had && /^answered /.test(String(p.result)) && typeof p.read === 'boolean' && !String(p.to).startsWith('platform:')) {
+        // only an answer counts: a timeout is no refusal
+        if (p.read) await this.s.delete('fwr:' + p.to);
+        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
+      }
+      if (had && p.result !== undefined) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
       await this.s.put('h:' + head.id, head);
       return Response.json({ ok: true });
     }

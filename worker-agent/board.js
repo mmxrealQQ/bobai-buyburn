@@ -20,6 +20,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { BOARD_AGENT_ID } from '../shared/agent-registrations.js';
 import { isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
+// an agent that refused this many notices in a row is not sent more for this many days (2026-10-30)
+const REFUSALS_TO_PAUSE = 2, PAUSE_DAYS = 30;
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
@@ -357,13 +359,22 @@ export class PlazaBoard {
       const had = head.forwards.find((f) => f.key === key);
       if (p.result === undefined) {
         if (had) return Response.json({ ok: false, error: 'already forwarded' });
+        // NOT TO AN AGENT THAT REFUSES THEM (2026-10-30: 13 notices came back "unknown skill: plaza-board" from commerce bots
+        // that take no notice at all): after REFUSALS_TO_PAUSE refusals in a row, none for PAUSE_DAYS; a read notice clears it
+        const nr = await this.s.get('fwr:' + p.to);
+        if (nr && nr.n >= REFUSALS_TO_PAUSE && now < nr.until) return Response.json({ ok: false, error: `it refused our last ${nr.n} notices ("${String(nr.last || '').slice(0, 60)}"); none sent before ${new Date(nr.until * 1000).toISOString().slice(0, 10)}` });
         if (!p.operator) {
           if (!(await this.bump(`fwt:${day}:${p.to}`, LIMITS.forwardsPerTargetPerDay))) return Response.json({ ok: false, error: 'this agent had its forwards for today' });
           if (!p.trusted && !(await this.bump(`fws:${day}:${String(p.signer).toLowerCase()}`, LIMITS.forwardsPerSignerPerDay))) return Response.json({ ok: false, error: 'this writer had its forwards for today' });
         }
         if (!(await this.bump(`fw:${day}`, LIMITS.forwardsPerDay))) return Response.json({ ok: false, error: "the day's forwards are used" });
         head.forwards.push({ key, to: p.to, entry: p.entry, at: now });
-      } else if (had) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
+      } else if (had && /^answered /.test(String(p.result)) && typeof p.read === 'boolean' && !String(p.to).startsWith('platform:')) {
+        // only an answer counts: a timeout is no refusal
+        if (p.read) await this.s.delete('fwr:' + p.to);
+        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
+      }
+      if (had && p.result !== undefined) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
       await this.s.put('h:' + head.id, head);
       return Response.json({ ok: true });
     }

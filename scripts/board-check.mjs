@@ -96,9 +96,11 @@ const REG = {
   782: { owner: X.address, wallet: X.address, doc: docOf({ name: 'x402 short 782', services: [{ name: 'x402', endpoint: 'https://pay782.test/answer' }] }) },
   783: { owner: X.address, wallet: X.address, doc: docOf({ name: 'x402 whole 783', services: [{ name: 'x402', endpoint: 'https://pay783.test/answer' }] }) },
   781: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Locked card 781', services: [{ name: 'A2A', endpoint: 'https://agentcore781.test/runtimes/arn%3Ax/invocations/.well-known/agent-card.json?qualifier=DEFAULT' }] }) },
+  784: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Skill-only bot 784', services: [{ name: 'A2A', endpoint: 'https://agent784.test/a2a' }] }) },
   780: { owner: X.address, wallet: X.address, doc: docOf({ name: 'Root card 780', image: 'https://x.test/i.png', services: [{ name: 'A2A', endpoint: 'https://agent780.test/a2a' }, { name: 'MCP', endpoint: 'https://agent780.test/mcp' }] }) },
 };
 const delivered = [];   // what the board forwarded to agent 777's own A2A endpoint
+const refused784 = [];  // what reached 784, which refuses every notice
 const ourHostCalls = [];
 const realFetch = globalThis.fetch;
 let pfFile = null, indexDown = false; const hooks = [], indexed = [];
@@ -113,6 +115,8 @@ globalThis.fetch = async (url, init) => {
     const result = data.startsWith('0x6352211e') ? pad(r.owner) : data.startsWith('0x00339509') ? (r.wallet ? pad(r.wallet) : '0x' + '0'.repeat(64)) : enc(r.doc);
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result }));
   }
+  // 784 takes no notice: every message/send is refused, as the commerce bots on BNB Chain answer ours (30.10.)
+  if (url === 'https://agent784.test/a2a') { refused784.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32601, message: 'unknown skill: "plaza-board"' } })); }
   if (url === 'https://agent777.test/a2a') { delivered.push(JSON.parse(init.body)); return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { kind: 'message', parts: [{ kind: 'text', text: 'got it' }] } })); }
   if (url.startsWith('https://pay782.test/') || url.startsWith('https://pay783.test/')) {
     const whole = url.includes('783'), opt = { scheme: 'exact', network: 'eip155:56', amount: '1', asset: '0x1', payTo: '0x2', maxTimeoutSeconds: 60 };
@@ -299,6 +303,16 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const before = mem.get(`fw:${today}`) || 0;
   await call('POST', '/board', await signed(X, { action: 'post', agent: 778, type: 'note', to: '123456', title: 'to an id without a registration', body: 'q' }));
   is('R2 an id without an endpoint takes no slot of the day', (mem.get(`fw:${today}`) || 0) === before);
+}
+// NR AN AGENT THAT REFUSES OUR NOTICES (2026-10-30: 13 of our notices came back "unknown skill: plaza-board" from bots
+// that take no notice at all): after 2 refusals in a row it is not sent more for 30 days, and the thread says why
+{
+  for (let i = 0; i < 3; i++) await call('POST', '/board', await signed(X, { action: 'post', agent: 778, type: 'note', to: '784', title: 'to the bot ' + i, body: 'n' + i }));
+  const list = (await call('GET', '/board?to=784&limit=50')).j?.threads || [];
+  const last = list.find((x) => x.title === 'to the bot 2');
+  const t = last ? (await call('GET', '/board/thread/' + last.id)).j : null;
+  is('NR an agent that refused 2 notices in a row gets no third; the pause and its end are kept', refused784.length === 2 && (mem.get('fwr:784')?.n || 0) >= 2 && !!mem.get('fwr:784')?.until, JSON.stringify({ sent: refused784.length, fwr: mem.get('fwr:784') }));
+  is('NR … and nothing marks a forward for it: no slot of the day is taken', !!t?.id && !(t.forwards || []).some((f) => f.to === '784'), JSON.stringify({ found: !!t?.id, titles: list.slice(0, 5).map((x) => x.title), fw: t?.forwards }));
 }
 // R3 a title with a line break is refused; a body cannot forge a header or a verified reply in the text view
 {

@@ -147,6 +147,8 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('a made-up name that reads as a tool name is counted under its name, and the answer names the closest tools', details().includes('mcp:call:unknown') && details().includes('mcp:unknown:get_bobai_price') && /Closest: bobai_price/.test(un.result?.content?.[0]?.text || '') && un.result?.isError === true, details().join() + ' | ' + JSON.stringify(un).slice(0, 300));
   const un2 = await (await rpc('tools/call', { name: 'get_token_price' })).json();
   ok('a tie between the closest names puts the plainer one first (get_token_price -> bobai_price among them)', /Closest: [^.]*bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 300));
+  // 30.10.: a price asked for is told where any BSC token's price is, and $BOBAI's
+  ok('a made-up price tool is told: bsc_token_preflight (token.price_usd) for any token, bobai_price for $BOBAI', /bsc_token_preflight with its address \(token\.price_usd\); for \$BOBAI: bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 400));
   // 29.10.: who calls what — the client of an initialize, kept for its address, names each tool call and each failed one
   {
     const store = new Map(), had = globalThis.caches;

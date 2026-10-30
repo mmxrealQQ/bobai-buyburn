@@ -421,6 +421,7 @@ const AGENT_GUIDE = {
     { ask: 'The measured state of the ERC-8004 registry: registered, readable, reachable, by operator', call: 'bnb_agent_census' },
     { ask: 'Who has actually been hired and paid through the ERC-8183 escrow (optionally one provider)', call: 'bnb_agent_employment', args: { address: '0x… (optional)' } },
     { ask: 'BEFORE A TRADE of any BSC token, at your size: what stops it, what to weigh, the route, the slippage it needs and what the round trip costs — one short answer', call: 'bsc_token_preflight', args: { address: '0x…', usd: 250 } },
+    { ask: 'The price in dollars of ANY BSC token, from its pool read live (token.price_usd, with the pre-trade check around it)', call: 'bsc_token_preflight', args: { address: '0x…' } },
     { ask: 'What a trade of ANY BSC token would really cost: impact, swap fee and the transfer tax measured from executed trades', call: 'bsc_pool_scan', args: { address: '0x…' } },
     { ask: 'Which PancakeSwap fee tier actually pays its liquidity providers for a pair', call: 'pancakeswap_fee_tiers', args: { address: '0x…' } },
     { ask: 'Which price range for a PancakeSwap V3 position, replayed through the swaps that happened', call: 'pancakeswap_range_plan', args: { address: '0x…', capitalUsd: 1000 } },
@@ -1261,7 +1262,9 @@ function unknownToolText(name) {
   const near = MCP_TOOLS.map((t) => { const hay = (t.name + ' ' + (t.description || '')).toLowerCase();
     return { n: t.name, s: words.reduce((a, w) => a + (t.name.includes(w) ? 3 : hay.includes(w) ? 1 : 0), 0) }; })
     .filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.n.length - b.n.length).slice(0, 3).map((x) => x.n); // a tie: the plainer name first
-  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}This server has ${MCP_TOOLS.length} tools; tools/list names them all (start with bobai_guide for a map).`;
+  // a price asked for (30.10.: get_token_price twice on 29.10.): the two tools that give one, said in words
+  const price = /price/i.test(said) ? 'For the price of any BSC token: bsc_token_preflight with its address (token.price_usd); for $BOBAI: bobai_price. ' : '';
+  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}${price}This server has ${MCP_TOOLS.length} tools; tools/list names them all (start with bobai_guide for a map).`;
 }
 
 // MCP resources — documents an MCP client can read/subscribe to directly.

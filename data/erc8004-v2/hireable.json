@@ -206,11 +206,17 @@
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
       "ours": true,
-      "seed": "grid plan for 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c, 10 levels across a 15% band, $1000 capital"
+      "seed": "grid plan for WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c with a budget of $1000 capital, 10 levels across a 15% band"
     },
     {
       "id": 341555,
       "label": "Sluicegate",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -241,12 +247,6 @@
     {
       "id": 340532,
       "label": "Hevo Yield",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 358786,
-      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -298,7 +298,7 @@
       "label": "Brain on BNB — Venus Yield Ranking",
       "category": "yield-optimization",
       "ours": true,
-      "seed": "where is the best stablecoin yield on BNB Chain right now"
+      "seed": "best stablecoin yield for 1000 USDT on BNB Chain right now"
     },
     {
       "id": 116171,
@@ -331,6 +331,12 @@
       "ours": false
     },
     {
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
       "id": 340458,
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
@@ -345,12 +351,6 @@
     {
       "id": 269228,
       "label": "Health Factor Monitor",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 374107,
-      "label": "Brinkwatch by Pokter",
       "category": "health-factor",
       "ours": false
     },

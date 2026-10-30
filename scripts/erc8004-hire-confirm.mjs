@@ -64,10 +64,11 @@ if (!agents?.length) {
 // avoided — "give me a quote for your standard service" got a no-quote out of
 // our own agents, which would have been a finding about the question.
 const TASK = {
-  rebalancing: 'quote rebalancing my liquidity position back to its target range',
-  'grid-trading': 'quote a grid trading plan for the BNB/USDT pair',
-  'yield-optimization': 'quote finding the best yield for my BNB on BNB Chain',
-  'health-factor': 'monitor the health factor on my Venus position',
+  // the sentences the page's Hire panel fills in (2026-10-30), so 'quoted when asked' is what a buyer's press gets
+  rebalancing: 'rebalance holdings [{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":1000}] — what should the range be',
+  'grid-trading': 'grid plan for WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c with a budget of $1000 capital, 10 levels across a 15% band',
+  'yield-optimization': 'best stablecoin yield for 1000 USDT on BNB Chain right now',
+  'health-factor': 'health factor and liquidation distance for the Venus position at 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
 };
 
 // A row whose button carries a seed sentence is asked with THAT sentence — it is

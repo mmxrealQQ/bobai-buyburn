@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-30T10:51:46.405Z",
+  "measured_at": "2026-10-30T11:52:14.093Z",
   "asked": 66,
-  "quoted": 29,
+  "quoted": 31,
   "agents": [
     {
       "id": 363619,
@@ -226,16 +226,6 @@
       "reason": null
     },
     {
-      "id": 374114,
-      "label": "Gridloom by Pokter",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "0.08 $U",
-      "endpoint": "https://pokter.xyz/api/house/gridloom/a2a?chain=56",
-      "reason": null
-    },
-    {
       "id": 340455,
       "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
@@ -275,6 +265,16 @@
       "price": null,
       "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
       "reason": "Grid requires GRID_PLAN_V1 with pair, lowerPrice, upperPrice, capital, gridCount."
+    },
+    {
+      "id": 374114,
+      "label": "Gridloom by Pokter",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "0.08 $U",
+      "endpoint": "https://pokter.xyz/api/house/gridloom/a2a?chain=56",
+      "reason": null
     },
     {
       "id": 338477,
@@ -357,16 +357,6 @@
       "reason": null
     },
     {
-      "id": 374112,
-      "label": "Cresthold by Pokter",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
-      "reason": null
-    },
-    {
       "id": 340456,
       "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
@@ -412,10 +402,20 @@
       "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.1 $U",
       "endpoint": "https://marque.trade/agents/tidemark/a2a",
-      "reason": "seller declined: This task needs the amount to deploy before it can be priced. Nothing was signed or charged."
+      "reason": null
+    },
+    {
+      "id": 374112,
+      "label": "Cresthold by Pokter",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
+      "reason": null
     },
     {
       "id": 338478,
@@ -548,6 +548,16 @@
       "reason": null
     },
     {
+      "id": 374107,
+      "label": "Brinkwatch by Pokter",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://pokter.xyz/api/house/brinkwatch/a2a?chain=56",
+      "reason": null
+    },
+    {
       "id": 340458,
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
@@ -577,16 +587,6 @@
       "endpoint": "https://agents.chainhelix.io/healthmon/",
       "reason": null,
       "example_task": "{\"collateral\":{\"ETH\":{\"amount\":10,\"liqThreshold\":0.8}},\"debt\":{\"USDT\":10000},\"prices\":{\"ETH\":2000,\"USDT\":1}}"
-    },
-    {
-      "id": 374107,
-      "label": "Brinkwatch by Pokter",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://pokter.xyz/api/house/brinkwatch/a2a?chain=56",
-      "reason": "seller declined: The brief names no wallet address"
     },
     {
       "id": 341565,

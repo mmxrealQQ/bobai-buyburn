@@ -15756,7 +15756,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     // at the BNB price of now (2026-10-30): at the last run's price /defi read $1,539 beside the front page's $1,502
-    worth: { bnb: r4(value.now), usd: bnbUsdNow > 0 ? Math.round(n(value.now) * bnbUsdNow * 100) / 100 : usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
+    worth: { bnb: r4(value.now), usd: bnbUsdNow > 0 ? Math.round(n(value.now) * bnbUsdNow * 100) / 100 : usd(value.now), beside_bnb: r4(besideBnb), beside_usd: bnbUsdNow > 0 ? Math.round(n(besideBnb) * bnbUsdNow * 100) / 100 : usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),

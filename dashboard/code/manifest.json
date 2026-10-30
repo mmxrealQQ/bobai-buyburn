@@ -54,9 +54,9 @@
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
    "lines": 7492,
-   "zipBytes": 196282,
-   "txtBytes": 610325,
-   "sha256": "38027b0e487bcc8e",
+   "zipBytes": 196288,
+   "txtBytes": 610392,
+   "sha256": "b8aa78fa788cffc8",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -635,9 +635,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
    "lines": 24137,
-   "zipBytes": 610823,
-   "txtBytes": 1730462,
-   "sha256": "419787bc9ec5d913",
+   "zipBytes": 610829,
+   "txtBytes": 1730529,
+   "sha256": "79c5bec99249a6d5",
    "reqs": [
     {
      "what": "A wallet to be paid into",

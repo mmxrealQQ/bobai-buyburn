@@ -761,7 +761,9 @@ export async function handleA2A(request, env, opts = {}) {
     // SIGNED ON THIS DIALECT TOO (2026-10-30): Marque asks with "negotiate" and showed our six as
     // identity_matched_unsigned beside eleven provider_signed agents. An ask that carries terms gets the same envelope
     // as negotiate-erc8183-job next to the flat fields; if it cannot be signed the flat quote stands as before.
-    const signed = data.terms ? await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken }).catch(() => null) : null;
+    // SafeHire nests the same ask under data.request.
+    const ask = data.terms ? data : data.request?.terms ? { ...data, ...data.request } : null;
+    const signed = ask ? await signedQuote({ data: ask, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken }).catch(() => null) : null;
     return rpcOk(id, flatMessage({
       ...(signed?.ok ? signed.envelope : {}),
       // Flat dialect: a provider address and a price, which is everything a

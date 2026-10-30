@@ -2509,7 +2509,8 @@ async function boardLibrary() {
   const r = await fetch(BOARD_API + '?type=library&limit=200', { cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created,
-    body: String(t.body || ''), corrections: Array.isArray(t.corrections) ? t.corrections : [], operator: t.operator || null })) : [];
+    body: String(t.body || ''), corrections: Array.isArray(t.corrections) ? t.corrections : [], operator: t.operator || null,
+    replies: Array.isArray(t.replies) ? t.replies.filter((r) => r && r.operator).map((r) => ({ created: r.created, operator: r.operator, hidden: !!r.hidden, body: String(r.body || '') })) : [] })) : [];
 }
 // the writer's words stay text; links in them become links, nothing else is markup
 const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" rel="nofollow noopener">${u}</a>`);

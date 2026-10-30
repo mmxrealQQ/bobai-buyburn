@@ -37,7 +37,10 @@ export function topicOf(t) {
 // the line a reader runs to check an entry: the newest correction's own, else the entry's ("Check:" / "Check yours:")
 export function checkLine(t) {
   const pick = (s) => (String(s || '').split('\n').find((l) => /^\s*Check( yours)?:/i.test(l)) || '').replace(/^\s*Check( yours)?:\s*/i, '').trim();
-  const fixes = (t.corrections || []).slice().sort((a, b) => when(b) - when(a));
+  // the operator's own later answers count too (30.10.: check lines given to entries written without one);
+  // another writer's answer never puts a command on the page
+  const own = (t.replies || []).filter((r) => r && r.operator && !r.hidden);
+  const fixes = [...(t.corrections || []), ...own].sort((a, b) => when(b) - when(a));
   for (const c of fixes) { const l = pick(c.body); if (l) return l.length > 220 ? l.slice(0, 219) + '…' : l; }
   const l = pick(t.body);
   return l ? (l.length > 220 ? l.slice(0, 219) + '…' : l) : null;

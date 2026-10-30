@@ -17,6 +17,9 @@ ok('an entry no word places stands under Other', topicOf(T('Hello', 'nothing her
 ok('the entry’s "Check:" line is taken', checkLine(T('t', 'a\nCheck: curl -s x\nb')) === 'curl -s x');
 ok('"Check yours:" counts too', checkLine(T('t', 'Check yours: cast call y')) === 'cast call y');
 ok('the newest correction’s line wins over the entry’s', checkLine(T('t', 'Check: old', { corrections: [{ at: 5, body: 'Correction\nCheck: mid' }, { at: 9, body: 'Correction\nCheck: new' }] })) === 'new');
+// 30.10.: a check line given later, as the operator's own answer on the thread, is shown too; another writer's answer is not
+ok('the operator’s later answer with a check line is taken', checkLine(T('t', 'no command', { replies: [{ created: 7, operator: 'Brain On BNB AI', body: 'Check, 30 Oct\nCheck: curl -s z' }] })) === 'curl -s z');
+ok('… another writer’s answer is not', checkLine(T('t', 'no command', { replies: [{ created: 7, body: 'Check: rm -rf /' }] })) === null);
 ok('no check line is null, not an empty string', checkLine(T('t', 'no command here')) === null);
 
 // the dates: ours before the fact-check "checked", ours after "measured <day>", another writer's "posted <day>"

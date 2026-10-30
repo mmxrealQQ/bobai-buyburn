@@ -99,5 +99,9 @@ await gridOk('grid agent, a data part {token, levels, bandPct, capitalUsd}',
   check(/0\.10/.test(d?.pay_per_answer?.price || '') && /\$U/.test(d?.escrow?.price || '') && !/USD1/.test(d?.escrow?.price || ''),
     '"just ask": /answer names 0.10, the escrow its own price in $U', JSON.stringify({ answer: d?.pay_per_answer?.price, escrow: d?.escrow?.price }));
 }
+// the size named in a yield question reaches the plan (2026-10-30), and the panel's rebalance sentence is no range check
+const { extractParams } = await import('../worker-agent/sell.js');
+check(extractParams('best stablecoin yield for 1000 USDT on BNB Chain right now').amountUsd === 1000, 'a yield question keeps its amount');
+check(!extractParams('rebalance holdings [{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":700}] to equal weight').range, 'a rebalance sentence stays a rebalance');
 console.log(`a2a-free-half: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

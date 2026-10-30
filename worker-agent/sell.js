@@ -322,6 +322,12 @@ export const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
   if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }
+  // The amount of a yield question (2026-10-30): "1000 USDT" was read and dropped, and the plan answered without a size.
+  if (out.amountUsd == null && /\byield\b/i.test(String(text))) {
+    const m = String(text).match(/\$\s?([\d,]+)|\b([\d,]+)\s*(?:USDT|USDC|USD1|FDUSD|DAI)\b/i);
+    const v = m && Number(String(m[1] || m[2]).replace(/,/g, ''));
+    if (v > 0) out.amountUsd = v;
+  }
   // A PancakeSwap V3 position is named by a number, not an address. "position
   // 7309536" in the sentence is the id; the first paid $BOBAI answer (2026-09-03)
   // was refused for want of exactly this line.

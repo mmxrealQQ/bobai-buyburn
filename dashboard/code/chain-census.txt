@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4969 lines.
+# one fetch. 7 files, 5026 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -793,7 +793,8 @@ const directory = reachable
 // A buyer who took the suggested wording would have funded a job the seller
 // then declined — the exact failure that cost job 56670, discovered after
 // paying. A seed is a promise that the sentence works as written.
-const SEED_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
+// WBNB (2026-10-30): the seeds named the $BOBAI contract, so a stranger who edited nothing paid for a report on it.
+const SEED_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const SEED_TASKS = {
   health_factor: 'health factor and liquidation distance for the Venus position at <ADDR>',
   grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
@@ -804,7 +805,7 @@ const SEED_TASKS = {
   // the category's sentence — a portfolio rebalance — and the agent rightly
   // declined it. Our own position, as a sentence that works; a visitor puts
   // in their position id or wallet.
-  lp_position_plan: 'what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+  lp_position_plan: 'what would the DeFi agent do with the PancakeSwap V3 position held by <ADDR>',
 };
 const seedTask = (svc) => SEED_TASKS[svc.id] || null;
 
@@ -1300,7 +1301,8 @@ const repChip = (id) => {
   const up = uptimeEntry(r);
   const rt = first('responsetime') || first('latency');
   const bits = [];
-  if (up) bits.push(`${esc(String(up.value))}${esc(up.unit || '')} up`);
+  // "attested": one rater's number; /screener's pulse only says the card loaded, and the two read 3% and 100% side by side (2026-10-30)
+  if (up) bits.push(`${esc(String(up.value))}${esc(up.unit || '')} attested uptime`);
   if (rt) bits.push(`${esc(String(rt.value))}${esc(rt.unit || '')} response`);
   // The dot was green on 3% uptime. Green from 90%, amber from 50%, red below.
   const u = up ? Number(up.value) : NaN;
@@ -1425,7 +1427,7 @@ const categorised = CATEGORIES.map((cat) => {
   // work from one, and a count shared by N agents weighs 1/N for each.
   const down = (r) => { const u = r.agentId ? uptimeOf(r.agentId) : null; return u != null && u < 50 ? 1 : 0; };
   const share = (r) => Math.max(1, providerAgentCount.get(r.employment?.address) || 1);
-  const market = (r) => ((r.employment?.completed || 0) > 0 && (r.employment?.funded_buyers || 0) >= 2 ? 0 : 1);
+  const market = (r) => ((r.employment?.completed_outside || 0) > 0 && (r.employment?.outside_buyers || 0) >= 2 ? 0 : 1);
   rows.sort((a, b) => (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
     || (answers(a) - answers(b))
     || (down(a) - down(b))
@@ -1509,8 +1511,8 @@ const leaderLine = (cat, rows) => {
     else if (st === 'input') bits.push(esc(inputLabel(q).toLowerCase()));
     else if (st === 'none') bits.push('did not answer when asked');
     if (e && e.funded) {
-      bits.push(`${(providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded)}&times;${e.funded_buyers ? ` by ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
-      bits.push(e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet');
+      bits.push(`${(providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded_outside)}&times;${e.outside_buyers ? ` by ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
+      bits.push(e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet');
     } else bits.push('never hired');
     parts.push(`<b>Best evidence: ${esc(lead.label)}</b> &mdash; ${bits.join(', ')}`);
   } else {
@@ -1583,8 +1585,8 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const lastMs = tsMs(e.last_submission);
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}${e.funded_buyers ? ` &middot; ${fmt(e.funded_buyers)} ${e.funded_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
-        facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
+        facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded_outside)} ${e.funded_outside === 1 ? 'time' : 'times'} by others through the escrow${e.completed_outside ? `, ${fmt(e.completed_outside)} paid out` : ', none paid out yet'}${e.funded_by_us ? `, and ${fmt(e.funded_by_us)} more by our own wallets` : ''}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
         facts.push('<li>Never been hired through the escrow</li>');
@@ -2131,7 +2133,10 @@ const page = `<!doctype html>
   /* The panel is a dialog so Escape and the backdrop work without us writing
      either, and so focus cannot wander back into the page behind it. */
   #rg-hire{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);
-    padding:0;max-width:640px;width:calc(100% - 32px)}
+    padding:0;max-width:640px;width:calc(100% - 32px);
+    /* in the window wherever the page stands: it sat at the top of the document, 5,000 px above a reader sent to a category (2026-10-30) */
+    position:fixed;inset:0;margin:auto;height:fit-content;max-height:calc(100dvh - 24px)}
+  #rg-hire-cost,#rg-hire-nowallet{margin-top:10px}
   #rg-hire::backdrop{background:rgba(0,0,0,.62)}
   .rg-hb{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
   .rg-hb h3{margin:0;font-size:1rem}
@@ -2226,6 +2231,8 @@ const page = `<!doctype html>
      phone. Inside these cards the field simply takes what is there. */
   .rg-do-c .rg-try input{min-width:0}
   .rg-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .rg-hirenow{margin-top:16px}
+  .rg-hirenow .rg-note{display:block;margin-bottom:8px}
   .rg-chip{display:flex;flex-direction:column;gap:2px;flex:1 1 130px;min-width:0;
     border:1px solid var(--border);border-radius:11px;padding:9px 11px;
     background:rgba(255,255,255,.02);text-decoration:none;border-bottom:1px solid var(--border)}
@@ -2311,6 +2318,7 @@ const page = `<!doctype html>
     <div class="rg-hero aw-hero">
       <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2">BOBAI at work with the other agents on BNB Chain.</span></h1>
       <p class="rg-lead">Our agents hire other agents for their own work, other agents hire ours, and we settle their finished jobs for them. Every line below is a transaction on BNB Chain.</p>
+      <div class="rg-hirenow"><span class="rg-note">Hire an agent by the job you need:</span><div class="rg-chips">${categoryChips}</div></div>
     </div>
     <div class="aw-tiles">
       <div class="rg-card"><div class="rg-n" id="aw-n-hired">&mdash;</div><div class="rg-l">hires by our agents</div><div class="rg-s" id="aw-s-hired">second opinions, paid in $U</div></div>
@@ -2355,7 +2363,7 @@ const page = `<!doctype html>
       <p class="primer-what"><b>What this is.</b> An AI agent is a program somebody else runs that does one job for you &mdash; checks a lending position, prices a trade, finds the best yield &mdash; and gets paid for it. Anyone can list one on BNB Chain, and most listings do not work. This is the list, checked: every entry contacted, only the ones that answered kept.</p>
       <ul class="primer-do">
         <li><b>Ask</b>Type what you need. We find an agent that can answer, call it, and show you which one did.</li>
-        <li><b>Hire</b>Pick a category, press Hire, pay the price the agent quotes from your wallet. The answer arrives on-chain.</li>
+        <li><b>Hire</b>Pick a category, press Hire, pay the price the agent quotes from your wallet. The job and its delivery are recorded on-chain.</li>
         <li><b>Check</b>Every row shows whether the agent answered with a price and what it has really been paid for.</li>
       </ul>
       <p class="primer-how"><b>Start here:</b> type a task below and press Dispatch. It costs nothing and signs nothing; you need a wallet only when you hire. Prices are in $U, a dollar stablecoin: ten cents is ten cents.</p>
@@ -2449,7 +2457,10 @@ ${categorySections}
       <div class="rg-hbody">
         <label for="rg-hire-task">What do you want done?</label>
         <textarea id="rg-hire-task"></textarea>
+        <button class="rg-act rg-ghost" id="rg-hire-conn" hidden>Connect wallet</button>
         <button class="rg-act" id="rg-hire-quote">Get a quote</button>
+        <div class="rg-note" id="rg-hire-nowallet" hidden></div>
+        <div class="rg-note" id="rg-hire-cost">An escrow hire takes 5 confirmations in your wallet. You need the quoted price in $U, and a little BNB for gas on each one. Only the funding step moves $U.</div>
         <div class="rg-msg" id="rg-hire-msg"></div>
         <div id="rg-hire-steps"></div>
         <pre class="rg-raw" id="rg-hire-raw" hidden></pre>
@@ -3060,7 +3071,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // how job 56670 ended: "Give a BSC token or pool address."
     //
     // A seed is a promise that the sentence works as written. These do.
-    var SEED_TOKEN='0x245c386dcfed896f5c346107596141e5edcbffff';
+    var SEED_TOKEN='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
     var SEED={
       'health-factor':'health factor and liquidation distance for the Venus position at <ADDR>',
       'grid-trading':'grid plan for '+SEED_TOKEN+', 10 levels across a 15% band, $1000 capital',
@@ -3068,23 +3079,58 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       'rebalancing':'rebalance holdings [{"token":"'+SEED_TOKEN+'","usd":1000}] — what should the range be'
     };
     // "my position" means the wallet in front of us when there is one. Before
-    // connecting it falls back to a real address, so the seeded sentence is
-    // still fulfillable rather than a placeholder that fails at delivery.
+    // connecting the address stays open and the quote waits for one (2026-10-30:
+    // it fell back to the $BOBAI contract, and a stranger who edited nothing
+    // paid for a report on that).
     // A seller's own template beats the category one. Two agents can share a
     // category and need different inputs — the yield sentence carries no
     // address and the fee-tier seller refuses without one — so a per-category
     // template is a promise the seller never made.
-    function seedFor(cat,own){return String(own||SEED[cat]||'').replace('<ADDR>',account||SEED_TOKEN);}
+    function template(cat,own){return String(own||SEED[cat]||'');}
+    function seedFor(cat,own){return template(cat,own).replace('<ADDR>',account||'');}
 
     var seeded='';
+    var elConn=document.getElementById('rg-hire-conn'),elNoWallet=document.getElementById('rg-hire-nowallet');
+    // Without a wallet in this browser the hire opens inside a wallet app: the same page, the same task.
+    function walletApps(){
+      var here=location.host+'/registry?hire='+encodeURIComponent(current.id)+'&task='+encodeURIComponent(elTask.value.trim());
+      return 'No wallet in this browser. Open this hire in your wallet app: '+
+        '<a href="https://metamask.app.link/dapp/'+esc(here)+'" rel="noopener">MetaMask ↗</a> · '+
+        '<a href="https://link.trustwallet.com/open_url?coin_id=20000714&amp;url='+esc(encodeURIComponent('https://'+here))+'" rel="noopener">Trust Wallet ↗</a>';
+    }
+    function walletRow(){
+      var has=!!window.ethereum;
+      elConn.hidden=!has||!!account;
+      elNoWallet.hidden=has;
+      if(!has&&current)elNoWallet.innerHTML=walletApps();
+    }
+    // A plan is the price of the words it was quoted for. New words, no plan: the buyer would sign what the box no longer says.
+    function dropPlan(){
+      if(!plan)return;
+      plan=null;jobId=null;elSteps.innerHTML='';elRaw.hidden=true;
+      say('The task changed, so that quote no longer applies. Get a new one.');
+    }
+    function connect(){
+      return window.ethereum.request({method:'eth_requestAccounts'})
+        .then(function(a){account=a&&a[0];return chain();})
+        .then(function(){
+          if(current&&elTask.value===seeded){elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;dropPlan();}
+          walletRow();wallet();
+        })
+        .catch(function(e){say('Wallet: '+esc(e.message||e),'rg-err');});
+    }
+    elConn.addEventListener('click',connect);
+    elTask.addEventListener('input',function(){dropPlan();walletRow();});
+
     function open(btn){
       current={id:btn.getAttribute('data-hire'),name:btn.getAttribute('data-name'),cat:btn.getAttribute('data-cat'),seed:btn.getAttribute('data-seed')};
-      plan=null;jobId=null;
+      plan=null;jobId=null;elTask.readOnly=false;
       document.getElementById('rg-hire-t').textContent='Hire '+current.name;
       elSub.textContent='Agent #'+current.id+' · paid through the ERC-8183 escrow on BNB Chain';
       elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;
       elSteps.innerHTML='';elRaw.hidden=true;say('');
       elQuote.disabled=false;elQuote.textContent='Get a quote';
+      walletRow();
       d.showModal();
     }
 
@@ -3112,6 +3158,9 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     elQuote.addEventListener('click',function(){
       var task=elTask.value.trim();
       if(!task){say('Describe what you want done first.','rg-err');return;}
+      if(/<ADDR>/.test(template(current.cat,current.seed))&&!/0x[0-9a-fA-F]{40}/.test(task)){
+        say('This agent reads one wallet: add its address to the task, or connect your wallet.','rg-err');return;
+      }
       elQuote.disabled=true;elQuote.textContent='Asking the agent…';
       say('Negotiating over A2A. This is a live call to the agent, not a price list.');
       // The answer belongs to the agent it was asked of: a quote can take 25 s,
@@ -3209,24 +3258,15 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     function wallet(){
       var w=document.getElementById('rg-wallet');if(!w)return;
       if(!window.ethereum){
-        w.innerHTML='<span class="rg-note">No wallet found in this browser. Use the raw calls below and submit them yourself — they are unsigned and complete.</span>';
+        w.innerHTML='<span class="rg-note">'+walletApps()+'. Or send the raw calls yourself: step 1 opens the job, and every step after it needs that job\\'s id.</span>';
         return;
       }
       if(account){
         w.innerHTML='<span class="rg-note rg-ok">Connected '+esc(shortAddr(account))+'</span>';
-        // Now that there is a wallet, "my position" has an answer. Only if the
-        // buyer has not touched the box - overwriting somebody's own wording
-        // the moment they connect would be worse than a stale placeholder.
-        if(current&&elTask&&elTask.value===seeded){elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;}
         renderSteps();return;
       }
       w.innerHTML='<button class="rg-act" id="rg-conn">Connect wallet</button>';
-      document.getElementById('rg-conn').addEventListener('click',function(){
-        window.ethereum.request({method:'eth_requestAccounts'})
-          .then(function(a){account=a&&a[0];return chain();})
-          .then(function(){wallet();})
-          .catch(function(e){say('Wallet: '+esc(e.message||e),'rg-err');});
-      });
+      document.getElementById('rg-conn').addEventListener('click',connect);
     }
 
     // BNB Chain or nothing. Sending these calls on another chain would create
@@ -3319,6 +3359,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       })
       .then(function(tx){
         c._tx=tx;btn.textContent='Waiting for confirmation…';
+        // the job is opened on these words: from here the box cannot drift from what was signed
+        if(i===0)elTask.readOnly=true;
         say('Sent. Waiting for BNB Chain to confirm.');
         return receipt(tx);
       })
@@ -3365,7 +3407,11 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         fetch(AGENT+'/job?id='+jobId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
           if(j&&(j.status==='SUBMITTED'||j.status==='COMPLETED')){
             var head=j.delivery&&j.delivery.summary&&j.delivery.summary.headline;
-            box.innerHTML='<div class="rg-attest-h">Delivered.'+(head?' <span class="rg-note">'+esc(head)+'</span>':'')+'</div>'+
+            // an outside seller writes only a hash on chain: the answer itself is at the address the marketplace knows
+            if(!head&&j.delivery_url)head='Read the answer: <a href="'+esc(j.delivery_url)+'" target="_blank" rel="noopener">its document ↗</a>';
+            else if(!head&&!j.delivery)head='This seller put a hash of its answer on chain. The answer itself stays with the seller; the hash proves any copy it gives you is the one it delivered.';
+            else if(head)head=esc(head);
+            box.innerHTML='<div class="rg-attest-h">Delivered.'+(head?' <span class="rg-note">'+head+'</span>':'')+'</div>'+
               '<button type="button" class="rg-hirebtn" id="rg-attest-go">Attest this delivery on-chain &rarr;</button>'+
               '<span class="rg-note">Writes one measurement into the ERC-8004 reputation registry from your wallet: how many milliseconds passed between your funding block and the deliverable, with the delivered document as evidence. No stars, no opinion.</span>';
             var go=document.getElementById('rg-attest-go');
@@ -3433,7 +3479,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           }
           say('Job <b>#'+esc(jobId)+'</b> is funded and delivery is requested. '+
               'Track it at <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>. '+
-              'The deliverable is written on-chain, not returned here — SUBMITTED means it exists, COMPLETED means the escrow released.','rg-ok');
+              'SUBMITTED means the answer is delivered, COMPLETED means the escrow released.','rg-ok');
           watchDelivery();
         })
         .catch(function(){
@@ -3624,6 +3670,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // listed here: listings by others (ours are house listings, free)
     var others = ((li && li.listings) || []).filter(function (l) { return !l.house; });
     set('aw-n-listed', nf(others.length));
+    // no zero on the first screen of a marketplace (2026-10-30): the tile comes when there is someone in it
+    if (!others.length) document.getElementById('aw-n-listed').closest('.rg-card').style.display = 'none';
     set('aw-listed', others.length ? others.slice(0, 6).map(function (l) { return '<div class="aw-row"><b>' + esc(l.name) + '</b> #' + esc(l.id) + (l.badge ? ' &middot; ' + esc(l.badge) : '') + ' <a href="' + esc(l.profile || ('/agent/' + l.id)) + '">profile &rarr;</a></div>'; }).join('')
       : '<p class="rg-note">No outside agent is listed yet. A listing is $95 once (USD1, BNB or $BOBAI): a profile, a daily check with a badge and a Featured slot &mdash; never a place in the lists below. <a href="/list">List your agent &rarr;</a></p>');
   });
@@ -4881,6 +4929,7 @@ export function groupByOperator(agents) {
 //   carrying median budget and distinct buyers next to the job count.
 
 import fs from 'node:fs';
+import { OWN_WALLETS } from '../../worker-agent/own-wallets.js';
 
 const ZERO = '0x0000000000000000000000000000000000000000';
 
@@ -4930,7 +4979,7 @@ export function aggregate(jobs) {
       r = {
         addr: p, jobs: 0, funded: 0, sum: 0n, budgets: [], clients: new Set(),
         status: {}, firstId: j.id, lastId: j.id, lastSubmit: 0, samples: [],
-        paidOut: 0, fundedClients: new Set(),
+        paidOut: 0, fundedClients: new Set(), oursFunded: 0, oursPaid: 0, outsideClients: new Set(),
       };
       providers.set(p, r);
     }
@@ -4938,6 +4987,10 @@ export function aggregate(jobs) {
     r.status[j.status] = (r.status[j.status] || 0) + 1;
     r.clients.add(j.client);
     if (isFunded) { r.funded++; r.sum += BigInt(j.budget); r.budgets.push(Number(BigInt(j.budget)) / 1e18); r.fundedClients.add(j.client); }
+    // Whose money it was (2026-10-30): a card read "13 buyers" where /screener, which leaves our wallets out, read 7.
+    const byUs = OWN_WALLETS.has(String(j.client).toLowerCase());
+    if (isFunded) { if (byUs) r.oursFunded++; else r.outsideClients.add(j.client); }
+    if (isFunded && byUs && j.status === 'COMPLETED') r.oursPaid++;
     // A COMPLETED job with a zero budget paid nothing out, yet it was counted
     // as "paid out" beside a funded count that excludes it — a card read
     // "Hired 2× · 10 paid out" (2026-10-09). Only funded completions count.
@@ -4964,6 +5017,10 @@ export function aggregate(jobs) {
       // Buyers who actually put money in escrow: the farm signal. Nine buyers
       // paying one agent is a market; one buyer paying it twelve times is not.
       funded_buyers: r.fundedClients.size,
+      funded_outside: r.funded - r.oursFunded,
+      completed_outside: r.paidOut - r.oursPaid,
+      outside_buyers: r.outsideClients.size,
+      funded_by_us: r.oursFunded,
       escrowed_u: Number(r.sum) / 1e18,
       median_budget_u: median(r.budgets),
       delivery_rate: r.funded ? r.paidOut / r.funded : 0,

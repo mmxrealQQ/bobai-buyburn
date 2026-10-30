@@ -2,6 +2,12 @@
   "measured_at": "2026-10-27T15:50:57.642Z",
   "agents": [
     {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 269223,
       "label": "Portfolio Rebalancer",
       "category": "rebalancing",
@@ -34,12 +40,6 @@
     {
       "id": 265876,
       "label": "BNB Yield Optimizer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -114,14 +114,14 @@
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
       "ours": true,
-      "seed": "rebalance holdings [{\"token\":\"0x245c386dcfed896f5c346107596141e5edcbffff\",\"usd\":1000}] — what should the range be"
+      "seed": "rebalance holdings [{\"token\":\"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c\",\"usd\":1000}] — what should the range be"
     },
     {
       "id": 363709,
       "label": "Brain on BNB — DeFi Agent",
       "category": "rebalancing",
       "ours": true,
-      "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"
+      "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by <ADDR>"
     },
     {
       "id": 341554,
@@ -206,7 +206,7 @@
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
       "ours": true,
-      "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
+      "seed": "grid plan for 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c, 10 levels across a 15% band, $1000 capital"
     },
     {
       "id": 341555,
@@ -291,7 +291,7 @@
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
       "ours": true,
-      "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
+      "seed": "which PancakeSwap fee tier is actually paying for 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c, placing $1000 of liquidity"
     },
     {
       "id": 304493,

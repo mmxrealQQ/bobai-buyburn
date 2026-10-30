@@ -169,7 +169,7 @@ if (OURS) {
   }
   // Headless Chrome has no wallet, and the panel must say so rather than
   // rendering dead buttons.
-  if (!/No wallet found/i.test(quote.wallet)) problems.push('with no wallet present the panel did not say so');
+  if (!/No wallet in this browser/i.test(quote.wallet)) problems.push('with no wallet present the panel did not say so');
   if (quote.sendButtons !== 5) problems.push(`expected a send button per step, found ${quote.sendButtons}`);
 }
 

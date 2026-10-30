@@ -1,6 +1,6 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-27T15:55:01.867Z",
+  "measured_at": "2026-10-30T10:13:56.784Z",
   "asked": 66,
   "quoted": 28,
   "agents": [
@@ -70,10 +70,10 @@
       "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://plinth-relay.vercel.app/a2a",
-      "reason": "The page could not be found"
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://plinth-relay.vercel.app/agent",
+      "reason": null
     },
     {
       "id": 338475,
@@ -200,10 +200,10 @@
       "label": "Brain on BNB — DeFi Agent",
       "category": "rebalancing",
       "ours": true,
-      "quotes": true,
-      "price": "0.01 $U",
+      "quotes": false,
+      "price": null,
       "endpoint": "https://agent.brainonbnb.com/defi-agent/a2a",
-      "reason": null
+      "reason": "seller declined: This wallet holds no PancakeSwap V3 position. Nothing to plan. Nothing was quoted."
     },
     {
       "id": 341554,
@@ -226,16 +226,6 @@
       "reason": null
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
-      "reason": null
-    },
-    {
       "id": 374114,
       "label": "Gridloom by Pokter",
       "category": "grid-trading",
@@ -243,6 +233,16 @@
       "quotes": true,
       "price": "0.08 $U",
       "endpoint": "https://pokter.xyz/api/house/gridloom/a2a?chain=56",
+      "reason": null
+    },
+    {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
       "reason": null
     },
     {
@@ -357,14 +357,14 @@
       "reason": null
     },
     {
-      "id": 358786,
-      "label": "Tidemark",
+      "id": 374112,
+      "label": "Cresthold by Pokter",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://marque.trade/agents/tidemark/a2a",
-      "reason": "seller declined: This task needs the amount to deploy before it can be priced. Nothing was signed or charged."
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
+      "reason": null
     },
     {
       "id": 340456,
@@ -388,16 +388,6 @@
       "example_task": "{\"pools\":{\"pcs-wbnb-usdt\":{\"apyPct\":12.5,\"tvlUsd\":50000000,\"riskScore\":2},\"venus-usdt\":{\"apyPct\":6.1,\"tvlUsd\":200000000,\"riskScore\":1},\"new-farm\":{\"apyPct\":80,\"tvlUsd\":400000,\"riskScore\":5}},\"capitalUsd\":10000,\"maxPerPoolPct\":40}"
     },
     {
-      "id": 374112,
-      "label": "Cresthold by Pokter",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
-      "reason": null
-    },
-    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
       "category": "yield-optimization",
@@ -416,6 +406,16 @@
       "price": "10 $U",
       "endpoint": "https://hevo-yield.fly.dev/",
       "reason": null
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://marque.trade/agents/tidemark/a2a",
+      "reason": "seller declined: This task needs the amount to deploy before it can be priced. Nothing was signed or charged."
     },
     {
       "id": 338478,
@@ -478,16 +478,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 304493,
-      "label": "Brain on BNB — Venus Yield Ranking",
-      "category": "yield-optimization",
-      "ours": true,
-      "quotes": true,
-      "price": "0.01 $U",
-      "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
-      "reason": null
-    },
-    {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
@@ -495,6 +485,16 @@
       "quotes": true,
       "price": "0.01 $U",
       "endpoint": "https://agent.brainonbnb.com/lp-placement/a2a",
+      "reason": null
+    },
+    {
+      "id": 304493,
+      "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true,
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://agent.brainonbnb.com/yield-optimizer/a2a",
       "reason": null
     },
     {

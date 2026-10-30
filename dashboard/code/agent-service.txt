@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24127 lines.
+# one fetch. 74 files, 24135 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -9682,7 +9682,7 @@ export function buildHireCalls({ provider, budget, task, quote, expiredAt, asset
       data: null,
       template: (jobId) => encodeFund(jobId, budget),
       value: '0x0',
-      note: 'Moves the $U. This is the only call that spends anything, and you sign it yourself.',
+      note: 'Moves the $U. This is the only call that moves money beyond gas, and you sign it yourself.',
     },
   ];
 }
@@ -13016,6 +13016,12 @@ export default {
         };
       }
       const out = { ...job, chain_id: ERC8183.chainId, kernel: ERC8183.commerce, explorer: `https://bscscan.com/address/${ERC8183.commerce}`, means, delivery };
+      // ANOTHER SELLER'S ANSWER (2026-10-30): the kernel holds its hash only, and the journey ended at that hash. Marque
+      // keeps the address of the document for the jobs it knows; the hash on chain is what proves the copy.
+      if (!delivery && job.deliverable && /^(SUBMITTED|COMPLETED)$/.test(job.status)) {
+        const m = await fetch(`https://marque.trade/api/v1/phase2/job/56/${id}`, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        if (/^https:\/\//.test(String(m?.deliverable?.url || ''))) out.delivery_url = m.deliverable.url;
+      }
       if (delivery && delivery.summary && delivery.summary.subject) {
         let t = null; try { t = JSON.parse(job.description || '').task || null; } catch { t = job.description || null; }
         const sj = String(delivery.summary.subject);
@@ -20727,7 +20733,9 @@ export async function handleA2A(request, env, opts = {}) {
     // SIGNED ON THIS DIALECT TOO (2026-10-30): Marque asks with "negotiate" and showed our six as
     // identity_matched_unsigned beside eleven provider_signed agents. An ask that carries terms gets the same envelope
     // as negotiate-erc8183-job next to the flat fields; if it cannot be signed the flat quote stands as before.
-    const signed = data.terms ? await signedQuote({ data, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken }).catch(() => null) : null;
+    // SafeHire nests the same ask under data.request.
+    const ask = data.terms ? data : data.request?.terms ? { ...data, ...data.request } : null;
+    const signed = ask ? await signedQuote({ data: ask, service, account: seller.account, chainId: ERC8183.chainId, verifyingContract: ERC8183.commerce, currency: ERC8183.paymentToken }).catch(() => null) : null;
     return rpcOk(id, flatMessage({
       ...(signed?.ok ? signed.envelope : {}),
       // Flat dialect: a provider address and a price, which is everything a

@@ -2597,6 +2597,12 @@ export default {
         };
       }
       const out = { ...job, chain_id: ERC8183.chainId, kernel: ERC8183.commerce, explorer: `https://bscscan.com/address/${ERC8183.commerce}`, means, delivery };
+      // ANOTHER SELLER'S ANSWER (2026-10-30): the kernel holds its hash only, and the journey ended at that hash. Marque
+      // keeps the address of the document for the jobs it knows; the hash on chain is what proves the copy.
+      if (!delivery && job.deliverable && /^(SUBMITTED|COMPLETED)$/.test(job.status)) {
+        const m = await fetch(`https://marque.trade/api/v1/phase2/job/56/${id}`, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        if (/^https:\/\//.test(String(m?.deliverable?.url || ''))) out.delivery_url = m.deliverable.url;
+      }
       if (delivery && delivery.summary && delivery.summary.subject) {
         let t = null; try { t = JSON.parse(job.description || '').task || null; } catch { t = job.description || null; }
         const sj = String(delivery.summary.subject);

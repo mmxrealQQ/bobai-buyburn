@@ -631,7 +631,8 @@ section('The number, and the order of the page');
   const evidence = body.indexOf('id="rg-fleets"');
   ok('you can act before you have to read', act > 0 && evidence > act,
     'the evidence blocks come before anything you can operate');
-  ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 4);
+  // two rows of four since 2026-10-30: under the title and above the categories
+  ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 8);
   const folds = (body.match(/<details class="rg-box rg-fold"/g) || []).length;
   ok('the evidence is folded, not deleted', folds >= 6, `only ${folds} folds`);
   // Counted INSIDE the folds, which is what the claim is about. The old check

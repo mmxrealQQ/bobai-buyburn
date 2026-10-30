@@ -582,7 +582,7 @@ export function buildHireCalls({ provider, budget, task, quote, expiredAt, asset
       data: null,
       template: (jobId) => encodeFund(jobId, budget),
       value: '0x0',
-      note: 'Moves the $U. This is the only call that spends anything, and you sign it yourself.',
+      note: 'Moves the $U. This is the only call that moves money beyond gas, and you sign it yourself.',
     },
   ];
 }

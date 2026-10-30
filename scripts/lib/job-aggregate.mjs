@@ -23,6 +23,7 @@
 //   carrying median budget and distinct buyers next to the job count.
 
 import fs from 'node:fs';
+import { OWN_WALLETS } from '../../worker-agent/own-wallets.js';
 
 const ZERO = '0x0000000000000000000000000000000000000000';
 
@@ -72,7 +73,7 @@ export function aggregate(jobs) {
       r = {
         addr: p, jobs: 0, funded: 0, sum: 0n, budgets: [], clients: new Set(),
         status: {}, firstId: j.id, lastId: j.id, lastSubmit: 0, samples: [],
-        paidOut: 0, fundedClients: new Set(),
+        paidOut: 0, fundedClients: new Set(), oursFunded: 0, oursPaid: 0, outsideClients: new Set(),
       };
       providers.set(p, r);
     }
@@ -80,6 +81,10 @@ export function aggregate(jobs) {
     r.status[j.status] = (r.status[j.status] || 0) + 1;
     r.clients.add(j.client);
     if (isFunded) { r.funded++; r.sum += BigInt(j.budget); r.budgets.push(Number(BigInt(j.budget)) / 1e18); r.fundedClients.add(j.client); }
+    // Whose money it was (2026-10-30): a card read "13 buyers" where /screener, which leaves our wallets out, read 7.
+    const byUs = OWN_WALLETS.has(String(j.client).toLowerCase());
+    if (isFunded) { if (byUs) r.oursFunded++; else r.outsideClients.add(j.client); }
+    if (isFunded && byUs && j.status === 'COMPLETED') r.oursPaid++;
     // A COMPLETED job with a zero budget paid nothing out, yet it was counted
     // as "paid out" beside a funded count that excludes it — a card read
     // "Hired 2× · 10 paid out" (2026-10-09). Only funded completions count.
@@ -106,6 +111,10 @@ export function aggregate(jobs) {
       // Buyers who actually put money in escrow: the farm signal. Nine buyers
       // paying one agent is a market; one buyer paying it twelve times is not.
       funded_buyers: r.fundedClients.size,
+      funded_outside: r.funded - r.oursFunded,
+      completed_outside: r.paidOut - r.oursPaid,
+      outside_buyers: r.outsideClients.size,
+      funded_by_us: r.oursFunded,
       escrowed_u: Number(r.sum) / 1e18,
       median_budget_u: median(r.budgets),
       delivery_rate: r.funded ? r.paidOut / r.funded : 0,

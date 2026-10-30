@@ -4051,7 +4051,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 
 🌍 <a href="https://brainonbnb.com">Website & Dashboard</a>
 
-🐦 <a href="https://birdeye.so/token/${BOBAI_TOKEN}?chain=bsc">Birdeye</a>
+🐦 <a href="https://birdeye.so/bsc/token/${BOBAI_TOKEN}">Birdeye</a>
 🔷 <a href="https://blockspot.io/coin/brain-on-bnb-ai/">Blockspot.io</a>
 🫧 <a href="https://v2.bubblemaps.io/map?address=${BOBAI_TOKEN}&amp;chain=bsc">Bubblemaps</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>

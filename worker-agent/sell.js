@@ -797,7 +797,17 @@ export async function handleA2A(request, env, opts = {}) {
     const jobId = String(data.job_id ?? data.jobId ?? '').match(/^\d+$/)?.[0];
     if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
     const r = await deliverJob(jobId, env, { text, data });
-    return r.error ? rpcErr(id, -32000, r.error) : rpcOk(id, r.result);
+    if (r.error) return rpcErr(id, -32000, r.error);
+    // THE ANSWER A MARKETPLACE WAITS FOR (2026-10-30, our first hire through Marque, job 57132): delivered in 8 seconds and
+    // Marque still logged accepted:false, because the reply was a bare object. Keel answers an A2A Message with
+    // status "accepted"; the full result stays beside it for the readers that take it from here.
+    return rpcOk(id, { ...r.result, ...agentMessage({ status: 'accepted', accepted: true, job_id: Number(jobId), job_status: r.result?.status || null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` }) });
+  }
+  // the BNB SDK's name for where the delivered document is
+  if (skill === 'get_deliverable_url' || skill === 'get-deliverable-url') {
+    const jobId = String(data.job_id ?? data.jobId ?? '').match(/^\d+$/)?.[0];
+    if (!jobId) return rpcErr(id, -32602, 'get_deliverable_url needs job_id');
+    return rpcOk(id, agentMessage({ job_id: Number(jobId), deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` }));
   }
 
   // --- a skill named by the id the card lists it under (2026-10-18) ------

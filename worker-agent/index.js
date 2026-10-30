@@ -3798,6 +3798,7 @@ ${pageTail}`;
       const rec = await readAgentRecord(env);
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
+      const bnbUsdNow = await fetch('https://brainonbnb.com/api/price', { signal: AbortSignal.timeout(4000) }).then((r) => r.json()).then((j) => Number(j.bnb_usd) || null).catch(() => null);
       // The width and wait the next re-set would use, from the width record,
       // and since when the price has been outside, from the DeFi worker's
       // own note — so the one sentence about what comes next is the record's.
@@ -3816,7 +3817,7 @@ ${pageTail}`;
       // the width and mode worker-lp mints with (its LP_WIDTH_PCT / LP_RESET_MODE, mirrored in this worker's vars)
       const fixedWidth = Number(env.LP_WIDTH_PCT) > 0 ? Number(env.LP_WIDTH_PCT) : null;
       if (fixedWidth) width = { ...(width || {}), width_pct: fixedWidth, net_usd_per_day: null };
-      const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince, centred: env.LP_RESET_MODE === 'centred' });
+      const model = lpPortfolio(rec, series, { bobaiUsd, bnbUsdNow, width, outsideSince, centred: env.LP_RESET_MODE === 'centred' });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       const res = json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',

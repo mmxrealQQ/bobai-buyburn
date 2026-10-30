@@ -2439,7 +2439,15 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const id = String(Number(agentPage[1])), img = `https://brainonbnb.com/og/agent/${id}.png`, title = `Agent #${id} on BNB Chain, measured · Brain Plaza`;
         // agent.html carries the generic tags (one of each); here they are set for this agent, nothing doubled
         const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
+        // WHAT THE AGENT IS, IN THE PAGE ITSELF (2026-10-30): the page read "Reading this agent..." to every crawler and
+        // every agent without a browser. The chart is asked once, briefly; without it the page stands as before.
+        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        const about = c && c.name ? `${c.name} (agent #${id} on BNB Chain). ${String(c.description || '').slice(0, 280)} Evidence score ${c.evidence?.score ?? '?'} of 100.${c.jobs?.totals ? ` ${c.jobs.totals.paid_out} paid escrow jobs on record.` : ''}` : null;
+        const named = c && c.name ? `${c.name} · measured on BNB Chain` : null;
         const t = new HTMLRewriter()
+          .on('title', { element(e) { if (named) e.setInnerContent(named); } })
+          .on('meta[name="description"]', { element(e) { if (about) e.setAttribute('content', about); } })
+          .on('#loading', { element(e) { if (about) e.setInnerContent(about); } })
           .on('meta[property="og:image"]', set(img)).on('meta[name="twitter:image"]', set(img))
           .on('meta[property="og:title"]', set(title)).on('meta[name="twitter:title"]', set(title))
           .on('meta[property="og:url"]', set(`https://brainonbnb.com/agent/${id}`))

@@ -633,6 +633,9 @@ section('The number, and the order of the page');
     'the evidence blocks come before anything you can operate');
   // two rows of four since 2026-10-30: under the title and above the categories
   ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 8);
+  // 2026-10-30: the export took our provider from the agents' owner, and after the move four of the six had no jobs at all
+  const jobsOf = await fetch('https://brainonbnb.com/api-agent-jobs.json').then((r) => r.json()).catch(() => null);
+  ok('our agents carry their own jobs on their charts', [363709, 302257, 302258, 304493, 304494].every((id) => jobsOf?.agents?.[id]?.totals?.funded > 0));
   const folds = (body.match(/<details class="rg-box rg-fold"/g) || []).length;
   ok('the evidence is folded, not deleted', folds >= 6, `only ${folds} folds`);
   // Counted INSIDE the folds, which is what the claim is about. The old check

@@ -139,7 +139,7 @@ export function changeText(changePct, since) {
   return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null, centred = false } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bnbUsdNow = null, width = null, outsideSince = null, centred = false } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -248,7 +248,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
-    worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
+    // at the BNB price of now (2026-10-30): at the last run's price /defi read $1,539 beside the front page's $1,502
+    worth: { bnb: r4(value.now), usd: bnbUsdNow > 0 ? Math.round(n(value.now) * bnbUsdNow * 100) / 100 : usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),

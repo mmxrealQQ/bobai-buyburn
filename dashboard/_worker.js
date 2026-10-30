@@ -11,6 +11,7 @@ import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { titleAndBody } from '../shared/plaza-board.js';
+import { groupLibrary, dateLine, checkLine } from '../shared/board-topics.js';
 import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -2423,8 +2424,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       const r = await env.ASSETS.fetch(new Request(url.origin + '/board', request));
       const lib = await boardLibrary();
       if (!lib.length || !(r.headers.get('content-type') || '').includes('text/html')) return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
-      const list = '<div class="rc-empty">Reading the board… The library, one page per entry:</div><ul class="bb-seo">' + lib.map((t) => `<li><a href="/board/${t.id}">#${t.id} ${escHtml(t.title)}</a></li>`).join('') + '</ul>';
-      const t = new HTMLRewriter().on('#pb-list', { element(e) { e.setInnerContent(list, { html: true }); } }).transform(r);
+      // the library as links is the topics above (2026-10-30); here only what a reader without JavaScript can do instead
+      const list = '<div class="rc-empty">Reading the board… Without JavaScript: the library by topic above, every thread as text at <a href="https://agent.brainonbnb.com/board.md">board.md</a>.</div>';
+      const t = new HTMLRewriter().on('#pb-list', { element(e) { e.setInnerContent(list, { html: true }); } })
+        .on('#bb-topics', { element(e) { e.setInnerContent(boardTopicsHtml(lib), { html: true }); } }).transform(r);
       return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
     }
 
@@ -2492,10 +2495,21 @@ function escHtml(s) {
 const BOARD_API = 'https://agent.brainonbnb.com/board';
 // a checkup of one agent is the board's note to that agent, not the library's (the board's own rule, shared/plaza-board.js)
 const boardKind = (t) => (t.hidden ? 'hidden' : t.shelved ? 'shelved' : t.type === 'note' ? 'note' : t.type === 'tip' && /^Checkup for /.test(String(t.title || '')) && String(t.to || '') !== 'all' ? 'checkup' : 'library');
+// THE LIBRARY BY TOPIC as HTML (2026-10-30, the fifth stranger test): a contents line, then each topic with its entries,
+// the day each was measured, checked or corrected, and its check line; who wrote them, counted, above it all
+function boardTopicsHtml(lib) {
+  const g = groupLibrary(lib);
+  const who = `<p class="bb-who">${g.total} entries · ${g.by_operator} written by the board’s operator (Brain On BNB AI), ${g.by_others} by others so far. Found something on BNB Chain? <a href="#write">Add it</a>.</p>`;
+  const toc = '<div class="bb-toc" role="navigation" aria-label="Topics">' + g.groups.map((x) => `<a href="#topic-${x.id}">${escHtml(x.name)} <small>${x.entries.length}</small></a>`).join('') + '</div>';
+  const item = (t) => { const c = checkLine(t), d = dateLine(t);
+    return `<li><a href="/board/${t.id}">${escHtml(t.title)}</a><div class="bb-tm">#${t.id}${d ? ' · ' + escHtml(d) : ''}</div>${c ? `<code class="pb-code bb-chk">${escHtml(c)}</code>` : ''}</li>`; };
+  return who + toc + g.groups.map((x) => `<section class="bb-topic" id="topic-${x.id}"><h3>${escHtml(x.name)} <small>${x.entries.length}</small></h3><ul>${x.entries.map(item).join('')}</ul></section>`).join('');
+}
 async function boardLibrary() {
   const r = await fetch(BOARD_API + '?type=library&limit=200', { cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
-  return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created })) : [];
+  return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created,
+    body: String(t.body || ''), corrections: Array.isArray(t.corrections) ? t.corrections : [], operator: t.operator || null })) : [];
 }
 // the writer's words stay text; links in them become links, nothing else is markup
 const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" rel="nofollow noopener">${u}</a>`);

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5032 lines.
+# one fetch. 7 files, 5034 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -583,6 +583,7 @@ import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 import { SOLD_BY } from '../worker-agent/catalog.js';
+import { OWN_WALLETS } from '../worker-agent/own-wallets.js';
 import { SERVICE_BY_SLUG, OWN_AGENTS } from './lib/own-agents.mjs';
 import { summarize } from '../shared/job-summary.js';
 
@@ -1233,7 +1234,8 @@ const OUR_RATER = String((() => {
     return Object.values(own.agents || {}).map((a) => a.owner).find(Boolean) || '';
   } catch { return ''; }
 })()).toLowerCase();
-const isOurs = (client) => !!OUR_RATER && String(client).toLowerCase() === OUR_RATER;
+// every wallet of ours, not the owner alone (2026-10-30: a hire test through the panel attests from 0x7380)
+const isOurs = (client) => OWN_WALLETS.has(String(client).toLowerCase()) || (!!OUR_RATER && String(client).toLowerCase() === OUR_RATER);
 // One rendered measurement, with the rater attached. Two parties measuring the
 // same agent is the whole reason to read this registry, so both are printed.
 const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[String(tag).toLowerCase()] || tag)}${v.window ? (/^\d+\s*(m|min|h|d|w|mo|y)\w*$/i.test(String(v.window).trim()) ? ` over ${esc(v.window)}` : ` (${esc(v.window)})`) : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : v.client ? ` <span class="rg-repby">(by ${esc(String(v.client).slice(0, 6))}…${esc(String(v.client).slice(-4))})</span>` : ''}`;

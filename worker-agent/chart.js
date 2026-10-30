@@ -14,6 +14,7 @@
 // A part with no evidence yet scores 0 and says "not measured yet" — the score never guesses upward.
 
 import { readPulse } from './pulse.js';
+import { OWN_WALLETS } from './own-wallets.js';
 import { readListing, ownerOf, agentWalletOf, readLog } from './listing.js';
 import { registrationOf, readJobNow } from './hire.js';
 
@@ -105,7 +106,7 @@ export async function agentChart(env, idRaw) {
   // a rating from the agent's own agentWallet says so (2026-10-27, library #98: the registry stops the owner rating its
   // agent, not its agentWallet)
   const ownWallet = String(agentWallet || '').toLowerCase();
-  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client, ...(ownWallet && String(v.client || '').toLowerCase() === ownWallet ? { from_own_wallet: true } : {}) }))).slice(0, 12) : [];
+  const ratings = r ? Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => ({ tag, value: v.value, unit: v.unit || '', window: v.window || null, rater: v.client, ...((ownWallet && String(v.client || '').toLowerCase() === ownWallet) || OWN_WALLETS.has(String(v.client || '').toLowerCase()) ? { from_own_wallet: true } : {}) }))).slice(0, 12) : [];
   const blog = listing && listing.status !== 'removed' ? await readLog(env, id).catch(() => []) : [];
   const listed = listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified', since: listing.since, ...(listing.house ? { ours: true } : {}), verified_builder: !!listing.signer && listing.builder_ok !== false && listing.status === 'verified', builder_log: blog.slice(-5).reverse(), profile: `https://agent.brainonbnb.com/listed/${id}` } : null;
   return { status: 200, body: {

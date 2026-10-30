@@ -18,6 +18,9 @@ const STEPS = [
   ['enrich', 'node', ['scripts/erc8004-enrich.mjs', '--dir', 'erc8004-v2']],
   ['probe', 'node', ['scripts/erc8004-probe.mjs', '--dir', 'erc8004-v2']],
   ['a2a-confirm', 'node', ['scripts/erc8004-a2a-confirm.mjs', '--dir', 'erc8004-v2']],
+  // the jobs too (2026-10-30): the page said 'jobs 28 Oct' beside fresh quotes, and four of our agents' charts stood empty
+  ['job scan', 'node', ['scripts/erc8183-job-scan.mjs']],
+  ['agent jobs', 'node', ['scripts/agent-jobs-export.mjs']],
   ['publish', 'node', ['scripts/erc8004-publish.mjs', '--dir', 'erc8004-v2']],
   ['deploy site', 'node', ['scripts/deploy-dashboard.mjs']],
   ['deploy worker', 'npx', ['wrangler', 'deploy', '--config', 'worker-agent/wrangler.toml']],

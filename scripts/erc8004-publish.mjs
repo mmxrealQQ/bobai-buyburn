@@ -255,11 +255,12 @@ const directory = reachable
 // paying. A seed is a promise that the sentence works as written.
 // WBNB (2026-10-30): the seeds named the $BOBAI contract, so a stranger who edited nothing paid for a report on it.
 const SEED_TOKEN = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const SEED_CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82'; // two holdings: one token has nothing to rebalance against
 const SEED_TASKS = {
   health_factor: 'health factor and liquidation distance for the Venus position at <ADDR>',
   grid_plan: `grid plan for WBNB ${SEED_TOKEN} with a budget of $1000 capital, 10 levels across a 15% band`,
   yield_plan: 'best stablecoin yield for 1000 USDT on BNB Chain right now',
-  rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":1000}] — what should the range be`,
+  rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":700},{"token":"${SEED_CAKE}","usd":300}] to equal weight`,
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_TOKEN}, placing $1000 of liquidity`,
   // The DeFi Agent (2026-10-04): without its own seed the panel fell back to
   // the category's sentence — a portfolio rebalance — and the agent rightly
@@ -2536,7 +2537,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       'health-factor':'health factor and liquidation distance for the Venus position at <ADDR>',
       'grid-trading':'grid plan for WBNB '+SEED_TOKEN+' with a budget of $1000 capital, 10 levels across a 15% band',
       'yield-optimization':'best stablecoin yield for 1000 USDT on BNB Chain right now',
-      'rebalancing':'rebalance holdings [{"token":"'+SEED_TOKEN+'","usd":1000}] — what should the range be'
+      'rebalancing':'rebalance holdings [{"token":"'+SEED_TOKEN+'","usd":700},{"token":"0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82","usd":300}] to equal weight'
     };
     // "my position" means the wallet in front of us when there is one. Before
     // connecting the address stays open and the quote waits for one (2026-10-30:

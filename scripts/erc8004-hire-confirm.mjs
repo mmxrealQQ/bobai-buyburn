@@ -65,7 +65,7 @@ if (!agents?.length) {
 // our own agents, which would have been a finding about the question.
 const TASK = {
   // the sentences the page's Hire panel fills in (2026-10-30), so 'quoted when asked' is what a buyer's press gets
-  rebalancing: 'rebalance holdings [{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":1000}] — what should the range be',
+  rebalancing: 'rebalance holdings [{"token":"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","usd":700},{"token":"0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82","usd":300}] to equal weight',
   'grid-trading': 'grid plan for WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c with a budget of $1000 capital, 10 levels across a 15% band',
   'yield-optimization': 'best stablecoin yield for 1000 USDT on BNB Chain right now',
   'health-factor': 'health factor and liquidation distance for the Venus position at 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',

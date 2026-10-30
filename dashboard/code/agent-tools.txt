@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3555 lines.
+# one fetch. 5 files, 3562 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -792,7 +792,7 @@ async function getWalletBalance(address) {
 
 const MCP_TOOLS = [
   // FIRST IN THE LIST (2026-10-09): ~545 tools/list a day, 1-5 tool calls — the check an agent came for leads.
-  { name: 'bsc_token_preflight', description: 'START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs, per side, from the measured tax (a fee-on-transfer token reverts below its tax), the round trip with the transfer tax applied (measured from executed trades, or, when the pool has not traded in the window, simulated on chain at that block — the answer says which), the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It also reads who controls the contract on-chain (control: owner() / getOwner() and whether that owner is renounced, a plain wallet or a contract, an EIP-1967 proxy and its admin, a mint(address,uint256) function in the bytecode) and names an owner that is one wallet where the token has a tax, a mint function or a proxy. gate is the verdict in one word to branch on - stop, weigh or no_known_stop - and each stop/caution item with a figure carries it as value, line and unit. A refusal comes with a code (is_wallet, not_a_token, bad_address, bad_usd, ...) and a hint. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key; pool figures are never cached, the GoPlus contract flags and holder list for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_token_preflight', description: 'START HERE for any BSC token. Honeypot and rug-pull pre-trade check, measured not labelled: For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn, and by whom - the deployer holding the LP is named - or that was already withdrawn; holders unknown or concentrated; the deployer or a wallet it funded selling into the pool (net of liquidity it added back), a top holder selling over a quarter of its balance, launch buyers holding over 10%; contract flags), then the figures: the token’s spot price in dollars from the pool read (token.price_usd), the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs, per side, from the measured tax (a fee-on-transfer token reverts below its tax), the round trip with the transfer tax applied (measured from executed trades, or, when the pool has not traded in the window, simulated on chain at that block — the answer says which), the 1% depth in both directions, LP burned and who holds the rest, pool and token age, the swaps of the last hour and who sold in it (flow). A short answer, built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It also reads who controls the contract on-chain (control: owner() / getOwner() and whether that owner is renounced, a plain wallet or a contract, an EIP-1967 proxy and its admin, a mint(address,uint256) function in the bytecode) and names an owner that is one wallet where the token has a tax, a mint function or a proxy. gate is the verdict in one word to branch on - stop, weigh or no_known_stop - and each stop/caution item with a figure carries it as value, line and unit. A refusal comes with a code (is_wallet, not_a_token, bad_address, bad_usd, ...) and a hint. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key; pool figures are never cached, the GoPlus contract flags and holder list for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
   // THE RUG WATCH (2026-10-09): the preflight's answer is one block; this keeps reading it for a token the agent
   // holds and POSTs the agent's own callback when it turns dangerous. Registered on agent.brainonbnb.com
   // (worker-agent/rug-watch.js), proxied here. The one tool on this server that is not read-only: it stores a watch.
@@ -1530,12 +1530,17 @@ async function handleMcp(request, note = () => {}, own = false) {
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }],
           ...(STRUCTURED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name) && out && typeof out === 'object' ? { structuredContent: out } : {}) })), { headers: cors });
       } catch (e) {
-        if (byClient) note(`mcp:byerr:${byClient}:${toolSaid}`);
+        // WHY IT FAILED (30.10.: 13 failed calls on 29.10. and no way to tell a refused input from our own outage): the
+        // coded tools' own code, else unavailable for a read that did not come back, refused for the rest
+        const coded = CODED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name);
+        const eb = coded ? errorAnswer(e).body : null;
+        const why = eb ? eb.code : /unavailable|did not answer|timed? ?out|abort/i.test(String(e?.message || e)) ? 'unavailable' : 'refused';
+        const failed = [...(byClient ? [`mcp:byerr:${byClient}:${toolSaid}`] : []), ...(toolSaid !== 'unknown' ? [`mcp:errcode:${toolSaid}:${why}`] : [])];
+        if (failed.length) note(failed);
         // The refusal's code and hint ride along (2026-10-09): in the text for a model, structured for a client.
         // Only the address-taking measurements: the other tools' refusals are not about an address.
-        if (!CODED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name))
+        if (!coded)
           return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true })), { headers: cors });
-        const { body: eb } = errorAnswer(e);
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: `${eb.error}\n\ncode: ${eb.code} — ${eb.hint}` }], structuredContent: eb, isError: true })), { headers: cors });
       }
     }
@@ -2816,7 +2821,9 @@ export function shape(s, r, usd, routeError = null, control = null) {
   // and the unquotable answers had neither. The scan's block where it has one,
   // the control read's head otherwise.
   const kind = s.quotable ? 'pool' : s.curve ? 'curve' : 'unquotable';
-  const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null }, size_usd: usd,
+  // the scanned pool's spot price (2026-10-30: get_token_price was asked for, and no tool gave a BSC token's price)
+  const priceUsd = Number(s.price?.usd) > 0 ? Number(Number(s.price.usd).toPrecision(6)) : null;
+  const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null, price_usd: priceUsd }, size_usd: usd,
     block: s.block ?? (control?.read ? control.block : null) ?? null, measured_at: s.measuredAt ?? new Date().toISOString() };
   const ctl = controlBlock(control);
   // The verdict word sits next to stop/caution, worked out once both are final.

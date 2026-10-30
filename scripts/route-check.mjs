@@ -144,9 +144,11 @@ const skip = (name, why) => {
     // THE QUOTE CARRIES THE IMPACT (2026-10-29: on chain a $50-$5,000 buy goes through at 3% and reverts at 2.9%; the
     // answer said 10% at $2,000): the figure is the tax + 100 + 200 bps at any size, not more for a bigger trade
     const big = await swapRoute(BOBAI, { usd: 2000 });
-    const want = (p) => Math.ceil(((p || 0) + 1) * 100) + 200;
+    // the tax shown is rounded to 0.01% (1 bps) and the figure is taken from the exact measured one (30.10.: a measured
+    // 3.00x% buy gave 601 against the shown 3 -> 600): within that bps, never more
+    const want = (p) => Math.ceil(((p || 0) + 1) * 100) + 200, near = (bps, p) => bps === want(p) || bps === want(p) + 1;
     ok('BOBAI: the slippage is the tax + 100 + 200 bps whatever the size ($100 and $2,000 alike)',
-      sb === want(t.buy_pct) && ss === want(t.sell_pct) && big.slippage_bps_needed_buy === sb && big.slippage_bps_needed_sell === ss,
+      near(sb, t.buy_pct) && near(ss, t.sell_pct) && big.slippage_bps_needed_buy === sb && big.slippage_bps_needed_sell === ss,
       `$100: buy ${sb}, sell ${ss} · $2,000: buy ${big.slippage_bps_needed_buy}, sell ${big.slippage_bps_needed_sell} · tax ${t.buy_pct}/${t.sell_pct}`);
 
     // A tax measured on one side only makes the answer optimistic, and the reader

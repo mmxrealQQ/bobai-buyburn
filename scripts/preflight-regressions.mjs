@@ -38,6 +38,10 @@ const route = (over = {}) => ({
 });
 
 let o = shape(scan(), route(), 250);
+// THE PRICE (2026-10-30: get_token_price was asked for twice on 29.10., and no tool gave any BSC token's price): the
+// scanned pool's spot price in dollars rides with the token, six significant digits; none read is null, never 0
+ok('the token carries the scanned pool’s price in dollars', shape(scan({ price: { usd: 1.8609072645825167 } }), route(), 250).token.price_usd === 1.86091, JSON.stringify(shape(scan({ price: { usd: 1.8609072645825167 } }), route(), 250).token));
+ok('… and no price read is null, not 0', o.token.price_usd === null && shape(scan({ price: { usd: 0 } }), route(), 250).token.price_usd === null, JSON.stringify(o.token));
 ok('a healthy pair: nothing stops, nothing to weigh, and the figures are the route’s', o.stop.length === 0 && o.caution.length === 0 && o.entry.slippage_bps_needed === 56 && o.exit.round_trip_cost_pct === 0.6, JSON.stringify([o.stop, o.caution, o.exit]));
 // WHERE THE TAX WAS READ (2026-10-27): a side the route measured names the route's pool, a side only the scan had names
 // the scanned pool — the preflight and the pool scan can then disagree in the open instead of looking contradictory
@@ -344,7 +348,7 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… and any other determinate answer: 422 with a code too', a.status === 422 && a.body.code === 'not_measurable' && !!a.body.hint, JSON.stringify(a));
   const rest = w.match(/const \{ status, body \} = errorAnswer\(e\);[\s\S]{0,500}?return new Response\(JSON\.stringify\(body\), \{ status, headers \}\)/);
   ok('the REST route answers with errorAnswer’s status and body', !!rest);
-  const mcpErr = /const \{ body: eb \} = errorAnswer\(e\);[\s\S]{0,300}code: \$\{eb\.code\}[\s\S]{0,120}structuredContent: eb, isError: true/.test(w);
+  const mcpErr = /const eb = coded \? errorAnswer\(e\)\.body : null;[\s\S]{0,1200}code: \$\{eb\.code\}[\s\S]{0,120}structuredContent: eb, isError: true/.test(w);
   ok('MCP carries the same code: in the text and as structuredContent, with isError', mcpErr);
   // structuredContent for the three trading reads (MCP 2025-06-18)
   const st = w.match(/const STRUCTURED_TOOLS = new Set\(\[([^\]]*)\]\)/)?.[1] || '';

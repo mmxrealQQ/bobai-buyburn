@@ -160,6 +160,10 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
       const err = details().join();
       await rpc('tools/call', { name: 'bobai_links' }, { 'cf-connecting-ip': '198.51.100.8' });
       const stranger = details().join();
+      // 30.10.: a failed call says why, so the day's errors can be told apart: the caller's input or our outage
+      await rpc('tools/call', { name: 'bsc_token_preflight', arguments: { address: 'nope' } }, ipH);
+      const why = details().join();
+      ok('a failed call is counted by its reason too (mcp:errcode:<tool>:<code>): a refusal of the input, or the tool’s own code', err.includes('mcp:errcode:bobai_wallet_balance:refused') && why.includes('mcp:errcode:bsc_token_preflight:bad_address'), [err, why].join(' | '));
       ok('a tool call is counted by the client of its address (mcp:by:<client>:<tool>), a failed one as mcp:byerr, an address without initialize as noinit', by.includes('mcp:by:hansagent:bobai_links') && !by.includes('byerr') && err.includes('mcp:byerr:hansagent:bobai_wallet_balance') && stranger.includes('mcp:by:noinit:bobai_links'), [by, err, stranger].join(' | '));
     } finally { globalThis.caches = had; }
   }

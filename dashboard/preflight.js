@@ -86,7 +86,9 @@ export function shape(s, r, usd, routeError = null, control = null) {
   // and the unquotable answers had neither. The scan's block where it has one,
   // the control read's head otherwise.
   const kind = s.quotable ? 'pool' : s.curve ? 'curve' : 'unquotable';
-  const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null }, size_usd: usd,
+  // the scanned pool's spot price (2026-10-30: get_token_price was asked for, and no tool gave a BSC token's price)
+  const priceUsd = Number(s.price?.usd) > 0 ? Number(Number(s.price.usd).toPrecision(6)) : null;
+  const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null, price_usd: priceUsd }, size_usd: usd,
     block: s.block ?? (control?.read ? control.block : null) ?? null, measured_at: s.measuredAt ?? new Date().toISOString() };
   const ctl = controlBlock(control);
   // The verdict word sits next to stop/caution, worked out once both are final.

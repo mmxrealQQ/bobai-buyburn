@@ -26,9 +26,12 @@ body.brainpage{margin:0;min-height:100vh;min-height:100svh;color:var(--bp-text);
 .bp-soc{display:flex;gap:6px}
 .bp-soc a{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:1px solid var(--bp-line);color:var(--bp-muted);text-decoration:none;font:700 10px var(--bp-mono)}
 .bp-soc a:hover{color:var(--bp-gold);border-color:var(--bp-line2)}
-.bp-sw,.bp-buy{padding:8px 13px;border-radius:10px;text-decoration:none;font:700 12px 'Space Grotesk',sans-serif;white-space:nowrap}
+.bp-sw,.bp-buy,.bp-hire{padding:8px 13px;border-radius:10px;text-decoration:none;font:700 12px 'Space Grotesk',sans-serif;white-space:nowrap}
 .bp-sw{border:1px solid var(--bp-line2);color:var(--bp-text)}
 .bp-sw:hover{border-color:var(--bp-gold);color:var(--bp-gold)}
+/* the marketplace, one press from the front page (2026-10-30, operator's yes; a stranger found the page never said it) */
+.bp-hire{border:1px solid var(--bp-gold);color:var(--bp-gold)}
+.bp-hire:hover{background:rgba(240,185,11,.12)}
 .bp-buy{background:var(--bp-gold);color:#0b090a;box-shadow:0 0 22px rgba(240,185,11,.3)}
 
 /* ---- the grid: wide screens ---- */
@@ -568,11 +571,20 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
    figures and the sentence stand in the header itself; the header already has the Buy button, so the line's own goes. */
 @media (min-width:1180px){
   :root{--bp-top:54px}
-  .bp-buyline{position:absolute;top:10px;left:490px;right:340px;z-index:21;height:34px;
+  .bp-buyline{position:absolute;top:10px;left:490px;right:455px;z-index:21;height:34px;
     border:1px solid var(--bp-line);border-radius:10px;background:rgba(240,185,11,.06);gap:12px;padding:0 12px;font-size:11px;
     /* as wide as what it holds, centred in the gap (operator, 2026-10-28: "otherwise there is just empty space") */
-    width:fit-content;max-width:calc(100% - 830px);margin:0 auto}
+    width:fit-content;max-width:calc(100% - 945px);margin:0 auto}
 }
+/* a narrow desktop gives the line the tagline's room, so the tax, the slippage and the price still fit */
+@media (min-width:1180px) and (max-width:1699px){
+  .bp-name small{display:none}
+  .bp-buyline{left:250px;max-width:calc(100% - 705px)}
+}
+@media (min-width:1180px){.bp-soc{margin-left:auto}}
+@media (max-width:1279px){.bp-hire-l{display:none}}
+@media (max-width:429px){.bp-sw,.bp-buy,.bp-hire{padding:8px 9px}.bp-soc a:nth-child(3){display:none}}
+@media (max-width:359px){.bp-soc{display:none}}
 /* what goes first when the header narrows: the burns, the volume, the LP line, the market cap, liquidity, "owner
    renounced", "buys back & burns" — the tax, the slippage and the price stay. The line measures itself (build.mjs, fit) and sets this class. */
 .bp-buyline .bl-off{display:none}

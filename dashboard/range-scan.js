@@ -29,7 +29,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
+  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS, HEAD_BACK,
   SWAP_V3_T, SWAP_V3_UNI, int256, decOf,
 } from './scanner-chain.js';
 
@@ -199,7 +199,7 @@ export async function rangePlan(input, opts = {}) {
   const p0PerUnit = (tokenIs0 ? tokUsd / 10 ** tokDec : qUsd / 10 ** qDec);
   const p1PerUnit = (tokenIs0 ? qUsd / 10 ** qDec : tokUsd / 10 ** tokDec);
 
-  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
+  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
   const from = head - (WINDOW_BLOCKS - 1);
   let logs = null;
   for (let attempt = 0; attempt < 5 && logs === null; attempt++) {

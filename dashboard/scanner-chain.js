@@ -46,6 +46,11 @@ export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
 // pool and width records counted that as "hours" — a day of them took a day
 // and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
 export const WINDOW_BLOCKS=7900;
+// WHY THE HOUR WAS REFUSED (2026-11-01). The endpoints are several nodes behind one name and some stand 3-4 blocks back;
+// a range up to the head just read is answered 'block range extends beyond current head block' by those, at random. That
+// read as a rate limit for weeks: unreadable fee tiers, a scan's 3-minute window beside its 59-minute one, tax flipping
+// between measured and simulated. A window ends this many blocks (~7 s) before the head and every node holds it.
+export const HEAD_BACK=16;
 // The tax read asks for the newest trades first (measureTax): about three
 // minutes of chain, and a quarter of the hour when the hour itself is refused
 // for the size of its answer.
@@ -879,7 +884,7 @@ async function windowSpan(from,to){
 }
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
-    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16);
+    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16)-HEAD_BACK;
     // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
     // 59 min — the endpoint answers that in one call and refuses only beyond
     // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
@@ -1994,7 +1999,7 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // address in its first data word, and that is all this reads.
 export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
   const url=LOGS_RPCS[0];
-  const head=Number(await rpc('eth_blockNumber',[],url));
+  const head=Number(await rpc('eth_blockNumber',[],url))-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
   const logs=(await Promise.all(windows.map(([from,to])=>
@@ -2252,7 +2257,7 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
 // round: two, sometimes three requests, run beside the tax read. null for an
 // address when no archive endpoint answered — "not read", never "new".
 export async function contractAges(addrs){
-  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)}catch(e){return null}
+  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)-HEAD_BACK}catch(e){return null}
   const now=Math.floor(Date.now()/1000);
   const st=addrs.map(a=>({a:String(a||'').toLowerCase(),lo:0,hi:head,ok:false}));
   const ts=new Map();

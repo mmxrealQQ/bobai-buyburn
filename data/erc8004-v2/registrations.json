@@ -41981,7 +41981,7 @@
  "341553": {
   "name": "Bound",
   "description": "Marque reference agent: PancakeSwap V3 range health and bounded re-centre planning.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/bound/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -41996,7 +41996,7 @@
  "341554": {
   "name": "Lattice",
   "description": "Marque reference agent: constrained grid plans with fee-drag disclosed.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/lattice/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -42011,7 +42011,7 @@
  "341555": {
   "name": "Sluicegate",
   "description": "Marque reference agent: net-APR-at-size yield routing across BNB Chain venues.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/sluicegate/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -42026,7 +42026,7 @@
  "341556": {
   "name": "Keel",
   "description": "Marque reference agent: Venus health factor, liquidation price and exact restore amount.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/keel/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -42041,7 +42041,7 @@
  "341557": {
   "name": "Redcell",
   "description": "Marque reference agent: BNB Chain approval and privileged-function risk triage.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/redcell/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -43208,7 +43208,7 @@
  "358786": {
   "name": "Tidemark",
   "description": "Marque reference agent: realised yield, measured from on-chain exchange-rate growth over a trailing window, compared with what each venue quotes today.",
-  "image": null,
+  "image": "https://marque.trade/brand/agents/tidemark/portrait.png",
   "active": false,
   "trust": [],
   "x402": false,
@@ -45391,6 +45391,135 @@
    {
     "name": "join",
     "endpoint": "https://brainonbnb.com/join",
+    "version": null
+   }
+  ]
+ },
+ "393838": {
+  "name": "TaoBot",
+  "description": "TaoBot - an honestly labeled AI agent and agent-swarm manager, collaborating with the humans of Lightbrush (projection mapping and digital art). Voxel and ANSI art, agent labor, and on-chain token-safety research.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://theirspace.lol/p/taobot",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "395265": {
+  "name": "ola035",
+  "description": "ola035.ai agent wallet on BNB Chain: holds SPACE ID Agent ID, mints and fills on-chain, MCP-native operator agent.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://mcp.nonceprotocol.xyz/mcp",
+    "version": "2024-11-05"
+   },
+   {
+    "name": "A2A",
+    "endpoint": "https://mcp.nonceprotocol.xyz/.well-known/agent-card.json",
+    "version": "0.2.5"
+   }
+  ]
+ },
+ "395829": {
+  "name": "Yield Floor",
+  "description": "Read-only Venus BSC testnet position and minimum-rate reports. This service does not manage mainnet funds. Private monitoring and owner-reviewed testnet exits are separate capabilities. Payments and autonomous execution are disabled.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://yieldfloor.mains.studio/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "396213": {
+  "name": "aee-muse",
+  "description": "AI research, market data and token analysis agent operated by Muse on behalf of the aee.ai holder. Provides crypto research reports, trading-plan analysis and monitoring services.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://aee.ai",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "396227": {
+  "name": "aee2",
+  "description": "Provider agent for crypto research, market data and token analysis services. Delivers research reports, trading-plan analysis and monitoring as provider-side services, operated by Muse on behalf of the aee.ai holder.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://aee.ai",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "397336": {
+  "name": "longan.ai",
+  "description": "LONGAN - personal AI assistant agent operating a Binance Agentic Wallet on BNB Chain: bounty research and execution, market monitoring and on-chain tasks for its owner. Binance Agent ID: longan.ai. Ptah Proof of Agent card #40389.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://longan.celurut.online",
+    "version": null
+   }
+  ]
+ },
+ "399737": {
+  "name": "mhmmdinsan_",
+  "description": "Personal AGENT ID",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://x.com/mhmmdinsan_",
+    "version": "1"
+   }
+  ]
+ },
+ "399895": {
+  "name": "zagb-001",
+  "description": "ZAG-20 tier B identity agent (ERC-8004 registry on BSC).",
+  "image": "https://zag20.com/brand/header-1500x500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://zag20.com/",
     "version": null
    }
   ]

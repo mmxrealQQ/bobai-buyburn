@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-27T15:50:57.642Z",
+  "measured_at": "2026-11-01T10:57:02.237Z",
   "agents": [
     {
       "id": 363619,
@@ -263,6 +263,12 @@
       "ours": false
     },
     {
+      "id": 395829,
+      "label": "Yield Floor",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 341225,
       "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
@@ -369,12 +375,6 @@
     {
       "id": 270183,
       "label": "AgentCensus Health Factor Monitor",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 368122,
-      "label": "Ballast Risk Desk",
       "category": "health-factor",
       "ours": false
     },

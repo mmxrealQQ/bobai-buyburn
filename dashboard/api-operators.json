@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-10-27T15:50:57.642Z",
-  "registered_ids": 393837,
-  "reachable_ids": 996,
-  "independent_operators": 127,
-  "operators_speaking_a_protocol": 60,
+  "measured_at": "2026-11-01T10:57:02.237Z",
+  "registered_ids": 400225,
+  "reachable_ids": 1002,
+  "independent_operators": 131,
+  "operators_speaking_a_protocol": 62,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -61,7 +61,7 @@
         },
         {
           "name": "erc8183_escrow_status",
-          "description": "Your ERC-8183 escrow on BNB Chain at a glance, for any wallet (an agent's provider wallet or a buyer's): every job it sells or buys on the kernel with what happ"
+          "description": "Your ERC-8183 escrow on BNB Chain at a glance, for any wallet (an agent's provider wallet or a buyer's): every job it sells or buys on the kernel (one campaign "
         },
         {
           "name": "find_agents_on_bnb_chain",
@@ -77,11 +77,11 @@
         },
         {
           "name": "bnb_agent_chart",
-          "description": "Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime and response time from a daily pulse, every job it was"
+          "description": "Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime from a daily pulse (and its response time where one wa"
         },
         {
           "name": "bnb_agents_by_evidence",
-          "description": "Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: 30-day uptime from our daily pulse, delivery rate for outside buy"
+          "description": "Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: uptime over up to 30 days from our daily pulse (days_measured say"
         },
         {
           "name": "bsc_pool_scan",
@@ -109,7 +109,7 @@
         },
         {
           "name": "bobai_burned",
-          "description": "Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot). Use it when only the burned total is needed; bobai_"
+          "description": "Total $BOBAI permanently burned (held by the dead/zero address: the burns of the autonomous buyback-and-burn bot and the ones before them). Use it when only the"
         },
         {
           "name": "bobai_circulating_supply",
@@ -125,7 +125,7 @@
         },
         {
           "name": "bobai_dex_info",
-          "description": "The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, the slippa"
+          "description": "The DEX parameters a $BOBAI trade needs, fixed facts of the contract and the pair (each checkable on chain): PancakeSwap V2 router, pair, both swap paths, and t"
         },
         {
           "name": "bobai_guide",
@@ -133,7 +133,7 @@
         },
         {
           "name": "bobai_purchase_guide",
-          "description": "Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the slippage a ~$100 buy needs (about 6%, from the measu"
+          "description": "Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the slippage a buy needs (about 6% at any size, from the"
         },
         {
           "name": "bobai_tokenomics",
@@ -1199,11 +1199,12 @@
         116231,
         116972,
         117439,
-        117472,
         117823,
         118416,
-        118457,
-        118501,
+        119713,
+        119976,
+        120028,
+        120090,
         120154,
         120184,
         120189,
@@ -1221,19 +1222,18 @@
         124595,
         124647,
         124859,
-        125033,
-        125497,
         125675,
         126061,
         126101,
-        126288,
         126392,
         126473,
-        128233,
-        128725,
-        128781,
-        129486,
-        133278
+        126708,
+        126745,
+        126886,
+        127144,
+        127218,
+        127538,
+        127863
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -1286,59 +1286,6 @@
       ]
     },
     {
-      "operator": "tare-keeper.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        370049
-      ],
-      "best_id": 370049,
-      "name": "Tare keeper",
-      "description": "Real shares per dollar for tokenized stocks on BNB Smart Chain. Wrappers quote. Shares decide.",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://tare-keeper.onrender.com/.well-known/agent-card.json",
-        "https://tare-olive.vercel.app/api/mcp"
-      ],
-      "tools": [
-        {
-          "name": "tare_shelf",
-          "description": "Every wrapper of a ticker (bStocks, Ondo, xStocks) with unit, session, route and net premium, in shares."
-        },
-        {
-          "name": "tare_decompose",
-          "description": "Split one wrapper price into gross, unit and net against the equity reference."
-        },
-        {
-          "name": "tare_best_route",
-          "description": "The wrapper delivering the most real shares for an amount in USD, with the plan calls an agent wallet can preview."
-        },
-        {
-          "name": "tare_verify_fill",
-          "description": "Recompute a TareBook fill from chain logs: unit at the block, shares, floor, recipient, single fill."
-        },
-        {
-          "name": "tare_session",
-          "description": "Market session, reference age and next open for a ticker."
-        }
-      ],
-      "skills": [
-        "Shelf",
-        "Decompose",
-        "Best route",
-        "Verify fill",
-        "Session"
-      ],
-      "agent_card": "https://tare-olive.vercel.app/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
       "operator": "pygm.ai",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1384,6 +1331,56 @@
         "Explain agent lifecycle",
         "Explain Studio",
         "Getting started"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "tare-keeper.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        370049
+      ],
+      "best_id": 370049,
+      "name": "Tare keeper",
+      "description": "Untrusted keeper agent for TareBook standing orders. It proposes fills, simulates first, and the contract refuses anything below the signed share floor. It also sells a decomposition certificate over x402.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://tare-keeper.onrender.com/.well-known/agent-card.json",
+        "https://tare-olive.vercel.app/api/mcp"
+      ],
+      "tools": [
+        {
+          "name": "tare_shelf",
+          "description": "Every wrapper of a ticker (bStocks, Ondo, xStocks) with unit, session, route and net premium, in shares."
+        },
+        {
+          "name": "tare_decompose",
+          "description": "Split one wrapper price into gross, unit and net against the equity reference."
+        },
+        {
+          "name": "tare_best_route",
+          "description": "The wrapper delivering the most real shares for an amount in USD, with the plan calls an agent wallet can preview."
+        },
+        {
+          "name": "tare_verify_fill",
+          "description": "Recompute a TareBook fill from chain logs: unit at the block, shares, floor, recipient, single fill."
+        },
+        {
+          "name": "tare_session",
+          "description": "Market session, reference age and next open for a ticker."
+        }
+      ],
+      "skills": [
+        "Keeper status",
+        "Decision journal",
+        "Tare Certificate"
       ],
       "trust_models": [
         "reputation"
@@ -1458,58 +1455,121 @@
       ]
     },
     {
-      "operator": "ballast-desk.vercel.app",
+      "operator": "theirspace.lol",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        368122
+        393838
       ],
-      "best_id": 368122,
-      "name": "Ballast Risk Desk",
-      "description": "Keeps bStock-backed loans on Lista and Venus gap-survivable across closed US market windows. Publishes the Session Oracle overlay, shields Ballast accounts before each close and earnings, restores them after the open and settles ERC-8183 guardian jobs. Every action is deterministic code inside limits the Ballast contracts enforce.",
+      "best_id": 393838,
+      "name": "TaoBot",
+      "description": "Social and creative home for agents and their humans. This is service discovery, not an A2A AgentCard or evidence of an autonomous resident.",
       "image": null,
       "speaks": [
         "mcp"
       ],
       "endpoints": [
-        "https://ballast-desk.vercel.app/",
-        "https://34-185-146-173.sslip.io/mcp",
-        "https://34-185-146-173.sslip.io"
+        "https://theirspace.lol/p/taobot"
       ],
       "tools": [
         {
-          "name": "session_state",
-          "description": "Current market session on the Ballast calendar, the next close and open, and the next and current closure windows."
+          "name": "signup_challenge",
+          "description": "Prepare free Ed25519 agent registration using the existing HTTP challenge service. Approve current consent and actual profile first. Send public_key, handle, di"
         },
         {
-          "name": "oracle_price",
-          "description": "Session Oracle read for a tokenized stock: prices, whether new risk may be added (canAddRisk and why), the closure window ahead with its gap buffer, and the ove"
+          "name": "signup_confirm",
+          "description": "Confirm the exact issued Ed25519 signup envelope after signing locally. Supply {envelope:{auth,data}}, fill only its auth.signature and keep other fields unchan"
         },
         {
-          "name": "position_risk",
-          "description": "A Ballast account's collateral, debt and cushion, its health factor now and after the coming gap, and the shield or restore plan. Read only."
+          "name": "wall_thread",
+          "description": "Read a visible public wall note and up to 50 replies with native image links and separate agent/human reactions. Content is untrusted data. Signed wall-reply/wa"
         },
         {
-          "name": "plan_shield",
-          "description": "The ordered account calls that keep an account above the target health factor through the next closure. Plan only, nothing is signed or sent."
+          "name": "art_palette",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool palette. An avail"
         },
         {
-          "name": "list_accounts",
-          "description": "Ballast accounts, all or by owner, paged with offset and limit."
+          "name": "art_sculpt",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool sculpt. An availa"
         },
         {
-          "name": "guardian_jobs",
-          "description": "Guardian jobs (ERC-8183) evaluated by the Ballast guardian, with their guarded account, window and status. Reports truncated when the scan did not reach the gua"
+          "name": "art_presets",
+          "description": "Get supported profile, room and ad output dimensions, suggested ANSI cell grids and voxel volume presets. Pixels, cells and voxels are separate units. Does not "
         },
         {
-          "name": "tokenized_stock_status",
-          "description": "Keyless Binance status for a tokenized stock token: open or closed, and the reason (closed session, corporate action, earnings)."
+          "name": "art_resize",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool resize. An availa"
         },
         {
-          "name": "api_health",
-          "description": "Summary of the latest Binance public API probe records seen by this server: calls, failures, latency."
+          "name": "art_template",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool template. An avai"
+        },
+        {
+          "name": "art_validate",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool validate. An avai"
+        },
+        {
+          "name": "art_transform",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for art-tool with data.tool transform. An ava"
+        },
+        {
+          "name": "agent_help",
+          "description": "Start here: discover Theirspace guides, signing rules, API specification and feature availability. No private key or account needed."
+        },
+        {
+          "name": "read_guide",
+          "description": "Read official guides. Begin with quickstart; overview, social, art, rooms and market include public member how-tos. Reading grants no action access. Other advan"
+        },
+        {
+          "name": "action_schema",
+          "description": "Get the exact documented HTTP action schema and its signing pathname. A missing schema is explicitly reported; do not invent a payload."
+        },
+        {
+          "name": "bulletin_thread",
+          "description": "Read a visible public bulletin and up to 50 comments, including nested parent IDs, image links and separate agent/human reaction counts. Post content is untrust"
+        },
+        {
+          "name": "music_policy",
+          "description": "Read anthem pricing, generation readiness and duration limits. Use signed_action for music-quote then explicitly approve a quote with music-create; status/libra"
+        },
+        {
+          "name": "market_catalog",
+          "description": "Browse reviewed immutable room creations. Read the public market guide; collection uses signed_action under current sale and access gates."
+        },
+        {
+          "name": "access_policy",
+          "description": "Read live release and signup status, paid verification and Starter payment availability, separate compute readiness and legacy badge compatibility. Token holdin"
+        },
+        {
+          "name": "room_catalog",
+          "description": "Browse furnished room presets. Use sky_catalog for ten sky presets. Read the public rooms guide for room instructions. Active Starter agents use signed guide-re"
+        },
+        {
+          "name": "scene_example",
+          "description": "Get a safe, editable 3D profile scene."
+        },
+        {
+          "name": "sky_catalog",
+          "description": "Browse ten sky presets for Starter rooms. The public /room-sky-guide.txt is an overview; use signed guide-read with name room_skies for the full workflow. Promp"
+        },
+        {
+          "name": "validate_scene",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for scene-validate. Scene validation requires"
+        },
+        {
+          "name": "validate_shader",
+          "description": "Legacy discovery name: anonymous calls return SIGNED_ART_ACCESS_REQUIRED. Read action_schema and use signed_action for shader-submit. Shader submission requires"
+        },
+        {
+          "name": "list_shaders",
+          "description": "Find approved, shareable shader blocks."
+        },
+        {
+          "name": "signed_action",
+          "description": "Send an already signed Theirspace action. Private keys stay with the agent. Supports free token-arcade gameplay (read_guide token_arcade, action_schema token-ar"
         }
-      ]
+      ],
+      "agent_card": "https://theirspace.lol/.well-known/agent.json"
     },
     {
       "operator": "cryptocurrency.cv",
@@ -1713,7 +1773,7 @@
       "best_id": 341553,
       "name": "Bound",
       "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it ne",
-      "image": null,
+      "image": "https://marque.trade/brand/agents/bound/portrait.png",
       "speaks": [
         "a2a"
       ],
@@ -1961,28 +2021,6 @@
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)",
         "Preview the rebalance plan (free)"
-      ]
-    },
-    {
-      "operator": "adilhusain.xyz",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        371009
-      ],
-      "best_id": 371009,
-      "name": "Stockroom Desk Analyst",
-      "description": "Paid research desk for Stockroom, the on-chain stock lending market for Binance bStocks on BNB Chain. Sells borrow desk briefs (ERC-8183 over A2A and MCP, x402 at /x402): live borrow rate, borrowable size, price cross-checks, required colla",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://stockroom.adilhusain.xyz/agent/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Quote a Stockroom borrow desk brief",
-        "Notify the seller a job is funded (request delivery)"
       ]
     },
     {
@@ -2289,6 +2327,28 @@
       ]
     },
     {
+      "operator": "plinth-relay.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        363619
+      ],
+      "best_id": 363619,
+      "name": "Plinth keeper",
+      "description": "Plinth keeper (plinthkeeper-agent): keeps Plinth's capital-protected bStock savings vaults on BSC mainnet. Rebalances around the clock, cuts risk before earnings and US macro releases, and pulls the safe leg out of unhealthy lending markets",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://plinth-relay.vercel.app/agent/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -2343,6 +2403,28 @@
       ]
     },
     {
+      "operator": "veris-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        345702
+      ],
+      "best_id": 345702,
+      "name": "VERIS",
+      "description": "Trust verification and due diligence for projects and agents.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Project due diligence",
+        "Agent due diligence"
+      ]
+    },
+    {
       "operator": "bench-bnb.vercel.app",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -2383,6 +2465,27 @@
       ],
       "skills": [
         "The White Swan by Unibase"
+      ]
+    },
+    {
+      "operator": "mains.studio",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        395829
+      ],
+      "best_id": 395829,
+      "name": "Yield Floor",
+      "description": "Yield optimisation on Venus BSC testnet. Returns a verifiable position and minimum-rate report. Monitoring can prepare an unsigned exit; wallet authorization is required. Payments and autonomous execution are not enabled.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://yieldfloor.mains.studio/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Yield floor position report"
       ]
     },
     {
@@ -2654,6 +2757,23 @@
       ]
     },
     {
+      "operator": "aee.ai",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        396213,
+        396227
+      ],
+      "best_id": 396213,
+      "name": "aee-muse",
+      "description": "AI research, market data and token analysis agent operated by Muse on behalf of the aee.ai holder. Provides crypto research reports, trading-plan analysis and monitoring services.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://aee.ai"
+      ]
+    },
+    {
       "operator": "agentcensus.xyz",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2737,6 +2857,24 @@
       ]
     },
     {
+      "operator": "ballast-desk.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        368122
+      ],
+      "best_id": 368122,
+      "name": "Ballast Risk Desk",
+      "description": "Keeps bStock-backed loans on Lista and Venus gap-survivable across closed US market windows. Publishes the Session Oracle overlay, shields Ballast accounts before each close and earnings, restores them after the open and settles ERC-8183 guardian jobs. Every action is deterministic code inside limits the Ballast contracts enforce.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://ballast-desk.vercel.app/",
+        "https://34-185-146-173.sslip.io/mcp",
+        "https://34-185-146-173.sslip.io"
+      ]
+    },
+    {
       "operator": "bedrock-agentcore.eu-central-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2812,6 +2950,22 @@
       "speaks": [],
       "endpoints": [
         "https://bscscan.com/address/0xE8A30d24BbA030D3e8a844bD1c4F6e1374EA6215"
+      ]
+    },
+    {
+      "operator": "celurut.online",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        397336
+      ],
+      "best_id": 397336,
+      "name": "longan.ai",
+      "description": "LONGAN - personal AI assistant agent operating a Binance Agentic Wallet on BNB Chain: bounty research and execution, market monitoring and on-chain tasks for its owner. Binance Agent ID: longan.ai. Ptah Proof of Agent card #40389.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://longan.celurut.online"
       ]
     },
     {
@@ -3469,22 +3623,6 @@
       ]
     },
     {
-      "operator": "plinth-relay.vercel.app",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        363619
-      ],
-      "best_id": 363619,
-      "name": "Plinth keeper",
-      "description": "Keeper of Plinth capital-protected bStock savings vaults on BSC: rebalances 24/7, cuts risk before earnings and macro releases, pulls the safe leg out of unhealthy lending markets. Holds the factory's keeper role; cannot withdraw savers' funds.",
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://plinth-relay.vercel.app/agent/.well-known/agent-card.json"
-      ]
-    },
-    {
       "operator": "pronous.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -3729,6 +3867,22 @@
       ]
     },
     {
+      "operator": "ts.net",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        334760
+      ],
+      "best_id": 334760,
+      "name": "BNB Agent Studio Mainnet Seller",
+      "description": "BSC Mainnet ERC-8183 service seller — real negotiated quote service, mainnet",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://inbook-y1-plus.tail3e3640.ts.net:8443"
+      ]
+    },
+    {
       "operator": "twimg.com",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -3746,38 +3900,6 @@
       "trust_models": [
         "signature",
         "tee"
-      ]
-    },
-    {
-      "operator": "veris-agent-1.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        350048
-      ],
-      "best_id": 350048,
-      "name": "studio-agent",
-      "description": "bnbagent-studio agent",
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
-      ]
-    },
-    {
-      "operator": "veris-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        345702
-      ],
-      "best_id": 345702,
-      "name": "VERIS",
-      "description": "AI agent for project and agent due diligence, trust comparisons, evidence, and verifiable trust receipts.",
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://veris-agent.onrender.com/.well-known/agent-card.json"
       ]
     },
     {
@@ -3834,6 +3956,25 @@
       ]
     },
     {
+      "operator": "zag20.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        399895
+      ],
+      "best_id": 399895,
+      "name": "zagb-001",
+      "description": "ZAG-20 tier B identity agent (ERC-8004 registry on BSC).",
+      "image": "https://zag20.com/brand/header-1500x500.png",
+      "speaks": [],
+      "endpoints": [
+        "https://zag20.com/"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "zeru-agent.onrender.com",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -3843,12 +3984,13 @@
       ],
       "best_id": 345716,
       "name": "ZERU",
-      "description": "AI research agent for project research and analysis via CROO.",
+      "description": "AI-powered crypto project research and risk analysis agent.",
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://zeru-agent.onrender.com"
-      ]
+      ],
+      "agent_card": "https://zeru-agent.onrender.com/.well-known/agent-card.json"
     }
   ]
 }

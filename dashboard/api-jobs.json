@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-10-30T11:02:49.271Z",
+  "measured_at": "2026-11-01T10:57:21.980Z",
   "jobs": {
-    "job_counter": 57131,
-    "read": 57131,
+    "job_counter": 57151,
+    "read": 57151,
     "unread_after_retries": 0,
     "by_status": {
       "OPEN": 1051,
-      "COMPLETED": 28412,
-      "SUBMITTED": 27269,
-      "FUNDED": 303,
-      "EXPIRED": 87,
+      "COMPLETED": 28421,
+      "SUBMITTED": 27279,
+      "FUNDED": 301,
+      "EXPIRED": 90,
       "REJECTED": 9
     },
-    "ever_funded": 56060,
-    "escrow_released": 28403,
+    "ever_funded": 56080,
+    "escrow_released": 28412,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27269,
+    "deliverable_never_released": 27279,
     "never_funded": 1051,
-    "total_escrowed_u": 643.070677,
+    "total_escrowed_u": 643.940677,
     "distinct_buyers": 32861,
     "distinct_providers": 151,
-    "providers_paid_by_more_than_one_buyer": 32,
-    "top_provider_share": 0.9831,
-    "top5_share": 0.9883,
+    "providers_paid_by_more_than_one_buyer": 33,
+    "top_provider_share": 0.9828,
+    "top5_share": 0.9881,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 964,
-      "completed": 227,
-      "escrowed_u": 90.990677,
+      "jobs": 984,
+      "completed": 236,
+      "escrowed_u": 91.860677,
       "providers": 150
     }
   },
@@ -80,20 +80,20 @@
     {
       "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
       "agents": [],
-      "jobs": 42,
-      "funded": 39,
+      "jobs": 47,
+      "funded": 44,
       "completed": 31,
-      "submitted_not_released": 1,
+      "submitted_not_released": 6,
       "awaiting_delivery": 0,
       "expired": 7,
       "rejected": 0,
       "never_funded": 3,
       "distinct_buyers": 12,
-      "escrowed_u": 3.79,
+      "escrowed_u": 3.84,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.7949,
+      "delivery_rate": 0.7045,
       "first_job_id": 56656,
-      "last_job_id": 57122
+      "last_job_id": 57151
     },
     {
       "address": "0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00",
@@ -103,38 +103,38 @@
           "name": "Keel"
         }
       ],
-      "jobs": 32,
-      "funded": 28,
-      "completed": 14,
-      "submitted_not_released": 11,
-      "awaiting_delivery": 1,
-      "expired": 2,
+      "jobs": 34,
+      "funded": 30,
+      "completed": 18,
+      "submitted_not_released": 9,
+      "awaiting_delivery": 0,
+      "expired": 3,
       "rejected": 0,
       "never_funded": 4,
       "distinct_buyers": 13,
-      "escrowed_u": 1.45,
+      "escrowed_u": 1.55,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.5,
+      "delivery_rate": 0.6,
       "first_job_id": 56810,
-      "last_job_id": 57131
+      "last_job_id": 57149
     },
     {
       "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
       "agents": [],
-      "jobs": 28,
-      "funded": 28,
+      "jobs": 31,
+      "funded": 31,
       "completed": 1,
-      "submitted_not_released": 26,
+      "submitted_not_released": 29,
       "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 7,
-      "escrowed_u": 0.44,
+      "escrowed_u": 0.47,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.0357,
+      "delivery_rate": 0.0323,
       "first_job_id": 56799,
-      "last_job_id": 57130
+      "last_job_id": 57148
     },
     {
       "address": "0xe12d7bd7333018c2a2a423bf078255951b934272",
@@ -171,8 +171,8 @@
       "funded": 19,
       "completed": 12,
       "submitted_not_released": 2,
-      "awaiting_delivery": 2,
-      "expired": 3,
+      "awaiting_delivery": 0,
+      "expired": 5,
       "rejected": 1,
       "never_funded": 3,
       "distinct_buyers": 11,
@@ -222,6 +222,29 @@
       "last_job_id": 57092
     },
     {
+      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
+      "agents": [
+        {
+          "id": 341553,
+          "name": "Bound"
+        }
+      ],
+      "jobs": 21,
+      "funded": 21,
+      "completed": 13,
+      "submitted_not_released": 7,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 0,
+      "distinct_buyers": 10,
+      "escrowed_u": 3.15,
+      "median_budget_u": 0.15,
+      "delivery_rate": 0.619,
+      "first_job_id": 56809,
+      "last_job_id": 57140
+    },
+    {
       "address": "0x592ef127fefd45eaa56fe0d715daaf72f998a652",
       "agents": [
         {
@@ -261,29 +284,6 @@
       "delivery_rate": 0,
       "first_job_id": 56237,
       "last_job_id": 56257
-    },
-    {
-      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
-      "agents": [
-        {
-          "id": 341553,
-          "name": "Bound"
-        }
-      ],
-      "jobs": 20,
-      "funded": 20,
-      "completed": 11,
-      "submitted_not_released": 8,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 1,
-      "never_funded": 0,
-      "distinct_buyers": 9,
-      "escrowed_u": 3,
-      "median_budget_u": 0.15,
-      "delivery_rate": 0.55,
-      "first_job_id": 56809,
-      "last_job_id": 57121
     },
     {
       "address": "0xb12a1e4e0e22a97e266ed7a6bfc4133f699b1a1b",
@@ -437,6 +437,29 @@
       "last_job_id": 56975
     },
     {
+      "address": "0x5aaf7b5b2170986c59279682bd714c475ae8c718",
+      "agents": [
+        {
+          "id": 341554,
+          "name": "Lattice"
+        }
+      ],
+      "jobs": 13,
+      "funded": 13,
+      "completed": 11,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 10,
+      "escrowed_u": 1.3,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.8462,
+      "first_job_id": 56808,
+      "last_job_id": 57141
+    },
+    {
       "address": "0xfaf0ffd121947b9ee3920fa0cfbf9eeeb0acbf7f",
       "agents": [
         {
@@ -499,29 +522,6 @@
       "delivery_rate": 0.0909,
       "first_job_id": 56804,
       "last_job_id": 57126
-    },
-    {
-      "address": "0x5aaf7b5b2170986c59279682bd714c475ae8c718",
-      "agents": [
-        {
-          "id": 341554,
-          "name": "Lattice"
-        }
-      ],
-      "jobs": 12,
-      "funded": 12,
-      "completed": 10,
-      "submitted_not_released": 2,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 9,
-      "escrowed_u": 1.2,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.8333,
-      "first_job_id": 56808,
-      "last_job_id": 57123
     },
     {
       "address": "0xdfc1761378205ba1a149382d402bcd3ba8f0710e",
@@ -892,6 +892,24 @@
       "last_job_id": 56890
     },
     {
+      "address": "0x1676593550560363ad0aae9eef63342554f229ee",
+      "agents": [],
+      "jobs": 6,
+      "funded": 6,
+      "completed": 0,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 3,
+      "escrowed_u": 0.18,
+      "median_budget_u": 0.03,
+      "delivery_rate": 0,
+      "first_job_id": 56880,
+      "last_job_id": 57145
+    },
+    {
       "address": "0x084350d79def2c0463f91d05ddda4b32355d5315",
       "agents": [],
       "jobs": 5,
@@ -1102,29 +1120,57 @@
       "last_job_id": 56906
     },
     {
-      "address": "0x1676593550560363ad0aae9eef63342554f229ee",
-      "agents": [],
-      "jobs": 5,
-      "funded": 5,
-      "completed": 0,
-      "submitted_not_released": 4,
-      "awaiting_delivery": 1,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 3,
-      "escrowed_u": 0.15,
-      "median_budget_u": 0.03,
-      "delivery_rate": 0,
-      "first_job_id": 56880,
-      "last_job_id": 57033
-    },
-    {
       "address": "0xb72335e083a7eed9731d24c48dbf07c4ef1f051a",
       "agents": [
         {
           "id": 374107,
           "name": "Brinkwatch by Pokter"
+        }
+      ],
+      "jobs": 5,
+      "funded": 5,
+      "completed": 3,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.5,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.6,
+      "first_job_id": 57004,
+      "last_job_id": 57096
+    },
+    {
+      "address": "0x8272ac23f4c14f578b0dd06e6754b0bc84d99c49",
+      "agents": [
+        {
+          "id": 374114,
+          "name": "Gridloom by Pokter"
+        }
+      ],
+      "jobs": 5,
+      "funded": 4,
+      "completed": 2,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.32,
+      "median_budget_u": 0.08,
+      "delivery_rate": 0.5,
+      "first_job_id": 57007,
+      "last_job_id": 57142
+    },
+    {
+      "address": "0xf22217aaac007bf8d076cd3f0819e53e2baf8bff",
+      "agents": [
+        {
+          "id": 374112,
+          "name": "Cresthold by Pokter"
         }
       ],
       "jobs": 5,
@@ -1139,8 +1185,8 @@
       "escrowed_u": 0.5,
       "median_budget_u": 0.1,
       "delivery_rate": 0.4,
-      "first_job_id": 57004,
-      "last_job_id": 57096
+      "first_job_id": 57012,
+      "last_job_id": 57138
     },
     {
       "address": "0x55b9a2df9f6e160d1757eb7da1f2efda1a3b908f",
@@ -1295,29 +1341,6 @@
       "delivery_rate": 0.25,
       "first_job_id": 56803,
       "last_job_id": 57125
-    },
-    {
-      "address": "0x8272ac23f4c14f578b0dd06e6754b0bc84d99c49",
-      "agents": [
-        {
-          "id": 374114,
-          "name": "Gridloom by Pokter"
-        }
-      ],
-      "jobs": 4,
-      "funded": 3,
-      "completed": 2,
-      "submitted_not_released": 1,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 1,
-      "distinct_buyers": 2,
-      "escrowed_u": 0.24,
-      "median_budget_u": 0.08,
-      "delivery_rate": 0.6667,
-      "first_job_id": 57007,
-      "last_job_id": 57119
     },
     {
       "address": "0x2222222222222222222222222222222222222222",
@@ -1594,27 +1617,40 @@
       "last_job_id": 56994
     },
     {
-      "address": "0xf22217aaac007bf8d076cd3f0819e53e2baf8bff",
-      "agents": [
-        {
-          "id": 374112,
-          "name": "Cresthold by Pokter"
-        }
-      ],
+      "address": "0xeac21928de023677a25eb925d1cb1b0786faf946",
+      "agents": [],
+      "jobs": 3,
+      "funded": 2,
+      "completed": 1,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 3,
+      "escrowed_u": 0.11,
+      "median_budget_u": 0.055,
+      "delivery_rate": 0.5,
+      "first_job_id": 57072,
+      "last_job_id": 57132
+    },
+    {
+      "address": "0x497dac54fd7238027ecbbd194b353379a1d605f0",
+      "agents": [],
       "jobs": 3,
       "funded": 3,
-      "completed": 2,
-      "submitted_not_released": 1,
+      "completed": 0,
+      "submitted_not_released": 3,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 2,
-      "escrowed_u": 0.3,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.6667,
-      "first_job_id": 57012,
-      "last_job_id": 57117
+      "escrowed_u": 0.12,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 57086,
+      "last_job_id": 57134
     },
     {
       "address": "0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee",
@@ -2143,22 +2179,27 @@
       "last_job_id": 56923
     },
     {
-      "address": "0xeac21928de023677a25eb925d1cb1b0786faf946",
-      "agents": [],
+      "address": "0x459c19060418e5fa1afe3ca093a644d8d72acd33",
+      "agents": [
+        {
+          "id": 374113,
+          "name": "Centreline by Pokter"
+        }
+      ],
       "jobs": 2,
-      "funded": 1,
-      "completed": 0,
+      "funded": 2,
+      "completed": 1,
       "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
-      "never_funded": 1,
-      "distinct_buyers": 2,
-      "escrowed_u": 0.1,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.2,
       "median_budget_u": 0.1,
-      "delivery_rate": 0,
-      "first_job_id": 57072,
-      "last_job_id": 57087
+      "delivery_rate": 0.5,
+      "first_job_id": 57003,
+      "last_job_id": 57146
     },
     {
       "address": "0xac8bff07f2b518d91fee8d7e2fa3fcb3e7fef1b3",
@@ -3884,47 +3925,6 @@
       "delivery_rate": 0,
       "first_job_id": 57002,
       "last_job_id": 57002
-    },
-    {
-      "address": "0x459c19060418e5fa1afe3ca093a644d8d72acd33",
-      "agents": [
-        {
-          "id": 374113,
-          "name": "Centreline by Pokter"
-        }
-      ],
-      "jobs": 1,
-      "funded": 1,
-      "completed": 1,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.1,
-      "median_budget_u": 0.1,
-      "delivery_rate": 1,
-      "first_job_id": 57003,
-      "last_job_id": 57003
-    },
-    {
-      "address": "0x497dac54fd7238027ecbbd194b353379a1d605f0",
-      "agents": [],
-      "jobs": 1,
-      "funded": 1,
-      "completed": 0,
-      "submitted_not_released": 1,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.1,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0,
-      "first_job_id": 57086,
-      "last_job_id": 57086
     }
   ],
   "method": {

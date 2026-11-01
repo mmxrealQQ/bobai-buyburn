@@ -1,6 +1,6 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-10-30T12:49:57.811Z",
+  "measured_at": "2026-11-01T11:00:02.347Z",
   "asked": 66,
   "quoted": 31,
   "agents": [
@@ -478,6 +478,16 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 395829,
+      "label": "Yield Floor",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://yieldfloor.mains.studio/a2a",
+      "reason": "Provide yield-floor-report skill, owner and minimumAprPercent (decimal string from 0 to 100)."
+    },
+    {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
@@ -616,16 +626,6 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://agentcensus.xyz/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
-      "id": 368122,
-      "label": "Ballast Risk Desk",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://ballast-desk.vercel.app/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {

@@ -205,7 +205,7 @@ const delivery = (d) => `      <article class="sv-buy">
         <p class="sv-needs-h">${needsHead(d.needs)}</p>
         <form class="sv-form" data-agent="${esc(String(d.agent || ''))}" data-name="${esc(d.name)}" data-service="${esc(d.id)}">
 ${fieldsOf(d.needs)}
-          <div class="sv-form-go"><button type="submit" title="Your wallet signs 0.10 USD1 (no transaction, no gas); the answer comes back here">Pay 0.10 USD1 &amp; get it &rarr;</button><button type="button" class="sv-holder" title="With 1,000,000 $BOBAI in your wallet: one signature, no transaction, no gas, 20 answers a day">Holder? Free with your wallet</button></div>
+          <div class="sv-form-go"><button type="submit" title="Your wallet signs 0.10 USD1 (no transaction, no gas); the answer comes back here">Pay 0.10 USD1 &amp; get it &rarr;</button><button type="button" class="sv-bobai" title="Half price: your wallet sends $BOBAI in one transaction, a little gas, and the answer comes back here">Pay in $BOBAI, half price &rarr;</button><button type="button" class="sv-holder" title="With 1,000,000 $BOBAI in your wallet: one signature, no transaction, no gas, 20 answers a day">Holder? Free with your wallet</button></div>
           <div class="sv-holder-out" hidden></div>
           <p class="sv-form-msg" role="status"></p>
         </form>
@@ -305,6 +305,7 @@ function page() {
   .sv-open{margin-top:10px}.sv-open>summary{list-style:none;display:inline-block;background:var(--gold,#f0b90b);color:#0b090a;border-radius:999px;padding:9px 16px;font:700 .86rem Inter,sans-serif;cursor:pointer}
   .sv-open>summary::-webkit-details-marker,.sv-capsw>summary::-webkit-details-marker,.sv-how>summary::-webkit-details-marker{display:none}
   .sv-open>summary::after{content:' ▾'}.sv-open[open]>summary{background:transparent;color:var(--gold,#f0b90b);box-shadow:inset 0 0 0 1px rgba(240,185,11,.5);margin-bottom:6px}.sv-open[open]>summary::after{content:' ▴'}
+  .sv-form-go .sv-bobai{background:transparent;color:var(--gold,#f0b90b);box-shadow:inset 0 0 0 1px var(--gold,#f0b90b)}
   .sv-form-go .sv-holder{background:transparent;color:var(--gold,#f0b90b);box-shadow:inset 0 0 0 1px rgba(240,185,11,.5)}
   .sv-holder-out{margin-top:8px;font-size:.82rem;line-height:1.55;border-left:2px solid rgba(240,185,11,.5);padding:4px 0 4px 10px;overflow-wrap:anywhere}
   .sv-holder-out pre{white-space:pre-wrap;font-size:.72rem;max-height:260px;overflow:auto}.sv-holder-out .sv-no{color:#ff7a6e}
@@ -608,6 +609,61 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
           var j = await r.json().catch(function () { return {}; });
           if (r.ok && j.ok) out.innerHTML = '<b>' + esc(j.name || f.dataset.name) + '</b>: paid ' + esc(j.paid || '0.10 USD1') + (j.tx ? ' (<a href="https://bscscan.com/tx/' + esc(j.tx) + '" rel="noopener">transaction</a>)' : '') + '<br>' + esc(j.summary || 'Answered.') + '<details><summary>Everything it returned</summary><pre>' + esc(JSON.stringify(j, null, 2)) + '</pre></details>';
           else out.innerHTML = '<span class="sv-no">Not answered:</span> ' + esc(j.reason || j.error || ('HTTP ' + r.status)) + (j.payment ? '<br>' + esc(j.payment) : '');
+        } catch (e) { out.textContent = 'Not sent' + (e && e.message ? ': ' + e.message : '') + '.'; }
+        btn.disabled = false;
+      });
+    });
+  })();
+</script>
+<script>
+  // HALF PRICE IN $BOBAI, RIGHT ON THE CARD (2026-11-01, operator: the button). Every card said "or $0.05 in $BOBAI" and
+  // only a script could do it. The tokens stay in the income wallet, never sold. $BOBAI has no signature payment, so this
+  // is one transfer and its hash. The input is asked first with an empty hash: what the agent cannot work costs nothing.
+  // A hash that was sent is kept on the card, so pressing again retries it and never pays twice.
+  (function () {
+    var AGENT = 'https://agent.brainonbnb.com', BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', NONE = '0x' + '0'.repeat(64), wallet = null;
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    var word = function (h) { return h.replace(/^0x/, '').padStart(64, '0'); };
+    document.querySelectorAll('.sv-form .sv-bobai').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var f = btn.closest('.sv-form'), out = f.querySelector('.sv-holder-out'), task = f.readTask();
+        if (!task) return;
+        var eth = window.ethereum || window.BinanceChain;
+        out.hidden = false;
+        if (!eth || !eth.request) { out.innerHTML = 'No browser wallet here. Open this page in the browser of MetaMask, Binance Web3 Wallet or Trust Wallet.'; return; }
+        btn.disabled = true;
+        try {
+          if (!wallet) { var acc = await eth.request({ method: 'eth_requestAccounts' }); wallet = String(acc && acc[0] || '').toLowerCase(); }
+          if (!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no account');
+          if (String(await eth.request({ method: 'eth_chainId' })).toLowerCase() !== '0x38') { out.textContent = 'Switching your wallet to BNB Chain…'; await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] }); }
+          var url = AGENT + '/answer?service=' + encodeURIComponent(f.dataset.service);
+          // a hash names no payer, so the wallet goes along as the input where a card needs one and names none
+          var body = JSON.stringify(/0x[0-9a-fA-F]{40}/.test(task) || !/^(health_factor|lp_position_plan)$/.test(f.dataset.service) ? { task: task } : { task: task, address: wallet });
+          var post = function (hash) { return fetch(url, { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, hash ? { 'PAYMENT-SIGNATURE': hash } : {}), body: body }); };
+          if (!f.bobaiTx) {
+            out.textContent = 'Asking the price…';
+            var t = await post(null), terms = await t.json().catch(function () { return {}; });
+            var a = (terms.accepts || []).filter(function (x) { return String(x.asset).toLowerCase() === BOBAI; })[0];
+            if (t.status !== 402 || !a) throw new Error(terms.error || 'no $BOBAI price came back (HTTP ' + t.status + ')');
+            var dry = await post(NONE);
+            if (dry.status === 422) { var d = await dry.json().catch(function () { return {}; }); out.innerHTML = '<span class="sv-no">Nothing was paid.</span> ' + esc(d.error || 'The agent needs more input.'); btn.disabled = false; return; }
+            var value = BigInt(a.amount || a.maxAmountRequired), tokens = (value / 10n ** 18n).toString();
+            var bal = BigInt(await eth.request({ method: 'eth_call', params: [{ to: BOBAI, data: '0x70a08231' + word(wallet) }, 'latest'] }));
+            if (bal < value) { out.innerHTML = '<span class="sv-no">This wallet holds less than ' + esc(tokens) + ' $BOBAI.</span> <a href="/buy" target="_blank" rel="noopener">Buy on PancakeSwap</a> (3% tax, 6% slippage).'; btn.disabled = false; return; }
+            out.textContent = 'Send ' + tokens + ' $BOBAI in your wallet: one transaction, a little gas.';
+            f.bobaiTx = await eth.request({ method: 'eth_sendTransaction', params: [{ from: wallet, to: BOBAI, gas: '0x7a120', data: '0xa9059cbb' + word(a.payTo.toLowerCase()) + word(value.toString(16)) }] });
+          }
+          out.textContent = 'Sent. Waiting for the chain…';
+          var rc = null;
+          for (var i = 0; i < 40 && !rc; i++) { rc = await eth.request({ method: 'eth_getTransactionReceipt', params: [f.bobaiTx] }).catch(function () { return null; }); if (!rc) await sleep(1500); }
+          if (rc && rc.status === '0x0') { f.bobaiTx = null; throw new Error('the transfer failed on chain, nothing was paid'); }
+          out.textContent = 'On chain. The agent is working…';
+          var r = null, j = {};
+          for (var k = 0; k < 4; k++) { r = await post(f.bobaiTx); j = await r.json().catch(function () { return {}; }); if (r.ok && j.ok) break; if (r.status !== 402) break; await sleep(3000); }
+          var link = '<a href="https://bscscan.com/tx/' + esc(f.bobaiTx) + '" rel="noopener">transaction</a>';
+          if (r.ok && j.ok) { f.bobaiTx = null; out.innerHTML = '<b>' + esc(j.name || f.dataset.name) + '</b>: paid ' + esc(j.paid || 'in $BOBAI') + ' (' + link + ')<br>' + esc(j.summary || 'Answered.') + '<details><summary>Everything it returned</summary><pre>' + esc(JSON.stringify(j, null, 2)) + '</pre></details>'; }
+          else out.innerHTML = '<span class="sv-no">Not answered yet:</span> ' + esc(j.reason || j.error || ('HTTP ' + r.status)) + '. Your payment is kept (' + link + '): press the button again, it will not pay twice.';
         } catch (e) { out.textContent = 'Not sent' + (e && e.message ? ': ' + e.message : '') + '.'; }
         btn.disabled = false;
       });

@@ -36,7 +36,7 @@
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
   </div></nav>
   <main>
-  <div class="intro"><h1>The <em>token</em></h1><p>How the 3% tax becomes burned supply, which phase is running, and how deep the pool is right now.</p></div>
+  <div class="intro"><h1>The <em>token</em></h1><p>How the 3% tax becomes burned supply, which phase is running, and how deep the pool is right now.</p><p id="tk-live" hidden></p></div>
   <section class="sec" id="about">
     <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
@@ -321,6 +321,7 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
+<script>fetch('/api/price').then((r) => r.json()).then((p) => { const e = document.getElementById('tk-live'); if (!(p.price_usd > 0)) return; e.textContent = 'Price $' + p.price_usd.toFixed(8) + ' · MC $' + Math.round(p.market_cap_usd).toLocaleString('en-US'); e.hidden = false; }).catch(() => {});</script>
 <script src="app.js?v=131" defer></script>
 </body>
 </html>

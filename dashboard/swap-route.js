@@ -314,6 +314,8 @@ export async function swapRoute(input, opts = {}) {
     // would have told you and it is regularly not this one.
     best_route_is_the_deepest_pool: best.pool === cands[0].pair,
     you_would_receive: +best.out.toFixed(8),
+    // the router's quote knows no transfer tax: what lands in the wallet (2026-11-01). null = tax not measured, never 0
+    you_would_receive_after_tax: mBuy == null ? null : +(best.out * (1 - mBuy)).toFixed(8),
     round_trip: {
       sell_back_immediately: backOut == null ? null : +backOut.toFixed(8),
       // THE figure: what actually comes back, transfer tax included.

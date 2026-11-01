@@ -300,6 +300,7 @@ export function shape(s, r, usd, routeError = null, control = null) {
       you_pay: r.you_pay ?? null,
       ...(r.slippage_note ? { slippage_note: r.slippage_note } : {}),
       receive_tokens: r.you_would_receive ?? null,
+      receive_tokens_after_tax: r.you_would_receive_after_tax ?? null,
       best_route_is_the_deepest_pool: r.best_route_is_the_deepest_pool ?? null,
       slippage_bps_needed: r.slippage_bps_needed ?? null,
     };

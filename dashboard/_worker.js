@@ -764,6 +764,7 @@ async function getTokenInfo() {
   };
 }
 
+const HOLDER_LINE = 1000000n * 10n ** 18n;
 async function getWalletBalance(address) {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
   const [bnbRes, bobaiRaw] = await Promise.all([
@@ -774,6 +775,14 @@ async function getWalletBalance(address) {
     address,
     bnb: (Number(BigInt(bnbRes.result)) / 1e18).toFixed(6),
     bobai: (bobaiRaw / BigInt(1e18)).toString(),
+    // how far the wallet is from the holder pass (2026-11-01): the buy pays 3%, so the line is missed by buying the gap
+    holder_pass: {
+      line_bobai: 1000000,
+      qualifies: bobaiRaw >= HOLDER_LINE,
+      short_by_bobai: bobaiRaw >= HOLDER_LINE ? 0 : Math.ceil(Number(HOLDER_LINE - bobaiRaw) / 1e18),
+      buy_bobai_before_tax: bobaiRaw >= HOLDER_LINE ? 0 : Math.ceil(Number(HOLDER_LINE - bobaiRaw) / 1e18 / 0.97),
+      how: 'Holding the line, sign at https://brainonbnb.com/pass: 20 paid answers, 2 pool watches and 1 scan pass a day, free, a signature and no transaction.',
+    },
   };
 }
 

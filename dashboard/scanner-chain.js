@@ -189,13 +189,14 @@ const throttled=e=>{
   if(m.includes('revert')||m.includes('execution'))return false;
   return e&&e.code===-32005||/rate|limit|capacity|too many|quota|busy|exceed/.test(m);
 };
+let postRefusal='';
 async function tryPost(url,body){
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
-    if(!r.ok)return null;
+    if(!r.ok){postRefusal='HTTP '+r.status;return null}
     return await r.json();
-  }catch(e){return null}
+  }catch(e){postRefusal=String(e?.message||e).slice(0,100);return null}
 }
 export async function rpcBatch(calls,url,block='latest'){
   const out=[];
@@ -231,7 +232,7 @@ export async function rpc(method,params,url){
     if(j&&!j.error)return j.result;
     if(j&&j.error&&url)throw new Error(j.error.message);
   }
-  throw new Error('every BSC endpoint refused '+method);
+  throw new Error('every BSC endpoint refused '+method+(postRefusal?': '+postRefusal:''));
 }
 
 // WHO CONTROLS THE CONTRACT, read on-chain (2026-10-09) instead of taken from a
@@ -1159,12 +1160,15 @@ export async function windowMinutes(from, to) {
 // over 5,000 blocks from the Worker's shared egress while the same range
 // answered from a laptop; smaller answers pass where the big one does not.
 // The sample stays the same window, just read in pieces. null = refused.
+// the last refusal of a log read, in the node's words: an answer that says 'unreadable' should also say why
+export let logsRefusal = null;
 export async function getLogsSplit(params, from, to, url, depth = 0) {
   try {
     return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
   } catch (e) {
-    // a node that is behind says the same of every half: splitting spent up to 15 of the Worker's 50 requests on it
-    if (depth >= 3 || to - from < 64 || /beyond current head/i.test(String(e?.message || ''))) return null;
+    logsRefusal = String(e?.message || e).replace(/https?:S+/g, '').slice(0, 140);
+    // a node that is behind, or a 429, says the same of every half: splitting spent up to 15 of the Worker's requests on it
+    if (depth >= 3 || to - from < 64 || /beyond current head|HTTP 429/i.test(String(e?.message || ''))) return null;
     const mid = from + Math.floor((to - from) / 2);
     const a = await getLogsSplit(params, from, mid, url, depth + 1);
     if (a === null) return null;

@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -212,7 +212,14 @@ export async function feeTiers(input) {
   // a second later). A refusal here is a queue. What the first round leaves out is asked once more after a real pause, one
   // tier at a time, as long as the answer can still arrive in time for its caller.
   const logsOf = new Array(order.length).fill(null), readFrom = Date.now();
+  // A tier's hour is kept four minutes in the edge cache: what one call could read, the next need not win again, so a
+  // partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
+  const edge = typeof caches !== 'undefined' ? caches.default : null;
+  const tierKey = (c) => new Request(`https://brainonbnb.com/__cache/tier-logs/${c.pair.toLowerCase()}`);
+  const keep = async (i, logs) => { if (edge && logs) await edge.put(tierKey(order[i].c), new Response(JSON.stringify(logs), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {}); };
+  if (edge) await Promise.all(order.map(async (o, i) => { const hit = await edge.match(tierKey(o.c)).catch(() => null); if (hit) logsOf[i] = await hit.json().catch(() => null); }));
   for (let i = 0; i < order.length; i++) {
+    if (logsOf[i] !== null) continue;
     // A breath between tiers: the log endpoints rate-limit by the second, and
     // five ranges back to back from the Worker's shared egress is what left
     // the busiest CAKE tiers unreadable. No keyed log endpoint exists here
@@ -232,21 +239,27 @@ export async function feeTiers(input) {
     // concurrent callers left 0 to 2 of 5 tiers readable, against 4 to 5 when
     // asked one at a time.
     let logs = null;
-    for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
+    for (let attempt = 0; attempt < 2 && logs === null; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
-      const endpoint = LOGS_RPCS[(i + attempt) % LOGS_RPCS.length];
+      // The first endpoint first, on every tier (2026-11-01): it is the keyed one on the site. Taking turns sent two of
+      // three tiers to the public endpoints, which answer Cloudflare's shared address with HTTP 429.
+      const endpoint = LOGS_RPCS[attempt % LOGS_RPCS.length];
       // In pieces when the whole range is refused (getLogsSplit): the two
       // busiest CAKE tiers were unreadable in 3 of 3 runs before.
       logs = await getLogsSplit({ address: c.pair, topics }, from, head, endpoint);
     }
     logsOf[i] = logs;
+    await keep(i, logs);
   }
-  for (let round = 0; round < 2 && logsOf.includes(null) && Date.now() - readFrom < 12000; round++) {
+  // Cloudflare's shared address gets a 429 about two times in three, the same key from anywhere else none (measured
+  // 2026-11-01). It is a matter of turns, so the tiers still missing are asked again in rounds, until 28 s are gone.
+  for (let round = 0; round < 8 && logsOf.includes(null) && Date.now() - readFrom < 28000; round++) {
     for (let i = 0; i < order.length; i++) {
-      if (logsOf[i] !== null || Date.now() - readFrom >= 12000) continue;
-      await new Promise((r) => setTimeout(r, 1500));
+      if (logsOf[i] !== null || Date.now() - readFrom >= 28000) continue;
+      await new Promise((r) => setTimeout(r, 900));
       const c = order[i].c;
-      logsOf[i] = await getLogsSplit({ address: c.pair, topics: [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T] }, from, head, LOGS_RPCS[(i + round + 1) % LOGS_RPCS.length]);
+      logsOf[i] = await getLogsSplit({ address: c.pair, topics: [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T] }, from, head, LOGS_RPCS[round % LOGS_RPCS.length]);
+      await keep(i, logsOf[i]);
     }
   }
 
@@ -398,6 +411,7 @@ export async function feeTiers(input) {
     // offered under a name that says what it is.
     comparison_complete: measured.length === tiers.length,
     tiers_unreadable: tiers.filter((v) => !v.measured).map((v) => v.tier),
+    ...(tiers.some((v) => !v.measured) && logsRefusal ? { unreadable_because: logsRefusal } : {}),
     // The two answers side by side are the whole point: an LP is shown the
     // first number everywhere and needs the second one.
     best_paying_tier: measured.length === tiers.length && traded.length ? traded[0].tier : null,

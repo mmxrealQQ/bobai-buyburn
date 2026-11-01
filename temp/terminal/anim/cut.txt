@@ -167,7 +167,6 @@ hub-buy-kraken-v5
 # Q1's place: hub-defi-v6 RELEASED (a golden sprout grows into a knee-high coin tree, he picks a coin and pockets it, the
 # tree sinks back; clipcheck OK, face his in every frame, nothing near it)
 hub-liq
-hub-defi
 # 7.10. OPERATOR (builder sheet): RELEASED P4 hub-liq-v4 (two flasks, swirl pool). WITHHELD P5 hub-liq-v5: the same idea
 # again, the pool a flat yellow disc
 hub-liq-v5
@@ -213,3 +212,5 @@ hub-paid
 # 25.10. RELEASED by the operator: hub-saber-v3 (U3), hub-hire-v2 (ZZO2), hub-paid-v2 (ZZQ2), hub-buy-kraken (H1), hub-defi-v4 (Q4)
 # 25.10. CONFIRMED live by the operator: hub-ouch, hub-ouch-v3, hub-paid-v3, hub-popcorn-v3, hub-zen, hub-zen-v2 (released by Claude 6.-22.10.)
 # 25.10. stay WITHHELD on the operator's no: V3 bull-v3, ZZN1 guitar, ZZN2 guitar-v2, ZZR1 popcorn, G3, E4, G4, H2, H5, L2, N3, O2, P1, P2, P5, S4, ZZQ1 paid; Q1 defi left unmarked, stays withheld
+# 1.11. OPERATOR: F2 hub-buy-whale-v2 out ("beim whale buy das F2 rausnehmen"); Q1 hub-defi back in ("das Q1 habe ich rein"), pulled 7.10.
+hub-buy-whale-v2

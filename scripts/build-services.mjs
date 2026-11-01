@@ -210,7 +210,7 @@ ${fieldsOf(d.needs)}
           <p class="sv-form-msg" role="status"></p>
         </form>
         <details class="sv-dev"><summary>For developers: the same answer by one call</summary>${EXAMPLE_REQ[d.id]?.body ? `<p class="sv-cost">Pay per answer (x402). This request, with real values, answers 402 with the price; pay and send it again:</p><pre class="sv-curl"><code>${esc(`curl -s -X POST '${String(d.x402).replace(/^POST\s+/, '')}' -H 'content-type: application/json' -d '${JSON.stringify(EXAMPLE_REQ[d.id].body)}'`)}</code></pre>` : `<p class="sv-cost">Pay per answer (x402): <code>${esc(d.x402)}</code> with the body <code>${esc(bodyOf(d.needs))}</code></p>`}</details>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="/registry?hire=${d.agent}" aria-label="Hire ${esc(d.name)} on Brain Plaza">hire it on Brain Plaza &rarr;</a></p>
         </details>
         <a class="sv-example" href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">See a real answer, free &rarr;</a>
       </article>`;
@@ -392,6 +392,7 @@ function page() {
     <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
     <a class="brand-link" href="/services">Services</a>
     <a class="nb" href="/registry">Brain Plaza</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
   </div></nav>
 
 <main class="sv">
@@ -592,7 +593,7 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
           if (t.status !== 402 || !a) throw new Error(terms.error || terms.reason || 'no USD1 price came back (HTTP ' + t.status + ')');
           var value = String(a.amount || a.maxAmountRequired);
           var bal = await eth.request({ method: 'eth_call', params: [{ to: USD1, data: '0x70a08231' + wallet.slice(2).padStart(64, '0') }, 'latest'] });
-          if (BigInt(bal) < BigInt(value)) { out.innerHTML = '<span class="sv-no">This wallet holds less than 0.10 USD1.</span> Get USD1 on BNB Chain first, or ' + escrow(f, task) + ', or answer free with 1,000,000 $BOBAI (Holder? Free).'; btn.disabled = false; return; }
+          if (BigInt(bal) < BigInt(value)) { out.innerHTML = '<span class="sv-no">This wallet holds less than 0.10 USD1.</span> <a href="https://pancakeswap.finance/swap?outputCurrency=0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d&chain=bsc" target="_blank" rel="noopener">Get USD1 on BNB Chain</a> first, or ' + escrow(f, task) + ', or answer free with 1,000,000 $BOBAI (Holder? Free).'; btn.disabled = false; return; }
           var nonce = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
           var auth = { from: wallet, to: a.payTo, value: value, validAfter: '0', validBefore: String(Math.floor(Date.now() / 1000) + 600), nonce: nonce };
           var typed = { primaryType: 'TransferWithAuthorization', domain: { name: a.extra.name, version: a.extra.version, chainId: 56, verifyingContract: a.asset },

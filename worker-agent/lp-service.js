@@ -180,7 +180,7 @@ export async function lpPositionLook(params = {}, env = null) {
     service: 'lp_position_look',
     verdict: lines.join(' '),
     the_plan: facts.against_wbnb
-      ? 'What the agent would do about it — whether a re-set is due and in which width, what the wallet\'s spare BNB would add — is the paid answer: lp_position_plan, 0.10 USD1, POST /answer?service=lp_position_plan.'
+      ? 'What the agent would do about it — whether a re-set is due and in which width, what the wallet\'s spare BNB would add — is the paid answer: lp_position_plan, 0.10 USD1, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI. POST https://agent.brainonbnb.com/answer?service=lp_position_plan, free example at /example?service=lp_position_plan.'
       : 'The position is not against WBNB. The agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.',
     measured_at: new Date().toISOString(),
     source: 'PancakeSwap V3 NonfungiblePositionManager and the pool itself, read live',

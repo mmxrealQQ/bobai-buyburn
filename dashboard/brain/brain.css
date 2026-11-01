@@ -563,6 +563,8 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .bp-buyline::-webkit-scrollbar{display:none}
 .bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-right:5px}
 .bp-buyline .f{flex:0 0 auto}
+.bp-buyline .ca{flex:0 0 auto;font:600 11px var(--bp-mono);color:var(--bp-text);background:none;border:1px solid var(--bp-muted);border-radius:6px;padding:2px 7px;cursor:pointer}
+.bp-buyline .ca span{color:var(--bp-muted);margin-left:4px}
 .bp-buyline .why{flex:0 0 auto;color:var(--bp-muted);font-weight:500}
 .bp-buyline .why b{color:var(--bp-text);font-weight:600}
 
@@ -588,3 +590,6 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 /* what goes first when the header narrows: the burns, the volume, the LP line, the market cap, liquidity, "owner
    renounced", "buys back & burns" — the tax, the slippage and the price stay. The line measures itself (build.mjs, fit) and sets this class. */
 .bp-buyline .bl-off{display:none}
+
+/* the contract address first where the line scrolls: a phone buyer pastes it before anything else (2026-11-01) */
+@media (max-width:1179px){.bp-buyline .ca{order:-1}}

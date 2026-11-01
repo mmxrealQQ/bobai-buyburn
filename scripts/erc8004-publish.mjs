@@ -59,6 +59,11 @@ const DIR = path.join(ROOT, 'data', censusDirArg());
 // (found 2026-09-18).
 const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'utf8').match(/styles\.css\?v=(\d+)/) || [null, '49'])[1];
 const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
+let ownJobs = null;
+const ownJobTotals = () => {
+  if (!ownJobs) { ownJobs = {}; try { for (const [id, a] of Object.entries(JSON.parse(fs.readFileSync(path.join(ROOT, 'dashboard', 'api-agent-jobs.json'), 'utf8')).agents || {})) ownJobs[id] = a.totals; } catch { /* optional */ } }
+  return ownJobs;
+};
 
 let census = null;
 try { census = JSON.parse(fs.readFileSync(path.join(DIR, 'census.json'), 'utf8')); } catch {}
@@ -1034,12 +1039,15 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
           : `<li class="rgc-bad">Did not answer when we asked it for a price &mdash; ${esc(q.reason || 'no answer')}</li>`);
     }
     if (r.employment) {
-      const e = r.employment;
+      // An agent with its own job record is counted from it (2026-11-01): 302257 and 304493 moved to wallets of their own
+      // on 21.10., their history stayed on the old address, and our best agent read "none paid out yet".
+      const t = ownJobTotals()[r.agentId];
+      const e = t?.funded ? { ...r.employment, funded: t.funded, funded_outside: t.funded_outside, completed_outside: t.paid_out_outside, outside_buyers: t.buyers_outside, funded_by_us: t.funded - t.funded_outside, submitted_not_released: t.delivered_waiting, last_submission: t.last_delivery ? Math.floor(Date.parse(t.last_delivery) / 1000) : r.employment.last_submission } : r.employment;
       // Employment is counted per provider address. Five of our agents sell
       // from one address, and each card said "Hired 2×" as if each had been;
       // when the address hosts more than one agent, the chip says whose count
       // it is.
-      const shared = providerAgentCount.get(e.address) || 0;
+      const shared = t?.funded ? 1 : providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
       if (e.funded) {
         // last delivery (2026-10-09): the newest submission on the kernel for

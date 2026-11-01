@@ -4,6 +4,7 @@
 # the agent chart (Brain Plaza phase 2): one page draws any id from agent.brainonbnb.com/chart/<id>
 /agent/* /agent 200
 /agents /defi 301
+/buy https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc 302
 /liquidity /defi 301
 /defi-agent /defi 301
 /giggle /#giggle 301

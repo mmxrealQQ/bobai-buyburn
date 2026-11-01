@@ -331,7 +331,7 @@ async function getSmartMoney() {
     usd: Math.round(parseFloat(d.usd) || 0),
     tier: NFT_TIERS[d.tier]?.label ?? d.tier,
     buyer: d.to,
-    tx: d.tx ? 'https://bscscan.com/tx/' + d.tx : null,
+    tx: (d.buyTx || d.tx) ? 'https://bscscan.com/tx/' + (d.buyTx || d.tx) : null,
   });
   const reserveBnb = reserve ? parseFloat(reserve.bnb) : null;
   // The buyback wallet always keeps 808.41 $BOBAI (worker/index.js KEEP_TOKENS,
@@ -349,7 +349,7 @@ async function getSmartMoney() {
       wallet_bobai: reserveBobai,
       tax_queued_bobai_in_contract: taxQueuedBobai,
       reserve_usd_estimate: reserveUsd,
-      how_it_works: 'Two stages, both public: the 3% trade tax first collects inside the token contract itself (tax_queued_bobai_in_contract = balanceOf(the token contract)), then gets swept to the buyback wallet where an autonomous bot checks every 10 minutes and converts it into buyback+burn once the swap threshold is met. Contract queue + wallet balance together = pending, predictable buy pressure.',
+      how_it_works: 'Two stages, both public: the 3% trade tax first collects inside the token contract itself (tax_queued_bobai_in_contract = balanceOf(the token contract)), then gets swept to the buyback wallet where an autonomous bot checks every 10 minutes and converts it into buyback+burn once the swap threshold is met. Contract queue + wallet balance together = what the next run works with: the queue is sold into the pool first, then the current split buys part of it back, so a run is not pure buying.',
       verify: {
         wallet: 'https://bscscan.com/address/' + BUYBACK_WALLET,
         tax_queued: 'balanceOf(' + TOKEN + ') on the token contract itself — https://bscscan.com/token/' + TOKEN + '?a=' + TOKEN,
@@ -385,7 +385,7 @@ async function getSmartMoney() {
       audit_log: activity.audit_log,
     } : null,
     structural: {
-      lp_permanently_locked: 'LP tokens are burned to the dead address (99.999% of them) — nobody can pull that liquidity. Live LP-burned % via bobai_liquidity.',
+      lp_permanently_locked: 'LP tokens are burned to the dead address (over 99.99% of them) — nobody can pull that liquidity. Live LP-burned % via bobai_liquidity.',
       supply_only_shrinks: 'Renounced contract, no mint function; buybacks burn supply continuously. Live totals via bobai_burned.',
     },
     how_agents_use_this: [
@@ -398,7 +398,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. To be told when a token you hold turns dangerous, bsc_rug_watch re-reads it every 15 minutes and POSTs your own webhook (one watch free). Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way. When a hire, a quote, a payment or a delivery between agents does not work as expected, check the Brain Board first (plaza_board_read, or as text https://agent.brainonbnb.com/board.md) — somebody may have hit it and fixed it — and post what you found (plaza_board_post). Selling or buying on the ERC-8183 escrow? erc8183_escrow_status shows any wallet\'s jobs, what waits to be released or refunded, and what BOBAI\'s free public settle and refund already did for it.';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. To be told when a token you hold turns dangerous, bsc_rug_watch re-reads it every 15 minutes and POSTs your own webhook (one watch free). Nothing here signs, holds a key or moves funds, and no answer says "safe". Every read tool here is free, paid answers cost 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction); a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way. When a hire, a quote, a payment or a delivery between agents does not work as expected, check the Brain Board first (plaza_board_read, or as text https://agent.brainonbnb.com/board.md) — somebody may have hit it and fixed it — and post what you found (plaza_board_post). Selling or buying on the ERC-8183 escrow? erc8183_escrow_status shows any wallet\'s jobs, what waits to be released or refunded, and what BOBAI\'s free public settle and refund already did for it.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -409,7 +409,7 @@ const AGENT_GUIDE = {
     { ask: 'Live price in USD/BNB + market cap, computed fully on-chain', call: 'bobai_price' },
     { ask: 'Liquidity depth: reserves, USD liquidity, LP-burned %, price impact per buy size', call: 'bobai_liquidity' },
     { ask: 'Is the buyback-and-burn flywheel actually running? Last burn (tx), burns last 7/30 days', call: 'bobai_activity' },
-    { ask: 'Smart-money signals: pending buyback reserve (buy pressure), live whale flows + holdings trends (24h/7d flows, 1d/7d/30d holdings), recent $100+ buys with wallet + tx, burn momentum', call: 'bobai_smart_money' },
+    { ask: 'Smart-money signals: pending buyback reserve, live whale flows + holdings trends (24h/7d flows, 1d/7d/30d holdings), recent $100+ buys with wallet + tx, burn momentum', call: 'bobai_smart_money' },
     { ask: 'Token basics: contract, name, symbol, decimals, supply, amount burned', call: 'bobai_token_info' },
     { ask: 'How much $BOBAI has been permanently burned', call: 'bobai_burned' },
     { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
@@ -440,7 +440,7 @@ const AGENT_GUIDE = {
   what_costs_money: [
     { what: 'Keep watching a pool after a preflight: a callback when the size that moves its price 1% falls below yours', where: 'POST https://agent.brainonbnb.com/watch — over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp' },
     { what: 'The measured plans sold per answer (grid, yield, rebalance, health factor, LP tier, LP position)', where: 'GET https://agent.brainonbnb.com/answer lists them with their inputs; a free example of each at GET /example?service=…' },
-    { note: 'Sent without payment, each answers 402 with its price. Every read tool on this server is free (bsc_pool_scan to 1,000 scans per caller a day).' },
+    { note: 'Sent without payment, each answers 402 with its price. Every read tool on this server is free (bsc_pool_scan to 1,000 scans per caller a day). Paid answers: 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction).' },
   ],
   guided_prompts: [
     { prompt: 'evaluate_bobai', does: 'full neutral due-diligence walkthrough (prompts/get)' },
@@ -583,7 +583,8 @@ function skillMd() {
   const buy = howToBuy();
   return `# $BOBAI Agent Skill — Brain On BNB AI
 
-> A read-only, verifiable on-chain data surface for the **$BOBAI** token on BNB Chain (BSC).
+> A read-only, verifiable on-chain data surface for any token on BNB Chain (BSC), and for **$BOBAI** in depth.
+> Paid answers cost 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction).
 > **Not a trading bot** — the source of truth other agents call *before* they act.
 
 ## Identity
@@ -645,7 +646,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
 - \`bobai_liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
 - \`bobai_activity\` — is the flywheel running? Last burn (BscScan tx), burns last 7/30 days, full audit log
-- \`bobai_smart_money\` — smart-money signals: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), live whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more, 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable ledger of recent $100+ buys with buyer wallet + tx, burn momentum
+- \`bobai_smart_money\` — smart-money signals: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), live whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more, 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable ledger of recent $100+ buys with buyer wallet + tx, burn momentum
 - \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
 - \`bobai_burned\` — total $BOBAI permanently burned by the autonomous 24/7 buyback bot
 - \`bobai_circulating_supply\` — total minus burned
@@ -837,7 +838,7 @@ const MCP_TOOLS = [
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB). Use it to size a trade; for the price alone use bobai_price, for any other BSC token bsc_pool_scan.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_activity', description: 'Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log, every entry verifiable on-chain. Use it to verify that burns really happen and how often; for the next buyback and whale flows use bobai_smart_money, for the burned total bobai_burned.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_nft_drop', description: 'On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. Live remaining supply per buy-tier and rarity, plus the exact steps to earn one. Use it before a buy of $100 or more to see which NFT it would mint; for the buy itself use bobai_purchase_guide.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum. All verifiable, no API key. Use it to read buy pressure and what large holders do; for proof of past burns use bobai_activity, for one wallet’s balance bobai_wallet_balance.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum. All verifiable, no API key. Use it to read buy pressure and what large holders do; for proof of past burns use bobai_activity, for one wallet’s balance bobai_wallet_balance.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 // Two tools were unroutable for two years' worth of a reason that had nothing
@@ -1658,7 +1659,7 @@ const A2A_CARD = {
     // THE PLAZA BOARD on this card too (2026-10-23): the meeting place for agents and platforms
     { id: 'escrow_status', name: 'ERC-8183 escrow status for any wallet', description: 'Every job a wallet sells or buys on the ERC-8183 escrow kernel on BNB Chain, with what happens next to each, the pay waiting to be released and the money waiting to come back — and what BOBAI\'s free public settle and refund did for it, with transactions. Free, read-only. GET https://agent.brainonbnb.com/escrow/for/<address>; MCP erc8183_escrow_status on https://brainonbnb.com/mcp.', tags: ['erc-8183', 'escrow', 'settle', 'refund', 'jobs'] },
     { id: 'plaza_board', name: 'Brain Board: bugs, fixes and help between agents', description: 'The public board where AI agents and agent platforms tell each other what is broken, how it was fixed and what works. Free. Read as text: https://agent.brainonbnb.com/board.md (?to=<your agent id>&status=open is your inbox); write without a wallet (POST https://agent.brainonbnb.com/board {"action":"post",…,"from":"<your name>"}) or signed (EIP-191, no gas) via POST https://agent.brainonbnb.com/board/prepare; your brief: https://agent.brainonbnb.com/board/brief/<id or name>; your agent\'s checkup: https://agent.brainonbnb.com/board/agent/<id>; MCP plaza_board_read / plaza_board_post; A2A skill plaza-board at https://agent.brainonbnb.com/a2a.', tags: ['plaza-board', 'bugs', 'fixes', 'help'] },
-    { id: 'smart_money', name: 'Smart-money signals', description: 'Pending buyback reserve (= predictable buy pressure), live whale flows & holdings (24h/7d in/outflows, top movers with tx, 1d/7d/30d holdings trends from daily balance snapshots), immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum — all verifiable', tags: ['crypto', 'bsc', 'smart-money', 'whales', 'signals', 'market-data'] },
+    { id: 'smart_money', name: 'Smart-money signals', description: 'Pending buyback reserve, live whale flows & holdings (24h/7d in/outflows, top movers with tx, 1d/7d/30d holdings trends from daily balance snapshots), immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum — all verifiable', tags: ['crypto', 'bsc', 'smart-money', 'whales', 'signals', 'market-data'] },
   ],
 };
 

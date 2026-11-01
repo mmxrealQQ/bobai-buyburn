@@ -1238,13 +1238,13 @@ function fillLpPortfolio(){
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
     const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
     const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'
-      + (split ? src('📈 Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src('📈 Range vs holding', signed(p.from_range_bnb), dir(p.from_range_bnb))
+      + (split ? src('📈 Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src('📈 Range, before fees', signed(p.from_range_bnb), dir(p.from_range_bnb))
         : src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb)))
       + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
       + '</div>'
       // Not a term of the sum above (2026-09-24, D7): a comparison beside it.
-      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '')
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — after fees and gas, against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '')
       // the same line for the range standing now (2026-10-13): the total above carries every range since 3 Sep
       + (p.since_range && p.since_range.vs_holding_bnb != null ? (() => { const r = p.since_range, mv = Number(r.price_move_pct);
         return '<div class="pf-eq">This range alone' + (r.width_pct ? ' (±' + esc(r.width_pct) + '%' : ' (') + ', since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days, ' + esc(p.other_token || 'the other side') + ' ' + (mv > 0 ? '+' : mv < 0 ? '−' : '') + Math.abs(mv).toFixed(1) + '% against BNB): fees <b>' + signed(r.fees_bnb) + '</b>, price <b>' + signed(r.price_bnb) + '</b> — against holding <b>' + signed(r.vs_holding_bnb) + '</b>' + (r.vs_holding_pct != null ? ' (' + (r.vs_holding_pct > 0 ? '+' : r.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(r.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>'; })() : '');

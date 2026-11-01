@@ -228,6 +228,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
   if (dep?.sold?.sells > 0 && (leftUsd == null ? leftQ > 0 : leftUsd >= 1)) {
     const via = dep.sold.viaWalletsItFunded || [];
     caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}${back ? ` and added $${back.usd ?? '?'} back as liquidity (${LP_FATE[back.lp]}), so about $${leftUsd ?? '?'} left the pool` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.`, ...fig(leftUsd ?? dep.sold.usd, 1, 'usd') });
+    // the adds were a second read: when it failed, a hand add looks like a sale (2026-11-01, live on BOBAI after add #160)
+    if (dep.addsNotRead) caution.at(-1).why += ' Whether it put this back as liquidity could not be read in this scan, so part of it may be a liquidity add.';
   }
   const ths = fl?.topHolderSelling || [];
   if (ths.length) {

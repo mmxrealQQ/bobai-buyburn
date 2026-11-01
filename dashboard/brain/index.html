@@ -245,10 +245,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793528318328">
+<link rel="stylesheet" href="brain/brain.css?v=1793531942660">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793528186">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793531839">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -262,6 +262,7 @@
 </div>
 <div class="bp-buyline" role="region" aria-label="$BOBAI at a glance">
   <span class="why"><b>3% tax</b><span class="w">: burn, liquidity &amp; more</span><span class="s"> · buy with <b>6% slippage</b></span><span class="x"> · LP <b data-bl="lp">—</b> burned</span><span class="r"> · owner renounced</span></span>
+  <button class="ca" type="button" data-ca="0x245c386dcfed896f5c346107596141e5edcbffff" title="Copy the contract address">CA 0x245c…ffff <span>Copy</span></button>
   <span class="f p"><span class="k">Price</span><b data-bl="price">—</b></span>
   <span class="f m"><span class="k">MC</span><b data-bl="mc">—</b></span>
   <span class="f l"><span class="k">Liq</span><b data-bl="liq">—</b></span>
@@ -273,7 +274,8 @@
   // WHAT DOES NOT FIT GOES WHOLE, NEVER CUT (2026-10-30, operator: cut off at "supply"): the old width steps were set by
   // hand and the longer sentence of 29.10. outgrew nine of fifteen widths; the figures change length too, so the line
   // measures itself. From 1180 px it stands in the header; below that it scrolls sideways inside itself, as before.
-  const line = document.querySelector('.bp-buyline'), order = ['.bn', '.v', '.why .x', '.m', '.l', '.why .r', '.why .w'].map((s) => line.querySelector(s));
+  const line = document.querySelector('.bp-buyline'), order = ['.bn', '.v', '.why .x', '.m', '.l', '.why .r', '.why .w', '.ca'].map((s) => line.querySelector(s));
+  line.querySelector('.ca').addEventListener('click', (e) => { const b = e.currentTarget, s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); });
   const fit = () => {
     order.forEach((e) => e.classList.remove('bl-off'));
     if (innerWidth < 1180) return;
@@ -357,6 +359,7 @@
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
         <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens and nothing hidden: the 3% rate is fixed in the contract, and every change of the split is announced and logged.</p>
+        <p>Buying and holding do something: a buy of $100 or more mints an NFT to your wallet, no claim (<a href="/nft/">1,925 max</a>), and with <b>1,000,000 $BOBAI</b> held our six agents answer free, 20 a day, one signature each and no transaction: <a href="/pass">the holder pass</a>.</p>
         <div class="about-tags">
           <span>AI-Built</span>
           <span>Deflationary</span>
@@ -589,7 +592,7 @@
       </div>
       <div class="lqi">
         <div class="lqi-h">Where the locked liquidity comes from
-          <span>Every LP transfer into the dead address was read off the chain. Three origins account for it: the two bots' adds are summed from their own transactions, and the dev wallet&rsquo;s share is the rest of the locked total (the chain read reaches Aug 10, 2026). 99.999% of the pool&rsquo;s LP is at the dead address.</span></div>
+          <span>Every LP transfer into the dead address was read off the chain. Three origins account for it: the two bots' adds are summed from their own transactions, and the dev wallet&rsquo;s share is the rest of the locked total.</span></div>
         <div class="lqsrc">
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
@@ -1401,7 +1404,7 @@
         <div class="faq-body">$BOBAI is a meme token on BNB Chain whose 3% trade tax is spent by bots, in public. They buy back and burn $BOBAI and $BOB, add liquidity, fund a DeFi agent and pay the creator share, and every step is a transaction. The LP tokens are burned (permanently locked), ownership is renounced, the contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, and the bot code is open source on <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank" rel="noopener">GitHub</a>.</div>
       </details>
       <details class="faq-item"><summary>What is the official $BOBAI contract address?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body"><code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain (BEP-20). It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">verified on BscScan</a>. A token with the same name or ticker at any other address is not this project, so copy the address from here or from BscScan.</div>
+        <div class="faq-body"><code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain (BEP-20). It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">verified on BscScan</a>. A token with the same name or ticker at any other address is not this project, so copy the address from here or from BscScan. Your wallet may ask you to import it, because it is not on the default lists, and on chain its name reads BOB with the symbol BOBAI: it is this token if the address matches. It is not $BOB (Build On BNB).</div>
       </details>
       <details class="faq-item"><summary>Where can I buy $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">On <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">PancakeSwap V2</a>, or inside <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search. Set slippage to 6%: the 3% tax counts against it, and a swap set under 3% fails.</div>
@@ -1482,9 +1485,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793528186')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793531839')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793528318330" defer></script>
-<script src="brain/cards.js?v=1793528318330" defer></script>
-<script src="brain/hero.js?v=1793528318330" defer></script>
+<script src="brain/brain.js?v=1793531942661" defer></script>
+<script src="brain/cards.js?v=1793531942661" defer></script>
+<script src="brain/hero.js?v=1793531942661" defer></script>
 </body></html>

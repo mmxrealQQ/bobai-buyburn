@@ -1437,7 +1437,10 @@ async function scanAllowance(request, { rest = false, scanPassArg = null } = {})
   } catch { return null; }   // a counter that cannot count lets the scan through
 }
 
-async function handleMcp(request, note = () => {}, own = false) {
+// THE PREFLIGHT AS A SERVER OF ITS OWN (2026-11-01): the MCP registry takes one entry per URL and matches names, so the two
+// measurement tools have /mcp/preflight, under com.brainonbnb/bsc-token-preflight. Same code, a shorter list.
+const PREFLIGHT_TOOLS = ['bsc_token_preflight', 'bsc_pool_scan'];
+async function handleMcp(request, note = () => {}, own = false, only = null) {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -1506,10 +1509,11 @@ async function handleMcp(request, note = () => {}, own = false) {
     // happily routing anything called `get_*`. A tool that says what it is
     // should not have to be named a particular way to be reachable.
     if (method === 'tools/list') {
-      const tools = MCP_TOOLS.map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
+      const tools = MCP_TOOLS.filter((t) => !only || only.includes(t.name)).map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
       return new Response(JSON.stringify(rpcOk(id, { tools })), { headers: cors });
     }
     if (method === 'tools/call') {
+      if (only && !only.includes(params?.name)) return new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32601, message: `This server has ${only.join(' and ')}; everything else is at https://brainonbnb.com/mcp` } }), { headers: cors });
       console.log('[mcp] tools/call', params?.name);
       // A tool that answers "that is not a BSC token" has answered: MCP wants
       // that as a result with isError, which the model gets to read, not as a
@@ -1917,10 +1921,10 @@ export default {
     // detail.
     const isOwn = request.headers.get('cf-connecting-ip') === '2a06:98c0:3600::103' && !request.headers.get('cf-worker');
     if (isOwn) {
-      if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true);
+      if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
     }
-    else if (url.pathname === '/mcp') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
+    else if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
     else if (url.pathname.startsWith('/api/')) {
       // The site's own pages call /api/ from the visitor's browser, and that
       // was most of "rest". A browser says where a fetch comes from; an agent,
@@ -1961,7 +1965,7 @@ export default {
     else if (url.pathname.startsWith('/skills/')) count('skill_download');
     else if (url.pathname.startsWith('/.well-known/')) count('discovery');
 
-    if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, name));
+    if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, name), false, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
     // brainonbnb.com/board-hook: OUR OWN BRAIN BOARD WEBHOOK (2026-10-24, the live proof of the platform webhook):
     // brainonbnb.com is a verified platform on the board, and this is where the board POSTs what concerns it. The call
     // goes on to the board's record with its signature; the board checks the signature (it alone holds the secret)

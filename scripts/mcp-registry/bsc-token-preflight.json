@@ -7,7 +7,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://brainonbnb.com/mcp"
+      "url": "https://brainonbnb.com/mcp/preflight"
     }
   ]
 }

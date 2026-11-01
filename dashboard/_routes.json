@@ -3,6 +3,7 @@
   "include": [
     "/api/*",
     "/mcp",
+    "/mcp/preflight",
     "/join",
     "/join/",
     "/join.txt",

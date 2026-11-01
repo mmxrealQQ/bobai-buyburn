@@ -333,11 +333,20 @@ console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a th
       ok('… and the BOBAI minimum is 95% of what the router takes of the amount offered — never more than was offered', a[2] <= (a[1] * 95n) / 100n && a[2] >= (a[1] * 80n) / 100n, `min ${Number(formatEther(a[2])).toFixed(0)} of ${Number(formatEther(a[1])).toFixed(0)} BOBAI offered`);
       ok('it says so before it sends', /Min BOBAI accepted: [0-9.]+ \(95%\)/.test(said) && /Min BNB accepted:   [0-9.]+ \(95%\)/.test(said) && !/accepted: 0 /.test(said));
       const deadLp1 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
-      ok('both receipts are success, the dead address holds the LP the record names, the wallet none — and the 808.41 BOBAI it keeps', rc.status === 'success' && burnRc.status === 'success' && deadLp1 - deadLp0 === parseEther(rec.lp) && (await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [acct.address] })) === 0n && (await tok(BOBAI, acct.address)) >= parseEther('808.41'));
+      ok('both receipts are success, the dead address holds the LP the record names, the wallet none — and the 808.41 BOBAI it keeps', rc.status === 'success' && burnRc.status === 'success' && deadLp1 - deadLp0 === parseEther(rec.lp) && (await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [acct.address] })) === 0n && (await tok(BOBAI, acct.address)) === parseEther('808.41'), `${formatEther(await tok(BOBAI, acct.address))} BOBAI left`);
       // its gas money stays (2026-10-23, operator: "0.003 behalten"): run #153 put all but 0.001 into the pool and left
       // the wallet under its 0.0015 floor; now 0.003 is held back, less only the gas of the burn after the add
       const cur = said.match(/Current BNB balance: ([0-9.]+)/)?.[1], offered = said.match(/BNB for liquidity:\s+([0-9.]+)/)?.[1];
       ok('the wallet keeps its gas money: the BNB offered to the pool is its balance less exactly 0.003, and the add sent no more', cur && offered && parseEther(cur) - parseEther(offered) === parseEther('0.003') && tx.value === parseEther(offered), `${cur} - ${offered}`);
+      // the small run after a big one (2026-11-01, operator: "d38 muss auch exakt 808.41 uebrig haben"): a rest of the
+      // size #158 left and d38's own 0.00299 BNB, where the sale alone does not pay the add: the reserve is touched, to
+      // 0.002 at the most, and not one wei of BOBAI stays over the 808.41
+      await wallet.writeContract({ address: ROUTER_ADDR, abi: BUY, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [0n, [WBNB_ADDR, BOBAI], acct.address, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.0008'), gas: 400000n }).then((hash) => pub.waitForTransactionReceipt({ hash }));
+      await test.setBalance({ address: acct.address, value: parseEther('0.00298730915') });
+      const small = spawnSync(process.execPath, [scriptCopy], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000,
+        env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k, BSC_RPC_URL: LOCAL } });
+      const bnbAfter = await pub.getBalance({ address: acct.address });
+      ok('a small rest on the wallet\'s own gas money: exactly 808.41 BOBAI left, the BNB not under the floor less the burn\'s gas', small.status === 0 && (await tok(BOBAI, acct.address)) === parseEther('808.41') && bnbAfter > parseEther('0.0019'), small.status === 0 ? `${formatEther(await tok(BOBAI, acct.address))} BOBAI, ${formatEther(bnbAfter)} BNB left` : `${small.stdout}${small.stderr}`.split('\n').filter(Boolean).slice(-3).join(' / '));
     }
     ok('the real dashboard/liq-runs.json was not touched by any of it', fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8') === realRuns);
   }

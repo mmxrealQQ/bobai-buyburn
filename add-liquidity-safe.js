@@ -20,6 +20,14 @@ const KEEP_BOBAI = parseEther('808.41'); // Keep exactly 808.41 BOBAI on wallet
 const SLIPPAGE_PERCENT = 2; // 2% max slippage (MEV protection)
 const SWAP_CHUNKS = 3; // Split swap into 3 chunks for MEV protection
 const GAS_LIMIT = 500000n;
+// EXACTLY 808.41 AFTERWARDS (operator, 2026-11-01: "d38 muss auch exakt 808.41 uebrig haben"). A 50/50 split left a
+// router rest on the wallet every run (#157 3,377.92, #158 2,779.41): the sale pays 3% tax and 0.25% fee, so the BNB
+// was the short side and the BOBAI stayed behind. Selling 51% makes the BOBAI the short side: the router takes all of
+// it and the small surplus of BNB stays on the wallet. 49.0 / 51 x 0.9676 leaves ~0.7% of room for a price that moves.
+const SWAP_PERCENT = 51n;
+// Only to take the last of the BOBAI, the add may go under the 0.003 reserve, never under this. It keeps a start of
+// the next run (0.0015) and the gas of the run itself out of reach.
+const GAS_FLOOR = parseEther('0.002');
 
 const ERC20_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
@@ -135,7 +143,7 @@ async function main() {
   }
 
   const TOTAL_BOBAI = bobaiBalance - KEEP_BOBAI;
-  const SWAP_AMOUNT = TOTAL_BOBAI / 2n;
+  const SWAP_AMOUNT = (TOTAL_BOBAI * SWAP_PERCENT) / 100n;
   const LIQUIDITY_BOBAI = TOTAL_BOBAI - SWAP_AMOUNT;
 
   const bnbBefore = await publicClient.getBalance({ address: account.address });
@@ -230,23 +238,15 @@ async function main() {
   const gasReserve = parseEther('0.003');
   const currentBnb = await publicClient.getBalance({ address: account.address });
   console.log(`Current BNB balance: ${formatEther(currentBnb)}`);
-  const bnbForLiquidity = currentBnb > gasReserve ? currentBnb - gasReserve : 0n;
-
-  if (bnbForLiquidity <= 0n) {
-    console.log('[ERROR] No BNB available for liquidity');
-    process.exit(1);
-  }
-
-  console.log(`BOBAI for liquidity: ${formatEther(LIQUIDITY_BOBAI)}`);
-  console.log(`BNB for liquidity:   ${formatEther(bnbForLiquidity)}`);
+  let bnbForLiquidity = currentBnb > gasReserve ? currentBnb - gasReserve : 0n;
 
   // THE MINIMUMS OF THE ADD (2026-09-19). Both were 0 — "the tight slippage on
   // the swap already protects us". It protects the swap. Between the last chunk
   // and this transaction the price can still be moved, and an add with no
   // minimum mints its LP at whatever ratio it finds. liqMins (the same text as
   // in worker/index.js, where the tax bot's own add uses it) works out from the
-  // reserves as they stand what the router will take — all the BNB when that is
-  // the short side, which it usually is here, the sale having paid tax and fee —
+  // reserves as they stand what the router will take — all the BOBAI since the
+  // 51% sale (2026-11-01), the BNB only when it is still the short side —
   // and allows 5% below it. A price moved further than that stops the add: it
   // costs the gas of one reverted transaction, the BOBAI and the BNB stay on
   // the wallet, and the script is simply started again. The router checks these
@@ -259,7 +259,16 @@ async function main() {
       publicClient.readContract({ address: PANCAKE_PAIR, abi: PAIR_ABI, functionName: 'token0' }),
     ]);
     const tokenIs0 = token0.toLowerCase() === BOBAI_TOKEN.toLowerCase();
-    mins = liqMins(LIQUIDITY_BOBAI, bnbForLiquidity, tokenIs0 ? reserves[0] : reserves[1], tokenIs0 ? reserves[1] : reserves[0]);
+    const reserveToken = tokenIs0 ? reserves[0] : reserves[1];
+    const reserveBnb = tokenIs0 ? reserves[1] : reserves[0];
+    // BNB still short: a touch of the reserve takes the last of the BOBAI. 1% over what it costs, for a price that
+    // moves before this lands; the router sends back what it does not take.
+    if (reserveToken > 0n) {
+      const wanted = (((LIQUIDITY_BOBAI * reserveBnb) / reserveToken) * 101n) / 100n;
+      const spendable = currentBnb > GAS_FLOOR ? currentBnb - GAS_FLOOR : 0n;
+      if (bnbForLiquidity < wanted) bnbForLiquidity = wanted < spendable ? wanted : (spendable > bnbForLiquidity ? spendable : bnbForLiquidity);
+    }
+    mins = liqMins(LIQUIDITY_BOBAI, bnbForLiquidity, reserveToken, reserveBnb);
   } catch (e) {
     console.log(`[ERROR] The pair's reserves could not be read: ${e.message} — nothing was added, start again.`);
     process.exit(1);
@@ -268,10 +277,16 @@ async function main() {
     console.log('[ERROR] The pair reports no reserves — nothing was added.');
     process.exit(1);
   }
+  if (bnbForLiquidity <= 0n) {
+    console.log('[ERROR] No BNB available for liquidity');
+    process.exit(1);
+  }
   const minToken = mins.tokenMin;
   const minBnb = mins.bnbMin;
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
 
+  console.log(`BOBAI for liquidity: ${formatEther(LIQUIDITY_BOBAI)}`);
+  console.log(`BNB for liquidity:   ${formatEther(bnbForLiquidity)}`);
   console.log(`Router will use:    ${formatEther(mins.tokenUsed)} BOBAI + ${formatEther(mins.bnbUsed)} BNB (the rest stays on the wallet)`);
   console.log(`Min BOBAI accepted: ${formatEther(minToken)} (95%)`);
   console.log(`Min BNB accepted:   ${formatEther(minBnb)} (95%)`);
@@ -326,6 +341,17 @@ async function main() {
     process.exit(1);
   }
 
+  // What actually went in and what stayed: read off the wallet, not taken from the amounts offered.
+  const bobaiLeft = await publicClient.readContract({
+    address: BOBAI_TOKEN,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+  const bobaiAdded = LIQUIDITY_BOBAI - (bobaiLeft - KEEP_BOBAI);
+  console.log(`\nBOBAI left on wallet: ${formatEther(bobaiLeft)}`);
+  if (bobaiLeft !== KEEP_BOBAI) console.log(`[WARN] Not exactly ${formatEther(KEEP_BOBAI)}: ${formatEther(bobaiLeft - KEEP_BOBAI)} BOBAI over — start the script once more.`);
+
   // Record the run so the dashboard can show what the manual side has added.
   // The bot's adds are logged by the bot itself; these were only ever written
   // down by hand, which is why the dashboard had no figure for them.
@@ -336,8 +362,8 @@ async function main() {
     log.runs.push({
       time: new Date().toISOString(),
       lp: formatEther(lpBalance),
-      bobai: formatEther(LIQUIDITY_BOBAI),
-      bnb: formatEther(bnbForLiquidity),
+      bobai: formatEther(bobaiAdded),
+      bnb: formatEther(mins.bnbUsed),
       addLiqTx,
       lpBurnTx: burnTx,
     });
@@ -354,7 +380,7 @@ async function main() {
   console.log('\n============================================');
   console.log('DONE!');
   console.log(`Swapped:  ${formatEther(SWAP_AMOUNT)} BOBAI → BNB`);
-  console.log(`Added:    ${formatEther(LIQUIDITY_BOBAI)} BOBAI + ${formatEther(bnbForLiquidity)} BNB`);
+  console.log(`Added:    ${formatEther(bobaiAdded)} BOBAI + ${formatEther(mins.bnbUsed)} BNB`);
   console.log(`LP Burned: ${formatEther(lpBalance)} Cake-LP → Dead`);
   console.log('============================================');
 }

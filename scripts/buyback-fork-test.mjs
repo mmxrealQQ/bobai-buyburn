@@ -122,6 +122,14 @@ console.log('the helpers (offline)');
   ok('an entry that cannot be written is parked under its own key, the log untouched', parkedRun === false && whileParked.log === 2 && whileParked.keys.length === 1 && whileParked.keys[0] === 'unlogged:burns.json:2026-09-19T02:00:00.000Z' && otherLog === 1);
   ok('the next append carries it in, oldest first, and clears the key', next === true && healed.map((e) => e.totalBnb).join() === '1,2,3,4' && clearedKey);
   ok('nothing goes in twice, and a stored log that is no array is never overwritten', afterSame === 4 && broken === false && store.get('burns.json') === '{"not":"an array"}' && store.has('unlogged:burns.json:2026-09-19T04:00:00.000Z'));
+
+  // The lock: KV lost a delete without an error on 4 of 237 ticks, and the next tick was skipped.
+  const left = workerSrc.slice(workerSrc.indexOf('function lockIsLeftOver('), workerSrc.indexOf('export default {'));
+  const leftOver = new Function(`${left}; return lockIsLeftOver;`)();
+  const L = '2026-11-01T15:10:46.941Z';
+  ok('a lock older than the heartbeat is a finished run\'s, and the tick goes on', leftOver(L, '2026-11-01T15:10:47.208Z') === true);
+  ok('a lock newer than the heartbeat is a run still going, and with none it is too', leftOver(L, '2026-11-01T15:01:00.000Z') === false && leftOver(L, null) === false && leftOver(L, 'x') === false);
+  ok('the tick asks it before it skips, and writes the heartbeat before the delete', /if \(!lockIsLeftOver\(lock, heartbeat\)\) \{\s+console\.log\(`Previous run still active[^\n]+\n\s+return;/.test(workerSrc) && workerSrc.indexOf("put('heartbeat-buyback'") < workerSrc.indexOf("delete('lock-buyback')"));
   ok('/health names what is parked', /unlogged: parked/.test(workerSrc) && /list\(\{ prefix: UNLOGGED \}\)/.test(workerSrc));
 
   // The liquidity add rests between boosts; what it will do when the next one starts.

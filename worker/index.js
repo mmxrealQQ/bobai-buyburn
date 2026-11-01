@@ -868,6 +868,14 @@ const CORS_HEADERS = {
   'Cache-Control': 'no-store',
 };
 
+// Every finished run writes its heartbeat before it deletes the lock, so a
+// heartbeat at or after the lock means the run that set it is over. KV loses a
+// delete now and then with no error (4 of 237 ticks, 31.10.-1.11., each a run
+// over within a second of setting the lock), and that lock cost the next tick.
+function lockIsLeftOver(lock, heartbeat) {
+  return Date.parse(heartbeat) >= Date.parse(lock);
+}
+
 export default {
   async scheduled(event, env, ctx) {
     // Overlap guard: skip this tick if the previous run is still marked as
@@ -877,8 +885,12 @@ export default {
     // ends deletes it; one that is killed costs a single skipped tick.
     const lock = await env.LOGS.get('lock-buyback');
     if (lock) {
-      console.log(`Previous run still active (started ${lock}) — skipping this tick.`);
-      return;
+      const heartbeat = await env.LOGS.get('heartbeat-buyback');
+      if (!lockIsLeftOver(lock, heartbeat)) {
+        console.log(`Previous run still active (started ${lock}) — skipping this tick.`);
+        return;
+      }
+      console.log(`Lock of ${lock} is left over: that run ended at ${heartbeat}.`);
     }
     await env.LOGS.put('lock-buyback', new Date().toISOString(), { expirationTtl: 900 });
     try {

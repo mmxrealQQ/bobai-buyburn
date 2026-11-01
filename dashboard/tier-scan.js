@@ -208,6 +208,10 @@ export async function feeTiers(input) {
       (a.c.kind === 'v2' ? -1 : 0) - (b.c.kind === 'v2' ? -1 : 0) || a.c.fee - b.c.fee);
 
   const tiers = [];
+  // READ FIRST, COMPARE AFTER (2026-11-01: 4 of 5 CAKE tiers unreadable, again and again, while the same endpoints answered
+  // a second later). A refusal here is a queue. What the first round leaves out is asked once more after a real pause, one
+  // tier at a time, as long as the answer can still arrive in time for its caller.
+  const logsOf = new Array(order.length).fill(null), readFrom = Date.now();
   for (let i = 0; i < order.length; i++) {
     // A breath between tiers: the log endpoints rate-limit by the second, and
     // five ranges back to back from the Worker's shared egress is what left
@@ -215,7 +219,6 @@ export async function feeTiers(input) {
     // (measured 2026-09-07: blastapi, drpc, 1rpc, llamarpc all refuse or cap).
     if (i) await new Promise((r) => setTimeout(r, 300));
     const c = order[i].c;
-    const quoteIs0 = addrAt(order[i].zero) === quote;
     const topics = [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T];
     // One endpoint serves these ranges and it rate-limits, so a refusal is
     // often a queue rather than a verdict. Retried once, briefly, because five
@@ -236,6 +239,20 @@ export async function feeTiers(input) {
       // busiest CAKE tiers were unreadable in 3 of 3 runs before.
       logs = await getLogsSplit({ address: c.pair, topics }, from, head, endpoint);
     }
+    logsOf[i] = logs;
+  }
+  for (let round = 0; round < 2 && logsOf.includes(null) && Date.now() - readFrom < 25000; round++) {
+    for (let i = 0; i < order.length; i++) {
+      if (logsOf[i] !== null || Date.now() - readFrom >= 25000) continue;
+      await new Promise((r) => setTimeout(r, 1500));
+      const c = order[i].c;
+      logsOf[i] = await getLogsSplit({ address: c.pair, topics: [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T] }, from, head, LOGS_RPCS[(i + round + 1) % LOGS_RPCS.length]);
+    }
+  }
+
+  for (let i = 0; i < order.length; i++) {
+    const c = order[i].c, logs = logsOf[i];
+    const quoteIs0 = addrAt(order[i].zero) === quote;
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;
 

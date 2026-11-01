@@ -146,7 +146,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
   const pts = Array.isArray(series.points) ? series.points : [];
   const pt = pts.length ? pts[pts.length - 1] : null;
   const bnbUsd = n(sum.profit.bnb_usd) || null;
-  const usd = (bnb) => (bnbUsd ? Math.round(n(bnb) * bnbUsd * 100) / 100 : null);
+  // one price for every tile (2026-11-01): put in and result at the last run's, worth at today's did not add up by $22
+  const usd = (bnb) => { const p = bnbUsdNow > 0 ? bnbUsdNow : bnbUsd; return p ? Math.round(n(bnb) * p * 100) / 100 : null; };
   const value = sum.value_bnb || {};
   const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
   const sources = [{ label: 'start', bnb: r4(value.start) }];

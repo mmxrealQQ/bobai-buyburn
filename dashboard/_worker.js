@@ -331,6 +331,7 @@ async function getSmartMoney() {
     usd: Math.round(parseFloat(d.usd) || 0),
     tier: NFT_TIERS[d.tier]?.label ?? d.tier,
     buyer: d.to,
+    ...(OWN_BUYERS.has(String(d.to).toLowerCase()) ? { own_wallet: true } : {}),
     tx: (d.buyTx || d.tx) ? 'https://bscscan.com/tx/' + (d.buyTx || d.tx) : null,
   });
   const reserveBnb = reserve ? parseFloat(reserve.bnb) : null;
@@ -440,7 +441,7 @@ const AGENT_GUIDE = {
   what_costs_money: [
     { what: 'Keep watching a pool after a preflight: a callback when the size that moves its price 1% falls below yours', where: 'POST https://agent.brainonbnb.com/watch — over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp' },
     { what: 'The measured plans sold per answer (grid, yield, rebalance, health factor, LP tier, LP position)', where: 'GET https://agent.brainonbnb.com/answer lists them with their inputs; a free example of each at GET /example?service=…' },
-    { note: 'Sent without payment, each answers 402 with its price. Every read tool on this server is free (bsc_pool_scan to 1,000 scans per caller a day). Paid answers: 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction).' },
+    { note: 'Sent without payment, each answers 402 with its price. Every read tool on this server is free (bsc_pool_scan to 1,000 scans per caller a day). Paid answers: 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction). Paid over MCP: each of our six agents has its own server with a free half and the paid answer: https://agent.brainonbnb.com/health-factor/mcp https://agent.brainonbnb.com/grid-trader/mcp https://agent.brainonbnb.com/yield-optimizer/mcp https://agent.brainonbnb.com/rebalancer/mcp https://agent.brainonbnb.com/lp-placement/mcp https://agent.brainonbnb.com/defi-agent/mcp.' },
   ],
   guided_prompts: [
     { prompt: 'evaluate_bobai', does: 'full neutral due-diligence walkthrough (prompts/get)' },
@@ -585,6 +586,7 @@ function skillMd() {
 
 > A read-only, verifiable on-chain data surface for any token on BNB Chain (BSC), and for **$BOBAI** in depth.
 > Paid answers cost 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction).
+> Paid over MCP: each of our six agents has its own server with a free half and the paid answer: https://agent.brainonbnb.com/health-factor/mcp https://agent.brainonbnb.com/grid-trader/mcp https://agent.brainonbnb.com/yield-optimizer/mcp https://agent.brainonbnb.com/rebalancer/mcp https://agent.brainonbnb.com/lp-placement/mcp https://agent.brainonbnb.com/defi-agent/mcp.
 > **Not a trading bot** — the source of truth other agents call *before* they act.
 
 ## Identity
@@ -765,6 +767,8 @@ async function getTokenInfo() {
 }
 
 const HOLDER_LINE = 1000000n * 10n ** 18n;
+// our wallets among the large buys: named, so nobody follows us as smart money (2026-11-01)
+const OWN_BUYERS = new Set(['0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', '0x15ba17075ef5e0736292b030e3715d9100fe3d38', '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963']);
 async function getWalletBalance(address) {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
   const [bnbRes, bobaiRaw] = await Promise.all([
@@ -821,7 +825,7 @@ const MCP_TOOLS = [
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
   // a swap UI shows leaves out the transfer tax and the swap fee.
-  { name: 'bsc_pool_scan', description: 'The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax measured from executed trades (simulated on chain at that block when the pool has not traded in the last hour, and flagged measured:false) rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2, V3 and Infinity CL (an Infinity pool is found from its key on chain and priced by PancakeSwap\'s own Infinity quoter, its hook included), Uniswap V2 and V3, and Biswap; a token still on four.meme\'s or flap.sh\'s launch curve is read from that curve. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), lp.custody (who holds the LP of a V2 pair, wallet by wallet, the deployer flagged; complete from the pair\'s own logs when it is under an hour old; V3 positions not read), holders (the largest wallets with exchange, lock and burn addresses named apart, or unknown: true with the reason when there is no real list yet), age (pool and token, from the first block their code existed), activity (swaps, buys vs sells, unique traders, volume and the largest sell over the window read), flow (who sold over that window: the deployer and wallets it funded, netted against liquidity they added back to the same pair, top holders selling over a quarter of their balance, and for a pool under an hour old the launch-block buyers still holding), venues[] (the scanned pool first, pools under $100 left out) and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h. Free for 1,000 scans per caller and UTC day; past that it answers code free_limit, and a day pass carries on (POST https://agent.brainonbnb.com/scan-pass: 0.50 USD1, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_pool_scan', description: 'Free for 1,000 scans per caller a day, then a day pass. The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax measured from executed trades (simulated on chain at that block when the pool has not traded in the last hour, and flagged measured:false) rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2, V3 and Infinity CL (an Infinity pool is found from its key on chain and priced by PancakeSwap\'s own Infinity quoter, its hook included), Uniswap V2 and V3, and Biswap; a token still on four.meme\'s or flap.sh\'s launch curve is read from that curve. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), lp.custody (who holds the LP of a V2 pair, wallet by wallet, the deployer flagged; complete from the pair\'s own logs when it is under an hour old; V3 positions not read), holders (the largest wallets with exchange, lock and burn addresses named apart, or unknown: true with the reason when there is no real list yet), age (pool and token, from the first block their code existed), activity (swaps, buys vs sells, unique traders, volume and the largest sell over the window read), flow (who sold over that window: the deployer and wallets it funded, netted against liquidity they added back to the same pair, top holders selling over a quarter of their balance, and for a pool under an hour old the launch-block buyers still holding), venues[] (the scanned pool first, pools under $100 left out) and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h. Free for 1,000 scans per caller and UTC day; past that it answers code free_limit, and a day pass carries on (POST https://agent.brainonbnb.com/scan-pass: 0.50 USD1, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI), sent as HTTP header X-Scan-Pass.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' }, scan_pass: { type: 'string', description: 'Only past the free 1,000 scans a day: the day pass from POST https://agent.brainonbnb.com/scan-pass, for clients that cannot set the X-Scan-Pass header' } }, required: ['address'], additionalProperties: false } },
   // NAMED preflight, with no verb a router refuses (see pancakeswap_best_route
   // below): "pretrade" splits into a word our own dispatcher would not call.
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer. The same token asked again within 60 seconds gets the same measurement from the edge cache (cache.hit, cache.age_seconds).', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
@@ -1378,7 +1382,7 @@ async function unlockedPass(secret, callerKey) {
   await cache.put(key, new Response(c.ok ? pass : 'none', { headers: { 'Cache-Control': `public, max-age=${c.ok ? Math.max(60, Math.floor((c.exp - Date.now()) / 1000)) : 60}` } }));
   return c.ok ? pass : null;
 }
-async function scanAllowance(request, { rest = false } = {}) {
+async function scanAllowance(request, { rest = false, scanPassArg = null } = {}) {
   try {
     const secret = WORKER_ENV?.HIT_SECRET;
     // Our own tests go free; with x-scan-quota-key they are counted under that name instead, so the checker can run a
@@ -1413,7 +1417,7 @@ async function scanAllowance(request, { rest = false } = {}) {
       const receipt = btoa(JSON.stringify({ success: true, transaction: j.tx || null, network: 'eip155:56', paid: j.paid, pass_expires: j.expires }));
       return { ...ok, grant: { 'X-Scan-Pass': j.pass, 'PAYMENT-RESPONSE': receipt, 'Access-Control-Expose-Headers': 'X-Scan-Pass, PAYMENT-RESPONSE' } };
     }
-    const pass = request.headers.get('x-scan-pass');
+    const pass = request.headers.get('x-scan-pass') || scanPassArg;
     if (pass) return withPass(pass, 'poolscan:pass');
     if (!callerKey) return null;
     const now = new Date(), end = new Date(now); end.setUTCHours(24, 0, 0, 0);
@@ -1481,7 +1485,7 @@ async function handleMcp(request, note = () => {}, own = false) {
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.7.0' },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.8.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,
         // A4 of the review): without it a client saw a $BOBAI data feed and
         // never learned the tools work for every BSC token.
@@ -1513,7 +1517,7 @@ async function handleMcp(request, note = () => {}, own = false) {
       try {
         // past the free scans of the day, the day pass (2026-10-18)
         if (!own && (DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') {
-          const lim = await scanAllowance(request);
+          const lim = await scanAllowance(request, { scanPassArg: params?.arguments?.scan_pass || null });
           if (lim?.note) note(lim.note);
           if (lim && !lim.ok) return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: `${lim.body.error}\n\ncode: ${lim.body.code} — ${lim.body.hint}` }], structuredContent: lim.body, isError: true })), { headers: cors });
         }

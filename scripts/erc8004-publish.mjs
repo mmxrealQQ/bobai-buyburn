@@ -64,6 +64,11 @@ const ownJobTotals = () => {
   if (!ownJobs) { ownJobs = {}; try { for (const [id, a] of Object.entries(JSON.parse(fs.readFileSync(path.join(ROOT, 'dashboard', 'api-agent-jobs.json'), 'utf8')).agents || {})) ownJobs[id] = a.totals; } catch { /* optional */ } }
   return ownJobs;
 };
+// a row's hires: its own job record where it has one, the provider's count where not
+const rowEmployment = (r) => {
+  const t = ownJobTotals()[r.agentId];
+  return t?.funded ? { ...r.employment, own: t, funded: t.funded, funded_outside: t.funded_outside, completed_outside: t.paid_out_outside, outside_buyers: t.buyers_outside, funded_by_us: t.funded - t.funded_outside, submitted_not_released: t.delivered_waiting, last_submission: t.last_delivery ? Math.floor(Date.parse(t.last_delivery) / 1000) : r.employment?.last_submission } : r.employment;
+};
 
 let census = null;
 try { census = JSON.parse(fs.readFileSync(path.join(DIR, 'census.json'), 'utf8')); } catch {}
@@ -973,13 +978,13 @@ const leaderLine = (cat, rows) => {
   if (lead) {
     const q = lead.agentId ? quoteOf(lead.agentId, cat.id) : null;
     const st = quoteState(q);
-    const e = lead.employment;
+    const e = rowEmployment(lead);
     const bits = [];
     if (st === 'quotes') bits.push(`quotes ${esc(q.price || 'a price')}`);
     else if (st === 'input') bits.push(esc(inputLabel(q).toLowerCase()));
     else if (st === 'none') bits.push('did not answer when asked');
     if (e && e.funded) {
-      bits.push(`${(providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded_outside)}&times;${e.outside_buyers ? ` by ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
+      bits.push(`${!e.own && (providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded_outside)}&times;${e.outside_buyers ? ` by ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
       bits.push(e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet');
     } else bits.push('never hired');
     parts.push(`<b>Best evidence: ${esc(lead.label)}</b> &mdash; ${bits.join(', ')}`);
@@ -1041,13 +1046,12 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
     if (r.employment) {
       // An agent with its own job record is counted from it (2026-11-01): 302257 and 304493 moved to wallets of their own
       // on 21.10., their history stayed on the old address, and our best agent read "none paid out yet".
-      const t = ownJobTotals()[r.agentId];
-      const e = t?.funded ? { ...r.employment, funded: t.funded, funded_outside: t.funded_outside, completed_outside: t.paid_out_outside, outside_buyers: t.buyers_outside, funded_by_us: t.funded - t.funded_outside, submitted_not_released: t.delivered_waiting, last_submission: t.last_delivery ? Math.floor(Date.parse(t.last_delivery) / 1000) : r.employment.last_submission } : r.employment;
+      const e = rowEmployment(r);
       // Employment is counted per provider address. Five of our agents sell
       // from one address, and each card said "Hired 2×" as if each had been;
       // when the address hosts more than one agent, the chip says whose count
       // it is.
-      const shared = t?.funded ? 1 : providerAgentCount.get(e.address) || 0;
+      const shared = e.own ? 1 : providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
       if (e.funded) {
         // last delivery (2026-10-09): the newest submission on the kernel for
@@ -1056,7 +1060,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const lastMs = tsMs(e.last_submission);
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${e.own?.delivery_rate_pct != null ? ` &middot; ${e.own.delivery_rate_pct}% delivered` : ''}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded_outside)} ${e.funded_outside === 1 ? 'time' : 'times'} by others through the escrow${e.completed_outside ? `, ${fmt(e.completed_outside)} paid out` : ', none paid out yet'}${e.funded_by_us ? `, and ${fmt(e.funded_by_us)} more by our own wallets` : ''}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -2689,6 +2693,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     function render(){
       var q=plan.quote||{},e=plan.escrow||{};
       var h='<div class="rg-msg"><b>'+esc(q.price||'?')+'</b> to '+esc(plan.provider||'the provider')+
+        (q.service?'<div class="rg-note"><b>You are buying: '+esc(q.service)+'</b></div>':'')+
         '<div class="rg-note">'+esc(plan.provider_source||'')+
         (q.estimated_completion_seconds?' · quoted completion '+esc(q.estimated_completion_seconds)+'s':'')+'</div>'+
         '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div>'+

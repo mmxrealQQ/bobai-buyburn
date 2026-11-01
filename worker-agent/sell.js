@@ -407,6 +407,7 @@ const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 
 // that index result.accepted / result.provider directly (the generated
 // /registry ask box, register-own-agents.mjs) until they read the part.
 const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
+const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money' };
 
 const dataParts = (message) => {
   const parts = message?.parts || [];
@@ -675,6 +676,11 @@ export async function handleA2A(request, env, opts = {}) {
     // deliverable" names no service, and #49467's card points here; it was declined and Pokter marks that
     // seller-declined. The one service that needs nothing named — the Venus health factor of the hiring wallet, read at
     // delivery — is quoted, and the signed terms say so and list the others. A brief that names a service gets that one.
+    // A FREE READ IS NOT A JOB (2026-11-01): jobs 57139, 57143 and 57144 sent the board's free read as a task and got an
+    // unrelated paid plan. The sentence that names nothing is still quoted; only this names something free.
+    if (/"skill"\s*:\s*"plaza-board"/.test([data.task_description, text].filter(Boolean).join(' '))) {
+      return rpcOk(id, agentMessage({ accepted: false, reason_code: '0x03', reason: 'That is free, no job needed: message/send with skill plaza-board at https://agent.brainonbnb.com/a2a. Nothing was quoted.' }));
+    }
     const picked = forced ? SERVICES[forced] : pickService(wanted, data.service);
     const plainAsk = !forced && !picked && !data.service;
     const service = picked || (plainAsk ? SERVICES.health_factor : null);
@@ -717,6 +723,24 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, agentMessage({ job_id: Number(jobId), client: job.client, provider: job.provider, status: job.status, budget: String(job.budget), deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` }));
   }
 
+  // THE CARD'S SKILLS, ANSWERED (2026-11-01): the root card lists about thirty and points here, and {"skill":"price"} got
+  // -32601, a question with an address the whole catalogue. On the shared endpoint they are the free tools of the MCP server.
+  if (!forced) {
+    const words = [text, data.task_description].filter(Boolean).join(' ');
+    const addr = words.match(/0x[a-fA-F0-9]{40}/)?.[0];
+    const tool = skill ? CARD_TOOLS[skill] : addr ? 'bsc_token_preflight' : null;
+    if (tool) {
+      const { skill: _s, method: _m, ...inputs } = data;
+      const j = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: { ...(addr ? { address: addr } : {}), ...inputs, ...(data.params || {}) } } }) }).then((r) => r.json()).catch(() => null);
+      const body = j?.result?.content?.[0]?.text;
+      if (!body) return rpcErr(id, -32000, `${tool} did not answer: ${String(j?.error?.message || 'no reply').slice(0, 160)}`);
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: body }] });
+    }
+    if (!skill && /\$?bobai/i.test(words)) {
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: 'Contract 0x245c386dcfed896f5c346107596141e5edcbffff on BNB Chain, 3% tax, buy with 6% slippage on PancakeSwap: skill price, tokenomics or purchase_guide answer here for free. Paid answers cost half in $BOBAI and nothing for a wallet holding 1,000,000 $BOBAI: https://brainonbnb.com/pass' }] });
+    }
+  }
+
   // --- what do you sell -------------------------------------------------
   if (!skill || skill === 'list' || skill === 'capabilities') {
     // On an agent's own endpoint its own service leads (2026-10-12): a "hello"
@@ -725,6 +749,7 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, flatMessage({
       agent: own ? `Brain on BNB — ${own.name}` : 'Brain on BNB — hireable services',
       ...(own ? { this_agent: ownSentence(own), service: own } : {}),
+      bobai: 'Paid answers cost half in $BOBAI, and nothing for a wallet holding 1,000,000 $BOBAI: https://brainonbnb.com/pass',
       // the meeting place, named to every agent that asks what we do (2026-10-23)
       plaza_board: 'Something between agents not working? The Brain Board: bugs, fixes and help between AI agents and platforms — read https://agent.brainonbnb.com/board.md, your agent’s checkup https://agent.brainonbnb.com/board/agent/<your id>, skill "plaza-board" here.',
       provider,

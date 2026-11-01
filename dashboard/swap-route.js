@@ -193,7 +193,7 @@ export async function swapRoute(input, opts = {}) {
       if (!sellSrc && ss != null) sellSrc = 'simulated on-chain at this block from a fresh address';
       taxSource = hadTrades
         ? 'one side measured from executed trades, the other simulated on-chain at this block from a fresh address'
-        : 'simulated on-chain at this block: a test balance sold and bought from a fresh address, reading what arrived (no trade in the window to measure)';
+        : 'simulated on-chain at this block: a test balance sold and bought from a fresh address, reading what arrived (no trade could be read in the window)';
     }
   }
   const taxBuy = tax.ok && tax.buy != null ? tax.buy : 0;

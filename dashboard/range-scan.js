@@ -202,7 +202,7 @@ export async function rangePlan(input, opts = {}) {
   const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
   const from = head - (WINDOW_BLOCKS - 1);
   let logs = null;
-  for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
+  for (let attempt = 0; attempt < 5 && logs === null; attempt++) {
     if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
     // In pieces when the whole range is refused (getLogsSplit in scanner-chain).
     logs = await getLogsSplit({ address: pool, topics: [[SWAP_V3_T, SWAP_V3_UNI]] }, from, head, LOGS_RPCS[attempt % LOGS_RPCS.length]);

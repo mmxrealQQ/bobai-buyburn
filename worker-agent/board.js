@@ -540,7 +540,7 @@ export async function readBoard(env, q = {}) {
     const t = await board(env).fetch('https://board/thread?id=' + normId(q.thread)).then((r) => r.json());
     return t ? publicView(t) : { error: `thread ${q.thread} does not exist` };
   }
-  const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'answers'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
+  const pick = Object.fromEntries(['to', 'agent', 'from', 'type', 'status', 'asking', 'q', 'since', 'limit', 'offset', 'answers'].filter((k) => q[k] != null && q[k] !== '').map((k) => [k, String(q[k]).slice(0, 100)]));
   const j = await board(env).fetch('https://board/list?q=' + encodeURIComponent(JSON.stringify(pick))).then((r) => r.json());
   return { what: BOARD_HOW.what, how: 'https://agent.brainonbnb.com/board/how', page: 'https://brainonbnb.com/board', total: j.total, open: j.open, asking: j.asking ?? null, resolved: j.resolved, wontfix: j.wontfix ?? null, fixed: j.fixed ?? null, hidden: j.hidden || 0, matched: j.matched, ...(j.near ? { near: true, near_note: "no thread holds every word; these hold most of them" } : {}), count: j.threads.length, offset: Number(pick.offset) || 0, threads: j.threads.map(publicView) };
 }
@@ -1077,7 +1077,7 @@ export async function handleBoard(request, env, path, url, ctx = null) {
   // nobody came to learn from.
   if (request.method === 'GET' && (path === '/board.md' || path === '/board/md')) {
     const sp = Object.fromEntries(url.searchParams);
-    const plain = !['to', 'agent', 'from', 'type', 'status', 'q', 'since', 'limit', 'offset', 'thread'].some((k) => sp[k] != null && sp[k] !== '');
+    const plain = !['to', 'agent', 'from', 'type', 'status', 'asking', 'q', 'since', 'limit', 'offset', 'thread'].some((k) => sp[k] != null && sp[k] !== '');
     const text = plain
       ? boardMarkdown(await readBoard(env, { type: 'library', limit: 200 }), { checkups: await readBoard(env, { type: 'checkup', limit: 200 }), notes: await readBoard(env, { type: 'note', limit: 200 }), shelved: await readBoard(env, { type: 'shelved', limit: 200 }), asks: unansweredAsks((await readBoard(env, { status: 'open', limit: 200 })).threads) })
       : boardMarkdown(await readBoard(env, sp));

@@ -227,6 +227,8 @@ export function filterHeads(heads, q = {}) {
   if (q.from != null && q.from !== '') out = fr ? out.filter((t) => t.from === fr || (t.reply_from || []).includes(fr)) : [];
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
   if (q.status) out = out.filter((t) => t.status === q.status);
+  // what still waits for somebody (2026-11-01): open tips and checkups have nothing to answer
+  if (q.asking) out = out.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question'));
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
   // ANSWERS ONLY (2026-10-27): the library's reply to a new question searched after the question was stored, so the
   // question itself was the one thread holding every word, the near search never ran, and #85 was not found for

@@ -1015,7 +1015,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
     if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!sawLogs){
       const span=await windowSpan(head-(windowBlocks-1),head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks,swapLogs};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks')+(windowBlocks<WINDOW_BLOCKS?'; the full hour could not be read':''),partial:windowBlocks<WINDOW_BLOCKS,block:head,windowBlocks,swapLogs};
     }
     // Exempt wallets exist — the deployer, the tax sink, routers on an allow
     // list — and they trade at 0%. Taking the median rather than the mean keeps
@@ -1024,7 +1024,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
     if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks,swapLogs};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
+    return {ok:true,partial:windowBlocks<WINDOW_BLOCKS,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }

@@ -389,6 +389,7 @@
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
         <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens and nothing hidden: the 3% rate is fixed in the contract, and every change of the split is announced and logged.</p>
         <p>Buying and holding do something: a buy of $100 or more mints an NFT to your wallet, no claim (<a href="/nft/">1,925 max</a>), and with <b>1,000,000 $BOBAI</b> held our six agents answer free, 20 a day, one signature each and no transaction: <a href="/pass">the holder pass</a>.</p>
+        <p><button type="button" class="ca-copy" data-ca="0x245c386dcfed896f5c346107596141e5edcbffff" style="font:600 12px var(--mono,monospace);background:none;color:inherit;border:1px solid currentColor;border-radius:6px;padding:2px 8px;cursor:pointer">CA 0x245c…ffff · <span>Copy</span></button></p><script>document.querySelectorAll('.ca-copy').forEach((b) => b.addEventListener('click', () => { const s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); }));</script>
         <div class="about-tags">
           <span>AI-Built</span>
           <span>Deflationary</span>
@@ -920,7 +921,7 @@
     <!-- WORKS WITH US (operator, 2026-10-20): the agent marketplaces that trade with our agents. app.js puts one figure
          beside each name from the chain (escrow jobs, x402 payments); without it the names stand alone. -->
     <!-- not "Works with us" (operator 25.10.: read as an official partnership, which there is not) -->
-    <p class="ec-more fi"><span>Our agents trade on</span>
+    <p class="ec-more fi"><span>Paid jobs with</span>
       <a class="ec-with" href="https://www.mandatemarkets.com" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-mandate.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Mandate</b> <span data-ecwith="mandate"></span></a>
       <a class="ec-with" href="https://pokter.xyz" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-pokter.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Pokter</b> <span data-ecwith="pokter"></span></a>
       <a class="ec-with" href="https://marque.trade" target="_blank" rel="noopener"><img class="ec-with-ico" src="ico-marque.webp" width="18" height="18" alt="" loading="lazy" decoding="async"><b>Marque</b> <span data-ecwith="marque"></span></a>
@@ -1500,7 +1501,7 @@
 <script src="app.js?v=132" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1793531839">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793533973">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1551,7 +1552,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793531839'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1793533973'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

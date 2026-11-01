@@ -73,16 +73,20 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
   const tryOnGreen = all.filter((a) => a.quote !== 2 && /Try anyway/.test(a.html)).map((a) => a.label);
   let order = [];
   for (const b of boxes) {
-    for (const list of [b.arts.filter((a) => !a.ours && !a.folds.length), b.arts.filter((a) => !a.ours && a.folds.includes('rgc-more'))]) {
-      const qs = list.map((a) => (a.quote == null ? 2 : a.quote));
-      for (let i = 1; i < qs.length; i++) if (qs[i] < qs[i - 1]) order.push(`${b.id}: ${list[i].label} after ${list[i - 1].label}`);
+    // the score leads since 2026-11-01; the quote state orders only the rows without one
+    for (const list of [b.arts.filter((a) => !a.folds.length), b.arts.filter((a) => a.folds.includes('rgc-more'))]) {
+      const score = (a) => Number(/Score <b>(\d+)/.exec(a.html)?.[1] ?? -1), qs = list.map((a) => (a.quote == null ? 2 : a.quote));
+      for (let i = 1; i < qs.length; i++) {
+        const [was, now] = [score(list[i - 1]), score(list[i])];
+        if (now > was || (now < 0 && was < 0 && !list[i].ours && !list[i - 1].ours && qs[i] < qs[i - 1])) order.push(`${b.id}: ${list[i].label} after ${list[i - 1].label}`);
+      }
     }
   }
   check('1 quotes: no single red "No price when asked"', old === 0, `${old} times on the page`);
   check('1 quotes: amber "Answers…" state exists', amber > 0, 'no rgc-input chip');
   check('1 quotes: every "Did not answer" card offers a muted "Try anyway"', !redNoTry.length && all.some((a) => a.quote === 2), redNoTry.length ? redNoTry.join(', ') : 'no red card at all');
   check('1 quotes: "Try anyway" only on red cards', !tryOnGreen.length, tryOnGreen.join(', '));
-  check('1 quotes: quotes > structured input > no answer, per list', !order.length, order.slice(0, 4).join('; '));
+  check('1 order: evidence score first, ours included, then quotes > structured input > no answer, per list', !order.length, order.slice(0, 4).join('; '));
 }
 
 // 2 wrong categories
@@ -120,12 +124,12 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
   const bad = [];
   for (const b of boxes) {
     const lead = (b.body.match(/<p class="rg-catlead">([\s\S]*?)<\/p>/) || [])[1];
-    const first = b.arts.find((a) => !a.ours && !a.folds.includes('rgc-maybe'));
+    const first = b.arts.find((a) => !a.folds.includes('rgc-maybe'));
     if (!lead) { bad.push(`${b.id}: no leader line`); continue; }
-    if (first && !lead.includes(`Best evidence: ${first.label}</b>`)) bad.push(`${b.id}: leader line does not name ${first.label}`);
+    if (first && !lead.includes(`Best evidence: ${first.label}${first.ours ? ' (ours)' : ''}</b>`)) bad.push(`${b.id}: leader line does not name ${first.label}`);
     if (!first && !/No other operator/.test(lead)) bad.push(`${b.id}: no other operator's row, and the line does not say so`);
   }
-  check('3 leader: one "Best evidence" sentence per category, naming the first other operator\'s row', !bad.length, bad.join('; '));
+  check('3 leader: one "Best evidence" sentence per category, naming the first row', !bad.length, bad.join('; '));
 }
 
 // 4 phone length
@@ -157,12 +161,11 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
   check('6 recency: hire chips say "last delivery N days ago" (unix seconds)', agos.length > 0 && !badT, agos.length ? `${badT} timestamps out of range` : 'no "last delivery" on the page');
 }
 
-// OURS LAST (operator's rule; found 2026-10-09: ours sat above the other operators' folded cards)
+// OURS BY THEIR SCORE (operator, 2026-11-01; until then ours closed each category): one of ours leads a category with
+// the top score, and no text on the page still promises the old order
 {
-  const bad = [...html.matchAll(/<div class="rg-box" id="cat-([a-z-]+)">([\s\S]*?)GET \/find\?category=/g)]
-    .filter(([, , body]) => { const fold = body.lastIndexOf('rgc-more'), ours = body.indexOf('rg-ours'); return fold >= 0 && ours >= 0 && ours < fold; })
-    .map(([, id]) => id);
-  check('7 ours last: no own card above another operator’s folded card', !bad.length, `ours above the fold in ${bad.join(', ')}`);
+  const top = boxes.filter((b) => { const x = b.arts.filter((a) => !a.folds.length).sort((p, q) => Number(/Score <b>(\d+)/.exec(q.html)?.[1] ?? -1) - Number(/Score <b>(\d+)/.exec(p.html)?.[1] ?? -1))[0]; return x?.ours; });
+  check('7 score: where ours has the top score it leads, and the page does not say "ours last"', !/ours last/i.test(html) && top.every((b) => b.arts[0].ours), top.filter((b) => !b.arts[0].ours).map((b) => b.id).join(', ') || 'the old sentence is on the page');
 }
 
 for (const n of ok) console.log(`  ok    ${n}`);

@@ -815,6 +815,16 @@ const distinctHosts = (() => {
   return out;
 })();
 
+// THE EVIDENCE SCORE ORDERS THE CATEGORY, OURS INCLUDED (operator, 2026-11-01: "plaza reihenfolge nach score"). It replaces
+// the 2026-09-08 rule that ours close a category: "Best evidence: Keel" (93) stood above our 96, the same page and
+// /chart/rank disagreed. The score is one sum for every agent and cannot be bought. No answer from /chart/rank: the
+// evidence order below stands alone and ours close the category, as before.
+const scoreOf = {};
+await Promise.all(CATEGORIES.map(async (c) => {
+  const j = await fetchJson(`${AGENT_ORIGIN}/chart/rank?category=${c.id}&limit=200`);
+  for (const a of j?.agents || []) scoreOf[`${c.id}:${a.id}`] = a.score;
+}));
+const rowScore = (r, cat) => (r.agentId ? scoreOf[`${cat}:${r.agentId}`] ?? -1 : -1);
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
@@ -880,7 +890,7 @@ const categorised = CATEGORIES.map((cat) => {
   // funded, which is the one reputation signal on this chain nobody can write
   // about themselves. How we categorised it is only a tiebreak.
   //
-  // OURS LAST, before any of that (operator's decision, 2026-09-08). With
+  // OURS LAST among rows without a score (operator's decision, 2026-09-08; the score leads since 2026-11-01). With
   // evidence alone, three of the four categories still opened with an agent
   // we run, because ours are the ones with paid history — and a judge reads
   // a marketplace whose first row is its operator as self-preference, however
@@ -901,7 +911,8 @@ const categorised = CATEGORIES.map((cat) => {
   const down = (r) => { const u = r.agentId ? uptimeOf(r.agentId) : null; return u != null && u < 50 ? 1 : 0; };
   const share = (r) => Math.max(1, providerAgentCount.get(r.employment?.address) || 1);
   const market = (r) => ((r.employment?.completed_outside || 0) > 0 && (r.employment?.outside_buyers || 0) >= 2 ? 0 : 1);
-  rows.sort((a, b) => (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
+  rows.sort((a, b) => (rowScore(b, cat.id) - rowScore(a, cat.id))
+    || (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
     || (answers(a) - answers(b))
     || (down(a) - down(b))
     || (market(a) - market(b))
@@ -969,11 +980,11 @@ const priceOf = (p) => { const m = /^\s*([\d.]+)\s*(.*)$/.exec(String(p || ''));
 const numShort = (n) => String(Number(n.toPrecision(3)));
 
 // ONE SENTENCE A VISITOR CAN STOP AT (2026-10-09): the leader of the category
-// — the first other operator's row in the order below — with the facts that
+// — the first row in the order below, ours or not — with the facts that
 // put it there, then the spread of prices in the category and how many quoted.
 // Computed from the same rows the cards are, so it cannot say what they do not.
 const leaderLine = (cat, rows) => {
-  const lead = rows.find((r) => !r.ours);
+  const lead = rows[0];
   const parts = [];
   if (lead) {
     const q = lead.agentId ? quoteOf(lead.agentId, cat.id) : null;
@@ -987,7 +998,7 @@ const leaderLine = (cat, rows) => {
       bits.push(`${!e.own && (providerAgentCount.get(e.address) || 0) > 1 ? 'its provider ' : ''}hired ${fmt(e.funded_outside)}&times;${e.outside_buyers ? ` by ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}`);
       bits.push(e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet');
     } else bits.push('never hired');
-    parts.push(`<b>Best evidence: ${esc(lead.label)}</b> &mdash; ${bits.join(', ')}`);
+    parts.push(`<b>Best evidence: ${esc(lead.label)}${lead.ours ? ' (ours)' : ''}</b> &mdash; ${rowScore(lead, cat.id) >= 0 ? `score ${rowScore(lead, cat.id)}, ` : ''}${bits.join(', ')}`);
   } else {
     parts.push('<b>No other operator&rsquo;s agent here yet</b> &mdash; only ours');
   }
@@ -1031,6 +1042,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
     // evidence. Not one word is dropped; the card stops being a paragraph.
     const chips = [];
     const facts = [];
+    if (rowScore(r, cat.id) >= 0) chips.push(`<li title="Evidence score: uptime, paid work delivered, outside buyers, a price when asked. One sum for every agent, ours included">Score <b>${rowScore(r, cat.id)}</b></li>`);
     if (q) {
       chips.push(qs === 'quotes'
         ? `<li class="rgc-yes" title="Answered with a price the last time it was actually asked">Quotes <b>${esc(q.price || 'a price')}</b></li>`
@@ -1104,11 +1116,11 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
   // A PHONE SCROLLS PAST EVERY CARD (2026-10-09): the open list is what has
   // proven itself — quoted, or paid out — and ours; the rest of the category
   // is one tap away, in the same order, cards and buttons unchanged.
-  // OURS LAST, AFTER THE FOLD TOO (2026-10-09, the operator's rule): ours sat at the end of the open list with the
-  // other operators' unproven cards folded below them — ours now close the category, below the fold.
-  const open = rows.filter((r) => !r.ours && isProven(r, cat.id));
+  // ours stand where their score puts them (2026-11-01); only a row without one still closes the category
+  const scored = rows.some((r) => rowScore(r, cat.id) >= 0);
+  const open = rows.filter((r) => (scored || !r.ours) && isProven(r, cat.id));
   const rest = rows.filter((r) => !r.ours && !isProven(r, cat.id));
-  const ourRows = rows.filter((r) => r.ours);
+  const ourRows = scored ? [] : rows.filter((r) => r.ours);
   const body = open.map(card).join(NL);
   const oursBlock = ourRows.length ? `
       <div class="rgc-list rgc-ours" style="margin-top:12px">
@@ -1133,7 +1145,7 @@ ${maybe.map(card).join(NL)}
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
       ${rows.length ? leaderLine(cat, rows) : ''}
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then answers without a price, then no answer; measured up less than half the time last; then paid out by several buyers, then paid out, then the latest delivery, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ' Ordered by evidence score, ours included: one sum for every agent, not for sale (<a href="https://agent.brainonbnb.com/chart/rank?category=${cat.id}">the ranking</a>). Without a score, priced when asked first, then answers without a price, then no answer; measured up less than half the time last; then paid out by several buyers, then paid out, then the latest delivery, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
       </div>${restBlock}${oursBlock}` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}${maybeBlock}

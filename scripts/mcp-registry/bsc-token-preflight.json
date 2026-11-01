@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/bsc-token-preflight",
+  "description": "Honeypot and rug-pull check for any BNB Chain token before a trade, measured on chain, free",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://brainonbnb.com/mcp"
+    }
+  ]
+}

@@ -530,7 +530,8 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // footprint from an outage will eventually report one as the other, and the
   // day it matters it will be the wrong way round. So: a breath between the
   // two, one retry, and whatever actually came back gets named.
-  const askTiers = () => askJson(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`);
+  // 45 s, as worker-agent/lp-tiers.js itself allows this endpoint: a cold hour of CAKE takes 16-37 s (2026-11-01)
+  const askTiers = () => askJson(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`, 45000);
   await new Promise((r) => setTimeout(r, 1500));
   let tiers = await askTiers();
   if (!tiers?.tiers?.length) {

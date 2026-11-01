@@ -322,6 +322,6 @@
   </div></footer>
 </div>
 <script>fetch('/api/price').then((r) => r.json()).then((p) => { const e = document.getElementById('tk-live'); if (!(p.price_usd > 0)) return; e.textContent = 'Price $' + p.price_usd.toFixed(8) + ' · MC $' + Math.round(p.market_cap_usd).toLocaleString('en-US'); e.hidden = false; }).catch(() => {});</script>
-<script src="app.js?v=132" defer></script>
+<script src="app.js?v=133" defer></script>
 </body>
 </html>

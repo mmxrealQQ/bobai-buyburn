@@ -6266,9 +6266,9 @@ addEventListener('keydown', e => {
 //   windows      a destination's window gets a web in its corner, a spider under it, somebody peeking from behind it
 // Every piece looks for a free spot (never over a label, a button or the log's text) and stays away where there is
 // none; a phone gets fewer. Pictures: temp/terminal/gen-prop.js (gpt-image-2.5, frames as edits of one base) ->
-// prop_pack.py (colours muted there). Season: October until 1 November (UTC), every year; ?hw=1 shows it outside the
+// prop_pack.py (colours muted there). Season: October (UTC), every year (operator, 2026-11-01: off now, back next year); ?hw=1 shows it outside the
 // season, ?hw=0 never. The switch at the LIVE pill is remembered (localStorage bt-hw).
-const hwSeason = (t = Date.now()) => { const d = new Date(t), m = d.getUTCMonth(); return m === 9 || (m === 10 && d.getUTCDate() < 2); };
+const hwSeason = (t = Date.now()) => new Date(t).getUTCMonth() === 9;
 window.__btHwSeason = hwSeason;
 (() => {
   const q = new URLSearchParams(location.search).get('hw');

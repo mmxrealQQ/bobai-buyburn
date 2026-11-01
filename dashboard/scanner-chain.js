@@ -46,11 +46,12 @@ export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
 // pool and width records counted that as "hours" — a day of them took a day
 // and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
 export const WINDOW_BLOCKS=7900;
-// WHY THE HOUR WAS REFUSED (2026-11-01). The endpoints are several nodes behind one name and some stand 3-4 blocks back;
+// WHY THE HOUR WAS REFUSED (2026-11-01). The endpoints are several nodes behind one name and some stand back, measured 3 to 80 blocks;
 // a range up to the head just read is answered 'block range extends beyond current head block' by those, at random. That
 // read as a rate limit for weeks: unreadable fee tiers, a scan's 3-minute window beside its 59-minute one, tax flipping
-// between measured and simulated. A window ends this many blocks (~7 s) before the head and every node holds it.
-export const HEAD_BACK=16;
+// between measured and simulated. A window ends this many blocks (~54 s) before the head and every node holds it; the
+// hour stays an hour, it only starts and ends a minute earlier.
+export const HEAD_BACK=120;
 // The tax read asks for the newest trades first (measureTax): about three
 // minutes of chain, and a quarter of the hour when the hour itself is refused
 // for the size of its answer.
@@ -1161,8 +1162,9 @@ export async function windowMinutes(from, to) {
 export async function getLogsSplit(params, from, to, url, depth = 0) {
   try {
     return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
-  } catch {
-    if (depth >= 3 || to - from < 64) return null;
+  } catch (e) {
+    // a node that is behind says the same of every half: splitting spent up to 15 of the Worker's 50 requests on it
+    if (depth >= 3 || to - from < 64 || /beyond current head/i.test(String(e?.message || ''))) return null;
     const mid = from + Math.floor((to - from) / 2);
     const a = await getLogsSplit(params, from, mid, url, depth + 1);
     if (a === null) return null;

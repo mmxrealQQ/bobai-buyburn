@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7492 lines.
+# one fetch. 17 files, 7493 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5402,7 +5402,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
   const pts = Array.isArray(series.points) ? series.points : [];
   const pt = pts.length ? pts[pts.length - 1] : null;
   const bnbUsd = n(sum.profit.bnb_usd) || null;
-  const usd = (bnb) => (bnbUsd ? Math.round(n(bnb) * bnbUsd * 100) / 100 : null);
+  // one price for every tile (2026-11-01): put in and result at the last run's, worth at today's did not add up by $22
+  const usd = (bnb) => { const p = bnbUsdNow > 0 ? bnbUsdNow : bnbUsd; return p ? Math.round(n(bnb) * p * 100) / 100 : null; };
   const value = sum.value_bnb || {};
   const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
   const sources = [{ label: 'start', bnb: r4(value.start) }];
@@ -5739,7 +5740,7 @@ export async function lpPositionLook(params = {}, env = null) {
     service: 'lp_position_look',
     verdict: lines.join(' '),
     the_plan: facts.against_wbnb
-      ? 'What the agent would do about it — whether a re-set is due and in which width, what the wallet\'s spare BNB would add — is the paid answer: lp_position_plan, 0.10 USD1, POST /answer?service=lp_position_plan.'
+      ? 'What the agent would do about it — whether a re-set is due and in which width, what the wallet\'s spare BNB would add — is the paid answer: lp_position_plan, 0.10 USD1, half that in $BOBAI, nothing for a wallet holding 1,000,000 $BOBAI. POST https://agent.brainonbnb.com/answer?service=lp_position_plan, free example at /example?service=lp_position_plan.'
       : 'The position is not against WBNB. The agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.',
     measured_at: new Date().toISOString(),
     source: 'PancakeSwap V3 NonfungiblePositionManager and the pool itself, read live',

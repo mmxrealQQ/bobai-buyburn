@@ -214,3 +214,5 @@ hub-paid
 # 25.10. stay WITHHELD on the operator's no: V3 bull-v3, ZZN1 guitar, ZZN2 guitar-v2, ZZR1 popcorn, G3, E4, G4, H2, H5, L2, N3, O2, P1, P2, P5, S4, ZZQ1 paid; Q1 defi left unmarked, stays withheld
 # 1.11. OPERATOR: F2 hub-buy-whale-v2 out ("beim whale buy das F2 rausnehmen"); Q1 hub-defi back in ("das Q1 habe ich rein"), pulled 7.10.
 hub-buy-whale-v2
+# 1.11. OPERATOR, later the same day: Q1 hub-defi out again ("Q1 wieder raus nehmen")
+hub-defi

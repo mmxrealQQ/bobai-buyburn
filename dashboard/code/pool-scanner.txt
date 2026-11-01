@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7851 lines.
+# one fetch. 6 files, 7893 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -62,6 +62,12 @@ export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
 // pool and width records counted that as "hours" — a day of them took a day
 // and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
 export const WINDOW_BLOCKS=7900;
+// WHY THE HOUR WAS REFUSED (2026-11-01). The endpoints are several nodes behind one name and some stand back, measured 3 to 80 blocks;
+// a range up to the head just read is answered 'block range extends beyond current head block' by those, at random. That
+// read as a rate limit for weeks: unreadable fee tiers, a scan's 3-minute window beside its 59-minute one, tax flipping
+// between measured and simulated. A window ends this many blocks (~54 s) before the head and every node holds it; the
+// hour stays an hour, it only starts and ends a minute earlier.
+export const HEAD_BACK=120;
 // The tax read asks for the newest trades first (measureTax): about three
 // minutes of chain, and a quarter of the hour when the hour itself is refused
 // for the size of its answer.
@@ -199,13 +205,14 @@ const throttled=e=>{
   if(m.includes('revert')||m.includes('execution'))return false;
   return e&&e.code===-32005||/rate|limit|capacity|too many|quota|busy|exceed/.test(m);
 };
+let postRefusal='';
 async function tryPost(url,body){
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
-    if(!r.ok)return null;
+    if(!r.ok){postRefusal='HTTP '+r.status;return null}
     return await r.json();
-  }catch(e){return null}
+  }catch(e){postRefusal=String(e?.message||e).slice(0,100);return null}
 }
 export async function rpcBatch(calls,url,block='latest'){
   const out=[];
@@ -241,7 +248,7 @@ export async function rpc(method,params,url){
     if(j&&!j.error)return j.result;
     if(j&&j.error&&url)throw new Error(j.error.message);
   }
-  throw new Error('every BSC endpoint refused '+method);
+  throw new Error('every BSC endpoint refused '+method+(postRefusal?': '+postRefusal:''));
 }
 
 // WHO CONTROLS THE CONTRACT, read on-chain (2026-10-09) instead of taken from a
@@ -895,7 +902,7 @@ async function windowSpan(from,to){
 }
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
-    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16);
+    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16)-HEAD_BACK;
     // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
     // 59 min — the endpoint answers that in one call and refuses only beyond
     // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
@@ -1031,7 +1038,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
     if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!sawLogs){
       const span=await windowSpan(head-(windowBlocks-1),head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks,swapLogs};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks')+(windowBlocks<WINDOW_BLOCKS?'; the full hour could not be read':''),partial:windowBlocks<WINDOW_BLOCKS,block:head,windowBlocks,swapLogs};
     }
     // Exempt wallets exist — the deployer, the tax sink, routers on an allow
     // list — and they trade at 0%. Taking the median rather than the mean keeps
@@ -1040,7 +1047,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
     if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks,swapLogs};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
+    return {ok:true,partial:windowBlocks<WINDOW_BLOCKS,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }
@@ -1169,11 +1176,15 @@ export async function windowMinutes(from, to) {
 // over 5,000 blocks from the Worker's shared egress while the same range
 // answered from a laptop; smaller answers pass where the big one does not.
 // The sample stays the same window, just read in pieces. null = refused.
+// the last refusal of a log read, in the node's words: an answer that says 'unreadable' should also say why
+export let logsRefusal = null;
 export async function getLogsSplit(params, from, to, url, depth = 0) {
   try {
     return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
-  } catch {
-    if (depth >= 3 || to - from < 64) return null;
+  } catch (e) {
+    logsRefusal = String(e?.message || e).replace(/https?:S+/g, '').slice(0, 140);
+    // a node that is behind, or a 429, says the same of every half: splitting spent up to 15 of the Worker's requests on it
+    if (depth >= 3 || to - from < 64 || /beyond current head|HTTP 429/i.test(String(e?.message || ''))) return null;
     const mid = from + Math.floor((to - from) / 2);
     const a = await getLogsSplit(params, from, mid, url, depth + 1);
     if (a === null) return null;
@@ -2010,7 +2021,7 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // address in its first data word, and that is all this reads.
 export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
   const url=LOGS_RPCS[0];
-  const head=Number(await rpc('eth_blockNumber',[],url));
+  const head=Number(await rpc('eth_blockNumber',[],url))-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
   const logs=(await Promise.all(windows.map(([from,to])=>
@@ -2268,7 +2279,7 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
 // round: two, sometimes three requests, run beside the tax read. null for an
 // address when no archive endpoint answered — "not read", never "new".
 export async function contractAges(addrs){
-  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)}catch(e){return null}
+  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)-HEAD_BACK}catch(e){return null}
   const now=Math.floor(Date.now()/1000);
   const st=addrs.map(a=>({a:String(a||'').toLowerCase(),lo:0,hi:head,ok:false}));
   const ts=new Map();
@@ -7481,7 +7492,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -7627,7 +7638,7 @@ export async function feeTiers(input) {
       'It trades on other venues only, and comparing PancakeSwap fee tiers is not a question that has an answer here.',
     );
 
-  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
+  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
   // One window, and only one: an hour of chain (WINDOW_BLOCKS in scanner-chain);
   // the endpoint answers anything much older by demanding a personal token.
   const from = head - (WINDOW_BLOCKS - 1);
@@ -7662,14 +7673,24 @@ export async function feeTiers(input) {
       (a.c.kind === 'v2' ? -1 : 0) - (b.c.kind === 'v2' ? -1 : 0) || a.c.fee - b.c.fee);
 
   const tiers = [];
+  // READ FIRST, COMPARE AFTER (2026-11-01: 4 of 5 CAKE tiers unreadable, again and again, while the same endpoints answered
+  // a second later). A refusal here is a queue. What the first round leaves out is asked once more after a real pause, one
+  // tier at a time, as long as the answer can still arrive in time for its caller.
+  const logsOf = new Array(order.length).fill(null), readFrom = Date.now();
+  // A tier's hour is kept four minutes in the edge cache: what one call could read, the next need not win again, so a
+  // partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
+  const edge = typeof caches !== 'undefined' ? caches.default : null;
+  const tierKey = (c) => new Request(`https://brainonbnb.com/__cache/tier-logs/${c.pair.toLowerCase()}`);
+  const keep = async (i, logs) => { if (edge && logs) await edge.put(tierKey(order[i].c), new Response(JSON.stringify(logs), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {}); };
+  if (edge) await Promise.all(order.map(async (o, i) => { const hit = await edge.match(tierKey(o.c)).catch(() => null); if (hit) logsOf[i] = await hit.json().catch(() => null); }));
   for (let i = 0; i < order.length; i++) {
+    if (logsOf[i] !== null) continue;
     // A breath between tiers: the log endpoints rate-limit by the second, and
     // five ranges back to back from the Worker's shared egress is what left
     // the busiest CAKE tiers unreadable. No keyed log endpoint exists here
     // (measured 2026-09-07: blastapi, drpc, 1rpc, llamarpc all refuse or cap).
     if (i) await new Promise((r) => setTimeout(r, 300));
     const c = order[i].c;
-    const quoteIs0 = addrAt(order[i].zero) === quote;
     const topics = [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T];
     // One endpoint serves these ranges and it rate-limits, so a refusal is
     // often a queue rather than a verdict. Retried once, briefly, because five
@@ -7683,13 +7704,33 @@ export async function feeTiers(input) {
     // concurrent callers left 0 to 2 of 5 tiers readable, against 4 to 5 when
     // asked one at a time.
     let logs = null;
-    for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
+    for (let attempt = 0; attempt < 2 && logs === null; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
-      const endpoint = LOGS_RPCS[(i + attempt) % LOGS_RPCS.length];
+      // The first endpoint first, on every tier (2026-11-01): it is the keyed one on the site. Taking turns sent two of
+      // three tiers to the public endpoints, which answer Cloudflare's shared address with HTTP 429.
+      const endpoint = LOGS_RPCS[attempt % LOGS_RPCS.length];
       // In pieces when the whole range is refused (getLogsSplit): the two
       // busiest CAKE tiers were unreadable in 3 of 3 runs before.
       logs = await getLogsSplit({ address: c.pair, topics }, from, head, endpoint);
     }
+    logsOf[i] = logs;
+    await keep(i, logs);
+  }
+  // Cloudflare's shared address gets a 429 about two times in three, the same key from anywhere else none (measured
+  // 2026-11-01). It is a matter of turns, so the tiers still missing are asked again in rounds, until 28 s are gone.
+  for (let round = 0; round < 8 && logsOf.includes(null) && Date.now() - readFrom < 28000; round++) {
+    for (let i = 0; i < order.length; i++) {
+      if (logsOf[i] !== null || Date.now() - readFrom >= 28000) continue;
+      await new Promise((r) => setTimeout(r, 900));
+      const c = order[i].c;
+      logsOf[i] = await getLogsSplit({ address: c.pair, topics: [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T] }, from, head, LOGS_RPCS[round % LOGS_RPCS.length]);
+      await keep(i, logsOf[i]);
+    }
+  }
+
+  for (let i = 0; i < order.length; i++) {
+    const c = order[i].c, logs = logsOf[i];
+    const quoteIs0 = addrAt(order[i].zero) === quote;
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;
 
@@ -7835,6 +7876,7 @@ export async function feeTiers(input) {
     // offered under a name that says what it is.
     comparison_complete: measured.length === tiers.length,
     tiers_unreadable: tiers.filter((v) => !v.measured).map((v) => v.tier),
+    ...(tiers.some((v) => !v.measured) && logsRefusal ? { unreadable_because: logsRefusal } : {}),
     // The two answers side by side are the whole point: an LP is shown the
     // first number everywhere and needs the second one.
     best_paying_tier: measured.length === tiers.length && traded.length ? traded[0].tier : null,

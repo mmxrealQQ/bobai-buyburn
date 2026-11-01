@@ -15,5 +15,6 @@ export const OWN_WALLETS = new Set([
   '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
   '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
   '0x4fa13c52724bcadffefef91676cc429fa6216a48', // operator (builder #3)
+  '0xefd4ffa11b00055aedc616d99dd36f0953d6ddb5', // throwaway of the first real "Pay in $BOBAI" test, two answers (2026-11-01), key deleted
 ]);
 export const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());

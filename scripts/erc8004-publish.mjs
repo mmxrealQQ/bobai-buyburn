@@ -859,8 +859,31 @@ const categorised = CATEGORIES.map((cat) => {
       tools: o.tools, skills: o.skills, declared_services: o.declared_services,
       quoted_for: [...new Set(directory.filter((d) => (o.ids || []).includes(d.id)).flatMap((d) => d.quoted_for || []))],
     }, null, { withWeak: true }).find((m) => m.category === cat.id);
-    if (!hit || hit.source !== 'derived') continue;
+    if (hit && hit.source !== 'derived') continue;
     if (seenOperator.has(o.operator) || claimed.has(o.name)) continue;
+    // A FLEET IS FILED BY WHAT ITS AGENTS DO, NOT ONLY BY ITS FIRST ONE (2026-11-02). A collapsed host is read as one row with
+    // the text of its best id, so the Lending Agents on 4lpha.tech and Sentinels Health Guard, on a host shared by nine ids,
+    // were in /find for health factor and nowhere on this page. An agent that names the job outright brings its host in
+    // once, as itself; a loose word does not.
+    if (!hit) {
+      const members = directory.filter((d) => (o.ids || []).includes(d.id) || hostOf(d) === o.operator)
+        .filter((d) => classifyAgent({ ...d, attributes: attrsFor(d.id) }, null, { withWeak: true }).some((m) => m.category === cat.id && m.source === 'derived' && !m.weak));
+      const m = members[0];
+      if (!m || claimed.has(m.name)) continue;
+      seenOperator.add(o.operator);
+      rows.push({
+        label: m.name || `#${m.id}`, sub: o.operator, instances: members.length,
+        hit: classifyAgent({ ...m, attributes: attrsFor(m.id) }, null, { withWeak: true }).find((x) => x.category === cat.id),
+        employment: employmentOf(members.map((x) => x.id)),
+        ours: ownAgents.some((x) => x.id === m.id),
+        tele: teleKey(m.id, o.operator),
+        agentId: m.id,
+        speaks: m.speaks || [],
+        description: m.description || null,
+        capabilities: capsOf(m),
+      });
+      continue;
+    }
     seenOperator.add(o.operator);
     rows.push({
       label: o.name || o.operator, sub: o.operator, instances: o.instances || 1, hit,

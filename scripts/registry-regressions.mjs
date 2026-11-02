@@ -168,6 +168,14 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
   check('7 score: where ours has the top score it leads, and the page does not say "ours last"', !/ours last/i.test(html) && top.every((b) => b.arts[0].ours), top.filter((b) => !b.arts[0].ours).map((b) => b.id).join(', ') || 'the old sentence is on the page');
 }
 
+// 8 fleet: an agent on a collapsed host that names a category outright brings its host into that category once, as
+// itself, and a loose word does not (2026-11-02). Read from the generator: the page shows it from the next publish on.
+{
+  const pub = fs.readFileSync(path.join(ROOT, 'scripts', 'erc8004-publish.mjs'), 'utf8');
+  check('8 fleet: the operator rows look at each member, strict matches only, and list the member itself',
+    /m\.category === cat\.id && m\.source === 'derived' && !m\.weak/.test(pub) && /label: m\.name \|\| `#\$\{m\.id\}`, sub: o\.operator/.test(pub) && /agentId: m\.id/.test(pub), 'erc8004-publish.mjs');
+}
+
 for (const n of ok) console.log(`  ok    ${n}`);
 for (const f of fails) console.log(`  FAIL  ${f}`);
 if (fails.length) {

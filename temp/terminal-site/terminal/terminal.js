@@ -1776,7 +1776,7 @@ function speak(text, ms = 5200) {
 }
 let sayFloor = null; // { id: the line, top: px } — a line moved below a board's title keeps that place to its end
 function placeBubble() {
-  if (!bubble.classList.contains('on')) return;
+  if (!bubble.classList.contains('on')) { if (win.querySelector('.lab.say-over')) underBubble(true); return; } // a line can be closed from elsewhere: the label comes back all the same
   if (performance.now() > LIFE.sayUntil) { bubble.classList.remove('on'); win.classList.remove('talking'); underBubble(true); return; }
   const wr = win.getBoundingClientRect(), fr = fig.getBoundingClientRect();
   if (portrait) {
@@ -1823,6 +1823,8 @@ function underBubble(clear) {
   // is drawn above it and the chip steps back, as on the phone
   const mc = document.querySelector('#bt .mdc'), m = b && mc && !mc.hidden && mc.getBoundingClientRect();
   win.classList.toggle('talk-over', !!m && m.width > 0 && m.right > b.left && m.left < b.right && m.bottom > b.top && m.top < b.bottom);
+  // the top labels too (2026-11-02, layout 1366x768: a burn line stood over NEXT BUYBACK, which a scene only dims and so shone through the words)
+  for (const l of win.querySelectorAll('.lab.core')) { const r = b && l.getBoundingClientRect(); l.classList.toggle('say-over', !!b && r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom); }
 }
 // the mood: the pool's own price over the last hour — from the swaps he saw, then from his own reads
 // THE MARKET'S WEATHER (2026-09-26): the whole scene takes a breath of the hour's mood — a hint of green when the

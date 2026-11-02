@@ -745,6 +745,7 @@
 
 /* the buyback ring shows how full it is: the tax line under its label goes (operator, 2026-09-28); the MONEY tab still reads it */
 #bt .lab.core .s:not(.cd){display:none}
+#bt .lab.core.say-over{opacity:0!important;transition:opacity .25s} /* his line stands here: the label steps back until it is over */
 
 /* the trades label: one line on a wide screen, two on a phone (TRADES / 3% TAX) under its dot (2026-09-28) */
 #bt .lab.src .sep{font-style:normal}

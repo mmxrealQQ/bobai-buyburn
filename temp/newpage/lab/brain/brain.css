@@ -322,6 +322,8 @@ button.bw-card .bw-n{color:var(--bp-gold)}
 @container (min-width:280px){.cv-app em{font-size:12px}.bp-side .cv-app svg,.bp-side .cv-app img{width:28px;height:28px}.bp-side .cv-icons:has(.cv-app){gap:18px 14px}.cv-app{gap:10px}} /* big screens: the card grows, so do its apps */
 @container (max-width:200px){.bp-side .cv-icons:has(.cv-app){grid-template-columns:repeat(4,auto);justify-content:center;gap:12px 14px}.cv-app em{display:none}}
 @media (max-aspect-ratio:3/4),(max-width:559px){.bp-side .cv-ring{justify-content:center}.bp-side .cv-ring ul{display:none}.bp-side .cv-ring svg{width:74px;height:74px}}
+/* the four-column tablet band (768x1000): a card 176 px wide cut the percentages off, so it shows the ring as a phone does; the full split is one tap away (2026-11-02) */
+@media (max-aspect-ratio:5/4) and (min-aspect-ratio:3/4) and (min-width:560px) and (max-width:900px){.bp-side .cv-ring{justify-content:center}.bp-side .cv-ring ul{display:none}.bp-side .cv-ring svg{width:74px;height:74px}}
 /* phone (2026-09-26): a window's head is two lines — number + kicker, then the title — so a long title never squeezes
    the kicker into a column; the × always sits at the right edge, in the page window too */
 @media (max-aspect-ratio:3/4),(max-width:559px){

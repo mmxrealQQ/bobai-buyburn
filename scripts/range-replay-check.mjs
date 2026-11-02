@@ -39,7 +39,10 @@ const R = await import('file://' + path.join(stage, 'range-scan.mjs').split(path
 
 const SELF = process.argv.includes('--self-test');
 const TOKENS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-const DEFAULT = [['CAKE', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82']];
+// Two, because the plan picks the tier with the most capital near the price, and CAKE's can go a quiet hour with one
+// swap (2026-11-02). ETH's is the busy one, so the self-test below always has fees to compare.
+const DEFAULT = [['CAKE', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82'], ['ETH', '0x2170ed0880ac9a755fd29b2688956bd959f933f8']];
+let selfRan = 0;
 
 let failed = 0, checks = 0;
 const ok = (name, pass, detail) => {
@@ -160,7 +163,10 @@ for (const [name, addr] of list) {
     full.fees_usd_in_window <= Math.min(...rows.map((r) => r.fees_usd_in_window)) * 1.001,
     `full $${full.fees_usd_in_window.toFixed(6)} against the best width at $${Math.max(...rows.map((r) => r.fees_usd_in_window)).toFixed(6)}`);
 
-  if (SELF) {
+  // A quiet window has too few digits to tell full range from ±10%: it says nothing either way, so another token decides.
+  if (SELF && Math.max(...rows.map((r) => r.fees_usd_in_window)) < 0.001) console.log(`      ${name}: too quiet for the self-test this hour`);
+  else if (SELF) {
+    selfRan += 1;
     // A position ten thousand percent wide is full range by another name, so it
     // must collect about what full range collects. If the width were being
     // ignored — the failure that would make every row above look plausible and
@@ -189,5 +195,6 @@ for (const [name, addr] of list) {
 }
 
 fs.rmSync(stage, { recursive: true, force: true });
+if (SELF) ok('SELF: at least one token had fees to run the self-test on', selfRan > 0, `${selfRan} of ${list.length}`);
 console.log(`\n${checks - failed}/${checks} checks passed${SELF ? ' (with self-test)' : ''}`);
 process.exit(failed ? 1 : 0);

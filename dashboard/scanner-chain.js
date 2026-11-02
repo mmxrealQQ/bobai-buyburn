@@ -31,7 +31,11 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // fifty blocks, llamarpc did not resolve. They share an operator, so they
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
-export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// 2026-11-02: publicnode refuses Cloudflare's egress about two calls in three (HTTP 429), so fee tiers read 0-2 of 5
+// for BTCB, ETH and USDT. Pocket served the same 7,900-block logs as publicnode (same count, same last tx), allows
+// this site's origin, and took a burst of ten in 0.7 s, one of them answering "block range exceeds", which
+// getLogsSplit handles by splitting. It is a different operator, so it does not share publicnode's budget.
+export const LOGS_RPCS=['https://bsc.api.pocket.network','https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
 // OLD STATE. Measured 2026-09-27: publicnode answers eth_getCode and eth_getLogs only for about the last 9,000
 // blocks ("Archive requests require a personal token"), defibit and Binance's dataseed say "missing trie node",
 // and blastapi — already in RPCS above — answers eth_getCode at any block, 147 calls in one batch in 0.5 s. That
@@ -1166,7 +1170,7 @@ export async function getLogsSplit(params, from, to, url, depth = 0) {
   try {
     return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
   } catch (e) {
-    logsRefusal = String(e?.message || e).replace(/https?:S+/g, '').slice(0, 140);
+    logsRefusal = String(e?.message || e).replace(/https?:\S+/g, '').slice(0, 140);
     // a node that is behind, or a 429, says the same of every half: splitting spent up to 15 of the Worker's requests on it
     if (depth >= 3 || to - from < 64 || /beyond current head|HTTP 429/i.test(String(e?.message || ''))) return null;
     const mid = from + Math.floor((to - from) / 2);

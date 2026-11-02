@@ -87,8 +87,15 @@ export async function lpTierPlan(input = {}) {
   const capitalUsd = Number(input.capitalUsd) > 0 ? Number(input.capitalUsd) : 1000;
 
   const m = await measure(address.toLowerCase());
+  // A measurement that read nothing is not an answer (2026-11-02: the marketplace example said "No tier could be read"
+  // for a day, and a funded job would have been delivered the same empty result). Tiers found and none read means the
+  // log endpoint refused, not that the pair is idle: fail, so a job stays undelivered and an example is not cached.
+  // No tiers found at all is a real answer about the token and goes on.
+  if ((m.tiers || []).length && !m.tiers.some((t) => t.measured)) {
+    throw new Error(`no fee tier could be read just now${m.unreadable_because ? `: ${String(m.unreadable_because).slice(0, 120)}` : ''}`);
+  }
 
-  const priced = (m.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
+  const priced =(m.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
   const traded = priced.filter((t) => t.volume_usd > 0)
     .sort((a, b) => b.fees_per_1000_usd_parked - a.fees_per_1000_usd_parked);
 

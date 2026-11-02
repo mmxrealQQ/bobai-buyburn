@@ -56,6 +56,7 @@ const BOT_WALLED = new Set([
   'birdeye.so', 'www.dextools.io', 'dextools.io', 'gmgn.ai',
   'blockspot.io', 'www.coingecko.com',
   'tradegenius.com',   // 403 to every script, home page included (2026-09-18); the asset page opens in a browser
+  'four.meme',         // Cloudflare answers 403 to scripts, even with a browser's user-agent (2026-11-02)
 ]);
 const FORGIVEN = new Set([403, 429]);
 

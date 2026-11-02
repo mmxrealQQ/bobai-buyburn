@@ -225,7 +225,8 @@ else {
   // The answer has to name a tier that is actually in the table. A sentence
   // that names nothing reads like an answer and is not one, and a sentence
   // naming a tier the table does not show is worse than either.
-  if (R.said && R.rows.length && !R.rows.some((r) => r.tier && R.said.includes(r.tier.split(String.fromCharCode(10))[0]))) {
+  // "No range on this list held" names none on purpose: that is the answer when every width was crossed (2026-11-02).
+  if (R.said && R.rows.length && !/^No range on this list held/.test(R.said) && !R.rows.some((r) => r.tier && R.said.includes(r.tier.split(String.fromCharCode(10))[0]))) {
     problems.push('the answer above the table names no tier from the table');
   }
   // Working capital: present, and never larger than the pool it is part of.

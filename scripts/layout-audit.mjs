@@ -350,7 +350,7 @@ if (process.argv.includes('--self-test')) {
     d.id = 'audit-canary';
     d.textContent = 'x';
     d.style.cssText = 'width:900px;height:20px;background:red';
-    document.body.appendChild(d);
+    document.body.prepend(d);   // first in the DOM: the lists stop at five, and a canary at the end fell off them (2026-11-02)
     return 1;
   })()`);
   const rawSelf = await evaluate(MEASURE);

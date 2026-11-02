@@ -105,6 +105,9 @@ for (const [name, addr] of list) {
   let worst = 0, pairs = 0, detail = [];
   for (let i = 1; i < held.length; i++) {
     const a = held[i - 1], b = held[i];
+    // Fees print to six decimals. In a quiet hour they read 0.000002 and 0.000001 (2026-11-02), and that rounding alone
+    // came out 14% off. Below a tenth of a cent the row carries too few digits to compare, so the pair is left out.
+    if (Math.min(a.fees_usd_in_window, b.fees_usd_in_window) < 0.001) continue;
     const widthRatio = span(b) / span(a);
     const feeRatio = a.fees_usd_in_window / b.fees_usd_in_window;
     const off = Math.abs(feeRatio / widthRatio - 1) * 100;
@@ -116,7 +119,7 @@ for (const [name, addr] of list) {
   // approximation genuinely bends. A real error shows up as hundreds.
   ok(`${name}: fees scale inversely with width across ranges that held`,
     pairs === 0 || worst < 12,
-    pairs === 0 ? 'no two widths both held the whole window — nothing to compare' : detail.join('  '));
+    pairs === 0 ? 'no two widths both held the whole window with fees of a tenth of a cent — nothing to compare' : detail.join('  '));
 
   // 3b. The bounds a row prints are the bounds it was replayed between: on the
   //     pool's grid, and never inside the width that was asked for. A price is

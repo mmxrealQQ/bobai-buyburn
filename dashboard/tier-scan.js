@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -212,12 +212,10 @@ export async function feeTiers(input) {
   // a second later). A refusal here is a queue. What the first round leaves out is asked once more after a real pause, one
   // tier at a time, as long as the answer can still arrive in time for its caller.
   const logsOf = new Array(order.length).fill(null), readFrom = Date.now();
-  // A tier's hour is kept four minutes in the edge cache: what one call could read, the next need not win again, so a
-  // partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
-  const edge = typeof caches !== 'undefined' ? caches.default : null;
-  const tierKey = (c) => new Request(`https://brainonbnb.com/__cache/tier-logs/${c.pair.toLowerCase()}`);
-  const keep = async (i, logs) => { if (edge && logs) await edge.put(tierKey(order[i].c), new Response(JSON.stringify(logs), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {}); };
-  if (edge) await Promise.all(order.map(async (o, i) => { const hit = await edge.match(tierKey(o.c)).catch(() => null); if (hit) logsOf[i] = await hit.json().catch(() => null); }));
+  // A tier's hour is kept four minutes (keptLogs in scanner-chain): what one call could read, the next need not win again,
+  // so a partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
+  const keep = (i, logs) => keepLogs(order[i].c.pair, from, head, logs);
+  await Promise.all(order.map(async (o, i) => { logsOf[i] = (await keptLogs(o.c.pair))?.logs ?? null; }));
   for (let i = 0; i < order.length; i++) {
     if (logsOf[i] !== null) continue;
     // A breath between tiers: the log endpoints rate-limit by the second, and

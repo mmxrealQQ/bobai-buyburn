@@ -361,6 +361,25 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('pancakeswap_fee_tiers is cached 60 s per token in caches.default, and says which copy it is', /caches\.default/.test(ft) && /max-age=60/.test(ft) && /fee-tiers\/\$\{m\[0\]\.toLowerCase\(\)\}/.test(ft) && /cache: \{ hit: true/.test(ft));
   const pfDesc = w.match(/name: 'bsc_token_preflight', description: '((?:[^'\\]|\\.)*)'/)?.[1] || '';
   ok('the preflight description no longer says "nothing cached" and names the 6 h GoPlus cache', !!pfDesc && !/nothing cached/i.test(pfDesc) && /6 h/.test(pfDesc), pfDesc.slice(-160));
+  // the fee tiers and the range replay keep one pool's hour under one key, with the blocks it covers (2026-11-02)
+  {
+    const rs = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/range-scan.js'), 'utf8');
+    const ts = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/tier-scan.js'), 'utf8');
+    ok('the range replay reads a kept hour first and reports that hour\'s own blocks and age',
+      /await keptLogs\(pool\)/.test(rs) && /kept \? kept\.head :/.test(rs) && /kept \? kept\.from :/.test(rs) && /read_seconds_ago/.test(rs) && /keepLogs\(pool, from, head, logs\)/.test(rs));
+    ok('one replay keeps asking for twenty seconds before it gives up, not four', /Date\.now\(\) - readFrom < 20000/.test(rs));
+    ok('the fee tiers keep their hours under the same key as the replay', /keptLogs\(o\.c\.pair\)/.test(ts) && /keepLogs\(order\[i\]\.c\.pair, from, head, logs\)/.test(ts) && !/tier-logs/.test(ts));
+    const store = new Map();
+    const chain = await import(pathToFileURL(path.resolve(import.meta.dirname, '../dashboard/scanner-chain.js')).href);
+    const had = globalThis.caches;
+    globalThis.caches = { default: { match: async (r) => store.get(r.url)?.clone(), put: async (r, res) => { store.set(r.url, res); } } };
+    await chain.keepLogs?.('0xABC', 10, 20, null);
+    const none = await chain.keptLogs?.('0xabc');
+    await chain.keepLogs?.('0xABC', 10, 20, [{ a: 1 }]);
+    const got = await chain.keptLogs?.('0xabc');
+    if (had === undefined) delete globalThis.caches; else globalThis.caches = had;
+    ok('a refused read is not kept; a kept hour comes back with its blocks, whatever the case of the address', none === null && got?.from === 10 && got?.head === 20 && got?.logs?.length === 1 && got?.at > 0, JSON.stringify(got));
+  }
   // the route answer names its block too
   const sr = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/swap-route.js'), 'utf8');
   ok('the best-route answer carries block and measured_at', /\n    block: tag !== 'latest' \? parseInt\(tag, 16\) : \(tax\.block \?\? null\), measured_at: new Date\(\)\.toISOString\(\),/.test(sr));

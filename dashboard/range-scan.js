@@ -29,7 +29,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS, HEAD_BACK,
+  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, WINDOW_BLOCKS, HEAD_BACK,
   SWAP_V3_T, SWAP_V3_UNI, int256, decOf,
 } from './scanner-chain.js';
 
@@ -199,17 +199,24 @@ export async function rangePlan(input, opts = {}) {
   const p0PerUnit = (tokenIs0 ? tokUsd / 10 ** tokDec : qUsd / 10 ** qDec);
   const p1PerUnit = (tokenIs0 ? qUsd / 10 ** qDec : tokUsd / 10 ** tokDec);
 
-  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
-  const from = head - (WINDOW_BLOCKS - 1);
-  let logs = null;
-  for (let attempt = 0; attempt < 5 && logs === null; attempt++) {
-    if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
+  // This pool's hour may already be kept, by the last replay or by the fee tiers (keptLogs in scanner-chain). Its own blocks
+  // then stand in the answer, so the window reported is the one the swaps came from.
+  const kept = await keptLogs(pool);
+  const head = kept ? kept.head : parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
+  const from = kept ? kept.from : head - (WINDOW_BLOCKS - 1);
+  let logs = kept ? kept.logs : null;
+  // Five refusals in four seconds, five calls in a row (measured 2026-11-02), and the sixth call read it: a refusal here is
+  // a matter of turns, so one call keeps asking for twenty seconds, and what it wins stays for the next four minutes.
+  const readFrom = Date.now();
+  for (let attempt = 0; logs === null && (attempt < 5 || Date.now() - readFrom < 20000); attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, Math.min(250 * attempt, 900)));
     // In pieces when the whole range is refused (getLogsSplit in scanner-chain).
     logs = await getLogsSplit({ address: pool, topics: [[SWAP_V3_T, SWAP_V3_UNI]] }, from, head, LOGS_RPCS[attempt % LOGS_RPCS.length]);
   }
   if (!logs)
     throw new RangeError('The log endpoint refused this range.',
-      'That is a fact about the measurement, not about the pool. Nothing is cached here, so a retry usually works.');
+      'That is a fact about the measurement, not about the pool. Nothing was read this time, so a retry usually works.');
+  if (!kept) await keepLogs(pool, from, head, logs);
 
   // Every swap, as the pool itself recorded it: what went in, where the price
   // ended up, and how much liquidity was active while it happened.
@@ -356,6 +363,7 @@ export async function rangePlan(input, opts = {}) {
     measured_window: {
       from_block: from, to_block: head, blocks: head - from + 1,
       minutes: minutes == null ? null : +minutes.toFixed(1),
+      ...(kept ? { read_seconds_ago: Math.max(0, Math.round((Date.now() - kept.at) / 1000)) } : {}),
       swaps: swaps.length,
       fees_the_pool_paid_usd: +totalFees.toFixed(6),
       // The split the pool makes before any position sees a fee. The rows

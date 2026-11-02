@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7893 lines.
+# one fetch. 6 files, 7912 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1192,6 +1192,27 @@ export async function getLogsSplit(params, from, to, url, depth = 0) {
     if (b === null) return null;
     return a.concat(b);
   }
+}
+
+// A POOL'S HOUR, KEPT FOUR MINUTES (2026-11-02). Cloudflare's shared address is refused about two reads in three, so what
+// one call won, the next need not win again: the fee tiers and the range replay read the same swaps of the same pool and
+// keep them under one key, with the blocks they cover, so whoever uses a kept hour can name it. Only in a Worker; the skill
+// and the laptop have no edge cache and read afresh.
+const logsEdge = () => (typeof caches !== 'undefined' && caches.default) || null;
+const logsKey = (pool) => new Request(`https://brainonbnb.com/__cache/pool-logs/${pool.toLowerCase()}`);
+export async function keptLogs(pool) {
+  const edge = logsEdge();
+  if (!edge) return null;
+  try {
+    const hit = await edge.match(logsKey(pool));
+    const kept = hit ? await hit.json() : null;
+    return Array.isArray(kept?.logs) ? kept : null;
+  } catch { return null; }
+}
+export async function keepLogs(pool, from, head, logs) {
+  const edge = logsEdge();
+  if (!edge || !logs) return;
+  await edge.put(logsKey(pool), new Response(JSON.stringify({ at: Date.now(), from, head, logs }), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {});
 }
 
 // === WHERE THE CAPITAL ACTUALLY SITS ===
@@ -7492,7 +7513,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -7677,12 +7698,10 @@ export async function feeTiers(input) {
   // a second later). A refusal here is a queue. What the first round leaves out is asked once more after a real pause, one
   // tier at a time, as long as the answer can still arrive in time for its caller.
   const logsOf = new Array(order.length).fill(null), readFrom = Date.now();
-  // A tier's hour is kept four minutes in the edge cache: what one call could read, the next need not win again, so a
-  // partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
-  const edge = typeof caches !== 'undefined' ? caches.default : null;
-  const tierKey = (c) => new Request(`https://brainonbnb.com/__cache/tier-logs/${c.pair.toLowerCase()}`);
-  const keep = async (i, logs) => { if (edge && logs) await edge.put(tierKey(order[i].c), new Response(JSON.stringify(logs), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {}); };
-  if (edge) await Promise.all(order.map(async (o, i) => { const hit = await edge.match(tierKey(o.c)).catch(() => null); if (hit) logsOf[i] = await hit.json().catch(() => null); }));
+  // A tier's hour is kept four minutes (keptLogs in scanner-chain): what one call could read, the next need not win again,
+  // so a partial answer becomes a whole one. The kept hour may end up to four minutes before the others.
+  const keep = (i, logs) => keepLogs(order[i].c.pair, from, head, logs);
+  await Promise.all(order.map(async (o, i) => { logsOf[i] = (await keptLogs(o.c.pair))?.logs ?? null; }));
   for (let i = 0; i < order.length; i++) {
     if (logsOf[i] !== null) continue;
     // A breath between tiers: the log endpoints rate-limit by the second, and

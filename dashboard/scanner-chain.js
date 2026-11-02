@@ -1178,6 +1178,27 @@ export async function getLogsSplit(params, from, to, url, depth = 0) {
   }
 }
 
+// A POOL'S HOUR, KEPT FOUR MINUTES (2026-11-02). Cloudflare's shared address is refused about two reads in three, so what
+// one call won, the next need not win again: the fee tiers and the range replay read the same swaps of the same pool and
+// keep them under one key, with the blocks they cover, so whoever uses a kept hour can name it. Only in a Worker; the skill
+// and the laptop have no edge cache and read afresh.
+const logsEdge = () => (typeof caches !== 'undefined' && caches.default) || null;
+const logsKey = (pool) => new Request(`https://brainonbnb.com/__cache/pool-logs/${pool.toLowerCase()}`);
+export async function keptLogs(pool) {
+  const edge = logsEdge();
+  if (!edge) return null;
+  try {
+    const hit = await edge.match(logsKey(pool));
+    const kept = hit ? await hit.json() : null;
+    return Array.isArray(kept?.logs) ? kept : null;
+  } catch { return null; }
+}
+export async function keepLogs(pool, from, head, logs) {
+  const edge = logsEdge();
+  if (!edge || !logs) return;
+  await edge.put(logsKey(pool), new Response(JSON.stringify({ at: Date.now(), from, head, logs }), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {});
+}
+
 // === WHERE THE CAPITAL ACTUALLY SITS ===
 //
 // Every figure this project publishes about a V3 pool has so far divided by

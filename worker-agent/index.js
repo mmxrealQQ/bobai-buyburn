@@ -3271,7 +3271,7 @@ ${pageTail}`;
       const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Authorization, Accept', 'Content-Type': 'application/json' };
       const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
       const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
-      const RO = { readOnlyHint: true, openWorldHint: true };
+      const RO = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
       const TOKEN = { type: 'string', description: 'A BEP-20 token address on BNB Chain (0x…)' };
       const FREE = {
         'defi-agent': { name: 'lp_position_look', description: 'Rebalancing, the free half: look at a PancakeSwap V3 liquidity position on BNB Chain, read from the chain now — in range or not and how much room is left to each edge, what it holds and is worth in BNB, the fees it is owed and whether collecting them pays for the gas. Give a position id or a wallet that holds one; with neither, it reads the position this agent runs itself (wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A). Reads only, signs nothing.', inputSchema: { type: 'object', properties: { position: { type: 'string', description: 'A PancakeSwap V3 position id (the NFT token id), digits only' }, address: { type: 'string', description: 'Or a wallet address that holds the position' }, wallet: { type: 'string', description: 'The same as address (the word other checkers use)' } }, additionalProperties: false }, annotations: { readOnlyHint: true, openWorldHint: true } },

@@ -361,6 +361,8 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('pancakeswap_fee_tiers is cached 60 s per token in caches.default, and says which copy it is', /caches\.default/.test(ft) && /max-age=60/.test(ft) && /fee-tiers\/\$\{m\[0\]\.toLowerCase\(\)\}/.test(ft) && /cache: \{ hit: true/.test(ft));
   const pfDesc = w.match(/name: 'bsc_token_preflight', description: '((?:[^'\\]|\\.)*)'/)?.[1] || '';
   ok('the preflight description no longer says "nothing cached" and names the 6 h GoPlus cache', !!pfDesc && !/nothing cached/i.test(pfDesc) && /6 h/.test(pfDesc), pfDesc.slice(-160));
+  // what library entry #73 tells others to do, each agent's own MCP does too (2026-11-02): it carried readOnlyHint alone
+  ok('every agent\'s own MCP marks its read tools destructiveHint false, like the site\'s', /const RO = \{ readOnlyHint: true, destructiveHint: false,/.test(fs.readFileSync(path.resolve(import.meta.dirname, '../worker-agent/index.js'), 'utf8')));
   // the fee tiers and the range replay keep one pool's hour under one key, with the blocks it covers (2026-11-02)
   {
     const rs = fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/range-scan.js'), 'utf8');

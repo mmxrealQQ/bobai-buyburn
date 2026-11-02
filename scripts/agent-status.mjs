@@ -100,6 +100,9 @@ for (const [k, v] of Object.entries(det.names)) {
 line(!det.truncated, 'the day is counted whole', `${det.isolates} isolates, ${det.rolled_up} rolled up${det.truncated ? ', TRUNCATED' : ''}`);
 console.log(`      tool calls by others: ${use}  (${uses.join(', ') || 'none'})`);
 console.log(`      supply reads by listing sites: ${feeds}`);
+const buys = Object.entries(det.names).filter(([k]) => k.startsWith('buy:')).sort((a, b) => b[1] - a[1]);
+const buyBots = Object.entries(det.names).filter(([k]) => k.startsWith('buybot:')).reduce((s, [, v]) => s + v, 0);
+console.log(`      buy clicks by browsers: ${buys.reduce((s, [, v]) => s + v, 0)}  (${buys.map(([k, v]) => `${k.slice(4)} ${v}`).join(', ') || 'none'}) · by bots: ${buyBots}`);
 console.log(`      menu checks by registries: ${menu} · crawler hits on unknown paths: ${det.names['rest:unknown'] || 0}`);
 console.log(`      paid path: ${Object.entries(det.names).filter(([k]) => k.startsWith('sell:') || k.startsWith('paidmcp:')).map(([k, v]) => `${k} ${v}`).join(', ') || 'nothing'}`);
 

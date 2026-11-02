@@ -118,10 +118,33 @@ export function buyLinkWithoutChain(name, text) {
   return bad.length ? [`${name}: ${bad.length} $BOBAI buy link(s) without chain=bsc (${bad[0].slice(0, 90)})`] : [];
 }
 
+// WHICH PAGE A BUY CAME FROM (2026-11-02, the demand measurement: 30 days of trades, and nothing could say whether a page
+// of ours led to one). Every $BOBAI buy link on a page goes through /buy?from=<page>, which counts the source and
+// redirects to the same PancakeSwap URL. Done here so that hand-written and generated pages cannot drift. The worker
+// keeps the same names in BUY_SOURCES; a name it does not know is counted as 'other'.
+const BUY_URL = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff';
+export function buySource(rel) {
+  const p = String(rel).replace(/\\/g, '/').replace(/\.html$/i, '').toLowerCase();
+  if (p === 'index') return 'classic';
+  if (p === 'brain/index') return 'home';
+  return p.replace(/\/index$/, '').replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+}
+export function rewriteBuyLinks(html, rel) {
+  const to = `href="/buy?from=${buySource(rel)}"`;
+  return html.split(`href="${BUY_URL}&chain=bsc"`).join(to).split(`href="${BUY_URL}&amp;chain=bsc"`).join(to).split('href="/buy"').join(to);
+}
+
 if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let n = 0, bad = 0;
   const is = (what, cond) => { n++; if (!cond) bad++; console.log(`${cond ? 'ok  ' : 'FAIL'}  ${what}`); };
-  is('a comment goes, the markup around it stays', stripComments('<p>a</p><!-- why -->\n<p>b</p>') === '<p>a</p>\n<p>b</p>');
+  {
+    const u = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff';
+    const page = `<a href="${u}&chain=bsc">a</a><a href="${u}&amp;chain=bsc">b</a><a href="/buy">c</a><a href="https://pancakeswap.finance/swap?outputCurrency=0xabc&chain=bsc">other token</a><p>${u}&chain=bsc</p>`;
+    const out = rewriteBuyLinks(page, 'token.html');
+    is('every $BOBAI buy link goes through /buy with its page; another token and plain text stay', out.split('href="/buy?from=token"').length === 4 && out.includes('outputCurrency=0xabc') && out.includes(`<p>${u}&chain=bsc</p>`));
+    is('the front pages and folders get their names', buySource('index.html') === 'classic' && buySource('brain\\index.html') === 'home' && buySource('brain/index.html') === 'home' && buySource('nft/index.html') === 'nft' && buySource('faq.html') === 'faq');
+  }
+  is('a comment goes, the markup around it stays',stripComments('<p>a</p><!-- why -->\n<p>b</p>') === '<p>a</p>\n<p>b</p>');
   is('a comment that spans lines goes whole', stripComments('<div>\n<!-- one\n two -->\n<b>x</b></div>') === '<div>\n<b>x</b></div>');
   is('"<!--" inside a script is code and stays, with the real comment after it gone', stripComments('<script>var s="<!-- not a comment -->";if(a<!--b){}</script><!-- c --><i>z</i>') === '<script>var s="<!-- not a comment -->";if(a<!--b){}</script><i>z</i>');
   is('the same inside <style>, <pre> and <textarea>', ['style', 'pre', 'textarea'].every((t) => stripComments(`<${t}>x <!-- kept --> y</${t}><!-- gone -->`) === `<${t}>x <!-- kept --> y</${t}>`));
@@ -169,7 +192,7 @@ function main() {
       if (e.name.toLowerCase().endsWith('.html')) {
         const html = fs.readFileSync(from, 'utf8'), built = stripComments(html);
         problems.push(...checkPage(path.join(rel, e.name), html, built), ...wrongNamespace(path.join(rel, e.name), html), ...buyLinkWithoutChain(path.join(rel, e.name), html));
-        fs.writeFileSync(to, built);
+        fs.writeFileSync(to, rewriteBuyLinks(built, path.join(rel, e.name)));
         pages++; before += zlib.brotliCompressSync(Buffer.from(html)).length; after += zlib.brotliCompressSync(Buffer.from(built)).length;
         continue;
       }

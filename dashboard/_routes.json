@@ -25,6 +25,7 @@
     "/source.git",
     "/source.git/*",
     "/m/*",
+    "/buy",
     "/",
     "/index.html",
     "/classic",

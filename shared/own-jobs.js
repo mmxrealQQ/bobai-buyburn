@@ -14,6 +14,11 @@
 //   open        OPEN, never funded; expires on its own
 //   closed      REJECTED / EXPIRED
 //   unreadable  the kernel returned nothing for this id
+// JOBS WE WILL NOT TAKE THE PAY FOR (operator's go, 2026-11-02). 57139: a stranger paid 0.01 $U for fee tiers on
+// 31.10. and was delivered "No tier could be read". Neither our own settle nor the public settle calls it, and once it
+// is past expiry the worker calls claimRefund (own-jobs.js refundHeld): simulated, it passes from any address.
+export const NOT_SETTLED = { 57139: 'delivered with no tier read; the budget goes back to the buyer' };
+
 export function classify(job, { now, windowSec }) {
   if (!job) return { state: 'unreadable', note: 'the kernel returned nothing for this id' };
   const s = job.status;

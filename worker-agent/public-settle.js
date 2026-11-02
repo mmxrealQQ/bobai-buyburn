@@ -24,7 +24,7 @@
 import { createWalletClient, createPublicClient, http, fallback, parseEther, formatEther } from 'viem';
 import { bsc } from 'viem/chains';
 import { decodeJob, readDisputeWindow, ERC8183 } from './hire.js';
-import { classify } from '../shared/own-jobs.js';
+import { classify, NOT_SETTLED } from '../shared/own-jobs.js';
 import { providerAccount } from './submit.js';
 
 export const CANDIDATES_KEY = 'settle:candidates';
@@ -61,7 +61,7 @@ export function pickDue(jobs, candidates, { now, windowSec, router = ERC8183.rou
     if (['completed', 'closed'].includes(c.state) || (job.status === 'OPEN' && now >= job.expired_at)) { drop.push(id); continue; }
     if (job.status === 'FUNDED' && now >= job.expired_at) continue;
     if (farms.includes(String(job.provider).toLowerCase())) { drop.push(id); continue; }
-    if (c.state !== 'settleable') continue;
+    if (c.state !== 'settleable' || NOT_SETTLED[id]) continue;
     // only work somebody paid somebody else for: the router as evaluator, at least MIN_BUDGET_U, and a client that is
     // not the provider (a job an address hires itself for releases its own money back to it — a test, not a payment)
     if (String(job.evaluator).toLowerCase() !== String(router).toLowerCase() || !(Number(job.budget_u) >= MIN_BUDGET_U) || String(job.client).toLowerCase() === String(job.provider).toLowerCase()) { drop.push(id); continue; }

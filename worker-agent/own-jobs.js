@@ -13,7 +13,7 @@
 // at most one write per day. It reads. It signs nothing — settling is a
 // person's call, and the script prints it for them.
 import { decodeJob, readDisputeWindow, ERC8183 } from './hire.js';
-import { classify, recordTransition, summarise } from '../shared/own-jobs.js';
+import { classify, recordTransition, summarise, NOT_SETTLED } from '../shared/own-jobs.js';
 import { createWalletClient, createPublicClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { providerAccount } from './submit.js';
@@ -31,7 +31,7 @@ const settleData = (id) => '0x39c2ebb9' + BigInt(id).toString(16).padStart(64, '
 const RPC_LIST = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
 export async function settleDue(env, rows, { max = 5 } = {}) {
   const account = providerAccount(env);
-  const due = rows.filter((r) => r.state === 'settleable').slice(0, max);
+  const due = rows.filter((r) => r.state === 'settleable' && !NOT_SETTLED[r.id]).slice(0, max);
   if (!account || !due.length) return [];
   const transport = fallback(RPC_LIST.map((u) => http(u, { timeout: 20000 })));
   const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
@@ -47,6 +47,29 @@ export async function settleDue(env, rows, { max = 5 } = {}) {
     } catch (e) { out.push({ id: r.id, at, settled: false, why: String(e.shortMessage || e.message).slice(0, 160) }); }
   }
   try { const prev = JSON.parse((await env.AGENT.get(SETTLE_KEY)) || '[]'); await env.AGENT.put(SETTLE_KEY, JSON.stringify([...out, ...prev].slice(0, 100))); } catch { /* the record is a log, the settle stands either way */ }
+  return out;
+}
+// A job on NOT_SETTLED that is past its expiry goes back to its buyer: claimRefund on the kernel, simulated first, and
+// written to jobs:settled beside the settles. Only those jobs, only while still SUBMITTED, so it runs once for each.
+export const heldForRefund = (rows, now) => rows.filter((r) => NOT_SETTLED[r.id] && r.status === 'SUBMITTED' && r.expired_at && now >= r.expired_at);
+export async function refundHeld(env, rows, { now = Math.floor(Date.now() / 1000) } = {}) {
+  const account = providerAccount(env);
+  const due = heldForRefund(rows, now);
+  if (!account || !due.length) return [];
+  const transport = fallback(RPC_LIST.map((u) => http(u, { timeout: 20000 })));
+  const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+  const out = [];
+  for (const r of due) {
+    const data = '0x5b7baf64' + BigInt(r.id).toString(16).padStart(64, '0'), at = new Date().toISOString();
+    try { await pub.call({ account, to: ERC8183.commerce, data }); }
+    catch (e) { out.push({ id: r.id, at, refunded: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 120)}` }); continue; }
+    try {
+      const hash = await wal.sendTransaction({ to: ERC8183.commerce, data, gasPrice: 100000000n });
+      const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
+      out.push({ id: r.id, at, refunded: rc.status === 'success', tx: hash });
+    } catch (e) { out.push({ id: r.id, at, refunded: false, why: String(e.shortMessage || e.message).slice(0, 160) }); }
+  }
+  try { const prev = JSON.parse((await env.AGENT.get(SETTLE_KEY)) || '[]'); await env.AGENT.put(SETTLE_KEY, JSON.stringify([...out, ...prev].slice(0, 100))); } catch { /* the chain holds it anyway */ }
   return out;
 }
 export async function readSettled(env) { try { return JSON.parse((await env.AGENT.get(SETTLE_KEY)) || '[]'); } catch { return []; } }
@@ -107,12 +130,13 @@ export async function tickOwnJobs(env, rpc, ids = []) {
       record = { ...record, [id]: { ...record[id], client: job.client, provider: job.provider } };
       changes++;
     }
-    rows.push({ id, status: snap.status, state: c.state, note: c.note });
+    rows.push({ id, status: snap.status, state: c.state, note: c.note, expired_at: job.expired_at });
   }
   const next = { jobs: record, checked_at: at, dispute_window_sec: windowSec, summary: summarise(record, at) };
   if (changes || !prev.checked_at) await env.AGENT.put(KV_KEY, JSON.stringify(next));
   else await env.AGENT.put(KV_KEY, JSON.stringify({ ...prev, checked_at: at, summary: summarise(record, at) }));
   // settle what is due (a settled job is read as COMPLETED on the next tick)
   const settled = await settleDue(env, rows).catch((e) => [{ settled: false, why: String(e && e.message || e).slice(0, 120) }]);
-  return { ok: true, jobs: all.length, transitions: changes, rows, settled };
+  const refunded = await refundHeld(env, rows).catch((e) => [{ refunded: false, why: String(e && e.message || e).slice(0, 120) }]);
+  return { ok: true, jobs: all.length, transitions: changes, rows, settled, refunded };
 }

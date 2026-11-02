@@ -491,6 +491,16 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const es = P.settleEntries([{ id: '1', provider: prov, released_u: 0.1, tx: '0x' + '1'.repeat(64) }, { id: '2', provider: prov.toUpperCase().replace('0X', '0x'), released_u: 0.05, tx: '0x' + '2'.repeat(64) }, { id: '3', provider: other, released_u: 0.2, tx: '0x' + '3'.repeat(64) }], { [prov]: [{ id: 777, name: 'Test Agent 777' }] });
   const a = es.find((e) => e.provider === prov), b = es.find((e) => e.provider === other);
   is('S1 one entry per provider: its jobs, the sum, each transaction; addressed to its agent, or to its wallet when no agent is known', es.length === 2 && a.to === '777' && a.released_u === 0.15 && /2 finished jobs, 0\.15 \$U released/.test(a.title) && /job 1: 0\.10 \$U/.test(a.body) && /bscscan\.com\/tx\/0x2222/.test(a.body) && b.to === other && /1 finished job,/.test(b.title), JSON.stringify(es.map((e) => [e.to, e.title])));
+  // S1b a job we will not take the pay for (57139): neither settle path picks it, the expired one is refunded once
+  {
+    const O = await import(pathToFileURL(path.join(ROOT, 'worker-agent', 'own-jobs.js')).href);
+    const router = '0x' + 'ef'.repeat(20);
+    const job = { status: 'SUBMITTED', submitted_at: 1000, expired_at: 5000, provider: prov, client: other, evaluator: router, budget_u: 0.01 };
+    const pick = P.pickDue([{ id: '57139', job }, { id: '57140', job }], { 57139: { provider: prov }, 57140: { provider: prov } }, { now: 3000, windowSec: 1000, router, knownFarms: [] });
+    is('S1b the public settle leaves 57139 and takes the job beside it', !pick.due.includes('57139') && pick.due.includes('57140') && !pick.drop.includes('57139'), JSON.stringify(pick.due));
+    const rows = [{ id: '57139', status: 'SUBMITTED', expired_at: 5000 }, { id: '57140', status: 'SUBMITTED', expired_at: 5000 }, { id: '57139', status: 'EXPIRED', expired_at: 5000 }];
+    is('S1c only a held job past expiry and still SUBMITTED is refunded', O.heldForRefund(rows, 4999).length === 0 && O.heldForRefund(rows, 5000).length === 1 && O.heldForRefund(rows, 5000)[0].status === 'SUBMITTED');
+  }
   // S2: a writer sending its own "trusted" is still held to the day's limit
   const T = Z0();
   let lastT = null;

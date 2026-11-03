@@ -105,6 +105,43 @@
       color:var(--gold);white-space:nowrap;text-decoration:none}
     .brand-link:hover{opacity:.85}
 
+    /* THE APP BAR (2026-11-03): written by scripts/deploy-dashboard.mjs (ecoNav) in place of back + name, so every
+       sub-page carries the same bar: logo home, the six apps (the open one lit), the page's own name. Under 980 px the
+       six fold into "Apps"; the page's buttons on the right are untouched. */
+    .eco-l{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+    .eco-logo{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--gold);
+      font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.3px;white-space:nowrap;flex:none}
+    .eco-logo img{width:26px;height:26px;border-radius:7px;box-shadow:0 0 10px rgba(240,185,11,.2)}
+    .eco-logo:hover{opacity:.85}
+    .eco-links{display:flex;gap:2px;order:2}
+    .eco-links a,.eco-menu a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;padding:6px 10px;
+      border-radius:8px;white-space:nowrap;transition:color .2s,background .2s}
+    .eco-links a:hover,.eco-menu a:hover{color:var(--text);background:rgba(240,185,11,.08)}
+    .eco-links a.on,.eco-menu a.on{color:var(--gold);background:rgba(240,185,11,.13)}
+    .eco-here{order:3;color:var(--text);font-size:13px;font-weight:600;white-space:nowrap;padding-left:12px;
+      border-left:1px solid var(--border);min-width:0;overflow:hidden;text-overflow:ellipsis}
+    .eco-here.is-app{display:none}
+    .eco-m{display:none;position:relative;order:1;flex:none}
+    .eco-m summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;
+      border-radius:8px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;letter-spacing:.3px;white-space:nowrap;user-select:none}
+    .eco-m summary::-webkit-details-marker{display:none}
+    .eco-m summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+      transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+    .eco-m[open] summary::after{transform:translateY(1px) rotate(-135deg)}
+    .eco-m summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+    .eco-menu{position:absolute;top:calc(100% + 12px);left:0;min-width:200px;display:grid;gap:2px;padding:6px;
+      background:#14111c;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);z-index:200}
+    .eco-menu a{font-size:14px;padding:10px 12px;color:var(--text)}
+    @media (max-width:980px){
+      .eco-links{display:none}
+      .eco-m{display:block}
+      .eco-here.is-app{display:block}
+      .eco-here{order:2;font-size:12px}
+      .eco-l{gap:10px}
+    }
+    @media (max-width:420px){.eco-logo span{display:none}.eco-here{padding-left:10px}}
+
     /* THE PRIMER: the first thing on a sub-page, for somebody who has never
        heard of any of this.
        Every one of these pages opened with a sentence that was true, careful

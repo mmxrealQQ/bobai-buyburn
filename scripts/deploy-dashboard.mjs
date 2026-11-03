@@ -134,6 +134,29 @@ export function rewriteBuyLinks(html, rel) {
   return html.split(`href="${BUY_URL}&chain=bsc"`).join(to).split(`href="${BUY_URL}&amp;chain=bsc"`).join(to).split('href="/buy"').join(to);
 }
 
+// ONE BAR FOR THE WHOLE ECOSYSTEM (2026-11-03, operator: "so einfach wie pokter, marque, mandate"). Every sub-page
+// opened with "← Home | its own name | Buy", so from /scanner there was no way to /registry or /board but through the
+// terminal. All three neighbours carry the same product bar on every page. Here, at build time, the "back + name" pair
+// becomes logo + the six apps of card 04 (the open one lit) + the page's name; on a phone the six fold into "Apps".
+// The buttons on the right stay exactly as each page wrote them. Pages that do not load styles.css keep their header.
+export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT']];
+const PAIR = /<a class="back-btn"[^>]*>[\s\S]*?<\/a>(\s*)<a class="brand-link" href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/;
+export function ecoNav(html) {
+  if (!/href="\/?styles\.css/.test(html)) return html;   // a comment that names the file is not the file (nft/)
+  const m = html.match(PAIR);
+  if (!m) return html;
+  const [, , href, name] = m;
+  const here = ECO_APPS.find(([h]) => h === href);
+  // Every link carries a class: the site-wide rule for bare links (a:not([class])) would underline them in gold.
+  const links = () => ECO_APPS.map(([h, t]) => `<a ${h === href ? 'class="eco-a on" aria-current="page"' : 'class="eco-a"'} href="${h}">${t}</a>`).join('');
+  const bar = `<div class="eco-l"><a class="eco-logo" href="/" title="Back to the Brain Terminal"><img src="/logo-sm.webp" width="26" height="26" alt=""><span>BOBAI</span></a>`
+    + `<span class="eco-here${here ? ' is-app' : ''}">${name.trim()}</span>`
+    + `<div class="eco-links" aria-label="BOBAI apps">${links()}</div>`
+    + `<details class="eco-m"><summary>Apps</summary><div class="eco-menu"><a class="eco-a" href="/">Brain Terminal</a>${links()}</div></details></div>`;
+  // The gold "Brain Plaza" button five pages carried was the only way to the Plaza from there; the bar has it now.
+  return html.replace(PAIR, bar).replace(/\s*<a class="nb" href="\/registry">Brain Plaza<\/a>/, '');
+}
+
 if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let n = 0, bad = 0;
   const is = (what, cond) => { n++; if (!cond) bad++; console.log(`${cond ? 'ok  ' : 'FAIL'}  ${what}`); };
@@ -143,6 +166,16 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
     const out = rewriteBuyLinks(page, 'token.html');
     is('every $BOBAI buy link goes through /buy with its page; another token and plain text stay', out.split('href="/buy?from=token"').length === 4 && out.includes('outputCurrency=0xabc') && out.includes(`<p>${u}&chain=bsc</p>`));
     is('the front pages and folders get their names', buySource('index.html') === 'classic' && buySource('brain\\index.html') === 'home' && buySource('brain/index.html') === 'home' && buySource('nft/index.html') === 'nft' && buySource('faq.html') === 'faq');
+  }
+  {
+    const head = '<link rel="stylesheet" href="styles.css?v=1">';
+    const nav = (href, name) => `${head}<nav><div class="nav">\n    <a class="back-btn" href="/" title="x"><span>&larr;</span> Home</a>\n    <a class="brand-link" href="${href}">${name}</a>\n    <a class="nb" href="/buy">Buy $BOBAI</a>\n  </div></nav>`;
+    const s = ecoNav(nav('/scanner', 'BOBAI Pool Scanner')), t = ecoNav(nav('/token', 'The Token'));
+    is('the app bar replaces back + name: all six apps, the open one lit once, the Buy button untouched', !/back-btn|brand-link/.test(s) && ECO_APPS.every(([h]) => s.includes(`href="${h}"`)) && s.split('aria-current="page"').length === 3 && s.includes('<a class="nb" href="/buy">Buy $BOBAI</a>') && s.includes('eco-here is-app">BOBAI Pool Scanner<'));
+    const p = ecoNav(nav('/services', 'Services').replace('<a class="nb" href="/buy">', '<a class="nb" href="/registry">Brain Plaza</a>\n    <a class="nb" href="/buy">'));
+    is('the doubled Brain Plaza button goes, Buy stays, and no bar link is a bare <a> the gold underline rule would catch', !p.includes('>Brain Plaza</a>') && p.includes('>Buy $BOBAI</a>') && !/<a href=/.test(p.slice(p.indexOf('eco-l'), p.indexOf('</details>'))));
+    is('a page outside the six keeps its name visible and lights nothing', t.includes('class="eco-here">The Token<') && !t.includes('aria-current'));
+    is('a page without styles.css, or without the pair, comes back as it was', ecoNav(nav('/x', 'X').replace(head, '')) === nav('/x', 'X').replace(head, '') && ecoNav(head + '<nav><a href="/">x</a></nav>') === head + '<nav><a href="/">x</a></nav>');
   }
   is('a comment goes, the markup around it stays',stripComments('<p>a</p><!-- why -->\n<p>b</p>') === '<p>a</p>\n<p>b</p>');
   is('a comment that spans lines goes whole', stripComments('<div>\n<!-- one\n two -->\n<b>x</b></div>') === '<div>\n<b>x</b></div>');
@@ -192,7 +225,7 @@ function main() {
       if (e.name.toLowerCase().endsWith('.html')) {
         const html = fs.readFileSync(from, 'utf8'), built = stripComments(html);
         problems.push(...checkPage(path.join(rel, e.name), html, built), ...wrongNamespace(path.join(rel, e.name), html), ...buyLinkWithoutChain(path.join(rel, e.name), html));
-        fs.writeFileSync(to, rewriteBuyLinks(built, path.join(rel, e.name)));
+        fs.writeFileSync(to, rewriteBuyLinks(ecoNav(built), path.join(rel, e.name)));
         pages++; before += zlib.brotliCompressSync(Buffer.from(html)).length; after += zlib.brotliCompressSync(Buffer.from(built)).length;
         continue;
       }

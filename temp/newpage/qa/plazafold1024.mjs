@@ -24,13 +24,13 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
     const doCs = [...document.querySelectorAll('.rg-do .rg-do-c')], tog = document.querySelector('.rg-do-tog');
     const cats = [...document.querySelectorAll('.rg-box[id^="cat-"]')].map((b) => { const l = b.querySelector(':scope > .rgc-list:not(.rgc-ours)'); const cards = l ? [...l.children].filter((c) => c.classList.contains('rgc')) : []; const btn = l && l.nextElementSibling && l.nextElementSibling.classList.contains('pz-more') ? l.nextElementSibling.textContent : null; return { id: b.id, n: cards.length, shown: cards.filter((c) => !c.classList.contains('pz-hide')).length, btn }; });
     const aw = [...document.querySelectorAll('.aw-rows')].map((b) => { const rows = [...b.children].filter((c) => c.classList.contains('aw-row')); return { id: b.id, n: rows.length, shown: rows.filter((c) => !c.classList.contains('pz-hide')).length, btn: b.nextElementSibling && b.nextElementSibling.classList.contains('pz-more') ? b.nextElementSibling.textContent : null }; });
-    return { primerClosed, doVis: doCs.map(vis), togVis: vis(tog), cats, aw, total: document.documentElement.scrollHeight, wide: document.documentElement.scrollWidth > innerWidth + 1 }; })()`);
+    return { primerClosed, doVis: doCs.map(vis), askTop: vis(document.getElementById('rg-task')) && !!document.getElementById('rg-task').closest('.hx'), togVis: vis(tog), cats, aw, total: document.documentElement.scrollHeight, wide: document.documentElement.scrollWidth > innerWidth + 1 }; })()`);
   say(r.primerClosed, `${w}px: "What this is" is one line, closed`);
-  if (w < 500) say(r.togVis && r.doVis[0] && !r.doVis[1] && !r.doVis[2], `${w}px: the hire block keeps its question box, the two other ways folded (${r.doVis})`);
-  else say(!r.togVis && r.doVis.every(Boolean), `${w}px: the hire block shows all three ways, no toggle`);
+  if (w < 500) say(r.togVis && r.doVis.length === 2 && !r.doVis[0] && !r.doVis[1] && r.askTop, `${w}px: the question box stands in the start, the two other ways folded (${r.doVis}, ask on top ${r.askTop})`);   // 2026-11-03: the box moved to the start
+  else say(!r.togVis && r.doVis.length === 2 && r.doVis.every(Boolean) && r.askTop, `${w}px: the question box in the start, both other ways shown, no toggle`);
   const catOk = r.cats.length === 4 && r.cats.every((c) => (c.n <= 4 ? c.shown === c.n && !c.btn : c.shown === 3 && c.btn === `Show all ${c.n} (${c.n - 3} more)`));
   say(catOk, `${w}px: each category its first three and "Show all" (${r.cats.map((c) => c.id.slice(4) + ' ' + c.shown + '/' + c.n).join(', ')})`);
-  const awOk = r.aw.every((a) => (a.n <= 4 ? a.shown === a.n && !a.btn : a.shown === 3 && a.btn === `Show the ${a.n} newest`)); // 'Show the N newest' since 25.10.: the total stands on the card above
+  const awOk = r.aw.every((a) => (a.n <= 4 ? a.shown === a.n && !a.btn : a.shown === 3 && a.btn === `Show ${a.n - 3} more`)); // since 28.10. (erc8004-publish: "Show the N newest" under three shown read as another list); before: 'Show the N newest' since 25.10.: the total stands on the card above
   say(awOk, `${w}px: each "at work" list its three newest (${r.aw.map((a) => a.id + ' ' + a.shown + '/' + a.n).join(', ')})`);
   if (w < 500) say(r.total < 10000, `${w}px: the page is ${r.total} px (was 13,177; the estimate was ~6,500 — the three per category, our two cards with their live proof, the top-by-evidence and the board stay open on purpose)`);
   say(!r.wide, `${w}px: nothing wider than the screen`);

@@ -142,6 +142,44 @@
     }
     @media (max-width:420px){.eco-logo span{display:none}.eco-here{padding-left:10px}}
 
+    /* THE START OF A TOOL PAGE (2026-11-03): one shape on /scanner, /registry and /services, so the apps read as one
+       ecosystem. Title, one sentence in plain words, the one thing to do (a box, or a row of ways in), a few taps for
+       somebody with nothing to type, one line of what is true right now. The form is the Pool Scanner's own (its
+       .sc-form), lifted here so every page that asks a question asks it the same way. */
+    .hx{text-align:center}
+    .hx-claim{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.02rem,2.3vw,1.28rem);font-weight:500;line-height:1.42;
+      color:var(--text);margin:12px auto 0;max-width:44ch}
+    .hx-claim em{font-style:normal;color:var(--gold)}
+    .hx .hx-form{display:flex;gap:10px;margin:24px auto 0;max-width:640px;flex-wrap:nowrap}
+    .hx .hx-form input{flex:1;min-width:0;background:rgba(255,255,255,.04);color:var(--text);
+      border:1px solid var(--border);border-radius:14px;padding:15px 17px;font-size:.87rem;font-family:'Space Grotesk',sans-serif}
+    .hx .hx-form input::placeholder{color:var(--muted);opacity:.7}
+    .hx .hx-form input:focus{outline:none;border-color:var(--gold)}
+    .hx .hx-form>button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;border-radius:999px;
+      padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;font-family:inherit;white-space:nowrap;letter-spacing:.3px}
+    .hx .hx-form>button:disabled{opacity:.5;cursor:default}
+    .hx .hx-form>button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    @media (max-width:560px){.hx .hx-form{flex-direction:column}.hx .hx-form>button{width:100%}}
+    .hx .hx-try{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px auto 0;max-width:680px;font-size:.78rem;color:var(--muted)}
+    .hx .hx-try button,.hx .hx-try a{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:999px;
+      padding:6px 12px;font:inherit;font-size:.78rem;cursor:pointer;text-decoration:none;transition:border-color .2s,background .2s}
+    .hx .hx-try button:hover,.hx .hx-try button:focus-visible,.hx .hx-try a:hover,.hx .hx-try a:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
+    .hx-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;margin:16px auto 0;max-width:900px;
+      font-size:.76rem;line-height:1.5;color:var(--muted)}
+    .hx-trust>span{white-space:nowrap}
+    .hx-trust b{color:var(--text);font-weight:600}
+    .hx-trust a{color:var(--gold)}
+    .hx-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#00c96b;box-shadow:0 0 8px rgba(0,230,118,.6);
+      margin-right:6px;vertical-align:1px}
+    @media (max-width:560px){.hx-trust>span{white-space:normal}}
+    /* The long "how it works" under a start: one closed line, opened on a tap (native, no script). */
+    details.hx-more{margin:18px auto 0;max-width:760px;text-align:left}
+    details.hx-more>summary{cursor:pointer;list-style:none;font-size:.82rem;color:var(--text);font-weight:600}
+    details.hx-more>summary::-webkit-details-marker{display:none}
+    details.hx-more>summary::after{content:' \25BE';color:var(--gold)}
+    details.hx-more[open]>summary::after{content:' \25B4'}
+    details.hx-more[open]>summary{margin-bottom:10px}
+
     /* THE PRIMER: the first thing on a sub-page, for somebody who has never
        heard of any of this.
        Every one of these pages opened with a sentence that was true, careful

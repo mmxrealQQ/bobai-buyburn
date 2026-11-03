@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -138,11 +139,16 @@ export function rewriteBuyLinks(html, rel) {
 // opened with "← Home | its own name | Buy", so from /scanner there was no way to /registry or /board but through the
 // terminal. All three neighbours carry the same product bar on every page. Here, at build time, the "back + name" pair
 // becomes logo + the six apps of card 04 (the open one lit) + the page's name; on a phone the six fold into "Apps".
-// The buttons on the right stay exactly as each page wrote them. Pages that do not load styles.css keep their header.
+// The buttons on the right stay exactly as each page wrote them. The bar's own styles live in eco.css, linked here into
+// every page that gets the bar: the pages on styles.css, and the ones in OWN_CSS_BAR that carry their own stylesheet
+// but are an app of the bar (nft/ since 3.11.). Other pages with their own look (worldcup, game, the screener tests)
+// keep their header.
 export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT']];
+const OWN_CSS_BAR = ['nft/index.html'];
 const PAIR = /<a class="back-btn"[^>]*>[\s\S]*?<\/a>(\s*)<a class="brand-link" href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/;
-export function ecoNav(html) {
-  if (!/href="\/?styles\.css/.test(html)) return html;   // a comment that names the file is not the file (nft/)
+export function ecoNav(html, rel = '', ecoV = '1') {
+  const r = String(rel).replace(/\\/g, '/');
+  if (!/href="\/?styles\.css/.test(html) && !OWN_CSS_BAR.includes(r)) return html;   // a comment that names the file is not the file
   const m = html.match(PAIR);
   if (!m) return html;
   const [, , href, name] = m;
@@ -154,7 +160,8 @@ export function ecoNav(html) {
     + `<div class="eco-links" aria-label="BOBAI apps">${links()}</div>`
     + `<details class="eco-m"><summary>Apps</summary><div class="eco-menu"><a class="eco-a" href="/">Brain Terminal</a>${links()}</div></details></div>`;
   // The gold "Brain Plaza" button five pages carried was the only way to the Plaza from there; the bar has it now.
-  return html.replace(PAIR, bar).replace(/\s*<a class="nb" href="\/registry">Brain Plaza<\/a>/, '');
+  const out = html.replace(PAIR, bar).replace(/\s*<a class="nb" href="\/registry">Brain Plaza<\/a>/, '');
+  return out.replace(/<\/head>/i, `<link rel="stylesheet" href="/eco.css?v=${ecoV}">\n</head>`);
 }
 
 if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -174,6 +181,8 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
     is('the app bar replaces back + name: all six apps, the open one lit once, the Buy button untouched', !/back-btn|brand-link/.test(s) && ECO_APPS.every(([h]) => s.includes(`href="${h}"`)) && s.split('aria-current="page"').length === 3 && s.includes('<a class="nb" href="/buy">Buy $BOBAI</a>') && s.includes('eco-here is-app">BOBAI Pool Scanner<'));
     const p = ecoNav(nav('/services', 'Services').replace('<a class="nb" href="/buy">', '<a class="nb" href="/registry">Brain Plaza</a>\n    <a class="nb" href="/buy">'));
     is('the doubled Brain Plaza button goes, Buy stays, and no bar link is a bare <a> the gold underline rule would catch', !p.includes('>Brain Plaza</a>') && p.includes('>Buy $BOBAI</a>') && !/<a href=/.test(p.slice(p.indexOf('eco-l'), p.indexOf('</details>'))));
+    const own = (rel) => ecoNav('<head><style>nav{}</style></head>' + nav('/nft/', 'BOBAI Buy Drops').replace(head, ''), rel, 'abc');
+    is('nft/ keeps its own stylesheet and still gets the bar, with eco.css linked once in its head; worldcup/ with its own look does not', own('nft\\index.html').includes('eco-links') && own('nft/index.html').split('href="/eco.css?v=abc"').length === 2 && own('nft/index.html').indexOf('eco.css') < own('nft/index.html').indexOf('</head>') && !own('worldcup/index.html').includes('eco-links') && !own('worldcup/index.html').includes('eco.css'));
     is('a page outside the six keeps its name visible and lights nothing', t.includes('class="eco-here">The Token<') && !t.includes('aria-current'));
     is('a page without styles.css, or without the pair, comes back as it was', ecoNav(nav('/x', 'X').replace(head, '')) === nav('/x', 'X').replace(head, '') && ecoNav(head + '<nav><a href="/">x</a></nav>') === head + '<nav><a href="/">x</a></nav>');
   }
@@ -212,6 +221,8 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain && !process.argv.includes('--self-test')) main();
 
 function main() {
+  // eco.css is linked with a hash of its content, so a changed bar reaches every device without a version to bump
+  const ECO_V = crypto.createHash('sha256').update(fs.readFileSync(path.join(SRC, 'eco.css'))).digest('hex').slice(0, 10);
   const dry = process.argv.includes('--dry');
   fs.rmSync(OUT, { recursive: true, force: true });
   let pages = 0, linked = 0, copied = 0, before = 0, after = 0;
@@ -225,7 +236,7 @@ function main() {
       if (e.name.toLowerCase().endsWith('.html')) {
         const html = fs.readFileSync(from, 'utf8'), built = stripComments(html);
         problems.push(...checkPage(path.join(rel, e.name), html, built), ...wrongNamespace(path.join(rel, e.name), html), ...buyLinkWithoutChain(path.join(rel, e.name), html));
-        fs.writeFileSync(to, rewriteBuyLinks(ecoNav(built), path.join(rel, e.name)));
+        fs.writeFileSync(to, rewriteBuyLinks(ecoNav(built, path.join(rel, e.name), ECO_V), path.join(rel, e.name)));
         pages++; before += zlib.brotliCompressSync(Buffer.from(html)).length; after += zlib.brotliCompressSync(Buffer.from(built)).length;
         continue;
       }

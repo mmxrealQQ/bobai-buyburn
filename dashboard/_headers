@@ -86,6 +86,10 @@
 /styles.css
   Cache-Control: public, max-age=604800, must-revalidate
 
+# The app bar and the shared start (2026-11-03). The build links it with ?v=<hash of the file>.
+/eco.css
+  Cache-Control: public, max-age=604800, must-revalidate
+
 # The typefaces. Content-addressed by name rather than by ?v=: a different font
 # is a different file, so these may be cached for a year and never revalidated.
 # That is the whole point of serving them here — from the second visit there is

@@ -7,8 +7,8 @@
 // usage: node ecobar.mjs [base]   (default https://brainonbnb.com)   exit 1 on any FAIL
 import { spawn } from 'node:child_process'; import fs from 'node:fs';
 const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
-const PAGES = process.env.PAGES ? process.env.PAGES.split(',') : ['/scanner', '/registry', '/board', '/services', '/defi', '/token', '/faq', '/roadmap', '/archive', '/library', '/jobs', '/agent', '/advantage', '/list', '/pass', '/screener', '/venus', '/settle', '/session', '/set-and-earn', '/pancakeswap', '/does-not-exist'];
-const APPS = ['/scanner', '/registry', '/board', '/services', '/defi', '/agent'];   // /agent is the Plaza's agent chart: Plaza is lit there
+const PAGES = process.env.PAGES ? process.env.PAGES.split(',') : ['/scanner', '/registry', '/board', '/services', '/defi', '/token', '/faq', '/roadmap', '/archive', '/library', '/jobs', '/agent', '/advantage', '/list', '/pass', '/screener', '/venus', '/settle', '/session', '/set-and-earn', '/pancakeswap', '/nft/', '/does-not-exist']   // /nft/ since 3.11.: its own stylesheet, the bar from eco.css;
+const APPS = ['/scanner', '/registry', '/board', '/services', '/defi', '/agent', '/nft/'];   // /agent is the Plaza's agent chart: Plaza is lit there
 const SIZES = [[344, 882, 1], [360, 780, 1], [390, 844, 1], [430, 932, 1], [673, 841, 1], [768, 1024, 1], [1024, 768, 0], [1180, 820, 0], [1366, 768, 0], [1920, 1080, 0]];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9400 + Math.floor(Math.random() * 400), prof = 'D:/ai/fourmeme/temp/newpage/qa/prof-' + port;
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });

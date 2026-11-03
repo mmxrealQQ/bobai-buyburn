@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1389 lines.
+# one fetch. 10 files, 1391 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -356,7 +356,9 @@ footer a:hover{color:var(--gold)}
       <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2,500+ · 25 max</div></div></div>
     </div>
     <h1>BOBAI <em>Buy Drops</em></h1>
-    <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
+    <!-- THE START (2026-11-03): the shared .hx sentence and line (eco.css), every fact of the old paragraph kept -->
+    <div class="hx"><div class="hx-claim">Every $BOBAI buy of <em>$100 or more</em> mints a collectible NFT to the buyer&rsquo;s wallet. No claim, no extra cost.</div>
+    <div class="hx-trust"><span><span class="hx-dot"></span>The buy size picks one of 6 motifs</span><span>A rarity drawn from a weighted matrix: 7 rarities</span><span>1,925 in total</span></div></div>
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>
       <span class="hm-dot" aria-hidden="true">·</span>

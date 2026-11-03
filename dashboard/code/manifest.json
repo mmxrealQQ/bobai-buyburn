@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7916,
-   "zipBytes": 178014,
-   "txtBytes": 533422,
-   "sha256": "ef7e6ede1a73baff",
+   "lines": 7920,
+   "zipBytes": 178153,
+   "txtBytes": 533670,
+   "sha256": "2afdda69737f7348",
    "reqs": [
     {
      "what": "A static host",
@@ -365,10 +365,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1389,
-   "zipBytes": 30678,
-   "txtBytes": 81272,
-   "sha256": "66ac4e8489ab6f97",
+   "lines": 1391,
+   "zipBytes": 30758,
+   "txtBytes": 81448,
+   "sha256": "adbd366f9efad06f",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -598,10 +598,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3611,
-   "zipBytes": 126161,
-   "txtBytes": 376576,
-   "sha256": "a32b7304aa9e234d",
+   "lines": 3625,
+   "zipBytes": 126644,
+   "txtBytes": 377988,
+   "sha256": "5648a5d474059447",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -633,10 +633,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
-   "lines": 24219,
-   "zipBytes": 613234,
-   "txtBytes": 1739040,
-   "sha256": "20c88ddbf51695d9",
+   "lines": 24230,
+   "zipBytes": 613901,
+   "txtBytes": 1740970,
+   "sha256": "f31d666889e12465",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -753,9 +753,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 5082,
-   "zipBytes": 114616,
-   "txtBytes": 331093,
-   "sha256": "b8e5178eac307679",
+   "zipBytes": 114726,
+   "txtBytes": 331205,
+   "sha256": "06d3693849f588dd",
    "reqs": [
     {
      "what": "Node 18+ and time",

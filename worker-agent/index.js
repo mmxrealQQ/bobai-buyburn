@@ -3282,7 +3282,15 @@ ${pageTail}`;
         'lp-placement': { name: 'pancakeswap_fee_tiers', description: 'Liquidity placement, the free half: the up-to-five PancakeSwap pools a pair lives in and which fee tier is actually paying its liquidity providers. The paid half plans the position: the tier and the range to put it in. It signs and moves nothing.', inputSchema: { type: 'object', properties: { address: TOKEN }, required: ['address'], additionalProperties: false }, annotations: RO, rest: '/api/fee-tiers' },
       }[mcpSlug];
       const PAID = { name: serviceId, description: `${svc.name}, the paid half (0.10 USD1, or half that in $BOBAI, ${HOLDER_PRICE_NOTE.replace('see holder_pass', 'terms in the reply')}): ${svc.deliverables} Calling this tool returns the terms; the answer is sold over x402 at https://agent.brainonbnb.com/answer?service=${serviceId} (or hired through the ERC-8183 escrow for 0.10 $U).`, inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'What you want, with the address in it' } }, additionalProperties: true }, annotations: RO };
-      const TOOLS = [FREE, PAID].map(({ rest, ...t }) => t);
+      // THE DOOR SAYS HOW TO WALK IN (2026-11-03). A week of /stats/detail: these six servers were listed 19,654 times and
+      // called 148 (0.75%), against 2-7% on the main server, which greets with instructions and answers a wrong name with
+      // the closest ones. Here an agent got neither. Now each greeting, a wrong tool name and a refused free call carry
+      // one call that works: a real public example (our DeFi agent's position, the account the Plaza's chip asks about,
+      // CAKE), checked live on 3.11. The same example stands in the free tool's schema.
+      const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
+      const EX = { 'defi-agent': { position: '7637521' }, 'health-factor': { address: '0xd319e1F8e987cf78333cEA853F455366640929cF' }, 'yield-optimizer': {}, 'grid-trader': { address: CAKE }, rebalancer: { address: CAKE, usd: 250 }, 'lp-placement': { address: CAKE } }[mcpSlug] || {};
+      const TRY = `${FREE.name} with ${JSON.stringify(EX)}`;
+      const TOOLS = [FREE, PAID].map(({ rest, ...t }) => (t.name === FREE.name ? { ...t, inputSchema: { ...t.inputSchema, examples: [EX] } } : t));
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
       const NAME = `${svc.name} — Brain On BNB AI`;
       if (request.method === 'GET') return new Response(JSON.stringify({ name: NAME, protocol: '2025-06-18', tools: TOOLS.map((t) => t.name), note: `POST JSON-RPC here. ${FREE.name} is free; ${PAID.name} is sold over x402.` }), { headers: cors });
@@ -3292,14 +3300,17 @@ ${pageTail}`;
       const { id, method, params } = body || {};
       if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
       if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
-      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.0.0' } });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.1.0' }, instructions: `${svc.name}, on BNB Chain. Start free: call ${TRY} (a real public example, read from the chain now; put your own in its place). ${PAID.name} returns the terms of the paid answer, 0.10 USD1 over x402. Read-only: nothing here signs, holds a key or moves funds. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp` });
       if (method === 'ping') return rpcOk(id, {});
       if (method === 'tools/list') { note(`agentmcp:${mcpSlug}:tools_list`); return rpcOk(id, { tools: TOOLS }); }
       if (method === 'tools/call') {
         const name = params?.name, a = params?.arguments || {};
-        note(`agentmcp:${mcpSlug}:call:${TOOLS.some((t) => t.name === name) ? name : 'unknown'}`);
+        const known = TOOLS.some((t) => t.name === name);
+        note(`agentmcp:${mcpSlug}:call:${known ? name : 'unknown'}`);
+        // which name an agent guessed: the tool it wanted (a name only, never an argument), so the next tool is the one asked for
+        if (!known) note(`agentmcp:${mcpSlug}:guessed:${String(name ?? '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32) || 'none'}`);
         const answer = (out) => rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
-        const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) }] });
+        const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) + (name === FREE.name ? ` Try: ${JSON.stringify(EX)}` : '') }] });
         if (name === FREE.name && mcpSlug !== 'defi-agent') {
           try {
             if (mcpSlug === 'health-factor' || mcpSlug === 'yield-optimizer') {
@@ -3332,7 +3343,7 @@ ${pageTail}`;
           const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, holder_pass: holderPassTerms(), accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
-        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has ${FREE.name} (free) and ${PAID.name} (paid).`);
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
     }

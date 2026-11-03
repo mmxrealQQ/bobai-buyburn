@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7916 lines.
+# one fetch. 6 files, 7920 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3653,8 +3653,8 @@ export async function scan(input, env, timing = null) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=75" as="style">
-  <link rel="stylesheet" href="styles.css?v=75">
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -4021,11 +4021,11 @@ export async function scan(input, env, timing = null) {
     <!-- The box first, the explanation second. Somebody who arrives with an
          address in hand should not have to read past three paragraphs to
          find where to paste it (2026-09-02). -->
-    <div class="sc-hero">
+    <!-- THE START (2026-11-03): the shared .hx start of every tool page (styles.css): one sentence, the box, the taps,
+         one line of what is true. The two notes that stood above the box are that line now, under it. -->
+    <div class="sc-hero hx">
       <h1>What would buying this token <em>really</em> cost?</h1>
-      <p class="sc-lead">Paste any BNB Chain token. You get the real cost of a trade at your size, the hidden tax measured from trades that actually happened, and whether the liquidity can be pulled out. Free, no wallet, nothing is sent from your account.</p>
-      <p class="sc-wip">On PancakeSwap? The route that pays most, the fee tier that pays an LP and a check of any V3 position: <a href="/pancakeswap">all PancakeSwap tools in one place</a>.</p>
-      <p class="sc-wip"><b>Still being built.</b> Every figure is our own reading of public chain data, never advice and never a judgement on a token. <a href="#sc-note">Read the note</a></p>
+      <p class="hx-claim">Paste any BNB Chain token: the real cost at your size, the hidden tax, and who can pull the liquidity.</p>
       <div class="sc-form">
         <div class="sc-field">
           <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
@@ -4037,6 +4037,7 @@ export async function scan(input, env, timing = null) {
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
       <div class="sc-try" id="sc-try"></div>
+      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span><b>Still being built.</b> Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span></p>
       <!-- The launch curve, live. Read from four.meme's own contract on
            demand: which tokens traded in the last few minutes, how far the
            raise is, and what $100 costs to buy and to sell — before any pool
@@ -6208,6 +6209,9 @@ export { flagsCard, verdictCard };
     .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
       color:var(--gold);white-space:nowrap;text-decoration:none}
     .brand-link:hover{opacity:.85}
+
+    /* The app bar and the shared start of the tool pages moved to eco.css (2026-11-03), so that pages with their own
+       stylesheet (nft/) carry the same bar; the build links it into every page with the bar. */
 
     /* THE PRIMER: the first thing on a sub-page, for somebody who has never
        heard of any of this.

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3611 lines.
+# one fetch. 5 files, 3625 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1799,6 +1799,11 @@ const REST_TOOLS = {
 const COUNTED_API = new Set([...Object.keys(REST_TOOLS), '/api/wallet', '/api/pool-scan', '/api/preflight', '/api/fee-tiers',
   '/api/range-plan', '/api/best-route', '/api/total-supply', '/api/circulating-supply', '/api/nft/state']);
 
+// Where a buy click may say it came from: the pages (scripts/deploy-dashboard.mjs buySource names them), and three
+// places that name themselves. A name outside this list is 'other', so nobody can invent lines in /stats/detail.
+const BUY_TARGET = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc';
+const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'services', 'registry', 'scanner', 'board', 'library', 'roadmap', 'whitepaper', 'pass', 'archive', 'nft', 'neu', '404', 'llms', 'skill', 'mcp']);
+
 // What kind of caller, coarsely — never the string itself. Order matters:
 // crawlers and tools put "Mozilla" in front of their own name.
 function uaFamily(ua) {
@@ -1936,6 +1941,15 @@ export default {
     // answer "how much did other people ask for" — and named own:* in the
     // detail.
     const isOwn = request.headers.get('cf-connecting-ip') === '2a06:98c0:3600::103' && !request.headers.get('cf-worker');
+    // A click on Buy, by the page it came from (2026-11-02). One daily counter per source in /stats/detail: buy:<source>
+    // for a browser, buybot:<source> for everything else. No address, no IP, no visitor. A browser's prefetch is no click.
+    if (url.pathname === '/buy') {
+      const from = url.searchParams.get('from') || '';
+      const source = BUY_SOURCES.has(from) ? from : (from ? 'other' : 'direct');
+      const prefetch = /prefetch|prerender/i.test(`${request.headers.get('sec-purpose') || ''} ${request.headers.get('purpose') || ''}`);
+      if (!isOwn && !prefetch && request.method === 'GET') count(null, `${uaFamily(request.headers.get('user-agent')) === 'browser' ? 'buy' : 'buybot'}:${source}`);
+      return new Response(null, { status: 302, headers: { Location: BUY_TARGET, 'Cache-Control': 'no-store' } });
+    }
     if (isOwn) {
       if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);

@@ -1945,8 +1945,12 @@ export default {
     // OUR OWN PAGES ARE NO BUYER (2026-10-25): the Classic page reads /scan-pass for its price on every visit, and that
     // counted as 231 "sell:scanpass:terms" a day from Mozilla — a price our visitors' browsers asked, not an agent. A
     // request from brainonbnb.com is counted under own:<step>, so sell:<step> is what others asked.
-    const ownSite = fromOurSite(request);
-    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
+    // OUR OWN CHECKERS ARE NO BUYER EITHER (2026-11-03): the checks in scripts/ and temp/newpage/qa name themselves
+    // brainonbnb-<check> (x402-noinput-check sends a broken proof on purpose, eight a day), and all of it counted as
+    // others: a week showed 85 "paid:402" that were our own tests, and agent-status called them use. Counted as own: now.
+    // Only ever a label for counting: anyone can send this user agent, and all it buys them is being left out of the counts.
+    const ownSite = fromOurSite(request), ownCheck = /^(brainonbnb|bobai)-/i.test(String(request.headers.get('user-agent') || ''));
+    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite || ownCheck ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
     // A PAYMENT THAT DID NOT BUY (2026-10-25): on 24.10. eight payments came back 402 on two answers and nothing said
     // why — the counter kept the status, not the reason. Each one is kept now (the last 20, 14 days, KV payrefused):
     // the product, the status, the reason the paying path answered, the caller's user agent and the proof's shape

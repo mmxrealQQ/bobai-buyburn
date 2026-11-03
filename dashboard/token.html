@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
   <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=77" as="style">
-  <link rel="stylesheet" href="styles.css?v=77">
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
@@ -36,7 +36,18 @@
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
   </div></nav>
   <main>
-  <div class="intro"><h1>The <em>token</em></h1><p>How the 3% tax becomes burned supply, which phase is running, and how deep the pool is right now.</p><p id="tk-live" hidden></p><p><button type="button" class="ca-copy" data-ca="0x245c386dcfed896f5c346107596141e5edcbffff" style="font:600 12px var(--mono,monospace);background:none;color:inherit;border:1px solid currentColor;border-radius:6px;padding:2px 8px;cursor:pointer">CA 0x245c…ffff · <span>Copy</span></button></p><script>document.querySelectorAll('.ca-copy').forEach((b) => b.addEventListener('click', () => { const s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); }));</script></div>
+  <!-- THE START (2026-11-03, the shared .hx start of every page, styles.css; operator: "der ehrlichste und transparenteste
+       token auf der BNB Chain"). Not a claim about honesty: the last split of the 3% tax, every slice with the
+       transaction that moved it, read live from the buyback bot's own log. A quiet day shows as a quiet day. -->
+  <div class="intro hx tk-start"><h1>The <em>token</em></h1>
+    <div class="hx-claim">Built by an AI agent. <em>Every slice of the 3% tax</em> is a transaction you can open.</div>
+    <div class="hx-proof" id="tk-proof" aria-live="polite">
+      <div class="hx-proof-h"><span id="tk-proof-when">Reading the buyback bot&rsquo;s log&hellip;</span><span>The bot looks every 10 minutes and splits whatever tax has collected.</span></div>
+      <div id="tk-proof-rows"></div>
+      <div class="hx-proof-f">One run of the public buyback wallet <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC&hellip;01ce</a> &middot; every run since March: <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">burns.json</a> &middot; dollars at today&rsquo;s price</div>
+    </div>
+    <div class="hx-trust"><span><span class="hx-dot"></span><span id="tk-live">Price &hellip;</span></span><span><button type="button" class="ca-copy" data-ca="0x245c386dcfed896f5c346107596141e5edcbffff" style="font:600 12px var(--mono,monospace);background:none;color:inherit;border:1px solid currentColor;border-radius:6px;padding:2px 8px;cursor:pointer">CA 0x245c…ffff · <span>Copy</span></button></span><span>Owner renounced &middot; 3% fixed in the contract</span><span>The code is public: <a href="/source">clone it</a></span></div>
+    <script>document.querySelectorAll('.ca-copy').forEach((b) => b.addEventListener('click', () => { const s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); }));</script></div>
   <section class="sec" id="about">
     <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
@@ -322,6 +333,38 @@
   </div></footer>
 </div>
 <script>fetch('/api/price').then((r) => r.json()).then((p) => { const e = document.getElementById('tk-live'); if (!(p.price_usd > 0)) return; e.textContent = 'Price $' + p.price_usd.toFixed(8) + ' · MC $' + Math.round(p.market_cap_usd).toLocaleString('en-US'); e.hidden = false; }).catch(() => {});</script>
+<script>
+// THE LAST SPLIT, SLICE BY SLICE (2026-11-03). burns.json: one row per run of the buyback bot, each slice with its own
+// transaction; bobai-liq-log.json: the liquidity slice of the same run (add + LP burn). The share of each slice is
+// computed from the run's own BNB, not typed in, so it follows whatever phase is running.
+(function () {
+  const box = document.getElementById('tk-rows') || document.getElementById('tk-proof-rows'), when = document.getElementById('tk-proof-when');
+  if (!box) return;
+  const get = (n) => fetch('/logs/' + n).then((r) => (r.ok ? r.json() : Promise.reject(r.status))).catch(() => fetch('https://logs.brainonbnb.com/logs/' + n).then((r) => r.json()));
+  const tx = (h, t) => h ? '<a class="tx" href="https://bscscan.com/tx/' + h + '" target="_blank" rel="noopener">' + (t || 'tx') + ' &#8599;</a>' : '';
+  const num = (x, d) => Number(x).toLocaleString('en-US', { maximumFractionDigits: d });
+  const usd = (x) => x >= 0.995 ? '$' + num(x, 2) : '$' + Number(x).toFixed(2);
+  const ago = (t) => { const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 60 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; };
+  Promise.all([get('burns.json'), get('bobai-liq-log.json').catch(() => []), fetch('/api/price').then((r) => r.json()).catch(() => ({}))]).then(([b, l, p]) => {
+    const r = Array.isArray(b) && b.filter((x) => x.totalBnb).at(-1);
+    if (!r) throw 0;
+    const bu = p.bnb_usd || 0, pu = p.price_usd || 0, tot = +r.totalBnb;
+    const liq = (Array.isArray(l) ? l : []).filter((x) => Math.abs(Date.parse(x.time) - Date.parse(r.time)) < 10 * 60000).at(-1);
+    const share = (bnb) => tot > 0 ? (3 * bnb / tot).toFixed(1) + '%' : '';   // totalBnb holds all six slices, the liquidity one too
+    const rows = [
+      ['$BOBAI bought and burned', r.bobaiBurnBnb, num(r.bobaiBurned, 0) + ' $BOBAI' + (pu ? ' &middot; ' + usd(r.bobaiBurned * pu) : ''), tx(r.bobaiBurnTx, 'burn')],
+      ['$BOB bought and burned', r.bobBurnBnb, num(r.bobBurned, 0) + ' $BOB' + (bu ? ' &middot; ' + usd(r.bobBurnBnb * bu) : ''), tx(r.bobBurnTx, 'burn')],
+      ['$BOBAI liquidity added, LP burned', liq && liq.bnb, liq ? num(liq.bnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(liq.bnb * bu) : '') : 'none in this run', liq ? tx(liq.addLiqTx, 'add') + ' ' + tx(liq.lpBurnTx, 'LP burn') : ''],
+      ['DeFi agent', r.lpAgentBnb, r.lpAgentBnb ? num(r.lpAgentBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.lpAgentBnb * bu) : '') : 'none in this run', tx(r.lpAgentTx)],
+      ['Giggle Academy pot', r.giggleBnb, r.giggleBnb ? num(r.giggleBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.giggleBnb * bu) : '') : 'none in this run', tx(r.giggleTx)],
+      ['Creator', r.creatorBnb, num(r.creatorBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.creatorBnb * bu) : ''), tx(r.creatorTx)],
+    ];
+    box.innerHTML = rows.map(([k, bnb, v, t]) => '<div class="hx-row"><span class="k">' + k + (bnb ? ' <i>' + share(+bnb) + '</i>' : '') + '</span><span class="v">' + v + '</span><span class="t">' + t + '</span></div>').join('');
+    const all = tot, sum = [r.creatorBnb, r.bobBurnBnb, r.bobaiBurnBnb, r.lpAgentBnb, r.giggleBnb, liq && liq.bnb].reduce((a, x) => a + (+x || 0), 0);
+    when.innerHTML = '<b>Last split</b> ' + r.time.slice(8, 10).replace(/^0/, '') + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+r.time.slice(5, 7) - 1] + ' ' + r.time.slice(11, 16) + ' UTC &middot; ' + ago(r.time) + ' &middot; ' + num(all, 5) + ' BNB' + (bu ? ' (' + usd(all * bu) + ')' : '') + ' of tax' + (Math.abs(sum - tot) < 1e-9 ? ' &middot; the slices add up to it exactly' : '');
+  }).catch(() => { when.innerHTML = 'The log could not be read just now &mdash; <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">open it yourself</a>'; });
+})();
+</script>
 <script src="app.js?v=133" defer></script>
 </body>
 </html>

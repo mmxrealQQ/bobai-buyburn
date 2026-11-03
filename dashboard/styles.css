@@ -172,6 +172,29 @@
     .hx-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#00c96b;box-shadow:0 0 8px rgba(0,230,118,.6);
       margin-right:6px;vertical-align:1px}
     @media (max-width:560px){.hx-trust>span{white-space:normal}}
+    /* PROOF IN THE START (2026-11-03, /token first): a few live rows, each a fact and the transaction behind it. */
+    .hx-proof{max-width:860px;margin:22px auto 0;border:1px solid var(--border);border-radius:16px;background:var(--card);
+      text-align:left;overflow:hidden}
+    .hx-proof-h,.hx-proof-f{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 14px;padding:11px 16px;font-size:.74rem;line-height:1.5;color:var(--muted)}
+    .hx-proof-h{border-bottom:1px solid var(--border)}
+    .hx-proof-h b{color:var(--text);font-weight:600}
+    .hx-proof-f{border-top:1px solid var(--border);justify-content:flex-start}
+    .hx-proof a{color:var(--gold);text-decoration:none}
+    .hx-proof a:hover{text-decoration:underline}
+    .hx-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) auto;gap:4px 14px;align-items:center;
+      padding:10px 16px;font-size:.84rem;line-height:1.4}
+    .hx-row+.hx-row{border-top:1px solid rgba(255,255,255,.045)}
+    .hx-row .k{color:var(--text);font-weight:600;min-width:0}
+    .hx-row .k i{font-style:normal;font-weight:500;color:var(--gold);font-size:.74rem;margin-left:6px}
+    .hx-row .v{color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere}
+    .hx-row .t{display:flex;gap:10px;justify-content:flex-end;white-space:nowrap}
+    .hx-row a.tx{font:600 .74rem var(--mono,ui-monospace,monospace)}
+    @media (max-width:620px){
+      .hx-row{grid-template-columns:minmax(0,1fr) auto}
+      .hx-row .v{grid-column:1;grid-row:2;font-size:.78rem}
+      .hx-row .t{grid-column:2;grid-row:1/3;flex-direction:column;align-items:flex-end;gap:4px}
+    }
+    .tk-start h1{text-align:center}
     /* The long "how it works" under a start: one closed line, opened on a tap (native, no script). */
     details.hx-more{margin:18px auto 0;max-width:760px;text-align:left}
     details.hx-more>summary{cursor:pointer;list-style:none;font-size:.82rem;color:var(--text);font-weight:600}

@@ -1,5 +1,5 @@
 # Dev Sweep Bot — Brain On BNB AI
-# The hourly one that empties the tax wallet.
+# The hourly one that pays out the creator share.
 #
 # This is the complete dev-sweep-bot bundle as a single file, so it can be read in
 # one fetch. 3 files, 455 lines.

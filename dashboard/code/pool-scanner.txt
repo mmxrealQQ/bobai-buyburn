@@ -4037,7 +4037,7 @@ export async function scan(input, env, timing = null) {
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
       <div class="sc-try" id="sc-try"></div>
-      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span><b>Still being built.</b> Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span></p>
+      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span><b>Still being built.</b> Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span><span>Building a bot? <a href="/api/">The same scan as JSON, no key</a></span></p>
       <!-- The launch curve, live. Read from four.meme's own contract on
            demand: which tokens traded in the last few minutes, how far the
            raise is, and what $100 costs to buy and to sell — before any pool

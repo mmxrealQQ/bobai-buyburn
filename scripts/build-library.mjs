@@ -115,7 +115,7 @@ every run — including the ones that decided to do nothing — is written to a 
     group: 'bots',
     slug: 'dev-sweep-bot',
     title: 'Dev Sweep Bot',
-    tagline: 'The hourly one that empties the tax wallet.',
+    tagline: 'The hourly one that pays out the creator share.',
     about: `Sweeps the creator share out of the tax wallet on its own schedule and unwraps
 WBNB back to native BNB so the buyback bot always finds spendable gas. Small on purpose —
 it is the piece that keeps the big bot from starving.`,

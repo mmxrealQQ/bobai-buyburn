@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24257 lines.
+# one fetch. 74 files, 24272 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5023,6 +5023,11 @@ import { isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, no
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 // an agent that refused this many notices in a row is not sent more for this many days (2026-10-30)
 const REFUSALS_TO_PAUSE = 2, PAUSE_DAYS = 30;
+// A REFUSAL THAT SAYS "NEVER" PAUSES AT ONCE (2026-11-04): of 45 answers to our notices none was read, and most said in
+// so many words that the endpoint takes no such message — "unknown skill: plaza-board", "invalid seller skill",
+// "Method not found", a 404/405/401. Asking twice taught nothing; such an answer counts as REFUSALS_TO_PAUSE at once.
+export const flatRefusal = (result, answer) => /^answered (401|403|404|405)/.test(String(result || ''))
+  || /unknown skill|invalid seller skill|no skill|method not found|unknownoperation|method not allowed|missing authentication/i.test(String(answer || ''));
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
@@ -5373,7 +5378,7 @@ export class PlazaBoard {
       } else if (had && /^answered /.test(String(p.result)) && typeof p.read === 'boolean' && !String(p.to).startsWith('platform:')) {
         // only an answer counts: a timeout is no refusal
         if (p.read) await this.s.delete('fwr:' + p.to);
-        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
+        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: flatRefusal(p.result, p.answer) ? Math.max(nr.n + 1, REFUSALS_TO_PAUSE) : nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
       }
       if (had && p.result !== undefined) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
       await this.s.put('h:' + head.id, head);
@@ -12399,7 +12404,7 @@ export default {
     // brainonbnb-<check> (x402-noinput-check sends a broken proof on purpose, eight a day), and all of it counted as
     // others: a week showed 85 "paid:402" that were our own tests, and agent-status called them use. Counted as own: now.
     // Only ever a label for counting: anyone can send this user agent, and all it buys them is being left out of the counts.
-    const ownSite = fromOurSite(request), ownCheck = /^(brainonbnb|bobai)-/i.test(String(request.headers.get('user-agent') || ''));
+    const ownSite = fromOurSite(request), ownCheck = /^(brainonbnb|bobai|plaza-board)-/i.test(String(request.headers.get('user-agent') || ''));   // plaza-board-checkup: the board's own checkup (4.11.)
     const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite || ownCheck ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
     // A PAYMENT THAT DID NOT BUY (2026-10-25): on 24.10. eight payments came back 402 on two answers and nothing said
     // why — the counter kept the status, not the reason. Each one is kept now (the last 20, 14 days, KV payrefused):
@@ -12424,7 +12429,8 @@ export default {
         const raw = await copy.text().catch(() => '');
         let j = null; try { j = JSON.parse(raw); } catch {}
         const kinds = (j?.params?.message?.parts || []).map((x) => x?.kind || x?.type || '?').join('+') || 'none';
-        bumpDetail(env, `a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
+        // our own checks over A2A under own: too (4.11.: plaza-board-checkup and brainonbnb-* stood among the others)
+        bumpDetail(env, `${ownCheck ? 'own:' : ''}a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
         if (!env.AGENT) return;
         const key = `a2a-seen:${slug}`;
         const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];
@@ -13796,6 +13802,15 @@ ${pageTail}`;
           const t = terms.body || {};
           const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, holder_pass: holderPassTerms(), accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        }
+        // A PRICE ASKED HERE IS ANSWERED (2026-11-04): get_price_of_token came 12 times in a week across the six doors; the
+        // site's MCP answers a price-named call at once now (bsc_token_preflight's pool read, or bobai_price), so it goes there
+        // only with a token's address: a bare price question at a Venus or grid door is not taken to mean $BOBAI
+        if (!known && /price/i.test(String(name || '')) && /0x[a-fA-F0-9]{40}/.test(JSON.stringify(a))) {
+          const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: String(name).slice(0, 60), arguments: a } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
+          let out = null;
+          try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
+          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 30 tools)' });
         }
         return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp`);
       }

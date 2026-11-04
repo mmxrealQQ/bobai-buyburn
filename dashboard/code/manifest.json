@@ -113,12 +113,12 @@
    "slug": "dev-sweep-bot",
    "group": "bots",
    "title": "Dev Sweep Bot",
-   "tagline": "The hourly one that empties the tax wallet.",
+   "tagline": "The hourly one that pays out the creator share.",
    "files": 3,
    "lines": 455,
    "zipBytes": 9387,
-   "txtBytes": 19666,
-   "sha256": "d1604a2d85185d83",
+   "txtBytes": 19670,
+   "sha256": "40153f7e5cd3dce1",
    "reqs": [
     {
      "what": "A wallet that receives the tax",
@@ -330,9 +330,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 7920,
-   "zipBytes": 178153,
-   "txtBytes": 533670,
-   "sha256": "2afdda69737f7348",
+   "zipBytes": 178191,
+   "txtBytes": 533748,
+   "sha256": "679452f140c8cb20",
    "reqs": [
     {
      "what": "A static host",
@@ -598,10 +598,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3625,
-   "zipBytes": 126644,
-   "txtBytes": 377988,
-   "sha256": "5648a5d474059447",
+   "lines": 3959,
+   "zipBytes": 138020,
+   "txtBytes": 414711,
+   "sha256": "25b7b6bcf37d98b7",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -633,10 +633,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
-   "lines": 24257,
-   "zipBytes": 614713,
-   "txtBytes": 1743193,
-   "sha256": "1474ef61fa9d572b",
+   "lines": 24272,
+   "zipBytes": 615513,
+   "txtBytes": 1745276,
+   "sha256": "5bdd5ff4f348affc",
    "reqs": [
     {
      "what": "A wallet to be paid into",

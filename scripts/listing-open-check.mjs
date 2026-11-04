@@ -36,6 +36,9 @@ const bust = () => `r=${Date.now()}${Math.random().toString(16).slice(2, 6)}`;
     check(String(q.pay?.to).toLowerCase() === PAYEE && BigInt(q.pay?.amount_atomic || 0) > 0n && /Brain Plaza listing/.test(q.sign || ''), `a quote in ${cur} pays the project wallet`, q.pay?.label || q.error);
   }
   const L = await (await fetch(`${AGENT}/listings`)).json().catch(() => ({}));
+  // 4.11.: "a daily check" is promised; the hourly look wrote whole records over the daily one and lost days
+  const stale = (L.listings || []).filter((x) => !x.last_check?.at || Date.now() - Date.parse(x.last_check.at) > 26 * 3600e3);
+  check(!stale.length, 'every listing had its daily check in the last 26 hours', stale.map((x) => `#${x.id} ${x.last_check?.at?.slice(0, 10) || 'never'}`).join(', ') || `${(L.listings || []).length} of ${(L.listings || []).length}`);
   check(L.price_usd === 95 && String(L.pays_to).toLowerCase() === PAYEE && (L.listings || []).every((x) => !x.house || x.paid?.currency === 'house'), '/listings: $95, the project wallet, our own marked as not paid', `${(L.listings || []).length} listed, ${(L.listings || []).filter((x) => !x.house).length} paid`);
 }
 console.log(`\n${pass} pass, ${fail} fail`);

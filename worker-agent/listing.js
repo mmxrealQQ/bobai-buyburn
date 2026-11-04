@@ -262,7 +262,14 @@ export async function postLog(body, env, opts = {}) {
   return json(200, { ok: true, agent: id, entries: Math.min(log.length, 30), profile: `https://agent.brainonbnb.com/listed/${id}` });
 }
 
-export async function readListing(env, id) { return JSON.parse((await env.AGENT.get(`listing:${String(id)}`)) || 'null'); }
+// THE HOURLY LOOK HAS ITS OWN KEY (2026-11-04): runListedLive read a listing, asked the agent for seconds, then wrote the
+// whole record back — and at 05:00 the daily check ran in those seconds, so its day was lost (#302258's last check read
+// 27 Oct, #304493's 2 Nov, the others today). The hourly look writes listing-live:<id> now and is merged in on reading;
+// the daily check alone appends the days to the record.
+export async function readListing(env, id) {
+  const [r, live] = await Promise.all([`listing:${String(id)}`, `listing-live:${String(id)}`].map(async (k) => JSON.parse((await env.AGENT.get(k)) || 'null')));
+  return r && live ? { ...r, live: live.live, ...(live.endpoints?.length ? { endpoints: live.endpoints } : {}) } : r;
+}
 export async function readListings(env) {
   const ids = JSON.parse((await env.AGENT.get('listings')) || '[]');
   const all = await Promise.all(ids.map((id) => readListing(env, id)));
@@ -355,10 +362,9 @@ export async function runListedLive(env) {
     const r = await readListing(env, id); if (!r || r.status === 'removed') continue;
     const reg = await registrationOf(Number(id)).catch(() => null);
     const ans = reg ? await answers(id, reg).catch(() => ({ ok: false })) : { ok: false };
-    r.live = { ok: !!ans.ok, at: new Date().toISOString() };
-    // the endpoints follow the registration (2026-10-13: a profile kept the endpoints of the day it was listed)
-    if (reg?.endpoints?.length) r.endpoints = reg.endpoints.slice(0, 12);
-    await env.AGENT.put(`listing:${id}`, JSON.stringify(r));
+    // the endpoints follow the registration (2026-10-13: a profile kept the endpoints of the day it was listed); written
+    // to their own key, never over the record the daily check writes
+    await env.AGENT.put(`listing-live:${id}`, JSON.stringify({ live: { ok: !!ans.ok, at: new Date().toISOString() }, ...(reg?.endpoints?.length ? { endpoints: reg.endpoints.slice(0, 12) } : {}) }));
     await noteAgentState(env, id, !!ans.ok, 'hourly check (listed)').catch(() => null);
     out.push([id, !!ans.ok]);
   }

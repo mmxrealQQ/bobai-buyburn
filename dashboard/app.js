@@ -885,11 +885,8 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
   });
 }();
 
-// === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
+// === WORLDCUP TIPGAME — the settled prize pool (frozen since the final; no third-party read since 2026-11-04) ===
 !function(){
-  // Same Supabase project + public anon key used by /worldcup/index.html — safe to inline.
-  const URL='https://aerffjhdsbxpvuulkryr.supabase.co/rest/v1/wc_pool?id=eq.1&select=total_bobai,bobai_price_usd';
-  const KEY='sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_';
   function fmtBobai(n){
     if(n>=1e9)return(n/1e9).toFixed(2)+'B';
     if(n>=1e6)return(n/1e6).toFixed(2)+'M';
@@ -914,19 +911,10 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
     if(tu)tu.textContent=px>0?fmtUsd(poolTotal*px)+(live?' at today\'s price':' at the snapshot price'):'';
   }
   window.__tgPoolRender=render;
-  async function load(){
-    try{
-      const r=await fetch(URL,{headers:{apikey:KEY,Accept:'application/json'}});
-      if(!r.ok)return;
-      const rows=await r.json();
-      const p=Array.isArray(rows)?rows[0]:null;
-      if(!p)return;
-      poolTotal=parseFloat(p.total_bobai)||0;
-      snapshotPrice=parseFloat(p.bobai_price_usd)||0;
-      render();
-    }catch(_){}
-  }
-  load();
+  // THE POOL AS IT ENDED (2026-11-04): WC26 is settled and the pool frozen, yet every visit asked Supabase for it —
+  // a third-party read on the front page for a figure that cannot change. Read once on 2026-11-04 (wc_pool id 1).
+  poolTotal=8944733.793281933; snapshotPrice=0.0000553231784899214;
+  render();
 }();
 
 // === GIGGLE ACADEMY POT COUNTDOWN — to the start before Sep 17, to the end during the window ===

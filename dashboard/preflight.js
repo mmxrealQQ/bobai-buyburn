@@ -370,18 +370,23 @@ export function shape(s, r, usd, routeError = null, control = null) {
     // same preflight read again every 15 minutes, a webhook when it turns
     // dangerous. It reads the preflight, not reserves, so any pool gets it —
     // the paid pool watch above stays V2-only.
+    // THE FREE WATCH FIRST (2026-11-04, operator: an agent that calls our tools should want to stay): a week of
+    // /stats/detail had the rug watch's terms read 14 times by others and registered 0 times — it stood nested under
+    // the paid pool watch. Now the free watch leads, filled in for this token, one call; the holder line says what
+    // 1,000,000 $BOBAI changes; the paid pool watch follows with its fields where they were (what/how/terms).
     keep_watching: s.pool?.address ? {
-      ...(s.pool?.kind === 'v2' ? {
-        why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
-        what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
-        how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
-        terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
-      } : { why: 'This answer is one block. If you hold, what it found can change after it.' }),
+      why: `${s.pool?.kind === 'v2' ? 'This answer is one block. If you hold, the depth that lets you out can leave after it.' : 'This answer is one block. If you hold, what it found can change after it.'} The free rug watch below keeps reading this token for you: one call, nothing to pay.`,
       rug_watch: {
         what: 'Free, webhook only: this preflight is read again every 15 minutes and your callback is POSTed when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
         how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}","callback":"https://…"}`,
         terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
+        holder: 'A wallet holding 1,000,000 $BOBAI watches 25 tokens instead of one: add wallet, issued and a personal_sign of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <ISO time>" — a signature, no transaction. The same pass makes the paid answers free (20 a day).',
       },
+      ...(s.pool?.kind === 'v2' ? {
+        what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
+        how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
+        terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+      } : {}),
     } : null,
     // Who controls the contract, read on-chain (2026-10-09; controlBlock below).
     control: ctl,

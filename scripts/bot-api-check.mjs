@@ -23,6 +23,12 @@ for (const t of tr) {
   const ok = r.status === 200 && r.body && !r.body.error && (t.path !== '/api/preflight' || ['stop', 'weigh', 'no_known_stop'].includes(r.body.gate));
   pin(`the example of ${t.path} answers a measurement`, ok, `${r.status}${r.body?.error ? ' ' + String(r.body.error).slice(0, 80) : ''}${t.path === '/api/preflight' ? ' gate ' + r.body?.gate : ''}`);
 }
+// 4.11.: the free rug watch leads what a preflight leaves open (its terms were read 14 times in a week, registered 0)
+{
+  const pf = await get(`${BASE}/api/preflight?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82&usd=250`);
+  const kw = pf.body?.keep_watching || {}, keys = Object.keys(kw);
+  pin('a preflight names the free rug watch first, filled in for its token, with what 1,000,000 $BOBAI changes', keys[0] === 'why' && keys[1] === 'rug_watch' && /free rug watch below/.test(kw.why || '') && (kw.rug_watch?.how || '').includes('0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') && /25 tokens/.test(kw.rug_watch?.holder || ''), keys.join(','));
+}
 const oa = await get(`${BASE}/openapi.json`);
 const paths = Object.keys(oa.body?.paths || {});
 pin('/openapi.json is OpenAPI 3.1 with the five trading routes', oa.status === 200 && oa.body?.openapi === '3.1.0' && paths.length === 5, `${oa.status} ${oa.body?.openapi} ${paths.length}`);

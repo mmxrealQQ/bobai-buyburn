@@ -3348,6 +3348,15 @@ ${pageTail}`;
           const out = { payment_required: true, pay_at: `https://agent.brainonbnb.com/answer?service=${serviceId}`, price: '0.10 USD1, or half that in $BOBAI', how: t.how, in_bobai: t.in_bobai, holder_pass: holderPassTerms(), accepts: t.accepts, free_alternative: `${FREE.name} on this server` };
           return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
         }
+        // A PRICE ASKED HERE IS ANSWERED (2026-11-04): get_price_of_token came 12 times in a week across the six doors; the
+        // site's MCP answers a price-named call at once now (bsc_token_preflight's pool read, or bobai_price), so it goes there
+        // only with a token's address: a bare price question at a Venus or grid door is not taken to mean $BOBAI
+        if (!known && /price/i.test(String(name || '')) && /0x[a-fA-F0-9]{40}/.test(JSON.stringify(a))) {
+          const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: String(name).slice(0, 60), arguments: a } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
+          let out = null;
+          try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
+          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 30 tools)' });
+        }
         return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);

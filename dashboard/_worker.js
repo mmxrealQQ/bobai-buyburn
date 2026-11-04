@@ -1265,7 +1265,24 @@ async function runTool(rawName, args, caller = {}) {
     case 'bobai_activity': return await getActivity();
     case 'bobai_nft_drop': return await getNftDrop();
     case 'bobai_smart_money': return await getSmartMoney();
-    default: throw new Error(unknownToolText(name));
+    default: {
+      // A PRICE ASKED UNDER ANOTHER NAME IS ANSWERED (2026-11-04): a week of /stats/detail had get_token_price 4 times here
+      // and get_price_of_token 12 times on the six agent doors — each got the right tool named and had to ask again. A
+      // name with "price" in it is answered at once: a token's address -> the price from bsc_token_preflight's pool read;
+      // no token named, or $BOBAI's address -> bobai_price. A symbol without an address is not guessed at.
+      if (/price/i.test(String(name || ''))) {
+        const raw = ['address', 'token', 'token_address', 'tokenAddress', 'contract', 'ca', 'mint'].map((k) => args?.[k]).find((v) => v != null && v !== '');
+        const addr = String(raw || '').match(/0x[a-fA-F0-9]{40}/)?.[0]?.toLowerCase() || null;
+        const named = ['symbol', 'ticker', 'coin', 'name'].map((k) => args?.[k]).find((v) => v != null && v !== '');
+        const said = `"${String(name).slice(0, 60)}" is not a tool here`;
+        if (addr && addr !== '0x245c386dcfed896f5c346107596141e5edcbffff') {
+          const pf = await runTool('bsc_token_preflight', { address: addr });
+          return { answered_as: 'bsc_token_preflight', note: `${said}; this is the price from bsc_token_preflight's pool read. Call that tool for the whole check (can you get in and out, the tax, who controls it).`, token: pf.token, price_usd: pf.token?.price_usd ?? null, block: pf.block, measured_at: pf.measured_at, gate: pf.gate };
+        }
+        if (addr || (!raw && (named == null || /bobai/i.test(String(named))))) { const pz = await getPrice(); return { answered_as: 'bobai_price', ...pz, note: `${said}; this is $BOBAI's price (bobai_price). For any other BSC token pass its address. ${pz?.note || ''}`.trim() }; }
+      }
+      throw new Error(unknownToolText(name));
+    }
   }
 }
 

@@ -143,12 +143,15 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   await rpc('tools/call', { name: 'evil:<x>' });
   ok('a tool a caller made up is "unknown"', details().includes('mcp:call:unknown') && !details().some((d) => d.includes('evil')), details().join());
   // 29.10.: 16 unknown calls on 28.10. and no way to see what was looked for; the caller got "Unknown tool" and nothing else
-  const un = await (await rpc('tools/call', { name: 'get_bobai_price' })).json();
+  // 4.11.: a price-named call with a token address (or none) is answered with the price; with only a symbol it is not
+  // guessed and keeps the answer below — so these ask with a symbol, offline
+  const un = await (await rpc('tools/call', { name: 'get_bobai_price', arguments: { symbol: 'CAKE' } })).json();
   ok('a made-up name that reads as a tool name is counted under its name, and the answer names the closest tools', details().includes('mcp:call:unknown') && details().includes('mcp:unknown:get_bobai_price') && /Closest: bobai_price/.test(un.result?.content?.[0]?.text || '') && un.result?.isError === true, details().join() + ' | ' + JSON.stringify(un).slice(0, 300));
-  const un2 = await (await rpc('tools/call', { name: 'get_token_price' })).json();
+  const un2 = await (await rpc('tools/call', { name: 'get_token_price', arguments: { symbol: 'CAKE' } })).json();
   ok('a tie between the closest names puts the plainer one first (get_token_price -> bobai_price among them)', /Closest: [^.]*bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 300));
   // 30.10.: a price asked for is told where any BSC token's price is, and $BOBAI's
   ok('a made-up price tool is told: bsc_token_preflight (token.price_usd) for any token, bobai_price for $BOBAI', /bsc_token_preflight with its address \(token\.price_usd\); for \$BOBAI: bobai_price/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 400));
+  ok('a price asked with only a symbol is not guessed at: no price in the answer, the tools to use named', /Unknown tool/.test(un2.result?.content?.[0]?.text || '') && !/answered_as/.test(un2.result?.content?.[0]?.text || ''), JSON.stringify(un2).slice(0, 200));
   // 29.10.: who calls what — the client of an initialize, kept for its address, names each tool call and each failed one
   {
     const store = new Map(), had = globalThis.caches;

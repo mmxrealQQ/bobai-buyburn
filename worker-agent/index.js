@@ -1949,7 +1949,7 @@ export default {
     // brainonbnb-<check> (x402-noinput-check sends a broken proof on purpose, eight a day), and all of it counted as
     // others: a week showed 85 "paid:402" that were our own tests, and agent-status called them use. Counted as own: now.
     // Only ever a label for counting: anyone can send this user agent, and all it buys them is being left out of the counts.
-    const ownSite = fromOurSite(request), ownCheck = /^(brainonbnb|bobai)-/i.test(String(request.headers.get('user-agent') || ''));
+    const ownSite = fromOurSite(request), ownCheck = /^(brainonbnb|bobai|plaza-board)-/i.test(String(request.headers.get('user-agent') || ''));   // plaza-board-checkup: the board's own checkup (4.11.)
     const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, ownSite || ownCheck ? `own:${name}` : /:terms$/.test(name) ? [name, `sellua:${uaProduct}`] : name)).catch(() => {})); };
     // A PAYMENT THAT DID NOT BUY (2026-10-25): on 24.10. eight payments came back 402 on two answers and nothing said
     // why — the counter kept the status, not the reason. Each one is kept now (the last 20, 14 days, KV payrefused):
@@ -1974,7 +1974,8 @@ export default {
         const raw = await copy.text().catch(() => '');
         let j = null; try { j = JSON.parse(raw); } catch {}
         const kinds = (j?.params?.message?.parts || []).map((x) => x?.kind || x?.type || '?').join('+') || 'none';
-        bumpDetail(env, `a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
+        // our own checks over A2A under own: too (4.11.: plaza-board-checkup and brainonbnb-* stood among the others)
+        bumpDetail(env, `${ownCheck ? 'own:' : ''}a2a:${slug}:${String(j?.method || 'nomethod').slice(0, 30)}:${kinds.slice(0, 30)}`);
         if (!env.AGENT) return;
         const key = `a2a-seen:${slug}`;
         const list = (await env.AGENT.get(key, 'json').catch(() => null)) || [];

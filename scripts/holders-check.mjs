@@ -34,6 +34,11 @@ if (process.argv.includes('--live')) {
     ['the top list is sorted and starts at rank 1', h.top[0].rank === 1 && h.top.every((x, i, a) => !i || a[i - 1].bobai >= x.bobai)],
     ['no contract in the top list', !h.top.some((x) => [PAIR, DEAD].includes(x.address))],
     ['a bad address is refused', !!j.error],
+    // 4.11.: the tick fell behind 31.10.-3.11. unseen (read_at moved every tick); behind_blocks shows it (~2,000 blocks = 15 min)
+    ['the last tick left under 4,000 blocks unread (behind_blocks)', Number.isFinite(h.behind_blocks) && h.behind_blocks < 4000],
+    // 4.11.: three buys of 1.11. showed as 3.11. 16:30-17:30 (the catch-up); at is the block's time now, seen_at the tick's
+    ['every crossing carries its block time (at) and when it was read (seen_at), at <= seen_at', h.crossings_1m.length > 0 && h.crossings_1m.every((c) => c.seen_at && Date.parse(c.at) <= Date.parse(c.seen_at))],
+    ['the 1.11. buy of 0x7dfe…089c shows at its block, 2026-11-01 19:48:02 UTC', h.crossings_1m.some((c) => c.tx === '0xacbfb563684f152df3775e2a676e4cd60d32ac8fb4e8a2ee63de4427ae358786' && c.at === '2026-11-01T19:48:02.000Z')],
   ];
   for (const [n, ok] of live) { if (!ok) bad++; console.log(`${ok ? 'PASS' : 'FAIL'}  live: ${n}`); }
 }

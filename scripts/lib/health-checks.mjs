@@ -721,6 +721,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     if ((r.body?.result?.tools || []).length !== 2) mcpBad.push(`${slug} (${r.status})`);
   }
   ok('Agents', 'every agent of ours publishes its tool list over MCP (Mandate: Tools)', !mcpBad.length, mcpBad.length ? `missing: ${mcpBad.join(', ')}` : 'all five list two tools');
+  // The holder count keeps up with the chain (2026-11-04): from 31.10. to 3.11. its tick read 20,000-60,000 blocks a day
+  // instead of ~192,000 while read_at moved every tick, caught up on 3.11. and showed three buys of 1.11. as that
+  // afternoon. behind_blocks is what the last tick left unread; the last full day must have moved ~a day of blocks.
+  const ho = (await getJ(`${AGENT}/holders`)).body, hh = ho?.history || [];
+  const dayMove = hh.length >= 3 ? hh[hh.length - 2].block - hh[hh.length - 3].block : null;
+  ok('Agents', 'the $BOBAI holder count keeps up with the chain (under 4,000 blocks behind, a full day of blocks read yesterday)', Number.isFinite(ho?.behind_blocks) && ho.behind_blocks < 4000 && dayMove != null && dayMove > 150000, ho ? `${ho.behind_blocks ?? '?'} blocks behind · ${dayMove ?? '?'} blocks read on ${hh[hh.length - 2]?.day || '?'}` : 'no answer');
   // What the card promises, over A2A (2026-10-15): a question as data ({wallet}) is answered with the free reading,
   // in_range and current_tick at the top — it used to get the agent's self-description (scripts/a2a-free-half-check.mjs)
   const fa = await getJ(`${AGENT}/defi-agent/a2a`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', messageId: 'health', parts: [{ kind: 'data', data: { wallet: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } }] } } }) });

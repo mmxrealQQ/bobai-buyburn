@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24234 lines.
+# one fetch. 74 files, 24257 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -10304,7 +10304,12 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
 //
 //   holders:state     { block, bal: { addr: wei string }, code: { addr: 1 } }
 //   holders:history   [{ day, holders, holders_1m, bands }] (a year)
-//   holders:crossings [{ at, address, balance, block, tx }] (the last 100)
+//   holders:crossings [{ at, seen_at, address, balance, block, tx }] (the last 100)
+//
+// at is the time of the block that carried the wallet over, never the tick that read it: from 31.10. to 3.11. the
+// tick fell behind (20,000-60,000 blocks a day instead of ~192,000), caught up on 3.11. at 16:30 UTC and stamped three
+// buys of 1.11. with that afternoon (operator, 4.11.: "I don't see it on chain"). seen_at is when the tick read it;
+// state.behind is how many blocks the last tick left unread, shown on /holders as behind_blocks.
 
 export const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -10354,6 +10359,16 @@ const rpcOf = (env) => async (body) => {
   return null;
 };
 
+// the time of each block, read in one batch: { block: ISO }; a block that did not answer is left out
+async function blockTimes(rpc, blocks) {
+  const uniq = [...new Set(blocks.filter(Boolean))];
+  if (!uniq.length) return {};
+  const r = await rpc(uniq.map((b, i) => ({ jsonrpc: '2.0', id: i, method: 'eth_getBlockByNumber', params: ['0x' + b.toString(16), false] })));
+  const out = {};
+  for (const x of r || []) if (x.result?.timestamp) out[uniq[x.id]] = new Date(Number(x.result.timestamp) * 1000).toISOString();
+  return out;
+}
+
 export async function holdersTick(env, { now = new Date() } = {}) {
   const state = JSON.parse((await env.AGENT.get(STATE)) || 'null');
   if (!state) return { ok: false, error: 'not seeded' };
@@ -10381,12 +10396,20 @@ export async function holdersTick(env, { now = new Date() } = {}) {
   const crossed = applyTransfers(state.bal, transfers, (a) => !!state.code[a]);
   for (const [a, w] of Object.entries(state.bal)) if (w === '0') delete state.bal[a];
   state.block = until;
+  state.behind = head - until;
   state.at = now.toISOString();
   await env.AGENT.put(STATE, JSON.stringify(state));
-  if (crossed.length) {
-    const prev = JSON.parse((await env.AGENT.get(CROSSINGS)) || '[]');
-    await env.AGENT.put(CROSSINGS, JSON.stringify([...crossed.map((c) => ({ at: now.toISOString(), ...c })), ...prev].slice(0, 100)));
+  // the crossings: stamped with their block's time; an older entry still stamped with the tick (before 4.11.) is
+  // restamped once, its tick time kept as seen_at
+  const prev = JSON.parse((await env.AGENT.get(CROSSINGS)) || '[]');
+  let items = [...crossed.map((c) => ({ at: now.toISOString(), ...c })), ...prev];
+  let stamped = 0;
+  if (items.some((c) => !c.seen_at)) {
+    const times = await blockTimes(rpc, items.filter((c) => !c.seen_at).map((c) => c.block));
+    // a block whose time did not answer keeps its entry unstamped (at = the tick), tried again next tick
+    items = items.map((c) => (c.seen_at || !times[c.block] ? c : (stamped++, { ...c, at: times[c.block], seen_at: c.at })));
   }
+  if (crossed.length || stamped) await env.AGENT.put(CROSSINGS, JSON.stringify(items.slice(0, 100)));
   const day = now.toISOString().slice(0, 10);
   const hist = JSON.parse((await env.AGENT.get(HISTORY)) || '[]');
   if (!hist.length || hist[hist.length - 1].day !== day) {
@@ -10409,7 +10432,7 @@ export async function readHolders(env, address = null) {
   if (!state) return null;
   const s = summarize(state);
   const out = {
-    block: state.block, read_at: state.at, holders: s.holders, holders_1m: s.holders_1m,
+    block: state.block, read_at: state.at, behind_blocks: state.behind ?? null, holders: s.holders, holders_1m: s.holders_1m,
     bands: s.bands, top: s.people.slice(0, 25).map(([a, w], i) => ({ rank: i + 1, address: a, bobai: toUnits(w) })),
     history: (hist || []).slice(-90), crossings_1m: (crossings || []).slice(0, 20),
   };

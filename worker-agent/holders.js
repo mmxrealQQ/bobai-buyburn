@@ -59,7 +59,9 @@ export function applyTransfers(bal, transfers, isContract = () => false) {
 }
 
 const rpcOf = (env) => async (body) => {
-  const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com'].filter(Boolean);
+  // a second provider for the log ranges (2026-11-04): both entries above are publicnode, the only free one serving
+  // 5,000-block getLogs; the NodeReal key the NFT minter and the TG bot already use goes last, once it is a secret here
+  const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com', env.BSC_RPC_KEYED_URL].filter(Boolean);
   for (const u of urls) {
     try {
       const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());

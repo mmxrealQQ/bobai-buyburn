@@ -185,7 +185,10 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   await call('/api/links', { headers: { referer: 'https://brainonbnb.com/token', 'user-agent': 'Mozilla/5.0 Safari' } });
   ok('the referer alone says so too', details().join() === 'rest:site:links', details().join());
   await call('/api/links', { headers: { 'user-agent': 'node' } });
-  ok('a caller from outside: rest:ext and its family', details().join() === 'rest:ext:links,ua:node', details().join());
+  // 4.11.: and who it is, as a salted 6-hex tag with the software's first word — never the address
+  ok('a caller from outside: rest:ext, its family, and its tag (6 hex, no address)', /^rest:ext:links,ua:node,restby:links:[0-9a-f]{6}:node$/.test(details().join()) && !/d+.d+.d+/.test(details().join()), details().join());
+  await call('/api/links', { headers: { 'user-agent': 'brainonbnb-countcheck' } });
+  ok('our own check script (brainonbnb-*) is own:rest, not an outside caller', details().join() === 'own:rest:links', details().join());
   // Crawler noise is relayed as a sample since 2026-10-04: one in twenty, weighted twenty, with the bot's name.
   const realRandom = Math.random;
   try {

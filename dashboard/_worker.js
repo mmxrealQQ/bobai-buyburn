@@ -2886,7 +2886,12 @@ async function boardLibrary() {
     replies: Array.isArray(t.replies) ? t.replies.filter((r) => r && r.operator).map((r) => ({ created: r.created, operator: r.operator, hidden: !!r.hidden, body: String(r.body || '') })) : [] })) : [];
 }
 // the writer's words stay text; links in them become links, nothing else is markup
-const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" rel="nofollow noopener">${u}</a>`);
+// a link ends before a backtick (the end of a code span) and leaves a sentence's last stop outside (2026-11-04: an entry's
+// `https://your.domain` became a link to https://your.domain`/ and "see https://x.y/." linked the full stop)
+const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]`]+/g, (u) => {
+  const tail = (u.match(/[.,;:!?]+$/) || [''])[0], url = tail ? u.slice(0, -tail.length) : u;
+  return `<a href="${url}" rel="nofollow noopener">${url}</a>${tail}`;
+});
 const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');
 const boardDay = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
 async function boardThreadPage(id) {

@@ -3,7 +3,9 @@
 // must answer 2xx (a redirect is followed); outside sites may answer 2xx/3xx, or 401/403/405/429 (a bot wall, not a dead link).
 import { spawn } from 'node:child_process';
 import os from 'node:os';
-const PAGES = ['/', '/board', '/registry', '/services', '/settle', '/defi', '/token', '/jobs', '/scanner', '/faq', '/whitepaper', '/library', '/source', '/classic', '/agent/363709', '/nft', '/roadmap'];
+const PAGES = ['/', '/board', '/registry', '/services', '/settle', '/defi', '/token', '/jobs', '/scanner', '/faq', '/whitepaper', '/library', '/source', '/classic', '/agent/363709', '/nft', '/roadmap',
+  // 4.11.: the pages added since 24.10.
+  '/venus', '/pass', '/pancakeswap', '/set-and-earn', '/advantage', '/session', '/list', '/screener', '/archive'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9960 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-lc-' + port;
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
 let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }

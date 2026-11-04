@@ -2469,12 +2469,12 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // the same app.js. /classic has no trailing slash, so the Classic page's relative asset paths still resolve.
     if (url.pathname === '/' || url.pathname === '/index.html') {
       if (url.pathname === '/index.html') return Response.redirect(url.origin + '/' + url.search, 301);
-      const r = await env.ASSETS.fetch(new Request(url.origin + '/brain/', request));
+      const r = taxSplitRewriter(taxPhaseAt()).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/classic' || url.pathname === '/classic/') {
       if (url.pathname.endsWith('/')) return Response.redirect(url.origin + '/classic' + url.search, 301);
-      const r = await env.ASSETS.fetch(new Request(url.origin + '/', request));
+      const r = taxSplitRewriter(taxPhaseAt()).transform(await env.ASSETS.fetch(new Request(url.origin + '/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/brain' || url.pathname === '/brain/' || url.pathname === '/brain/index.html') return Response.redirect(url.origin + '/' + url.search, 301);
@@ -2592,11 +2592,47 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // and on pages without a mailto link. That is why the fix went the other
     // way, through file size: stylesheet (styles.css) and code (app.js) sit
     // versioned in the device cache, and the HTML carries only content.
+    // THE TAX SPLIT IN THE PAGE ITSELF (2026-11-04): /token, the front pages and the Brain page carry a static
+    // "~1% / ~1% / ~1%" and three hidden boxes (0.5 / 0.3 / 0.3) that app.js fixes in a browser. A crawler or an agent
+    // reading the HTML — most of our readers — read all six, 4.1% of a 3% tax, and "Splits ~1/1/1". The split of the
+    // phase running now (TAX_PHASES, held against both bots by tax-phase-check) is written in here; a box with no share
+    // now is taken out. app.js still moves it on at a phase boundary.
+    if ((response.headers.get('content-type') || '').includes('text/html') && TAX_SPLIT_PAGES.has(url.pathname)) {
+      const t = taxSplitRewriter(taxPhaseAt()).transform(response);
+      const h = secure(new Headers(t.headers));
+      return new Response(t.body, { status: t.status, headers: h });
+    }
     const newResponse = new Response(response.body, response);
     secure(newResponse.headers);
     return newResponse;
   },
 };
+
+const TAX_SPLIT_PAGES = new Set(['/token', '/token.html']);   // '/' and '/classic' return earlier and run it there
+const pctText = (n) => `${+Number(n).toFixed(2)}%`;
+// the step's line, in app.js's order and words, so a browser and a reader see the same sentence
+function taxSplitLine(sp) {
+  return [[sp.bobai_burn, '$BOBAI burn'], [sp.bob_burn, '$BOB burn'], [sp.bobai_liquidity_add, 'liquidity'], [sp.defi_agent, 'DeFi agent'], [sp.giggle_academy_pot, 'Giggle pot'], [sp.creator, 'creator']]
+    .filter(([v]) => v).map(([v, w]) => `${pctText(v)} ${w}`).join(' · ');
+}
+function taxSplitRewriter(ph) {
+  const rw = new HTMLRewriter();
+  if (!ph) return rw;
+  const sp = ph.split_pct;
+  const text = (v) => ({ element(e) { e.setInnerContent(v); } });
+  rw.on('#step-split', text(taxSplitLine(sp)))
+    .on('#tax-pct-creator', text(pctText(sp.creator || 0)))
+    .on('#tax-pct-bob', text(pctText(sp.bob_burn || 0)))
+    .on('#tax-pct-bobai', text(pctText(sp.bobai_burn || 0)));
+  for (const [id, v] of [['tf-liq', sp.bobai_liquidity_add], ['tf-lp', sp.defi_agent], ['tf-giggle', sp.giggle_academy_pot]]) {
+    if (v) {
+      rw.on(`#${id}, #${id}-arrow`, { element(e) { e.removeAttribute('style'); } }).on(`#${id} .p`, text(pctText(v)));
+    } else {
+      rw.on(`#${id}, #${id}-arrow`, { element(e) { e.remove(); } });
+    }
+  }
+  return rw;
+}
 
 
 // THE BOARD AS PAGES (2026-10-27): what /board/<id>, /board and the sitemap need from the board.

@@ -2,6 +2,7 @@
   "version": 1,
   "include": [
     "/api/*",
+    "/openapi.json",
     "/mcp",
     "/mcp/preflight",
     "/join",

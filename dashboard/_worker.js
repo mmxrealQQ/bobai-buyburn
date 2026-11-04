@@ -1783,6 +1783,56 @@ const REST_TOOLS = {
 const COUNTED_API = new Set([...Object.keys(REST_TOOLS), '/api/wallet', '/api/pool-scan', '/api/preflight', '/api/fee-tiers',
   '/api/range-plan', '/api/best-route', '/api/total-supply', '/api/circulating-supply', '/api/nft/state']);
 
+// THE REST TOOLS FOR A BOT, FROM THE TOOLS THEMSELVES (2026-11-04, operator: "trading bots"). /api/ listed bare names and
+// nothing described a call: a bot builder had to read llms.txt or speak MCP. Each trading route here takes its
+// parameters and its summary from the MCP tool it runs (MCP_TOOLS), so /api/ and /openapi.json cannot drift from the
+// tools. The example is a real call (CAKE) that answers.
+const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
+// [path, tool, example query, one line a bot builder reads first] — the long description stays in openapi.json
+const BOT_ROUTES = [
+  ['/api/preflight', 'bsc_token_preflight', `address=${CAKE}&usd=250`, 'Before every buy: can you get in and out at your size, what the round trip costs with the measured tax, who controls the contract. Branch on gate: stop | weigh | no_known_stop.'],
+  ['/api/pool-scan', 'bsc_pool_scan', `address=${CAKE}`, 'The full read behind the preflight: cost per size, 1% depth both ways, measured tax, sell simulation, LP custody, holders, flow, every venue.'],
+  ['/api/best-route', 'pancakeswap_best_route', `address=${CAKE}&usd=250`, 'Which PancakeSwap pool returns the most at your size (quoted by the venue), every other route, the round trip with the tax, the slippage it needs.'],
+  ['/api/fee-tiers', 'pancakeswap_fee_tiers', `address=${CAKE}`, 'For liquidity: which fee tier of a pair actually pays, fees per $1,000 over all capital and over the capital within 2% of the price.'],
+  ['/api/range-plan', 'pancakeswap_range_plan', `address=${CAKE}&capitalUsd=1000&quote=BNB`, 'For a V3 position: each range width replayed through the real swaps of the last hour — fees, time in range, exits. No forecast.'],
+];
+const toolOf = (name) => MCP_TOOLS.find((t) => t.name === name);
+const botParams = (name) => Object.entries(toolOf(name)?.inputSchema?.properties || {}).filter(([k]) => k !== 'scan_pass')
+  .map(([k, v]) => ({ name: k, required: (toolOf(name)?.inputSchema?.required || []).includes(k), type: v.type, about: v.description }));
+const BOT_LIMITS = {
+  key: 'none — no key, no sign-up; CORS open',
+  free: `every route free; /api/pool-scan alone counts: ${SCAN_FREE_PER_DAY.toLocaleString('en-US')} per caller and UTC day, past that HTTP 402 or 429 with code free_limit`,
+  day_pass: `past the free pool scans: POST ${SCAN_PASS_URL} — 0.50 USD1, half that in $BOBAI, free for a wallet holding 1,000,000 $BOBAI; then send header X-Scan-Pass (${SCAN_PASS_CAP.toLocaleString('en-US')} scans a pass)`,
+  cache: 'pool figures are never cached (Cache-Control: no-store); GoPlus contract flags and holder lists up to 6 h',
+};
+function apiIndex() {
+  return {
+    what: 'Free REST tools for trading bots on BNB Smart Chain: measure a token before you trade it — can you get in, can you get out, what the round trip costs at your size. Every route is a GET and answers JSON.',
+    start: `Before every buy: GET https://brainonbnb.com/api/preflight?address=<token>&usd=<your size> and branch on gate: "stop" (do not trade, stop[] says why), "weigh" (caution[] with figures), "no_known_stop".`,
+    limits: BOT_LIMITS,
+    trading: BOT_ROUTES.map(([path, tool, ex, does]) => ({ path, does, params: botParams(tool), example: `https://brainonbnb.com${path}?${ex}`, mcp_tool: tool })),
+    bobai: [...COUNTED_API].filter((r) => !BOT_ROUTES.some(([x]) => x === r)).sort(),
+    openapi: 'https://brainonbnb.com/openapi.json',
+    alarm: 'Hold a token? bsc_rug_watch POSTs your webhook when it turns dangerous (one watch free): https://agent.brainonbnb.com/rug-watch',
+    docs: 'https://brainonbnb.com/llms.txt',
+    mcp: 'https://brainonbnb.com/mcp',
+  };
+}
+function openApi() {
+  const paths = {};
+  for (const [path, tool, ex, does] of BOT_ROUTES) {
+    const t = toolOf(tool);
+    paths[path] = { get: {
+      operationId: tool, summary: does, description: String(t?.description || '').slice(0, 1500),
+      parameters: [...botParams(tool).map((x) => ({ name: x.name, in: 'query', required: x.required, description: x.about, schema: { type: x.type === 'number' ? 'number' : 'string' } })),
+        ...(tool === 'bsc_pool_scan' ? [{ name: 'X-Scan-Pass', in: 'header', required: false, description: `Only past the free ${SCAN_FREE_PER_DAY} scans a day: a day pass from POST ${SCAN_PASS_URL}`, schema: { type: 'string' } }] : [])],
+      responses: { 200: { description: 'The measurement, JSON', content: { 'application/json': { schema: { type: 'object' } } } }, 400: { description: 'A refusal, JSON with error, code (bad_address, not_a_token, is_wallet, bad_usd …) and hint' }, ...(tool === 'bsc_pool_scan' ? { 402: { description: 'Free pool scans for the day used: code free_limit, with the day-pass terms' }, 429: { description: 'Free pool scans for the day used' } } : {}) },
+      'x-example': `https://brainonbnb.com${path}?${ex}`,
+    } };
+  }
+  return { openapi: '3.1.0', info: { title: 'Brain on BNB — free trading tools for BNB Smart Chain', version: '1.0.0', description: `Measure a BSC token before a trade: honeypot and rug-pull read, round trip with the measured transfer tax, best PancakeSwap route at your size, fee tiers, range replay. No key. ${BOT_LIMITS.free}. Day pass: ${BOT_LIMITS.day_pass}. Measurement, not advice.`, contact: { url: 'https://brainonbnb.com/scanner' } }, servers: [{ url: 'https://brainonbnb.com' }], paths };
+}
+
 // Where a buy click may say it came from: the pages (scripts/deploy-dashboard.mjs buySource names them), and three
 // places that name themselves. A name outside this list is 'other', so nobody can invent lines in /stats/detail.
 const BUY_TARGET = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc';
@@ -2516,13 +2566,13 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // times that day, nearly all one crawler, and to an agent with a typo it
     // read as "the API answers HTML". Every real route has returned above; what
     // reaches here gets the list of the real ones.
+    if (url.pathname === '/openapi.json') {
+      return new Response(JSON.stringify(openApi(), null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+    }
     if (url.pathname.startsWith('/api/')) {
       const index = url.pathname === '/api/';
       return new Response(JSON.stringify({
-        ...(index ? { what: 'The free REST mirror of the $BOBAI MCP tools. Every route is a GET.' } : { error: 'no such route', path: url.pathname.slice(0, 120) }),
-        routes: [...COUNTED_API].sort(),
-        docs: 'https://brainonbnb.com/llms.txt',
-        mcp: 'https://brainonbnb.com/mcp',
+        ...(index ? apiIndex() : { error: 'no such route', path: url.pathname.slice(0, 120), routes: [...COUNTED_API].sort(), see: 'https://brainonbnb.com/api/', docs: 'https://brainonbnb.com/llms.txt', mcp: 'https://brainonbnb.com/mcp' }),
       }, null, 2), { status: index ? 200 : 404, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
     }
 

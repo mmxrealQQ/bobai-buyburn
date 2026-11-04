@@ -1790,6 +1790,15 @@ const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'service
 
 // What kind of caller, coarsely — never the string itself. Order matters:
 // crawlers and tools put "Mozilla" in front of their own name.
+// a short, salted tag for one caller (restby:, 2026-11-04): the same address and software give the same tag every day
+async function callerTag(request, secret) {
+  const ip = String(request.headers.get('cf-connecting-ip') || '');
+  const net = ip.includes(':') ? ip.split(':').slice(0, 4).join(':') : ip;
+  const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase();
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${secret || ''}|${net}|${product}`));
+  return [...new Uint8Array(d).slice(0, 3)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function uaFamily(ua) {
   const s = String(ua || '').toLowerCase();
   if (!s) return 'none';
@@ -1972,7 +1981,19 @@ export default {
       }
       else {
         const route = url.pathname.slice(5);
-        count('rest', fromSite ? [`rest:site:${route}`] : [`rest:ext:${route}`, `ua:${family}`]);
+        // OUR OWN CHECKS ARE NOT USE (2026-11-04): only our workers were told apart (by Cloudflare's address); a check
+        // script naming itself brainonbnb-* / bobai-* stood among the outside callers of the REST tools.
+        if (/^(brainonbnb|bobai|plaza-board)-/i.test(request.headers.get('user-agent') || '')) count(null, `own:rest:${route}`);
+        else if (fromSite) count('rest', [`rest:site:${route}`]);
+        else {
+          // WHO COMES BACK (2026-11-04, operator: "trading bots"): the REST tools had a count per day and no way to tell
+          // one bot calling 30 times from 30 callers, or a caller of yesterday from a new one. restby:<route>:<tag>:<product>
+          // — tag is 6 hex of SHA-256 over a secret, the address (/64 for IPv6) and the user agent's first word; the
+          // address is never stored and the tag cannot be turned back into it. scripts/rest-callers.mjs reads the days.
+          const tag = await callerTag(request, env.HIT_SECRET).catch(() => 'x');
+          const product = (String(request.headers.get('user-agent') || '').match(/^[A-Za-z][A-Za-z0-9._-]{0,23}/)?.[0] || 'none').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+          count('rest', [`rest:ext:${route}`, `ua:${family}`, `restby:${route}:${tag}:${product}`]);
+        }
       }
     }
     else if (url.pathname === '/skill.md') count('skill_doc');

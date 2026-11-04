@@ -86,12 +86,20 @@ export async function holdersTick(env, { now = new Date() } = {}) {
   const headR = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] });
   if (!headR) return { ok: false, error: 'no block number' };
   const head = Number(headR.result) - CONFIRMATIONS;
-  const until = Math.min(head, state.block + MAX_BLOCKS_A_TICK);
+  let until = Math.min(head, state.block + MAX_BLOCKS_A_TICK);
   const transfers = [];
+  // KEEP WHAT WAS READ (2026-11-04): a chunk that did not answer threw away the chunks read before it, so with one
+  // provider refusing now and then the tick moved 20,000-60,000 blocks a day instead of ~192,000 (31.10.-3.11.). Now
+  // the chunks read in order before the first failure are applied and the tick ends there; only a failure on the very
+  // first chunk applies nothing. Nothing is skipped: the next tick starts at the first unread block.
+  let partial = null;
   for (let b = state.block + 1; b <= until; b += CHUNK) {
     const to = Math.min(until, b + CHUNK - 1);
     const r = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: BOBAI, topics: [TRANSFER], fromBlock: '0x' + b.toString(16), toBlock: '0x' + to.toString(16) }] });
-    if (!r) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
+    if (!r) {
+      if (b === state.block + 1) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
+      until = b - 1; partial = `logs unread from block ${b}; applied up to ${until}, the rest next tick`; break;
+    }
     for (const l of r.result) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
   }
   // a new address: asked once whether it has code
@@ -127,7 +135,7 @@ export async function holdersTick(env, { now = new Date() } = {}) {
     hist.push({ day, block: state.block, holders: s.holders, holders_1m: s.holders_1m, bands: s.bands.map((x) => x.holders) });
     await env.AGENT.put(HISTORY, JSON.stringify(hist.slice(-366)));
   }
-  return { ok: true, block: state.block, transfers: transfers.length, new_addresses: fresh.length, crossed: crossed.length, behind: head - until };
+  return { ok: true, block: state.block, transfers: transfers.length, new_addresses: fresh.length, crossed: crossed.length, behind: head - until, ...(partial ? { partial } : {}) };
 }
 
 export async function seedHolders(env, body) {

@@ -24,6 +24,34 @@ const crossed = applyTransfers(bal, [
 ], (a) => a === PAIR || a === '0xnewcontract');
 pin('a wallet crossing 1M is recorded once, with its tx — ours like any other; one already over and a contract are not', crossed.length === 2 && crossed[0].address === '0xb' && crossed[0].tx === '0x1' && crossed[1].address === '0x15ba17075ef5e0736292b030e3715d9100fe3d38', crossed.length === 4);
 pin('balances move both ways', BigInt(bal['0xb']) === 1000001n * E && BigInt(bal[PAIR]) === BigInt(w(1e8)) - 7n * E - 2n * PASS_LINE, false);
+// 4.11.: a chunk that does not answer keeps the chunks read before it (the tick used to throw them away and fell days
+// behind on a provider refusing now and then). A fake chain: blocks 1001..21000, the third 5,000-block chunk refuses.
+{
+  const { holdersTick } = await import('../worker-agent/holders.js');
+  const kv = new Map([['holders:state', JSON.stringify({ block: 1000, bal: { '0xaa': w(5) }, code: {} })]]);
+  const env = { AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    const one = (x) => {
+      if (x.method === 'eth_blockNumber') return { jsonrpc: '2.0', id: x.id, result: '0x' + (21003).toString(16) };
+      if (x.method === 'eth_getCode') return { jsonrpc: '2.0', id: x.id, result: '0x' };
+      if (x.method === 'eth_getLogs') {
+        const from = parseInt(x.params[0].fromBlock, 16);
+        if (from >= 11001) return { jsonrpc: '2.0', id: x.id, error: { message: 'Request exceeds defined limit.' } };
+        const pad = (a) => '0x' + '0'.repeat(24) + a.slice(2).padStart(40, '0');
+        return { jsonrpc: '2.0', id: x.id, result: [{ topics: ['0x', pad('0x00000000000000000000000000000000000000aa'), pad('0x00000000000000000000000000000000000000bb')], data: '0x' + (10n ** 18n).toString(16), blockNumber: '0x' + (from + 1).toString(16), transactionHash: '0x' + String(from).padStart(64, '0') }] };
+      }
+      return { jsonrpc: '2.0', id: x.id, error: { message: 'unexpected' } };
+    };
+    return { json: async () => (Array.isArray(body) ? body.map(one) : one(body)) };
+  };
+  const r = await holdersTick(env, { now: new Date('2026-11-04T12:00:00Z') });
+  globalThis.fetch = realFetch;
+  const st = JSON.parse(kv.get('holders:state'));
+  const BB = '0x' + '0'.repeat(38) + 'bb';   // the address as a log carries it: 20 bytes, 40 hex
+  pin('a chunk that does not answer keeps the two read before it: applied up to block 11000, the transfers in them counted', r.ok === true && st.block === 11000 && BigInt(st.bal[BB] || 0) === 2n * E && /applied up to 11000/.test(r.partial || ''), r.ok === false && st.block === 1000);
+}
 if (process.argv.includes('--live')) {
   const j = await fetch('https://agent.brainonbnb.com/holders?address=0x1afa57').then((r) => r.json()).catch(() => ({}));
   const h = await fetch('https://agent.brainonbnb.com/holders').then((r) => r.json());

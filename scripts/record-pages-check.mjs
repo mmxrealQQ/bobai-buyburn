@@ -59,6 +59,20 @@ pin('/classic: Burn runs is the length of the live log', log && cv('burn-count')
 const rh = await raw('/registry'), rv = (id) => ((rh.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`)) || [])[1] || '').trim();
 pin('/registry: the board counts and hires / settled tiles are figures', ['pb-n-all', 'pb-n-open', 'pb-n-done', 'aw-n-hired', 'aw-n-settled'].every((k) => /^[\d,]+$/.test(rv(k))), ['pb-n-all', 'pb-n-open', 'pb-n-done', 'aw-n-hired', 'aw-n-settled'].map((k) => `${k} ${rv(k)}`).join(' · '));
 pin('/board: the newest threads are links in the list', /<div id="pb-list"><div class="rc-rows"><div class="rc-row"><span class="rc-what"><a href="\/board\/\d+">/.test(bh));
+// the A-Z pass, block 2 (4.11.): Liquidity Boost III and the Giggle pot said "the first add / send lands with the next
+// run" weeks after the first ones; /defi said "Reading the portfolio"
+for (const p of ['/token', '/classic', '/']) {
+  const h = p === '/' ? home : p === '/classic' ? cl : await raw('/token');
+  const bb3 = (h.match(/<tbody id="bb3-tx-body">([\s\S]*?)<\/tbody>/) || [])[1] || '';
+  pin(`${p}: Liquidity Boost III shows its adds with their tx, not "the first add lands"`, /bscscan\.com\/tx\/0x/.test(bb3) && !/First add lands/.test(bb3), (h.match(/id="bb3-count"[^>]*>([^<]*)</) || [])[1]);
+}
+for (const p of ['/classic', '/']) {
+  const h = p === '/' ? home : cl, gg = (h.match(/<tbody id="gg-tx-body">([\s\S]*?)<\/tbody>/) || [])[1] || '';
+  pin(`${p}: the Giggle pot shows its sends with their tx, not "the first send lands"`, /bscscan\.com\/tx\/0x/.test(gg) && !/first send lands/.test(gg), (h.match(/id="gg-bnb"[^>]*>([^<]*)</) || [])[1]);
+}
+const dh = await raw('/defi'), dcard = (dh.match(/<div class="agt-flow fi" id="defi-card">\s*<p class="agt-note">([^<]*)</) || [])[1] || '';
+pin('/defi: the portfolio says what went in, what it is worth and the result against holding', /^Put in: [\d.]+ BNB/.test(dcard) && /against simply holding/.test(dcard), dcard);
+pin('/defi: the series line says runs, days and where the fees went', /runs over \d+ days since/.test(inner(dh, 'ag-lp-series-sum')), inner(dh, 'ag-lp-series-sum'));
 // the lists under the head on /venus and /settle (4.11.): no "Reading the record…" left in either page's HTML
 for (const p of ['/venus', '/settle']) {
   const h = (await raw(p)).replace(/<script[\s\S]*?<\/script>/g, '');

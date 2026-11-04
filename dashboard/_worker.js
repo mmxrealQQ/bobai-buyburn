@@ -2495,14 +2495,15 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         if (got && got[0]) Object.assign(BAR_MEMO, { at: Date.now(), bar: got });
       }
       const bar = BAR_MEMO.bar || null;
-      const r = burnRewriter(barRewriter(taxSplitRewriter(taxPhaseAt()), bar), await burnLog()).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
+      const [fRuns, fLiq] = await Promise.all([burnLog(), liqLog()]);
+      const r = ggRewriter(bb3Rewriter(burnRewriter(barRewriter(taxSplitRewriter(taxPhaseAt()), bar), fRuns), fLiq), fRuns).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/classic' || url.pathname === '/classic/') {
       if (url.pathname.endsWith('/')) return Response.redirect(url.origin + '/classic' + url.search, 301);
       // the Classic page's tiles and burn table (2026-11-04): dashes and "Loading burns..." to a reader without a browser
-      const [cl, runs] = await Promise.all([Promise.race([Promise.all(['bobai_price', 'bobai_liquidity', 'bobai_burned'].map((n) => runTool(n, {}).catch(() => null))), new Promise((res) => setTimeout(() => res(null), 2000))]), burnLog()]);
-      const r = classicRewriter(burnRewriter(taxSplitRewriter(taxPhaseAt()), runs), cl, runs).transform(await env.ASSETS.fetch(new Request(url.origin + '/', request)));
+      const [cl, runs, liq] = await Promise.all([Promise.race([Promise.all(['bobai_price', 'bobai_liquidity', 'bobai_burned'].map((n) => runTool(n, {}).catch(() => null))), new Promise((res) => setTimeout(() => res(null), 2000))]), burnLog(), liqLog()]);
+      const r = ggRewriter(bb3Rewriter(classicRewriter(burnRewriter(taxSplitRewriter(taxPhaseAt()), runs), cl, runs), liq), runs).transform(await env.ASSETS.fetch(new Request(url.origin + '/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/brain' || url.pathname === '/brain/' || url.pathname === '/brain/index.html') return Response.redirect(url.origin + '/' + url.search, 301);
@@ -2654,7 +2655,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       return new Response(t.body, { status: t.status, headers: secure(new Headers(t.headers)) });
     }
     if ((response.headers.get('content-type') || '').includes('text/html') && TAX_SPLIT_PAGES.has(url.pathname)) {
-      const t = taxSplitRewriter(taxPhaseAt()).transform(response);
+      const t = bb3Rewriter(taxSplitRewriter(taxPhaseAt()), await liqLog()).transform(response);
       const h = secure(new Headers(t.headers));
       return new Response(t.body, { status: t.status, headers: h });
     }
@@ -2706,6 +2707,14 @@ const RECORD_PAGES = {
     '#hp-line': `The line today: 1,000,000 $BOBAI (≈$${nfmt(Math.round(1e6 * pr.price_usd))}) at the on-chain price${h?.holders_1m ? ` · ${nfmt(h.holders_1m)} wallets hold it` : ''}.` }) },
   '/set-and-earn': { get: async (ask) => { const [l, pr] = await Promise.all([ask('https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'), runTool('bobai_price', {}).catch(() => null)]); return l && l.positions === 1 ? { l, u: Number(pr?.bnb_usd) || 0 } : null; }, say: ({ l, u }) => ({
     '#se-live': `Right now: position #${l.position} is ${l.in_range ? 'in range' : 'out of range'}${l.in_range && l.room ? `, ${l.room.to_lower_pct}% of room below the price and ${l.room.to_upper_pct}% above` : ''}, worth ${Number(l.value_bnb).toFixed(3)} BNB${u ? ` (≈$${nfmt(Math.round(l.value_bnb * u))})` : ''}.` }) },
+  // the DeFi agent's own page (2026-11-04, the A-Z pass): "Reading the portfolio" and "Reading the series" to a reader
+  // without a browser — the result, losses included, from the same /lp/portfolio and /lp/series the cards draw
+  '/defi': { get: async (ask) => { const [pf, se] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/lp/series')]); return pf || se ? { pf, se } : null; }, say: ({ pf, se }) => {
+    const u = (b) => (pf?.bnb_usd ? ` (≈$${nfmt(Math.round(Math.abs(b) * pf.bnb_usd))})` : '');
+    const card = pf?.put_in && pf?.worth && pf?.pnl ? `Put in: ${pf.put_in.bnb} BNB${u(pf.put_in.bnb)}. Worth now: ${pf.worth.bnb} BNB in the position${u(pf.worth.bnb)}, and ${pf.worth.beside_bnb} BNB beside it ($BOBAI held at cost, paid out, fees owed). Result: ${pf.pnl.change_text || pf.pnl.change_pct + '%'}, ${pf.pnl.profit_bnb} BNB${u(pf.pnl.profit_bnb)} — ${pf.pnl.from_fees_bnb} BNB from fees, ${pf.pnl.from_price_bnb} BNB from the price${pf.pnl.vs_holding ? `; ${pf.pnl.vs_holding.vs_holding_pct}% against simply holding` : ''}. Checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC. ` : null;
+    const sm = se?.summary;
+    return { '#defi-card .agt-note': card, '#ag-lp-series-sum': sm ? `${nfmt(sm.points)} runs over ${sm.days_covered} days since ${dayOf(sm.since)}: ${sm.fees_produced_bnb} BNB of fees produced, ${sm.fees_kept_as_capital_bnb} kept as capital, ${sm.fees_into_bobai_bnb} into $BOBAI (${nfmt(Math.round(sm.bobai_held_units))} held), ${sm.fees_to_operator_bnb} to the operator.` : null };
+  } },
   '/advantage': { src: 'https://agent.brainonbnb.com/lp/portfolio', say: (j) => ({ '#tr-sum': j.pnl ? `Our DeFi agent's PancakeSwap V3 position (CAKE/BNB 0.05%): ${j.pnl.change_text || `${j.pnl.change_pct}% on the capital`} (${j.pnl.profit_bnb} BNB, ${j.pnl.from_fees_bnb} from fees, ${j.pnl.from_price_bnb} from the price)${j.pnl.vs_holding ? `; ${j.pnl.vs_holding.vs_holding_pct}% against simply holding 50/50` : ''}. Checked ${String(j.checked_at || j.at || '').slice(0, 16).replace('T', ' ')} UTC.` : null }) },
   '/pancakeswap': { get: async (ask) => { const [pf, lib] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=50')]); return { pf, lib }; }, say: ({ pf, lib }) => {
     const t = lib && !lib.near ? lib.threads || [] : [];
@@ -2755,11 +2764,45 @@ function burnRows(runs, n = 8) {
   }
   return rows.slice(0, n).join('');
 }
+// LIQUIDITY BOOST III IN THE PAGE ITSELF (2026-11-04, the A-Z pass): /token and /classic said "First add lands with the
+// next tax cycle" to a reader without a browser, weeks after the first adds. Counted as app.js bb3data counts them: the
+// bot's liquidity log between 2026-09-19 18:00 and 2026-11-20 00:01 UTC, its adds, BNB and LP burned, the newest rows.
+async function liqLog() {
+  const r = await fetch('https://logs.brainonbnb.com/logs/bobai-liq-log.json', { cf: { cacheTtl: 60 }, signal: AbortSignal.timeout(2500) }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  return Array.isArray(j) ? j : null;
+}
+const BB3_FROM = Date.parse('2026-09-19T18:00:00Z'), BB3_UNTIL = Date.parse('2026-11-20T00:01:00Z');
+function bb3Rewriter(rw, all) {
+  if (!all) return rw;
+  const e = all.filter((x) => { const t = Date.parse(x.time); return t >= BB3_FROM && t < BB3_UNTIL; });
+  if (!e.length) return rw;
+  const bnb = e.reduce((a, x) => a + parseFloat(x.bnb || 0), 0), lp = e.reduce((a, x) => a + (x.lpBurned ? parseFloat(x.lpBurned) : 0), 0);
+  const when = (t) => escHtml(String(t || '').slice(0, 16).replace('T', ' ')) + ' UTC';
+  const rows = [...e].reverse().slice(0, 8).map((x) => `<tr><td>${when(x.time)}</td><td>${parseFloat(x.bnb || 0).toFixed(4)} BNB</td><td>${x.lpBurned ? Number(x.lpBurned).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '--'}</td><td>${HEX_TX.test(x.addLiqTx || '') ? `<a class="txl" href="https://bscscan.com/tx/${x.addLiqTx}" target="_blank" rel="noopener">${x.addLiqTx.slice(0, 6)}…${x.addLiqTx.slice(-4)}</a>` : '--'}</td></tr>`).join('');
+  const put = (id, v) => rw.on(`#${id}`, { element(el) { el.setInnerContent(v); } });
+  put('bb3-count', nfmt(e.length)); put('bb3-bnb', `${bnb.toFixed(4)} BNB`); put('bb3-lp', lp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  rw.on('#bb3-tx-body', { element(el) { el.setInnerContent(rows, { html: true }); } });
+  return rw;
+}
 function burnRewriter(rw, runs) {
   if (!runs) return rw;
   const html = burnRows(runs);
   if (html) rw.on('#tx-body', { element(e) { e.setInnerContent(html, { html: true }); } });
   rw.on('#burn-count', { element(e) { e.setInnerContent(nfmt(runs.length)); } });
+  return rw;
+}
+// THE GIGGLE POT'S SENDS IN THE PAGE ITSELF (2026-11-04, the A-Z pass): "the first send lands with the first bot run"
+// stood under a pot that had been filling since Sep 17. As app.js ggdata: every run with a giggleTx, the running total.
+function ggRewriter(rw, runs) {
+  if (!runs) return rw;
+  const g = runs.filter((x) => x && HEX_TX.test(x.giggleTx || '')).sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+  if (!g.length) return rw;
+  let total = 0;
+  const rows = g.map((x) => { const b = parseFloat(x.giggleBnb || 0); total += b; return `<tr><td>${escHtml(String(x.time).slice(0, 16).replace('T', ' '))} UTC</td><td>${b.toFixed(5)} BNB</td><td>${total.toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.giggleTx}" target="_blank" rel="noopener">${x.giggleTx.slice(0, 6)}…${x.giggleTx.slice(-4)}</a></td></tr>`; }).reverse().slice(0, 8).join('');
+  rw.on('#gg-tx-body', { element(el) { el.setInnerContent(rows, { html: true }); } })
+    .on('#gg-count', { element(el) { el.setInnerContent(nfmt(g.length)); } })
+    .on('#gg-bnb', { element(el) { el.setInnerContent(`${total.toFixed(4)} BNB`); } });
   return rw;
 }
 function classicRewriter(rw, cl, runs) {
@@ -2772,7 +2815,6 @@ function classicRewriter(rw, cl, runs) {
     'lq-lp': lq?.lp_burned_percent != null ? `${+Number(lq.lp_burned_percent).toFixed(3)}%` : null,
   };
   // the Giggle Academy pot: its sends in the same log (giggleBnb / giggleTx per run), as app.js sums them
-  if (runs) { const g = runs.filter((x) => x && x.giggleTx); vals['gg-count'] = nfmt(g.length); vals['gg-bnb'] = `${g.reduce((a, x) => a + parseFloat(x.giggleBnb || 0), 0).toFixed(4)} BNB`; }
   for (const [k, v] of Object.entries(vals)) if (v) rw.on(`#${k}`, { element(e) { e.setInnerContent(v); } });
   return rw;
 }

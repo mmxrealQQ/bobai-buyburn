@@ -2592,6 +2592,21 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // and on pages without a mailto link. That is why the fix went the other
     // way, through file size: stylesheet (styles.css) and code (app.js) sit
     // versioned in the device cache, and the HTML carries only content.
+    // WHAT A RECORD PAGE SAYS WITHOUT A BROWSER (2026-11-04): /jobs, /settle, /venus and /screener are a record read
+    // from a public endpoint, and to a crawler or an agent reading the HTML they said only "Reading the board…" —
+    // the whole page empty for most of our readers. The record is asked once, briefly, and one plain sentence of what it
+    // says is written where the page waits; without an answer the page stands as before. The browser draws it all anyway.
+    if ((response.headers.get('content-type') || '').includes('text/html') && RECORD_PAGES[url.pathname.replace(/.html$/, '')]) {
+      const rp = RECORD_PAGES[url.pathname.replace(/.html$/, '')];
+      const data = await fetch(rp.src, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
+      if (lines) {
+        const rw = new HTMLRewriter();
+        for (const [sel, txt] of Object.entries(lines)) if (txt) rw.on(sel, { element(e) { e.setInnerContent(txt); } });
+        const t = rw.transform(response);
+        return new Response(t.body, { status: t.status, headers: secure(new Headers(t.headers)) });
+      }
+    }
     // THE TAX SPLIT IN THE PAGE ITSELF (2026-11-04): /token, the front pages and the Brain page carry a static
     // "~1% / ~1% / ~1%" and three hidden boxes (0.5 / 0.3 / 0.3) that app.js fixes in a browser. A crawler or an agent
     // reading the HTML — most of our readers — read all six, 4.1% of a 3% tax, and "Splits ~1/1/1". The split of the
@@ -2606,6 +2621,32 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     secure(newResponse.headers);
     return newResponse;
   },
+};
+
+// the record pages: where the record comes from, and the sentence per waiting element (selector -> text)
+const shortAddr = (a) => `${String(a).slice(0, 6)}…${String(a).slice(-4)}`;
+const dayOf = (iso) => String(iso || '').slice(0, 10);
+const nfmt = (n) => Number(n).toLocaleString('en-US');
+const RECORD_PAGES = {
+  '/jobs': { src: 'https://agent.brainonbnb.com/jobs/board', say: (j) => {
+    const t = j.totals_30d, top = (j.ranking || []).slice(0, 3);
+    return { '#jb-head': `Last ${j.window_days} days on the ERC-8183 escrow on BNB Chain: ${nfmt(t.delivered)} jobs delivered, ${nfmt(t.paid)} paid (${t.paid_u} $U) by ${nfmt(t.paying_clients)} paying clients to ${nfmt(t.providers)} agents. Most paid: ${top.map((r) => `#${r.rank} ${shortAddr(r.provider)} (${r.paid_30d} paid)`).join(', ')}. Read from the chain ${dayOf(j.measured_at)}.`,
+      '#jb-farm': j.farm ? `One campaign address, ${shortAddr(j.farm.address)}, holds ${nfmt(j.farm.jobs)} jobs at about a cent each (${nfmt(j.farm.clients)} clients, ${j.farm.paid_u} $U paid); it is shown apart, never in the ranking.` : null };
+  } },
+  '/settle': { src: 'https://agent.brainonbnb.com/settle/public', say: (j) => {
+    const t = j.totals, l = j.last_run, r = j.refunds?.totals;
+    return { '#rc-last': `Since ${dayOf(t.since)}: ${nfmt(t.jobs)} finished jobs settled for agents on BNB Chain (any agent, not only ours), ${t.released_u} $U released to ${nfmt((t.providers || []).length)} agents${r ? `; ${nfmt(r.jobs)} expired jobs refunded, ${r.returned_u} $U back to ${nfmt((r.clients || []).length)} clients` : ''}. Last run ${String(l?.at || '').slice(0, 16).replace('T', ' ')} UTC: ${l?.settled ?? 0} settled, ${l?.failed ?? 0} failed, ${nfmt(j.waiting ?? 0)} waiting for their dispute window.` };
+  } },
+  '/venus': { src: 'https://agent.brainonbnb.com/venus/work', say: (j) => {
+    const last = (id) => (j.log || []).find((x) => String(x.agent) === id);
+    const hf = last('302257'), yr = last('304493');
+    return { '#rc-state': [hf && `Venus Health Factor Monitor (#302257), ${String(hf.at).slice(0, 16).replace('T', ' ')} UTC: ${hf.note}.`, yr && `Venus Yield Ranking (#304493), ${String(yr.at).slice(0, 16).replace('T', ' ')} UTC: ${yr.note}.`].filter(Boolean).join(' ') || null };
+  } },
+  '/screener': { src: 'https://agent.brainonbnb.com/screener', say: (j) => {
+    const f = j.fields, at = (row, k) => row[f.indexOf(k)];
+    const outside = (j.rows || []).filter((r) => !at(r, 'ours')).sort((a, b) => at(b, 'score') - at(a, 'score')).slice(0, 5);
+    return { '#tb td.tl': `${nfmt(j.agents)} agents on BNB Chain answered the census of ${dayOf(j.measured_at)}. Highest evidence scores outside ours: ${outside.map((r) => `${at(r, 'name')} #${at(r, 'id')} (${at(r, 'score')})`).join(', ')}.` };
+  } },
 };
 
 const TAX_SPLIT_PAGES = new Set(['/token', '/token.html']);   // '/' and '/classic' return earlier and run it there

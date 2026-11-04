@@ -1,7 +1,7 @@
 {
-  "resolvedAt": "2026-10-30T10:56:44.208Z",
+  "resolvedAt": "2026-11-04T15:04:08.506Z",
   "population": "ERC-8004 agents carrying an http endpoint",
-  "agents": 2065,
+  "agents": 2073,
   "unread": 0,
   "owners": {
     "0x89e9e1ab11dd1b138b1dce6d6a4a0926aafd5029": [
@@ -9648,6 +9648,52 @@
       {
         "id": 381620,
         "name": "Ra — R3: The Incarnations of Ra"
+      }
+    ],
+    "0x6e99653b815c93dbd95e11fef169f7ee539b5b77": [
+      {
+        "id": 393838,
+        "name": "TaoBot"
+      }
+    ],
+    "0x62f9387b73f7cfdd0bb96c8a3451d07412481175": [
+      {
+        "id": 395265,
+        "name": "ola035"
+      }
+    ],
+    "0x5245f9f12b3bc47b29d1ed8534c4b4761c17243f": [
+      {
+        "id": 395829,
+        "name": "Yield Floor"
+      }
+    ],
+    "0x092dcf1ff38e5257114214b3fa00bf093e16c5f1": [
+      {
+        "id": 396213,
+        "name": "aee-muse"
+      },
+      {
+        "id": 396227,
+        "name": "aee2"
+      }
+    ],
+    "0x1b4b57965884481dc3fdb646a4cf3812ea3f1bdf": [
+      {
+        "id": 397336,
+        "name": "longan.ai"
+      }
+    ],
+    "0x86cc5d619396b76bbce2c330752b1bee4db4290e": [
+      {
+        "id": 399737,
+        "name": "mhmmdinsan_"
+      }
+    ],
+    "0x8ba4a6a845a017a8f21637a09a1b282705393360": [
+      {
+        "id": 399895,
+        "name": "zagb-001"
       }
     ]
   }

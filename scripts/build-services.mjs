@@ -44,6 +44,12 @@ const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'u
 // Declared up here because page() reads it and the self-test calls page() before
 // the build fetches the figure — as a const further down it made --self-test throw.
 let ASKED_FLOOR = 0;
+// THE CENSUS IN THE PAGE ITSELF (2026-11-04): the first two tiles opened with a dash for every reader without a browser
+// ("– agent ids registered on BNB Chain · – of them send any reply") — the figures app code fetches from
+// /api-registry.json. They are read from the same file at build time; the browser still raises them as before.
+let REG = {};
+try { REG = JSON.parse(fs.readFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), 'utf8')); } catch { /* the tiles keep their dash */ }
+const nfb = (n) => (Number(n) > 0 ? Number(n).toLocaleString('en-US') : '&ndash;');
 // THE REAL REQUEST PER CARD (2026-10-28, a stranger on this page: "no copy-paste request with real values", and the body
 // built from the field names showed holdings as "0x…" where the answer takes an array). Read at build time from each
 // service's free example (/example -> request: the body that example ran); a service that does not answer keeps the
@@ -416,8 +422,8 @@ function page() {
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
     </details>
     <div class="sv-nums">
-      <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids registered on BNB Chain</span></div>
-      <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them send any reply when contacted <i id="sv-when"></i></span></div>
+      <div class="sv-num"><b id="sv-agents">${nfb(REG.registered_ids)}</b><span>agent ids registered on BNB Chain</span></div>
+      <div class="sv-num"><b id="sv-reach">${nfb(REG.reachability?.reachable)}</b><span>of them send any reply when contacted <i id="sv-when">${REG.measured_at ? 'census of ' + String(REG.measured_at).slice(0, 10) : ''}</i></span></div>
       <div class="sv-num"><b id="sv-asked">${ASKED_FLOOR ? ASKED_FLOOR.toLocaleString('en-US') : '&ndash;'}</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>${DELIVERIES.length}</b><span>things you can hire us to deliver</span></div>
     </div>

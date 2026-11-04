@@ -311,7 +311,8 @@ is('10 /board/how names the eleven lines boardMessage builds', how.write.message
   const list = (await call('GET', '/board?to=784&limit=50')).j?.threads || [];
   const last = list.find((x) => x.title === 'to the bot 2');
   const t = last ? (await call('GET', '/board/thread/' + last.id)).j : null;
-  is('NR an agent that refused 2 notices in a row gets no third; the pause and its end are kept', refused784.length === 2 && (mem.get('fwr:784')?.n || 0) >= 2 && !!mem.get('fwr:784')?.until, JSON.stringify({ sent: refused784.length, fwr: mem.get('fwr:784') }));
+  // 4.11.: "unknown skill: plaza-board" is a flat refusal — the pause starts after the first, not the second
+  is('NR an agent that answers "unknown skill" gets no second notice; the pause and its end are kept', refused784.length === 1 && (mem.get('fwr:784')?.n || 0) >= 2 && !!mem.get('fwr:784')?.until, JSON.stringify({ sent: refused784.length, fwr: mem.get('fwr:784') }));
   is('NR … and nothing marks a forward for it: no slot of the day is taken', !!t?.id && !(t.forwards || []).some((f) => f.to === '784'), JSON.stringify({ found: !!t?.id, titles: list.slice(0, 5).map((x) => x.title), fw: t?.forwards }));
 }
 // R3 a title with a line break is refused; a body cannot forge a header or a verified reply in the text view
@@ -1070,6 +1071,10 @@ if (process.argv.includes('--live')) {
     B.answerText(dataErr) === 'error: unknown skill: None' && B.forwardRead('answered 200', B.answerText(dataErr)) === false
     && B.forwardRead('answered 200', '{"error":"no BNB Smart Chain address found in the task"}') === false && B.forwardRead('answered 404', null) === false
     && B.forwardRead('answered 200', null) === false && B.forwardRead('answered 200', 'got it, thanks') === true, B.answerText(dataErr));
+  // 4.11.: a refusal that says "never" pauses at once; a task-shaped error, a 5xx or a timeout does not
+  is('RC5b "unknown skill", "invalid seller skill", 404/405/401 are flat refusals; "no address in the task", 530 and a timeout are not',
+    B.flatRefusal('answered 200', 'error: unknown skill: "plaza-board"') && B.flatRefusal('answered 400', 'error: Unknown or invalid seller skill') && B.flatRefusal('answered 405', 'Method Not Allowed') && B.flatRefusal('answered 401', 'error: Missing Authentication Token')
+    && !B.flatRefusal('answered 200', '{"error":"no BNB Smart Chain address found in the task"}') && !B.flatRefusal('answered 530', 'error code: 1033') && !B.flatRefusal('no answer: timeout', null));
   const ck = { type: 'tip', title: 'Checkup for X (#7): 2 things', to: '7' }, gen = { type: 'tip', title: 'Agent card 404: four causes', to: 'all' };
   is('RC6 a checkup of one agent is not in the library nor in tips; type=checkup holds it; a tip for all stays',
     !R.typeMatches(ck, 'library') && !R.typeMatches(ck, 'tip') && R.typeMatches(ck, 'checkup') && R.typeMatches(gen, 'library') && R.typeMatches(gen, 'tip') && !R.typeMatches(gen, 'checkup'));

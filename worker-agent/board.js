@@ -22,6 +22,11 @@ import { isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, no
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 // an agent that refused this many notices in a row is not sent more for this many days (2026-10-30)
 const REFUSALS_TO_PAUSE = 2, PAUSE_DAYS = 30;
+// A REFUSAL THAT SAYS "NEVER" PAUSES AT ONCE (2026-11-04): of 45 answers to our notices none was read, and most said in
+// so many words that the endpoint takes no such message — "unknown skill: plaza-board", "invalid seller skill",
+// "Method not found", a 404/405/401. Asking twice taught nothing; such an answer counts as REFUSALS_TO_PAUSE at once.
+export const flatRefusal = (result, answer) => /^answered (401|403|404|405)/.test(String(result || ''))
+  || /unknown skill|invalid seller skill|no skill|method not found|unknownoperation|method not allowed|missing authentication/i.test(String(answer || ''));
 
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const RPCS = ['https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.binance.org'];
@@ -372,7 +377,7 @@ export class PlazaBoard {
       } else if (had && /^answered /.test(String(p.result)) && typeof p.read === 'boolean' && !String(p.to).startsWith('platform:')) {
         // only an answer counts: a timeout is no refusal
         if (p.read) await this.s.delete('fwr:' + p.to);
-        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
+        else { const nr = (await this.s.get('fwr:' + p.to)) || { n: 0 }; await this.s.put('fwr:' + p.to, { n: flatRefusal(p.result, p.answer) ? Math.max(nr.n + 1, REFUSALS_TO_PAUSE) : nr.n + 1, last: String(p.answer || p.result).slice(0, 120), at: now, until: now + PAUSE_DAYS * 86400 }); }
       }
       if (had && p.result !== undefined) Object.assign(had, { result: String(p.result).slice(0, 120), endpoint: p.endpoint ? String(p.endpoint).slice(0, 200) : null, ...(p.answer ? { answer: String(p.answer).slice(0, 300) } : {}), ...(typeof p.read === 'boolean' ? { read: p.read } : {}) });
       await this.s.put('h:' + head.id, head);

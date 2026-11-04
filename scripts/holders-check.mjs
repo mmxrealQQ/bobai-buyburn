@@ -52,6 +52,37 @@ pin('balances move both ways', BigInt(bal['0xb']) === 1000001n * E && BigInt(bal
   const BB = '0x' + '0'.repeat(38) + 'bb';   // the address as a log carries it: 20 bytes, 40 hex
   pin('a chunk that does not answer keeps the two read before it: applied up to block 11000, the transfers in them counted', r.ok === true && st.block === 11000 && BigInt(st.bal[BB] || 0) === 2n * E && /applied up to 11000/.test(r.partial || ''), r.ok === false && st.block === 1000);
 }
+// ... and with NodeReal set (BSC_RPC_KEYED_URL), the refused chunk is read there in 300-block pieces: the tick
+// reaches the end, every transfer counted once. A fake NodeReal refuses any range over 300 blocks, as the real one does.
+{
+  const { holdersTick } = await import('../worker-agent/holders.js');
+  const kv = new Map([['holders:state', JSON.stringify({ block: 1000, bal: { '0xaa': w(5) }, code: {} })]]);
+  const env = { BSC_RPC_KEYED_URL: 'https://nodereal.test/v1/key', AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
+  const realFetch = globalThis.fetch;
+  let pieces = 0;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body), nr = String(url).startsWith('https://nodereal.test');
+    const one = (x) => {
+      if (x.method === 'eth_blockNumber') return { jsonrpc: '2.0', id: x.id, result: '0x' + (21003).toString(16) };
+      if (x.method === 'eth_getCode') return { jsonrpc: '2.0', id: x.id, result: '0x' };
+      if (x.method === 'eth_getLogs') {
+        const from = parseInt(x.params[0].fromBlock, 16), to = parseInt(x.params[0].toBlock, 16);
+        if (nr && to - from + 1 > 300) return { jsonrpc: '2.0', id: x.id, error: { message: 'exceed maximum block range: 300' } };
+        if (!nr && from >= 11001 && from <= 15000) return { jsonrpc: '2.0', id: x.id, error: { message: 'Request exceeds defined limit.' } };
+        if (nr) pieces++;
+        const pad = (a) => '0x' + '0'.repeat(24) + a.slice(2).padStart(40, '0');
+        const hit = [1001, 6001, 11001, 16001].filter((blk) => blk >= from && blk <= to);
+        return { jsonrpc: '2.0', id: x.id, result: hit.map((blk) => ({ topics: ['0x', pad('0x00000000000000000000000000000000000000aa'), pad('0x00000000000000000000000000000000000000bb')], data: '0x' + (10n ** 18n).toString(16), blockNumber: '0x' + blk.toString(16), transactionHash: '0x' + String(blk).padStart(64, '0') })) };
+      }
+      return { jsonrpc: '2.0', id: x.id, error: { message: 'unexpected' } };
+    };
+    return { json: async () => (Array.isArray(body) ? body.map(one) : one(body)) };
+  };
+  const r = await holdersTick(env, { now: new Date('2026-11-04T12:00:00Z') });
+  globalThis.fetch = realFetch;
+  const st = JSON.parse(kv.get('holders:state')), BB = '0x' + '0'.repeat(38) + 'bb';
+  pin('with NodeReal set, a chunk publicnode refused is read in 300-block pieces: the tick reaches block 21000, all four transfers counted once', r.ok === true && st.block === 21000 && !r.partial && BigInt(st.bal[BB] || 0) === 4n * E && pieces === 17, st.block === 11000);
+}
 if (process.argv.includes('--live')) {
   const j = await fetch('https://agent.brainonbnb.com/holders?address=0x1afa57').then((r) => r.json()).catch(() => ({}));
   const h = await fetch('https://agent.brainonbnb.com/holders').then((r) => r.json());

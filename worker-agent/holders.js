@@ -58,10 +58,9 @@ export function applyTransfers(bal, transfers, isContract = () => false) {
   return crossed;
 }
 
+const post = async (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());
 const rpcOf = (env) => async (body) => {
-  // a second provider for the log ranges (2026-11-04): both entries above are publicnode, the only free one serving
-  // 5,000-block getLogs; the NodeReal key the NFT minter and the TG bot already use goes last, once it is a secret here
-  const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com', env.BSC_RPC_KEYED_URL].filter(Boolean);
+  const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com'].filter(Boolean);
   for (const u of urls) {
     try {
       const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());
@@ -70,6 +69,24 @@ const rpcOf = (env) => async (body) => {
   }
   return null;
 };
+// A SECOND PROVIDER FOR THE LOG RANGES (2026-11-04): both entries above are publicnode, the only free provider serving
+// 5,000-block getLogs. NodeReal (BSC_RPC_KEYED_URL, the key the NFT minter and the TG bot already use) caps log ranges
+// at 300 blocks, so a chunk publicnode refused is read there in 300-block pieces; one piece unanswered, the chunk is
+// unread as before. Without the secret on this worker nothing changes.
+const NODEREAL_SPAN = 300;
+async function logsOf(env, rpc, filter, from, to) {
+  const ask = (a, b) => ({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ ...filter, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
+  const r = await rpc(ask(from, to));
+  if (r) return r.result;
+  if (!env.BSC_RPC_KEYED_URL) return null;
+  const out = [];
+  for (let a = from; a <= to; a += NODEREAL_SPAN) {
+    const p = await post(env.BSC_RPC_KEYED_URL, ask(a, Math.min(to, a + NODEREAL_SPAN - 1))).catch(() => null);
+    if (!Array.isArray(p?.result)) return null;
+    out.push(...p.result);
+  }
+  return out;
+}
 
 // the time of each block, read in one batch: { block: ISO }; a block that did not answer is left out
 async function blockTimes(rpc, blocks) {
@@ -97,12 +114,12 @@ export async function holdersTick(env, { now = new Date() } = {}) {
   let partial = null;
   for (let b = state.block + 1; b <= until; b += CHUNK) {
     const to = Math.min(until, b + CHUNK - 1);
-    const r = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: BOBAI, topics: [TRANSFER], fromBlock: '0x' + b.toString(16), toBlock: '0x' + to.toString(16) }] });
-    if (!r) {
+    const logs = await logsOf(env, rpc, { address: BOBAI, topics: [TRANSFER] }, b, to);
+    if (!logs) {
       if (b === state.block + 1) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
       until = b - 1; partial = `logs unread from block ${b}; applied up to ${until}, the rest next tick`; break;
     }
-    for (const l of r.result) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
+    for (const l of logs) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
   }
   // a new address: asked once whether it has code
   const fresh = [...new Set(transfers.flatMap((t) => [t.from, t.to]))].filter((a) => !(a in state.bal) && !(a in (state.code || {})));

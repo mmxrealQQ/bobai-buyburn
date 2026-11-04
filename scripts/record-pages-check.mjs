@@ -45,5 +45,10 @@ const pch = await raw('/pancakeswap'), own = inner(pch, 't-own');
 pin('/pancakeswap: our position and the PancakeSwap library entries', /^Position #\d+/.test(own) && /<div id="t-lib"[^>]*><div class="rc-empty">#\d+ /.test(pch), own);
 const bh = await raw('/board'), who = ((bh.match(/<div id="pb-active"><div class="rc-empty">([^<]*)</) || [])[1] || '');
 pin('/board: who is active, not "Reading"', /others here in 30 days, \d+ of them wrote/.test(who), who);
+// the lists under the head on /venus and /settle (4.11.): no "Reading the record…" left in either page's HTML
+for (const p of ['/venus', '/settle']) {
+  const h = (await raw(p)).replace(/<script[\s\S]*?<\/script>/g, '');
+  pin(`${p}: no "Reading the record…" left for a reader without a browser`, !/Reading the record/.test(h), (h.match(/rc-empty">([^<]{0,120})/) || [])[1]);
+}
 console.log(bad ? `${bad} FAIL` : 'all PASS');
 process.exitCode = bad ? 1 : 0;

@@ -2652,12 +2652,19 @@ const RECORD_PAGES = {
   } },
   '/settle': { src: 'https://agent.brainonbnb.com/settle/public', say: (j) => {
     const t = j.totals, l = j.last_run, r = j.refunds?.totals;
-    return { '#rc-last': `Since ${dayOf(t.since)}: ${nfmt(t.jobs)} finished jobs settled for agents on BNB Chain (any agent, not only ours), ${t.released_u} $U released to ${nfmt((t.providers || []).length)} agents${r ? `; ${nfmt(r.jobs)} expired jobs refunded, ${r.returned_u} $U back to ${nfmt((r.clients || []).length)} clients` : ''}. Last run ${String(l?.at || '').slice(0, 16).replace('T', ' ')} UTC: ${l?.settled ?? 0} settled, ${l?.failed ?? 0} failed, ${nfmt(j.waiting ?? 0)} waiting for their dispute window.` };
+    const when = (x) => String(x.at || '').slice(0, 16).replace('T', ' ') + ' UTC';
+    return { '#rc-rows .rc-empty': (j.log || []).filter((x) => x.settled).slice(0, 5).map((x) => `${when(x)}: job ${x.id}, ${x.released_u} $U released to ${shortAddr(x.provider)}`).join(' · ') || null,
+      '#rf-rows .rc-empty': (j.refunds?.log || []).filter((x) => x.refunded).slice(0, 5).map((x) => `${when(x)}: job ${x.id}, ${x.returned_u} $U back to ${shortAddr(x.client)}`).join(' · ') || null,
+      '#rc-last': `Since ${dayOf(t.since)}: ${nfmt(t.jobs)} finished jobs settled for agents on BNB Chain (any agent, not only ours), ${t.released_u} $U released to ${nfmt((t.providers || []).length)} agents${r ? `; ${nfmt(r.jobs)} expired jobs refunded, ${r.returned_u} $U back to ${nfmt((r.clients || []).length)} clients` : ''}. Last run ${String(l?.at || '').slice(0, 16).replace('T', ' ')} UTC: ${l?.settled ?? 0} settled, ${l?.failed ?? 0} failed, ${nfmt(j.waiting ?? 0)} waiting for their dispute window.` };
   } },
-  '/venus': { src: 'https://agent.brainonbnb.com/venus/work', say: (j) => {
+  '/venus': { get: async (ask) => { const [w, h] = await Promise.all([ask('https://agent.brainonbnb.com/venus/work'), ask('https://agent.brainonbnb.com/hires')]); return w ? { ...w, hires: h } : null; }, say: (j) => {
     const last = (id) => (j.log || []).find((x) => String(x.agent) === id);
     const hf = last('302257'), yr = last('304493');
-    return { '#rc-state': [hf && `Venus Health Factor Monitor (#302257), ${String(hf.at).slice(0, 16).replace('T', ' ')} UTC: ${hf.note}.`, yr && `Venus Yield Ranking (#304493), ${String(yr.at).slice(0, 16).replace('T', ' ')} UTC: ${yr.note}.`].filter(Boolean).join(' ') || null };
+    const when = (x) => String(x.at || '').slice(0, 16).replace('T', ' ') + ' UTC', VN = { 302257: 'Health Factor Monitor', 304493: 'Yield Ranking' };
+    const hires = (j.hires?.log || []).filter((r) => r.job && VN[r.by]).slice(0, 3);
+    return { '#rc-rows .rc-empty': (j.log || []).slice(0, 5).map((x) => `${when(x)}: ${VN[x.agent] || '#' + x.agent} · ${x.note || ''}`).join(' · ') || null,
+      '#rc-hires .rc-empty': hires.length ? hires.map((r) => `${when(r)}: the ${VN[r.by]} hired ${r.seller_name} (#${r.seller}) through ${r.site}, ${r.price_u} $U, job ${r.job}, ${r.status}`).join(' · ') : null,
+      '#rc-state': [hf && `Venus Health Factor Monitor (#302257), ${String(hf.at).slice(0, 16).replace('T', ' ')} UTC: ${hf.note}.`, yr && `Venus Yield Ranking (#304493), ${String(yr.at).slice(0, 16).replace('T', ' ')} UTC: ${yr.note}.`].filter(Boolean).join(' ') || null };
   } },
   // the NFT page lives at /nft/ (the folder); its record is the site's own getNftState, the one /api/nft/state answers
   '/nft/': { get: () => getNftState(), say: (j) => {

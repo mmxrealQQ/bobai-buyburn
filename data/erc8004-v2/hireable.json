@@ -124,6 +124,12 @@
       "ours": false
     },
     {
+      "id": 325413,
+      "label": "Sentinels LP Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 341554,
       "label": "Lattice",
       "category": "grid-trading",
@@ -277,6 +283,12 @@
       "ours": false
     },
     {
+      "id": 395829,
+      "label": "Yield Floor",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 345086,
       "label": "GuardRail Yield Router",
       "category": "yield-optimization",
@@ -295,14 +307,14 @@
       "ours": false
     },
     {
-      "id": 395829,
-      "label": "Yield Floor",
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
       "ours": false
     },
     {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
+      "id": 326106,
+      "label": "Sentinels Yield Router",
       "category": "yield-optimization",
       "ours": false
     },
@@ -400,6 +412,12 @@
     {
       "id": 342377,
       "label": "Venus Health Factor Watch",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 330663,
+      "label": "Sentinels Health Guard",
       "category": "health-factor",
       "ours": false
     }

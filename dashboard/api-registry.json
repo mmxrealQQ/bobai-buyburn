@@ -36,8 +36,8 @@
     "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
   },
   "source": "https://brainonbnb.com/registry",
-  "hireable_here": 63,
-  "hire_buttons": 66,
+  "hireable_here": 66,
+  "hire_buttons": 69,
   "categories": [
     "rebalancing",
     "grid-trading",

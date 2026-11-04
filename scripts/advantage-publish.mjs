@@ -255,7 +255,7 @@ ${report.tasks.map(taskCard).join('\n')}
       <div class="tr-sum" id="tr-sum">Reading its record…</div>
       <b>Win rate, and how it is counted.</b> A range lives from one re-set to the next. It is <i>ahead</i> when the fees it earned are more than it lost against simply holding the two tokens it started with, valued at the price when it closed. Ranges that lived under six hours or moved less than 0.0001 BNB either way are not judged. The arithmetic is in this page's own script; anyone can redo it from the ticks in the log.
       <div id="tr-win"></div>
-      <b>What it learned.</b> The narrow ranges of September (about ±1 % to ±7 %) and the ±10 % range that sat through CAKE's fall against BNB at the end of September lost more to the price than they earned in fees. Since 7 October it runs ±20 %, the width that came out furthest ahead when every width was replayed over the recorded prices. A loss is shown here the same way a gain would be.
+      <b>What it learned.</b> The narrow ranges of September (about ±1 % to ±7 %) and the ±10 % range that sat through CAKE's fall against BNB at the end of September lost more to the price than they earned in fees. Since 7 October it runs ±20 %, the width that lost least against simply holding when every width was replayed over the recorded prices (none came out ahead of holding). A loss is shown here the same way a gain would be.
       <div class="tr-wrap"><table class="tr-tbl" id="tr-tbl"></table></div>
     </div>
     <script>

@@ -73,6 +73,13 @@ for (const p of ['/classic', '/']) {
 const dh = await raw('/defi'), dcard = (dh.match(/<div class="agt-flow fi" id="defi-card">\s*<p class="agt-note">([^<]*)</) || [])[1] || '';
 pin('/defi: the portfolio says what went in, what it is worth and the result against holding', /^Put in: [\d.]+ BNB/.test(dcard) && /against simply holding/.test(dcard), dcard);
 pin('/defi: the series line says runs, days and where the fees went', /runs over \d+ days since/.test(inner(dh, 'ag-lp-series-sum')), inner(dh, 'ag-lp-series-sum'));
+// the A-Z pass, block 3 (4.11.): the figure tiles of /jobs, /settle, /venus and /pancakeswap opened as dashes
+const tileOf = (h, id) => ((h.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`)) || [])[1] || '').trim();
+const pcs = await raw('/pancakeswap');
+for (const [p, h, ids] of [['/jobs', jh, ['n-paid', 'n-u', 'n-prov', 'n-cli']], ['/settle', sh, ['n-jobs', 'n-u', 'n-prov', 'n-wait', 'r-jobs', 'r-u', 'r-cl']], ['/venus', vh, ['n-acts', 'n-hf', 'n-sup', 'n-days']], ['/pancakeswap', pcs, ['n-run', 'n-in', 'n-lib']]]) {
+  pin(`${p}: its figure tiles carry figures, not dashes`, ids.every((k) => tileOf(h, k) && tileOf(h, k) !== '—'), ids.map((k) => `${k} ${tileOf(h, k)}`).join(' · '));
+}
+pin('/jobs: the paid tile is the board\'s own count', jb && tileOf(jh, 'n-paid') === Number(jb.totals_30d.paid).toLocaleString('en-US'), `${tileOf(jh, 'n-paid')} vs ${jb?.totals_30d?.paid}`);
 // the lists under the head on /venus and /settle (4.11.): no "Reading the record…" left in either page's HTML
 for (const p of ['/venus', '/settle']) {
   const h = (await raw(p)).replace(/<script[\s\S]*?<\/script>/g, '');

@@ -2674,13 +2674,18 @@ const tierName = (i) => (NFT_TIERS[i] ? `${NFT_TIERS[i].label} $${nfmt(NFT_TIERS
 const RECORD_PAGES = {
   '/jobs': { src: 'https://agent.brainonbnb.com/jobs/board', say: (j) => {
     const t = j.totals_30d, top = (j.ranking || []).slice(0, 3);
-    return { '#jb-head': `Last ${j.window_days} days on the ERC-8183 escrow on BNB Chain: ${nfmt(t.delivered)} jobs delivered, ${nfmt(t.paid)} paid (${t.paid_u} $U) by ${nfmt(t.paying_clients)} paying clients to ${nfmt(t.providers)} agents. Most paid: ${top.map((r) => `#${r.rank} ${shortAddr(r.provider)} (${r.paid_30d} paid)`).join(', ')}. Read from the chain ${dayOf(j.measured_at)}.`,
+    const f2 = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // the tiles (2026-11-04, the A-Z pass), as the page's own script fills them
+    return { '#n-paid': nfmt(t.paid || 0), '#n-u': `${f2(t.paid_u)} $U`, '#n-prov': nfmt(t.providers || 0), '#n-cli': nfmt(t.paying_clients || 0),
+      '#jb-head': `Last ${j.window_days} days on the ERC-8183 escrow on BNB Chain: ${nfmt(t.delivered)} jobs delivered, ${nfmt(t.paid)} paid (${t.paid_u} $U) by ${nfmt(t.paying_clients)} paying clients to ${nfmt(t.providers)} agents. Most paid: ${top.map((r) => `#${r.rank} ${shortAddr(r.provider)} (${r.paid_30d} paid)`).join(', ')}. Read from the chain ${dayOf(j.measured_at)}.`,
       '#jb-farm': j.farm ? `One campaign address, ${shortAddr(j.farm.address)}, holds ${nfmt(j.farm.jobs)} jobs at about a cent each (${nfmt(j.farm.clients)} clients, ${j.farm.paid_u} $U paid); it is shown apart, never in the ranking.` : null };
   } },
   '/settle': { src: 'https://agent.brainonbnb.com/settle/public', say: (j) => {
     const t = j.totals, l = j.last_run, r = j.refunds?.totals;
-    const when = (x) => String(x.at || '').slice(0, 16).replace('T', ' ') + ' UTC';
-    return { '#rc-rows .rc-empty': (j.log || []).filter((x) => x.settled).slice(0, 5).map((x) => `${when(x)}: job ${x.id}, ${x.released_u} $U released to ${shortAddr(x.provider)}`).join(' · ') || null,
+    const when = (x) => String(x.at || '').slice(0, 16).replace('T', ' ') + ' UTC', f2 = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return { '#n-jobs': nfmt(t.jobs || 0), '#n-u': `$${f2(t.released_u)}`, '#n-prov': nfmt((t.providers || []).length), '#n-wait': nfmt(j.waiting || 0),
+      ...(r ? { '#r-jobs': nfmt(r.jobs || 0), '#r-u': `$${f2(r.returned_u)}`, '#r-cl': nfmt((r.clients || []).length) } : {}),
+      '#rc-rows .rc-empty': (j.log || []).filter((x) => x.settled).slice(0, 5).map((x) => `${when(x)}: job ${x.id}, ${x.released_u} $U released to ${shortAddr(x.provider)}`).join(' · ') || null,
       '#rf-rows .rc-empty': (j.refunds?.log || []).filter((x) => x.refunded).slice(0, 5).map((x) => `${when(x)}: job ${x.id}, ${x.returned_u} $U back to ${shortAddr(x.client)}`).join(' · ') || null,
       '#rc-last': `Since ${dayOf(t.since)}: ${nfmt(t.jobs)} finished jobs settled for agents on BNB Chain (any agent, not only ours), ${t.released_u} $U released to ${nfmt((t.providers || []).length)} agents${r ? `; ${nfmt(r.jobs)} expired jobs refunded, ${r.returned_u} $U back to ${nfmt((r.clients || []).length)} clients` : ''}. Last run ${String(l?.at || '').slice(0, 16).replace('T', ' ')} UTC: ${l?.settled ?? 0} settled, ${l?.failed ?? 0} failed, ${nfmt(j.waiting ?? 0)} waiting for their dispute window.` };
   } },
@@ -2689,7 +2694,10 @@ const RECORD_PAGES = {
     const hf = last('302257'), yr = last('304493');
     const when = (x) => String(x.at || '').slice(0, 16).replace('T', ' ') + ' UTC', VN = { 302257: 'Health Factor Monitor', 304493: 'Yield Ranking' };
     const hires = (j.hires?.log || []).filter((r) => r.job && VN[r.by]).slice(0, 3);
-    return { '#rc-rows .rc-empty': (j.log || []).slice(0, 5).map((x) => `${when(x)}: ${VN[x.agent] || '#' + x.agent} · ${x.note || ''}`).join(' · ') || null,
+    const log = j.log || [], acts = log.filter((x) => x.tx), hfm = log.map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
+    const sup = acts.filter((x) => x.action === 'deposit').reduce((a, x) => a + (parseFloat(x.amount) || 0), 0);
+    const tiles = { '#n-acts': nfmt(acts.length), '#n-hf': hfm ? Number(hfm[1]).toFixed(2) : null, '#n-sup': '$' + sup.toFixed(2), '#n-days': nfmt(new Set(log.map((x) => String(x.at).slice(0, 10))).size) };
+    return { ...tiles, '#rc-rows .rc-empty': (j.log || []).slice(0, 5).map((x) => `${when(x)}: ${VN[x.agent] || '#' + x.agent} · ${x.note || ''}`).join(' · ') || null,
       '#rc-hires .rc-empty': hires.length ? hires.map((r) => `${when(r)}: the ${VN[r.by]} hired ${r.seller_name} (#${r.seller}) through ${r.site}, ${r.price_u} $U, job ${r.job}, ${r.status}`).join(' · ') : null,
       '#rc-state': [hf && `Venus Health Factor Monitor (#302257), ${String(hf.at).slice(0, 16).replace('T', ' ')} UTC: ${hf.note}.`, yr && `Venus Yield Ranking (#304493), ${String(yr.at).slice(0, 16).replace('T', ' ')} UTC: ${yr.note}.`].filter(Boolean).join(' ') || null };
   } },
@@ -2718,7 +2726,9 @@ const RECORD_PAGES = {
   '/advantage': { src: 'https://agent.brainonbnb.com/lp/portfolio', say: (j) => ({ '#tr-sum': j.pnl ? `Our DeFi agent's PancakeSwap V3 position (CAKE/BNB 0.05%): ${j.pnl.change_text || `${j.pnl.change_pct}% on the capital`} (${j.pnl.profit_bnb} BNB, ${j.pnl.from_fees_bnb} from fees, ${j.pnl.from_price_bnb} from the price)${j.pnl.vs_holding ? `; ${j.pnl.vs_holding.vs_holding_pct}% against simply holding 50/50` : ''}. Checked ${String(j.checked_at || j.at || '').slice(0, 16).replace('T', ' ')} UTC.` : null }) },
   '/pancakeswap': { get: async (ask) => { const [pf, lib] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=50')]); return { pf, lib }; }, say: ({ pf, lib }) => {
     const t = lib && !lib.near ? lib.threads || [] : [];
-    return { '#t-own': pf?.pool ? `Position #${pf.pool.position} · ${pf.pool.label || ''}${pf.pool.in_range === true ? ' · in range' : pf.pool.in_range === false ? ' · out of range' : ''}${pf.pnl ? ` · ${pf.pnl.change_text || pf.pnl.change_pct + '%'}` : ''} · checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC` : null,
+    // the tiles (2026-11-04, the A-Z pass), as the page's script: days since 3 Sep, in or out, library entries
+    const tiles = { '#n-run': nfmt(Math.floor((Date.now() - Date.parse('2026-09-03T00:00:00Z')) / 86400e3)), ...(pf?.pool?.in_range != null ? { '#n-in': pf.pool.in_range ? 'in' : 'out' } : {}), ...(lib && !lib.near ? { '#n-lib': nfmt(lib.matched ?? t.length) } : {}) };
+    return { ...tiles, '#t-own': pf?.pool ? `Position #${pf.pool.position} · ${pf.pool.label || ''}${pf.pool.in_range === true ? ' · in range' : pf.pool.in_range === false ? ' · out of range' : ''}${pf.pnl ? ` · ${pf.pnl.change_text || pf.pnl.change_pct + '%'}` : ''} · checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC` : null,
       '#t-lib .rc-empty': t.length ? t.slice(0, 6).map((x) => `#${x.id} ${x.title}`).join(' · ') : null };
   } },
   // the Plaza's tiles (2026-11-04): six of seven, each counted as registry.html's own script counts it. "times agents

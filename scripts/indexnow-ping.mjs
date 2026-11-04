@@ -5,14 +5,17 @@
 //
 //   node scripts/indexnow-ping.mjs            dry run: lists what it would announce
 //   node scripts/indexnow-ping.mjs --confirm  announces it and prints the answer (200/202 = taken)
+//   --pages   the site's own pages instead (2026-11-04: their HTML now carries what a crawler used to miss — the tax split,
+//             the bar, the records — so they are worth a fresh read), plus the doors for agents (/llms.txt, /openapi.json, /api/)
 import { INDEXNOW_KEY, indexNow } from '../worker-agent/board.js';
 import { typeMatches } from '../shared/plaza-board.js';
 
 const confirm = process.argv.includes('--confirm');
 const key = await fetch(`https://brainonbnb.com/${INDEXNOW_KEY}.txt`).then((r) => (r.ok ? r.text() : '')).catch(() => '');
 if (key.trim() !== INDEXNOW_KEY) { console.error(`the key file https://brainonbnb.com/${INDEXNOW_KEY}.txt does not hold the key — deploy the site first`); process.exit(1); }
-const j = await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json());
-const urls = ['https://brainonbnb.com/board', ...j.threads.filter((t) => typeMatches(t, 'library')).map((t) => `https://brainonbnb.com/board/${t.id}`)];
+const PAGES = ['/', '/classic', '/token', '/scanner', '/registry', '/services', '/defi', '/board', '/nft/', '/jobs', '/settle', '/venus', '/screener', '/pass', '/set-and-earn', '/advantage', '/pancakeswap', '/archive', '/api/', '/openapi.json', '/llms.txt'];
+const urls = process.argv.includes('--pages') ? PAGES.map((x) => 'https://brainonbnb.com' + x)
+  : await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json()).then((j) => ['https://brainonbnb.com/board', ...j.threads.filter((t) => typeMatches(t, 'library')).map((t) => `https://brainonbnb.com/board/${t.id}`)]);
 console.log(`${confirm ? 'ANNOUNCING' : 'DRY RUN — nothing sent'}: ${urls.length} pages`);
 for (const u of urls.slice(0, 5)) console.log('  ' + u);
 if (urls.length > 5) console.log(`  … and ${urls.length - 5} more`);

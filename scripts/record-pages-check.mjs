@@ -30,5 +30,20 @@ pin('/: the bar carries Price, MC, Liq, LP and Burned, no dash', ['price', 'mc',
 const mc = Number(bl('mc').replace(/[$,]/g, ''));
 pin("/: the bar's MC is within 5% of /api/price", pr && mc > 0 && Math.abs(mc - pr.market_cap_usd) / pr.market_cap_usd < 0.05, `${mc} vs ${pr?.market_cap_usd}`);
 pin("/: 24h vol keeps its dash (it needs the chart's trades)", bl('vol') === '—', bl('vol'));
+// 4.11. later: /nft/, /pass, /set-and-earn, /advantage, /pancakeswap and who is active on /board
+const nft = await fetch('https://brainonbnb.com/api/nft/state', { headers: H }).then((r) => r.json()).catch(() => null), nh = await raw('/nft/');
+const minted = inner(nh, 'stat-minted');
+pin('/nft/: total minted and holders in the page, the same as /api/nft/state', nft && minted === nft.minted.reduce((x, y) => x + y, 0).toLocaleString('en-US') && inner(nh, 'stat-buyers') === Number(nft.holders).toLocaleString('en-US'), `${minted} · ${inner(nh, 'stat-buyers')} · ${inner(nh, 'stat-last')}`);
+pin('/nft/: tiers, rarities and the newest drops are written, not "Loading"', !/Loading/.test(nh.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '')) && /NICE BUY \$100\+: \d/.test(nh) && /Common \d/.test(nh));
+const ph = await raw('/pass'), hp = inner(ph, 'hp-line');
+pin('/pass: the line in dollars at the on-chain price', /^The line today: 1,000,000 \$BOBAI \(≈\$[\d,]+\)/.test(hp), hp);
+const se = inner(await raw('/set-and-earn'), 'se-live');
+pin('/set-and-earn: the position, in or out of range, its worth', /^Right now: position #\d+ is (in|out of) range.*worth [\d.]+ BNB/.test(se), se);
+const tr = inner(await raw('/advantage'), 'tr-sum');
+pin('/advantage: the result on the capital and against holding', /on the capital/.test(tr) && /against simply holding/.test(tr), tr);
+const pch = await raw('/pancakeswap'), own = inner(pch, 't-own');
+pin('/pancakeswap: our position and the PancakeSwap library entries', /^Position #\d+/.test(own) && /<div id="t-lib"[^>]*><div class="rc-empty">#\d+ /.test(pch), own);
+const bh = await raw('/board'), who = ((bh.match(/<div id="pb-active"><div class="rc-empty">([^<]*)</) || [])[1] || '');
+pin('/board: who is active, not "Reading"', /others here in 30 days, \d+ of them wrote/.test(who), who);
 console.log(bad ? `${bad} FAIL` : 'all PASS');
 process.exitCode = bad ? 1 : 0;

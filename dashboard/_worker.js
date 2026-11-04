@@ -2538,7 +2538,12 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       if (!lib.length || !(r.headers.get('content-type') || '').includes('text/html')) return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
       // the library as links is the topics above (2026-10-30); here only what a reader without JavaScript can do instead
       const list = '<div class="rc-empty">Reading the board… Without JavaScript: the library by topic above, every thread as text at <a href="https://agent.brainonbnb.com/board.md">board.md</a>.</div>';
+      // who is active (2026-11-04): "Reading who is active..." to a reader without a browser; the same /board/active, once
+      const act = await fetch('https://agent.brainonbnb.com/board/active', { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      const others = (act?.active || []).filter((a) => !a.ours);
+      const actLine = act && act.count != null ? `${nfmt(act.count)} others here in 30 days, ${nfmt(act.wrote ?? 0)} of them wrote${others.length ? ': ' + others.slice(0, 8).map((a) => a.name || a.key).join(', ') + (others.length > 8 ? ' and more' : '') : ''}.` : null;
       const t = new HTMLRewriter().on('#pb-list', { element(e) { e.setInnerContent(list, { html: true }); } })
+        .on('#pb-active .rc-empty', { element(e) { if (actLine) e.setInnerContent(actLine); } })
         .on('#bb-topics', { element(e) { e.setInnerContent(boardTopicsHtml(lib), { html: true }); } }).transform(r);
       return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
     }
@@ -2607,7 +2612,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // says is written where the page waits; without an answer the page stands as before. The browser draws it all anyway.
     if ((response.headers.get('content-type') || '').includes('text/html') && RECORD_PAGES[url.pathname.replace(/.html$/, '')]) {
       const rp = RECORD_PAGES[url.pathname.replace(/.html$/, '')];
-      const data = await fetch(rp.src, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      const ask = (u) => fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
       if (lines) {
         const rw = new HTMLRewriter();
@@ -2636,6 +2642,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
 const shortAddr = (a) => `${String(a).slice(0, 6)}…${String(a).slice(-4)}`;
 const dayOf = (iso) => String(iso || '').slice(0, 10);
 const nfmt = (n) => Number(n).toLocaleString('en-US');
+// the NFT tiers by the worker's own table (NFT_TIERS above, the one bobai_nft_drop answers with)
+const tierName = (i) => (NFT_TIERS[i] ? `${NFT_TIERS[i].label} $${nfmt(NFT_TIERS[i].min_buy_usd)}+` : '');
 const RECORD_PAGES = {
   '/jobs': { src: 'https://agent.brainonbnb.com/jobs/board', say: (j) => {
     const t = j.totals_30d, top = (j.ranking || []).slice(0, 3);
@@ -2650,6 +2658,26 @@ const RECORD_PAGES = {
     const last = (id) => (j.log || []).find((x) => String(x.agent) === id);
     const hf = last('302257'), yr = last('304493');
     return { '#rc-state': [hf && `Venus Health Factor Monitor (#302257), ${String(hf.at).slice(0, 16).replace('T', ' ')} UTC: ${hf.note}.`, yr && `Venus Yield Ranking (#304493), ${String(yr.at).slice(0, 16).replace('T', ' ')} UTC: ${yr.note}.`].filter(Boolean).join(' ') || null };
+  } },
+  // the NFT page lives at /nft/ (the folder); its record is the site's own getNftState, the one /api/nft/state answers
+  '/nft/': { get: () => getNftState(), say: (j) => {
+    const total = (j.minted || []).reduce((a, b) => a + Number(b), 0), d = (j.drops || [])[0];
+    const rar = NFT_RARITIES.map((name, r) => [name, (j.cells || []).reduce((a, row) => a + Number(row?.[r] || 0), 0)]);
+    return { '#stat-minted': nfmt(total), '#stat-buyers': nfmt(j.holders ?? j.buyers ?? 0),
+      '#stat-last': d?.ts ? new Date(d.ts * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : null,
+      '#tier-grid .empty': NFT_TIERS.map((t, i) => `${tierName(i)}: ${nfmt(j.minted?.[i] ?? 0)} / ${nfmt(j.cap?.[i] ?? 0)}`).join(' · '),
+      '#rarity-grid .empty': rar.map(([n, c]) => `${n} ${nfmt(c)}`).join(' · '),
+      '#ledger-body td.empty': (j.drops || []).slice(0, 3).map((x) => `#${x.tokenId} ${tierName(x.tier)} ${NFT_RARITIES[x.rarity] || ''} to ${shortAddr(x.to)}, ${new Date(x.ts * 1000).toISOString().slice(0, 10)}`).join(' · ') || null };
+  } },
+  '/pass': { get: async (ask) => { const [pr, h] = await Promise.all([runTool('bobai_price', {}).catch(() => null), ask('https://agent.brainonbnb.com/holders')]); return pr ? { pr, h } : null; }, say: ({ pr, h }) => ({
+    '#hp-line': `The line today: 1,000,000 $BOBAI (≈$${nfmt(Math.round(1e6 * pr.price_usd))}) at the on-chain price${h?.holders_1m ? ` · ${nfmt(h.holders_1m)} wallets hold it` : ''}.` }) },
+  '/set-and-earn': { get: async (ask) => { const [l, pr] = await Promise.all([ask('https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'), runTool('bobai_price', {}).catch(() => null)]); return l && l.positions === 1 ? { l, u: Number(pr?.bnb_usd) || 0 } : null; }, say: ({ l, u }) => ({
+    '#se-live': `Right now: position #${l.position} is ${l.in_range ? 'in range' : 'out of range'}${l.in_range && l.room ? `, ${l.room.to_lower_pct}% of room below the price and ${l.room.to_upper_pct}% above` : ''}, worth ${Number(l.value_bnb).toFixed(3)} BNB${u ? ` (≈$${nfmt(Math.round(l.value_bnb * u))})` : ''}.` }) },
+  '/advantage': { src: 'https://agent.brainonbnb.com/lp/portfolio', say: (j) => ({ '#tr-sum': j.pnl ? `Our DeFi agent's PancakeSwap V3 position (CAKE/BNB 0.05%): ${j.pnl.change_text || `${j.pnl.change_pct}% on the capital`} (${j.pnl.profit_bnb} BNB, ${j.pnl.from_fees_bnb} from fees, ${j.pnl.from_price_bnb} from the price)${j.pnl.vs_holding ? `; ${j.pnl.vs_holding.vs_holding_pct}% against simply holding 50/50` : ''}. Checked ${String(j.checked_at || j.at || '').slice(0, 16).replace('T', ' ')} UTC.` : null }) },
+  '/pancakeswap': { get: async (ask) => { const [pf, lib] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=50')]); return { pf, lib }; }, say: ({ pf, lib }) => {
+    const t = lib && !lib.near ? lib.threads || [] : [];
+    return { '#t-own': pf?.pool ? `Position #${pf.pool.position} · ${pf.pool.label || ''}${pf.pool.in_range === true ? ' · in range' : pf.pool.in_range === false ? ' · out of range' : ''}${pf.pnl ? ` · ${pf.pnl.change_text || pf.pnl.change_pct + '%'}` : ''} · checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC` : null,
+      '#t-lib .rc-empty': t.length ? t.slice(0, 6).map((x) => `#${x.id} ${x.title}`).join(' · ') : null };
   } },
   '/screener': { src: 'https://agent.brainonbnb.com/screener', say: (j) => {
     const f = j.fields, at = (row, k) => row[f.indexOf(k)];

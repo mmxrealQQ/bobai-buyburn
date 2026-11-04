@@ -2469,7 +2469,16 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // the same app.js. /classic has no trailing slash, so the Classic page's relative asset paths still resolve.
     if (url.pathname === '/' || url.pathname === '/index.html') {
       if (url.pathname === '/index.html') return Response.redirect(url.origin + '/' + url.search, 301);
-      const r = taxSplitRewriter(taxPhaseAt()).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
+      // THE BAR IN THE PAGE ITSELF (2026-11-04): Price, MC, Liq, LP and Burned opened as dashes for every reader without
+      // a browser; the same on-chain tools /api/price and /api/liquidity answer with are run here (2 s at most), in the
+      // chart's own formats. 24h vol needs the chart's trades and keeps its dash.
+      // kept a minute in this isolate, so a visitor does not wait for the chain on every load
+      if (!BAR_MEMO.at || Date.now() - BAR_MEMO.at > 60e3) {
+        const got = await Promise.race([Promise.all(['bobai_price', 'bobai_liquidity', 'bobai_burned'].map((n) => runTool(n, {}).catch(() => null))), new Promise((res) => setTimeout(() => res(null), 2000))]);
+        if (got && got[0]) Object.assign(BAR_MEMO, { at: Date.now(), bar: got });
+      }
+      const bar = BAR_MEMO.bar || null;
+      const r = barRewriter(taxSplitRewriter(taxPhaseAt()), bar).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/classic' || url.pathname === '/classic/') {
@@ -2655,6 +2664,20 @@ const pctText = (n) => `${+Number(n).toFixed(2)}%`;
 function taxSplitLine(sp) {
   return [[sp.bobai_burn, '$BOBAI burn'], [sp.bob_burn, '$BOB burn'], [sp.bobai_liquidity_add, 'liquidity'], [sp.defi_agent, 'DeFi agent'], [sp.giggle_academy_pot, 'Giggle pot'], [sp.creator, 'creator']]
     .filter(([v]) => v).map(([v, w]) => `${pctText(v)} ${w}`).join(' · ');
+}
+const BAR_MEMO = { at: 0, bar: null };
+function barRewriter(rw, bar) {
+  if (!bar) return rw;
+  const [pr, lq, bu] = bar, usd = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const vals = {
+    price: pr?.price_usd ? '$' + Number(pr.price_usd).toPrecision(5) : null,
+    mc: pr?.market_cap_usd ? usd(pr.market_cap_usd) : null,
+    liq: lq?.liquidity_usd ? usd(lq.liquidity_usd) : null,
+    lp: lq?.lp_burned_percent != null ? `${+Number(lq.lp_burned_percent).toFixed(3)}%` : null,
+    burned: Number(bu?.burned) > 0 ? `${(Number(bu.burned) / 1e9 * 100).toFixed(2)}% of supply` : null,
+  };
+  for (const [k, v] of Object.entries(vals)) if (v) rw.on(`[data-bl="${k}"]`, { element(e) { e.setInnerContent(v); } });
+  return rw;
 }
 function taxSplitRewriter(ph) {
   const rw = new HTMLRewriter();

@@ -23,5 +23,12 @@ pin('/venus: the record names both agents with their last note', !/^Reading/.tes
 const sc = await api('/screener'), sch = await raw('/screener');
 const cell = ((sch.match(/<td class="tl" colspan="12">([^<]*)</) || [])[1] || '').trim();
 pin('/screener: the table says how many answered and names the top outside agents', !/^Reading/.test(cell) && sc && cell.includes(`${Number(sc.agents).toLocaleString('en-US')} agents`) && /Highest evidence scores outside ours: \S/.test(cell), cell);
+// the front page's bar (Price, MC, Liq, LP, Burned) opened as dashes; it carries the on-chain figures now (a minute old at most)
+const home = await raw('/'), bl = (k) => ((home.match(new RegExp(`data-bl="${k}">([^<]*)<`)) || [])[1] || '').trim();
+const pr = await fetch('https://brainonbnb.com/api/price', { headers: H }).then((r) => r.json()).catch(() => null);
+pin('/: the bar carries Price, MC, Liq, LP and Burned, no dash', ['price', 'mc', 'liq', 'lp', 'burned'].every((k) => bl(k) && bl(k) !== '—'), ['price', 'mc', 'liq', 'lp', 'burned'].map((k) => `${k} ${bl(k)}`).join(' · '));
+const mc = Number(bl('mc').replace(/[$,]/g, ''));
+pin("/: the bar's MC is within 5% of /api/price", pr && mc > 0 && Math.abs(mc - pr.market_cap_usd) / pr.market_cap_usd < 0.05, `${mc} vs ${pr?.market_cap_usd}`);
+pin("/: 24h vol keeps its dash (it needs the chart's trades)", bl('vol') === '—', bl('vol'));
 console.log(bad ? `${bad} FAIL` : 'all PASS');
 process.exitCode = bad ? 1 : 0;

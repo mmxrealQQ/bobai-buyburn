@@ -2776,6 +2776,8 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
   else clock = `✅ Collecting ended Nov 20  ·  donation day`;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
+  // the window over (2026-11-04, the A-Z pass): the card stops saying "fills" and "so far" once nothing is sent any more
+  const over = nowMs >= GG_END;
   return [
     '☀️ <b>Giggle Academy Community Pot</b>',
     '',
@@ -2783,11 +2785,11 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
     '🗓 Sep 17 → Nov 20, 2026  ·  64 days',
     clock,
     '',
-    '⚙️ <b>How it fills</b>',
-    '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
+    over ? '⚙️ <b>How it filled</b>' : '⚙️ <b>How it fills</b>',
+    over ? '♻️ 0.3% of every trade — a tenth of each tax slice — was sent as BNB by the buyback bot, Sep 17 to Nov 20' : '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
     '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
     '',
-    '💰 <b>Collected so far</b>',
+    over ? '💰 <b>Collected</b>' : '💰 <b>Collected so far</b>',
     `🪙 <b>${total.toFixed(4)} BNB</b>${bnbUsd > 0 ? ` (≈$${(total * bnbUsd).toFixed(2)})` : ''}  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
     lastLine,
     '',
@@ -2856,7 +2858,7 @@ export function formatBotCard(nowMs = Date.now()) {
   const out = [
     '⚙️ <b>What the BOBAI bot does</b>',
     '',
-    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → burns, liquidity, creator, agent, pot. No hand on the switch.`,
+    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → ${nowMs < GG_END ? 'burns, liquidity, creator, agent, pot' : 'burns, liquidity, creator'}. No hand on the switch.`,
     '',
   ];
   if (now) {

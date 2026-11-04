@@ -105,6 +105,9 @@
       color:var(--gold);white-space:nowrap;text-decoration:none}
     .brand-link:hover{opacity:.85}
 
+    /* The app bar and the shared start of the tool pages moved to eco.css (2026-11-03), so that pages with their own
+       stylesheet (nft/) carry the same bar; the build links it into every page with the bar. */
+
     /* THE PRIMER: the first thing on a sub-page, for somebody who has never
        heard of any of this.
        Every one of these pages opened with a sentence that was true, careful

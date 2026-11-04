@@ -218,9 +218,9 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
 // (2026-09-19; nothing went out, the process ended first). A script that can
 // publish the site must not do it because another file wanted its exports.
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain && !process.argv.includes('--self-test')) main();
+if (isMain && !process.argv.includes('--self-test')) main().catch((e) => { console.error(e); process.exit(1); });
 
-function main() {
+async function main() {
   // eco.css is linked with a hash of its content, so a changed bar reaches every device without a version to bump
   const ECO_V = crypto.createHash('sha256').update(fs.readFileSync(path.join(SRC, 'eco.css'))).digest('hex').slice(0, 10);
   const dry = process.argv.includes('--dry');
@@ -256,6 +256,20 @@ function main() {
     fs.writeFileSync(path.join(OUT, 'build.json'), JSON.stringify({ site_deployed_at: new Date().toISOString(), source_mirror: commit ? { commit, date, clone: 'git clone https://brainonbnb.com/source.git' } : null }) + '\n');
   }
 
+  // THE FALLBACK LOGS ARE FRESH (2026-11-04): the page and the tools read the bot's logs live (/logs/*, logs.brainonbnb.com)
+  // and fall back to the copy in dashboard/ — and that copy stopped on 2026-07-27, when the bots moved off GitHub. A day
+  // the log domain did not answer would have shown July's burns as today's. The live logs are written into the build
+  // (only there; the build's files are hard links into dashboard/, so the link is taken out first). A log that does not
+  // answer, does not parse or is shorter than the copy leaves the copy as it was.
+  for (const n of ['burns.json', 'bobai-liq-log.json']) {
+    const live = await fetch('https://logs.brainonbnb.com/logs/' + n, { headers: { 'user-agent': 'brainonbnb-deploy' }, signal: AbortSignal.timeout(20000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const old = (() => { try { return JSON.parse(fs.readFileSync(path.join(SRC, n), 'utf8')); } catch { return []; } })();
+    if (Array.isArray(live) && live.length >= old.length) {
+      fs.rmSync(path.join(OUT, n), { force: true });
+      fs.writeFileSync(path.join(OUT, n), JSON.stringify(live));
+      console.log(`  ${n}: the live log (${live.length} entries, last ${String(live.at(-1)?.time || '').slice(0, 10)}) instead of the copy (${old.length})`);
+    } else console.log(`  ${n}: the live log did not answer as it should — the copy in dashboard/ goes out (${old.length} entries)`);
+  }
   console.log(`built .dashboard-build: ${pages} pages without their comments (brotli ${before} -> ${after} B, −${((1 - after / before) * 100).toFixed(1)}%), ${linked} files linked${copied ? `, ${copied} copied` : ''}`);
   if (problems.length) {
     for (const p of problems) console.log(`  x ${p}`);

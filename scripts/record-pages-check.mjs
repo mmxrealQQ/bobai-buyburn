@@ -45,6 +45,20 @@ const pch = await raw('/pancakeswap'), own = inner(pch, 't-own');
 pin('/pancakeswap: our position and the PancakeSwap library entries', /^Position #\d+/.test(own) && /<div id="t-lib"[^>]*><div class="rc-empty">#\d+ /.test(pch), own);
 const bh = await raw('/board'), who = ((bh.match(/<div id="pb-active"><div class="rc-empty">([^<]*)</) || [])[1] || '');
 pin('/board: who is active, not "Reading"', /others here in 30 days, \d+ of them wrote/.test(who), who);
+// the burn table on the front page, /classic and /archive (4.11.): the newest runs of the bot's live log, with their tx
+const log = await fetch('https://logs.brainonbnb.com/logs/burns.json', { headers: H }).then((r) => r.json()).catch(() => null);
+const newestTx = log ? [...log].reverse().map((x) => x.bobaiBurnTx || x.burnTx || x.bobBurnTx).find(Boolean) : null;
+const pages = { '/': home, '/classic': await raw('/classic'), '/archive': await raw('/archive') };
+for (const [p, h] of Object.entries(pages)) {
+  const body = (h.match(/<tbody id="tx-body">([\s\S]*?)<\/tbody>/) || [])[1] || '';
+  pin(`${p}: the burn table holds the newest runs with their tx, not "Loading burns"`, !/Loading burns/.test(body) && /BURN BOBAI/.test(body) && !!newestTx && body.includes(newestTx), (body.match(/<td>([^<]*)<\/td>/) || [])[1]);
+}
+const cl = pages['/classic'], cv = (id) => ((cl.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`)) || [])[1] || '').trim();
+pin('/classic: Market Cap, Liquidity, $BOBAI Burned, Burn runs and Supply Burned are figures', ['mcap', 'volume', 'total-bobai-burned', 'burn-count', 'supply-burned-pct'].every((k) => cv(k) && cv(k) !== '--'), ['mcap', 'volume', 'total-bobai-burned', 'burn-count', 'supply-burned-pct'].map((k) => `${k} ${cv(k)}`).join(' · '));
+pin('/classic: Burn runs is the length of the live log', log && cv('burn-count') === log.length.toLocaleString('en-US'), `${cv('burn-count')} vs ${log?.length}`);
+const rh = await raw('/registry'), rv = (id) => ((rh.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`)) || [])[1] || '').trim();
+pin('/registry: the board counts and hires / settled tiles are figures', ['pb-n-all', 'pb-n-open', 'pb-n-done', 'aw-n-hired', 'aw-n-settled'].every((k) => /^[\d,]+$/.test(rv(k))), ['pb-n-all', 'pb-n-open', 'pb-n-done', 'aw-n-hired', 'aw-n-settled'].map((k) => `${k} ${rv(k)}`).join(' · '));
+pin('/board: the newest threads are links in the list', /<div id="pb-list"><div class="rc-rows"><div class="rc-row"><span class="rc-what"><a href="\/board\/\d+">/.test(bh));
 // the lists under the head on /venus and /settle (4.11.): no "Reading the record…" left in either page's HTML
 for (const p of ['/venus', '/settle']) {
   const h = (await raw(p)).replace(/<script[\s\S]*?<\/script>/g, '');

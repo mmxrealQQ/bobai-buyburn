@@ -2478,12 +2478,14 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         if (got && got[0]) Object.assign(BAR_MEMO, { at: Date.now(), bar: got });
       }
       const bar = BAR_MEMO.bar || null;
-      const r = barRewriter(taxSplitRewriter(taxPhaseAt()), bar).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
+      const r = burnRewriter(barRewriter(taxSplitRewriter(taxPhaseAt()), bar), await burnLog()).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/classic' || url.pathname === '/classic/') {
       if (url.pathname.endsWith('/')) return Response.redirect(url.origin + '/classic' + url.search, 301);
-      const r = taxSplitRewriter(taxPhaseAt()).transform(await env.ASSETS.fetch(new Request(url.origin + '/', request)));
+      // the Classic page's tiles and burn table (2026-11-04): dashes and "Loading burns..." to a reader without a browser
+      const [cl, runs] = await Promise.all([Promise.race([Promise.all(['bobai_price', 'bobai_liquidity', 'bobai_burned'].map((n) => runTool(n, {}).catch(() => null))), new Promise((res) => setTimeout(() => res(null), 2000))]), burnLog()]);
+      const r = classicRewriter(burnRewriter(taxSplitRewriter(taxPhaseAt()), runs), cl, runs).transform(await env.ASSETS.fetch(new Request(url.origin + '/', request)));
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/brain' || url.pathname === '/brain/' || url.pathname === '/brain/index.html') return Response.redirect(url.origin + '/' + url.search, 301);
@@ -2537,7 +2539,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       const lib = await boardLibrary();
       if (!lib.length || !(r.headers.get('content-type') || '').includes('text/html')) return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
       // the library as links is the topics above (2026-10-30); here only what a reader without JavaScript can do instead
-      const list = '<div class="rc-empty">Reading the board… Without JavaScript: the library by topic above, every thread as text at <a href="https://agent.brainonbnb.com/board.md">board.md</a>.</div>';
+      // the newest threads as links (2026-11-04), then the way without JavaScript; each title escaped
+      const newest = await fetch('https://agent.brainonbnb.com/board?limit=5', { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      const nl = (newest?.threads || []).map((t) => `<div class="rc-row"><span class="rc-what"><a href="/board/${Number(t.id)}">#${Number(t.id)}</a> [${escHtml(t.type)}] ${escHtml(t.title)}</span></div>`).join('');
+      const list = `${nl ? `<div class="rc-rows">${nl}</div>` : ''}<div class="rc-empty">${nl ? 'The newest threads above. ' : ''}Without JavaScript: the library by topic above, every thread as text at <a href="https://agent.brainonbnb.com/board.md">board.md</a>.</div>`;
       // who is active (2026-11-04): "Reading who is active..." to a reader without a browser; the same /board/active, once
       const act = await fetch('https://agent.brainonbnb.com/board/active', { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
       const others = (act?.active || []).filter((a) => !a.ours);
@@ -2627,6 +2632,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // reading the HTML — most of our readers — read all six, 4.1% of a 3% tax, and "Splits ~1/1/1". The split of the
     // phase running now (TAX_PHASES, held against both bots by tax-phase-check) is written in here; a box with no share
     // now is taken out. app.js still moves it on at a phase boundary.
+    if ((response.headers.get('content-type') || '').includes('text/html') && (url.pathname === '/archive' || url.pathname === '/archive.html')) {
+      const t = burnRewriter(new HTMLRewriter(), await burnLog()).transform(response);
+      return new Response(t.body, { status: t.status, headers: secure(new Headers(t.headers)) });
+    }
     if ((response.headers.get('content-type') || '').includes('text/html') && TAX_SPLIT_PAGES.has(url.pathname)) {
       const t = taxSplitRewriter(taxPhaseAt()).transform(response);
       const h = secure(new Headers(t.headers));
@@ -2686,6 +2695,14 @@ const RECORD_PAGES = {
     return { '#t-own': pf?.pool ? `Position #${pf.pool.position} · ${pf.pool.label || ''}${pf.pool.in_range === true ? ' · in range' : pf.pool.in_range === false ? ' · out of range' : ''}${pf.pnl ? ` · ${pf.pnl.change_text || pf.pnl.change_pct + '%'}` : ''} · checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC` : null,
       '#t-lib .rc-empty': t.length ? t.slice(0, 6).map((x) => `#${x.id} ${x.title}`).join(' · ') : null };
   } },
+  // the Plaza's tiles (2026-11-04): six of seven, each counted as registry.html's own script counts it. "times agents
+  // paid ours" keeps its dash: it needs the page's list of our wallets to tell a stranger's payment from our own.
+  '/registry': { get: async (ask) => { const [b, h, op, st, li] = await Promise.all(['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings'].map((x) => ask('https://agent.brainonbnb.com' + x))); return { b, h, op, st, li }; }, say: ({ b, h, op, st, li }) => {
+    const hired = ((h?.log) || []).filter((x) => x.job).length + ((op?.opinions) || []).filter((x) => x.job).length;
+    const others = ((li?.listings) || []).filter((l) => !l.house).length;
+    return { '#pb-n-all': b ? nfmt(b.total) : null, '#pb-n-open': b ? nfmt(b.open) : null, '#pb-n-done': b ? nfmt(b.resolved || 0) : null,
+      '#aw-n-hired': h || op ? nfmt(hired) : null, '#aw-n-settled': st?.totals ? nfmt(st.totals.jobs || 0) : null, '#aw-n-listed': others ? nfmt(others) : null };
+  } },
   '/screener': { src: 'https://agent.brainonbnb.com/screener', say: (j) => {
     const f = j.fields, at = (row, k) => row[f.indexOf(k)];
     const outside = (j.rows || []).filter((r) => !at(r, 'ours')).sort((a, b) => at(b, 'score') - at(a, 'score')).slice(0, 5);
@@ -2701,6 +2718,47 @@ function taxSplitLine(sp) {
     .filter(([v]) => v).map(([v, w]) => `${pctText(v)} ${w}`).join(' · ');
 }
 const BAR_MEMO = { at: 0, bar: null };
+// THE BURN TABLE IN THE PAGE ITSELF (2026-11-04): the front page, /classic and /archive said "Loading burns..." to a
+// reader without a browser. The bot's live log (the one app.js and getActivity read), a minute at the edge; the newest
+// runs as the same rows app.js draws: the BOBAI burn and the BOB burn, each with its transaction.
+async function burnLog() {
+  const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 60 }, signal: AbortSignal.timeout(2500) }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  return Array.isArray(j) && j.length ? j : null;
+}
+const HEX_TX = /^0x[0-9a-fA-F]{64}$/;
+function burnRows(runs, n = 8) {
+  const rows = [], when = (t) => escHtml(String(t || '').slice(0, 16).replace('T', ' ')) + ' UTC';
+  const txl = (tx) => `<a class="txl" href="https://bscscan.com/tx/${tx}" target="_blank" rel="noopener">${tx.slice(0, 6)}…${tx.slice(-4)}</a>`;
+  for (const x of [...runs].reverse()) {
+    const a = parseFloat(x.bobaiBurned || 0), b = parseFloat(x.bob || x.bobBurned || 0), at = x.bobaiBurnTx, bt = x.burnTx || x.bobBurnTx;
+    if (a > 0 && HEX_TX.test(at || '')) rows.push(`<tr><td>${when(x.time)}</td><td><span class="tba">BURN BOBAI</span></td><td>${nfmt(Math.round(a))} BOBAI</td><td>${txl(at)}</td></tr>`);
+    if (b > 0 && HEX_TX.test(bt || '')) rows.push(`<tr><td>${when(x.time)}</td><td><span class="tb">BURN BOB</span></td><td>${nfmt(Math.round(b))} BOB</td><td>${txl(bt)}</td></tr>`);
+    if (rows.length >= n) break;
+  }
+  return rows.slice(0, n).join('');
+}
+function burnRewriter(rw, runs) {
+  if (!runs) return rw;
+  const html = burnRows(runs);
+  if (html) rw.on('#tx-body', { element(e) { e.setInnerContent(html, { html: true }); } });
+  rw.on('#burn-count', { element(e) { e.setInnerContent(nfmt(runs.length)); } });
+  return rw;
+}
+function classicRewriter(rw, cl, runs) {
+  const [pr, lq, bu] = cl || [], usd = (n) => '$' + Math.round(n).toLocaleString('en-US'), burned = Number(bu?.burned) || 0;
+  const vals = {
+    mcap: pr?.market_cap_usd ? usd(pr.market_cap_usd) : null,
+    volume: lq?.liquidity_usd ? usd(lq.liquidity_usd) : null,
+    'total-bobai-burned': burned > 0 ? `${nfmt(Math.round(burned))} BOBAI` : null,
+    'supply-burned-pct': burned > 0 ? `${(burned / 1e9 * 100).toFixed(2)}%` : null,
+    'lq-lp': lq?.lp_burned_percent != null ? `${+Number(lq.lp_burned_percent).toFixed(3)}%` : null,
+  };
+  // the Giggle Academy pot: its sends in the same log (giggleBnb / giggleTx per run), as app.js sums them
+  if (runs) { const g = runs.filter((x) => x && x.giggleTx); vals['gg-count'] = nfmt(g.length); vals['gg-bnb'] = `${g.reduce((a, x) => a + parseFloat(x.giggleBnb || 0), 0).toFixed(4)} BNB`; }
+  for (const [k, v] of Object.entries(vals)) if (v) rw.on(`#${k}`, { element(e) { e.setInnerContent(v); } });
+  return rw;
+}
 function barRewriter(rw, bar) {
   if (!bar) return rw;
   const [pr, lq, bu] = bar, usd = (n) => '$' + Math.round(n).toLocaleString('en-US');

@@ -22,6 +22,17 @@ export const HOLDER_PASS = {
   proofFutureMs: 2 * 60 * 1000,
 };
 
+// THE LAST BYTE OF A SIGNATURE (2026-11-05): on 4.11. five holder passes from a browser came back "does not recover".
+// Some wallets write v the EIP-155 way (chainId * 2 + 35/36, 147/148 on BNB Chain) or as 0/1; viem reads 0/1 and 27/28
+// and throws on the rest. Only the parity matters: it is brought to 27/28 here. The signer must still be the wallet.
+export function normSig(sig) {
+  const s = String(sig || '').trim();
+  if (!/^0x[0-9a-fA-F]{130}$/.test(s)) return s;
+  const v = parseInt(s.slice(-2), 16);
+  const nv = v >= 35 ? 27 + ((v - 35) % 2) : v < 27 ? 27 + (v % 2) : v;
+  return s.slice(0, -2) + nv.toString(16).padStart(2, '0');
+}
+
 export const passMessage = (wallet, issued) => `BOBAI holder pass\nwallet: ${String(wallet).toLowerCase()}\nissued: ${issued}`;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 const PROOF_RE = /^bobai-holder\s+(0x[0-9a-fA-F]{40})\s+(\S+)\s+(0x[0-9a-fA-F]{130})$/;
@@ -57,7 +68,7 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
   const t = Date.parse(issued);
   if (!(now - t <= HOLDER_PASS.proofWindowMs) || t - now > HOLDER_PASS.proofFutureMs) return no('stale_proof', 'issued must lie within the last 10 minutes: sign a fresh message and send it at once.');
   let signer;
-  try { signer = (await recoverMessageAddress({ message: passMessage(wallet, issued), signature })).toLowerCase(); }
+  try { signer = (await recoverMessageAddress({ message: passMessage(wallet, issued), signature: normSig(signature) })).toLowerCase(); }
   catch { return no('bad_signature', 'the signature does not recover to any address over the message.'); }
   if (signer !== wallet) return no('wrong_signer', `the signature does not come from ${wallet}. Sign exactly: "${passMessage(wallet, issued).replace(/\n/g, '\\n')}" with that wallet.`);
   let bal;

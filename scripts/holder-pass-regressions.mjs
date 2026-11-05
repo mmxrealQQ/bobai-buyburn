@@ -79,5 +79,20 @@ is('isHolderProof tells the pass from a transaction hash and an x402 payload', i
 is('holderWalletOf reads the named wallet in lower case', holderWalletOf(good.replace(wallet, acct.address)) === wallet && holderWalletOf('0xabc') === null);
 is('passKind: answers and the watch, nothing else', passKind('answer:grid_plan') === 'answer' && passKind('watch') === 'watch' && passKind('tip') === null);
 
+// THE LAST BYTE (2026-11-05): wallets that write v as 0/1 or EIP-155 style (147/148 on BNB Chain) are read; a forger still is not
+{
+  const fresh = new Date(now - 30e3).toISOString();
+  const sig = await acct.signMessage({ message: passMessage(wallet, fresh) });
+  const v = parseInt(sig.slice(-2), 16) - 27;
+  for (const nv of [v, v + 147, v + 37]) {
+    const r = await useHolderPass(kv(), rpcWith(LINE), `bobai-holder ${wallet} ${fresh} ${sig.slice(0, -2)}${nv.toString(16).padStart(2, '0')}`, 'answer:grid_plan', now);
+    is(`a signature with v = ${nv} is read and accepted`, r.ok === true, JSON.stringify(r.body || {}).slice(0, 120));
+  }
+  const osig = await other.signMessage({ message: passMessage(wallet, fresh) });
+  const ov = parseInt(osig.slice(-2), 16) - 27 + 147;
+  const r = await useHolderPass(kv(), rpcWith(LINE), `bobai-holder ${wallet} ${fresh} ${osig.slice(0, -2)}${ov.toString(16)}`, 'answer:grid_plan', now);
+  is('… a forged one with v = 147/148 is still refused (wrong_signer)', r.ok === false && r.body?.code === 'wrong_signer');
+}
+
 console.log(`holder-pass: ${pass} PASS, ${fail} FAIL`);
 process.exitCode = fail ? 1 : 0;

@@ -44,6 +44,7 @@
 // callbackProblem, verifyHolderProof, signBody, publicView) so that
 // scripts/rug-watch-regressions.mjs pins each rule offline.
 import { recoverMessageAddress } from 'viem';
+import { normSig } from './holder-pass.js';
 
 export const RUG_WATCH = {
   days: 30,
@@ -622,7 +623,7 @@ export async function verifyHolderProof(body, now = Date.now()) {
   const signature = String(body?.signature || '').trim();
   if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) return no(400, 'bad_signature', 'signature must be the 65-byte personal_sign signature (0x followed by 130 hex characters).');
   let signer;
-  try { signer = (await recoverMessageAddress({ message: proofMessage(wallet, issued), signature })).toLowerCase(); }
+  try { signer = (await recoverMessageAddress({ message: proofMessage(wallet, issued), signature: normSig(signature) })).toLowerCase(); }
   catch { return no(403, 'bad_signature', 'the signature does not recover to any address over the message.'); }
   if (signer !== wallet) return no(403, 'wrong_signer', `the signature over the message does not come from ${wallet}. Sign exactly: "${proofMessage(wallet, issued).replace(/\n/g, '\\n')}" with that wallet.`);
   return { ok: true, wallet };

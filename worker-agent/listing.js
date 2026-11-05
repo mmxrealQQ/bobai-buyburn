@@ -29,6 +29,7 @@
 
 import { netFetch } from './self-fetch.js';
 import { recoverMessageAddress } from 'viem';
+import { normSig } from './holder-pass.js';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { RPCS } from '../shared/lp-agent.js';
@@ -141,7 +142,7 @@ export async function quoteListing(body, env, deps) {
 async function signerOk(quote, nonce, signature) {
   if (!/^0x[0-9a-fA-F]{130}$/.test(String(signature || ''))) return { ok: false, error: 'signature missing or malformed (65 bytes, 0x…)' };
   let who;
-  try { who = lc(await recoverMessageAddress({ message: signLine(quote.id, nonce), signature })); } catch { return { ok: false, error: 'the signature could not be read' }; }
+  try { who = lc(await recoverMessageAddress({ message: signLine(quote.id, nonce), signature: normSig(signature) })); } catch { return { ok: false, error: 'the signature could not be read' }; }
   // read again at the moment of use: an id can change hands between quote and payment
   const [owner, aw] = await Promise.all([ownerOf(quote.id), agentWalletOf(quote.id)]);
   if (who !== lc(owner) && who !== lc(aw)) return { ok: false, error: `signed by ${who}, which neither owns #${quote.id} (${owner}) nor is its agentWallet (${aw || 'none'})` };
@@ -251,7 +252,7 @@ export async function postLog(body, env, opts = {}) {
   else {
     const t = Date.parse(at); if (!t || Math.abs(Date.now() - t) > 10 * 60e3) return json(400, { error: 'at: the ISO time you signed, within 10 minutes of now', sign: logLine(id, new Date().toISOString(), text) });
     if (!/^0x[0-9a-fA-F]{130}$/.test(String(body?.signature || ''))) return json(400, { error: 'signature missing or malformed (65 bytes, 0x…)', sign: logLine(id, at, text) });
-    let who; try { who = lc(await recoverMessageAddress({ message: logLine(id, at, text), signature: body.signature })); } catch { return json(400, { error: 'the signature could not be read' }); }
+    let who; try { who = lc(await recoverMessageAddress({ message: logLine(id, at, text), signature: normSig(body.signature) })); } catch { return json(400, { error: 'the signature could not be read' }); }
     const [owner, aw] = await Promise.all([ownerOf(id), agentWalletOf(id)]);
     if (who !== lc(owner) && who !== lc(aw)) return json(403, { error: `signed by ${who}, which neither owns #${id} (${owner}) nor is its agentWallet (${aw || 'none'})` });
     by = who;

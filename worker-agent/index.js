@@ -1959,6 +1959,8 @@ export default {
     // (proofShape) — never the proof. Read at GET /buys/refused. Only written after the path has answered.
     const missed = (product, proof, out) => {
       if (selfTest || !proof || !out || out.status === 200 || !env.AGENT) return;
+      // the zero hash is /services' own dry probe before a $BOBAI payment ("does it need more input?"), not a payment (5.11.)
+      if (/^0x0{64}$/.test(String(proof).trim())) return;
       const b = out.body && typeof out.body === 'object' ? out.body : {};
       const rec = { at: new Date().toISOString(), product, status: out.status, why: [b.stage, b.reason || b.error].filter(Boolean).map(String).join(': ').slice(0, 240),
         ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(payerOf(proof) ? { from: payerOf(proof) } : {}), ...(ownSite ? { own_site: true } : {}),

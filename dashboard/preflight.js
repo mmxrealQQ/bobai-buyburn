@@ -377,8 +377,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
     keep_watching: s.pool?.address ? {
       why: `${s.pool?.kind === 'v2' ? 'This answer is one block. If you hold, the depth that lets you out can leave after it.' : 'This answer is one block. If you hold, what it found can change after it.'} The free rug watch below keeps reading this token for you: one call, nothing to pay.`,
       rug_watch: {
-        what: 'Free, webhook only: this preflight is read again every 15 minutes and your callback is POSTed when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
-        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}","callback":"https://…"}`,
+        what: 'Free, one call with just the token: this preflight is read again every 15 minutes and an alert is raised when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. Add your https callback and each alert is POSTed to it; without one, read them at the status_url you get back (?since=<time> for the new ones). One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
+        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}"}`,
         terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
         holder: 'A wallet holding 1,000,000 $BOBAI watches 25 tokens instead of one: add wallet, issued and a personal_sign of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <ISO time>" — a signature, no transaction. The same pass makes the paid answers free (20 a day).',
       },

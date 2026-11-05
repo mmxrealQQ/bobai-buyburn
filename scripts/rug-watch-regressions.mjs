@@ -703,9 +703,9 @@ console.log('\nthe site: MCP tool bsc_rug_watch, preflight pointer, discovery');
   };
   const list = await mcp('tools/list');
   const t = (list.result?.tools || []).find((x) => x.name === 'bsc_rug_watch');
-  ok('tools/list carries bsc_rug_watch, declared NOT read-only', !!t && t.annotations?.readOnlyHint === false && t.inputSchema?.required?.includes('callback'));
-  ok('… its description names honeypot/rug-pull, webhook only, one free, 25 for 1,000,000 $BOBAI holders, every 15 minutes and the triggers',
-    !!t && /honeypot/i.test(t.description) && /rug-pull/i.test(t.description) && /webhook only/i.test(t.description) && /one .*free/i.test(t.description) && /25/.test(t.description) && /1,000,000 \$BOBAI/.test(t.description) && /15 minutes/.test(t.description) && /liquidity/i.test(t.description) && /owner/i.test(t.description));
+  ok('tools/list carries bsc_rug_watch, declared NOT read-only', !!t && t.annotations?.readOnlyHint === false && !!t.inputSchema?.properties?.callback);
+  ok('… its description names honeypot/rug-pull, webhook or read back, one free, 25 for 1,000,000 $BOBAI holders, every 15 minutes and the triggers',
+    !!t && /honeypot/i.test(t.description) && /rug-pull/i.test(t.description) && /POSTed/.test(t.description) && /{"watch"/.test(t.description) && /one .*free/i.test(t.description) && /25/.test(t.description) && /1,000,000 \$BOBAI/.test(t.description) && /15 minutes/.test(t.description) && /liquidity/i.test(t.description) && /owner/i.test(t.description));
   ok('… and names today\'s rugs honestly: fake volume (looks like wash trading), pump and dump, slow rug, insiders',
     !!t && /fake volume/i.test(t.description) && /looks like wash trading/i.test(t.description) && /pump/i.test(t.description) && /dump/i.test(t.description) && /slow rug/i.test(t.description) && /insider/i.test(t.description));
   agentCalls.length = 0;
@@ -714,6 +714,17 @@ console.log('\nthe site: MCP tool bsc_rug_watch, preflight pointer, discovery');
   const fh = fwd ? Object.fromEntries(new Headers(fwd.init.headers)) : {};
   ok('tools/call proxies to agent.brainonbnb.com/rug-watch, forwarding the caller with the shared secret', fwd?.url === 'https://agent.brainonbnb.com/rug-watch' && fwd.init.method === 'POST' && fh['x-rug-watch-for'] === '4.4.4.4' && fh['x-hit-secret'] === 'hs' && JSON.parse(fwd.init.body).callback === 'https://hook.example/m');
   ok('… and answers with text and structuredContent', res.result?.structuredContent?.watch === 'id' && /rws_x/.test(res.result?.content?.[0]?.text || ''));
+  // poll mode over MCP (2026-11-05): callback optional, {"watch","since"} reads the alerts back
+  ok('the tool needs no callback (required is empty) and offers watch + since', Array.isArray(t.inputSchema.required) && !t.inputSchema.required.includes('callback') && !!t.inputSchema.properties.watch && !!t.inputSchema.properties.since);
+  agentCalls.length = 0;
+  await mcp('tools/call', { name: 'bsc_rug_watch', arguments: { token: tok('1') } });
+  const nocb = agentCalls.find((c) => c.url.endsWith('/rug-watch'));
+  ok('… a call with only the token registers without a callback field', !!nocb && !('callback' in JSON.parse(nocb.init.body)));
+  agentCalls.length = 0;
+  const wid = '12345678-1234-1234-1234-123456789abc';
+  await mcp('tools/call', { name: 'bsc_rug_watch', arguments: { watch: wid, since: '2026-11-05T00:00:00Z' } });
+  const rd = agentCalls.find((c) => c.url.includes('/rug-watch/'));
+  ok('… {"watch","since"} reads the watch: a GET of /rug-watch/<id>?since=', !!rd && rd.url === `https://agent.brainonbnb.com/rug-watch/${wid}?since=2026-11-05T00%3A00%3A00Z` && !(rd.init.method || '').match(/POST/), rd?.url);
 
   const { shape } = await imp('dashboard/preflight.js');
   const s = { address: TOKEN, symbol: 'T', quotable: true, block: 1, measuredAt: 'now', pool: { address: '0x' + 'c'.repeat(40), kind: 'v2', venue: 'PancakeSwap', liquidityUsd: 40000 }, tradeCost: [{ sizeUsd: 100, buyCostPct: 0.3, sellCostPct: 0.4 }, { sizeUsd: 1000, buyCostPct: 1, sellCostPct: 1 }], onePercentDepth: { buyUsd: 5000, sellUsd: 5000 }, sellability: { ok: true, sellable: true, buyable: true }, tax: { buyPct: 0, sellPct: 0, measured: true, source: 'm' }, lp: { burnedPct: 99 }, contract: { openSource: true, properties: {} }, holders: { count: 10, wallets: 10, top10PctOfCirculating: 5, largestPct: 1, top: [] } };
@@ -727,6 +738,30 @@ console.log('\nthe site: MCP tool bsc_rug_watch, preflight pointer, discovery');
   const rugCat = Object.values(cat.CAPABILITIES).flat().find((c) => /rug-watch/.test(c.where || ''))?.what || '';
   ok('… and both name fake volume, the pump and the dump after it, and the slow rug', [rugLine, rugCat].every((x) => /fake volume/.test(x) && /pump/.test(x) && /dump/.test(x) && /slow rug/.test(x)), rugLine.slice(0, 80));
   ok('… and the preflight\'s pointer too', /fake/.test(kw.rug_watch.what) && /slow rug/.test(kw.rug_watch.what) && /pump/.test(kw.rug_watch.what));
+}
+
+// NO WEBHOOK (2026-11-05): 4 of 8 tries on 4.11. failed on bad_callback. Without a callback the watch runs and keeps its alerts.
+console.log('\npoll mode (no callback)');
+{
+  const pt = '0x' + 'e'.repeat(39) + '1';
+  const r = await post({ token: pt }, '6.6.6.6');
+  const j = await r.json();
+  ok('a watch without a callback registers: 201, delivery poll, and says how to read the alerts', r.status === 201 && j.delivery === 'poll' && /since=/.test(j.check || '') && j.status_url.endsWith(j.watch), JSON.stringify(j).slice(0, 200));
+  const bad = await post({ token: '0x' + 'e'.repeat(39) + '2', callback: 'http://hook.example/x' }, '6.6.6.7');
+  ok('… a callback that IS sent must still pass the check', bad.status === 400 && (await bad.json()).code === 'bad_callback');
+  const again = await post({ token: '0x' + 'e'.repeat(39) + '3' }, '6.6.6.6');
+  const aj = await again.json();
+  ok('… a second free watch names the running one (your_watches)', again.status === 429 && aj.code === 'free_limit' && aj.your_watches?.[0] === j.status_url, JSON.stringify(aj).slice(0, 200));
+  const renew = await post({ token: pt }, '6.6.6.6');
+  ok('… the same token again without a callback renews it', renew.status === 200 && (await renew.json()).watch === j.watch);
+  const hooksBefore = hooks.length;
+  answers.set(pt, { status: 200, body: pf({ token: { address: pt, symbol: 'PT' }, gate: 'stop', stop: [{ code: 'not_sellable', why: 'reverted' }] }) });
+  const tp = Date.now() + 7200e3;
+  await runRugWatches(env, { now: tp });
+  const st = await (await call(`/rug-watch/${j.watch}?since=${new Date(tp - 60e3).toISOString()}`)).json();
+  ok('the cron keeps the alert in the status, ?since= lists it in new_events, nothing is POSTed', st.delivery === 'poll' && st.callback_host === null && st.new_events?.some((e) => e.code === 'sell_blocked') && !hooks.slice(hooksBefore).some((h) => String(h.body).includes(j.watch)), JSON.stringify({ d: st.delivery, n: st.new_events }).slice(0, 200));
+  const later = await (await call(`/rug-watch/${j.watch}?since=${new Date(tp + 60e3).toISOString()}`)).json();
+  ok('… a since after the alert lists nothing new', Array.isArray(later.new_events) && later.new_events.length === 0);
 }
 
 console.log(fails ? `\n${fails} FAILED (${passes} pass)` : `\nrug watch: all ${passes} pins hold`);

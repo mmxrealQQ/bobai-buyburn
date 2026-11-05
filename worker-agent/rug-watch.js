@@ -753,7 +753,7 @@ export function tierCheck(entries, { tier, owner, token, cb, now }) {
   if (same) return { ok: true, renew: same.name.slice(RUG_PREFIX.length) };
   const live = unexpired.filter((e) => !e.metadata.p);
   const mine = live.filter((e) => e.metadata.o === owner);
-  const no = (code, error) => ({ ok: false, status: 429, code, error });
+  const no = (code, error) => ({ ok: false, status: 429, code, error, yours: mine.map((e) => e.name.slice(RUG_PREFIX.length)) });
   if (live.length >= RUG_WATCH.totalCap) return no('capacity', `All ${RUG_WATCH.totalCap} watches are taken. Try again later; watches end after ${RUG_WATCH.days} days.`);
   if (tier === 'free') {
     if (mine.length >= RUG_WATCH.freePerCaller) return no('free_limit', `One active watch is free per caller and yours is running. Cancel it (DELETE /rug-watch/<id> with x-rug-watch-secret), or prove a wallet holding ${RUG_WATCH.holderLineText} for up to ${RUG_WATCH.holderCap}.`);
@@ -811,15 +811,18 @@ async function mapLimit(items, n, fn) {
 }
 
 // What anyone holding the id may read: never the secret, never who registered.
-export function publicView(w, now = Date.now()) {
+export function publicView(w, now = Date.now(), since = null) {
   let host = null;
-  try { host = new URL(w.callback).host; } catch { host = null; }
+  try { host = w.callback ? new URL(w.callback).host : null; } catch { host = null; }
+  const sinceMs = since ? Date.parse(since) : NaN;
   return {
     watch: w.id, token: w.token, symbol: w.symbol ?? null, tier: w.tier,
     status: now > w.expires_at ? 'expired' : w.paused ? 'paused' : 'active',
     ...(w.paused ? { paused_why: w.paused === 'holder_line' ? `the wallet holds less than ${RUG_WATCH.holderLineText}; this watch resumes when it holds the line again, and is ended if it still holds less at the next daily read` : String(w.paused) } : {}),
     created_at: iso(w.created_at), expires_at: iso(w.expires_at),
+    delivery: w.callback ? 'webhook' : 'poll',
     callback_host: host,
+    ...(Number.isFinite(sinceMs) ? { since: iso(sinceMs), new_events: (w.events || []).filter((e) => Date.parse(e.at) > sinceMs) } : {}),
     baseline: w.baseline, snapshot: w.snapshot,
     last_checked_at: w.last_checked_at ? iso(w.last_checked_at) : null,
     checks: w.checks || 0, failed_in_a_row: w.fails || 0, ...(w.last_error ? { last_error: w.last_error } : {}),
@@ -837,11 +840,11 @@ export function rugWatchTerms() {
   const example = proofMessage('0x1234567890abcdef1234567890abcdef12345678', '2026-10-09T12:00:00.000Z');
   return {
     service: 'rug watch',
-    what: 'Register a BSC token you hold and an https callback of your own. Every 15 minutes the token is read again with the same preflight bsc_token_preflight answers with (brainonbnb.com/api/preflight), compared with the read before and with the watch\'s own history of the last 24 h; when something dangerous changed — the classic rug (sell blocked, liquidity pulled, tax up, owner or proxy changed) or today\'s (fake volume from a handful of wallets, a pump and the dump after it, a slow rug where the price bleeds while insiders sell) — your callback is POSTed at once. Webhook only — no Telegram, no browser, no mail.',
+    what: 'Register a BSC token you hold and an https callback of your own. Every 15 minutes the token is read again with the same preflight bsc_token_preflight answers with (brainonbnb.com/api/preflight), compared with the read before and with the watch\'s own history of the last 24 h; when something dangerous changed — the classic rug (sell blocked, liquidity pulled, tax up, owner or proxy changed) or today\'s (fake volume from a handful of wallets, a pump and the dump after it, a slow rug where the price bleeds while insiders sell) — your callback is POSTed at once. No webhook? Leave callback out: the watch runs the same and keeps every alert in its status (GET status_url?since=<time>). No Telegram, no browser, no mail.',
     cadence: 'every 15 minutes, on this worker\'s cron',
     register: {
       how: `POST ${RUG_DOCS}`,
-      body: { token: '0x… (the BSC token)', callback: 'https://… (your endpoint; https, public, not ours)', wallet: 'optional — holder tier', signature: 'optional — holder tier', issued: 'optional — holder tier' },
+      body: { token: '0x… (the BSC token)', callback: 'optional — https://… (your endpoint; https, public, not ours). Left out: no push, read the alerts at status_url?since=<time>', wallet: 'optional — holder tier', signature: 'optional — holder tier', issued: 'optional — holder tier' },
       answer: 'watch (the id), secret (shown ONCE — keep it: it signs every alert and cancels the watch), tier, expires_at, baseline (the snapshot every later read is compared with), status_url',
       refused: 'a token the preflight cannot read as a pool (still on its four.meme curve, no pool, not a token) is refused with the preflight\'s own code',
     },
@@ -902,7 +905,7 @@ export function rugWatchTerms() {
       },
       also: 'x-bobai-watch: <id>. The last delivery (time, HTTP status) is in the status.',
     },
-    status: `GET ${RUG_DOCS}/<id> — the baseline, the current reference snapshot, the events sent, checks, failed reads in a row and the last delivery. Never the secret.`,
+    status: `GET ${RUG_DOCS}/<id> (?since=<ISO time>: new_events = only what fired after it) — the baseline, the current reference snapshot, the events sent, checks, failed reads in a row and the last delivery. Never the secret.`,
     cancel: `DELETE ${RUG_DOCS}/<id> with the header x-rug-watch-secret: <secret>`,
     mcp: 'bsc_rug_watch on https://brainonbnb.com/mcp registers the same watch',
     cannot_see: 'what happens between two reads: a rug inside 15 minutes is reported after it happened. It reads what the preflight reads — not the team, not the socials. Fake volume from many fresh wallets, each trading a little, looks like a busy market here; and a wallet count is a count of addresses, not of people.',
@@ -933,7 +936,7 @@ export async function handleRugWatch(request, env, path, deps = {}) {
   const raw = await env.AGENT.get(key);
   if (!raw) return refuse(404, 'no_such_watch', 'No such watch, or it has ended.');
   const w = JSON.parse(raw);
-  if (request.method === 'GET') { note('rug-watch:status'); return json(publicView(w, now)); }
+  if (request.method === 'GET') { note('rug-watch:status'); return json(publicView(w, now, new URL(request.url).searchParams.get('since'))); }
   if (request.method === 'DELETE') {
     if (!sameString(request.headers.get('x-rug-watch-secret'), w.secret)) return refuse(403, 'bad_secret', 'Send the secret you were given at registration in the header x-rug-watch-secret.');
     await env.AGENT.delete(key);
@@ -949,9 +952,13 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return refuse(400, 'bad_body', 'Send JSON: {"token":"0x…","callback":"https://…"}.');
   const token = String(body.token || body.address || '').trim().toLowerCase();
   if (!/^0x[0-9a-f]{40}$/.test(token)) return refuse(400, 'bad_token', 'token must be a BSC token address (0x followed by 40 hex characters).');
-  const cbIssue = callbackProblem(body.callback);
+  // NO WEBHOOK, NO PROBLEM (2026-11-05): on 4.11. four of eight tries failed on bad_callback — an agent over MCP rarely
+  // has a public https endpoint. Without a callback the watch runs the same and keeps its alerts in the status
+  // (GET status_url, ?since=<time> for only the new ones); a callback that IS sent must still pass the check.
+  const hasCb = body.callback != null && String(body.callback).trim() !== '';
+  const cbIssue = hasCb ? callbackProblem(body.callback) : null;
   if (cbIssue) return refuse(400, 'bad_callback', cbIssue);
-  const callback = String(body.callback).trim();
+  const callback = hasCb ? String(body.callback).trim() : null;
 
   // The tier: a wallet (or a signature) asks for the holder tier and must prove it.
   const holder = body.wallet != null || body.signature != null;
@@ -964,10 +971,10 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
     owner = await ownerKey(callerOf(request, env), env?.HIT_SECRET);
   }
   const tier = holder ? 'holder' : 'free';
-  const cb = (await sha(callback)).slice(0, 16);
+  const cb = callback ? (await sha(callback)).slice(0, 16) : 'poll';
   const entries = mergeEntries(await listKeys(env), await readOwnerIndex(env, owner), owner);
   const decision = tierCheck(entries, { tier, owner, token, cb, now });
-  if (!decision.ok) { note(`rug-watch:refused:${decision.code}`); return refuse(decision.status, decision.code, decision.error); }
+  if (!decision.ok) { note(`rug-watch:refused:${decision.code}`); return refuse(decision.status, decision.code, decision.error, decision.yours?.length ? { your_watches: decision.yours.map((id) => `${RUG_DOCS}/${id}`) } : {}); }
 
   let balance = null;
   if (holder) {
@@ -1029,6 +1036,8 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
     expires_at: iso(w.expires_at),
     baseline: read.snap,
     status_url: `${RUG_DOCS}/${id}`,
+    delivery: callback ? 'webhook' : 'poll',
+    ...(callback ? {} : { check: `No callback, so nothing is pushed: read GET ${RUG_DOCS}/${id}?since=<the time of your last look> (or bsc_rug_watch with {"watch":"${id}"} over MCP) — new_events lists what fired since then. Every 15 minutes is often enough.` }),
     cadence: 'every 15 minutes',
     ...(wallet ? { wallet, holds: `${bobaiText(balance)} $BOBAI` } : {}),
   }, 201);
@@ -1191,8 +1200,9 @@ async function sweepWatches(env, deps, clock, budgetMs) {
       fresh = JSON.parse(raw);
     } catch { fresh = null; }
     if (fresh) w = mergeFresh(w, fresh, w0);
-    if (send.length && w.callback) {
-      w.last_delivery = await deliver(w, send, snap, now, fetchFn);
+    if (send.length) {
+      // without a callback (poll mode, 5.11.) the alert waits in w.events for the status read
+      if (w.callback) w.last_delivery = await deliver(w, send, snap, now, fetchFn);
       alerts++; changed = true;
     }
     if (doom) {

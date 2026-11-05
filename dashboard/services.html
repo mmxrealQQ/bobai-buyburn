@@ -163,7 +163,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">400,225</b><span>agent ids registered on BNB Chain</span></div>
       <div class="sv-num"><b id="sv-reach">1,002</b><span>of them send any reply when contacted <i id="sv-when">census of 2026-11-01</i></span></div>
-      <div class="sv-num"><b id="sv-asked">603,171</b><span>requests answered for others — people, agents and registries</span></div>
+      <div class="sv-num"><b id="sv-asked">606,295</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -409,9 +409,9 @@
           <span>for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. A short answer. No &quot;safe&quot; and no score.</span><code>https://brainonbnb.com/api/preflight?address=0x...&amp;usd=250 · MCP tool bsc_token_preflight</code><span class="sv-limit">Try it: <a href="https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" rel="noopener">brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250</a></span>
           </details></li>
         <li><b><a href="https://agent.brainonbnb.com/rug-watch" rel="noopener">rug watch: an alarm for a token you hold</a></b>
-          <span class="sv-short">the preflight read again every 15 minutes; your own https callback is POSTed, signed, as soon as something dangerous changes —…</span>
+          <span class="sv-short">the preflight read again every 15 minutes; an alert is raised as soon as something dangerous changes — the sell stops going…</span>
           <details class="sv-capd"><summary>Details and the call</summary>
-          <span>the preflight read again every 15 minutes; your own https callback is POSTed, signed, as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today's rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Webhook only. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI <span class="sv-busd" data-bobai="1000000"></span> (proved by a signature, no transaction). 30 days, renewable.</span><code>POST https://agent.brainonbnb.com/rug-watch {&quot;token&quot;:&quot;0x...&quot;,&quot;callback&quot;:&quot;https://...&quot;} · MCP tool bsc_rug_watch</code>
+          <span>the preflight read again every 15 minutes; an alert is raised as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today's rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Alerts are POSTed, signed, to your https callback if you give one, or read back at GET /rug-watch/&lt;id&gt;?since=&lt;time&gt;. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI <span class="sv-busd" data-bobai="1000000"></span> (proved by a signature, no transaction). 30 days, renewable.</span><code>POST https://agent.brainonbnb.com/rug-watch {&quot;token&quot;:&quot;0x...&quot;} · MCP tool bsc_rug_watch</code>
           </details></li>
         <li><b><a href="https://brainonbnb.com/scanner" rel="noopener">pool scan (browser)</a></b>
           <span class="sv-short">measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme…</span>

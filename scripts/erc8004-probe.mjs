@@ -276,7 +276,9 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     if (done % 25 === 0) console.log(`  ${done}/${todo.length}  reachable ${reachable}  mcp ${withMcp}  a2a ${withA2a}  cards ${withCard}`);
   }
 }));
-out.end();
+// wait for the file to be flushed: the self-test reads it back at once (5.11.: "Unexpected end of JSON input" when it
+// was read before the stream had finished — the "network wobble" of 4.11. was this race)
+await new Promise((resolve) => out.end(resolve));
 
 if (SELF_TEST) {
   const r = JSON.parse(fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n')[0]);

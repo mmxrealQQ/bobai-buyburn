@@ -138,8 +138,9 @@ export async function agentChart(env, idRaw) {
 // is one call — and the same answer a person gets by opening the charts one by one. Only firm filings count ("possibly
 // related" stays out); a listing changes nothing here.
 export async function agentRank(env, categoryRaw, limitRaw) {
-  const ALIAS = { 'health-factor-monitoring': 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
-  const c = String(categoryRaw || '').trim().toLowerCase(); const category = ALIAS[c] || c;
+  // 5.11.: "health factor" / "grid_trading" read as the hyphened ids, "health" as health-factor
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', health: 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const c = String(categoryRaw || '').trim().toLowerCase().replace(/[\s_]+/g, '-'); const category = ALIAS[c] || c;
   const limit = Math.min(25, Math.max(1, Number(limitRaw) || 10));
   const [jobsAll, plaza] = await Promise.all([cached(`${SITE}/api-agent-jobs.json`, 15 * 60e3), cached(`${SITE}/api-plaza-index.json`, 15 * 60e3)]);
   const cats = new Set(Object.values(plaza.agents || {}).flatMap((p) => p.categories.map((x) => x.id)));

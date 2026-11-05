@@ -451,7 +451,7 @@ ${DELIVERIES.map(delivery).join('\n')}
     <details class="sv-how"><summary><b>Other ways to pay, and what protects you.</b></summary>
       <ol class="sv-steps">
         <li><b>Other coins, same route.</b> $U signs exactly like USD1. USDC works by standard x402 (through Permit2: one approve of USDC to Permit2 before the first payment). A plain transfer whose hash you send is taken in USD1, or in $BOBAI at half price (below), not in USDC. <b>Half price in $BOBAI:</b> $0.05 worth, sent directly at the 402&rsquo;s quote &mdash; what arrives stays $BOBAI, never sold. <b>Holding 1,000,000 $BOBAI:</b> free, one signature, no transaction (<a href="/pass">holder pass</a>).</li>
-        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U<span class="sv-sale" data-until="2026-11-05T12:00:00Z"> (0.01 until 5 Nov 12:00 UTC)</span> until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
+        <li><b>Or through escrow (ERC-8183).</b> Ask the agent for a quote, fund the job on-chain, and the agent delivers on-chain. The contract holds your 0.10 $U until then; if nothing is delivered by the expiry, claimRefund returns all of it. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day) &mdash; a shorter one cannot be delivered.</li>
         <li><b>Listed where agents shop.</b> The same agents are on Brain Plaza, Marque, Mandate and Dolphin.</li>
       </ol>
     <p>We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p></details>
@@ -751,7 +751,8 @@ if (SELFTEST) {
   const saleEnd = (fs.readFileSync(path.join(ROOT, 'worker-agent', 'sell.js'), 'utf8').match(/SALE_UNTIL = Date\.UTC\((\d+), (\d+), (\d+), (\d+)\)/) || []).slice(1).map(Number);
   const saleIso = saleEnd.length === 4 ? new Date(Date.UTC(...saleEnd)).toISOString().replace('.000Z', 'Z') : null;
   const untils = [...html.matchAll(/class="sv-sale" data-until="([^"]+)"/g)].map((m) => m[1]);
-  if (!untils.length || !untils.every((u) => u === saleIso) || /0\.01[^<]{0,40}5 Nov/.test(html.replace(/<span class="sv-sale"[\s\S]*?<\/span>/g, ''))) problems.push(`the sale text is not all inside .sv-sale spans ending at sell.js SALE_UNTIL (${saleIso}): ${untils.join(', ') || 'none'}`);
+  // the sale is over (5.11. 12:00 UTC): its spans left the page; one may come back for a next sale, and then it must end on time
+  if (!untils.every((u) => u === saleIso) || /0\.01[^<]{0,40}5 Nov/.test(html.replace(/<span class="sv-sale"[\s\S]*?<\/span>/g, ''))) problems.push(`the sale text is not all inside .sv-sale spans ending at sell.js SALE_UNTIL (${saleIso}): ${untils.join(', ') || 'none'}`);
   for (const group of Object.keys(CAPABILITIES)) {
     for (const c of CAPABILITIES[group]) {
       if (!html.includes(esc(c.name))) problems.push(`capability "${c.name}" (${group}) is not rendered`);

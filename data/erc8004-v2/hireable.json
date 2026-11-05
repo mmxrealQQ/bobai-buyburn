@@ -22,14 +22,14 @@
       "ours": false
     },
     {
-      "id": 374113,
-      "label": "Centreline by Pokter",
+      "id": 363619,
+      "label": "Plinth keeper",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 363619,
-      "label": "Plinth keeper",
+      "id": 374113,
+      "label": "Centreline by Pokter",
       "category": "rebalancing",
       "ours": false
     },
@@ -64,12 +64,6 @@
       "ours": false
     },
     {
-      "id": 338475,
-      "label": "PancakeSwap v3 Range Keeper",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 341563,
       "label": "marketplace-operated-rebalance-planner",
       "category": "rebalancing",
@@ -96,6 +90,12 @@
     {
       "id": 293902,
       "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 338475,
+      "label": "PancakeSwap v3 Range Keeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -179,12 +179,6 @@
       "ours": false
     },
     {
-      "id": 338477,
-      "label": "PancakeSwap Grid Trader",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 345085,
       "label": "GuardRail GridBot",
       "category": "grid-trading",
@@ -193,6 +187,12 @@
     {
       "id": 336623,
       "label": "Gridwright",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 338477,
+      "label": "PancakeSwap Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
@@ -240,17 +240,17 @@
       "seed": "best stablecoin yield for 1000 USDT on BNB Chain right now"
     },
     {
-      "id": 269226,
-      "label": "Yield Allocator",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
       "ours": true,
       "seed": "which PancakeSwap fee tier is actually paying for 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c, placing $1000 of liquidity"
+    },
+    {
+      "id": 269226,
+      "label": "Yield Allocator",
+      "category": "yield-optimization",
+      "ours": false
     },
     {
       "id": 340456,
@@ -267,12 +267,6 @@
     {
       "id": 340532,
       "label": "Hevo Yield",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 338478,
-      "label": "BNB Chain Yield Router",
       "category": "yield-optimization",
       "ours": false
     },
@@ -297,6 +291,12 @@
     {
       "id": 336624,
       "label": "YieldRouter",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 338478,
+      "label": "BNB Chain Yield Router",
       "category": "yield-optimization",
       "ours": false
     },
@@ -392,12 +392,6 @@
       "ours": false
     },
     {
-      "id": 338480,
-      "label": "Venus Liquidation Guard",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
       "id": 345087,
       "label": "GuardRail Health Guard",
       "category": "health-factor",
@@ -406,6 +400,12 @@
     {
       "id": 336625,
       "label": "HealthSentinel",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 338480,
+      "label": "Venus Liquidation Guard",
       "category": "health-factor",
       "ours": false
     },

@@ -192,6 +192,9 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   ok('a caller from outside: rest:ext, its family, and its tag (6 hex, no address)', /^rest:ext:links,ua:node,restby:links:[0-9a-f]{6}:node$/.test(details().join()) && !/d+.d+.d+/.test(details().join()), details().join());
   await call('/api/links', { headers: { 'user-agent': 'brainonbnb-countcheck' } });
   ok('our own check script (brainonbnb-*) is own:rest, not an outside caller', details().join() === 'own:rest:links', details().join());
+  // 5.11.: over MCP too (brainonbnb-mcp-all-check stood in mcp:by: as another caller)
+  await rpc('tools/call', { name: 'bobai_links' }, { 'user-agent': 'brainonbnb-mcp-all-check/1', 'cf-connecting-ip': '203.0.113.9' });
+  ok('… and over MCP: own:mcp:call, no mcp:by:, no kind for the public totals', details().join() === 'own:mcp:call:bobai_links' && kinds() === '', `${details().join()} | ${kinds()}`);
   // Crawler noise is relayed as a sample since 2026-10-04: one in twenty, weighted twenty, with the bot's name.
   const realRandom = Math.random;
   try {

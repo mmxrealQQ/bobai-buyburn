@@ -2021,7 +2021,10 @@ export default {
       if (!isOwn && !prefetch && request.method === 'GET') count(null, `${uaFamily(request.headers.get('user-agent')) === 'browser' ? 'buy' : 'buybot'}:${source}`);
       return new Response(null, { status: 302, headers: { Location: BUY_TARGET, 'Cache-Control': 'no-store' } });
     }
-    if (isOwn) {
+    // our own checks over MCP name themselves too (5.11.: brainonbnb-mcp-all-check and brainonbnb-look stood in mcp:by: as
+    // others, the way REST did until 4.11.); only a label for counting, as there
+    const ownUa = /^(brainonbnb|bobai|plaza-board)-/i.test(request.headers.get('user-agent') || '');
+    if (isOwn || ownUa) {
       if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
     }

@@ -871,6 +871,30 @@ const DEPRECATED_TOOL_NAMES = {
 const boardReadType = (a) => a.type === 'all' ? undefined : a.type || (a.to || a.agent || a.status || a.q ? undefined : 'library');
 // the tools that take one token or pool as `address`, and the names agents give it otherwise (runTool)
 const ADDRESS_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_fee_tiers', 'pancakeswap_range_plan', 'pancakeswap_best_route']);
+// THE ADDRESS INSIDE WHAT WAS SENT (2026-11-05): bad_address was the most common refusal of the measurements (9 preflights,
+// 7 scans in 5 days). One address inside a bscscan link, "bsc:0x…", a padded or quoted string or a sentence is that
+// address; two different ones, or none, stay as sent and are refused as before. A symbol is never guessed into an address.
+export function pickAddress(v) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if (/^0x[0-9a-fA-F]{40}$/.test(t)) return t;
+  const found = [...new Set((t.match(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g) || []).map((x) => x.toLowerCase()))];
+  return found.length === 1 ? found[0] : v;
+}
+// What a refused address looked like, for the counter only (never the value): mcp:badaddr:<shape> / poolscan:badaddr:<shape>
+export function addressShape(v) {
+  const t = typeof v === 'string' ? v.trim() : v;
+  if (t == null || t === '') return 'empty';
+  if (typeof t !== 'string') return typeof t;
+  if (/^0x[0-9a-fA-F]{64}$/.test(t)) return 'tx_hash';
+  if (/^0x[0-9a-fA-F]*$/.test(t)) return `hex${t.length - 2 < 40 ? '_short' : '_long'}`;
+  if (/0x[0-9a-fA-F]{40}/.test(t)) return 'two_addresses';
+  if (/^\$?[A-Za-z][A-Za-z0-9]{0,11}$/.test(t)) return 'symbol';
+  if (/^\d+$/.test(t)) return 'number';
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(t)) return 'base58';
+  if (/^(ens:|[a-z0-9-]+\.(eth|bnb))$/i.test(t)) return 'name';
+  return 'other';
+}
 const ADDRESS_ALIASES = ['token', 'token_address', 'tokenAddress', 'contract', 'contract_address', 'contractAddress', 'pool', 'pair', 'ca'];
 
 // A trade size that is given but does not read as a positive number is
@@ -994,6 +1018,15 @@ async function runTool(rawName, args, caller = {}) {
   if (ADDRESS_TOOLS.has(name) && (args?.address == null || args.address === '')) {
     const alias = ADDRESS_ALIASES.find((k) => args?.[k] != null && args[k] !== '');
     if (alias) args = { ...args, address: args[alias] };
+  }
+  if (ADDRESS_TOOLS.has(name) && typeof args?.address === 'string' && args.address.trim() !== '') {
+    const picked = pickAddress(args.address);
+    if (!/^0x[0-9a-fA-F]{40}$/.test(picked)) {
+      const shape = addressShape(args.address);
+      throw Object.assign(new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one, as the argument "address".'
+        + (shape === 'symbol' ? ' A symbol is not taken: many tokens share one, and the wrong one is how a trade ends in a copy — look the contract up on BscScan or the project\'s own page.' : '')), { addrShape: shape });
+    }
+    if (picked !== args.address) args = { ...args, address: picked };
   }
   switch (name) {
     case 'bsc_rug_watch': {
@@ -1569,7 +1602,7 @@ async function handleMcp(request, note = () => {}, own = false, only = null) {
         const coded = CODED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name);
         const eb = coded ? errorAnswer(e).body : null;
         const why = eb ? eb.code : /unavailable|did not answer|timed? ?out|abort/i.test(String(e?.message || e)) ? 'unavailable' : 'refused';
-        const failed = [...(byClient ? [`mcp:byerr:${byClient}:${toolSaid}`] : []), ...(toolSaid !== 'unknown' ? [`mcp:errcode:${toolSaid}:${why}`] : [])];
+        const failed = [...(byClient ? [`mcp:byerr:${byClient}:${toolSaid}`] : []), ...(toolSaid !== 'unknown' ? [`mcp:errcode:${toolSaid}:${why}`] : []), ...(e?.addrShape ? [`mcp:badaddr:${e.addrShape}`] : [])];
         if (failed.length) note(failed);
         // The refusal's code and hint ride along (2026-10-09): in the text for a model, structured for a client.
         // Only the address-taking measurements: the other tools' refusals are not about an address.
@@ -2311,7 +2344,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const { status, body } = errorAnswer(e);
         // A refused scan counts too (2026-10-17): on 17.10. 86 outside scans by 05 UTC, 14 of them answered; the rest
         // never reached the counter above. poolscanua stays the count of everyone who scans, answered or not.
-        if (outsideScan) count(null, [`poolscan:err:${String(body?.code || status).slice(0, 20)}`, `poolscanua:${product}`]);
+        if (outsideScan) count(null, [`poolscan:err:${String(body?.code || status).slice(0, 20)}`, `poolscanua:${product}`, ...(e?.addrShape ? [`poolscan:badaddr:${e.addrShape}`] : [])]);
+        else if (e?.addrShape && !siteCall) count(null, `rest:badaddr:${e.addrShape}`);
         return new Response(JSON.stringify(body), { status, headers });
       }
     }

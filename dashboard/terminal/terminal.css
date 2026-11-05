@@ -1147,3 +1147,30 @@
 /* the bat's two wing pictures lie on each other (2026-10-06, operator: "odd wing movements on the phone"): in the wings-
    down picture its head and body sit 25 px of 145 higher, so every beat jumped the whole bat; now only the wings move */
 #bt .hw-ob img.d,#bt .hw-bat img.d,#bt .hw-burst img.d{top:17.2%}
+
+/* ================= BRAINROT (2026-11-05, terminal.js "BRAINROT") =================
+ * Everything here lies under the figure (z 2), the labels (z 3) and every window (5+): z 1, no pointer events.
+ * Only transform and opacity move, so the frame rate holds (halloween.mjs rule 14). */
+#bt .br{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility 0s .6s}
+#bt .br-on .br{opacity:1;visibility:visible;transition:opacity .6s ease}
+#bt .br-flash{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;mix-blend-mode:overlay;background:radial-gradient(circle at 30% 40%,var(--c1,#ff3fd8),transparent 60%),radial-gradient(circle at 75% 65%,var(--c2,#2ef2ff),transparent 60%)}
+#bt .br-r{position:absolute;left:0;top:0;will-change:transform}
+#bt .br-r:not(.bit) img{pointer-events:auto;cursor:pointer} /* poke one: it pops (the layer itself takes no pointer) */
+#bt .br-b{position:relative;display:block}
+#bt .br-b.fl{transform:scaleX(-1)}
+#bt .br-b img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none} /* no drop-shadow: a filter on 15 swapping pictures cost frames */
+#bt .br-b img.z{position:absolute;inset:0;opacity:0;animation:bt-br-z var(--fr,.3s) steps(1) infinite}
+#bt .br-b img.a{animation:bt-br-a var(--fr,.3s) steps(1) infinite}
+@keyframes bt-br-z{0%{opacity:0}50%{opacity:1}}
+@keyframes bt-br-a{0%{opacity:1}50%{opacity:0}}
+#bt .br-cap{position:absolute;transform:translate(-50%,-50%) rotate(var(--r,0deg));white-space:nowrap;font:400 clamp(1.3rem,3.4vw,2.6rem)/1 Impact,'Haettenschweiler','Arial Narrow Bold','Arial Black',sans-serif;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--c,#7dff3a);-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:3px 3px 0 #000,-1px -1px 0 #ff3fd8;animation:bt-br-cap 1.7s cubic-bezier(.2,1.4,.4,1) both}
+#bt .br-cap.big{font-size:clamp(2rem,6.4vw,4.8rem);-webkit-text-stroke:3px #000;animation-duration:2.2s}
+#bt .br-cap.sm{font-size:clamp(.8rem,1.6vw,1.15rem);-webkit-text-stroke:1.2px #000;text-shadow:2px 2px 0 #000}
+@keyframes bt-br-cap{0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(3)}12%{opacity:1;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(.9)}20%{transform:translate(-50%,-50%) rotate(calc(var(--r,0deg) * -1)) scale(1.08)}30%,80%{opacity:1;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(.6)}}
+/* the switch: the Halloween pumpkin's place and rules (.hw-sw), in brain pink */
+#bt .br-sw{--hf:#ff7ae6;--hs:#ffc2f3;--he:#3a0a33;border-color:rgba(255,63,216,.8);color:#ffc2f3}
+#bt .br-sw .hw-oo{color:#ffc2f3}
+#bt .br-sw[aria-pressed=false]{--hf:transparent;--hs:#ffc2f3;--he:#ffc2f3;border-color:#ffc2f3}
+#bt .br-sw:hover{border-color:#ffe3fa}
+#bt .br-sw .hw-t{border-color:rgba(255,63,216,.6)}

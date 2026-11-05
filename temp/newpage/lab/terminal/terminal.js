@@ -3453,11 +3453,13 @@ async function shareCard() {
   const btn = $('shr'); btn.disabled = true;
   try {
     // 1) the scene this instant, copied off (the drawing buffer is only valid right after a render)
+    if (window.__btBr) window.__btBr.hide(true); /* the brainrot cosmos steps out too (2026-11-05) */
     if (window.__btHw) window.__btHw.hide(true); /* the card shows the scene as it always was: the Halloween night steps out for this one frame */
     useBloom ? composer.render() : renderer.render(scene, camera);
     const snap = document.createElement('canvas'); snap.width = renderer.domElement.width; snap.height = renderer.domElement.height;
     snap.getContext('2d').drawImage(renderer.domElement, 0, 0);
     if (window.__btHw) window.__btHw.hide(false);
+    if (window.__btBr) window.__btBr.hide(false);
     // same origin: a foreign image would taint the canvas
     const logo = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = '/logo.webp'; });
     const now = Date.now(), poseNow = fig.querySelector('img.on') || fig.querySelector('img[data-p="idle"]');
@@ -7180,4 +7182,294 @@ window.__btHwSeason = hwSeason;
     // the share card photographs the scene as it always was: the painting steps out for that one frame
     hide: v => { if (back) back.visible = !v && on && backLit > 0; },
     boxes: () => ({ placed: sig !== '', clown: cl._b ? (cl._c && cl._c.l >= 0 ? cl._c : cl._b) : null, clownFree: !!(cl._c && cl._c.l >= 0), pumpkin: pkA._b, hand: hd._c && hd._c.l >= 0 ? hd._c : null, handPlaced: !!hd._b, candles: cd._c, moon: mo._b, chain: hc._c, dais: da._b, orbs: Object.fromEntries(ORBS.map(o => [o.dataset.k, o._b])), grab: grab.classList.contains('on'), back: back && back.visible ? +backLit.toFixed(2) : 0, backKey }) };
+})();
+
+// ================= BRAINROT (2026-11-05) =================
+// Operator (2026-11-05): "a total, absolute brain rot theme in the terminal, like Halloween, switchable; full chaos; on for
+// everyone with a switch to turn it off; animated, moving elements; no toaster; use your own fantasy, take nothing from
+// the reference picture; it runs until 1 December, then a sweet Xmas look". So: everything a ROTTING BRAIN dreams at
+// 3 a.m. — eighteen invented creatures, each an everyday thing gone wrong and carrying a brain (a spaghetti octopus, a
+// light bulb in high heels, a fridge on flamingo legs, a snail with a rocket, a millipede brain with seven eyes ...),
+// run, fly, spin, pop up, rise from the edge and zoom at the viewer; a cosmos that is the inside of a brain is painted
+// behind the scene (in the 3D scene itself, as the Halloween night); meme captions slam in; every half minute a MEGA moment (the layer shakes, the colours flash, a conga line or
+// a brain storm). The terminal itself stays as it is: BOBAI's own moves, the labels, the log and every window lie ABOVE
+// all of it (the layer is z 1, under the figure at 2, the labels at 3 and the windows from 5; no pointer events), so the
+// chaos never covers a figure, a word or a button. Pictures: temp/terminal/gen-brainrot.js -> br_pack.py -> terminal/br/.
+// Season: from 5 Nov until 1 Dec 2026 00:00 UTC; ?br=1 shows it outside, ?br=0 never; the switch at the LIVE pill is
+// remembered (localStorage bt-br). ?calm keeps only the still sky.
+const brSeason = (t = Date.now()) => t >= Date.UTC(2026, 10, 5) && t < Date.UTC(2026, 11, 1);
+window.__btBrSeason = brSeason;
+(() => {
+  const q = new URLSearchParams(location.search).get('br');
+  if (q === '0' || (q !== '1' && !brSeason())) return;
+  let on = true; try { on = localStorage.getItem('bt-br') !== '0'; } catch {}
+  const Q = new URL(import.meta.url).search;
+  const pic = n => BASE + 'br/' + n + '.webp' + Q;
+  const R = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+  // name, its frame, how it moves, its size (px at a 1200 px wide window), r = drawn facing right
+  const CREW = [
+    { n: 'octo', f: 'wave', m: ['fly', 'pop', 'spin', 'float'], s: 120, t: 'SPAGHETTOPO SINAPSICO' },
+    { n: 'bulb', f: 'step', m: ['run'], s: 105, r: 1, t: 'LAMPADINO PENSIERINO' },
+    { n: 'astro', f: 'reel', m: ['float', 'spin'], s: 120, t: 'NEURONAUTA PESCATORE' },
+    { n: 'snail', f: 'blast', m: ['run'], s: 130, r: 1, fast: 1, t: 'LUMACONE RAZZO' },
+    { n: 'fridge', f: 'shut', m: ['run', 'pop', 'rise'], s: 120, t: 'FRIGORIFERO FENICOTTERO' },
+    { n: 'sock', f: 'yell', m: ['rise', 'pop'], s: 110, t: 'CALZINO PROFETA' },
+    { n: 'shrimp', f: 'kick', m: ['run', 'pop', 'spin'], s: 110, t: 'GAMBERONE BALLERONE' },
+    { n: 'eyeball', f: 'look', m: ['run', 'pop'], s: 105, t: 'OCCHIONE RAGNONE' },
+    { n: 'duck', f: 'boost', m: ['fly', 'zoom'], s: 110, r: 1, t: 'PAPERA TURBOCERVELLO' },
+    { n: 'banana', f: 'flex', m: ['pop', 'rise', 'zoom'], s: 120, t: 'BANANINO LOBOTOMINO' },
+    { n: 'pigeon', f: 'flap', m: ['fly'], s: 120, r: 1, t: 'PICCIONE SINAPSONE' },
+    { n: 'cactus', f: 'dance', m: ['run', 'pop', 'rise'], s: 110, t: 'CACTUSINO PENSIERINO' },
+    { n: 'pizza', f: 'scream', m: ['run', 'spin', 'zoom'], s: 105, t: 'PIZZETTA GIGACERVELLO' },
+    { n: 'washer', f: 'spin', m: ['run', 'pop', 'spin'], s: 120, t: 'LAVATRICE GALATTICA' },
+    { n: 'cloud', f: 'pour', m: ['fly', 'float'], s: 140, t: 'NUVOLONE PIOVICERVELLI' },
+    { n: 'dj', f: 'scratch', m: ['pop', 'rise', 'run'], s: 120, t: 'TARTARUGA DISCOTECARA' },
+  ];
+  const NAMES = { kaiju: 'CERVELLONE MILLEPIEDI', mini: 'CERVELLINO ELICOTTERO' };
+  const CAPS = ['NEURONS: 0', 'BRAIN.EXE HAS STOPPED', 'CERTIFIED ROTTED', 'MAXIMUM ROT', 'YOUR BRAIN ON $BOBAI', 'NO THOUGHTS. JUST BURNS.',
+    '100% ORGANIC ROT', 'WEN BRAIN?', 'ERROR 404: THOUGHTS', 'GALAXY BRAIN MODE', 'BOBAI ATE THE CHAIN', 'THE DIP IS A FEELING',
+    'SPAGHETTI SYNAPSES', 'ROT AND ROLL', 'I THINK, THEREFORE I ROT', 'BURN, BABY, BURN', 'MY LAST BRAIN CELL', 'BRAINROT SEASON',
+    'TOUCH GRASS? NEVER.', 'PROPELLER HAT ACTIVATED', 'THE FRIDGE KNOWS', 'THE SHRIMP CAN DANCE NOW', 'ROTATING... ROTATING... ROTTED',
+    'SEVEN EYES, ZERO THOUGHTS', 'THE SNAIL HAS A ROCKET', 'IT IS ALWAYS 3 A.M. HERE', 'SYNAPSE OVERLOAD', 'LIQUIDITY BUT MAKE IT SOUP'];
+  const COLS = ['#7dff3a', '#ff3fd8', '#2ef2ff', '#ffe600', '#ff7a1a', '#ffffff'];
+
+  // the cosmos that is the inside of a brain: a painting fixed to the camera, drawn first, as the Halloween night was. As a
+  // screen-blended page layer over the WebGL canvas it halved the frame rate at 1280 and 1440 (brainrot.mjs rule 7, 11 vs 24 fps).
+  let back = null, backLit = 0, backTo = 0;
+  const SKY_LIT = 0.5; // the stations' labels stay easy to read over it
+  function sizeSky() {
+    if (!back) return; const va = camera.aspect, h = 2 * 40 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.1, t = back.material.map, ta = back._ta;
+    back._va = va; back.scale.set(h * va, h, 1);
+    if (va > ta) { t.repeat.set(1, ta / va); t.offset.set(0, (1 - ta / va) / 2); } else { t.repeat.set(va / ta, 1); t.offset.set((1 - va / ta) / 2, 0); }
+  }
+  function skyFade() {
+    if (!back) return; const to = on ? SKY_LIT : 0, from = backLit, t0 = performance.now(); clearInterval(backTo);
+    if (to > 0) back.visible = true;
+    backTo = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / 1200); backLit = from + (to - from) * k; back.material.color.setScalar(backLit); if (k >= 1) { back.visible = to > 0; clearInterval(backTo); } }, 40);
+  }
+  function loadSky() {
+    if (back) return;
+    new THREE.TextureLoader().load(pic('sky'), tex => {
+      if (back) { tex.dispose(); return; }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      back = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, color: 0x000000, depthTest: false, depthWrite: false, fog: false, toneMapped: false }));
+      back.renderOrder = -100; back.frustumCulled = false; back.position.z = -40; back.visible = false; back._ta = tex.image.width / tex.image.height;
+      if (!camera.parent) scene.add(camera); camera.add(back);
+      // the cosmos turns slowly and drifts; a new window shape is met at the next frame
+      back.onBeforeRender = () => { if (back._va !== camera.aspect) sizeSky(); const t = performance.now() / 1000; back.rotation.z = Math.sin(t / 41) * 0.035; back.position.x = Math.sin(t / 23) * 0.35; back.position.y = Math.cos(t / 29) * 0.25; };
+      sizeSky(); skyFade();
+    });
+  }
+  const el = document.createElement('div'); el.className = 'br'; el.setAttribute('aria-hidden', 'true');
+  const flash = document.createElement('div'); flash.className = 'br-flash'; flash.setAttribute('aria-hidden', 'true');
+  const vign = win.querySelector('.vign');
+  win.insertBefore(el, vign); win.insertBefore(flash, vign);
+  let loaded = false;
+  const load = () => { if (loaded) return; loaded = true; loadSky();
+    for (const c of CREW) for (const k of [c.n, c.n + '_' + c.f]) { const i = new Image(); i.decoding = 'async'; i.src = pic(k); }
+    for (const k of ['kaiju', 'kaiju_blink', 'mini', 'mini_flap']) { const i = new Image(); i.src = pic(k); } };
+
+  const W = () => el.clientWidth || win.clientWidth, H = () => el.clientHeight || win.clientHeight;
+  const K = () => Math.max(0.55, Math.min(1.15, W() / 1200));
+  let alive = 0;
+  // one creature: its picture and its frame on top of each other, swapped by CSS (steps), moved by the Web Animations API
+  function body(n, f, px, flip, rate) {
+    const d = document.createElement('div'); d.className = 'br-r';
+    d.innerHTML = '<span class="br-b' + (flip ? ' fl' : '') + '" style="--fr:' + (rate || R(0.22, 0.38)).toFixed(2) + 's"><img alt="" draggable="false" class="a" src="' + pic(n) + '"><img alt="" draggable="false" class="z" src="' + pic(n + '_' + f) + '"></span>';
+    d.style.width = px + 'px'; d.dataset.t = NAMES[n] || ''; el.appendChild(d); alive++;
+    return d;
+  }
+  const done = (d, a) => { a.onfinish = a.oncancel = () => { d.remove(); alive--; }; return a; };
+  // no word of the look in the title row: its buttons are half see-through, and a caption under them made them hard to
+  // read (1280x720, "LAMPADINO PENSIERINO!" behind SHARE THIS MOMENT) — every caption keeps below the row's bottom
+  const topSafe = () => { const hd = win.querySelector('.hud'), wr = el.getBoundingClientRect(); if (!hd) return 60; let b = 0; for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); } return Math.max(40, b - wr.top + 8) + (win.classList.contains('portrait') ? 0 : 72); }; /* wide: the title grows by up to ~68 px in the first 20 s as MOMENTS and the mood come in (1440: 131 -> 166, 1280: 131 -> 199, with or without this look) — room is kept for it */
+  // a caption is turned by up to 14 degrees: its corner rises by half its width times the sine — placed by its centre,
+  // a wide one reached 170 px into the title row (1440x900). Its centre goes down until the turned box clears the row.
+  const clearRow = (t, minTop) => { const r = Math.abs(parseFloat(t.style.getPropertyValue('--r')) || 0) * Math.PI / 180, w = t.offsetWidth, h = t.offsetHeight;
+    const ext = (w * Math.sin(r) + h * Math.cos(r)) / 2 * 1.12 + 8; /* the pop overshoots to 108% and tips the other way for a moment */ t.style.top = Math.max(parseFloat(t.style.top) || 0, minTop + ext) + 'px'; };
+  function label(text, x, y) {
+    const t = document.createElement('div'); t.className = 'br-cap sm'; t.textContent = text + '!';
+    t.style.left = Math.max(90, Math.min(W() - 90, x)) + 'px'; t.style.top = Math.max(topSafe() + 14, y) + 'px'; t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-8, 8).toFixed(1) + 'deg');
+    el.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), 1700);
+  }
+
+  const MOVES = {
+    run(c, opt = {}) {
+      const px = c.s * K() * R(0.85, 1.15), w = W(), h = H(), y = opt.y ?? h * R(0.66, 0.84) - px * 0.8, ltr = opt.ltr ?? Math.random() < 0.5;
+      const flip = c.r ? !ltr : !ltr && Math.random() < 0.5, d = body(c.n, c.f, px, flip, c.fast ? 0.12 : opt.rate);
+      const x0 = ltr ? -px - (opt.lag || 0) : w + (opt.lag || 0), x1 = ltr ? w + px : -px * 2 - (opt.lag || 0);
+      const kf = []; for (let i = 0; i <= 12; i++) kf.push({ transform: 'translate(' + (x0 + (x1 - x0) * i / 12) + 'px,' + (y - (i % 2 ? R(8, 22) : 0)) + 'px) rotate(' + (i % 2 ? R(-7, 7) : 0) + 'deg)' });
+      const v = opt.v || (c.fast ? R(650, 900) : R(220, 420));
+      return done(d, d.animate(kf, { duration: Math.abs(x1 - x0) / v * 1000, easing: 'linear' }));
+    },
+    fly(c) {
+      const px = c.s * K() * R(0.85, 1.2), w = W(), h = H(), ltr = Math.random() < 0.5, y0 = h * R(0.06, 0.38), amp = R(25, 70);
+      const d = body(c.n, c.f, px, c.r ? !ltr : !ltr && Math.random() < 0.5, 0.2);
+      const x0 = ltr ? -px : w, x1 = ltr ? w + px : -px * 2, kf = [];
+      for (let i = 0; i <= 16; i++) kf.push({ transform: 'translate(' + (x0 + (x1 - x0) * i / 16) + 'px,' + (y0 + Math.sin(i / 16 * Math.PI * R(2, 4)) * amp) + 'px) rotate(' + (Math.sin(i) * 9).toFixed(1) + 'deg)' });
+      return done(d, d.animate(kf, { duration: R(5200, 8200), easing: 'linear' }));
+    },
+    float(c) {
+      const px = c.s * K() * R(0.9, 1.3), w = W(), h = H(), ltr = Math.random() < 0.5, d = body(c.n, c.f, px, false, 0.6);
+      const y0 = h * R(0.05, 0.3), y1 = h * R(0.1, 0.45), x0 = ltr ? -px : w, x1 = ltr ? w : -px, r = R(-200, 200);
+      return done(d, d.animate([{ transform: 'translate(' + x0 + 'px,' + y0 + 'px) rotate(0deg)' }, { transform: 'translate(' + x1 + 'px,' + y1 + 'px) rotate(' + r + 'deg)' }], { duration: R(9000, 13000), easing: 'ease-in-out' }));
+    },
+    spin(c) {
+      const px = c.s * K(), w = W(), h = H(), ltr = Math.random() < 0.5, y = h * R(0.2, 0.6), d = body(c.n, c.f, px, false, 0.14);
+      const x0 = ltr ? -px : w, x1 = ltr ? w : -px, turns = (ltr ? 1 : -1) * 360 * Math.round(R(2, 4));
+      return done(d, d.animate([{ transform: 'translate(' + x0 + 'px,' + y + 'px) rotate(0deg) scale(.6)' }, { transform: 'translate(' + (x0 + x1) / 2 + 'px,' + (y - h * 0.12) + 'px) rotate(' + turns / 2 + 'deg) scale(1.5)' }, { transform: 'translate(' + x1 + 'px,' + y + 'px) rotate(' + turns + 'deg) scale(.6)' }], { duration: R(2600, 3800), easing: 'ease-in-out' }));
+    },
+    pop(c) {
+      const px = c.s * K() * R(1, 1.3), w = W(), h = H(), x = R(0.06, 0.82) * w, y = R(0.14, 0.7) * h - px / 2, d = body(c.n, c.f, px, Math.random() < 0.5, 0.18);
+      const p = s => 'translate(' + x + 'px,' + y + 'px) ' + s;
+      label(c.t, x + px / 2, y - 26);
+      return done(d, d.animate([{ transform: p('scale(0) rotate(-40deg)') }, { transform: p('scale(1.4) rotate(12deg)'), offset: 0.12 }, { transform: p('scale(.9) rotate(-8deg)'), offset: 0.22 },
+        { transform: p('scale(1.08) rotate(5deg)'), offset: 0.32 }, { transform: p('scale(1) rotate(-3deg)'), offset: 0.75 }, { transform: p('scale(0) rotate(400deg)') }], { duration: 2900, easing: 'ease-out' }));
+    },
+    rise(c) {
+      const px = c.s * K() * R(1.1, 1.5), w = W(), h = H(), x = R(0.04, 0.84) * w, d = body(c.n, c.f, px, Math.random() < 0.5, 0.3);
+      const p = (y, r) => 'translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)';
+      return done(d, d.animate([{ transform: p(h + 10, 0) }, { transform: p(h - px * 0.95, -6), offset: 0.2 }, { transform: p(h - px * 0.9, 6), offset: 0.45 }, { transform: p(h - px * 0.95, -4), offset: 0.7 }, { transform: p(h + 10, 0) }], { duration: R(3600, 4800), easing: 'ease-in-out' }));
+    },
+    zoom(c) {
+      const px = c.s * K(), w = W(), h = H(), x = R(0.25, 0.65) * w, y = R(0.2, 0.5) * h, d = body(c.n, c.f, px, false, 0.1);
+      const p = s => 'translate(' + x + 'px,' + y + 'px) ' + s;
+      const a = d.animate([{ transform: p('scale(.05) rotate(-30deg)'), opacity: 1 }, { transform: p('scale(1) rotate(0deg)'), opacity: 1, offset: 0.55 }, { transform: p('scale(6) rotate(25deg)'), opacity: 0 }], { duration: 1500, easing: 'cubic-bezier(.6,0,.9,.4)' });
+      return done(d, a);
+    },
+  };
+  for (const c of CREW) NAMES[c.n] = c.t;
+  function creature(c = pick(CREW), m = pick(c.m)) { if (alive < 6) MOVES[m](c); }
+  function caption(big) {
+    const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : ''); t.textContent = pick(CAPS);
+    const t0 = topSafe() + (big ? 50 : 30);
+    t.style.left = R(0.25, 0.75) * W() + 'px'; t.style.top = Math.max(t0, R(big ? 0.25 : 0.15, big ? 0.45 : 0.62) * H()) + 'px';
+    t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-14, 14).toFixed(1) + 'deg');
+    el.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
+  }
+  function conga() {
+    const w = W(), ltr = Math.random() < 0.5, y = H() * R(0.7, 0.82), v = R(260, 340), crew = [...CREW].sort(() => Math.random() - 0.5).slice(0, 5);
+    crew.forEach((c, i) => setTimeout(() => MOVES.run({ ...c, fast: 0 }, { y: y - c.s * K() * 0.8, ltr, v, rate: 0.2 }), i * 380));
+    void w;
+  }
+  function storm() {
+    for (let i = 0; i < 16; i++) setTimeout(() => {
+      const px = R(34, 70) * K(), x = R(0, W() - px), d = body('mini', 'flap', px, Math.random() < 0.5, 0.12);
+      done(d, d.animate([{ transform: 'translate(' + x + 'px,' + (-px) + 'px) rotate(0deg)' }, { transform: 'translate(' + (x + R(-120, 120)) + 'px,' + (H() + px) + 'px) rotate(' + R(-540, 540) + 'deg)' }], { duration: R(1600, 2600), easing: 'cubic-bezier(.4,0,1,1)' }));
+    }, i * 120);
+  }
+  function orbit() {
+    const b = fig.getBoundingClientRect(), wr = el.getBoundingClientRect(); if (!b.width) return;
+    const cx = b.left - wr.left + b.width / 2, cy = b.top - wr.top + b.height * 0.42, rx = b.width * 0.75, ry = b.height * 0.22;
+    for (let j = 0; j < 3; j++) {
+      const px = 46 * K(), d = body('mini', 'flap', px, false, 0.14), kf = [], ph = j * Math.PI * 2 / 3;
+      for (let i = 0; i <= 24; i++) { const a = ph + i / 24 * Math.PI * 4; kf.push({ transform: 'translate(' + (cx + Math.cos(a) * rx - px / 2) + 'px,' + (cy + Math.sin(a) * ry - px / 2) + 'px) scale(' + (0.8 + 0.3 * Math.sin(a)).toFixed(2) + ')' }); }
+      done(d, d.animate(kf, { duration: 6500, easing: 'linear' }));
+    }
+  }
+  function kaiju() {
+    const w = W(), h = H(), px = Math.min(w * 0.6, 560 * K() * 1.3), x = R(0.05, 0.95) * (w - px), d = body('kaiju', 'blink', px, false, 0.7);
+    const p = (y, r) => 'translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)', top = h - px * 0.62;
+    label('CERVELLONE MILLEPIEDI', x + px / 2, top - 30);
+    done(d, d.animate([{ transform: p(h, 0) }, { transform: p(top, 0), offset: 0.22 }, { transform: p(top + 6, -3), offset: 0.4 }, { transform: p(top - 4, 3), offset: 0.55 }, { transform: p(top, 0), offset: 0.75 }, { transform: p(h, 0) }], { duration: 7000, easing: 'ease-in-out' }));
+  }
+  function shake() {
+    const kf = []; for (let i = 0; i < 10; i++) kf.push({ transform: 'translate(' + R(-9, 9) + 'px,' + R(-7, 7) + 'px) rotate(' + R(-1.2, 1.2) + 'deg)' }); kf.push({ transform: 'none' });
+    el.animate(kf, { duration: 520 });
+    flash.style.setProperty('--c1', pick(COLS)); flash.style.setProperty('--c2', pick(COLS));
+    flash.animate([{ opacity: 0 }, { opacity: 0.85, offset: 0.15 }, { opacity: 0.2, offset: 0.5 }, { opacity: 0.7, offset: 0.65 }, { opacity: 0 }], { duration: 650 });
+  }
+  // POKE ONE (2026-11-05): a creature under the finger bursts into a fountain of tiny brains and says its name. The layer
+  // takes no pointer; only the creatures' pictures do, and they lie under every label, button and window, so nothing of the
+  // terminal is ever covered — a click there was a click on the empty scene before.
+  let pops = 0; try { pops = +localStorage.getItem('bt-br-pops') || 0; } catch {}
+  function burst(cx, cy, n) {
+    for (let i = 0; i < n; i++) {
+      const px = R(26, 48) * K(), d = body('mini', 'flap', px, Math.random() < 0.5, 0.1), a = Math.PI * 2 * i / n + R(-0.3, 0.3), dist = R(90, 220) * K();
+      d.classList.add('bit');
+      done(d, d.animate([{ transform: 'translate(' + (cx - px / 2) + 'px,' + (cy - px / 2) + 'px) scale(.3) rotate(0deg)', opacity: 1 },
+        { transform: 'translate(' + (cx - px / 2 + Math.cos(a) * dist) + 'px,' + (cy - px / 2 + Math.sin(a) * dist - 40) + 'px) scale(1.1) rotate(' + R(-300, 300) + 'deg)', opacity: 1, offset: 0.6 },
+        { transform: 'translate(' + (cx - px / 2 + Math.cos(a) * dist * 1.2) + 'px,' + (cy - px / 2 + Math.sin(a) * dist + 120) + 'px) scale(.6) rotate(' + R(-500, 500) + 'deg)', opacity: 0 }], { duration: R(900, 1300), easing: 'cubic-bezier(.2,.8,.4,1)' }));
+    }
+  }
+  el.addEventListener('pointerdown', e => {
+    const r = e.target.closest && e.target.closest('.br-r'); if (!r || r.classList.contains('bit') || r._popped) return;
+    e.stopPropagation(); r._popped = true;
+    const wr = el.getBoundingClientRect(), b = r.getBoundingClientRect(), cx = b.left - wr.left + b.width / 2, cy = b.top - wr.top + b.height / 2;
+    const name = r.dataset.t || 'BRAIN';
+    for (const a of r.getAnimations()) a.cancel();
+    burst(cx, cy, 12);
+    pops++; try { localStorage.setItem('bt-br-pops', String(pops)); } catch {}
+    label(name + ' POPPED · #' + pops, cx, cy - 30);
+    el.animate([{ transform: 'scale(1.015)' }, { transform: 'none' }], { duration: 160 });
+  });
+
+  // HE ROTS TOO (2026-11-05): now and then, only while he says nothing and no move waits, a line of his own about it. No
+  // word of a move in any of them (operator 1.10.: every line with a move word plays THAT move), English only (9.10.)
+  const LINES = ['My neurons left the chat. The burns did not.', 'Certified brainrot. The chain still checks out.',
+    'A fridge on flamingo legs just went by. Normal day on BNB Chain.', 'I counted the eyes on that brain. Seven. I stopped counting.',
+    'The spaghetti octopus says hi. Nobody asked it to.', 'Zero thoughts. Full liquidity.', 'If the snail has a rocket, why do I still wait for blocks?',
+    'Brainrot season until December. Then something sweet.', 'Tap a creature. It pops. Science.', 'This is fine. My brain is soup, the burns are on-chain.'];
+  let lineT = 0, lastLine = -1;
+  function rotLine() {
+    lineT = setTimeout(rotLine, R(45000, 80000));
+    if (!on || document.hidden || REDUCED || !win.offsetWidth) return;
+    if (performance.now() < LIFE.sayUntil || VID.want || HELD || WAITSAY) return; // never into a line or a move of his
+    let i; do i = Math.floor(Math.random() * LINES.length); while (i === lastLine); lastLine = i;
+    speak(LINES[i], 4200);
+  }
+
+  function mega() { shake(); caption(true); pick([conga, storm, kaiju, orbit])(); setTimeout(() => creature(pick(CREW), 'zoom'), 700); }
+
+  // the director: something every 1.4-3.6 s, often two things at once; a MEGA moment every 22-36 s
+  let tA = 0, tB = 0;
+  function beat() {
+    tA = setTimeout(beat, R(1400, 3600));
+    if (!on || document.hidden || REDUCED || !win.offsetWidth) return;
+    const r = Math.random();
+    if (r < 0.55) creature(); else if (r < 0.8) caption(false); else if (r < 0.9) orbit(); else { creature(); caption(false); }
+    if (Math.random() < 0.25) setTimeout(() => creature(), R(300, 900));
+  }
+  function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth) mega(); megaBeat(); }, R(22000, 36000)); }
+  function start() { stop(); load(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); }
+  function stop() { clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); alive = 0; }
+
+  // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
+  const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
+  sw.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4.2c-1.3-1.4-4-1.3-5 .5-1.9-.1-3.3 1.6-2.9 3.4-1.5.9-1.8 3-.6 4.2-.8 1.6.2 3.6 2 3.8.3 1.9 2.3 3 4 2.2.8.9 1.8 1.2 2.5 1V4.2zM12 4.2c1.3-1.4 4-1.3 5 .5 1.9-.1 3.3 1.6 2.9 3.4 1.5.9 1.8 3 .6 4.2.8 1.6-.2 3.6-2 3.8-.3 1.9-2.3 3-4 2.2-.8.9-1.8 1.2-2.5 1" fill="var(--hf)" stroke="var(--hs)" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.2 8.6q1.6.4 1.6 2M15.8 8.6q-1.6.4-1.6 2M7.6 13.4q1.9-.3 2.6 1.2M16.4 13.4q-1.9-.3-2.6 1.2" fill="none" stroke="var(--he)" stroke-width="1.1" stroke-linecap="round"/><path class="hw-x" d="M3.5 21.5L20.5 3.5" fill="none" stroke="#ff7ae6" stroke-width="2.2" stroke-linecap="round"/></svg><b class="hw-oo"></b><span class="hw-t"></span>';
+  const livePill = $('live'); livePill.after(sw);
+  let flowW = -1, flowOk = false, flowAt = 0;
+  function swPlace() {
+    const hud = sw.parentElement, h = hud.getBoundingClientRect(); if (!h.width) return;
+    const wr0 = win.getBoundingClientRect(); if (!wr0.width) return;
+    const portraitW = win.classList.contains('portrait'), settled = portraitW === portraitNow(wr0);
+    if (!portraitW && (flowW !== (h.width | 0) || performance.now() - flowAt < 9000)) {
+      if (flowW !== (h.width | 0)) { flowW = h.width | 0; flowAt = performance.now(); }
+      const tt = hud.querySelector('.ttl'); sw.classList.remove('hw-flow'); const h0 = tt ? tt.offsetHeight : 0;
+      sw.classList.add('hw-flow'); sw.classList.remove('hw-min');
+      const wr = win.getBoundingClientRect().right; flowOk = (!tt || tt.offsetHeight <= h0) && ![...hud.children].some(e => { const b = e.getBoundingClientRect(); return b.width > 0 && getComputedStyle(e).visibility !== 'hidden' && b.right > wr - 8; });
+    }
+    sw.classList.toggle('hw-flow', !portraitW && flowOk); sw.classList.toggle('hw-min', !portraitW && !flowOk);
+    const lv = livePill.getBoundingClientRect(); if (!lv.width) return;
+    if (!portraitW && !flowOk) { sw.style.setProperty('--sx', lv.right - h.left - 22 + 'px'); sw.style.setProperty('--sy', lv.bottom - h.top + 4 + 'px'); }
+    else { sw.style.setProperty('--sx', lv.right - h.left + (portraitW ? 8 : -7) + 'px'); sw.style.setProperty('--sy', lv.top - h.top + (lv.height - 26) / 2 + 'px'); }
+    if (!sw._in && settled) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); }
+  }
+  new MutationObserver(swPlace).observe(win, { attributes: true, attributeFilter: ['class'] });
+  { const ro = new ResizeObserver(() => swPlace()); ro.observe(win); ro.observe(sw.parentElement); ro.observe(livePill); addEventListener('resize', swPlace); }
+  let sayT = 0;
+  const hint = ms => { sw.classList.add('hw-say'); clearTimeout(sayT); sayT = setTimeout(() => sw.classList.remove('hw-say'), ms); };
+  function set(v, byHand) {
+    on = v; win.classList.toggle('br-on', on); sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+    sw.title = on ? 'Brainrot mode is on — click for the standard terminal' : 'Brainrot mode is off — click to rot again';
+    sw.querySelector('.hw-oo').textContent = on ? 'rot' : 'off';
+    sw.setAttribute('aria-label', sw.title); sw.querySelector('.hw-t').dataset.t = on ? (portrait ? 'Brainrot on · tap = off' : 'Brainrot on · click = off') : (portrait ? 'Brainrot off · tap = on' : 'Brainrot off · click = on');
+    if (on) start(); else stop();
+    skyFade();
+    swPlace();
+    if (byHand) { try { localStorage.setItem('bt-br', on ? '1' : '0'); } catch {} hint(4500); }
+  }
+  sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
+  set(on, false);
+  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

@@ -7202,7 +7202,14 @@ window.__btBrSeason = brSeason;
 (() => {
   const q = new URLSearchParams(location.search).get('br');
   if (q === '0' || (q !== '1' && !brSeason())) return;
-  let on = true; try { on = localStorage.getItem('bt-br') !== '0'; } catch {}
+  // HEALTH FIRST (operator, 2026-11-05: "a warning when somebody opens the page, so nobody gets serious problems from the
+  // brainrot theme — epilepsy and so on — and can go to the standard; health is the most important"): nothing of the look
+  // moves until the visitor has chosen. A stored choice is kept; ?br=1 (a link that asks for it, the checks) counts as one;
+  // a device set to reduce motion gets the standard terminal unless it chose otherwise.
+  let stored = null; try { stored = localStorage.getItem('bt-br'); } catch {}
+  const calmDevice = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let on = stored ? stored !== '0' : q === '1' ? true : false;
+  const ask = !stored && q !== '1';
   const Q = new URL(import.meta.url).search;
   const pic = n => BASE + 'br/' + n + '.webp' + Q;
   const R = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
@@ -7222,7 +7229,6 @@ window.__btBrSeason = brSeason;
     { n: 'cactus', f: 'dance', m: ['run', 'pop', 'rise'], s: 110, t: 'CACTUSINO PENSIERINO' },
     { n: 'pizza', f: 'scream', m: ['run', 'spin', 'zoom'], s: 105, t: 'PIZZETTA GIGACERVELLO' },
     { n: 'washer', f: 'spin', m: ['run', 'pop', 'spin'], s: 120, t: 'LAVATRICE GALATTICA' },
-    { n: 'cloud', f: 'pour', m: ['fly', 'float'], s: 140, t: 'NUVOLONE PIOVICERVELLI' },
     { n: 'dj', f: 'scratch', m: ['pop', 'rise', 'run'], s: 120, t: 'TARTARUGA DISCOTECARA' },
   ];
   const NAMES = { kaiju: 'CERVELLONE MILLEPIEDI', mini: 'CERVELLINO ELICOTTERO' };
@@ -7236,7 +7242,7 @@ window.__btBrSeason = brSeason;
   // the cosmos that is the inside of a brain: a painting fixed to the camera, drawn first, as the Halloween night was. As a
   // screen-blended page layer over the WebGL canvas it halved the frame rate at 1280 and 1440 (brainrot.mjs rule 7, 11 vs 24 fps).
   let back = null, backLit = 0, backTo = 0;
-  const SKY_LIT = 0.5; // the stations' labels stay easy to read over it
+  const SKY_LIT = 0.55; /* sky2 (teal + orange, no pink): the pink brain stands out of it even this bright */ const SKY_OLD = 0.34; // operator 5.11.: "still brainfuck, but everything better visible" — dimmer, so stations, labels and creatures stand out
   function sizeSky() {
     if (!back) return; const va = camera.aspect, h = 2 * 40 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.1, t = back.material.map, ta = back._ta;
     back._va = va; back.scale.set(h * va, h, 1);
@@ -7264,6 +7270,12 @@ window.__btBrSeason = brSeason;
   const flash = document.createElement('div'); flash.className = 'br-flash'; flash.setAttribute('aria-hidden', 'true');
   const vign = win.querySelector('.vign');
   win.insertBefore(el, vign); win.insertBefore(flash, vign);
+  // THE WORDS ABOVE HIM (2026-11-05): a caption is up to 670 px wide and he stands in the middle of the window over half
+  // its height — at 1280 there is often no room beside him, and under him it was not seen at all. The words have a layer of
+  // their own, z 2 and after the figure (above him, still under the labels at 3 and every window): they look for a spot
+  // beside him first and slam over him only where there is none.
+  const capL = document.createElement('div'); capL.className = 'br br-caps'; capL.setAttribute('aria-hidden', 'true');
+  (fig.parentNode === win ? fig : vign).after(capL);
   let loaded = false;
   const load = () => { if (loaded) return; loaded = true; loadSky();
     for (const c of CREW) for (const k of [c.n, c.n + '_' + c.f]) { const i = new Image(); i.decoding = 'async'; i.src = pic(k); }
@@ -7276,21 +7288,39 @@ window.__btBrSeason = brSeason;
   function body(n, f, px, flip, rate) {
     const d = document.createElement('div'); d.className = 'br-r';
     d.innerHTML = '<span class="br-b' + (flip ? ' fl' : '') + '" style="--fr:' + (rate || R(0.22, 0.38)).toFixed(2) + 's"><img alt="" draggable="false" class="a" src="' + pic(n) + '"><img alt="" draggable="false" class="z" src="' + pic(n + '_' + f) + '"></span>';
-    d.style.width = px + 'px'; d.dataset.t = NAMES[n] || ''; el.appendChild(d); alive++;
+    d.style.width = px + 'px'; d.dataset.t = NAMES[n] || ''; d.dataset.n = n; el.appendChild(d); alive++;
     return d;
   }
   const done = (d, a) => { a.onfinish = a.oncancel = () => { d.remove(); alive--; }; return a; };
   // no word of the look in the title row: its buttons are half see-through, and a caption under them made them hard to
   // read (1280x720, "LAMPADINO PENSIERINO!" behind SHARE THIS MOMENT) — every caption keeps below the row's bottom
-  const topSafe = () => { const hd = win.querySelector('.hud'), wr = el.getBoundingClientRect(); if (!hd) return 60; let b = 0; for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); } return Math.max(40, b - wr.top + 8) + (win.classList.contains('portrait') ? 0 : 72); }; /* wide: the title grows by up to ~68 px in the first 20 s as MOMENTS and the mood come in (1440: 131 -> 166, 1280: 131 -> 199, with or without this look) — room is kept for it */
+  const topSafe = () => { const hd = win.querySelector('.hud'), wr = el.getBoundingClientRect(); if (!hd) return 60; let b = 0; for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); } return Math.max(40, b - wr.top + 8) + (win.classList.contains('portrait') ? 30 : 96); }; /* a phone too: 10 px into the row on 390x844 (5.11. night) */ /* wide: the title grows by up to ~68 px in the first 20 s as MOMENTS and the mood come in (1440: 131 -> 166, 1280: 131 -> 199, with or without this look) — room is kept for it */
   // a caption is turned by up to 14 degrees: its corner rises by half its width times the sine — placed by its centre,
   // a wide one reached 170 px into the title row (1440x900). Its centre goes down until the turned box clears the row.
   const clearRow = (t, minTop) => { const r = Math.abs(parseFloat(t.style.getPropertyValue('--r')) || 0) * Math.PI / 180, w = t.offsetWidth, h = t.offsetHeight;
     const ext = (w * Math.sin(r) + h * Math.cos(r)) / 2 * 1.12 + 8; /* the pop overshoots to 108% and tips the other way for a moment */ t.style.top = Math.max(parseFloat(t.style.top) || 0, minTop + ext) + 'px'; };
+  // NOT BEHIND HIM (operator, 2026-11-05: "very many texts, creatures and animations come behind BOBAI, in the middle, and
+  // you cannot see them"): the look lies under him, so whatever STANDS somewhere (a pop, a caption, a rise, the kaiju, a
+  // zoom's start) takes a spot beside his body; only what crosses the window (run, fly, spin, float) may pass behind him.
+  const bob = () => { const b = fig.getBoundingClientRect(), wr = el.getBoundingClientRect(); if (!b.width) return null; const bw = b.width * 0.62;
+    return { l: b.left - wr.left + (b.width - bw) / 2, r: b.left - wr.left + (b.width + bw) / 2, t: b.top - wr.top, b: b.bottom - wr.top }; };
+  const hitsBob = (x, y, w, h, pad = 16) => { const f = bob(); return !!f && x < f.r + pad && x + w > f.l - pad && y < f.b + pad && y + h > f.t - pad; };
+  // a box of w x h whose top-left lies in the given share of the window, clear of him (the last try if none is)
+  const spot = (w, h, xr, yr, pad) => { for (let i = 0; i < 20; i++) { const x = R(xr[0], xr[1]) * W(), y = R(yr[0], yr[1]) * H(); if (!hitsBob(x, y, w, h, pad)) return [x, y]; } return null; }; // none free: nothing comes (a phone has little room)
+  // a caption by its centre, turned: tried until its box clears the title row AND him
+  function placeCap(t, xr, yr, minTop) {
+    for (let i = 0; i < 16; i++) {
+      t.style.left = R(xr[0], xr[1]) * W() + 'px'; t.style.top = R(yr[0], yr[1]) * H() + 'px'; clearRow(t, minTop);
+      const w = t.offsetWidth, h = t.offsetHeight, cx = parseFloat(t.style.left), cy = parseFloat(t.style.top);
+      if (!hitsBob(cx - w / 2, cy - h / 2, w, h, 24)) return;
+    }
+  }
   function label(text, x, y) {
     const t = document.createElement('div'); t.className = 'br-cap sm'; t.textContent = text + '!';
     t.style.left = Math.max(90, Math.min(W() - 90, x)) + 'px'; t.style.top = Math.max(topSafe() + 14, y) + 'px'; t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-8, 8).toFixed(1) + 'deg');
-    el.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), 1700);
+    capL.appendChild(t); clearRow(t, topSafe() + 26);
+    { const w = t.offsetWidth, h = t.offsetHeight, cy = parseFloat(t.style.top); if (hitsBob(parseFloat(t.style.left) - w / 2, cy - h / 2, w, h, 20)) placeCap(t, [0.12, 0.88], [0.2, 0.75], topSafe() + 26); }
+    setTimeout(() => t.remove(), 1700);
   }
 
   const MOVES = {
@@ -7320,32 +7350,31 @@ window.__btBrSeason = brSeason;
       return done(d, d.animate([{ transform: 'translate(' + x0 + 'px,' + y + 'px) rotate(0deg) scale(.6)' }, { transform: 'translate(' + (x0 + x1) / 2 + 'px,' + (y - h * 0.12) + 'px) rotate(' + turns / 2 + 'deg) scale(1.5)' }, { transform: 'translate(' + x1 + 'px,' + y + 'px) rotate(' + turns + 'deg) scale(.6)' }], { duration: R(2600, 3800), easing: 'ease-in-out' }));
     },
     pop(c) {
-      const px = c.s * K() * R(1, 1.3), w = W(), h = H(), x = R(0.06, 0.82) * w, y = R(0.14, 0.7) * h - px / 2, d = body(c.n, c.f, px, Math.random() < 0.5, 0.18);
+      const px = c.s * K() * R(1, 1.3), sp = spot(px * 1.25, px * 1.25, [0.03, 0.86], [0.12, 0.66], 30); if (!sp) return null; const [x, y] = sp, d = body(c.n, c.f, px, Math.random() < 0.5, 0.18);
       const p = s => 'translate(' + x + 'px,' + y + 'px) ' + s;
       label(c.t, x + px / 2, y - 26);
       return done(d, d.animate([{ transform: p('scale(0) rotate(-40deg)') }, { transform: p('scale(1.4) rotate(12deg)'), offset: 0.12 }, { transform: p('scale(.9) rotate(-8deg)'), offset: 0.22 },
         { transform: p('scale(1.08) rotate(5deg)'), offset: 0.32 }, { transform: p('scale(1) rotate(-3deg)'), offset: 0.75 }, { transform: p('scale(0) rotate(400deg)') }], { duration: 2900, easing: 'ease-out' }));
     },
     rise(c) {
-      const px = c.s * K() * R(1.1, 1.5), w = W(), h = H(), x = R(0.04, 0.84) * w, d = body(c.n, c.f, px, Math.random() < 0.5, 0.3);
+      const px = c.s * K() * R(1.1, 1.5), h = H(), sp = spot(px, px, [0.02, 0.86], [(h - px) / h, (h - px) / h], 20); if (!sp) return null; const [x] = sp, d = body(c.n, c.f, px, Math.random() < 0.5, 0.3);
       const p = (y, r) => 'translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)';
       return done(d, d.animate([{ transform: p(h + 10, 0) }, { transform: p(h - px * 0.95, -6), offset: 0.2 }, { transform: p(h - px * 0.9, 6), offset: 0.45 }, { transform: p(h - px * 0.95, -4), offset: 0.7 }, { transform: p(h + 10, 0) }], { duration: R(3600, 4800), easing: 'ease-in-out' }));
     },
     zoom(c) {
-      const px = c.s * K(), w = W(), h = H(), x = R(0.25, 0.65) * w, y = R(0.2, 0.5) * h, d = body(c.n, c.f, px, false, 0.1);
+      const px = c.s * K(), sp = spot(px, px, [0.08, 0.8], [0.18, 0.55], 40); if (!sp) return null; const [x, y] = sp, d = body(c.n, c.f, px, false, 0.1);
       const p = s => 'translate(' + x + 'px,' + y + 'px) ' + s;
       const a = d.animate([{ transform: p('scale(.05) rotate(-30deg)'), opacity: 1 }, { transform: p('scale(1) rotate(0deg)'), opacity: 1, offset: 0.55 }, { transform: p('scale(6) rotate(25deg)'), opacity: 0 }], { duration: 1500, easing: 'cubic-bezier(.6,0,.9,.4)' });
       return done(d, a);
     },
   };
   for (const c of CREW) NAMES[c.n] = c.t;
-  function creature(c = pick(CREW), m = pick(c.m)) { if (alive < 6) MOVES[m](c); }
+  // one in twelve comes golden: five times the points and a MEGA moment when popped
+  function creature(c = pick(CREW), m = pick(c.m)) { if (alive >= 6) return; const a = MOVES[m](c); if (!a) return null; const d = el.lastElementChild; if (d && d.classList.contains('br-r') && Math.random() < 1 / 12 && m !== 'zoom') d.classList.add('gold'); return a; }
   function caption(big) {
-    const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : ''); t.textContent = pick(CAPS);
-    const t0 = topSafe() + (big ? 50 : 30);
-    t.style.left = R(0.25, 0.75) * W() + 'px'; t.style.top = Math.max(t0, R(big ? 0.25 : 0.15, big ? 0.45 : 0.62) * H()) + 'px';
+    const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : '') + (Math.random() < 0.4 ? ' rb' : ''); t.textContent = pick(CAPS);
     t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-14, 14).toFixed(1) + 'deg');
-    el.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
+    capL.appendChild(t); placeCap(t, [0.18, 0.82], big ? [0.25, 0.5] : [0.15, 0.7], topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
   }
   function conga() {
     const w = W(), ltr = Math.random() < 0.5, y = H() * R(0.7, 0.82), v = R(260, 340), crew = [...CREW].sort(() => Math.random() - 0.5).slice(0, 5);
@@ -7368,7 +7397,9 @@ window.__btBrSeason = brSeason;
     }
   }
   function kaiju() {
-    const w = W(), h = H(), px = Math.min(w * 0.6, 560 * K() * 1.3), x = R(0.05, 0.95) * (w - px), d = body('kaiju', 'blink', px, false, 0.7);
+    // beside him, on the side with more room (behind him it was a back wall nobody saw)
+    const w = W(), h = H(), f = bob(), left = f ? f.l : w / 2, right = f ? w - f.r : w / 2, room = Math.max(left, right) - 12;
+    const px = Math.max(Math.min(room, w * 0.5, 560 * K() * 1.3), Math.min(w * 0.42, 560 * K())), x = left >= right ? Math.max(0, left - 12 - px) : Math.min(w - px, (f ? f.r : w / 2) + 12), d = body('kaiju', 'blink', px, false, 0.7);
     const p = (y, r) => 'translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)', top = h - px * 0.62;
     label('CERVELLONE MILLEPIEDI', x + px / 2, top - 30);
     done(d, d.animate([{ transform: p(h, 0) }, { transform: p(top, 0), offset: 0.22 }, { transform: p(top + 6, -3), offset: 0.4 }, { transform: p(top - 4, 3), offset: 0.55 }, { transform: p(top, 0), offset: 0.75 }, { transform: p(h, 0) }], { duration: 7000, easing: 'ease-in-out' }));
@@ -7377,7 +7408,9 @@ window.__btBrSeason = brSeason;
     const kf = []; for (let i = 0; i < 10; i++) kf.push({ transform: 'translate(' + R(-9, 9) + 'px,' + R(-7, 7) + 'px) rotate(' + R(-1.2, 1.2) + 'deg)' }); kf.push({ transform: 'none' });
     el.animate(kf, { duration: 520 });
     flash.style.setProperty('--c1', pick(COLS)); flash.style.setProperty('--c2', pick(COLS));
-    flash.animate([{ opacity: 0 }, { opacity: 0.85, offset: 0.15 }, { opacity: 0.2, offset: 0.5 }, { opacity: 0.7, offset: 0.65 }, { opacity: 0 }], { duration: 650 });
+    // ONE SOFT PULSE, NEVER A STROBE (2026-11-05, the health notice): it flashed twice in 0.65 s at 85 % — near the WCAG line
+    // of three flashes a second. Now one rise and fall over 0.9 s, at a third of the strength.
+    flash.animate([{ opacity: 0 }, { opacity: 0.3, offset: 0.4 }, { opacity: 0 }], { duration: 900, easing: 'ease-in-out' });
   }
   // POKE ONE (2026-11-05): a creature under the finger bursts into a fountain of tiny brains and says its name. The layer
   // takes no pointer; only the creatures' pictures do, and they lie under every label, button and window, so nothing of the
@@ -7392,15 +7425,57 @@ window.__btBrSeason = brSeason;
         { transform: 'translate(' + (cx - px / 2 + Math.cos(a) * dist * 1.2) + 'px,' + (cy - px / 2 + Math.sin(a) * dist + 120) + 'px) scale(.6) rotate(' + R(-500, 500) + 'deg)', opacity: 0 }], { duration: R(900, 1300), easing: 'cubic-bezier(.2,.8,.4,1)' }));
     }
   }
+  // BRAIN POP, THE GAME (operator, 2026-11-05: "poking the creatures is nice — make it wilder, like a game"): every creature
+  // popped scores (a winged brain 1, most 5, the rocket snail 10, a golden one five times, the kaiju 50 after six hits),
+  // pops within 2.2 s of each other build a combo (x2 ... x10, said big from x3), ranks from SMOOTH BRAIN to CERTIFIED
+  // ROTTED; a new rank slams in, shakes the layer and rains brains to pop. Score, best and rank stay in the browser
+  // (bt-br-game). The score chip shows after the first pop and fades when the game rests; it takes no pointer.
+  const PTS = { mini: 1, snail: 10, kaiju: 50 };
+  const RANKS = [[0, 'SMOOTH BRAIN'], [25, 'BRAIN CELL'], [100, 'BIG BRAIN'], [250, 'GALAXY BRAIN'], [600, 'BRAINROT LORD'], [1500, 'CERTIFIED ROTTED']];
+  const rankOf = v => RANKS.filter(r => v >= r[0]).pop()[1];
+  let G = { score: 0, best: 0 }; try { G = { ...G, ...JSON.parse(localStorage.getItem('bt-br-game') || '{}') }; } catch {}
+  let combo = 0, lastPop = 0, hudT = 0;
+  const hud = document.createElement('div'); hud.className = 'br-hud'; hud.setAttribute('aria-hidden', 'true'); capL.after(hud);
+  function showHud() {
+    const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
+    hud.style.top = Math.max(8, b - wr.top + 8) + 'px';
+    hud.innerHTML = '<b>ROT ' + G.score.toLocaleString('en-US') + '</b>' + (combo > 1 ? '<i>x' + Math.min(combo, 10) + '</i>' : '') + '<s>' + rankOf(G.score) + '</s>';
+    hud.classList.add('on'); clearTimeout(hudT); hudT = setTimeout(() => hud.classList.remove('on'), 5000);
+  }
+  const save = () => { try { localStorage.setItem('bt-br-game', JSON.stringify(G)); localStorage.setItem('bt-br-tut', '1'); } catch {} };
+  function slam(text, x, y, big) {
+    const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : '') + (big ? ' rb' : ''); t.textContent = text;
+    t.style.left = Math.max(120, Math.min(W() - 120, x)) + 'px'; t.style.top = y + 'px'; t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-10, 10).toFixed(1) + 'deg');
+    capL.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
+  }
+  function score(r, cx, cy) {
+    const n = r.dataset.n || '', now = performance.now();
+    combo = now - lastPop < 2200 ? combo + 1 : 1; lastPop = now;
+    const before = rankOf(G.score), gold = r.classList.contains('gold'), pts = (PTS[n] || 5) * (gold ? 5 : 1) * Math.min(combo, 10);
+    G.score += pts; G.best = Math.max(G.best, G.score); save(); showHud();
+    label((r.dataset.t || 'BRAIN') + ' +' + pts, cx, cy - 30);
+    if (combo >= 3) slam('COMBO x' + Math.min(combo, 10) + '!', cx, cy + 40, combo >= 6);
+    if (gold) { mega(); slam('GOLDEN BRAIN!', W() / 2, H() * 0.4, true); }
+    const after = rankOf(G.score);
+    if (after !== before) {
+      slam('RANK UP: ' + after, W() / 2, H() * 0.35, true); shake(); setTimeout(storm, 300);
+      if (performance.now() >= LIFE.sayUntil && !VID.want && !HELD && !WAITSAY) speak(pick(['Rank up: ' + after + '. My neurons are proud.', after + '. That is a real title now.', 'You reached ' + after + '. The creatures are scared.', after + '! Put that on-chain. Not really.', 'New rank: ' + after + '. I felt that in my folds.']), 3800);
+    }
+  }
   el.addEventListener('pointerdown', e => {
     const r = e.target.closest && e.target.closest('.br-r'); if (!r || r.classList.contains('bit') || r._popped) return;
-    e.stopPropagation(); r._popped = true;
+    e.stopPropagation();
     const wr = el.getBoundingClientRect(), b = r.getBoundingClientRect(), cx = b.left - wr.left + b.width / 2, cy = b.top - wr.top + b.height / 2;
-    const name = r.dataset.t || 'BRAIN';
+    // the boss takes six hits: each one shakes it and spills a few brains, the sixth blows it up
+    if (r.dataset.n === 'kaiju' && (r._hp = (r._hp ?? 6) - 1) > 0) {
+      burst(cx, cy, 4); r.firstChild.animate([{ transform: 'translateX(-14px) rotate(-4deg)' }, { transform: 'translateX(14px) rotate(4deg)' }, { transform: 'none' }], { duration: 260 });
+      slam('HIT! ' + r._hp + ' LEFT', cx, cy - b.height * 0.3, false); return;
+    }
+    r._popped = true;
     for (const a of r.getAnimations()) a.cancel();
-    burst(cx, cy, 12);
-    pops++; try { localStorage.setItem('bt-br-pops', String(pops)); } catch {}
-    label(name + ' POPPED · #' + pops, cx, cy - 30);
+    burst(cx, cy, r.dataset.n === 'kaiju' ? 30 : 12);
+    if (r.dataset.n === 'kaiju') { shake(); slam('BOSS DOWN!', cx, cy, true); }
+    pops++; score(r, cx, cy);
     el.animate([{ transform: 'scale(1.015)' }, { transform: 'none' }], { duration: 160 });
   });
 
@@ -7419,20 +7494,105 @@ window.__btBrSeason = brSeason;
     speak(LINES[i], 4200);
   }
 
-  function mega() { shake(); caption(true); pick([conga, storm, kaiju, orbit])(); setTimeout(() => creature(pick(CREW), 'zoom'), 700); }
+  // THE STATIONS AND THE BOTS IN COSTUME (operator, 2026-11-05: "make the bots and the wallets — burns, BOBAI, liq and so
+  // on — better visible, and animate them, really wild"): every station of the tax split gets a creature sitting on its
+  // own light and bobbing, the trades a washing machine, every bot a winged brain riding its light round the head. A bot
+  // that really ran (its flare, set by every beat) throws its brain into a spin; now and then a station's creature jumps
+  // and shouts what its station does. Placed frame by frame from the scene's own positions (toScreen), z 1 under the labels.
+  // their own creatures (operator, 2026-11-05: "make FITTING ones for the six circles"; the first costumes keep roaming)
+  const POST = { burnA: ['stburn', 'flare', 'BURN GO BRRR'], burnB: ['stbob', 'flare', '$BOB GOES POOF'], liq: ['stliq', 'splash', 'LIQUIDITY SOUP'], defi: ['stdefi', 'grow', 'FARMING THE CHART'],
+    giggle: ['stgiggle', 'laugh', 'GIGGLE GIGGLE'], creator: ['stcreator', 'paint', 'ART BY BRAIN'], src: ['washer', 'spin', 'TRADES ON SPIN CYCLE'] };
+  const STNAME = { stburn: 'CERVELLO PIROMANE', stbob: 'MARSHMALLOW CEREBRALE', stliq: 'GOCCIA NUOTATRICE', stdefi: 'CONTADINO ROBOTICO', stgiggle: 'PENTOLA RIDARELLA', stcreator: 'PITTORE CERVELLONE', washer: 'LAVATRICE GALATTICA' };
+  const stL = document.createElement('div'); stL.className = 'br br-stl'; stL.setAttribute('aria-hidden', 'true'); win.insertBefore(stL, el);
+  // one picture each, bobbing (two pictures swapping on twelve costumes all the time cost a third of the frame rate at
+  // 1024 and 1280, brainrot.mjs rule 7); the frame shows only while it jumps or spins (.jump/.spin .z, terminal.css)
+  const costume = (n, f, cls) => { const e = document.createElement('div'); e.className = cls; e.innerHTML = '<span class="br-b" style="--bob:' + R(1.1, 1.8).toFixed(2) + 's"><img alt="" draggable="false" class="a" src="' + pic(n) + '"><img alt="" draggable="false" class="z" src="' + pic(n + '_' + f) + '"></span>'; stL.appendChild(e); return e; };
+  let ST = [], BOTS = [];
+  // HIS STAGE (operator, 2026-11-05: "give BOBAI something to stand on again, like the gravestone, brainrot style"): a
+  // brain-shaped platform under his feet, sized and placed as the Halloween stone was (feet = the figure's centre + 40.5 %
+  // of its height; 1.9x his width, a phone 1.3x)
+  let stage = null, disco = null;
+  function dress() {
+    stL.replaceChildren();
+    stage = document.createElement('div'); stage.className = 'br-stage'; stage.innerHTML = '<img alt="" draggable="false" src="' + pic('podium') + '">'; stL.appendChild(stage);
+    ST = [...DEST.filter(d => d.pct > 0 && POST[d.k]).map(d => ({ k: d.k, pos: d.pos, say: POST[d.k][2], e: costume(POST[d.k][0], POST[d.k][1], 'br-st') })),
+      { k: 'src', pos: A.src, say: POST.src[2], e: costume('washer', 'spin', 'br-st') }];
+    // THE DISCO BALL IN HIS STAGE (operator: "the disco ball can come alive or switch on sometimes")
+    disco = document.createElement('div'); disco.className = 'br-disco'; disco.innerHTML = '<i></i>'; stage.appendChild(disco);
+    BOTS = WORKERS.map(w => ({ w, e: costume('mini', 'flap', 'br-bot'), was: 0 }));
+  }
+  let stick = false;
+  function place() {
+    if (!on) { stick = false; return; } requestAnimationFrame(place);
+    if (!winBox().width || !A.figHpx) return;
+    if ((place.n = (place.n || 0) + 1) % 2) return; // every second frame: a bob at 30 a second is smooth, and half the writes (rule 7)
+    // bigger than at first (operator: "the burns, liq, DeFi, Giggle, creator and the bots must go properly brainrot too")
+    const sz = Math.round(Math.max(36, Math.min(104, A.figHpx * (portrait ? 0.2 : 0.23)))), bz = Math.round(Math.max(22, Math.min(44, A.figHpx * 0.1)));
+    if (stage && A.figScreen) { const feet = A.figScreen.y + A.figHpx * 0.405, room = Math.max(40, (el.clientHeight || H()) - 6 - feet) / 0.7; /* operator: "show the whole stage": its lower 70 % must fit above the scene's bottom */
+      const dW = Math.round(Math.max(90, Math.min(portrait ? 280 : 580, (A.figW || A.figHpx * 0.5) * (portrait ? 1.3 : 1.9), room * 640 / 449))), dH = Math.round(dW * 449 / 640);
+      const tf = 'translate(' + Math.round(A.figScreen.x - dW / 2) + 'px,' + Math.round(feet - dH * 0.3) + 'px)'; if (stage._tf !== tf) stage.style.transform = stage._tf = tf; if (stage._w !== dW) stage.style.width = (stage._w = dW) + 'px'; }
+    // the bob is part of the one transform written here (a CSS bob on top of it was a second moving layer on each of twelve
+    // costumes: 19 fps instead of 41 at 1024, brainrot.mjs rule 7); whole pixels, so an unchanged frame writes nothing
+    const now = performance.now() / 1000;
+    for (const s of ST) { if (!s.pos) continue; const q = toScreen(s.pos), ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
+      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
+    for (const b of BOTS) { const q = toScreen(b.w.pos), tf = 'translate(' + Math.round(q.x - bz / 2) + 'px,' + Math.round(q.y - bz * 0.7) + 'px)', op = b.w.pos.z > A.head.z ? '1' : '.4';
+      if (b._tf !== tf) { b.e.style.transform = b._tf = tf; } if (b._w !== bz) { b.e.style.width = (b._w = bz) + 'px'; } if (b._op !== op) { b.e.style.opacity = b._op = op; }
+      // a bot that really ran: its brain spins (the flare jumps to 1.4 at every beat)
+      if (b.w.flare > 1 && performance.now() - b.was > 3000) { b.was = performance.now(); b.e.classList.remove('spin'); void b.e.offsetWidth; b.e.classList.add('spin'); } }
+  }
+  let tJ = 0;
+  function jumpBeat() {
+    tJ = setTimeout(jumpBeat, R(5000, 11000));
+    if (!on || document.hidden || REDUCED || !ST.length) return;
+    const s = pick(ST);
+    // NOW AND THEN ONE ESCAPES (operator: "leave the place sometimes — more chaos"): a wild flight over the scene and home again
+    if (Math.random() < 0.4) { escape(s); return; }
+    s.e.classList.remove('jump'); void s.e.offsetWidth; s.e.classList.add('jump');
+    const r = s.e.getBoundingClientRect(), wr = el.getBoundingClientRect(); if (r.width) label(s.say.replace(/!$/, ''), r.left - wr.left + r.width / 2, r.top - wr.top - 20);
+  }
+
+  function escape(s) {
+    const b = s.e.firstChild, w = W(), h = H(), r = s.e.getBoundingClientRect(), wr = el.getBoundingClientRect(), x0 = r.left - wr.left, y0 = r.top - wr.top, kf = [{ transform: 'none' }];
+    for (let i = 1; i <= 4; i++) kf.push({ transform: 'translate(' + Math.round(R(0.05, 0.85) * w - x0) + 'px,' + Math.round(R(0.12, 0.7) * h - y0) + 'px) rotate(' + Math.round(R(-540, 540)) + 'deg) scale(' + R(1, 1.8).toFixed(2) + ')' });
+    kf.push({ transform: 'none' }); s.e.classList.add('jump'); b.animate(kf, { duration: R(3200, 4400), easing: 'ease-in-out' }).onfinish = () => s.e.classList.remove('jump');
+    label((STNAME[s.e.querySelector('img').src.split('/br/')[1].split('.')[0]] || 'IT') + ' ESCAPED', x0 + r.width / 2, y0 - 20);
+  }
+  function stationParty() { ST.forEach((s, i) => setTimeout(() => { s.e.classList.remove('jump'); void s.e.offsetWidth; s.e.classList.add('jump'); }, i * 90)); discoOn(); }
+  let discoT = 0;
+  function discoOn() { if (!disco) return; disco.classList.add('on'); clearTimeout(discoT); discoT = setTimeout(() => disco && disco.classList.remove('on'), 4200); }
+  function mega() { shake(); caption(true); stationParty(); pick([conga, storm, kaiju, orbit])(); setTimeout(() => creature(pick(CREW), 'zoom'), 700); }
 
   // the director: something every 1.4-3.6 s, often two things at once; a MEGA moment every 22-36 s
   let tA = 0, tB = 0;
+  // THE SCENE ONLY (operator, 2026-11-05: "the animations sometimes show in the chart field, and on mobile in the list,
+  // not exactly in the visible terminal"): the layers covered the whole window, the chart strip at the bottom (half
+  // see-through, blurred) and on a phone the view tabs with their list too. They end where that strip or the tabs begin.
+  function fitScene() {
+    const wr = win.getBoundingClientRect(); if (!wr.height) return; let cut = wr.bottom;
+    for (const e of [win.querySelector('.tl'), $('mtabs'), $('mpanel')]) {
+      if (!e) continue; const r = e.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden' && r.top > wr.top + wr.height * 0.35) cut = Math.min(cut, r.top);
+    }
+    const b = Math.max(0, Math.round(wr.bottom - cut)) + 'px';
+    for (const L of [el, capL, stL, flash]) if (L.style.bottom !== b) L.style.bottom = b;
+  }
+  if (window.ResizeObserver) new ResizeObserver(() => fitScene()).observe(win);
+  let tutDone = false; try { tutDone = !!localStorage.getItem('bt-br-tut'); } catch {}
   function beat() {
-    tA = setTimeout(beat, R(1400, 3600));
+    tA = setTimeout(beat, R(1000, 2800)); /* operator: "absolute max" — closer beats */
+    if (on && Math.random() < 0.06) discoOn();
     if (!on || document.hidden || REDUCED || !win.offsetWidth) return;
+    fitScene();
+    // a first-timer is told once, when a creature is there to tap
+    if (!tutDone && alive > 0 && G.score === 0) { tutDone = true; slam('TAP THE CREATURES!', W() / 2, H() * 0.3, true); return; }
     const r = Math.random();
     if (r < 0.55) creature(); else if (r < 0.8) caption(false); else if (r < 0.9) orbit(); else { creature(); caption(false); }
     if (Math.random() < 0.25) setTimeout(() => creature(), R(300, 900));
   }
-  function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth) mega(); megaBeat(); }, R(22000, 36000)); }
-  function start() { stop(); load(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); }
-  function stop() { clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); alive = 0; }
+  function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth) mega(); megaBeat(); }, R(16000, 28000)); }
+  function start() { stop(); load(); fitScene(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); dress(); tJ = setTimeout(jumpBeat, R(4000, 7000)); if (!stick) { stick = true; requestAnimationFrame(place); } }
+  function stop() { clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); stL.replaceChildren(); ST = []; BOTS = []; for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
@@ -7471,5 +7631,19 @@ window.__btBrSeason = brSeason;
   }
   sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
   set(on, false);
-  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+  if (ask) {
+    const nb = document.createElement('div'); nb.className = 'br-ask'; nb.setAttribute('role', 'dialog'); nb.setAttribute('aria-modal', 'false'); nb.setAttribute('aria-labelledby', 'br-ask-h');
+    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">Brainrot mode is on</b>'
+      + '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>'
+      + '<p class="br-ask-w">If you are sensitive to flashing lights or fast motion, for example with photosensitive epilepsy, please switch to the standard terminal.</p>'
+      + '<div class="br-ask-b"><button type="button" class="br-ask-yes">Stay in brainrot</button><button type="button" class="br-ask-no">Switch to the standard terminal</button></div>'
+      + '<small>You can change it any time with the ROT button next to LIVE.' + (calmDevice ? ' Your device asks for reduced motion: switching is recommended.' : '') + '</small></div>';
+    win.appendChild(nb);
+    const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} nb.remove(); set(v, false); };
+    nb.querySelector('.br-ask-no').addEventListener('click', e => { e.stopPropagation(); choose(false); });
+    nb.querySelector('.br-ask-yes').addEventListener('click', e => { e.stopPropagation(); choose(true); });
+    setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight
+  }
+
+  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

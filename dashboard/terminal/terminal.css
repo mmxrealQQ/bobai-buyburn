@@ -1153,6 +1153,41 @@
  * Only transform and opacity move, so the frame rate holds (halloween.mjs rule 14). */
 #bt .br{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility 0s .6s}
 #bt .br-on .br{opacity:1;visibility:visible;transition:opacity .6s ease}
+#bt .br-caps{z-index:2}
+/* BRAIN POP: the score chip (after the first pop, fades when the game rests) and the golden creature */
+#bt .br-hud{position:absolute;z-index:2;left:50%;top:60px;transform:translateX(-50%) scale(.8);display:flex;gap:10px;align-items:baseline;padding:6px 14px;border-radius:999px;border:2px solid #000;background:rgba(10,4,16,.78);
+  font:400 clamp(.95rem,1.8vw,1.3rem)/1 Impact,'Arial Black',sans-serif;letter-spacing:.03em;color:#7dff3a;pointer-events:none;opacity:0;transition:opacity .4s ease,transform .25s cubic-bezier(.2,1.6,.4,1);box-shadow:0 0 0 2px #ff3fd8}
+#bt .br-on .br-hud.on{opacity:1;transform:translateX(-50%) scale(1)}
+#bt .br-hud i{font-style:normal;color:#ffe600}
+#bt .br-hud s{text-decoration:none;color:#2ef2ff;font-size:.78em}
+#bt .br-r.gold .br-b img{filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.15) drop-shadow(0 0 8px #ffd400)}
+/* the stations and bots in costume: on their lights, bobbing; a jump when a station shouts, a spin when a bot ran */
+#bt .br-stl .br-st,#bt .br-stl .br-bot{position:absolute;left:0;top:0;will-change:transform}
+#bt .br-stl .br-stage{position:absolute;left:0;top:0}
+#bt .br-stl .br-stage img{display:block;width:100%;height:auto}
+/* the disco ball switches on: coloured beams turn out of it (the ball sits at 50 % / 80 % of the stage picture) */
+#bt .br-stl .br-disco{position:absolute;left:50%;top:80%;width:0;height:0;pointer-events:none}
+#bt .br-stl .br-disco i{position:absolute;left:0;top:0;width:0;height:0;opacity:0;transition:opacity .6s ease}
+#bt .br-stl .br-disco.on i{opacity:.55}
+#bt .br-stl .br-disco i::before{content:"";position:absolute;left:-230px;top:-230px;width:460px;height:460px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0 8deg,rgba(255,63,216,.55) 8deg 13deg,transparent 13deg 52deg,rgba(46,242,255,.55) 52deg 57deg,transparent 57deg 98deg,rgba(125,255,58,.55) 98deg 103deg,transparent 103deg 150deg,rgba(255,230,0,.55) 150deg 155deg,transparent 155deg 200deg,rgba(255,63,216,.55) 200deg 205deg,transparent 205deg 250deg,rgba(46,242,255,.55) 250deg 255deg,transparent 255deg 300deg,rgba(125,255,58,.55) 300deg 305deg,transparent 305deg 360deg);
+  -webkit-mask:radial-gradient(circle,#000 8%,transparent 70%);mask:radial-gradient(circle,#000 8%,transparent 70%);animation:bt-br-disco 3s linear infinite}
+@keyframes bt-br-disco{to{transform:rotate(360deg)}}
+/* captions in changing colours: a change every 0.45 s (2.2 a second, under the WCAG line of three flashes) */
+#bt .br-cap.rb{animation:bt-br-cap 1.7s cubic-bezier(.2,1.4,.4,1) both,bt-br-rb 2.25s steps(1) infinite}
+#bt .br-cap.big.rb{animation:bt-br-cap 2.2s cubic-bezier(.2,1.4,.4,1) both,bt-br-rb 2.25s steps(1) infinite}
+@keyframes bt-br-rb{0%{color:#7dff3a}20%{color:#ff3fd8}40%{color:#2ef2ff}60%{color:#ffe600}80%{color:#ff7a1a}}
+/* the bob is written by the script into the costume's own transform (one moving layer each) */
+#bt .br-stl .br-b img{filter:none}
+#bt .br-stl .br-b img.a{animation:none;opacity:1}
+#bt .br-stl .br-b img.z{animation:none;opacity:0}
+#bt .br-stl .jump .br-b img.z,#bt .br-stl .spin .br-b img.z{opacity:1}
+#bt .br-stl .jump .br-b img.a,#bt .br-stl .spin .br-b img.a{opacity:0}
+@keyframes bt-br-bob{0%{transform:translateY(0) rotate(-6deg)}100%{transform:translateY(-14%) rotate(6deg)}}
+#bt .br-stl .br-st.jump .br-b{animation:bt-br-jump .9s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bt-br-jump{0%{transform:none}35%{transform:translateY(-90%) rotate(200deg) scale(1.45)}70%{transform:translateY(-20%) rotate(350deg) scale(1.1)}100%{transform:none}}
+#bt .br-stl .br-bot.spin .br-b{animation:bt-br-spin .8s ease-out}
+@keyframes bt-br-spin{0%{transform:none}50%{transform:scale(1.9) rotate(360deg)}100%{transform:rotate(720deg)}} /* the words: above him (after the figure), under the labels (3) and the windows */
 #bt .br-flash{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;mix-blend-mode:overlay;background:radial-gradient(circle at 30% 40%,var(--c1,#ff3fd8),transparent 60%),radial-gradient(circle at 75% 65%,var(--c2,#2ef2ff),transparent 60%)}
 #bt .br-r{position:absolute;left:0;top:0;will-change:transform}
 #bt .br-r:not(.bit) img{pointer-events:auto;cursor:pointer} /* poke one: it pops (the layer itself takes no pointer) */
@@ -1174,3 +1209,16 @@
 #bt .br-sw[aria-pressed=false]{--hf:transparent;--hs:#ffc2f3;--he:#ffc2f3;border-color:#ffc2f3}
 #bt .br-sw:hover{border-color:#ffe3fa}
 #bt .br-sw .hw-t{border-color:rgba(255,63,216,.6)}
+
+/* the health notice before the brainrot look (2026-11-05): above everything in the window, calm, the safe choice first */
+#bt .br-ask{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(6,5,8,.72);pointer-events:auto}
+#bt .br-ask-c{max-width:420px;padding:18px 20px;border-radius:16px;border:1px solid rgba(240,185,11,.45);background:#121014;color:#f3eee6;font:400 .9rem/1.5 Inter,system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#bt .br-ask-c b{display:block;font:700 1.05rem/1.3 'Space Grotesk',Inter,sans-serif;color:var(--gold,#f0b90b);margin-bottom:8px}
+#bt .br-ask-c p{margin:0 0 8px}
+#bt .br-ask-w{color:#ffd9a8}
+#bt .br-ask-b{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+#bt .br-ask-b button{flex:1 1 160px;padding:10px 12px;border-radius:10px;font:700 .85rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
+#bt .br-ask-no{border:1px solid var(--gold,#f0b90b);background:var(--gold,#f0b90b);color:#120e04} /* both choices equally in sight (operator: stay or switch) */
+#bt .br-ask-yes{border:1px solid #ff3fd8;background:#ff3fd8;color:#1a0416}
+#bt .br-ask-b button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#bt .br-ask-c small{display:block;color:#a8a2b4;font-size:.75rem}

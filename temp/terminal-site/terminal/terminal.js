@@ -7208,8 +7208,11 @@ window.__btBrSeason = brSeason;
   // a device set to reduce motion gets the standard terminal unless it chose otherwise.
   let stored = null; try { stored = localStorage.getItem('bt-br'); } catch {}
   const calmDevice = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let on = stored ? stored !== '0' : q === '1' ? true : false;
-  const ask = !stored && q !== '1';
+  // EVERY LOAD ASKS (operator, 2026-11-05 night: "on the phone a reload shows the washing machine and the rest at once — the
+  // notice should come again"): a visitor who chose brainrot sees the notice at every load, "stay" focused; one who chose
+  // the standard terminal keeps it without being asked again (nothing moves for them anyway)
+  const ask = stored !== '0' && q !== '1';
+  let on = ask ? false : stored ? stored !== '0' : q === '1';
   const Q = new URL(import.meta.url).search;
   const pic = n => BASE + 'br/' + n + '.webp' + Q;
   const R = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
@@ -7291,7 +7294,8 @@ window.__btBrSeason = brSeason;
     d.style.width = px + 'px'; d.dataset.t = NAMES[n] || ''; d.dataset.n = n; el.appendChild(d); alive++;
     return d;
   }
-  const done = (d, a) => { a.onfinish = a.oncancel = () => { d.remove(); alive--; }; return a; };
+  // one started by a delayed step (a conga's next dancer, a storm's next brain) after the switch went off goes at once
+  const done = (d, a) => { a.onfinish = a.oncancel = () => { d.remove(); alive--; }; if (!on) a.cancel(); return a; };
   // no word of the look in the title row: its buttons are half see-through, and a caption under them made them hard to
   // read (1280x720, "LAMPADINO PENSIERINO!" behind SHARE THIS MOMENT) — every caption keeps below the row's bottom
   const topSafe = () => { const hd = win.querySelector('.hud'), wr = el.getBoundingClientRect(); if (!hd) return 60; let b = 0; for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); } return Math.max(40, b - wr.top + 8) + (win.classList.contains('portrait') ? 30 : 96); }; /* a phone too: 10 px into the row on 390x844 (5.11. night) */ /* wide: the title grows by up to ~68 px in the first 20 s as MOMENTS and the mood come in (1440: 131 -> 166, 1280: 131 -> 199, with or without this look) — room is kept for it */
@@ -7329,7 +7333,9 @@ window.__btBrSeason = brSeason;
       const flip = c.r ? !ltr : !ltr && Math.random() < 0.5, d = body(c.n, c.f, px, flip, c.fast ? 0.12 : opt.rate);
       const x0 = ltr ? -px - (opt.lag || 0) : w + (opt.lag || 0), x1 = ltr ? w + px : -px * 2 - (opt.lag || 0);
       const kf = []; for (let i = 0; i <= 12; i++) kf.push({ transform: 'translate(' + (x0 + (x1 - x0) * i / 12) + 'px,' + (y - (i % 2 ? R(8, 22) : 0)) + 'px) rotate(' + (i % 2 ? R(-7, 7) : 0) + 'deg)' });
-      const v = opt.v || (c.fast ? R(650, 900) : R(220, 420));
+      // the rocket snail: fast, but always about two seconds in sight (at 650-900 px/s it crossed a phone in half a second
+      // and the operator never saw it, 5.11. night)
+      const v = opt.v || (c.fast ? Math.max(240, w * 0.42) * R(0.9, 1.15) : R(220, 420));
       return done(d, d.animate(kf, { duration: Math.abs(x1 - x0) / v * 1000, easing: 'linear' }));
     },
     fly(c) {
@@ -7500,13 +7506,16 @@ window.__btBrSeason = brSeason;
   // that really ran (its flare, set by every beat) throws its brain into a spin; now and then a station's creature jumps
   // and shouts what its station does. Placed frame by frame from the scene's own positions (toScreen), z 1 under the labels.
   // their own creatures (operator, 2026-11-05: "make FITTING ones for the six circles"; the first costumes keep roaming)
-  const POST = { burnA: ['stburn', 'flare', 'BURN GO BRRR'], burnB: ['stbob', 'flare', '$BOB GOES POOF'], liq: ['stliq', 'splash', 'LIQUIDITY SOUP'], defi: ['stdefi', 'grow', 'FARMING THE CHART'],
+  // $BOB is no brain (operator, 2026-11-05 night: "$BOB is not a brain like BOBAI, it is a stick-figure builder"): its
+  // station gets a stick-figure builder in a hard hat on a stack of bricks, its frame swings the hammer
+  const POST = { burnA: ['stburn', 'flare', 'BURN GO BRRR'], burnB: ['stbobs', 'hammer', 'BUILD. BURN. REPEAT.'], liq: ['stliq', 'splash', 'LIQUIDITY SOUP'], defi: ['stdefi', 'grow', 'FARMING THE CHART'],
     giggle: ['stgiggle', 'laugh', 'GIGGLE GIGGLE'], creator: ['stcreator', 'paint', 'ART BY BRAIN'], src: ['washer', 'spin', 'TRADES ON SPIN CYCLE'] };
-  const STNAME = { stburn: 'CERVELLO PIROMANE', stbob: 'MARSHMALLOW CEREBRALE', stliq: 'GOCCIA NUOTATRICE', stdefi: 'CONTADINO ROBOTICO', stgiggle: 'PENTOLA RIDARELLA', stcreator: 'PITTORE CERVELLONE', washer: 'LAVATRICE GALATTICA' };
+  const STNAME = { stburn: 'CERVELLO PIROMANE', stbobs: 'COSTRUTTORE STECCHINO', stliq: 'GOCCIA NUOTATRICE', stdefi: 'CONTADINO ROBOTICO', stgiggle: 'PENTOLA RIDARELLA', stcreator: 'PITTORE CERVELLONE', washer: 'LAVATRICE GALATTICA' };
   const stL = document.createElement('div'); stL.className = 'br br-stl'; stL.setAttribute('aria-hidden', 'true'); win.insertBefore(stL, el);
   // one picture each, bobbing (two pictures swapping on twelve costumes all the time cost a third of the frame rate at
   // 1024 and 1280, brainrot.mjs rule 7); the frame shows only while it jumps or spins (.jump/.spin .z, terminal.css)
-  const costume = (n, f, cls) => { const e = document.createElement('div'); e.className = cls; e.innerHTML = '<span class="br-b" style="--bob:' + R(1.1, 1.8).toFixed(2) + 's"><img alt="" draggable="false" class="a" src="' + pic(n) + '"><img alt="" draggable="false" class="z" src="' + pic(n + '_' + f) + '"></span>'; stL.appendChild(e); return e; };
+  // hidden until place() gives it its spot (a phone drew the pictures at full size in the corner for a moment)
+  const costume = (n, f, cls) => { const e = document.createElement('div'); e.className = cls; e.style.visibility = 'hidden'; e.innerHTML = '<span class="br-b" style="--bob:' + R(1.1, 1.8).toFixed(2) + 's"><img alt="" draggable="false" class="a" src="' + pic(n) + '"><img alt="" draggable="false" class="z" src="' + pic(n + '_' + f) + '"></span>'; stL.appendChild(e); return e; };
   let ST = [], BOTS = [];
   // HIS STAGE (operator, 2026-11-05: "give BOBAI something to stand on again, like the gravestone, brainrot style"): a
   // brain-shaped platform under his feet, sized and placed as the Halloween stone was (feet = the figure's centre + 40.5 %
@@ -7514,12 +7523,14 @@ window.__btBrSeason = brSeason;
   let stage = null, disco = null;
   function dress() {
     stL.replaceChildren();
-    stage = document.createElement('div'); stage.className = 'br-stage'; stage.innerHTML = '<img alt="" draggable="false" src="' + pic('podium') + '">'; stL.appendChild(stage);
+    stage = document.createElement('div'); stage.className = 'br-stage'; stage.style.visibility = 'hidden'; stage.innerHTML = '<img alt="" draggable="false" src="' + pic('podium') + '">'; stL.appendChild(stage);
     ST = [...DEST.filter(d => d.pct > 0 && POST[d.k]).map(d => ({ k: d.k, pos: d.pos, say: POST[d.k][2], e: costume(POST[d.k][0], POST[d.k][1], 'br-st') })),
       { k: 'src', pos: A.src, say: POST.src[2], e: costume('washer', 'spin', 'br-st') }];
-    // THE DISCO BALL IN HIS STAGE (operator: "the disco ball can come alive or switch on sometimes")
-    disco = document.createElement('div'); disco.className = 'br-disco'; disco.innerHTML = '<i></i>'; stage.appendChild(disco);
     BOTS = WORKERS.map(w => ({ w, e: costume('mini', 'flap', 'br-bot'), was: 0 }));
+    // THE DISCO BALL (operator: "the disco ball can come alive or switch on sometimes"; 5.11. night: "the disco ball should
+    // be SEEN" — the stations' creatures stood on the stage's painted ball): its own picture, laid exactly over the painted
+    // one but drawn after every costume, so nothing stands on it; it sparkles always, its beams switch on now and then
+    disco = document.createElement('div'); disco.className = 'br-disco'; disco.style.visibility = 'hidden'; disco.innerHTML = '<img alt="" draggable="false" src="' + pic('disco') + '"><i></i><b></b>'; stL.appendChild(disco);
   }
   let stick = false;
   function place() {
@@ -7530,14 +7541,28 @@ window.__btBrSeason = brSeason;
     const sz = Math.round(Math.max(36, Math.min(104, A.figHpx * (portrait ? 0.2 : 0.23)))), bz = Math.round(Math.max(22, Math.min(44, A.figHpx * 0.1)));
     if (stage && A.figScreen) { const feet = A.figScreen.y + A.figHpx * 0.405, room = Math.max(40, (el.clientHeight || H()) - 6 - feet) / 0.7; /* operator: "show the whole stage": its lower 70 % must fit above the scene's bottom */
       const dW = Math.round(Math.max(90, Math.min(portrait ? 280 : 580, (A.figW || A.figHpx * 0.5) * (portrait ? 1.3 : 1.9), room * 640 / 449))), dH = Math.round(dW * 449 / 640);
-      const tf = 'translate(' + Math.round(A.figScreen.x - dW / 2) + 'px,' + Math.round(feet - dH * 0.3) + 'px)'; if (stage._tf !== tf) stage.style.transform = stage._tf = tf; if (stage._w !== dW) stage.style.width = (stage._w = dW) + 'px'; }
+      const sx = Math.round(A.figScreen.x - dW / 2), sy = Math.round(feet - dH * 0.3), tf = 'translate(' + sx + 'px,' + sy + 'px)'; if (stage._tf !== tf) { stage.style.transform = stage._tf = tf; stage.style.visibility = ''; } if (stage._w !== dW) stage.style.width = (stage._w = dW) + 'px';
+      // the ball: centre at 50 % / 70 % of the podium picture, 126 of its 640 px wide; drawn a little larger, it covers the painted one
+      // NOBODY HIDDEN BEHIND IT (5.11. night, phone: the $BOB station stands right on the ball): twice a second the ball
+      // looks for a place along the stage's front where no station's creature stands, the painted spot first
+      if (disco && (place.n % 30 === 0 || disco._dx === undefined)) { const bd0 = dW * 0.215, cy0 = sy + dH * 0.701, boxes = ST.filter(s => s._x !== undefined).map(s => [s._x, s._y, s._x + sz, s._y + (s.e.offsetHeight || sz)]); /* their resting places (a jump or an escape does not move the ball) */
+        const clear = dx => { const x0 = sx + dW * 0.5 + dx - bd0 / 2, y0 = cy0 - bd0 / 2; return !boxes.some(b => Math.min(b[2], x0 + bd0) - Math.max(b[0], x0) > bd0 * 0.15 && Math.min(b[3], y0 + bd0) - Math.max(b[1], y0) > bd0 * 0.15); };
+        const dx = [0, -0.7, 0.7, -1.3, 1.3, -1.9, 1.9].map(k => k * bd0).find(d => Math.abs(d) < dW * 0.36 && clear(d)); disco._dx = dx ?? 0;
+        disco.style.zIndex = dx === undefined ? '-1' : ''; /* no free place at all: the ball goes behind the creatures */ }
+      if (disco) { const bd = Math.round(dW * 0.215), dt = 'translate(' + Math.round(sx + dW * 0.5 + (disco._dx || 0) - bd / 2) + 'px,' + Math.round(sy + dH * 0.701 - bd / 2) + 'px)'; if (disco._tf !== dt) { disco.style.transform = disco._tf = dt; disco.style.visibility = ''; } if (disco._w !== bd) disco.style.width = disco.style.height = (disco._w = bd) + 'px'; } }
+    // NO CIRCLES OF THE STANDARD TERMINAL (operator, 2026-11-05 night: "the circles at BOBAI burn, BOB burn and so on must
+    // not be there in brainrot"): the stations' black holes, liquid, gyroscope, coin, orbs and halos stay hidden while the
+    // look is on (applyPhase sets them again at every new split, so this holds them each frame); the buyback ring stays
+    for (const d of DEST) { if (d.obj && d.obj.visible) d.obj.visible = false; if (d.orb.visible) d.orb.visible = false; if (d.halo.visible) d.halo.visible = false; }
+    if (srcOrb.visible) srcOrb.visible = false;
     // the bob is part of the one transform written here (a CSS bob on top of it was a second moving layer on each of twelve
     // costumes: 19 fps instead of 41 at 1024, brainrot.mjs rule 7); whole pixels, so an unchanged frame writes nothing
     const now = performance.now() / 1000;
     for (const s of ST) { if (!s.pos) continue; const q = toScreen(s.pos), ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
-      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
+      s._x = q.x - sz / 2; s._y = q.y - sz * 0.78;
+      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
     for (const b of BOTS) { const q = toScreen(b.w.pos), tf = 'translate(' + Math.round(q.x - bz / 2) + 'px,' + Math.round(q.y - bz * 0.7) + 'px)', op = b.w.pos.z > A.head.z ? '1' : '.4';
-      if (b._tf !== tf) { b.e.style.transform = b._tf = tf; } if (b._w !== bz) { b.e.style.width = (b._w = bz) + 'px'; } if (b._op !== op) { b.e.style.opacity = b._op = op; }
+      if (b._tf !== tf) { b.e.style.transform = b._tf = tf; b.e.style.visibility = ''; } if (b._w !== bz) { b.e.style.width = (b._w = bz) + 'px'; } if (b._op !== op) { b.e.style.opacity = b._op = op; }
       // a bot that really ran: its brain spins (the flare jumps to 1.4 at every beat)
       if (b.w.flare > 1 && performance.now() - b.was > 3000) { b.was = performance.now(); b.e.classList.remove('spin'); void b.e.offsetWidth; b.e.classList.add('spin'); } }
   }
@@ -7581,7 +7606,7 @@ window.__btBrSeason = brSeason;
   let tutDone = false; try { tutDone = !!localStorage.getItem('bt-br-tut'); } catch {}
   function beat() {
     tA = setTimeout(beat, R(1000, 2800)); /* operator: "absolute max" — closer beats */
-    if (on && Math.random() < 0.06) discoOn();
+    if (on && Math.random() < 0.16) discoOn(); /* the beams about every 12 s (operator: "the disco ball should be seen") */
     if (!on || document.hidden || REDUCED || !win.offsetWidth) return;
     fitScene();
     // a first-timer is told once, when a creature is there to tap
@@ -7591,8 +7616,19 @@ window.__btBrSeason = brSeason;
     if (Math.random() < 0.25) setTimeout(() => creature(), R(300, 900));
   }
   function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth) mega(); megaBeat(); }, R(16000, 28000)); }
-  function start() { stop(); load(); fitScene(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); dress(); tJ = setTimeout(jumpBeat, R(4000, 7000)); if (!stick) { stick = true; requestAnimationFrame(place); } }
-  function stop() { clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); stL.replaceChildren(); ST = []; BOTS = []; for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
+  // THE SNAIL AND THE BIG BRAIN WITH THE EYES COME FOR SURE (operator, 2026-11-05 night: "I never see the snail"; "the big
+  // brain with the eyes must pop up now and then too"): one of fifteen at random and the kaiju only in a quarter of the MEGA
+  // moments were too rare — the rocket snail races through every 14-26 s, the millipede brain rises every 30-50 s
+  let tS = 0, tK = 0;
+  const free = () => on && !document.hidden && !REDUCED && win.offsetWidth;
+  function snailBeat() { tS = setTimeout(() => { if (free()) MOVES.run(CREW.find(c => c.n === 'snail')); snailBeat(); }, R(14000, 26000)); }
+  function kaijuBeat() { tK = setTimeout(() => { if (free() && !el.querySelector('.br-r[data-n="kaiju"]')) kaiju(); kaijuBeat(); }, R(30000, 50000)); }
+  function start() { stop(); load(); fitScene(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); dress(); tJ = setTimeout(jumpBeat, R(4000, 7000));
+    tS = setTimeout(() => { if (free()) MOVES.run(CREW.find(c => c.n === 'snail')); snailBeat(); }, R(5000, 8000)); tK = setTimeout(() => { if (free()) kaiju(); kaijuBeat(); }, R(12000, 18000));
+    if (!stick) { stick = true; requestAnimationFrame(place); } }
+  // the standard terminal gets its circles back (the same rule as applyPhase: a station with a share)
+  const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; };
+  function stop() { const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
@@ -7645,5 +7681,5 @@ window.__btBrSeason = brSeason;
     setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight
   }
 
-  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

@@ -1374,7 +1374,9 @@ const payWays = ({ amount, payTo, direct = `${amount} USD1`, headers = 'X-PAYMEN
 
 async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
-  if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
+  // nothing is charged on an unknown id: a payment counts as used only once an answer is delivered (5.11.)
+  if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES), charged: false,
+    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 29 more) are at https://brainonbnb.com/mcp' } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
   // Half the price in $BOBAI, quoted now. If the pair cannot be read the
@@ -3518,6 +3520,22 @@ ${pageTail}`;
     if (path === '/answer') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const id = url.searchParams.get('service') || '';
+      // A FREE TOOL ASKED AT THE PAID DOOR IS ANSWERED FREE (2026-11-05): on 4.11. a visitor tried answer?service=bobai_price
+      // five times with a tx hash and a holder pass and got "unknown service" each time. A name the free toolbox knows is
+      // passed to brainonbnb.com/mcp (query fields + the body's params as arguments); nothing is charged, a proof is not used.
+      if (id && !SERVICES[id] && /^[a-z][a-z0-9_]{2,59}$/.test(id)) {
+        const body = request.method === 'POST' ? await request.clone().json().catch(() => ({})) : {};
+        const args = { ...Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service' && k !== 'task')),
+          ...(body && typeof body.params === 'object' && body.params ? body.params : {}) };
+        const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'bobai-agent-answer-door/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: id, arguments: args } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
+        let out = null;
+        try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
+        if (out) {
+          note(`sell:answer:free:${id.slice(0, 40)}`);
+          return json({ free: true, charged: false, tool: id, answer: out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token)',
+            paid_answers: Object.keys(SERVICES).map((s) => `https://agent.brainonbnb.com/answer?service=${s}`) });
+        }
+      }
       if (request.method === 'GET') {
         if (!id) note('sell:answer:index');
         if (!id) return json({

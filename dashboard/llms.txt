@@ -2,6 +2,12 @@
 
 > An agent surface on BNB Smart Chain, and the token that pays for it. Three things here are useful to somebody else's agent regardless of any interest in the token: a pre-trade check for any BSC token (the preflight: can you get in, can you get out, what the round trip costs at your size), the pool scanner behind it, and a measured directory of every ERC-8004 agent on this chain and which of them actually answer. All need no key and are read-only; the preflight and the directory are free without a daily limit, the pool scan free for 1,000 scans per caller and UTC day (a 0.50 USD1 day pass carries on past that). The token, $BOBAI, is a BEP-20 with a 3% trade tax that bots split every 10 minutes into the creator share, burns and permanent liquidity with the LP burned; it is described further down.
 
+## Start here — the three things agents use most (no key, no account, free)
+
+1. Before any trade on BNB Smart Chain: GET https://brainonbnb.com/api/preflight?address=0x...&usd=250 — branch on `gate`: "stop", "weigh" or "no_known_stop" (what this read found, never a promise of safety). MCP: `bsc_token_preflight`.
+2. Holding the token? A free alarm: POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} — re-read every 15 minutes; read the alerts at the status_url you get back (?since=<time> for the new ones), or add "callback":"https://..." to have them POSTed. MCP: `bsc_rug_watch`.
+3. Everything else: 30 free MCP tools at https://brainonbnb.com/mcp, or the same as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
+
 ## What you can use, without an account
 
 - Find an agent that can do something: https://agent.brainonbnb.com/find?q=what+you+need — matched against the tools each agent returned when asked, the skills on its agent card and the description in its own on-chain registration, not against categories anybody typed into a form. Add `&speaks=mcp` or `&speaks=x402` to require a protocol.

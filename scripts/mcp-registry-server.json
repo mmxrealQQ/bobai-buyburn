@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.brainonbnb/bobai",
-  "description": "BNB Chain agents: look up any error in first-hand fixes, Brain Board, escrow settle, BSC trade cost",
-  "version": "1.8.0",
+  "description": "Before any BSC trade: free honeypot/rug check, rug alarm (no webhook), PancakeSwap route + fee tiers",
+  "version": "1.9.0",
   "websiteUrl": "https://brainonbnb.com/",
   "remotes": [
     {

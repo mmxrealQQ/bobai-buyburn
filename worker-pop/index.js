@@ -4,8 +4,8 @@
 // BRAIN POP 2.0 (operator, 6.11.: "aim, skill, logic, luck; the seven stations as super powers that come by themselves;
 // e-sports world championship worthy; 60 seconds stay"): the game is temp/terminal-site/terminal/pop-engine.mjs — ONE
 // file, played by the terminal and bundled here. A run is its taps [t, x, y]; this worker REPLAYS them with the same
-// engine, so the score on the board is the score the taps really made, aim included. 2.0 has its own tables (runs2,
-// best2): the boards began again with it (operator: "reset"); 1.0's tables stay as they were.
+// engine, so the score on the board is the score the taps really made, aim included. 2.0 has its own tables (runs3,
+// best3): the boards began again with it (operator: "reset"); 1.0's tables stay as they were.
 //
 //   GET  /api/pop/day[?d=YYYY-MM-DD]  the day's number, its 2.0 plan, the names to pick from, the day's top 10
 //   POST /api/pop/start  {pid, name, d?}             a run begins: its id; d = an older day is a rematch, not ranked
@@ -20,7 +20,8 @@
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
 import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, FIRST_DAY, LAST_DAY } from './game.js';
-import { plan, replay, RUN_MS, V, WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-engine.mjs';
+// BOBAI DEFENDER (6.11., operator: 'play IN the terminal, much better, not click-click'): the engine is now pop-defender.mjs
+import { plan, replay, RUN_MS, V, STATIONS as WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-defender.mjs';
 // scores are kept in whole units of 0.0000001 (the engine's UNIT) and sent as points with seven decimals
 const P7 = (u) => Math.round(u) / UNIT;
 const rowsP = (L) => L.map((r) => ({ ...r, score: P7(r.score) }));
@@ -49,26 +50,28 @@ export class PopBoard {
   constructor(state, env) {
     this.sql = state.storage.sql; this.env = env; this.pool = null;
     // 2.0's own tables; inputs = the taps of a run (its replay)
-    this.sql.exec(`CREATE TABLE IF NOT EXISTS runs2 (id TEXT PRIMARY KEY, day TEXT, pid TEXT, name TEXT, ranked INT, ip TEXT, started INT, finished INT, score INT, maxc INT, pops INT, misses INT, rugs INT, timeline TEXT, inputs TEXT)`);
-    this.sql.exec(`CREATE TABLE IF NOT EXISTS best2 (day TEXT, pid TEXT, name TEXT, score INT, run TEXT, at INT, PRIMARY KEY (day, pid))`);
-    this.sql.exec(`CREATE INDEX IF NOT EXISTS best2_day ON best2 (day, score DESC, at)`);
-    this.sql.exec(`CREATE INDEX IF NOT EXISTS runs2_ip ON runs2 (day, ip)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS runs3 (id TEXT PRIMARY KEY, day TEXT, pid TEXT, name TEXT, ranked INT, ip TEXT, started INT, finished INT, score INT, maxc INT, pops INT, misses INT, rugs INT, timeline TEXT, inputs TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS best3 (day TEXT, pid TEXT, name TEXT, score INT, run TEXT, at INT, PRIMARY KEY (day, pid))`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS best3_day ON best3 (day, score DESC, at)`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS runs3_ip ON runs3 (day, ip)`);
     // every round its own seed (operator 6.11.: "every round must have its randomness"): drawn at the start, replayed with
-    try { this.sql.exec('ALTER TABLE runs2 ADD COLUMN seed INT'); } catch {}
+    try { this.sql.exec('ALTER TABLE runs3 ADD COLUMN seed INT'); } catch {}
     // 1.0's tables go (operator, 6.11.: "the 1.0 highscores need no archive")
     this.sql.exec('DROP TABLE IF EXISTS runs'); this.sql.exec('DROP TABLE IF EXISTS best');
+    // the tap arena's tables go too: Defender's scores are another game (the boards began again with it)
+    this.sql.exec('DROP TABLE IF EXISTS runs2'); this.sql.exec('DROP TABLE IF EXISTS best2');
     // the game's funnel per day (GET /api/pop/stats)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS counts (day TEXT, k TEXT, n INT, PRIMARY KEY (day, k))`);
   }
   rows(q, ...a) { return [...this.sql.exec(q, ...a)]; }
   bump(day, k, by = 1) { this.sql.exec(`INSERT INTO counts (day, k, n) VALUES (?, ?, ?) ON CONFLICT (day, k) DO UPDATE SET n = n + ?`, day, String(k).slice(0, 60), by, by); }
   top(scope, day, n = 10) {
-    if (scope === 'day') return rowsP(this.rows(`SELECT name, score, run FROM best2 WHERE day = ? ORDER BY score DESC, at ASC LIMIT ?`, day, n));
+    if (scope === 'day') return rowsP(this.rows(`SELECT name, score, run FROM best3 WHERE day = ? ORDER BY score DESC, at ASC LIMIT ?`, day, n));
     // overall: a player's best single run of the season (under the name they play as now)
-    return rowsP(this.rows(`SELECT b.name, b.score, b.run FROM best2 b JOIN (SELECT pid, MAX(score) s FROM best2 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
+    return rowsP(this.rows(`SELECT b.name, b.score, b.run FROM best3 b JOIN (SELECT pid, MAX(score) s FROM best3 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
       GROUP BY b.pid ORDER BY b.score DESC, MIN(b.at) ASC LIMIT ?`, n));
   }
-  players(day) { return this.rows(`SELECT COUNT(*) c FROM best2 WHERE day = ?`, day)[0].c; }
+  players(day) { return this.rows(`SELECT COUNT(*) c FROM best3 WHERE day = ?`, day)[0].c; }
   async readPool() {
     if (this.pool && Date.now() - this.pool.at < 120e3) return this.pool;
     const data = '0x70a08231' + POOL_WALLET.slice(2).toLowerCase().padStart(64, '0');
@@ -97,8 +100,8 @@ export class PopBoard {
       // the operator hides a name from every board (it becomes a random one); needs the admin key (wrangler secret POP_ADMIN)
       if (req.method === 'POST' && p === 'hide') {
         const b = await req.json().catch(() => ({})); if (!this.env.POP_ADMIN || b.key !== this.env.POP_ADMIN) return J({ error: 'no' }, 403);
-        const to = 'HIDDEN ' + Math.floor(Math.random() * 900 + 100), n1 = this.rows('SELECT COUNT(*) c FROM best2 WHERE name = ?', String(b.name || ''))[0].c;
-        this.sql.exec('UPDATE best2 SET name = ? WHERE name = ?', to, String(b.name || '')); this.sql.exec('UPDATE runs2 SET name = ? WHERE name = ?', to, String(b.name || ''));
+        const to = 'HIDDEN ' + Math.floor(Math.random() * 900 + 100), n1 = this.rows('SELECT COUNT(*) c FROM best3 WHERE name = ?', String(b.name || ''))[0].c;
+        this.sql.exec('UPDATE best3 SET name = ? WHERE name = ?', to, String(b.name || '')); this.sql.exec('UPDATE runs3 SET name = ? WHERE name = ?', to, String(b.name || ''));
         return J({ hidden: String(b.name || ''), as: to, rows: n1 });
       }
       if (req.method === 'GET' && p === 'stats') {
@@ -109,17 +112,17 @@ export class PopBoard {
       if (req.method === 'GET' && p === 'top') {
         const s = u.searchParams.get('scope') === 'all' ? 'all' : 'day', last = today > LAST_DAY ? LAST_DAY : today, d = u.searchParams.get('d') || last;
         if (s === 'day' && !validDay(d, today)) return J({ error: 'no such day' }, 400);
-        return J({ scope: s, day: s === 'day' ? d : last, no: dayNo(s === 'day' ? d : last), first: FIRST_DAY, last, rows: this.top(s, d, 10), players: s === 'day' ? this.players(d) : this.rows('SELECT COUNT(DISTINCT pid) c FROM best2')[0].c }, 200, 'public, max-age=20');
+        return J({ scope: s, day: s === 'day' ? d : last, no: dayNo(s === 'day' ? d : last), first: FIRST_DAY, last, rows: this.top(s, d, 10), players: s === 'day' ? this.players(d) : this.rows('SELECT COUNT(DISTINCT pid) c FROM best3')[0].c }, 200, 'public, max-age=20');
       }
       // the prize check: which player has this code, and where they stand overall (no code is ever listed anywhere)
       if (req.method === 'GET' && p.startsWith('claim/')) {
         const code = p.slice(6).toUpperCase(); if (!/^[0-9A-F]{8}$/.test(code)) return J({ error: 'a code is 8 hex characters' }, 400);
-        const all = this.rows('SELECT pid, MAX(score) s FROM best2 GROUP BY pid ORDER BY s DESC');
-        for (let k = 0; k < all.length; k++) if (await claimOf(all[k].pid) === code) { const n = this.rows('SELECT name FROM best2 WHERE pid = ? ORDER BY score DESC LIMIT 1', all[k].pid)[0]; return J({ code, name: n && n.name, best: P7(all[k].s), overall_place: k + 1, players: all.length, season_over: seasonOver(today) }); }
+        const all = this.rows('SELECT pid, MAX(score) s FROM best3 GROUP BY pid ORDER BY s DESC');
+        for (let k = 0; k < all.length; k++) if (await claimOf(all[k].pid) === code) { const n = this.rows('SELECT name FROM best3 WHERE pid = ? ORDER BY score DESC LIMIT 1', all[k].pid)[0]; return J({ code, name: n && n.name, best: P7(all[k].s), overall_place: k + 1, players: all.length, season_over: seasonOver(today) }); }
         return J({ code, found: false });
       }
       if (req.method === 'GET' && p.startsWith('run/')) {
-        const r = this.rows(`SELECT id, day, name, score, maxc, pops, misses, rugs, timeline, inputs, ranked, seed FROM runs2 WHERE id = ? AND finished IS NOT NULL`, p.slice(4))[0];
+        const r = this.rows(`SELECT id, day, name, score, maxc, pops, misses, rugs, timeline, inputs, ranked, seed FROM runs3 WHERE id = ? AND finished IS NOT NULL`, p.slice(4))[0];
         if (!r) return J({ error: 'no such run' }, 404);
         return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), seed: r.seed, name: r.name, score: P7(r.score), maxc: r.maxc, pops: r.pops, misses: r.misses, rugs: r.rugs, ranked: !!r.ranked, timeline: JSON.parse(r.timeline || '[]'), inputs: JSON.parse(r.inputs || '[]') }, 200, 'public, max-age=300');
       }
@@ -127,8 +130,8 @@ export class PopBoard {
       if (req.method === 'POST' && p === 'name') {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
         if (!/^[0-9a-f]{16}$/.test(pid) || !name) return J({ error: 'that name is not allowed' }, 400);
-        if (!test0(pid)) this.sql.exec('UPDATE best2 SET name = ? WHERE pid = ?', name, pid);
-        return J({ name, rows: this.rows('SELECT COUNT(*) c FROM best2 WHERE pid = ?', pid)[0].c });
+        if (!test0(pid)) this.sql.exec('UPDATE best3 SET name = ? WHERE pid = ?', name, pid);
+        return J({ name, rows: this.rows('SELECT COUNT(*) c FROM best3 WHERE pid = ?', pid)[0].c });
       }
       if (req.method === 'POST' && p === 'start') {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
@@ -137,35 +140,35 @@ export class PopBoard {
         if (!name) return J({ error: 'that name is not allowed: 3 to 16 letters, digits or _, nothing rude, nothing that poses as us' }, 400);
         if (seasonOver(today) && !b.d) return J({ error: 'the season is over (30 Nov); the boards stay' }, 410);
         const d = b.d || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
-        if (ip && this.rows(`SELECT COUNT(*) c FROM runs2 WHERE day = ? AND ip = ?`, today, ip)[0].c >= STARTS_PER_IP_DAY) return J({ error: 'enough runs from here today, come back tomorrow (UTC)' }, 429);
+        if (ip && this.rows(`SELECT COUNT(*) c FROM runs3 WHERE day = ? AND ip = ?`, today, ip)[0].c >= STARTS_PER_IP_DAY) return J({ error: 'enough runs from here today, come back tomorrow (UTC)' }, 429);
         const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12), test = test0(pid); /* our own checks play for real but never reach the board */
         const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 1; // the round's die
-        this.sql.exec(`INSERT INTO runs2 (id, day, pid, name, ranked, ip, started, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, d, pid, name, d === today && !test ? 1 : 0, ip, now, seed);
+        this.sql.exec(`INSERT INTO runs3 (id, day, pid, name, ranked, ip, started, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, d, pid, name, d === today && !test ? 1 : 0, ip, now, seed);
         // a player is the browser, the name is its latest: every board row of this player takes it at once
-        if (!test) this.sql.exec('UPDATE best2 SET name = ? WHERE pid = ?', name, pid);
-        if (Math.random() < 0.02) this.sql.exec(`DELETE FROM runs2 WHERE finished IS NULL AND started < ?`, now - 86400e3);
+        if (!test) this.sql.exec('UPDATE best3 SET name = ? WHERE pid = ?', name, pid);
+        if (Math.random() < 0.02) this.sql.exec(`DELETE FROM runs3 WHERE finished IS NULL AND started < ?`, now - 86400e3);
         if (!test) this.bump(today, d === today ? 'started' : 'started_rematch');
         return J({ v: V, run: id, day: d, no: dayNo(d), seed, ranked: d === today && !test, name });
       }
       if (req.method === 'POST' && p === 'finish') {
         const b = await req.json().catch(() => ({}));
         if (!b.inputs) return J({ error: 'Brain Pop 6.9 is here: reload the page' }, 426);
-        const r = this.rows(`SELECT * FROM runs2 WHERE id = ?`, String(b.run || ''))[0];
+        const r = this.rows(`SELECT * FROM runs3 WHERE id = ?`, String(b.run || ''))[0];
         if (!r) return J({ error: 'no such run' }, 404);
         if (r.finished) return J({ error: 'this run is counted already' }, 409);
         const took = now - r.started;
         if (took < RUN_MS - 3000) return J({ error: 'the minute is not over yet' }, 400);
         if (took > 15 * 60e3) return J({ error: 'too late for this run, start a new one' }, 400);
         const c = replay(r.day, b.inputs, r.seed || 0);
-        if (!c) { this.bump(r.day, 'refused_run'); this.sql.exec(`UPDATE runs2 SET finished = ?, score = 0, pops = 0 WHERE id = ?`, now, r.id); return J({ error: 'not counted: the taps could not be read' }, 422); }
-        this.sql.exec(`UPDATE runs2 SET finished = ?, score = ?, maxc = ?, pops = ?, misses = ?, rugs = ?, timeline = ?, inputs = ? WHERE id = ?`, now, c.score, c.maxc, c.pops, c.misses, c.rugs, JSON.stringify(c.timeline), JSON.stringify(b.inputs.slice(0, 900)), r.id);
+        if (!c) { this.bump(r.day, 'refused_run'); this.sql.exec(`UPDATE runs3 SET finished = ?, score = 0, pops = 0 WHERE id = ?`, now, r.id); return J({ error: 'not counted: the taps could not be read' }, 422); }
+        this.sql.exec(`UPDATE runs3 SET finished = ?, score = ?, maxc = ?, pops = ?, misses = ?, rugs = ?, timeline = ?, inputs = ? WHERE id = ?`, now, c.score, c.maxc, c.pops, c.misses, c.rugs, JSON.stringify(c.timeline), JSON.stringify(b.inputs.slice(0, 400)), r.id);
         let best = c.score, rank = null, players = null;
         if (r.ranked) {
-          const old = this.rows(`SELECT score FROM best2 WHERE day = ? AND pid = ?`, r.day, r.pid)[0];
-          if (!old || c.score > old.score) this.sql.exec(`INSERT OR REPLACE INTO best2 (day, pid, name, score, run, at) VALUES (?, ?, ?, ?, ?, ?)`, r.day, r.pid, r.name, c.score, r.id, now);
+          const old = this.rows(`SELECT score FROM best3 WHERE day = ? AND pid = ?`, r.day, r.pid)[0];
+          if (!old || c.score > old.score) this.sql.exec(`INSERT OR REPLACE INTO best3 (day, pid, name, score, run, at) VALUES (?, ?, ?, ?, ?, ?)`, r.day, r.pid, r.name, c.score, r.id, now);
           else best = old.score;
-          const me = this.rows(`SELECT score, at FROM best2 WHERE day = ? AND pid = ?`, r.day, r.pid)[0];
-          rank = this.rows(`SELECT COUNT(*) c FROM best2 WHERE day = ? AND (score > ? OR (score = ? AND at < ?))`, r.day, me.score, me.score, me.at)[0].c + 1;
+          const me = this.rows(`SELECT score, at FROM best3 WHERE day = ? AND pid = ?`, r.day, r.pid)[0];
+          rank = this.rows(`SELECT COUNT(*) c FROM best3 WHERE day = ? AND (score > ? OR (score = ? AND at < ?))`, r.day, me.score, me.score, me.at)[0].c + 1;
           players = this.players(r.day);
         }
         if (!test0(r.pid)) { this.bump(r.day, 'finished'); if (c.applied < b.inputs.length) this.bump(r.day, 'taps_not_applied', b.inputs.length - c.applied); }

@@ -1169,6 +1169,11 @@
 /* 5.11. night (operator: "the disco ball should be seen"): its own picture over the painted one, drawn after the stations'
  * creatures; it sways and sparkles always, the beams turn out of its middle when it switches on */
 #bt .br-stl .br-disco{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+/* 6.11. (operator: "the ring is needed at the next buyback; put the disco ball in the ring"): the buyback ring on this
+ * layer, over the stage, brighter than the scene's (the cosmos behind it is loud), the ball in its middle */
+#bt .br-stl .br-ring{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,255,255,.45))}
+#bt .br-stl .br-ring circle,#bt .br-stl .br-ring path{fill:none;stroke-width:.12;stroke-opacity:.92}
+#bt .br-stl .br-ring .b{stroke:#fff;stroke-opacity:.22}
 #bt .br-stl .br-disco img{position:relative;z-index:1;display:block;width:100%;height:100%;border-radius:50%;animation:bt-br-ball 2.4s ease-in-out infinite alternate}
 @keyframes bt-br-ball{0%{transform:rotate(-7deg)}100%{transform:rotate(7deg)}}
 #bt .br-stl .br-disco b{position:absolute;z-index:2;inset:0;pointer-events:none;background:radial-gradient(circle at 30% 28%,#fff 0 3%,transparent 9%),radial-gradient(circle at 68% 44%,#fff 0 2.5%,transparent 8%),radial-gradient(circle at 44% 72%,#fff 0 2%,transparent 7%);animation:bt-br-glint 1.3s steps(1) infinite}

@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5782 lines
+12 files, 5835 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -254,6 +254,20 @@ needs:
 zip: https://brainonbnb.com/code/browser-game.zip
 txt: https://brainonbnb.com/code/browser-game.txt
 
+Brain Pop 6.9 — the daily game in the terminal
+----------------------------------------------
+60 seconds, one engine file, every tap replayed by the server.
+6 files, 542 lines
+needs:
+  - A worker with a Durable Object (SQLite)
+      ours: Cloudflare Workers, class PopBoard
+      also: any server that can run an ES module and keep two small tables
+  - The same engine file on both sides
+      ours: pop-engine.mjs, imported by the page and by the worker
+      also: keep one file; a copy that drifts makes the replay disagree with the screen
+zip: https://brainonbnb.com/code/brain-pop.zip
+txt: https://brainonbnb.com/code/brain-pop.txt
+
 brainScreener
 -------------
 Thirteen self-tests. No accounts, no tracking, no backend.
@@ -271,7 +285,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 3959 lines
+5 files, 4050 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -288,7 +302,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-74 files, 24272 lines
+74 files, 24349 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots
@@ -314,7 +328,7 @@ txt: https://brainonbnb.com/code/agent-service.txt
 The Census — reading a whole registry
 -------------------------------------
 Every agent id on BNB Chain, and every job they were ever paid for.
-7 files, 5082 lines
+7 files, 5084 lines
 needs:
   - Node 18+ and time
       ours: about three hours for the registry, twenty minutes for the jobs

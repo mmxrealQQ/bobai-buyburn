@@ -33,11 +33,10 @@ export const NOUN = ['LUMACONE', 'CERVELLINO', 'PAPERA', 'BANANINO', 'GAMBERONE'
 // still hide one (POST /api/pop/hide with the admin key)
 export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '{N}ino Lobotomino', 'Signor {N}etti Spaghetti', 'Capitano {N} Neuronauta', '{N}accio Discotecaccio',
   'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina'];
-const BLOCK = ['FUCK', 'SHIT', 'CUNT', 'NIGG', 'NIGA', 'FAG', 'RAPE', 'HITLER', 'NAZI', 'KKK', 'WHORE', 'SLUT', 'RETARD', 'PENIS', 'VAGINA', 'PORN', 'SEX', 'DICK', 'COCK', 'PUSSY', 'ASSHOLE', 'BITCH',
-  'HURE', 'FOTZE', 'SCHLAMPE', 'WICHS', 'FICK', 'SCHWUCHTEL', 'NEGER', 'SPAST', 'MISSGEBURT', 'SIEGHEIL', 'ADMIN', 'OFFICIAL', 'BOBAI', 'BRAINONBNB', 'MODERATOR', 'SUPPORT', 'BINANCE', 'AIRDROP', 'SCAM'];
+// (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
+// only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();
-  if (!/^[A-Za-z0-9_]{3,16}$/.test(s) || !/[A-Za-z]/.test(s)) return null; const up = s.toUpperCase(), flat = up.replace(/_/g, '').replace(/0/g, 'O').replace(/1/g, 'I').replace(/3/g, 'E').replace(/4/g, 'A').replace(/5/g, 'S').replace(/7/g, 'T');
-  return BLOCK.some(b => flat.includes(b) || up.includes(b)) ? null : s; };
+  return /^[A-Za-z0-9_]{3,16}$/.test(s) && /[A-Za-z]/.test(s) ? s : null; };
 export const nameOf = v => {
   if (v && typeof v === 'object' && !Array.isArray(v)) { const base = ownName(v.own), k = Number(v.v); if (!base || !Number.isInteger(k) || k < 0 || k >= ROT.length) return null; return ROT[k].replace('{N}', base); }
   if (!Array.isArray(v) || v.length !== 3) return null; const [a, b, n] = v.map(Number);

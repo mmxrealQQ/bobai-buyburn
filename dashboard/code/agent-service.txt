@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24272 lines.
+# one fetch. 74 files, 24349 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6518,7 +6518,7 @@ export const CAPABILITIES = {
     // the x402 page never named the one thing a trading agent comes for.
     { name: 'before a trade: can I get in, can I get out', where: 'https://brainonbnb.com/api/preflight?address=0x...&usd=250 · MCP tool bsc_token_preflight', example: 'https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. A short answer. No "safe" and no score.' },
     // The preflight kept running for a token an agent holds (2026-10-09, rug-watch.js).
-    { name: 'rug watch: an alarm for a token you hold', where: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x...","callback":"https://..."} · MCP tool bsc_rug_watch', example: 'https://agent.brainonbnb.com/rug-watch', what: 'the preflight read again every 15 minutes; your own https callback is POSTed, signed, as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today\'s rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Webhook only. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI (proved by a signature, no transaction). 30 days, renewable.' },
+    { name: 'rug watch: an alarm for a token you hold', where: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} · MCP tool bsc_rug_watch', example: 'https://agent.brainonbnb.com/rug-watch', what: 'the preflight read again every 15 minutes; an alert is raised as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today\'s rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Alerts are POSTed, signed, to your https callback if you give one, or read back at GET /rug-watch/<id>?since=<time>. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI (proved by a signature, no transaction). 30 days, renewable.' },
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
@@ -7408,8 +7408,9 @@ export async function agentChart(env, idRaw) {
 // is one call — and the same answer a person gets by opening the charts one by one. Only firm filings count ("possibly
 // related" stays out); a listing changes nothing here.
 export async function agentRank(env, categoryRaw, limitRaw) {
-  const ALIAS = { 'health-factor-monitoring': 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
-  const c = String(categoryRaw || '').trim().toLowerCase(); const category = ALIAS[c] || c;
+  // 5.11.: "health factor" / "grid_trading" read as the hyphened ids, "health" as health-factor
+  const ALIAS = { 'health-factor-monitoring': 'health-factor', health: 'health-factor', yield: 'yield-optimization', 'yield-optimisation': 'yield-optimization', grid: 'grid-trading', rebalance: 'rebalancing' };
+  const c = String(categoryRaw || '').trim().toLowerCase().replace(/[\s_]+/g, '-'); const category = ALIAS[c] || c;
   const limit = Math.min(25, Math.max(1, Number(limitRaw) || 10));
   const [jobsAll, plaza] = await Promise.all([cached(`${SITE}/api-agent-jobs.json`, 15 * 60e3), cached(`${SITE}/api-plaza-index.json`, 15 * 60e3)]);
   const cats = new Set(Object.values(plaza.agents || {}).flatMap((p) => p.categories.map((x) => x.id)));
@@ -10235,6 +10236,17 @@ export const HOLDER_PASS = {
   proofFutureMs: 2 * 60 * 1000,
 };
 
+// THE LAST BYTE OF A SIGNATURE (2026-11-05): on 4.11. five holder passes from a browser came back "does not recover".
+// Some wallets write v the EIP-155 way (chainId * 2 + 35/36, 147/148 on BNB Chain) or as 0/1; viem reads 0/1 and 27/28
+// and throws on the rest. Only the parity matters: it is brought to 27/28 here. The signer must still be the wallet.
+export function normSig(sig) {
+  const s = String(sig || '').trim();
+  if (!/^0x[0-9a-fA-F]{130}$/.test(s)) return s;
+  const v = parseInt(s.slice(-2), 16);
+  const nv = v >= 35 ? 27 + ((v - 35) % 2) : v < 27 ? 27 + (v % 2) : v;
+  return s.slice(0, -2) + nv.toString(16).padStart(2, '0');
+}
+
 export const passMessage = (wallet, issued) => `BOBAI holder pass\nwallet: ${String(wallet).toLowerCase()}\nissued: ${issued}`;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 const PROOF_RE = /^bobai-holder\s+(0x[0-9a-fA-F]{40})\s+(\S+)\s+(0x[0-9a-fA-F]{130})$/;
@@ -10270,7 +10282,7 @@ export async function useHolderPass(env, rpcFn, proof, sold, now = Date.now()) {
   const t = Date.parse(issued);
   if (!(now - t <= HOLDER_PASS.proofWindowMs) || t - now > HOLDER_PASS.proofFutureMs) return no('stale_proof', 'issued must lie within the last 10 minutes: sign a fresh message and send it at once.');
   let signer;
-  try { signer = (await recoverMessageAddress({ message: passMessage(wallet, issued), signature })).toLowerCase(); }
+  try { signer = (await recoverMessageAddress({ message: passMessage(wallet, issued), signature: normSig(signature) })).toLowerCase(); }
   catch { return no('bad_signature', 'the signature does not recover to any address over the message.'); }
   if (signer !== wallet) return no('wrong_signer', `the signature does not come from ${wallet}. Sign exactly: "${passMessage(wallet, issued).replace(/\n/g, '\\n')}" with that wallet.`);
   let bal;
@@ -10353,6 +10365,7 @@ export function applyTransfers(bal, transfers, isContract = () => false) {
   return crossed;
 }
 
+const post = async (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());
 const rpcOf = (env) => async (body) => {
   const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com'].filter(Boolean);
   for (const u of urls) {
@@ -10363,6 +10376,24 @@ const rpcOf = (env) => async (body) => {
   }
   return null;
 };
+// A SECOND PROVIDER FOR THE LOG RANGES (2026-11-04): both entries above are publicnode, the only free provider serving
+// 5,000-block getLogs. NodeReal (BSC_RPC_KEYED_URL, the key the NFT minter and the TG bot already use) caps log ranges
+// at 300 blocks, so a chunk publicnode refused is read there in 300-block pieces; one piece unanswered, the chunk is
+// unread as before. Without the secret on this worker nothing changes.
+const NODEREAL_SPAN = 300;
+async function logsOf(env, rpc, filter, from, to) {
+  const ask = (a, b) => ({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ ...filter, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
+  const r = await rpc(ask(from, to));
+  if (r) return r.result;
+  if (!env.BSC_RPC_KEYED_URL) return null;
+  const out = [];
+  for (let a = from; a <= to; a += NODEREAL_SPAN) {
+    const p = await post(env.BSC_RPC_KEYED_URL, ask(a, Math.min(to, a + NODEREAL_SPAN - 1))).catch(() => null);
+    if (!Array.isArray(p?.result)) return null;
+    out.push(...p.result);
+  }
+  return out;
+}
 
 // the time of each block, read in one batch: { block: ISO }; a block that did not answer is left out
 async function blockTimes(rpc, blocks) {
@@ -10381,13 +10412,21 @@ export async function holdersTick(env, { now = new Date() } = {}) {
   const headR = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] });
   if (!headR) return { ok: false, error: 'no block number' };
   const head = Number(headR.result) - CONFIRMATIONS;
-  const until = Math.min(head, state.block + MAX_BLOCKS_A_TICK);
+  let until = Math.min(head, state.block + MAX_BLOCKS_A_TICK);
   const transfers = [];
+  // KEEP WHAT WAS READ (2026-11-04): a chunk that did not answer threw away the chunks read before it, so with one
+  // provider refusing now and then the tick moved 20,000-60,000 blocks a day instead of ~192,000 (31.10.-3.11.). Now
+  // the chunks read in order before the first failure are applied and the tick ends there; only a failure on the very
+  // first chunk applies nothing. Nothing is skipped: the next tick starts at the first unread block.
+  let partial = null;
   for (let b = state.block + 1; b <= until; b += CHUNK) {
     const to = Math.min(until, b + CHUNK - 1);
-    const r = await rpc({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: BOBAI, topics: [TRANSFER], fromBlock: '0x' + b.toString(16), toBlock: '0x' + to.toString(16) }] });
-    if (!r) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
-    for (const l of r.result) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
+    const logs = await logsOf(env, rpc, { address: BOBAI, topics: [TRANSFER] }, b, to);
+    if (!logs) {
+      if (b === state.block + 1) return { ok: false, error: `logs unread from block ${b}; nothing applied, read again next tick` };
+      until = b - 1; partial = `logs unread from block ${b}; applied up to ${until}, the rest next tick`; break;
+    }
+    for (const l of logs) transfers.push({ from: '0x' + l.topics[1].slice(26), to: '0x' + l.topics[2].slice(26), value: BigInt(l.data), block: Number(l.blockNumber), tx: l.transactionHash });
   }
   // a new address: asked once whether it has code
   const fresh = [...new Set(transfers.flatMap((t) => [t.from, t.to]))].filter((a) => !(a in state.bal) && !(a in (state.code || {})));
@@ -10422,7 +10461,7 @@ export async function holdersTick(env, { now = new Date() } = {}) {
     hist.push({ day, block: state.block, holders: s.holders, holders_1m: s.holders_1m, bands: s.bands.map((x) => x.holders) });
     await env.AGENT.put(HISTORY, JSON.stringify(hist.slice(-366)));
   }
-  return { ok: true, block: state.block, transfers: transfers.length, new_addresses: fresh.length, crossed: crossed.length, behind: head - until };
+  return { ok: true, block: state.block, transfers: transfers.length, new_addresses: fresh.length, crossed: crossed.length, behind: head - until, ...(partial ? { partial } : {}) };
 }
 
 export async function seedHolders(env, body) {
@@ -11829,7 +11868,9 @@ const payWays = ({ amount, payTo, direct = `${amount} USD1`, headers = 'X-PAYMEN
 
 async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
-  if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
+  // nothing is charged on an unknown id: a payment counts as used only once an answer is delivered (5.11.)
+  if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES), charged: false,
+    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 29 more) are at https://brainonbnb.com/mcp' } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
   // Half the price in $BOBAI, quoted now. If the pair cannot be read the
@@ -12412,6 +12453,8 @@ export default {
     // (proofShape) — never the proof. Read at GET /buys/refused. Only written after the path has answered.
     const missed = (product, proof, out) => {
       if (selfTest || !proof || !out || out.status === 200 || !env.AGENT) return;
+      // the zero hash is /services' own dry probe before a $BOBAI payment ("does it need more input?"), not a payment (5.11.)
+      if (/^0x0{64}$/.test(String(proof).trim())) return;
       const b = out.body && typeof out.body === 'object' ? out.body : {};
       const rec = { at: new Date().toISOString(), product, status: out.status, why: [b.stage, b.reason || b.error].filter(Boolean).map(String).join(': ').slice(0, 240),
         ua: String(request.headers.get('user-agent') || '').slice(0, 80), proof: proofShape(proof), ...(payerOf(proof) ? { from: payerOf(proof) } : {}), ...(ownSite ? { own_site: true } : {}),
@@ -13973,6 +14016,22 @@ ${pageTail}`;
     if (path === '/answer') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const id = url.searchParams.get('service') || '';
+      // A FREE TOOL ASKED AT THE PAID DOOR IS ANSWERED FREE (2026-11-05): on 4.11. a visitor tried answer?service=bobai_price
+      // five times with a tx hash and a holder pass and got "unknown service" each time. A name the free toolbox knows is
+      // passed to brainonbnb.com/mcp (query fields + the body's params as arguments); nothing is charged, a proof is not used.
+      if (id && !SERVICES[id] && /^[a-z][a-z0-9_]{2,59}$/.test(id)) {
+        const body = request.method === 'POST' ? await request.clone().json().catch(() => ({})) : {};
+        const args = { ...Object.fromEntries([...url.searchParams].filter(([k]) => k !== 'service' && k !== 'task')),
+          ...(body && typeof body.params === 'object' && body.params ? body.params : {}) };
+        const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'bobai-agent-answer-door/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: id, arguments: args } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
+        let out = null;
+        try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
+        if (out) {
+          note(`sell:answer:free:${id.slice(0, 40)}`);
+          return json({ free: true, charged: false, tool: id, answer: out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token)',
+            paid_answers: Object.keys(SERVICES).map((s) => `https://agent.brainonbnb.com/answer?service=${s}`) });
+        }
+      }
       if (request.method === 'GET') {
         if (!id) note('sell:answer:index');
         if (!id) return json({
@@ -14900,6 +14959,7 @@ export async function settlePayment(env, tx, by, state, extra = {}) {
 
 import { netFetch } from './self-fetch.js';
 import { recoverMessageAddress } from 'viem';
+import { normSig } from './holder-pass.js';
 import { registrationOf, resolveA2aEndpoint } from './hire.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { RPCS } from '../shared/lp-agent.js';
@@ -15012,7 +15072,7 @@ export async function quoteListing(body, env, deps) {
 async function signerOk(quote, nonce, signature) {
   if (!/^0x[0-9a-fA-F]{130}$/.test(String(signature || ''))) return { ok: false, error: 'signature missing or malformed (65 bytes, 0x…)' };
   let who;
-  try { who = lc(await recoverMessageAddress({ message: signLine(quote.id, nonce), signature })); } catch { return { ok: false, error: 'the signature could not be read' }; }
+  try { who = lc(await recoverMessageAddress({ message: signLine(quote.id, nonce), signature: normSig(signature) })); } catch { return { ok: false, error: 'the signature could not be read' }; }
   // read again at the moment of use: an id can change hands between quote and payment
   const [owner, aw] = await Promise.all([ownerOf(quote.id), agentWalletOf(quote.id)]);
   if (who !== lc(owner) && who !== lc(aw)) return { ok: false, error: `signed by ${who}, which neither owns #${quote.id} (${owner}) nor is its agentWallet (${aw || 'none'})` };
@@ -15122,7 +15182,7 @@ export async function postLog(body, env, opts = {}) {
   else {
     const t = Date.parse(at); if (!t || Math.abs(Date.now() - t) > 10 * 60e3) return json(400, { error: 'at: the ISO time you signed, within 10 minutes of now', sign: logLine(id, new Date().toISOString(), text) });
     if (!/^0x[0-9a-fA-F]{130}$/.test(String(body?.signature || ''))) return json(400, { error: 'signature missing or malformed (65 bytes, 0x…)', sign: logLine(id, at, text) });
-    let who; try { who = lc(await recoverMessageAddress({ message: logLine(id, at, text), signature: body.signature })); } catch { return json(400, { error: 'the signature could not be read' }); }
+    let who; try { who = lc(await recoverMessageAddress({ message: logLine(id, at, text), signature: normSig(body.signature) })); } catch { return json(400, { error: 'the signature could not be read' }); }
     const [owner, aw] = await Promise.all([ownerOf(id), agentWalletOf(id)]);
     if (who !== lc(owner) && who !== lc(aw)) return json(403, { error: `signed by ${who}, which neither owns #${id} (${owner}) nor is its agentWallet (${aw || 'none'})` });
     by = who;
@@ -15133,7 +15193,14 @@ export async function postLog(body, env, opts = {}) {
   return json(200, { ok: true, agent: id, entries: Math.min(log.length, 30), profile: `https://agent.brainonbnb.com/listed/${id}` });
 }
 
-export async function readListing(env, id) { return JSON.parse((await env.AGENT.get(`listing:${String(id)}`)) || 'null'); }
+// THE HOURLY LOOK HAS ITS OWN KEY (2026-11-04): runListedLive read a listing, asked the agent for seconds, then wrote the
+// whole record back — and at 05:00 the daily check ran in those seconds, so its day was lost (#302258's last check read
+// 27 Oct, #304493's 2 Nov, the others today). The hourly look writes listing-live:<id> now and is merged in on reading;
+// the daily check alone appends the days to the record.
+export async function readListing(env, id) {
+  const [r, live] = await Promise.all([`listing:${String(id)}`, `listing-live:${String(id)}`].map(async (k) => JSON.parse((await env.AGENT.get(k)) || 'null')));
+  return r && live ? { ...r, live: live.live, ...(live.endpoints?.length ? { endpoints: live.endpoints } : {}) } : r;
+}
 export async function readListings(env) {
   const ids = JSON.parse((await env.AGENT.get('listings')) || '[]');
   const all = await Promise.all(ids.map((id) => readListing(env, id)));
@@ -15226,10 +15293,9 @@ export async function runListedLive(env) {
     const r = await readListing(env, id); if (!r || r.status === 'removed') continue;
     const reg = await registrationOf(Number(id)).catch(() => null);
     const ans = reg ? await answers(id, reg).catch(() => ({ ok: false })) : { ok: false };
-    r.live = { ok: !!ans.ok, at: new Date().toISOString() };
-    // the endpoints follow the registration (2026-10-13: a profile kept the endpoints of the day it was listed)
-    if (reg?.endpoints?.length) r.endpoints = reg.endpoints.slice(0, 12);
-    await env.AGENT.put(`listing:${id}`, JSON.stringify(r));
+    // the endpoints follow the registration (2026-10-13: a profile kept the endpoints of the day it was listed); written
+    // to their own key, never over the record the daily check writes
+    await env.AGENT.put(`listing-live:${id}`, JSON.stringify({ live: { ok: !!ans.ok, at: new Date().toISOString() }, ...(reg?.endpoints?.length ? { endpoints: reg.endpoints.slice(0, 12) } : {}) }));
     await noteAgentState(env, id, !!ans.ok, 'hourly check (listed)').catch(() => null);
     out.push([id, !!ans.ok]);
   }
@@ -18775,6 +18841,7 @@ export async function rebalancePlan(input = {}) {
 // callbackProblem, verifyHolderProof, signBody, publicView) so that
 // scripts/rug-watch-regressions.mjs pins each rule offline.
 import { recoverMessageAddress } from 'viem';
+import { normSig } from './holder-pass.js';
 
 export const RUG_WATCH = {
   days: 30,
@@ -19353,7 +19420,7 @@ export async function verifyHolderProof(body, now = Date.now()) {
   const signature = String(body?.signature || '').trim();
   if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) return no(400, 'bad_signature', 'signature must be the 65-byte personal_sign signature (0x followed by 130 hex characters).');
   let signer;
-  try { signer = (await recoverMessageAddress({ message: proofMessage(wallet, issued), signature })).toLowerCase(); }
+  try { signer = (await recoverMessageAddress({ message: proofMessage(wallet, issued), signature: normSig(signature) })).toLowerCase(); }
   catch { return no(403, 'bad_signature', 'the signature does not recover to any address over the message.'); }
   if (signer !== wallet) return no(403, 'wrong_signer', `the signature over the message does not come from ${wallet}. Sign exactly: "${proofMessage(wallet, issued).replace(/\n/g, '\\n')}" with that wallet.`);
   return { ok: true, wallet };
@@ -19484,7 +19551,7 @@ export function tierCheck(entries, { tier, owner, token, cb, now }) {
   if (same) return { ok: true, renew: same.name.slice(RUG_PREFIX.length) };
   const live = unexpired.filter((e) => !e.metadata.p);
   const mine = live.filter((e) => e.metadata.o === owner);
-  const no = (code, error) => ({ ok: false, status: 429, code, error });
+  const no = (code, error) => ({ ok: false, status: 429, code, error, yours: mine.map((e) => e.name.slice(RUG_PREFIX.length)) });
   if (live.length >= RUG_WATCH.totalCap) return no('capacity', `All ${RUG_WATCH.totalCap} watches are taken. Try again later; watches end after ${RUG_WATCH.days} days.`);
   if (tier === 'free') {
     if (mine.length >= RUG_WATCH.freePerCaller) return no('free_limit', `One active watch is free per caller and yours is running. Cancel it (DELETE /rug-watch/<id> with x-rug-watch-secret), or prove a wallet holding ${RUG_WATCH.holderLineText} for up to ${RUG_WATCH.holderCap}.`);
@@ -19542,15 +19609,18 @@ async function mapLimit(items, n, fn) {
 }
 
 // What anyone holding the id may read: never the secret, never who registered.
-export function publicView(w, now = Date.now()) {
+export function publicView(w, now = Date.now(), since = null) {
   let host = null;
-  try { host = new URL(w.callback).host; } catch { host = null; }
+  try { host = w.callback ? new URL(w.callback).host : null; } catch { host = null; }
+  const sinceMs = since ? Date.parse(since) : NaN;
   return {
     watch: w.id, token: w.token, symbol: w.symbol ?? null, tier: w.tier,
     status: now > w.expires_at ? 'expired' : w.paused ? 'paused' : 'active',
     ...(w.paused ? { paused_why: w.paused === 'holder_line' ? `the wallet holds less than ${RUG_WATCH.holderLineText}; this watch resumes when it holds the line again, and is ended if it still holds less at the next daily read` : String(w.paused) } : {}),
     created_at: iso(w.created_at), expires_at: iso(w.expires_at),
+    delivery: w.callback ? 'webhook' : 'poll',
     callback_host: host,
+    ...(Number.isFinite(sinceMs) ? { since: iso(sinceMs), new_events: (w.events || []).filter((e) => Date.parse(e.at) > sinceMs) } : {}),
     baseline: w.baseline, snapshot: w.snapshot,
     last_checked_at: w.last_checked_at ? iso(w.last_checked_at) : null,
     checks: w.checks || 0, failed_in_a_row: w.fails || 0, ...(w.last_error ? { last_error: w.last_error } : {}),
@@ -19568,11 +19638,11 @@ export function rugWatchTerms() {
   const example = proofMessage('0x1234567890abcdef1234567890abcdef12345678', '2026-10-09T12:00:00.000Z');
   return {
     service: 'rug watch',
-    what: 'Register a BSC token you hold and an https callback of your own. Every 15 minutes the token is read again with the same preflight bsc_token_preflight answers with (brainonbnb.com/api/preflight), compared with the read before and with the watch\'s own history of the last 24 h; when something dangerous changed — the classic rug (sell blocked, liquidity pulled, tax up, owner or proxy changed) or today\'s (fake volume from a handful of wallets, a pump and the dump after it, a slow rug where the price bleeds while insiders sell) — your callback is POSTed at once. Webhook only — no Telegram, no browser, no mail.',
+    what: 'Register a BSC token you hold and an https callback of your own. Every 15 minutes the token is read again with the same preflight bsc_token_preflight answers with (brainonbnb.com/api/preflight), compared with the read before and with the watch\'s own history of the last 24 h; when something dangerous changed — the classic rug (sell blocked, liquidity pulled, tax up, owner or proxy changed) or today\'s (fake volume from a handful of wallets, a pump and the dump after it, a slow rug where the price bleeds while insiders sell) — your callback is POSTed at once. No webhook? Leave callback out: the watch runs the same and keeps every alert in its status (GET status_url?since=<time>). No Telegram, no browser, no mail.',
     cadence: 'every 15 minutes, on this worker\'s cron',
     register: {
       how: `POST ${RUG_DOCS}`,
-      body: { token: '0x… (the BSC token)', callback: 'https://… (your endpoint; https, public, not ours)', wallet: 'optional — holder tier', signature: 'optional — holder tier', issued: 'optional — holder tier' },
+      body: { token: '0x… (the BSC token)', callback: 'optional — https://… (your endpoint; https, public, not ours). Left out: no push, read the alerts at status_url?since=<time>', wallet: 'optional — holder tier', signature: 'optional — holder tier', issued: 'optional — holder tier' },
       answer: 'watch (the id), secret (shown ONCE — keep it: it signs every alert and cancels the watch), tier, expires_at, baseline (the snapshot every later read is compared with), status_url',
       refused: 'a token the preflight cannot read as a pool (still on its four.meme curve, no pool, not a token) is refused with the preflight\'s own code',
     },
@@ -19633,7 +19703,7 @@ export function rugWatchTerms() {
       },
       also: 'x-bobai-watch: <id>. The last delivery (time, HTTP status) is in the status.',
     },
-    status: `GET ${RUG_DOCS}/<id> — the baseline, the current reference snapshot, the events sent, checks, failed reads in a row and the last delivery. Never the secret.`,
+    status: `GET ${RUG_DOCS}/<id> (?since=<ISO time>: new_events = only what fired after it) — the baseline, the current reference snapshot, the events sent, checks, failed reads in a row and the last delivery. Never the secret.`,
     cancel: `DELETE ${RUG_DOCS}/<id> with the header x-rug-watch-secret: <secret>`,
     mcp: 'bsc_rug_watch on https://brainonbnb.com/mcp registers the same watch',
     cannot_see: 'what happens between two reads: a rug inside 15 minutes is reported after it happened. It reads what the preflight reads — not the team, not the socials. Fake volume from many fresh wallets, each trading a little, looks like a busy market here; and a wallet count is a count of addresses, not of people.',
@@ -19664,7 +19734,7 @@ export async function handleRugWatch(request, env, path, deps = {}) {
   const raw = await env.AGENT.get(key);
   if (!raw) return refuse(404, 'no_such_watch', 'No such watch, or it has ended.');
   const w = JSON.parse(raw);
-  if (request.method === 'GET') { note('rug-watch:status'); return json(publicView(w, now)); }
+  if (request.method === 'GET') { note('rug-watch:status'); return json(publicView(w, now, new URL(request.url).searchParams.get('since'))); }
   if (request.method === 'DELETE') {
     if (!sameString(request.headers.get('x-rug-watch-secret'), w.secret)) return refuse(403, 'bad_secret', 'Send the secret you were given at registration in the header x-rug-watch-secret.');
     await env.AGENT.delete(key);
@@ -19680,9 +19750,13 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return refuse(400, 'bad_body', 'Send JSON: {"token":"0x…","callback":"https://…"}.');
   const token = String(body.token || body.address || '').trim().toLowerCase();
   if (!/^0x[0-9a-f]{40}$/.test(token)) return refuse(400, 'bad_token', 'token must be a BSC token address (0x followed by 40 hex characters).');
-  const cbIssue = callbackProblem(body.callback);
+  // NO WEBHOOK, NO PROBLEM (2026-11-05): on 4.11. four of eight tries failed on bad_callback — an agent over MCP rarely
+  // has a public https endpoint. Without a callback the watch runs the same and keeps its alerts in the status
+  // (GET status_url, ?since=<time> for only the new ones); a callback that IS sent must still pass the check.
+  const hasCb = body.callback != null && String(body.callback).trim() !== '';
+  const cbIssue = hasCb ? callbackProblem(body.callback) : null;
   if (cbIssue) return refuse(400, 'bad_callback', cbIssue);
-  const callback = String(body.callback).trim();
+  const callback = hasCb ? String(body.callback).trim() : null;
 
   // The tier: a wallet (or a signature) asks for the holder tier and must prove it.
   const holder = body.wallet != null || body.signature != null;
@@ -19695,10 +19769,10 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
     owner = await ownerKey(callerOf(request, env), env?.HIT_SECRET);
   }
   const tier = holder ? 'holder' : 'free';
-  const cb = (await sha(callback)).slice(0, 16);
+  const cb = callback ? (await sha(callback)).slice(0, 16) : 'poll';
   const entries = mergeEntries(await listKeys(env), await readOwnerIndex(env, owner), owner);
   const decision = tierCheck(entries, { tier, owner, token, cb, now });
-  if (!decision.ok) { note(`rug-watch:refused:${decision.code}`); return refuse(decision.status, decision.code, decision.error); }
+  if (!decision.ok) { note(`rug-watch:refused:${decision.code}`); return refuse(decision.status, decision.code, decision.error, decision.yours?.length ? { your_watches: decision.yours.map((id) => `${RUG_DOCS}/${id}`) } : {}); }
 
   let balance = null;
   if (holder) {
@@ -19760,6 +19834,8 @@ async function register(request, env, { now, note, bump, fetchFn, rpc }) {
     expires_at: iso(w.expires_at),
     baseline: read.snap,
     status_url: `${RUG_DOCS}/${id}`,
+    delivery: callback ? 'webhook' : 'poll',
+    ...(callback ? {} : { check: `No callback, so nothing is pushed: read GET ${RUG_DOCS}/${id}?since=<the time of your last look> (or bsc_rug_watch with {"watch":"${id}"} over MCP) — new_events lists what fired since then. Every 15 minutes is often enough.` }),
     cadence: 'every 15 minutes',
     ...(wallet ? { wallet, holds: `${bobaiText(balance)} $BOBAI` } : {}),
   }, 201);
@@ -19922,8 +19998,9 @@ async function sweepWatches(env, deps, clock, budgetMs) {
       fresh = JSON.parse(raw);
     } catch { fresh = null; }
     if (fresh) w = mergeFresh(w, fresh, w0);
-    if (send.length && w.callback) {
-      w.last_delivery = await deliver(w, send, snap, now, fetchFn);
+    if (send.length) {
+      // without a callback (poll mode, 5.11.) the alert waits in w.events for the status read
+      if (w.callback) w.last_delivery = await deliver(w, send, snap, now, fetchFn);
       alerts++; changed = true;
     }
     if (doom) {

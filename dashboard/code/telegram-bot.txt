@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5782 lines.
+# one fetch. 12 files, 5835 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3438,6 +3438,48 @@ async function announceListings(env) {
   }
 }
 
+// ==================== BRAIN POP CHAMPION (/api/pop, daily) ====================
+// Operator, 2026-11-06: "make the telegram post every day". Each day of the Brain Pop season (6 to 30 Nov) the game's
+// daily winner, posted once into the public group shortly after 00:00 UTC: the day's top 3, how many played, the prize
+// (nothing — the operator's joke), the season leader who is on course for the ONE $BOBAI, and the link to play today.
+// The board is the bobai-pop worker's (brainonbnb.com/api/pop/top); names there are random or the player's own,
+// brainrotted, letters/digits/_ only, so nothing in them can break the HTML. A day nobody played posts nothing.
+const POP_FIRST = '2026-11-06', POP_LAST = '2026-11-30';
+export function renderPopChampion(day, no, rows, players, leader) {
+  const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const n = (v) => Number(v || 0).toLocaleString('en-US'), p7 = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }), medal = ['🥇', '🥈', '🥉']; // 6.9: scores with seven decimals
+  const last = day === POP_LAST;
+  return [
+    `🧠 <b>BRAIN POP · DAY ${no} CHAMPION</b>`,
+    '',
+    ...rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`),
+    '',
+    `${n(players)} player${players === 1 ? '' : 's'} · prize: <b>NOOOOOOOTHING</b> 🏆`,
+    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT · wins the prize pool` : `👑 Season leader (wins the whole prize pool on 30 Nov): <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
+    '',
+    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop',
+  ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
+}
+async function popChampionText(day) {
+  const get = (q) => fetch('https://brainonbnb.com/api/pop/top?' + q, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null));
+  const [d, all] = await Promise.all([get('scope=day&d=' + day), get('scope=all')]);
+  if (!d || !Array.isArray(d.rows)) return undefined; // the board did not answer: try again at the next tick
+  if (!d.rows.length) return null;
+  return renderPopChampion(day, d.no, d.rows, d.players, all && all.rows && all.rows[0]);
+}
+async function postPopChampion(env, tick) {
+  const day = new Date(Date.UTC(tick.getUTCFullYear(), tick.getUTCMonth(), tick.getUTCDate()) - 86400e3).toISOString().slice(0, 10);
+  if (day < POP_FIRST || day > POP_LAST) return;
+  const flag = 'pop_champ:' + day;
+  if (await env.KV.get(flag)) return;
+  const text = await popChampionText(day);
+  if (text === undefined) return;
+  await env.KV.put(flag, text ? 'sent' : 'nobody', { expirationTtl: 3 * 86400 }); // once, also when nobody played
+  if (!text) return;
+  const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
+  if (!sent?.ok) console.error('[POP CHAMPION] Telegram refused ' + day, JSON.stringify(sent));
+}
+
 // ==================== GIGGLE ACADEMY POT (/giggle) ====================
 
 // The pot's windows — the same instants the buyback worker switches on
@@ -3462,6 +3504,8 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
   else clock = `✅ Collecting ended Nov 20  ·  donation day`;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
+  // the window over (2026-11-04, the A-Z pass): the card stops saying "fills" and "so far" once nothing is sent any more
+  const over = nowMs >= GG_END;
   return [
     '☀️ <b>Giggle Academy Community Pot</b>',
     '',
@@ -3469,11 +3513,11 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
     '🗓 Sep 17 → Nov 20, 2026  ·  64 days',
     clock,
     '',
-    '⚙️ <b>How it fills</b>',
-    '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
+    over ? '⚙️ <b>How it filled</b>' : '⚙️ <b>How it fills</b>',
+    over ? '♻️ 0.3% of every trade — a tenth of each tax slice — was sent as BNB by the buyback bot, Sep 17 to Nov 20' : '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
     '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
     '',
-    '💰 <b>Collected so far</b>',
+    over ? '💰 <b>Collected</b>' : '💰 <b>Collected so far</b>',
     `🪙 <b>${total.toFixed(4)} BNB</b>${bnbUsd > 0 ? ` (≈$${(total * bnbUsd).toFixed(2)})` : ''}  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
     lastLine,
     '',
@@ -3542,7 +3586,7 @@ export function formatBotCard(nowMs = Date.now()) {
   const out = [
     '⚙️ <b>What the BOBAI bot does</b>',
     '',
-    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → burns, liquidity, creator, agent, pot. No hand on the switch.`,
+    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → ${nowMs < GG_END ? 'burns, liquidity, creator, agent, pot' : 'burns, liquidity, creator'}. No hand on the switch.`,
     '',
   ];
   if (now) {
@@ -4691,6 +4735,13 @@ export default {
     // only aggregates + top movers from the same KV event log that powers
     // /whales24h — no admin data, no secrets. Events are on-chain-derived
     // (BOBAI Transfer logs, scanned every minute by the cron).
+    // the Brain Pop champion post as it would go out (nothing is sent): /pop-champion?d=YYYY-MM-DD
+    if (url.pathname === '/pop-champion' && request.method === 'GET') {
+      const d = url.searchParams.get('d') || '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Response('d=YYYY-MM-DD', { status: 400 });
+      const text = await popChampionText(d);
+      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {
         const [events, trackedW, contracts] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env), loadTrackedContracts(env)]);
@@ -5117,6 +5168,8 @@ export default {
       // A NEW AGENT ON BRAIN PLAZA, ANNOUNCED ONCE (operator, 2026-10-12: the listing includes an announcement)
       try { await announceListings(env); }
       catch (e) { console.error('[LISTING ANNOUNCE ERROR]', e.message || e); }
+      // BRAIN POP: yesterday's champion, once, in the first hour of the UTC day (00:00-00:50 ticks; KV flag)
+      if (nominal.getUTCHours() === 0) { try { await postPopChampion(env, nominal); } catch (e) { console.error('[POP CHAMPION ERROR]', e.message || e); } }
     }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===

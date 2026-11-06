@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5782,
-   "zipBytes": 100558,
-   "txtBytes": 300110,
-   "sha256": "56bb012aaf2dad13",
+   "lines": 5835,
+   "zipBytes": 101957,
+   "txtBytes": 304466,
+   "sha256": "f4804388e987981f",
    "reqs": [
     {
      "what": "A bot token",
@@ -517,6 +517,37 @@
    ]
   },
   {
+   "slug": "brain-pop",
+   "group": "apps",
+   "title": "Brain Pop 6.9 — the daily game in the terminal",
+   "tagline": "60 seconds, one engine file, every tap replayed by the server.",
+   "files": 6,
+   "lines": 542,
+   "zipBytes": 24083,
+   "txtBytes": 54667,
+   "sha256": "5b74bd0540bbc22d",
+   "reqs": [
+    {
+     "what": "A worker with a Durable Object (SQLite)",
+     "ours": "Cloudflare Workers, class PopBoard",
+     "alt": "any server that can run an ES module and keep two small tables"
+    },
+    {
+     "what": "The same engine file on both sides",
+     "ours": "pop-engine.mjs, imported by the page and by the worker",
+     "alt": "keep one file; a copy that drifts makes the replay disagree with the screen"
+    }
+   ],
+   "paths": [
+    "temp/terminal-site/terminal/pop-engine.mjs",
+    "worker-pop/game.js",
+    "worker-pop/index.js",
+    "worker-pop/test.mjs",
+    "worker-pop/test2.mjs",
+    "worker-pop/wrangler.toml"
+   ]
+  },
+  {
    "slug": "brainscreener",
    "group": "apps",
    "title": "brainScreener",
@@ -598,10 +629,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 3959,
-   "zipBytes": 138020,
-   "txtBytes": 414711,
-   "sha256": "25b7b6bcf37d98b7",
+   "lines": 4050,
+   "zipBytes": 141581,
+   "txtBytes": 425558,
+   "sha256": "a90ef8f2055c4dd3",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -633,10 +664,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
-   "lines": 24272,
-   "zipBytes": 615513,
-   "txtBytes": 1745276,
-   "sha256": "5bdd5ff4f348affc",
+   "lines": 24349,
+   "zipBytes": 618128,
+   "txtBytes": 1752596,
+   "sha256": "a67aa22e736c5902",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -752,10 +783,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 5082,
-   "zipBytes": 114726,
-   "txtBytes": 331205,
-   "sha256": "06d3693849f588dd",
+   "lines": 5084,
+   "zipBytes": 114835,
+   "txtBytes": 331455,
+   "sha256": "2ca149b8d621b250",
    "reqs": [
     {
      "what": "Node 18+ and time",

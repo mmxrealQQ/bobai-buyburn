@@ -130,7 +130,7 @@ export class PopBoard {
       // a new name shows on the boards at once (BRAINROT IT or the dice), not only after the next run
       if (req.method === 'POST' && p === 'name') {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
-        if (!/^[0-9a-f]{16}$/.test(pid) || !name) return J({ error: 'that name is not allowed' }, 400);
+        if (!/^[0-9a-f]{16}$/.test(pid) || !name) return J({ error: 'a name is 3 to 16 letters, digits or _ (no spaces, no dots)' }, 400);
         if (!test0(pid)) this.sql.exec('UPDATE best3 SET name = ? WHERE pid = ?', name, pid);
         return J({ name, rows: this.rows('SELECT COUNT(*) c FROM best3 WHERE pid = ?', pid)[0].c });
       }
@@ -138,7 +138,7 @@ export class PopBoard {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
         if (b.v !== V) return J({ error: 'Brain Pop 6.9 is here: reload the page' }, 426);
         if (!/^[0-9a-f]{16}$/.test(pid)) return J({ error: 'pid (16 hex) needed' }, 400);
-        if (!name) return J({ error: 'that name is not allowed: 3 to 16 letters, digits or _, nothing rude, nothing that poses as us' }, 400);
+        if (!name) return J({ error: 'a name is 3 to 16 letters, digits or _ (no spaces, no dots)' }, 400);
         if (seasonOver(today) && !b.d) return J({ error: 'the season is over (30 Nov); the boards stay' }, 410);
         const d = b.d || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         if (ip && this.rows(`SELECT COUNT(*) c FROM runs3 WHERE day = ? AND ip = ?`, today, ip)[0].c >= STARTS_PER_IP_DAY) return J({ error: 'enough runs from here today, come back tomorrow (UTC)' }, 429);

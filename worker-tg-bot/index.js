@@ -2771,7 +2771,7 @@ export function renderPopChampion(day, no, rows, players, leader) {
     `${n(players)} player${players === 1 ? '' : 's'} · prize: <b>NOOOOOOOTHING</b> 🏆`,
     leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT · wins the prize pool` : `👑 Season leader (wins the whole prize pool on 30 Nov): <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
     '',
-    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/?pop=play',
+    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
 }
 async function popChampionText(day) {

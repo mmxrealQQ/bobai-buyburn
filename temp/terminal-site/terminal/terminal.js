@@ -7578,9 +7578,9 @@ window.__btBrSeason = brSeason;
   // THE PRIZE POOL (operator, 6.11.): the $BOBAI in the Giggle/prize wallet — 808.41 to start, every $BOBAI donated adds —
   // all of it to the overall #1 on 30 Nov; the bar's goal $100,000 (operator: "exaggerated"); ONLY $BOBAI counts, anything
   // else sent there is lost (said plainly)
-  const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 100000;
-  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $100,000</span></div>'
-    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Anything other than $BOBAI sent there (BNB, USDT, any token) is <b>lost</b>. It is not part of the pool.</p></div>';
+  const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 100; // $100 (operator 6.11. evening: "not $100k, just $100")
+  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $100</span></div>'
+    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Anything other than $BOBAI sent to the prize pool (BNB, USDT, any token) is <b>lost</b>. It is not part of the prize pool.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;
     try { const j = await api('pool'); if (!pp.contains(box) || j.bobai == null) return; const usd = j.bobai * (S.price || 0);
@@ -7597,28 +7597,71 @@ window.__btBrSeason = brSeason;
     if (!CH && DAY.top && DAY.top[0] && DAY.day === DAY.today) LEAD = await api('run/' + DAY.top[0].run).catch(() => null);
     intro();
   }
+  function guideHtml() {
+    const W = E.WEAPONS, n = v => Number(v).toLocaleString('en-US'), row = (img, h, t) => '<div class="br-gd-r">' + (img ? '<img alt="" src="' + pic(img) + '">' : '') + '<p><b>' + h + '</b>' + t + '</p></div>';
+    const what = { burn: 'An explosion lands on the biggest crowd: everything in range pops at once (rugs are spared). Nothing on screen? Then your next tap explodes.', hammer: 'Your next 6 taps are huge: the hit area is 3 times bigger.', liq: 'Slow motion for 4 seconds: the creatures AND the clock run at half speed, so you win extra time (up to 12 extra seconds per round).', defi: 'A helper flies in and pops 6 creatures for you over 3 seconds. It always takes the one about to escape, never a rug.', giggle: 'Gold rush: triple points for 4 seconds.', creator: 'Every rug on screen blows up and pays ' + n(E.SLAY_PTS) + ' x your multiplier. For 5 seconds new rugs are golden and safe to tap.', trades: 'Cash bonus: your current streak x 2,500 points. It needs the most hits, so keep the streak high.' };
+    return '<h4>🎯 THE GOAL</h4>'
+      + '<p>' + (E.RUN_MS / 1000) + ' seconds. The whole terminal is the field. Tap the brainrot creatures and score as much ROT as you can. Every day has its own difficulty, the same for everyone; every round brings its own creatures. The server replays every tap, so every score is real. Daily top 10; the overall #1 on 30 Nov wins the whole $BOBAI prize pool.</p>'
+      + '<h4>💯 POINTS PER POP</h4>'
+      + '<p><b>worth x multiplier x aim x speed</b></p><ul>'
+      + '<li><b>Worth:</b> small creatures 8, big ones 5. Golden ones count 5 times.</li>'
+      + '<li><b>Aim:</b> hit the middle for up to 1.5x, the edge gives 0.5x.</li>'
+      + '<li><b>Speed:</b> tap a creature right as it appears for up to 2.5x. The longer it lives, the less it pays.</li></ul>'
+      + '<h4>🔥 STREAK AND MULTIPLIER</h4><ul>'
+      + '<li>Pop again within ' + (E.COMBO_MS / 1000) + ' seconds and the streak goes on.</li>'
+      + '<li>Every 4 in a row: +1 multiplier, up to <b>x10</b>.</li>'
+      + '<li>The longer the streak, the smaller the hit area (down to 55 %). Skill, not luck.</li></ul>'
+      + '<h4>⚡ COMBOS</h4>'
+      + row('', '8 IN A ROW · SUPER', ' Double points for 3 seconds.')
+      + row('', '16 IN A ROW · MEGA', ' 4 helpers pop creatures for you, and their pops keep your streak going.')
+      + row('', '24 IN A ROW · GOD MODE', ' For 5 seconds every creature is golden (5x). Again at 32, 40, 48 …')
+      + '<h4>🎰 THE 7 STATIONS</h4>'
+      + '<p>Six on the right, the cashier (TRADES) on the left. Each has a meter. <b>Only your own hits charge them</b>: +1 per pop, +2 for a golden one (helpers and explosions never charge). When a meter is full, the station fires <b>by itself</b>, nothing to click. Then it charges again.</p>'
+      + W.map(w => row(w.pic, w.name + ' · every ' + w.need + ' hits', ' ' + (what[w.k] || esc(w.say)))).join('')
+      + '<h4>❌ DON&rsquo;T</h4>'
+      + row('', '✖ A MISS', ' Tapping nothing costs ' + n(E.MISS_COST) + ' points, breaks your streak and drains every meter by 3.')
+      + row('rug', 'THE RUG (red candle)', ' From second 7 on. Tapping it costs 4,000 points, breaks your streak and drains every meter by 6. Only the RUG SLAYER makes them safe.')
+      + '<h4>👾 SPECIAL CREATURES</h4>'
+      + row('octo', 'OCTOPUS', ' Splits into 3 little brains: pop them fast for a quick streak.')
+      + row('snail', 'SNAIL', ' Crawls across at 15, 31 and 48 seconds. Worth 25.')
+      + row('kaiju', 'THE BOSS (second 36)', ' Needs 8 hits, worth 120. When it dies it bursts into 6 golden brains.')
+      + row('mini', 'GOLDEN BRAIN', ' 5x points and charges the stations twice.')
+      + '<h4>🕹 CONTROLS</h4><ul>'
+      + '<li><b>Crosshair:</b> pick its shape and colour on the PLAY page (desktop).</li>'
+      + '<li><b>RESTART / QUIT:</b> bottom right of the field, tap twice to be sure.</li>'
+      + '<li><b>Sound:</b> on or off next to the crosshair on the PLAY page.</li>'
+      + '<li>The labels on the field show which power is active right now and how long it lasts.</li></ul>'
+      + '<h4>🏆 TIPS FROM THE PROS</h4><ul>'
+      + '<li>Never tap blind: a miss costs more than it seems (streak + meters).</li>'
+      + '<li>Hold the streak past 8, 16 and 24: that is where the big points are.</li>'
+      + '<li>Be ready at second 36: the boss and its 6 golden brains decide the day.</li></ul>';
+  }
   function intro() {
     const past = DAY.day !== DAY.today, ch = CH ? '<p class="br-pp-ch">' + esc(CH.name) + ' challenges you: <b>' + sc7(CH.score) + ' ROT</b> on Daily #' + CH.no + '. Beat it! Their score runs along as a ghost.' + (past ? ' (That day is over: a rematch, not on the board.)' : '') + '</p>' : '';
-    const nameHtml = (named() ? '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' : '') + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it) <button type="button" class="br-pp-re" title="A random brainrot name">🎲 random</button></b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _ · nothing rude</small></div>';
-    pp.innerHTML = '<div class="br-pp-c"><button type="button" class="br-pp-snd" title="Sound on/off" aria-label="Sound on/off">' + (muted ? '🔇' : '🔊') + '</button><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b>' + ch
+    const nameHtml = (named() ? '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' : '') + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it) <button type="button" class="br-pp-re" title="A random brainrot name">🎲 random</button></b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _</small></div>';
+    pp.innerHTML = '<div class="br-pp-c"><div class="br-pp-hd"><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b><button type="button" class="br-pp-tab on" data-tab="play">▶ PLAY</button><button type="button" class="br-pp-tab" data-tab="guide">📖 HOW TO PLAY</button></div>' + ch
+      + '<div class="br-pp-guide" hidden></div>'
       + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml
       // HOW TO PLAY, in five seconds (operator: "in 60 seconds you must know what to do")
       + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>EVERY HIT</b> charges the 7 stations · full = super power · 8 in a row SUPER · 16 MEGA · 24 GOD</span></div>'
       + '<p class="br-pp-n">60 seconds · every round new, every round equally hard · the server replays every tap</p>'
       + (matchMedia('(pointer: fine)').matches ? '<div class="br-pp-xh"><b>CROSSHAIR</b>' + [1, 2, 3, 4].map(k => '<button type="button" data-xh="' + k + '" title="' + ['CS2 classic', 'cross with a dot', 'dot', 'circle'][k - 1] + '"' + (xhPick() === k ? ' class="on"' : '') + '></button>').join('') + '</div>'
         + '<div class="br-pp-xh"><b>COLOR</b>' + ['g', 'c', 'y', 'p', 'r', 'w'].map(c => '<button type="button" class="sw' + (xcPick() === c ? ' on' : '') + '" data-xc="' + c + '" title="' + { g: 'green', c: 'cyan', y: 'yellow', p: 'pink', r: 'red', w: 'white' }[c] + '"></button>').join('') + '</div>' : '')
+      + '<div class="br-pp-xh"><b>SOUND</b><button type="button" class="br-pp-snd" aria-label="Sound on/off">' + (muted ? '🔇 OFF' : '🔊 ON') + '</button></div>'
       + '</div><div class="br-pp-r"><p class="br-pp-hs">🏆 HIGHSCORE · TOP 10</p>'
       + '<div class="br-pp-bd"></div>' + codeLine()
       + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small></p>' + poolHtml()
       + '</div></div>'
-      + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
+      + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button><button type="button" class="br-pp-shg">📣 SHARE THE GAME</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
     scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool();
     setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
   }
   pp.addEventListener('click', async e => {
     e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('br-pp-x')) { pp.hidden = true; return; }
-    if (b.classList.contains('br-pp-snd')) { muted = !muted; lsSet('bt-pop-mute', muted ? '1' : '0'); b.textContent = muted ? '🔇' : '🔊'; if (!muted) SFX.count(true); return; }
+    if (b.dataset.tab) { const g = b.dataset.tab === 'guide', gd = pp.querySelector('.br-pp-guide'); pp.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b)); pp.querySelector('.br-pp-cols').hidden = g; gd.hidden = !g;
+      if (g && !gd.firstChild) { try { await engine(); gd.innerHTML = guideHtml(); } catch (err) { gd.textContent = 'The guide did not load: ' + err.message; } } pp.querySelector('.br-pp-c').scrollTop = 0; return; }
+    if (b.classList.contains('br-pp-snd')) { muted = !muted; lsSet('bt-pop-mute', muted ? '1' : '0'); b.textContent = muted ? '🔇 OFF' : '🔊 ON'; if (!muted) SFX.count(true); return; }
     if (b.dataset.xh) { lsSet('bt-pop-xh', b.dataset.xh); pp.querySelectorAll('[data-xh]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.dataset.xc) { lsSet('bt-pop-xc', b.dataset.xc); pp.querySelectorAll('[data-xc]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
@@ -7637,6 +7680,8 @@ window.__btBrSeason = brSeason;
       else { if (box) { box.hidden = false; const m = box.querySelector('small'); m.textContent = 'Type your name first (or 🎲 for a random one)'; m.classList.add('bad'); inp?.focus(); } return; }
     }
     if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
+    if (b.classList.contains('br-pp-shg')) { const link = SITE_URL + '/m/pop', text = 'BRAIN POP 6.9 🧠 60 seconds of pure brainrot. The overall #1 on 30 Nov wins the whole $BOBAI prize pool. Can you out-rot me?';
+      try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') b.textContent = link; } setTimeout(() => { b.textContent = '📣 SHARE THE GAME'; }, 2500); return; }
     if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }
     if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/m/pop/' + LAST.run, text = 'I scored ' + sc7(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') { b.textContent = link; } } }
@@ -8094,4 +8139,15 @@ window.__btBrSeason = brSeason;
   }
   window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, fin: FIN, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
     /* for the checks: the arena's box on the page and what is in it now (the plan is public anyway) */ aim: () => RUN && RUN.live && AR ? { box: arena.getBoundingClientRect().toJSON(), alive: RUN.run.alive(tNow()).map(([x, q]) => [x.i, x.rug && !RUN.run.golden(x, tNow()), Math.round(q.x), Math.round(q.y), x.r, x.p]) } : null, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+})();
+// ALWAYS THE NEWEST VERSION (6.11.): a phone restores a page from memory or wakes an old tab; then the page asks which
+// terminal is current and reloads when it is newer (never during a run)
+(() => {
+  const mine = new URL(import.meta.url).searchParams.get('v'); if (!mine) return;
+  let busy = false, last = Date.now();
+  const check = async () => { if (busy || window.__btBr?.running?.()) return; busy = true;
+    try { const h = await (await fetch(location.pathname + '?fresh=' + Date.now(), { cache: 'no-store' })).text(), m = h.match(/terminal\/terminal\.js\?v=([0-9a-z]+)/);
+      if (m && m[1] !== mine) location.reload(); } catch {} busy = false; };
+  addEventListener('pageshow', e => { if (e.persisted) check(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - last > 60000) { last = Date.now(); check(); } else if (document.visibilityState === 'hidden') last = Date.now(); });
 })();

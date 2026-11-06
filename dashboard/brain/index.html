@@ -246,10 +246,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793982527753">
+<link rel="stylesheet" href="brain/brain.css?v=1793988216741">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793982083">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793988187">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -1111,7 +1111,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,782 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,835 lines &middot; 100 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1272,6 +1272,29 @@
       <details class="lib-i">
         <summary>
           <span class="lib-h">
+            <span class="lib-t">Brain Pop 6.9 — the daily game in the terminal</span>
+            <span class="lib-s">60 seconds, one engine file, every tap replayed by the server.</span>
+          </span>
+          <span class="lib-m">6 files &middot; 542 lines &middot; 24 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A worker with a Durable Object (SQLite)</span><span class="lib-o"><em>ours</em> Cloudflare Workers, class PopBoard</span><span class="lib-o"><em>also</em> any server that can run an ES module and keep two small tables</span></li><li><span class="lib-q">The same engine file on both sides</span><span class="lib-o"><em>ours</em> pop-engine.mjs, imported by the page and by the worker</span><span class="lib-o"><em>also</em> keep one file; a copy that drifts makes the replay disagree with the screen</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="brain-pop" data-title="Brain Pop 6.9 — the daily game in the terminal">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/brain-pop.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/brain-pop.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/brain-pop.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/brain-pop.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
             <span class="lib-t">brainScreener</span>
             <span class="lib-s">Thirteen self-tests. No accounts, no tracking, no backend.</span>
           </span>
@@ -1298,7 +1321,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,959 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 4,050 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1321,7 +1344,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">74 files &middot; 24,272 lines &middot; 0.6 MB</span>
+          <span class="lib-m">74 files &middot; 24,349 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1344,7 +1367,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 5,082 lines &middot; 0.1 MB</span>
+          <span class="lib-m">7 files &middot; 5,084 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1495,9 +1518,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793982083')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793988187')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793982527753" defer></script>
-<script src="brain/cards.js?v=1793982527753" defer></script>
-<script src="brain/hero.js?v=1793982527753" defer></script>
+<script src="brain/brain.js?v=1793988216742" defer></script>
+<script src="brain/cards.js?v=1793988216742" defer></script>
+<script src="brain/hero.js?v=1793988216742" defer></script>
 </body></html>

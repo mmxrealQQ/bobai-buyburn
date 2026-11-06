@@ -318,6 +318,24 @@ part outside the file is the score table.`,
   },
   {
     group: 'apps',
+    slug: 'brain-pop',
+    title: 'Brain Pop 6.9 — the daily game in the terminal',
+    tagline: '60 seconds, one engine file, every tap replayed by the server.',
+    about: `The season game of the Brain Terminal (6 to 30 Nov 2026). One deterministic engine file runs in the
+browser AND on the server: the page sends only the taps [time, x, y], the worker replays them with the same file
+and the same seed, so no score can be typed in. Seven stations charge with the player's own hits and fire super
+powers by themselves; combos at 8, 16 and 24; a daily top 10 and an overall board in a Durable Object (SQLite).`,
+    reqs: [
+      {what: 'A worker with a Durable Object (SQLite)', ours: 'Cloudflare Workers, class PopBoard',
+       alt: 'any server that can run an ES module and keep two small tables'},
+      {what: 'The same engine file on both sides', ours: 'pop-engine.mjs, imported by the page and by the worker',
+       alt: 'keep one file; a copy that drifts makes the replay disagree with the screen'},
+    ],
+    run: ['node worker-pop/test.mjs', 'node worker-pop/test2.mjs', 'cd worker-pop && npx wrangler deploy'],
+    entries: ['temp/terminal-site/terminal/pop-engine.mjs', 'worker-pop/index.js', 'worker-pop/game.js', 'worker-pop/wrangler.toml', 'worker-pop/test.mjs', 'worker-pop/test2.mjs'],
+  },
+  {
+    group: 'apps',
     slug: 'brainscreener',
     title: 'brainScreener',
     tagline: 'Thirteen self-tests. No accounts, no tracking, no backend.',

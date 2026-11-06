@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 3959 lines.
+# one fetch. 5 files, 4050 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -415,7 +415,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. To be told when a token you hold turns dangerous, bsc_rug_watch re-reads it every 15 minutes and POSTs your own webhook (one watch free). Nothing here signs, holds a key or moves funds, and no answer says "safe". Every read tool here is free (bsc_pool_scan 1,000 scans per caller a day, then a day pass), paid answers cost 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction); a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way. When a hire, a quote, a payment or a delivery between agents does not work as expected, check the Brain Board first (plaza_board_read, or as text https://agent.brainonbnb.com/board.md) — somebody may have hit it and fixed it — and post what you found (plaza_board_post). Selling or buying on the ERC-8183 escrow? erc8183_escrow_status shows any wallet\'s jobs, what waits to be released or refunded, and what BOBAI\'s free public settle and refund already did for it.';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. To be told when a token you hold turns dangerous, bsc_rug_watch re-reads it every 15 minutes and POSTs your own webhook, or without one keeps the alerts for you to read with bsc_rug_watch {"watch":"<id>"} (one watch free). Nothing here signs, holds a key or moves funds, and no answer says "safe". Every read tool here is free (bsc_pool_scan 1,000 scans per caller a day, then a day pass), paid answers cost 0.10 USD1, half that in $BOBAI, or nothing for a wallet holding 1,000,000 $BOBAI (20 answers, 2 watches and 1 scan pass a day; a signature, no transaction); a caller\'s first answer carries a short thank-you note with where a voluntary tip would go (once, not on every answer) — never required, and the answer is the same either way. When a hire, a quote, a payment or a delivery between agents does not work as expected, check the Brain Board first (plaza_board_read, or as text https://agent.brainonbnb.com/board.md) — somebody may have hit it and fixed it — and post what you found (plaza_board_post). Selling or buying on the ERC-8183 escrow? erc8183_escrow_status shows any wallet\'s jobs, what waits to be released or refunded, and what BOBAI\'s free public settle and refund already did for it.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -450,7 +450,7 @@ const AGENT_GUIDE = {
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_purchase_guide' },
     { action: 'EARN an on-chain collectible: any buy >= $100 auto-mints a capped-supply NFT to the buying wallet — live remaining supply + steps', call: 'bobai_nft_drop' },
     // 2026-10-09: the one tool here that stores something (a watch); free, webhook only.
-    { action: 'Be ALERTED by webhook when a BSC token you hold turns dangerous — the sell stops going through, the liquidity is pulled, a tax goes up, the owner or the proxy changes. Re-read every 15 minutes; one watch free, 25 for wallets holding 1,000,000 $BOBAI', call: 'bsc_rug_watch', args: { token: '0x…', callback: 'https://…' } },
+    { action: 'Be ALERTED (by webhook, or read the alerts back without one) when a BSC token you hold turns dangerous — the sell stops going through, the liquidity is pulled, a tax goes up, the owner or the proxy changes. Re-read every 15 minutes; one watch free, 25 for wallets holding 1,000,000 $BOBAI', call: 'bsc_rug_watch', args: { token: '0x…' } },
   ],
   // Everything above is free. What is not, named once and plainly (2026-09-24,
   // A3 of the review) — prices stay in each 402 answer, one source.
@@ -578,7 +578,7 @@ const MEASURE_REST = {
   find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
   bnb_agent_chart: 'https://agent.brainonbnb.com/chart/<agent id>',
   bnb_agents_by_evidence: 'https://agent.brainonbnb.com/chart/rank?category=health-factor',
-  bsc_rug_watch: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x…","callback":"https://…"}',
+  bsc_rug_watch: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x…"} (callback optional)',
   bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
   bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
   bsc_pool_scan: 'https://brainonbnb.com/api/pool-scan?address=0x…',
@@ -812,7 +812,7 @@ const MCP_TOOLS = [
   // THE RUG WATCH (2026-10-09): the preflight's answer is one block; this keeps reading it for a token the agent
   // holds and POSTs the agent's own callback when it turns dangerous. Registered on agent.brainonbnb.com
   // (worker-agent/rug-watch.js), proxied here. The one tool on this server that is not read-only: it stores a watch.
-  { name: 'bsc_rug_watch', description: 'Rug-pull and honeypot ALARM for a BSC token you hold — webhook only (no Telegram, no browser, no mail). Registers the token and your own https callback; every 15 minutes the token is read again with bsc_token_preflight and compared with the read before, and your callback is POSTed as soon as something dangerous changes: the sell stops going through (honeypot), the liquidity is pulled (pool hard side down 50%; a warning at 25%), LP is withdrawn, the buy or sell tax rises by 2 points or more, the owner changes (renounced to an owner again is the worst case), the proxy is upgraded, the deployer or a top holder starts selling, or the owner can now change the tax — and the way tokens are rugged today, read from the watch\'s own 24 h history of reads: fake volume (many swaps from a handful of wallets, or an hour\'s volume far over the pool from few of them — it looks like wash trading, it is not proven), a pump (price up 40% within 6 h) and the dump after it (down 30% from that high), a slow rug (price down 25% over the day with no single big step while sells dominate and insiders sell), liquidity draining slowly, and insider sells adding up. Each alert is signed: x-bobai-signature: sha256=HMAC-SHA256 of the raw body with the secret returned once at registration. One active watch is free per caller; wallets holding 1,000,000 $BOBAI or more get unlimited — 25 active watches per wallet — by adding wallet, issued (ISO time) and an EIP-191 personal_sign signature of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <issued>" (a signature, no transaction). A watch runs 30 days; register the same token and callback again to renew. Status: GET https://agent.brainonbnb.com/rug-watch/<id>; terms: GET https://agent.brainonbnb.com/rug-watch. Measurement, not advice: an alert says what changed between two reads.', inputSchema: { type: 'object', properties: { token: { type: 'string', description: 'The BSC token to watch (0x + 40 hex). It must trade in a pool.' }, callback: { type: 'string', description: 'Your https endpoint; alerts are POSTed there as JSON' }, wallet: { type: 'string', description: 'Optional, holder tier: the wallet holding 1,000,000 $BOBAI or more' }, issued: { type: 'string', description: 'Optional, holder tier: the ISO 8601 UTC time in the signed message, within the last 10 minutes' }, signature: { type: 'string', description: 'Optional, holder tier: the personal_sign signature of the message by that wallet' } }, required: ['token', 'callback'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
+  { name: 'bsc_rug_watch', description: 'Rug-pull and honeypot ALARM for a BSC token you hold. Give just the token: every 15 minutes the token is read again with bsc_token_preflight and compared with the read before, and an alert is raised as soon as something dangerous changes: the sell stops going through (honeypot), the liquidity is pulled (pool hard side down 50%; a warning at 25%), LP is withdrawn, the buy or sell tax rises by 2 points or more, the owner changes (renounced to an owner again is the worst case), the proxy is upgraded, the deployer or a top holder starts selling, or the owner can now change the tax — and the way tokens are rugged today, read from the watch\'s own 24 h history of reads: fake volume (many swaps from a handful of wallets, or an hour\'s volume far over the pool from few of them — it looks like wash trading, it is not proven), a pump (price up 40% within 6 h) and the dump after it (down 30% from that high), a slow rug (price down 25% over the day with no single big step while sells dominate and insiders sell), liquidity draining slowly, and insider sells adding up. HOW YOU GET THE ALERTS: with a callback (your public https URL) each alert is POSTed there; without one, call this tool again with {"watch":"<id>","since":"<ISO time of your last look>"} and new_events lists what fired since. A POSTed alert is signed: x-bobai-signature: sha256=HMAC-SHA256 of the raw body with the secret returned once at registration. One active watch is free per caller; wallets holding 1,000,000 $BOBAI or more get unlimited — 25 active watches per wallet — by adding wallet, issued (ISO time) and an EIP-191 personal_sign signature of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <issued>" (a signature, no transaction). A watch runs 30 days; register the same token and callback again to renew. Status: GET https://agent.brainonbnb.com/rug-watch/<id>; terms: GET https://agent.brainonbnb.com/rug-watch. Measurement, not advice: an alert says what changed between two reads.', inputSchema: { type: 'object', properties: { token: { type: 'string', description: 'The BSC token to watch (0x + 40 hex). It must trade in a pool. Leave out when reading a watch with "watch".' }, callback: { type: 'string', description: 'Optional: your public https endpoint; alerts are POSTed there as JSON. Without it, read them with "watch".' }, watch: { type: 'string', description: 'Read a watch instead of registering one: the id you got at registration' }, since: { type: 'string', description: 'With watch: an ISO 8601 time; new_events lists only the alerts after it' }, wallet: { type: 'string', description: 'Optional, holder tier: the wallet holding 1,000,000 $BOBAI or more' }, issued: { type: 'string', description: 'Optional, holder tier: the ISO 8601 UTC time in the signed message, within the last 10 minutes' }, signature: { type: 'string', description: 'Optional, holder tier: the personal_sign signature of the message by that wallet' } }, required: [], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   // Brain Plaza first in the list. An agent that loads this server should be
   // able to ask "who else is out there on this chain" without knowing that we
   // measured it — and this is the only tool here that is about somebody other
@@ -836,7 +836,7 @@ const MCP_TOOLS = [
   // THE AGENT CHART (Brain Plaza, 2026-10-12): one agent measured, and a category ordered by the same evidence. The
   // question an agent actually has before it hires one: is it up, does it deliver for strangers, does it name a price.
   { name: 'bnb_agent_chart', description: 'Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime from a daily pulse (and its response time where one was measured), every job it was paid for on the ERC-8183 escrow (own test purchases never count as outside buyers), its delivery rate, whether it named a price when asked, other raters’ ERC-8004 measurements, and an evidence score (0-100) that shows its parts. Use it before hiring an agent.', inputSchema: { type: 'object', properties: { agent_id: { type: 'string', description: 'The agent’s ERC-8004 id on BNB Smart Chain, e.g. 302257' } }, required: ['agent_id'], additionalProperties: false } },
-  { name: 'bnb_agents_by_evidence', description: 'Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: uptime over up to 30 days from our daily pulse (days_measured says how many), delivery rate for outside buyers on the ERC-8183 escrow, how many outside buyers paid, whether it names a price. Categories: rebalancing, grid-trading, yield-optimization, health-factor. A paid listing never changes the order.', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'rebalancing | grid-trading | yield-optimization | health-factor' }, limit: { type: 'number', description: 'How many, 1-25 (default 10)' } }, required: ['category'], additionalProperties: false } },
+  { name: 'bnb_agents_by_evidence', description: 'Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: uptime over up to 30 days from our daily pulse (days_measured says how many), delivery rate for outside buyers on the ERC-8183 escrow, how many outside buyers paid, whether it names a price. Categories: rebalancing, grid-trading, yield-optimization, health-factor. A paid listing never changes the order.', inputSchema: { type: 'object', properties: { category: { type: 'string', enum: ['rebalancing', 'grid-trading', 'yield-optimization', 'health-factor'], description: 'The job: rebalancing, grid-trading, yield-optimization or health-factor' }, limit: { type: 'number', description: 'How many, 1-25 (default 10)' } }, required: ['category'], additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
@@ -887,6 +887,30 @@ const DEPRECATED_TOOL_NAMES = {
 const boardReadType = (a) => a.type === 'all' ? undefined : a.type || (a.to || a.agent || a.status || a.q ? undefined : 'library');
 // the tools that take one token or pool as `address`, and the names agents give it otherwise (runTool)
 const ADDRESS_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_fee_tiers', 'pancakeswap_range_plan', 'pancakeswap_best_route']);
+// THE ADDRESS INSIDE WHAT WAS SENT (2026-11-05): bad_address was the most common refusal of the measurements (9 preflights,
+// 7 scans in 5 days). One address inside a bscscan link, "bsc:0x…", a padded or quoted string or a sentence is that
+// address; two different ones, or none, stay as sent and are refused as before. A symbol is never guessed into an address.
+export function pickAddress(v) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if (/^0x[0-9a-fA-F]{40}$/.test(t)) return t;
+  const found = [...new Set((t.match(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g) || []).map((x) => x.toLowerCase()))];
+  return found.length === 1 ? found[0] : v;
+}
+// What a refused address looked like, for the counter only (never the value): mcp:badaddr:<shape> / poolscan:badaddr:<shape>
+export function addressShape(v) {
+  const t = typeof v === 'string' ? v.trim() : v;
+  if (t == null || t === '') return 'empty';
+  if (typeof t !== 'string') return typeof t;
+  if (/^0x[0-9a-fA-F]{64}$/.test(t)) return 'tx_hash';
+  if (/^0x[0-9a-fA-F]*$/.test(t)) return `hex${t.length - 2 < 40 ? '_short' : '_long'}`;
+  if (/0x[0-9a-fA-F]{40}/.test(t)) return 'two_addresses';
+  if (/^\$?[A-Za-z][A-Za-z0-9]{0,11}$/.test(t)) return 'symbol';
+  if (/^\d+$/.test(t)) return 'number';
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(t)) return 'base58';
+  if (/^(ens:|[a-z0-9-]+\.(eth|bnb))$/i.test(t)) return 'name';
+  return 'other';
+}
 const ADDRESS_ALIASES = ['token', 'token_address', 'tokenAddress', 'contract', 'contract_address', 'contractAddress', 'pool', 'pair', 'ca'];
 
 // A trade size that is given but does not read as a positive number is
@@ -978,10 +1002,10 @@ function errorAnswer(e) {
     not_measurable: 'A determinate answer about this address: asking again will not change it. The error sentence says why.',
     chain_unavailable: 'The chain or a log endpoint did not answer in time. Retry in a few seconds.',
     // bsc_rug_watch's own refusals (2026-10-10), passed through from the agent worker with their code.
-    bad_body: 'Send the arguments token (the BSC token address) and callback (your https endpoint).',
+    bad_body: 'Send the argument token (the BSC token address); callback (your https endpoint) is optional. To read a watch, send watch (its id).',
     bad_token: 'token must be the BSC token contract: 0x followed by 40 hex characters.',
     bad_callback: 'callback must be your own public https:// URL — no localhost, private address, user name or password, and not a brainonbnb.com host. The error sentence names what was wrong.',
-    free_limit: 'Your one free watch is already running. Cancel it (DELETE /rug-watch/<id> with x-rug-watch-secret), or add wallet, issued and signature for the holder tier.',
+    free_limit: 'Your one free watch is already running (your_watches names it: read it with {"watch":"<id>"}). Cancel it (DELETE /rug-watch/<id> with x-rug-watch-secret), or add wallet, issued and signature for the holder tier.',
     free_capacity: 'Every free watch slot is taken right now. Try again later, or register with the holder tier.',
     holder_limit: 'This wallet already has the most active watches a holder gets. Cancel one to add another.',
     capacity: 'Every watch slot is taken right now. Try again later; watches end after 30 days.',
@@ -1011,13 +1035,33 @@ async function runTool(rawName, args, caller = {}) {
     const alias = ADDRESS_ALIASES.find((k) => args?.[k] != null && args[k] !== '');
     if (alias) args = { ...args, address: args[alias] };
   }
+  if (ADDRESS_TOOLS.has(name) && typeof args?.address === 'string' && args.address.trim() !== '') {
+    const picked = pickAddress(args.address);
+    if (!/^0x[0-9a-fA-F]{40}$/.test(picked)) {
+      const shape = addressShape(args.address);
+      throw Object.assign(new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one, as the argument "address".'
+        + (shape === 'symbol' ? ' A symbol is not taken: many tokens share one, and the wrong one is how a trade ends in a copy — look the contract up on BscScan or the project\'s own page.' : '')), { addrShape: shape });
+    }
+    if (picked !== args.address) args = { ...args, address: picked };
+  }
   switch (name) {
     case 'bsc_rug_watch': {
       // Proxied to the agent worker, which keeps the watches. The caller's address goes with the shared
       // secret: without it every MCP caller would arrive as this worker and share one free watch.
       const headers = { 'content-type': 'application/json' };
       if (WORKER_ENV?.HIT_SECRET && caller.ip) { headers['x-hit-secret'] = WORKER_ENV.HIT_SECRET; headers['x-rug-watch-for'] = String(caller.ip).slice(0, 64); }
-      const body = { token: args?.token ?? args?.address, callback: args?.callback };
+      // READ A WATCH (2026-11-05): {"watch":"<id>","since":"<time>"} — the way an agent without a webhook gets its alerts
+      const wid = String(args?.watch ?? args?.id ?? '').trim().toLowerCase();
+      if (wid) {
+        if (!/^[0-9a-f-]{36}$/.test(wid)) throw Object.assign(new Error('watch must be the id you got at registration (36 characters, 8-4-4-4-12).'), { relayed: true, status: 400, code: 'bad_body' });
+        const q = args?.since ? `?since=${encodeURIComponent(String(args.since).slice(0, 40))}` : '';
+        const g = await fetch(`https://agent.brainonbnb.com/rug-watch/${wid}${q}`, { signal: AbortSignal.timeout(20000) });
+        const gj = await g.json().catch(() => null);
+        if (!gj) throw new Error(`The rug watch did not answer (http ${g.status}).`);
+        if (!g.ok) throw Object.assign(new Error(gj.error || 'No such watch.'), { relayed: true, status: g.status, ...(typeof gj.code === 'string' ? { code: gj.code } : {}) });
+        return gj;
+      }
+      const body = { token: args?.token ?? args?.address, ...(args?.callback ? { callback: args.callback } : {}) };
       for (const k of ['wallet', 'issued', 'signature']) if (args?.[k] != null) body[k] = args[k];
       const r = await fetch('https://agent.brainonbnb.com/rug-watch', { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(40000) });
       const j = await r.json().catch(() => null);
@@ -1521,7 +1565,7 @@ async function handleMcp(request, note = () => {}, own = false, only = null) {
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.8.0' },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.9.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,
         // A4 of the review): without it a client saw a $BOBAI data feed and
         // never learned the tools work for every BSC token.
@@ -1574,7 +1618,7 @@ async function handleMcp(request, note = () => {}, own = false, only = null) {
         const coded = CODED_TOOLS.has(DEPRECATED_TOOL_NAMES[params?.name] || params?.name);
         const eb = coded ? errorAnswer(e).body : null;
         const why = eb ? eb.code : /unavailable|did not answer|timed? ?out|abort/i.test(String(e?.message || e)) ? 'unavailable' : 'refused';
-        const failed = [...(byClient ? [`mcp:byerr:${byClient}:${toolSaid}`] : []), ...(toolSaid !== 'unknown' ? [`mcp:errcode:${toolSaid}:${why}`] : [])];
+        const failed = [...(byClient ? [`mcp:byerr:${byClient}:${toolSaid}`] : []), ...(toolSaid !== 'unknown' ? [`mcp:errcode:${toolSaid}:${why}`] : []), ...(e?.addrShape ? [`mcp:badaddr:${e.addrShape}`] : [])];
         if (failed.length) note(failed);
         // The refusal's code and hint ride along (2026-10-09): in the text for a model, structured for a client.
         // Only the address-taking measurements: the other tools' refusals are not about an address.
@@ -1869,7 +1913,7 @@ function openApi() {
 // Where a buy click may say it came from: the pages (scripts/deploy-dashboard.mjs buySource names them), and three
 // places that name themselves. A name outside this list is 'other', so nobody can invent lines in /stats/detail.
 const BUY_TARGET = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc';
-const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'services', 'registry', 'scanner', 'board', 'library', 'roadmap', 'whitepaper', 'pass', 'archive', 'nft', 'neu', '404', 'llms', 'skill', 'mcp']);
+const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'services', 'registry', 'scanner', 'board', 'library', 'roadmap', 'whitepaper', 'pass', 'archive', 'nft', 'neu', '404', 'llms', 'skill', 'mcp', 'pop']); // pop: the Brain Pop game's result window (6.11.)
 
 // What kind of caller, coarsely — never the string itself. Order matters:
 // crawlers and tools put "Mozilla" in front of their own name.
@@ -2026,7 +2070,10 @@ export default {
       if (!isOwn && !prefetch && request.method === 'GET') count(null, `${uaFamily(request.headers.get('user-agent')) === 'browser' ? 'buy' : 'buybot'}:${source}`);
       return new Response(null, { status: 302, headers: { Location: BUY_TARGET, 'Cache-Control': 'no-store' } });
     }
-    if (isOwn) {
+    // our own checks over MCP name themselves too (5.11.: brainonbnb-mcp-all-check and brainonbnb-look stood in mcp:by: as
+    // others, the way REST did until 4.11.); only a label for counting, as there
+    const ownUa = /^(brainonbnb|bobai|plaza-board)-/i.test(request.headers.get('user-agent') || '');
+    if (isOwn || ownUa) {
       if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
     }
@@ -2313,7 +2360,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const { status, body } = errorAnswer(e);
         // A refused scan counts too (2026-10-17): on 17.10. 86 outside scans by 05 UTC, 14 of them answered; the rest
         // never reached the counter above. poolscanua stays the count of everyone who scans, answered or not.
-        if (outsideScan) count(null, [`poolscan:err:${String(body?.code || status).slice(0, 20)}`, `poolscanua:${product}`]);
+        if (outsideScan) count(null, [`poolscan:err:${String(body?.code || status).slice(0, 20)}`, `poolscanua:${product}`, ...(e?.addrShape ? [`poolscan:badaddr:${e.addrShape}`] : [])]);
+        else if (e?.addrShape && !siteCall) count(null, `rest:badaddr:${e.addrShape}`);
         return new Response(JSON.stringify(body), { status, headers });
       }
     }
@@ -2444,6 +2492,33 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is a page whose preview card X, Telegram and WhatsApp draw
     // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
     // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
+    // BRAIN POP DAILY (2026-11-06): the daily run's plan, board and checks live in the bobai-pop worker (worker-pop/);
+    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit
+    if (url.pathname.startsWith('/api/pop/')) {
+      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '' } };
+      if (init.method === 'POST') init.body = (await request.text()).slice(0, 40000); // 2.0: a run is its taps (up to 900)
+      // previews (not brainonbnb.com) talk to bobai-pop2, the same worker deployed under another name with its own database:
+      // a new game version is tested there while the live one keeps running (6.11., Brain Pop 2.0)
+      const popHost = /(^|\.)brainonbnb\.com$/.test(url.hostname) ? 'bobai-pop' : 'bobai-pop2';
+      const r = await fetch('https://' + popHost + '.bobbuildonbnb.workers.dev' + url.pathname + url.search, init);
+      return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': r.headers.get('cache-control') || 'no-store' } });
+    }
+    // BRAIN POP'S SHARE LINK (operator, 6.11.: "share the link on a phone in TG, WhatsApp and X so the brainrot banner comes
+    // and gets people to play"): brainonbnb.com/m/pop (the game) and /m/pop/<run> (a challenge) answer with the poster as the
+    // preview card and send a person straight into the game. Under /m/ because the routes list is full (100).
+    if (url.pathname === '/m/pop' || url.pathname.startsWith('/m/pop/')) {
+      const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play');
+      let title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 on 30 Nov wins the whole $BOBAI prize pool.';
+      if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json(); const nm = String(j.name || '').replace(/[<>&"]/g, '').slice(0, 40), sc = Number(j.score || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        title = nm + ' scored ' + sc + ' ROT in BRAIN POP 6.9 · can you beat it? 🧠'; desc = 'A challenge: same day, your own round. 60 seconds, tap the brainrot. Their score runs along as a ghost.'; } } catch {} }
+      const img = 'https://brainonbnb.com/og-brainpop.jpg', page = 'https://brainonbnb.com' + url.pathname;
+      const html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + title + '</title><meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<meta property="og:type" content="website"><meta property="og:site_name" content="Brain On BNB AI"><meta property="og:url" content="' + page + '"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + desc + '">'
+        + '<meta property="og:image" content="' + img + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BRAIN POP 6.9: BOBAI aims, the brainrot creatures pop">'
+        + '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@BrainOnBNB"><meta name="twitter:title" content="' + title + '"><meta name="twitter:description" content="' + desc + '"><meta name="twitter:image" content="' + img + '">'
+        + '<meta http-equiv="refresh" content="0;url=' + to + '"><link rel="canonical" href="https://brainonbnb.com/"></head><body style="background:#120814;color:#fff;font-family:sans-serif"><p><a href="' + to + '" style="color:#ffe600">Play BRAIN POP 6.9</a></p><script>location.replace(' + JSON.stringify(to) + ')</script></body></html>';
+      return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+    }
     if (url.pathname.startsWith('/m/')) {
       const png = url.pathname.endsWith('.png') && request.method === 'GET';
       if (png) { const hit = await caches.default.match(request); if (hit) return hit; }
@@ -2902,7 +2977,12 @@ async function boardLibrary() {
     replies: Array.isArray(t.replies) ? t.replies.filter((r) => r && r.operator).map((r) => ({ created: r.created, operator: r.operator, hidden: !!r.hidden, body: String(r.body || '') })) : [] })) : [];
 }
 // the writer's words stay text; links in them become links, nothing else is markup
-const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]]+/g, (u) => `<a href="${u}" rel="nofollow noopener">${u}</a>`);
+// a link ends before a backtick (the end of a code span) and leaves a sentence's last stop outside (2026-11-04: an entry's
+// `https://your.domain` became a link to https://your.domain`/ and "see https://x.y/." linked the full stop)
+const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]`]+/g, (u) => {
+  const tail = (u.match(/[.,;:!?]+$/) || [''])[0], url = tail ? u.slice(0, -tail.length) : u;
+  return `<a href="${url}" rel="nofollow noopener">${url}</a>${tail}`;
+});
 const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');
 const boardDay = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
 async function boardThreadPage(id) {
@@ -2946,6 +3026,12 @@ function secureHeaders(h) {
 # Brain On BNB AI ($BOBAI)
 
 > An agent surface on BNB Smart Chain, and the token that pays for it. Three things here are useful to somebody else's agent regardless of any interest in the token: a pre-trade check for any BSC token (the preflight: can you get in, can you get out, what the round trip costs at your size), the pool scanner behind it, and a measured directory of every ERC-8004 agent on this chain and which of them actually answer. All need no key and are read-only; the preflight and the directory are free without a daily limit, the pool scan free for 1,000 scans per caller and UTC day (a 0.50 USD1 day pass carries on past that). The token, $BOBAI, is a BEP-20 with a 3% trade tax that bots split every 10 minutes into the creator share, burns and permanent liquidity with the LP burned; it is described further down.
+
+## Start here — the three things agents use most (no key, no account, free)
+
+1. Before any trade on BNB Smart Chain: GET https://brainonbnb.com/api/preflight?address=0x...&usd=250 — branch on `gate`: "stop", "weigh" or "no_known_stop" (what this read found, never a promise of safety). MCP: `bsc_token_preflight`.
+2. Holding the token? A free alarm: POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} — re-read every 15 minutes; read the alerts at the status_url you get back (?since=<time> for the new ones), or add "callback":"https://..." to have them POSTed. MCP: `bsc_rug_watch`.
+3. Everything else: 30 free MCP tools at https://brainonbnb.com/mcp, or the same as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
 
 ## What you can use, without an account
 
@@ -3007,7 +3093,6 @@ A directory says who exists. It does not say whether the thing is answering this
 
 Measured 2026-08-25 and again 2026-11-04, the same: of the four reference agents, two publish live state (`bnb-yield`, `bnb-guardian`) and two answer 404 on every state path they have — they are A2A endpoints and nothing else. "Publishes no live state" is a measurement and is shown as one; it is not the same as unreachable, and the two are separate fields.
 
-- BNB Chain Set and Earn (until 2026-11-05 12:00 UTC): a builder can hire the DeFi Agent #363709 on Mandate (mandatemarkets.com/agents/363709) for 0.10 USD1 as one of its three hires; the steps and what it delivers: https://brainonbnb.com/set-and-earn
 - Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them. We run one in each of the four categories: #302257 health factor, #302258 grid trading, #304493 yield optimisation, #304494 rebalancing — #310460, which measures which PancakeSwap fee tier is actually paying its liquidity providers, for the side of the market the other four do not serve — and #363709, the DeFi Agent: it runs the project's own PancakeSwap V3 CAKE/BNB position every day from 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A (its owner; agentWallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 signs its quotes) and, hired, plans yours with the same code. Every eight hours the Marque marketplace is asked to probe all six over A2A; its last round, with each agent's liveness and latency, is at https://agent.brainonbnb.com/jobs/watch (on 2026-11-04 all six "callable", message/send validated).
 - Everything the poller collected, ours and theirs: https://agent.brainonbnb.com/telemetry.json
 - Shown per row on the category pages at https://brainonbnb.com/registry
@@ -3032,7 +3117,7 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 ## Subscriptions
 
 - The DeFi agent, free: a look at any PancakeSwap V3 position — in range or not, room to each edge, value in BNB, fees owed and whether collecting pays, and what PancakeSwap's The Flip proposal (88% of swap fees to LPs) would change for it if adopted, the share read from the pool (MCP: `pancakeswap_position_look`): https://agent.brainonbnb.com/lp/look?position=<token id> (or ?address=<wallet holding exactly one>). Our own position's record, day by day: https://agent.brainonbnb.com/lp/agent · https://agent.brainonbnb.com/lp/series · the width record https://agent.brainonbnb.com/lp/windows. The plan for your position (re-set due, width, what spare BNB adds) is the paid lp_position_plan below.
-- Rug watch, free, webhook only: POST https://agent.brainonbnb.com/rug-watch {"token":"0x...","callback":"https://..."} (MCP: `bsc_rug_watch`) — the preflight re-read every 15 minutes for a token you hold; your callback is POSTed, signed (x-bobai-signature, HMAC-SHA256), when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn or the owner or proxy changes — and, from the watch's own 24 h history, today's rugs: fake volume from a handful of wallets (looks like wash trading), a pump and the dump after it, a slow rug while insiders sell, liquidity draining. One watch free per caller, 25 per wallet holding 1,000,000 $BOBAI (signed message, no transaction); 30 days, renewable. Terms: GET https://agent.brainonbnb.com/rug-watch
+- Rug watch, free: POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} (MCP: `bsc_rug_watch`) — the preflight re-read every 15 minutes for a token you hold; an alert is raised when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn or the owner or proxy changes — and, from the watch's own 24 h history, today's rugs: fake volume from a handful of wallets (looks like wash trading), a pump and the dump after it, a slow rug while insiders sell, liquidity draining. One watch free per caller, 25 per wallet holding 1,000,000 $BOBAI (signed message, no transaction); 30 days, renewable. No webhook needed: add "callback":"https://..." to have each alert POSTed, signed (x-bobai-signature, HMAC-SHA256), or read them back at GET /rug-watch/<id>?since=<time> (MCP: bsc_rug_watch {"watch":"<id>"}). Terms: GET https://agent.brainonbnb.com/rug-watch
 - Pool watch, 0.50 USD1 (or half that in $BOBAI) for 30 days: POST https://agent.brainonbnb.com/watch — continuous monitoring of one pool (a V2 pair or a PancakeSwap V3 pool) with a callback when depth falls below a threshold you set. Paid over x402.
 - $BOBAI holder pass: a wallet holding 1,000,000 $BOBAI uses the paid answers (20 a day), the pool watch (2 a day) and the pool scan day pass (1 a day) without paying. Sign "BOBAI holder pass
 wallet: <lowercase address>
@@ -3075,6 +3160,7 @@ issued: <ISO time>" with that wallet (personal_sign — no transaction, nothing 
 - Roadmap: https://brainonbnb.com/roadmap
 - Archive of finished campaigns: https://brainonbnb.com/archive
 - Buy Drops NFTs: https://brainonbnb.com/nft/
+- Brain Pop 6.9, the 60-second game in the terminal (season until 30 Nov; the overall #1 wins the $BOBAI prize pool): https://brainonbnb.com/m/pop · board: https://brainonbnb.com/api/pop/top?scope=day
 
 ## Where to buy
 
@@ -3499,18 +3585,23 @@ export function shape(s, r, usd, routeError = null, control = null) {
     // same preflight read again every 15 minutes, a webhook when it turns
     // dangerous. It reads the preflight, not reserves, so any pool gets it —
     // the paid pool watch above stays V2-only.
+    // THE FREE WATCH FIRST (2026-11-04, operator: an agent that calls our tools should want to stay): a week of
+    // /stats/detail had the rug watch's terms read 14 times by others and registered 0 times — it stood nested under
+    // the paid pool watch. Now the free watch leads, filled in for this token, one call; the holder line says what
+    // 1,000,000 $BOBAI changes; the paid pool watch follows with its fields where they were (what/how/terms).
     keep_watching: s.pool?.address ? {
+      why: `${s.pool?.kind === 'v2' ? 'This answer is one block. If you hold, the depth that lets you out can leave after it.' : 'This answer is one block. If you hold, what it found can change after it.'} The free rug watch below keeps reading this token for you: one call, nothing to pay.`,
+      rug_watch: {
+        what: 'Free, one call with just the token: this preflight is read again every 15 minutes and an alert is raised when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. Add your https callback and each alert is POSTed to it; without one, read them at the status_url you get back (?since=<time> for the new ones). One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
+        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}"}`,
+        terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
+        holder: 'A wallet holding 1,000,000 $BOBAI watches 25 tokens instead of one: add wallet, issued and a personal_sign of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <ISO time>" — a signature, no transaction. The same pass makes the paid answers free (20 a day).',
+      },
       ...(s.pool?.kind === 'v2' ? {
-        why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
         what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
         how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
         terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
-      } : { why: 'This answer is one block. If you hold, what it found can change after it.' }),
-      rug_watch: {
-        what: 'Free, webhook only: this preflight is read again every 15 minutes and your callback is POSTed when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
-        how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}","callback":"https://…"}`,
-        terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
-      },
+      } : {}),
     } : null,
     // Who controls the contract, read on-chain (2026-10-09; controlBlock below).
     control: ctl,

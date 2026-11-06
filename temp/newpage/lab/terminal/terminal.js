@@ -7520,7 +7520,7 @@ window.__btBrSeason = brSeason;
   // HIS STAGE (operator, 2026-11-05: "give BOBAI something to stand on again, like the gravestone, brainrot style"): a
   // brain-shaped platform under his feet, sized and placed as the Halloween stone was (feet = the figure's centre + 40.5 %
   // of its height; 1.9x his width, a phone 1.3x)
-  let stage = null, disco = null;
+  let stage = null, disco = null, ring = null, rc = null; const rgW = new THREE.Vector3();
   function dress() {
     stL.replaceChildren();
     stage = document.createElement('div'); stage.className = 'br-stage'; stage.style.visibility = 'hidden'; stage.innerHTML = '<img alt="" draggable="false" src="' + pic('podium') + '">'; stL.appendChild(stage);
@@ -7530,6 +7530,7 @@ window.__btBrSeason = brSeason;
     // THE DISCO BALL (operator: "the disco ball can come alive or switch on sometimes"; 5.11. night: "the disco ball should
     // be SEEN" — the stations' creatures stood on the stage's painted ball): its own picture, laid exactly over the painted
     // one but drawn after every costume, so nothing stands on it; it sparkles always, its beams switch on now and then
+    const rw = document.createElement('div'); rw.innerHTML = '<svg class="br-ring" viewBox="-0.7 -0.7 1.4 1.4" style="visibility:hidden"></svg>'; ring = rw.firstChild; stL.appendChild(ring);
     disco = document.createElement('div'); disco.className = 'br-disco'; disco.style.visibility = 'hidden'; disco.innerHTML = '<img alt="" draggable="false" src="' + pic('disco') + '"><i></i><b></b>'; stL.appendChild(disco);
   }
   let stick = false;
@@ -7542,14 +7543,22 @@ window.__btBrSeason = brSeason;
     if (stage && A.figScreen) { const feet = A.figScreen.y + A.figHpx * 0.405, room = Math.max(40, (el.clientHeight || H()) - 6 - feet) / 0.7; /* operator: "show the whole stage": its lower 70 % must fit above the scene's bottom */
       const dW = Math.round(Math.max(90, Math.min(portrait ? 280 : 580, (A.figW || A.figHpx * 0.5) * (portrait ? 1.3 : 1.9), room * 640 / 449))), dH = Math.round(dW * 449 / 640);
       const sx = Math.round(A.figScreen.x - dW / 2), sy = Math.round(feet - dH * 0.3), tf = 'translate(' + sx + 'px,' + sy + 'px)'; if (stage._tf !== tf) { stage.style.transform = stage._tf = tf; stage.style.visibility = ''; } if (stage._w !== dW) stage.style.width = (stage._w = dW) + 'px';
-      // the ball: centre at 50 % / 70 % of the podium picture, 126 of its 640 px wide; drawn a little larger, it covers the painted one
-      // NOBODY HIDDEN BEHIND IT (5.11. night, phone: the $BOB station stands right on the ball): twice a second the ball
-      // looks for a place along the stage's front where no station's creature stands, the painted spot first
-      if (disco && (place.n % 30 === 0 || disco._dx === undefined)) { const bd0 = dW * 0.215, cy0 = sy + dH * 0.701, boxes = ST.filter(s => s._x !== undefined).map(s => [s._x, s._y, s._x + sz, s._y + (s.e.offsetHeight || sz)]); /* their resting places (a jump or an escape does not move the ball) */
-        const clear = dx => { const x0 = sx + dW * 0.5 + dx - bd0 / 2, y0 = cy0 - bd0 / 2; return !boxes.some(b => Math.min(b[2], x0 + bd0) - Math.max(b[0], x0) > bd0 * 0.15 && Math.min(b[3], y0 + bd0) - Math.max(b[1], y0) > bd0 * 0.15); };
-        const dx = [0, -0.7, 0.7, -1.3, 1.3, -1.9, 1.9].map(k => k * bd0).find(d => Math.abs(d) < dW * 0.36 && clear(d)); disco._dx = dx ?? 0;
-        disco.style.zIndex = dx === undefined ? '-1' : ''; /* no free place at all: the ball goes behind the creatures */ }
-      if (disco) { const bd = Math.round(dW * 0.215), dt = 'translate(' + Math.round(sx + dW * 0.5 + (disco._dx || 0) - bd / 2) + 'px,' + Math.round(sy + dH * 0.701 - bd / 2) + 'px)'; if (disco._tf !== dt) { disco.style.transform = disco._tf = dt; disco.style.visibility = ''; } if (disco._w !== bd) disco.style.width = disco.style.height = (disco._w = bd) + 'px'; } }
+    }
+    // THE BALL IN THE RING (operator, 2026-11-06: "the ring is needed at the next buyback, and on a phone it is gone" — the
+    // stage covered it there — "put the disco ball in the ring, it has a good place there"): the buyback ring is drawn on
+    // this layer, over the stage, from the scene's own arcs (the scene's ring is off meanwhile), and the ball sits in its
+    // middle; the stage's painted ball is gone (br_pack.py no_ball), so there is one ball
+    rc = null;
+    if (ring) { const c = toScreen(A.core); rgW.copy(A.core); rgW.x += 0.7 * ringBg.scale.x; const R = Math.max(14, Math.abs(toScreen(rgW).x - c.x)); rc = { x: c.x, y: c.y, R };
+      const tf = 'translate(' + Math.round(c.x - R) + 'px,' + Math.round(c.y - R) + 'px)', d = Math.round(2 * R); if (ring._tf !== tf) { ring.style.transform = ring._tf = tf; ring.style.visibility = ''; } if (ring._w !== d) ring.style.width = ring.style.height = (ring._w = d) + 'px';
+      if (ring._v !== ringVer) { ring._v = ringVer; const pt = a => (0.64 * Math.cos(a)).toFixed(4) + ' ' + (-0.64 * Math.sin(a)).toFixed(4);
+        ring.innerHTML = '<circle r="0.64" class="b"/>' + DEST.map((dd, i) => { const m = ringFgs[i], g = m.geometry.parameters, len = -g.thetaLength; if (!m.visible || !(len > 0.0005)) return '';
+          if (len > Math.PI * 2 - 0.001) return '<circle r="0.64" stroke="' + dd.c + '"/>';
+          return '<path stroke="' + dd.c + '" d="M' + pt(g.thetaStart) + 'A0.64 0.64 0 ' + (len > Math.PI ? 1 : 0) + ' 1 ' + pt(g.thetaStart - len) + '"/>'; }).join(''); }
+      if (disco) { const bd = Math.round(R * 1.62), dt = 'translate(' + Math.round(c.x - bd / 2) + 'px,' + Math.round(c.y - bd / 2) + 'px)'; if (disco._tf !== dt) { disco.style.transform = disco._tf = dt; disco.style.visibility = ''; } if (disco._w !== bd) disco.style.width = disco.style.height = (disco._w = bd) + 'px'; } }
+    if (ringBg.material.visible) { ringBg.material.visible = false; for (const m of ringFgs) m.material.visible = false; }
+    // a station's creature standing in the ring steps aside (a phone: $BOB stands right under it), the ball stays seen
+    const shove = q => { if (!rc) return 0; const top = q.y - sz * 0.78, gap = rc.R + sz * 0.34, dx = q.x - rc.x; if (Math.abs(dx) >= gap || top + sz < rc.y - rc.R * 0.8 || top > rc.y + rc.R * 0.8) return 0; return (dx >= 0 ? 1 : -1) * gap - dx; };
     // NO CIRCLES OF THE STANDARD TERMINAL (operator, 2026-11-05 night: "the circles at BOBAI burn, BOB burn and so on must
     // not be there in brainrot"): the stations' black holes, liquid, gyroscope, coin, orbs and halos stay hidden while the
     // look is on (applyPhase sets them again at every new split, so this holds them each frame); the buyback ring stays
@@ -7558,7 +7567,7 @@ window.__btBrSeason = brSeason;
     // the bob is part of the one transform written here (a CSS bob on top of it was a second moving layer on each of twelve
     // costumes: 19 fps instead of 41 at 1024, brainrot.mjs rule 7); whole pixels, so an unchanged frame writes nothing
     const now = performance.now() / 1000;
-    for (const s of ST) { if (!s.pos) continue; const q = toScreen(s.pos), ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
+    for (const s of ST) { if (!s.pos) continue; const q0 = toScreen(s.pos), q = { x: q0.x + shove(q0), y: q0.y }, ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
       s._x = q.x - sz / 2; s._y = q.y - sz * 0.78;
       if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
     for (const b of BOTS) { const q = toScreen(b.w.pos), tf = 'translate(' + Math.round(q.x - bz / 2) + 'px,' + Math.round(q.y - bz * 0.7) + 'px)', op = b.w.pos.z > A.head.z ? '1' : '.4';
@@ -7627,8 +7636,8 @@ window.__btBrSeason = brSeason;
     tS = setTimeout(() => { if (free()) MOVES.run(CREW.find(c => c.n === 'snail')); snailBeat(); }, R(5000, 8000)); tK = setTimeout(() => { if (free()) kaiju(); kaijuBeat(); }, R(12000, 18000));
     if (!stick) { stick = true; requestAnimationFrame(place); } }
   // the standard terminal gets its circles back (the same rule as applyPhase: a station with a share)
-  const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; };
-  function stop() { const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
+  const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; ringBg.material.visible = true; for (const m of ringFgs) m.material.visible = true; };
+  function stop() { const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';

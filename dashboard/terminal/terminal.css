@@ -1164,7 +1164,8 @@
 #bt .br-hud .br-shr:hover{background:#7dff3a}
 /* BRAIN POP DAILY (6.11.): the button in the scene (left, under the title row) and the game's window */
 #bt .br-pbtn{display:none;position:absolute;z-index:6;left:12px;top:60px;padding:7px 12px;border:2px solid #000;border-radius:999px;background:#ff3fd8;color:#fff;font:400 clamp(.8rem,1.4vw,1rem)/1 Impact,'Arial Black',sans-serif;letter-spacing:.05em;cursor:pointer;box-shadow:0 0 0 2px #ffe600,0 6px 18px rgba(0,0,0,.45);animation:bt-br-pb 1.6s ease-in-out infinite alternate}
-#bt .br-on .br-pbtn:not([hidden]){display:block}
+#bt .br-pbtn:not([hidden]){display:block} /* 6.11. later: in the standard terminal too */
+#bt .bt-win:not(.br-on) .br-pbtn{animation:none;box-shadow:0 0 0 2px #ffe600}
 #bt .br-pbtn:hover,#bt .br-pbtn:focus-visible{background:#7dff3a;color:#000;outline:none}
 @keyframes bt-br-pb{0%{transform:rotate(-2deg) scale(1)}100%{transform:rotate(2deg) scale(1.05)}}
 #bt .br-pp{position:absolute;inset:0;z-index:21;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(6,5,8,.7);pointer-events:auto}
@@ -1191,6 +1192,16 @@
 #bt .br-pp-top li{display:flex;justify-content:space-between;gap:10px;padding:3px 2px;border-bottom:1px solid rgba(255,255,255,.07);counter-increment:pp}
 #bt .br-pp-top li span::before{content:counter(pp) '. ';color:#a8a2b4}
 #bt .br-pp-top li:first-child b{color:#ffe600}
+#bt .br-pp-top li.me{background:rgba(125,255,58,.14);border-radius:6px;color:#7dff3a}
+#bt .br-pp-next{color:#2ef2ff}
+#bt .br-pp-own{margin-left:4px;padding:3px 8px;border:1px solid #ff3fd8;border-radius:8px;background:transparent;color:#ff3fd8;font:600 .75rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
+#bt .br-pp-nm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-2px 0 8px}
+#bt .br-pp-nm[hidden]{display:none}
+#bt .br-pp-nm input{flex:1 1 150px;min-width:0;padding:8px 10px;border:2px solid #2ef2ff;border-radius:10px;background:#0b0610;color:#fff;font:600 .9rem/1.2 Inter,system-ui,sans-serif;outline:none}
+#bt .br-pp-nm input:focus{border-color:#7dff3a}
+#bt .br-pp-rot{padding:8px 12px;border:2px solid #000;border-radius:10px;background:#ff3fd8;color:#fff;font:400 .95rem/1 Impact,'Arial Black',sans-serif;letter-spacing:.04em;cursor:pointer}
+#bt .br-pp-nm small{flex-basis:100%;color:#a8a2b4;font-size:.72rem}
+#bt .br-pp-nm small.bad{color:#ff7a7a}
 #bt .br-pp-none,#bt .br-pp-n{color:#a8a2b4;font-size:.76rem}
 #bt .br-pp-b{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 #bt .br-pp-b button{flex:1 1 120px;padding:10px 12px;border:2px solid #000;border-radius:10px;background:#2a1f33;color:#f3eee6;font:700 .82rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}

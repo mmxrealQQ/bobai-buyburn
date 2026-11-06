@@ -26,7 +26,21 @@ export const PTS = { snail: 10, kaiju: 50 }, BASE = 5, GOLD = 5, COMBO_MS = 2200
 // names without free text: nobody can write anything on the board, they pick from these
 export const ADJ = ['TURBO', 'GALAXY', 'MEGA', 'ULTRA', 'SPICY', 'COSMIC', 'NEON', 'ATOMIC', 'SNEAKY', 'HYPER', 'FUNKY', 'LASER', 'DISCO', 'ROCKET', 'GOLDEN', 'CHAOS'];
 export const NOUN = ['LUMACONE', 'CERVELLINO', 'PAPERA', 'BANANINO', 'GAMBERONE', 'PICCIONE', 'CACTUSINO', 'PIZZETTA', 'LAVATRICE', 'OCCHIONE', 'CALZINO', 'NEURONAUTA', 'FRIGORIFERO', 'TARTARUGA', 'LAMPADINO', 'SPAGHETTOPO'];
-export const nameOf = v => { if (!Array.isArray(v) || v.length !== 3) return null; const [a, b, n] = v.map(Number);
+// AN OWN NAME TOO, BRAINROTTED (operator, 6.11.: "can't one type one's own name?" — "and when it is saved, brainrot it:
+// the same name made into a pet name that is a brainfuck, like mmx_QQ and something funny with mmx_QQ"): letters, digits
+// and _ (3 to 16, as typed), so no link can ever stand on the board (no dot, no slash, no space); a short block list for
+// insults and for names that pose as us; the name goes into one of these, picked by the player (v); the operator can
+// still hide one (POST /api/pop/hide with the admin key)
+export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '{N}ino Lobotomino', 'Signor {N}etti Spaghetti', 'Capitano {N} Neuronauta', '{N}accio Discotecaccio',
+  'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina'];
+const BLOCK = ['FUCK', 'SHIT', 'CUNT', 'NIGG', 'NIGA', 'FAG', 'RAPE', 'HITLER', 'NAZI', 'KKK', 'WHORE', 'SLUT', 'RETARD', 'PENIS', 'VAGINA', 'PORN', 'SEX', 'DICK', 'COCK', 'PUSSY', 'ASSHOLE', 'BITCH',
+  'HURE', 'FOTZE', 'SCHLAMPE', 'WICHS', 'FICK', 'SCHWUCHTEL', 'NEGER', 'SPAST', 'MISSGEBURT', 'SIEGHEIL', 'ADMIN', 'OFFICIAL', 'BOBAI', 'BRAINONBNB', 'MODERATOR', 'SUPPORT', 'BINANCE', 'AIRDROP', 'SCAM'];
+export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(s) || !/[A-Za-z]/.test(s)) return null; const up = s.toUpperCase(), flat = up.replace(/_/g, '').replace(/0/g, 'O').replace(/1/g, 'I').replace(/3/g, 'E').replace(/4/g, 'A').replace(/5/g, 'S').replace(/7/g, 'T');
+  return BLOCK.some(b => flat.includes(b) || up.includes(b)) ? null : s; };
+export const nameOf = v => {
+  if (v && typeof v === 'object' && !Array.isArray(v)) { const base = ownName(v.own), k = Number(v.v); if (!base || !Number.isInteger(k) || k < 0 || k >= ROT.length) return null; return ROT[k].replace('{N}', base); }
+  if (!Array.isArray(v) || v.length !== 3) return null; const [a, b, n] = v.map(Number);
   if (![a, b, n].every(Number.isInteger) || a < 0 || a >= ADJ.length || b < 0 || b >= NOUN.length || n < 1 || n > 99) return null; return ADJ[a] + ' ' + NOUN[b] + ' ' + n; };
 
 export const dayOf = ms => new Date(ms).toISOString().slice(0, 10);

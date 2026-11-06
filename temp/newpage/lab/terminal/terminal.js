@@ -7496,7 +7496,6 @@ window.__btBrSeason = brSeason;
     const wr = el.getBoundingClientRect(), b = r.getBoundingClientRect(), cx = b.left - wr.left + b.width / 2, cy = b.top - wr.top + b.height / 2;
     // the boss takes six hits: each one shakes it and spills a few brains, the sixth blows it up
     if (r.dataset.n === 'kaiju' && (r._hp = (r._hp ?? 6) - 1) > 0) {
-      if (RUN && RUN.live && r.dataset.ri != null) RUN.hits.push([+r.dataset.ri, tNow()]); /* the daily run: the server counts the six hits */
       swallow = performance.now() + 500;
       burst(cx, cy, 4); r.firstChild.animate([{ transform: 'translateX(-14px) rotate(-4deg)' }, { transform: 'translateX(14px) rotate(4deg)' }, { transform: 'none' }], { duration: 260 });
       slam('HIT! ' + r._hp + ' LEFT', cx, cy - b.height * 0.3, false); return;
@@ -7505,7 +7504,7 @@ window.__btBrSeason = brSeason;
     for (const a of r.getAnimations()) a.cancel();
     burst(cx, cy, r.dataset.n === 'kaiju' ? 30 : 12);
     if (r.dataset.n === 'kaiju') { shake(); slam('BOSS DOWN!', cx, cy, true); }
-    if (RUN && RUN.live && r.dataset.ri != null) runHit(r, cx, cy); else if (!RUN) { pops++; score(r, cx, cy); }
+    if (!RUN) { pops++; score(r, cx, cy); }
     swallow = performance.now() + 500;
     el.animate([{ transform: 'scale(1.015)' }, { transform: 'none' }], { duration: 160 });
   });
@@ -7528,6 +7527,7 @@ window.__btBrSeason = brSeason;
     .then(r => r.json().catch(() => ({})).then(j => r.ok ? j : Promise.reject(new Error(j.error || 'HTTP ' + r.status))));
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const nf0 = v => Number(v || 0).toLocaleString('en-US');
+  const sc7 = v => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }); // a 6.9 score: 563,742.4324762
   let spawning = false, DAY = null, RUN = null, LAST = null, CH = null, NAMES2 = null, scope = 'day', chOff = false;
   const myName = () => !NAMES2 ? '…' : Array.isArray(pname) ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : (NAMES2.rot && NAMES2.rot[pname.v] || '{N}').replace('{N}', pname.own);
   // the button in the scene, under the title row on the left
@@ -7544,9 +7544,9 @@ window.__btBrSeason = brSeason;
   async function watchTop() {
     setTimeout(watchTop, 90000); if (document.hidden || pbtn.hidden) return;
     let j; try { j = await api('top?scope=day'); } catch { return; } const r = j.rows && j.rows[0], key = r ? r.name + '|' + r.score : null;
-    if (top1 !== undefined && key && key !== top1) { logLine('POP', '#ff3fd8', ['Brain Pop: new #1 today ' + r.name + ' with ' + nf0(r.score) + ' ROT · ' + nf0(j.players) + ' playing · ▶ PLAY in the scene']);
-      if (on && !RUN && performance.now() >= LIFE.sayUntil && !VID.want && !HELD && !WAITSAY && Math.random() < 0.6) speak(pick(['New number one in Brain Pop: ' + r.name + '. ' + nf0(r.score) + ' ROT. Respect.', r.name + ' just took the crown. ' + nf0(r.score) + ' ROT. Your turn?', 'Brain Pop has a new champion: ' + r.name + '. The prize? Nothing. Glorious nothing.', nf0(r.score) + ' ROT by ' + r.name + '. My neurons are impressed.', 'Breaking: ' + r.name + ' is the new number one. The creatures are scared.']), 4200); }
-    else if (top1 === undefined && r) logLine('POP', '#ff3fd8', ['Brain Pop today: #1 ' + r.name + ' with ' + nf0(r.score) + ' ROT · ' + nf0(j.players) + ' playing']);
+    if (top1 !== undefined && key && key !== top1) { logLine('POP', '#ff3fd8', ['Brain Pop: new #1 today ' + r.name + ' with ' + sc7(r.score) + ' ROT · ' + nf0(j.players) + ' playing · ▶ PLAY in the scene']);
+      if (on && !RUN && performance.now() >= LIFE.sayUntil && !VID.want && !HELD && !WAITSAY && Math.random() < 0.6) speak(pick(['New number one in Brain Pop: ' + r.name + '. ' + sc7(r.score) + ' ROT. Respect.', r.name + ' just took the crown. ' + sc7(r.score) + ' ROT. Your turn?', 'Brain Pop has a new champion: ' + r.name + '. The prize? Nothing. Glorious nothing.', sc7(r.score) + ' ROT by ' + r.name + '. My neurons are impressed.', 'Breaking: ' + r.name + ' is the new number one. The creatures are scared.']), 4200); }
+    else if (top1 === undefined && r) logLine('POP', '#ff3fd8', ['Brain Pop today: #1 ' + r.name + ' with ' + sc7(r.score) + ' ROT · ' + nf0(j.players) + ' playing']);
     top1 = key;
   }
   setTimeout(watchTop, 6000); setTimeout(pbtnPlace, 2500);
@@ -7554,7 +7554,7 @@ window.__btBrSeason = brSeason;
   const pp = document.createElement('div'); pp.className = 'br-pp'; pp.setAttribute('role', 'dialog'); pp.setAttribute('aria-label', 'Daily Brain Pop'); pp.hidden = true; win.appendChild(pp);
   pp.addEventListener('pointerdown', e => e.stopPropagation());
   pp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && e.target.matches('.br-pp-nm input')) { e.preventDefault(); pp.querySelector('.br-pp-rot')?.click(); } }); /* typing a name never reaches the terminal's own keys */
-  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span>' + esc(r.name) + '</span><b>' + nf0(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
+  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span>' + esc(r.name) + '</span><b>' + sc7(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
   // DAILY | OVERALL (operator 6.11.: "a board for every day until 30 Nov, I can look at them — tomorrow the one of 6 Nov —
   // always the top 10; daily and then overall"); the daily board pages through the season's days
   const FIRST = '2026-11-06', LASTD = '2026-11-30';
@@ -7572,6 +7572,18 @@ window.__btBrSeason = brSeason;
   }
   // the player's private code: only this browser shows it; the overall winner shows it to claim the prize
   const codeLine = () => { const c = lsGet('bt-pop-code'); return c ? '<p class="br-pp-n">Your player code: <b class="br-pp-code">' + esc(c) + '</b> · keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.</p>' : ''; };
+  // THE PRIZE POOL (operator, 6.11.): the $BOBAI in the Giggle/prize wallet — 808.41 to start, every $BOBAI donated adds —
+  // all of it to the overall #1 on 30 Nov; the bar's goal $100,000 (operator: "exaggerated"); ONLY $BOBAI counts, anything
+  // else sent there is lost (said plainly)
+  const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 100000;
+  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $100,000</span></div>'
+    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Anything other than $BOBAI sent there (BNB, USDT, any token) is <b>lost</b>. It is not part of the pool.</p></div>';
+  async function fillPool() {
+    const box = pp.querySelector('.br-pp-pool'); if (!box) return;
+    try { const j = await api('pool'); if (!pp.contains(box) || j.bobai == null) return; const usd = j.bobai * (S.price || 0);
+      box.querySelector('.amt').textContent = nf0(Math.floor(j.bobai)) + ' $BOBAI'; box.querySelector('.usd').textContent = usd ? '≈ $' + usd.toLocaleString('en-US', { maximumFractionDigits: usd < 10 ? 2 : 0 }) : '';
+      box.querySelector('.bar i').style.width = Math.min(100, Math.max(1.5, usd / GOAL * 100)) + '%'; } catch {}
+  }
   async function openPanel() {
     if (RUN) return; pp.hidden = false; pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>Loading the day…</p></div>';
     try {
@@ -7581,20 +7593,24 @@ window.__btBrSeason = brSeason;
     intro();
   }
   function intro() {
-    const past = DAY.day !== DAY.today, ch = CH ? '<p class="br-pp-ch">' + esc(CH.name) + ' challenges you: <b>' + nf0(CH.score) + ' ROT</b> on Daily #' + CH.no + '. Beat it! Their score runs along as a ghost.' + (past ? ' (That day is over: a rematch, not on the board.)' : '') + '</p>' : '';
-    pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP #' + DAY.no + '</b>' + ch
-      + '<p>60 seconds. The same creatures for everyone today. Tap them: quick pops build a combo up to x10, golden ones count five times, the rocket snail 10, the big brain with the eyes takes six hits for 50.</p>'
-      + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small><br>Overall winner (best run, 6 to 30 Nov) gets: <b class="one">ONE $BOBAI!</b> <small>one. not one million. ONE.</small></p>'
+    const past = DAY.day !== DAY.today, ch = CH ? '<p class="br-pp-ch">' + esc(CH.name) + ' challenges you: <b>' + sc7(CH.score) + ' ROT</b> on Daily #' + CH.no + '. Beat it! Their score runs along as a ghost.' + (past ? ' (That day is over: a rematch, not on the board.)' : '') + '</p>' : '';
+    pp.innerHTML = '<div class="br-pp-c"><button type="button" class="br-pp-snd" title="Sound on/off" aria-label="Sound on/off">' + (muted ? '🔇' : '🔊') + '</button><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b>' + ch
+      // HOW TO PLAY, in five seconds (operator: "in 60 seconds you must know what to do")
+      + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>6 IN A ROW</b> fires a super power by itself</span></div>'
+      + '<p class="br-pp-n">60 seconds · the same creatures for everyone today · the server replays every tap</p>'
+      + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small></p>' + poolHtml()
       + '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>'
       + '<div class="br-pp-nm" hidden><input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _ · nothing rude</small></div>'
       + '<div class="br-pp-bd"></div>' + codeLine()
       + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
-    scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard();
+    scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool();
     setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
   }
   pp.addEventListener('click', async e => {
     e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('br-pp-x')) { pp.hidden = true; return; }
+    if (b.classList.contains('br-pp-snd')) { muted = !muted; lsSet('bt-pop-mute', muted ? '1' : '0'); b.textContent = muted ? '🔇' : '🔊'; if (!muted) SFX.count(true); return; }
+    if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
     if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
     if (b.classList.contains('br-pp-re')) { pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: (pname.v + 1 + ri((NAMES2.rot || [1]).length - 1)) % (NAMES2.rot || [1]).length }; lsSet('bt-pop-name', JSON.stringify(pname)); b.parentNode.querySelector('i').textContent = myName(); api('name', { pid, name: pname }).catch(() => {}); return; }
     if (b.classList.contains('br-pp-own')) { const box = pp.querySelector('.br-pp-nm'); box.hidden = !box.hidden; if (!box.hidden) { const inp = box.querySelector('input'); inp.value = Array.isArray(pname) ? '' : pname.own; inp.focus(); } return; }
@@ -7606,63 +7622,136 @@ window.__btBrSeason = brSeason;
     if (b.dataset.dd) { const n = shift(bday || lastDay(), +b.dataset.dd); if (n >= FIRST && n <= lastDay()) { bday = n; loadBoard(); } return; }
     if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
     if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }
-    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/?pop=' + LAST.run, text = 'I scored ' + nf0(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
+    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/?pop=' + LAST.run, text = 'I scored ' + sc7(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') { b.textContent = link; } } }
   });
-  // THE RUN
-  const POP_MS = 60000;
-  async function begin() {
-    let st; try { st = await api('start', { pid, name: pname, d: DAY.day !== DAY.today ? DAY.day : undefined }); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'Could not start: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
-    pp.hidden = true; pbtn.hidden = true; pinnedK = null; setFocus(null); hoverMove(null); /* an open station window closes when the game starts */
-    win.classList.add('br-run'); if (win.contains(document.activeElement)) document.activeElement.blur(); /* the log keeps its size, the labels open nothing (operator 6.11.) */
-    RUN = { id: st.run, ranked: st.ranked, plan: DAY.plan, pops: [], hits: [], score: 0, combo: 0, last: -1e9, maxc: 0, timers: [], t0: 0, live: false };
-    for (const d of el.querySelectorAll('.br-r')) { for (const a of d.getAnimations()) a.cancel(); } // the look's own creatures step out
-    ['3', '2', '1'].forEach((n, i) => RUN.timers.push(setTimeout(() => slam(n, W() / 2, H() * 0.42, true), i * 800)));
-    RUN.timers.push(setTimeout(() => { slam('POP!', W() / 2, H() * 0.42, true); RUN.t0 = performance.now(); RUN.live = true; for (const s of RUN.plan) RUN.timers.push(setTimeout(() => spawnRun(s), s.at)); RUN.timers.push(setTimeout(endRun, POP_MS + 250)); RUN.tick = setInterval(runHud, 250); runHud(); }, 2400));
+  // SOUND AND TOUCH (6.11., operator: "make it the best browser game in the world"): every pop, miss, rug and power is
+  // heard — synthesised here with WebAudio, no sound files — and felt on a phone (a short vibration). A pop's pitch climbs
+  // with the streak (twenty in a row is a scale going up). Off with the speaker button in the game's window (bt-pop-mute).
+  let AC = null, muted = lsGet('bt-pop-mute') === '1';
+  const ac = () => { if (muted) return null; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch { AC = null; } return AC; };
+  function tone(f, d, type = 'sine', vol = 0.18, slide = 0, delay = 0) {
+    const a = ac(); if (!a) return; const t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t0 + d);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + d + 0.02);
   }
-  function spawnRun(s) {
-    if (!RUN || !on) return;
-    // a creature the timer brought late keeps only what is left of its time: it leaves when the plan says (the server
-    // counts a hit only inside the plan's window; 6.11.: a busy device let one live 0.5 s too long)
-    const late = Math.max(0, tNow() - s.at); if (late >= s.life - 200) return;
-    let a = null; spawning = true;
-    try { if (s.n === 'kaiju') kaiju(); else { const c = CREW.find(x => x.n === s.n) || CREW[0]; a = MOVES[s.m]?.(c) || MOVES.run(c); } } finally { spawning = false; }
-    const d = el.lastElementChild; if (!d || !d.classList.contains('br-r')) return;
-    d.dataset.ri = s.i; if (s.gold) d.classList.add('gold');
-    for (const an of d.getAnimations()) an.effect.updateTiming({ duration: s.life - late }); void a;
+  const SCALE = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24];
+  const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch {} };
+  const SFX = {
+    pop: (combo, gold) => { const n = SCALE[Math.min(SCALE.length - 1, Math.max(0, combo - 1))]; tone(440 * Math.pow(2, n / 12), 0.09, 'triangle', 0.16, 1.5); if (gold) { tone(1320, 0.18, 'sine', 0.1, 1.2, 0.05); tone(1760, 0.2, 'sine', 0.08, 1, 0.1); } },
+    miss: () => { tone(110, 0.16, 'sawtooth', 0.08, 0.7); buzz(30); },
+    rug: () => { tone(420, 0.5, 'square', 0.09, 0.35); tone(300, 0.5, 'square', 0.06, 0.35, 0.12); buzz([60, 40, 60]); },
+    hit: () => tone(180, 0.07, 'square', 0.08, 0.8),
+    power: () => { tone(220, 0.35, 'sawtooth', 0.09, 4); [523, 659, 784].forEach((f, i) => tone(f, 0.45, 'triangle', 0.09, 1, 0.18 + i * 0.05)); buzz(80); },
+    boom: () => { tone(90, 0.5, 'sawtooth', 0.14, 0.4); tone(60, 0.6, 'sine', 0.16, 0.5, 0.02); buzz(120); },
+    count: (last) => tone(last ? 880 : 440, last ? 0.35 : 0.12, 'square', 0.08),
+    end: () => { [392, 330, 262].forEach((f, i) => tone(f, 0.6, 'triangle', 0.1, 1, i * 0.12)); },
+  };
+  // THE RUN, BRAIN POP 2.0 (operator, 6.11.: "aim, skill, logic, luck; the seven as super powers that come by themselves;
+  // e-sports worthy; 60 seconds stay; in 60 seconds you know what to do"). The game is terminal/pop-engine.mjs, the very
+  // file the server replays: an ARENA (1000 x 1000 units, square, the same on every screen) over the scene, every creature
+  // on the path the plan gives it, a ring showing where it can be hit (smaller as the combo grows), a tap anywhere in the
+  // arena is a shot — on a creature it pops, on nothing it is a miss, on a red RUG it costs. Every 6 clean pops in a row a
+  // station fires its power by itself. The look's own creatures rest; the terminal (burns, liquidity, alerts) goes on.
+  const POP_MS = 60000;
+  let E = null; const engine = async () => E || (E = await import(BASE + 'pop-engine.mjs' + Q));
+  const arena = document.createElement('div'); arena.className = 'br-arena'; arena.hidden = true; arena.setAttribute('aria-label', 'Brain Pop arena'); win.appendChild(arena);
+  const banner = document.createElement('div'); banner.className = 'br-wban'; banner.hidden = true; win.appendChild(banner);
+  const WST = { burn: 'burnA', hammer: 'burnB', liq: 'liq', defi: 'defi', giggle: 'giggle', creator: 'creator', trades: 'src' }; // a power's station on the scene
+  let AR = null; // the arena's box inside the scene layer: { l, t, s }
+  function placeArena() {
+    // the whole terminal window under its title row and the HUD (6.11.: inside the scene alone it was 453 px on a desktop)
+    const wr = win.getBoundingClientRect(), er = el.getBoundingClientRect(), hb = hud.classList.contains('on') ? hud.getBoundingClientRect().bottom - wr.top : er.top - wr.top + topSafe() + 40;
+    const top = Math.max(er.top - wr.top + topSafe() + 8, hb + 8), s = Math.max(200, Math.floor(Math.min(wr.width - 16, wr.height - top - 8)));
+    const l = Math.round((wr.width - s) / 2), t = Math.round(top);
+    if (!AR || AR.l !== l || AR.t !== t || AR.s !== s) { AR = { l, t, s, el0: er.left - wr.left, et0: er.top - wr.top }; Object.assign(arena.style, { left: l + 'px', top: t + 'px', width: s + 'px', height: s + 'px' }); }
+  }
+  function ptxt(text, x, y, cls) { const b = document.createElement('b'); b.className = 'br-ptx' + (cls ? ' ' + cls : ''); b.textContent = text; b.style.left = Math.max(8, Math.min(92, x / 10)) + '%'; b.style.top = Math.max(6, Math.min(94, y / 10)) + '%'; arena.appendChild(b); setTimeout(() => b.remove(), 900); }
+  const toEl = (x, y) => [AR.l - AR.el0 + x / 1000 * AR.s, AR.t - AR.et0 + y / 1000 * AR.s]; // arena units -> the scene layer (bursts, labels)
+  async function begin() {
+    try { await engine(); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'The game did not load: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
+    let st; try { st = await api('start', { v: E.V, pid, name: pname, d: DAY.day !== DAY.today ? DAY.day : undefined }); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'Could not start: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
+    pp.hidden = true; pbtn.hidden = true; pinnedK = null; setFocus(null); hoverMove(null); /* an open station window closes when the game starts */
+    win.classList.add('br-run'); if (win.contains(document.activeElement)) document.activeElement.blur(); /* the log keeps its size, the labels open nothing */
+    const PL = E.plan(DAY.day, st.seed >>> 0); /* the round's own look, the day's difficulty */
+    RUN = { id: st.run, ranked: st.ranked, plan: PL, run: E.createRun(PL), inputs: [], ev: 0, nodes: new Map(), timers: [], t0: 0, live: false };
+    for (const d of el.querySelectorAll('.br-r')) { for (const a of d.getAnimations()) a.cancel(); } // the look's own creatures step out
+    // the whole terminal window in sight before the arena opens (6.11.: on a phone a scrolled page hid the arena's top under the header)
+    { const r = win.getBoundingClientRect(), head = 64; if (r.top < head || r.bottom > innerHeight) window.scrollBy({ top: r.top - Math.max(head, (innerHeight - r.height) / 2), behavior: 'instant' }); }
+    placeArena(); arena.replaceChildren(); arena.hidden = false; arena.className = 'br-arena';
+    ['3', '2', '1'].forEach((n, i) => RUN.timers.push(setTimeout(() => { slam(n, W() / 2, H() * 0.42, true); SFX.count(false); }, i * 800)));
+    RUN.timers.push(setTimeout(() => { slam('POP!', W() / 2, H() * 0.42, true); SFX.count(true); RUN.t0 = performance.now(); RUN.live = true; RUN.timers.push(setTimeout(endRun, POP_MS + 150)); RUN.tick = setInterval(runHud, 200); runHud(); requestAnimationFrame(frame); }, 2400));
   }
   const tNow = () => Math.round(performance.now() - RUN.t0);
-  function runHit(r, cx, cy) {
-    const s = RUN.plan[+r.dataset.ri], t = tNow(); if (!s || t > s.at + s.life + 350) return; /* past its time: the server would not count it either */
-    RUN.pops.push([s.i, t]); pops++;
-    RUN.combo = t - RUN.last < 2200 ? RUN.combo + 1 : 1; RUN.last = t; const m = Math.min(RUN.combo, 10); RUN.maxc = Math.max(RUN.maxc, m);
-    const pts = ({ snail: 10, kaiju: 50 }[s.n] || 5) * (s.gold ? 5 : 1) * m; RUN.score += pts;
-    G.score += pts; G.best = Math.max(G.best, G.score); G.maxc = Math.max(G.maxc || 0, m); save();
-    label((r.dataset.t || 'BRAIN') + ' +' + pts, cx, cy - 30);
-    if (RUN.combo >= 3) slam('COMBO x' + m + '!', cx, cy + 40, RUN.combo >= 6);
-    if (s.gold) { shake(); slam('GOLDEN BRAIN!', W() / 2, H() * 0.4, true); }
-    runHud();
+  function node(s) {
+    const n = document.createElement('div'); n.className = 'br-an' + (s.rug ? ' rug' : '') + (s.gold ? ' gold' : '') + (s.hp ? ' boss' : '');
+    n.innerHTML = '<img alt="" draggable="false" src="' + pic(s.n) + '"><i></i>' + (s.rug ? '<em>RUG</em>' : ''); arena.appendChild(n); return n;
+  }
+  function frame() {
+    if (!RUN) return; requestAnimationFrame(frame); if (!RUN.live) return;
+    const t = tNow(); if (t > POP_MS) return; placeArena();
+    const S = RUN.run.S, k = AR.s / 1000, ring = Math.max(0.55, 1 - 0.015 * S.combo) * (S.hammer > 0 ? 3 : 1), seen = new Set();
+    for (const [s, q] of RUN.run.alive(t)) {
+      seen.add(s.i); let n = RUN.nodes.get(s.i); if (!n) { n = node(s); RUN.nodes.set(s.i, n); }
+      const box = s.r * 2 * k * (s.hp ? 1.15 : 1.35), rd = s.r * 2 * k * ring, gold = RUN.run.golden(s, t);
+      n.style.transform = 'translate(' + (q.x * k - box / 2).toFixed(1) + 'px,' + (q.y * k - box / 2).toFixed(1) + 'px)';
+      if (n._b !== box) { n._b = box; n.style.width = n.style.height = box + 'px'; }
+      if (n._rd !== rd) { n._rd = rd; const i = n.querySelector('i'); i.style.width = i.style.height = rd + 'px'; }
+      if (n._g !== gold) { n._g = gold; n.classList.toggle('gold', gold); n.classList.toggle('safe', gold && s.rug); }
+    }
+    for (const [i, n] of RUN.nodes) if (!seen.has(i)) { n.remove(); RUN.nodes.delete(i); }
+    arena.classList.toggle('slow', S.slow.some(([a, b]) => t >= a && t < b)); arena.classList.toggle('rush', t < S.giggle); arena.classList.toggle('armed', S.armed === 'burn'); arena.classList.toggle('hammer', S.hammer > 0);
+  }
+  // a shot: anywhere in the arena (touch or mouse), as the server will replay it
+  arena.addEventListener('pointerdown', e => {
+    if (!RUN || !RUN.live) return; e.preventDefault(); e.stopPropagation();
+    const r = arena.getBoundingClientRect(), x = Math.round((e.clientX - r.left) / r.width * 1000), y = Math.round((e.clientY - r.top) / r.height * 1000), t = tNow();
+    if (RUN.run.tap(t, x, y)) { RUN.inputs.push([t, x, y]); drain(x, y); runHud(); }
+  });
+  arena.addEventListener('click', e => e.stopPropagation());
+  // what the shot did, as the engine says it: pops, misses, rugs, the boss's hits, the powers
+  function drain(x, y) {
+    const S = RUN.run.S;
+    for (; RUN.ev < S.ev.length; RUN.ev++) {
+      const [kind, i, , v, ex, ey] = S.ev[RUN.ev], s = i >= 0 && kind !== 'fire' && kind !== 'cash' ? RUN.plan[i] : null, n = s && RUN.nodes.get(i);
+      const at = n ? (() => { const b = n.getBoundingClientRect(), er = el.getBoundingClientRect(); return [b.left - er.left + b.width / 2, b.top - er.top + b.height / 2]; })() : toEl(ex ?? x, ey ?? y);
+      if (kind === 'pop') { SFX.pop(S.combo, s && s.gold); burst(at[0], at[1], s && s.hp ? 26 : 10); { const q = RUN.run.S.ev[RUN.ev], tq = q[2], pq = s && E.pos(s, RUN.run.world(tq)); ptxt('+' + (v / E.UNIT).toLocaleString('en-US', { maximumFractionDigits: 2 }), pq ? pq.x : x, pq ? pq.y - 40 : y, s && s.gold ? 'gold' : ''); } if (n) { n.remove(); RUN.nodes.delete(i); } pops++; if (s && s.gold) { slam('GOLDEN BRAIN!', W() / 2, H() * 0.36, true); } if (S.combo >= 3 && S.combo % 3 === 0) ptxt(S.combo + ' IN A ROW · x' + E.multOf(S.combo), 500, 120, 'big'); }
+      else if (kind === 'miss') { SFX.miss(); const m = document.createElement('b'); m.className = 'br-miss'; m.style.left = (x / 10) + '%'; m.style.top = (y / 10) + '%'; arena.appendChild(m); setTimeout(() => m.remove(), 600); }
+      else if (kind === 'rug') { SFX.rug(); slam('RUG PULLED! -4,000', W() / 2, H() * 0.4, true); shake(); if (n) { n.remove(); RUN.nodes.delete(i); } }
+      else if (kind === 'hit') { SFX.hit(); if (n) n.animate([{ filter: 'brightness(2)' }, { filter: 'none' }], { duration: 180 }); burst(at[0], at[1], 4); slam('HIT! ' + (RUN.run.S.hp[i] ?? '') + ' LEFT', at[0], at[1] - 50, false); }
+      else if (kind === 'boom') { SFX.boom(); const b = document.createElement('b'); b.className = 'br-boom'; b.style.left = (ex / 10) + '%'; b.style.top = (ey / 10) + '%'; b.style.width = b.style.height = (460 / 10) + '%'; arena.appendChild(b); setTimeout(() => b.remove(), 700); shake(); }
+      else if (kind === 'fire') power(i);
+      else if (kind === 'cash') ptxt('CASH +' + nf0(v / E.UNIT), 500, 500, 'big gold');
+    }
+  }
+  // a station's power fires by itself: its name and what it does slam in, its creature on the scene jumps
+  function power(k) {
+    const w = E.WEAPONS[k]; SFX.power(); banner.hidden = false; banner.innerHTML = '<img alt="" src="' + pic(w.pic) + '"><span><b>' + esc(w.name) + '</b>' + esc(w.say) + '</span>';
+    banner.classList.remove('on'); void banner.offsetWidth; banner.classList.add('on'); clearTimeout(banner._t); banner._t = setTimeout(() => { banner.classList.remove('on'); banner.hidden = true; }, 2200);
+    const stn = ST.find(s => s.k === WST[w.k]); if (stn) { stn.e.classList.remove('jump'); void stn.e.offsetWidth; stn.e.classList.add('jump'); }
+    discoOn();
   }
   const ghostAt = t => { if (!CH || CH.day !== DAY.day) return null; let v = 0; for (const [gt, gs] of CH.timeline) { if (gt > t) break; v = gs; } return v; };
   function runHud() {
-    if (!RUN) return; const t = RUN.live ? Math.min(POP_MS, tNow()) : 0, left = Math.max(0, Math.ceil((POP_MS - t) / 1000)), g = ghostAt(t);
+    if (!RUN) return; const t = RUN.live ? Math.min(POP_MS, tNow()) : 0, left = Math.max(0, Math.ceil((POP_MS - t) / 1000)), g = ghostAt(t), S = RUN.run.S;
     const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
-    hud.style.top = Math.max(8, b - wr.top + 8) + 'px';
-    hud.innerHTML = '<s>DAY ' + DAY.no + '</s><s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + nf0(RUN.score) + '</b>' + (RUN.combo > 1 ? '<i>x' + Math.min(RUN.combo, 10) + '</i>' : '') + (g != null ? '<s class="br-pg">GHOST ' + nf0(g) + '</s>' : '');
+    hud.style.top = Math.max(8, b - wr.top + 4) + 'px';
+    hud.innerHTML = '<s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + E.fmt(S.score) + '</b><i>x' + E.multOf(S.combo) + '</i><s>' + S.combo + ' in a row</s>' + (S.misses ? '<s class="br-pm">' + S.misses + ' miss' + (S.misses === 1 ? '' : 'es') + '</s>' : '') + (g != null ? '<s class="br-pg">GHOST ' + E.fmt(g) + '</s>' : '');
     hud.classList.add('on'); clearTimeout(hudT);
   }
   async function endRun() {
     if (!RUN) return; const R0 = RUN; win.classList.remove('br-run'); clearInterval(R0.tick); R0.timers.forEach(clearTimeout); R0.live = false;
-    for (const d of el.querySelectorAll('.br-r')) for (const a of d.getAnimations()) a.cancel();
-    slam('TIME!', W() / 2, H() * 0.42, true); shake();
+    arena.hidden = true; arena.replaceChildren(); banner.hidden = true;
+    slam('TIME!', W() / 2, H() * 0.42, true); shake(); SFX.end();
     let res = null, err = null;
-    try { res = await api('finish', { run: R0.id, pops: R0.pops, hits: R0.hits }); } catch (e) { err = e.message; }
+    try { res = await api('finish', { run: R0.id, inputs: R0.inputs }); } catch (e) { err = e.message; }
     RUN = null; pbtn.hidden = false; hudT = setTimeout(() => hud.classList.remove('on'), 4000);
     if (res) { LAST = res; DAY.top = res.top || DAY.top; if (res.code) lsSet('bt-pop-code', res.code); }
-    const beat = CH && res ? (res.score > CH.score ? '<p class="br-pp-ch">You beat ' + esc(CH.name) + ' by <b>' + nf0(res.score - CH.score) + '</b>! Send it back to them.</p>' : '<p class="br-pp-ch">' + esc(CH.name) + ' keeps it by <b>' + nf0(CH.score - res.score) + '</b>. Again?</p>') : '';
+    const beat = CH && res ? (res.score > CH.score ? '<p class="br-pp-ch">You beat ' + esc(CH.name) + ' by <b>' + sc7(res.score - CH.score) + '</b>! Send it back to them.</p>' : '<p class="br-pp-ch">' + esc(CH.name) + ' keeps it by <b>' + sc7(CH.score - res.score) + '</b>. Again?</p>') : '';
     pp.hidden = false;
-    pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? nf0(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
-      + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · best combo x' + res.maxc + ' · ' + res.pops + ' popped</p>' : '<p>' + esc(err || '') + '</p>')
+    pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? sc7(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
+      + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · ' + res.maxc + ' in a row · ' + res.pops + ' popped · ' + res.misses + ' missed · aim ' + (res.taps ? Math.round(res.pops / res.taps * 100) : 0) + '%' + (res.rugs ? ' · ' + res.rugs + ' rug' + (res.rugs === 1 ? '' : 's') : '') + '</p>' : '<p>' + esc(err || '') + '</p>')
       + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
@@ -7827,7 +7916,7 @@ window.__btBrSeason = brSeason;
     if (!stick) { stick = true; requestAnimationFrame(place); } }
   // the standard terminal gets its circles back (the same rule as applyPhase: a station with a share)
   const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; ringBg.material.visible = true; for (const m of ringFgs) m.material.visible = true; };
-  function stop() { if (RUN) { win.classList.remove('br-run'); clearInterval(RUN.tick); RUN.timers.forEach(clearTimeout); RUN = null; pbtn.hidden = false; pp.hidden = true; } const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
+  function stop() { if (RUN) { win.classList.remove('br-run'); arena.hidden = true; arena.replaceChildren(); banner.hidden = true; clearInterval(RUN.tick); RUN.timers.forEach(clearTimeout); RUN = null; pbtn.hidden = false; pp.hidden = true; } const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
@@ -7892,7 +7981,7 @@ window.__btBrSeason = brSeason;
     const IMP = 'Impact, Anton, "Arial Black", "Helvetica Neue", sans-serif', MONO = 'ui-monospace, Consolas, monospace';
     const others = CREW.filter(x => x.n !== 'snail' && x.n !== 'washer').sort(() => Math.random() - 0.5).slice(0, 6).map(x => x.n);
     const [sky, pod, ball, kai, snail, mini, ...cr] = await Promise.all(['sky', 'podium', 'disco', 'kaiju', 'snail', 'mini', ...others].map(n => imgOf(pic(n))));
-    const D1 = LAST, rank = D1 ? (D1.ranked ? '#' + D1.rank + ' TODAY' : 'DAILY #' + D1.no) : rankOf(G.score), ri = RANKS.findIndex(r => r[1] === rankOf(G.score)), nx = RANKS[ri + 1], sc = (D1 ? D1.score : G.score).toLocaleString('en-US'); /* after a daily run the card is that run: its place, its score */
+    const D1 = LAST, rank = D1 ? (D1.ranked ? '#' + D1.rank + ' TODAY' : 'DAILY #' + D1.no) : rankOf(G.score), ri = RANKS.findIndex(r => r[1] === rankOf(G.score)), nx = RANKS[ri + 1], sc = D1 ? sc7(D1.score) : G.score.toLocaleString('en-US'); /* after a daily run the card is that run: its place, its score */
     const draw = (im, x, y, w, rot = 0, flip = false, a = 1) => { if (!im) return; const h = w * im.naturalHeight / im.naturalWidth; g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(rot * Math.PI / 180); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h / 2, w, h); g.restore(); };
     const meme = (t, x, y, size, maxW, fill, rot = 0, shadow = '#ff3fd8', align = 'left') => { let f = size; g.font = '400 ' + f + 'px ' + IMP; while (g.measureText(t).width > maxW && f > 24) { f -= 4; g.font = '400 ' + f + 'px ' + IMP; }
       g.save(); g.translate(x, y); g.rotate(rot * Math.PI / 180); g.textAlign = align; g.lineJoin = 'round'; g.textBaseline = 'alphabetic';
@@ -7945,5 +8034,6 @@ window.__btBrSeason = brSeason;
       text: D1 ? 'I scored ' + sc + ' ROT as ' + (D1.name || myName()) + ' in Daily Brain Pop #' + D1.no + (D1.ranked ? ', #' + D1.rank + ' of ' + D1.players + ' today' : '') + ' on the $BOBAI Brain Terminal 🧠 Beat me: ' + SITE_URL + '/?pop=' + D1.run
         : 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
   }
-  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.pops.length : 0, score: RUN ? RUN.score : null, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }), set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
+    /* for the checks: the arena's box on the page and what is in it now (the plan is public anyway) */ aim: () => RUN && RUN.live && AR ? { box: arena.getBoundingClientRect().toJSON(), alive: RUN.run.alive(tNow()).map(([x, q]) => [x.i, x.rug && !RUN.run.golden(x, tNow()), Math.round(q.x), Math.round(q.y), x.r, x.p]) } : null, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

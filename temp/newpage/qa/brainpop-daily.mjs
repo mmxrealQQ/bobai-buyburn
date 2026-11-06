@@ -26,28 +26,29 @@ ws.onmessage = m => { const d = JSON.parse(m.data); if (d.id && pend[d.id]) { pe
 const ev = async src => { const r = await send('Runtime.evaluate', { expression: src, returnByValue: true, awaitPromise: true }); if (r.result?.exceptionDetails) throw new Error('eval: ' + (r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text)); return r.result?.result?.value; };
 await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
 let pass = 0, fail = 0;
+const p7 = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }); // a 6.9 score
 const say = (ok, what, more = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + what + (more ? ' — ' + more : '')); ok ? pass++ : fail++; };
 const waitFor = async (src, ms = 20000) => { for (let t = 0; t < ms; t += 300) { if (await ev(src)) return true; await sleep(300); } return false; };
 const shot = async name => { if (!SHOTS) return; const r = await send('Page.captureScreenshot', { format: 'jpeg', quality: 72 }); fs.writeFileSync(path.join(SHOTS, name + '.jpg'), Buffer.from(r.result.data, 'base64')); };
 // a real tap: the browser's own input at the middle of the element (touch on a phone)
 const tap = async (x, y, mob) => { if (mob) { await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] }); await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); }
   else { await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }); await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }); } };
-const click = async (sel, mob) => { const p = JSON.parse(await ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return 'null';const r=e.getBoundingClientRect();if(!r.width)return 'null';const x=r.left+r.width/2,y=r.top+r.height/2,h=document.elementFromPoint(x,y);return JSON.stringify({x,y,top:!!h&&(h===e||e.contains(h))})})()`)); if (p) await tap(p.x, p.y, mob); return p; };
-const stay = async mob => { if (await waitFor(`!!document.querySelector('#bt .br-ask-yes')`, 40000)) await click('#bt .br-ask-yes', mob); };
+const click = async (sel, mob) => { const p = JSON.parse(await ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return 'null';e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();if(!r.width)return 'null';const x=r.left+r.width/2,y=r.top+r.height/2,h=document.elementFromPoint(x,y);return JSON.stringify({x,y,top:!!h&&(h===e||e.contains(h))})})()`)); if (p) await tap(p.x, p.y, mob); return p; };
+const stay = async mob => { if (!(await waitFor(`!!document.querySelector('#bt .br-ask-yes')`, 40000))) return; for (let k = 0; k < 5 && await ev(`!!document.querySelector('#bt .br-ask-yes')`); k++) { await click('#bt .br-ask-yes', mob); await sleep(700); } };
 const STATS0 = (await (await fetch(BASE + '/api/pop/stats')).json().catch(() => ({}))).days || {};
 for (const sz of SIZES) {
   const mob = sz.endsWith('m'), [w, h] = sz.replace('m', '').split('x').map(Number), innerW = w;
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mob });
   await send('Emulation.setTouchEmulationEnabled', { enabled: mob });
   await send('Page.navigate', { url: BASE + '/robots.txt' }); await sleep(1200);
-  await ev(`localStorage.setItem('bt-pop-pid','f00d' + [...crypto.getRandomValues(new Uint8Array(6))].map(b=>b.toString(16).padStart(2,'0')).join('')); localStorage.setItem('bt-br-tut','1'); 1`);
+  await ev(`localStorage.removeItem('bt-br'); localStorage.setItem('bt-pop-pid','f00d' + [...crypto.getRandomValues(new Uint8Array(6))].map(b=>b.toString(16).padStart(2,'0')).join('')); localStorage.setItem('bt-br-tut','1'); 1`);
   logs = []; await send('Page.navigate', { url: BASE + '/?br=1&t=' + Date.now() }); await stay(mob);
   await waitFor(`!!document.querySelector('#bt .br-pbtn') && getComputedStyle(document.querySelector('#bt .br-pbtn')).display !== 'none'`, 20000); await sleep(2500);
   const b1 = await click('#bt .br-pbtn', mob);
   const opened = await waitFor(`!!document.querySelector('#bt .br-pp-go')`, 20000);
   const P1 = opened ? JSON.parse(await ev(`(()=>{const c=document.querySelector('#bt .br-pp-c');return JSON.stringify({head:c.querySelector('b').textContent,name:(c.querySelector('.br-pp-me i')||{}).textContent||''})})()`)) : {};
   await shot('daily-intro-' + sz);
-  say(!!b1 && b1.top && opened && /^DAILY BRAIN POP #\d+$/.test(P1.head || '') && (P1.name || '').length >= 3 /* a random name or the player's own, remembered */, `${sz} rule 1: the DAILY button opens the game's window`, JSON.stringify({ b1, P1 }));
+  say(!!b1 && b1.top && opened && /^BRAIN POP 6\.9 · DAY \d+$/.test(P1.head || '') && (P1.name || '').length >= 3 /* a random name or the player's own, remembered */, `${sz} rule 1: the DAILY button opens the game's window`, JSON.stringify({ b1, P1 }));
   // 12 (operator 6.11.): an own name, typed and brainrotted, still shows the name; the prize line in English
   await click('#bt .br-pp-own', mob); await waitFor(`!document.querySelector('#bt .br-pp-nm').hidden`, 5000);
   await ev(`(()=>{const i=document.querySelector('#bt .br-pp-nm input');i.value='';i.focus();return 1})()`); await send('Input.insertText', { text: 'mmx_QQ' });
@@ -55,6 +56,9 @@ for (const sz of SIZES) {
   const N12 = JSON.parse(await ev(`JSON.stringify({ name: document.querySelector('#bt .br-pp-me i').textContent, prize: document.querySelector('#bt .br-pp-prize').textContent, box: document.querySelector('#bt .br-pp-nm').hidden })`));
   await click('#bt .br-pp-re', mob); await sleep(300); const N12b = await ev(`document.querySelector('#bt .br-pp-me i').textContent`);
   say(N12.name.includes('mmx_QQ') && N12.name !== 'mmx_QQ' && N12.box && N12b.includes('mmx_QQ') && N12b !== N12.name && /NOOO+THING/.test(N12.prize) && !/NIII|German/.test(N12.prize), `${sz} rule 12: an own name is brainrotted and stays recognisable; the prize line is English`, JSON.stringify({ ...N12, reroll: N12b }));
+  // 16 (6.11.: PLAY slid under the fold of a long window): PLAY is in sight and on top without scrolling
+  const goSeen = JSON.parse(await ev(`(()=>{const b=document.querySelector('#bt .br-pp-go'),r=b.getBoundingClientRect(),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return JSON.stringify({inView:r.top>=0&&r.bottom<=innerHeight,top:h===b||b.contains(h)})})()`));
+  say(goSeen.inView && goSeen.top, `${sz} rule 16: PLAY is in sight without scrolling`, JSON.stringify(goSeen));
   await click('#bt .br-pp-go', mob);
   const live =await waitFor(`window.__btBr.pop().live`, 12000);
   // 14 (operator 6.11.): during the run the log does not grow and a station opens no window (desktop: a mouse hovers)
@@ -69,7 +73,7 @@ for (const sz of SIZES) {
   }
   // during the minute (2.0): the arena is there, square, inside the window; aim at what is in it (never at a rug), one
   // deliberate miss in an empty corner; nothing of the look's own flies; the clock goes on; a streak fires a power itself
-  let taps = 0, foreign = 0, planned = 0, snap = { pops: 0, score: null }, missed = null, banner = false, square = null; const clk0 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`);
+  let taps = 0, foreign = 0, planned = 0, snap = { pops: 0, score: null }, missed = null, banner = false, square = null; const s = {}; const clk0 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`);
   const tEnd = Date.now() + 58000;
   while (Date.now() < tEnd) {
     const a = JSON.parse(await ev(`JSON.stringify({ aim: window.__btBr.aim(), own: [...document.querySelectorAll('#bt .br > .br-r')].filter(e=>!e.classList.contains('bit')).length, ban: !!document.querySelector('#bt .br-wban.on') })`));
@@ -82,11 +86,12 @@ for (const sz of SIZES) {
         const before = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); await tap(B.left + corners[0][0] / 1000 * B.width, B.top + corners[0][1] / 1000 * B.height, mob); await sleep(120);
         const after = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); missed = { before: before.misses, after: after.misses, combo: after.combo };
       } else {
-        const tgt = a.aim.alive.filter(c => !c[1] && c[2] > 40 && c[2] < 960 && c[3] > 40 && c[3] < 960)[0];
+        const ok = a.aim.alive.filter(c => !c[1] && c[2] > 40 && c[2] < 960 && c[3] > 40 && c[3] < 960), tgt = ok.find(c => c[5] === 'pop') || ok[0]; /* the still ones first, as a person takes the easy shots */
         if (tgt) { await tap(B.left + tgt[2] / 1000 * B.width, B.top + tgt[3] / 1000 * B.height, mob); taps++; }
       }
     }
     const now1 = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); if (now1.run) snap = now1; /* the last state while the run still goes */
+    if (!s.midShot && Date.now() > tEnd - 28000) { s.midShot = 1; await shot('daily-mid-' + sz); }
     await sleep(160);
   }
   const clk1 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`); await shot('daily-run-' + sz);
@@ -98,7 +103,7 @@ for (const sz of SIZES) {
   const done = await waitFor(`!!(window.__btBr.pop().last) && !window.__btBr.pop().run`, 20000);
   const res = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop().last)`)) || {}; await shot('daily-result-' + sz);
   const resTxt = await ev(`(document.querySelector('#bt .br-pp-c b')||{}).textContent||''`);
-  say(done && res.score === mid.score && resTxt === Number(res.score).toLocaleString('en-US') + ' ROT' && res.ranked === false && String(res.name).includes('mmx_QQ'), `${sz} rule 4: the server counts what the terminal counted`, JSON.stringify({ server: res.score, terminal: mid.score, resTxt, ranked: res.ranked, drops: res.drops }));
+  say(done && Math.round(res.score * 1e7) === mid.score && resTxt === p7(res.score) + ' ROT' && res.ranked === false && String(res.name).includes('mmx_QQ'), `${sz} rule 4: the server counts what the terminal counted`, JSON.stringify({ server: res.score, terminal: mid.score, resTxt, ranked: res.ranked, drops: res.drops }));
   // 7 (operator 6.11.): DAILY and OVERALL, the daily board for every day of the season, top 10, the prizes, the player code
   await waitFor(`!!document.querySelector('#bt .br-pp-days span') && !/…/.test(document.querySelector('#bt .br-pp-board').textContent)`, 15000);
   const B1 = JSON.parse(await ev(`(()=>{const q=s=>document.querySelector('#bt '+s);return JSON.stringify({tabs:[...document.querySelectorAll('#bt .br-pp-tabs button')].map(b=>b.textContent).join('|'),day:q('.br-pp-days span')?.textContent,back:q('[data-dd="-1"]')?.disabled,code:q('.br-pp-code')?.textContent||'',next:q('.br-pp-next')?.textContent||''})})()`));
@@ -117,16 +122,17 @@ for (const sz of SIZES) {
   const chTxt = chOpen ? await ev(`document.querySelector('#bt .br-pp-ch').textContent`) : '';
   await click('#bt .br-pp-go', mob); await waitFor(`window.__btBr.pop().live`, 12000); await sleep(4000);
   const hudTxt = await ev(`(document.querySelector('#bt .br-hud')||{}).textContent||''`); await shot('daily-ghost-' + sz);
-  say(chOpen && chTxt.includes(res.name) && chTxt.includes(Number(res.score).toLocaleString('en-US')) && /GHOST \d/.test(hudTxt), `${sz} rule 5: the challenge link opens the challenger and the ghost runs along`, JSON.stringify({ chTxt: chTxt.slice(0, 90), hudTxt }));
+  say(chOpen && chTxt.includes(res.name) && chTxt.includes(p7(res.score)) && /GHOST \d/.test(hudTxt), `${sz} rule 5: the challenge link opens the challenger and the ghost runs along`, JSON.stringify({ chTxt: chTxt.slice(0, 90), hudTxt }));
   // 9: a post's link (?pop=play) asks, then opens the game itself, no challenger
   await send('Page.navigate', { url: BASE + '/?pop=play&t=' + Date.now() }); await stay(mob);
   const playOpen = await waitFor(`!!document.querySelector('#bt .br-pp-go')`, 20000), playCh = await ev(`!!document.querySelector('#bt .br-pp-ch')`);
   say(playOpen && !playCh, `${sz} rule 9: ?pop=play opens the game right away`, JSON.stringify({ playOpen, playCh }));
-  // 11: who chose the standard terminal sees PLAY too; the click turns brainrot on and opens the game
+  // 11 (operator 6.11. later): the standard terminal stays clean — no PLAY button with ROT off (the Ecosystem app and
+  // ?pop=play still lead to the game, card04pop.mjs and rule 9)
   await ev(`localStorage.setItem('bt-br','0'); 1`); await send('Page.navigate', { url: BASE + '/?t=' + Date.now() });
-  const stdBtn = await waitFor(`(()=>{const b=document.querySelector('#bt .br-pbtn'),w=document.querySelector('#bt .bt-win');return !!b&&getComputedStyle(b).display!=='none'&&b.getBoundingClientRect().width>40&&!w.classList.contains('br-on')})()`, 30000); await sleep(1500);
-  const sb = stdBtn ? await click('#bt .br-pbtn', mob) : null, stdOpen = await waitFor(`!!document.querySelector('#bt .br-pp-go') && document.querySelector('#bt .bt-win').classList.contains('br-on')`, 15000); await shot('daily-std-' + sz);
-  say(stdBtn && !!sb && sb.top && stdOpen, `${sz} rule 11: PLAY in the standard terminal turns brainrot on and opens the game`, JSON.stringify({ stdBtn, sb, stdOpen }));
+  await waitFor(`!!window.__btBr`, 30000); await sleep(3000);
+  const std = JSON.parse(await ev(`(()=>{const b=document.querySelector('#bt .br-pbtn'),w=document.querySelector('#bt .bt-win');return JSON.stringify({on:w.classList.contains('br-on'),shown:!!b&&getComputedStyle(b).display!=='none'})})()`));
+  say(!std.on && !std.shown, `${sz} rule 11: with ROT off the standard terminal shows no PLAY button`, JSON.stringify(std));
   await ev(`window.__btBr.set(false); 1`);
   say(logs.length === 0, `${sz} rule 6: no console error, no failed terminal request`, logs.slice(0, 3).join(' | '));
 }

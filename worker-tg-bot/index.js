@@ -2761,15 +2761,15 @@ async function announceListings(env) {
 const POP_FIRST = '2026-11-06', POP_LAST = '2026-11-30';
 export function renderPopChampion(day, no, rows, players, leader) {
   const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const n = (v) => Number(v || 0).toLocaleString('en-US'), medal = ['🥇', '🥈', '🥉'];
+  const n = (v) => Number(v || 0).toLocaleString('en-US'), p7 = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }), medal = ['🥇', '🥈', '🥉']; // 6.9: scores with seven decimals
   const last = day === POP_LAST;
   return [
     `🧠 <b>BRAIN POP · DAY ${no} CHAMPION</b>`,
     '',
-    ...rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${n(r.score)} ROT`),
+    ...rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`),
     '',
     `${n(players)} player${players === 1 ? '' : 's'} · prize: <b>NOOOOOOOTHING</b> 🏆`,
-    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${n(leader.score)} ROT · wins ONE $BOBAI` : `👑 Season leader (wins ONE $BOBAI on 30 Nov): <b>${esc(leader.name)}</b> · ${n(leader.score)} ROT`) : '',
+    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT · wins the prize pool` : `👑 Season leader (wins the whole prize pool on 30 Nov): <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
     '',
     last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/?pop=play',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();

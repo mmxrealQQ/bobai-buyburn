@@ -20,7 +20,10 @@
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
 import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, FIRST_DAY, LAST_DAY } from './game.js';
-import { plan, replay, RUN_MS, V, WEAPONS } from '../temp/terminal-site/terminal/pop-engine.mjs';
+import { plan, replay, RUN_MS, V, WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-engine.mjs';
+// scores are kept in whole units of 0.0000001 (the engine's UNIT) and sent as points with seven decimals
+const P7 = (u) => Math.round(u) / UNIT;
+const rowsP = (L) => L.map((r) => ({ ...r, score: P7(r.score) }));
 // a player's private code (the overall winner shows it to claim the prize): the first 8 of sha-256 of the browser's id
 const claimOf = async pid => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('brainpop:' + pid)))].slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
 
@@ -50,16 +53,20 @@ export class PopBoard {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS best2 (day TEXT, pid TEXT, name TEXT, score INT, run TEXT, at INT, PRIMARY KEY (day, pid))`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS best2_day ON best2 (day, score DESC, at)`);
     this.sql.exec(`CREATE INDEX IF NOT EXISTS runs2_ip ON runs2 (day, ip)`);
+    // every round its own seed (operator 6.11.: "every round must have its randomness"): drawn at the start, replayed with
+    try { this.sql.exec('ALTER TABLE runs2 ADD COLUMN seed INT'); } catch {}
+    // 1.0's tables go (operator, 6.11.: "the 1.0 highscores need no archive")
+    this.sql.exec('DROP TABLE IF EXISTS runs'); this.sql.exec('DROP TABLE IF EXISTS best');
     // the game's funnel per day (GET /api/pop/stats)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS counts (day TEXT, k TEXT, n INT, PRIMARY KEY (day, k))`);
   }
   rows(q, ...a) { return [...this.sql.exec(q, ...a)]; }
   bump(day, k, by = 1) { this.sql.exec(`INSERT INTO counts (day, k, n) VALUES (?, ?, ?) ON CONFLICT (day, k) DO UPDATE SET n = n + ?`, day, String(k).slice(0, 60), by, by); }
   top(scope, day, n = 10) {
-    if (scope === 'day') return this.rows(`SELECT name, score, run FROM best2 WHERE day = ? ORDER BY score DESC, at ASC LIMIT ?`, day, n);
+    if (scope === 'day') return rowsP(this.rows(`SELECT name, score, run FROM best2 WHERE day = ? ORDER BY score DESC, at ASC LIMIT ?`, day, n));
     // overall: a player's best single run of the season (under the name they play as now)
-    return this.rows(`SELECT b.name, b.score, b.run FROM best2 b JOIN (SELECT pid, MAX(score) s FROM best2 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
-      GROUP BY b.pid ORDER BY b.score DESC, MIN(b.at) ASC LIMIT ?`, n);
+    return rowsP(this.rows(`SELECT b.name, b.score, b.run FROM best2 b JOIN (SELECT pid, MAX(score) s FROM best2 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
+      GROUP BY b.pid ORDER BY b.score DESC, MIN(b.at) ASC LIMIT ?`, n));
   }
   players(day) { return this.rows(`SELECT COUNT(*) c FROM best2 WHERE day = ?`, day)[0].c; }
   async readPool() {
@@ -108,13 +115,13 @@ export class PopBoard {
       if (req.method === 'GET' && p.startsWith('claim/')) {
         const code = p.slice(6).toUpperCase(); if (!/^[0-9A-F]{8}$/.test(code)) return J({ error: 'a code is 8 hex characters' }, 400);
         const all = this.rows('SELECT pid, MAX(score) s FROM best2 GROUP BY pid ORDER BY s DESC');
-        for (let k = 0; k < all.length; k++) if (await claimOf(all[k].pid) === code) { const n = this.rows('SELECT name FROM best2 WHERE pid = ? ORDER BY score DESC LIMIT 1', all[k].pid)[0]; return J({ code, name: n && n.name, best: all[k].s, overall_place: k + 1, players: all.length, season_over: seasonOver(today) }); }
+        for (let k = 0; k < all.length; k++) if (await claimOf(all[k].pid) === code) { const n = this.rows('SELECT name FROM best2 WHERE pid = ? ORDER BY score DESC LIMIT 1', all[k].pid)[0]; return J({ code, name: n && n.name, best: P7(all[k].s), overall_place: k + 1, players: all.length, season_over: seasonOver(today) }); }
         return J({ code, found: false });
       }
       if (req.method === 'GET' && p.startsWith('run/')) {
-        const r = this.rows(`SELECT id, day, name, score, maxc, pops, misses, rugs, timeline, inputs, ranked FROM runs2 WHERE id = ? AND finished IS NOT NULL`, p.slice(4))[0];
+        const r = this.rows(`SELECT id, day, name, score, maxc, pops, misses, rugs, timeline, inputs, ranked, seed FROM runs2 WHERE id = ? AND finished IS NOT NULL`, p.slice(4))[0];
         if (!r) return J({ error: 'no such run' }, 404);
-        return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), name: r.name, score: r.score, maxc: r.maxc, pops: r.pops, misses: r.misses, rugs: r.rugs, ranked: !!r.ranked, timeline: JSON.parse(r.timeline || '[]'), inputs: JSON.parse(r.inputs || '[]') }, 200, 'public, max-age=300');
+        return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), seed: r.seed, name: r.name, score: P7(r.score), maxc: r.maxc, pops: r.pops, misses: r.misses, rugs: r.rugs, ranked: !!r.ranked, timeline: JSON.parse(r.timeline || '[]'), inputs: JSON.parse(r.inputs || '[]') }, 200, 'public, max-age=300');
       }
       // a new name shows on the boards at once (BRAINROT IT or the dice), not only after the next run
       if (req.method === 'POST' && p === 'name') {
@@ -125,30 +132,31 @@ export class PopBoard {
       }
       if (req.method === 'POST' && p === 'start') {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
-        if (b.v !== V) return J({ error: 'Brain Pop 2.0 is here: reload the page' }, 426);
+        if (b.v !== V) return J({ error: 'Brain Pop 6.9 is here: reload the page' }, 426);
         if (!/^[0-9a-f]{16}$/.test(pid)) return J({ error: 'pid (16 hex) needed' }, 400);
         if (!name) return J({ error: 'that name is not allowed: 3 to 16 letters, digits or _, nothing rude, nothing that poses as us' }, 400);
         if (seasonOver(today) && !b.d) return J({ error: 'the season is over (30 Nov); the boards stay' }, 410);
         const d = b.d || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         if (ip && this.rows(`SELECT COUNT(*) c FROM runs2 WHERE day = ? AND ip = ?`, today, ip)[0].c >= STARTS_PER_IP_DAY) return J({ error: 'enough runs from here today, come back tomorrow (UTC)' }, 429);
         const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12), test = test0(pid); /* our own checks play for real but never reach the board */
-        this.sql.exec(`INSERT INTO runs2 (id, day, pid, name, ranked, ip, started) VALUES (?, ?, ?, ?, ?, ?, ?)`, id, d, pid, name, d === today && !test ? 1 : 0, ip, now);
+        const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 1; // the round's die
+        this.sql.exec(`INSERT INTO runs2 (id, day, pid, name, ranked, ip, started, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, d, pid, name, d === today && !test ? 1 : 0, ip, now, seed);
         // a player is the browser, the name is its latest: every board row of this player takes it at once
         if (!test) this.sql.exec('UPDATE best2 SET name = ? WHERE pid = ?', name, pid);
         if (Math.random() < 0.02) this.sql.exec(`DELETE FROM runs2 WHERE finished IS NULL AND started < ?`, now - 86400e3);
         if (!test) this.bump(today, d === today ? 'started' : 'started_rematch');
-        return J({ v: V, run: id, day: d, no: dayNo(d), ranked: d === today && !test, name });
+        return J({ v: V, run: id, day: d, no: dayNo(d), seed, ranked: d === today && !test, name });
       }
       if (req.method === 'POST' && p === 'finish') {
         const b = await req.json().catch(() => ({}));
-        if (!b.inputs) return J({ error: 'Brain Pop 2.0 is here: reload the page' }, 426);
+        if (!b.inputs) return J({ error: 'Brain Pop 6.9 is here: reload the page' }, 426);
         const r = this.rows(`SELECT * FROM runs2 WHERE id = ?`, String(b.run || ''))[0];
         if (!r) return J({ error: 'no such run' }, 404);
         if (r.finished) return J({ error: 'this run is counted already' }, 409);
         const took = now - r.started;
         if (took < RUN_MS - 3000) return J({ error: 'the minute is not over yet' }, 400);
         if (took > 15 * 60e3) return J({ error: 'too late for this run, start a new one' }, 400);
-        const c = replay(r.day, b.inputs);
+        const c = replay(r.day, b.inputs, r.seed || 0);
         if (!c) { this.bump(r.day, 'refused_run'); this.sql.exec(`UPDATE runs2 SET finished = ?, score = 0, pops = 0 WHERE id = ?`, now, r.id); return J({ error: 'not counted: the taps could not be read' }, 422); }
         this.sql.exec(`UPDATE runs2 SET finished = ?, score = ?, maxc = ?, pops = ?, misses = ?, rugs = ?, timeline = ?, inputs = ? WHERE id = ?`, now, c.score, c.maxc, c.pops, c.misses, c.rugs, JSON.stringify(c.timeline), JSON.stringify(b.inputs.slice(0, 900)), r.id);
         let best = c.score, rank = null, players = null;
@@ -161,7 +169,7 @@ export class PopBoard {
           players = this.players(r.day);
         }
         if (!test0(r.pid)) { this.bump(r.day, 'finished'); if (c.applied < b.inputs.length) this.bump(r.day, 'taps_not_applied', b.inputs.length - c.applied); }
-        return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), name: r.name, score: c.score, maxc: c.maxc, pops: c.pops, misses: c.misses, rugs: c.rugs, taps: c.taps, weapons: c.weapons, code: await claimOf(r.pid), ranked: !!r.ranked, best, rank, players, top: this.top('day', r.day) });
+        return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), seed: r.seed, name: r.name, score: P7(c.score), maxc: c.maxc, pops: c.pops, misses: c.misses, rugs: c.rugs, taps: c.taps, weapons: c.weapons, code: await claimOf(r.pid), ranked: !!r.ranked, best: P7(best), rank, players, top: this.top('day', r.day) });
       }
       return J({ error: 'not found' }, 404);
     } catch (e) { return J({ error: 'server: ' + String(e.message || e).slice(0, 120) }, 500); }

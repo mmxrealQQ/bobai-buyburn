@@ -3447,9 +3447,10 @@ function motifOf(k, now) {
 }
 // the moment the scene just played (a burn or a liquidity add), so SHARE right after it offers that one
 let lastMoment = null;
-async function shareCard() {
-  // never post a card with zeros on it: wait until the chain and the logs have answered
-  if (!S.deadA || !S.burns.length || !S.price) return logLine('SHARE', '#F0B90B', ['still reading the chain — try again in a few seconds']);
+async function shareCard(want) {
+  if (typeof want !== 'string') want = null; /* a click passes its event */
+  // never post a card with zeros on it: wait until the chain and the logs have answered (the rank card needs no chain)
+  if (want !== 'rot' && !S.deadA || !S.burns.length || !S.price) return logLine('SHARE', '#F0B90B', ['still reading the chain — try again in a few seconds']);
   const btn = $('shr'); btn.disabled = true;
   try {
     // 1) the scene this instant, copied off (the drawing buffer is only valid right after a render)
@@ -3465,7 +3466,7 @@ async function shareCard() {
     const now = Date.now(), poseNow = fig.querySelector('img.on') || fig.querySelector('img[data-p="idle"]');
     const cache = {};
     const render = (motif, fmt) => cache[motif + fmt] ||= makeCard(motif, fmt, { snap, logo, now, poseNow });
-    const pick = lastMoment && now - lastMoment.t < 120e3 ? lastMoment.kind : 'now';
+    const pick = want || (lastMoment && now - lastMoment.t < 120e3 ? lastMoment.kind : 'now');
     card = { motif: pick, fmt: portrait ? 'tall' : 'wide', render, cur: null,
       get blob() { return this.cur.blob; }, get file() { return this.cur.file; }, get text() { return this.cur.text; } };
     if (!(await pickCard(pick, card.fmt))) await pickCard('now', card.fmt);
@@ -3476,6 +3477,7 @@ async function shareCard() {
 }
 // One card: a moment in one format — 16:9 (1600×900) for X and desktop, 4:5 (1080×1350) for a phone feed.
 async function makeCard(k, fmt, { snap, logo, now, poseNow }) {
+  if (k === 'rot') return window.__btBr?.canShare() ? window.__btBr.card(fmt, { logo, pose: poseNow }) : null; /* BRAIN POP: the rank card (brainrot block) */
   const m = motifOf(k, now); if (!m) return null;
   const tall = fmt === 'tall', W2 = tall ? 1080 : 1600, H2 = tall ? 1350 : 900;
   const c = document.createElement('canvas'); c.width = W2; c.height = H2; const g = c.getContext('2d');
@@ -3575,6 +3577,9 @@ const openApp = u => window.open(u, '_blank', 'noopener');
 // the moment's own page on the server (its preview card is this moment), and the post text without links in it
 const cardUrl = () => SITE_URL + '/m/' + (card.motif || 'now');
 const bare = t => t.replace(/\s*(On-chain:\s*)?https?:\/\/\S+/g, '').trim();
+// THE RANK CARD (6.11.) has no server card behind a link (a game score is the player's own number): the picture goes to
+// the clipboard first, then the app opens with the post text — paste it in (on a phone the share sheet carries it whole)
+const rotTo = async (u, app) => { let cp = false; try { await copyImg(); cp = true; } catch { saveImg(); } openApp(u); return app + ' opened — ' + (cp ? 'the image is copied, paste it into the post (Ctrl+V)' : 'the image is saved, attach it to the post'); };
 const SHARE_TO = {
   // files + text only: handed a url as well, Telegram and others on iOS keep the link and drop the image (reported by
   // the operator 2026-09-26) — the link rides inside the text instead
@@ -3582,9 +3587,9 @@ const SHARE_TO = {
   // THE CARD RIDES ON THE LINK (2026-09-27): brainonbnb.com/m/<moment> is drawn by the server as the post's big
   // preview card, so X, Telegram and WhatsApp show it on every device with nothing to attach or paste. The text keeps
   // no link of its own: with two links in a post, X picks either one for the card (the bscscan one, too).
-  x: () => { openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())); return 'X opened — the post shows the card'; },
-  telegram: () => { openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))); return 'Telegram opened — the message shows the card'; },
-  whatsapp: () => { openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())); return 'WhatsApp opened — the message shows the card'; },
+  x: () => card.cur?.rot ? rotTo('https://x.com/intent/post?text=' + encodeURIComponent(card.text), 'X') : (openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())), 'X opened — the post shows the card'),
+  telegram: () => card.cur?.rot ? rotTo('https://t.me/share/url?url=' + encodeURIComponent(SITE_URL) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram') : (openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))), 'Telegram opened — the message shows the card'),
+  whatsapp: () => card.cur?.rot ? rotTo('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp') : (openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())), 'WhatsApp opened — the message shows the card'),
   discord: async () => { await copyImg(); return 'image copied — paste it into any Discord channel with Ctrl+V'; },
   copy: async () => { await copyImg(); return 'image copied to the clipboard'; },
   save: () => { saveImg(); return 'image saved'; },
@@ -3597,7 +3602,7 @@ function shareMenu(show) {
   const cp = !!(window.ClipboardItem && navigator.clipboard?.write);
   m.querySelector('[data-to="discord"]').hidden = !cp; m.querySelector('[data-to="copy"]').hidden = !cp;
   m.querySelectorAll('[data-fmt]').forEach(b => b.classList.toggle('on', b.dataset.fmt === card.fmt));
-  m.querySelectorAll('[data-motif]').forEach(b => { b.classList.toggle('on', b.dataset.motif === card.motif); b.hidden = (b.dataset.motif === 'burn' && !S.burns.length) || (b.dataset.motif === 'liq' && !S.liq.length); });
+  m.querySelectorAll('[data-motif]').forEach(b => { b.classList.toggle('on', b.dataset.motif === card.motif); b.hidden = (b.dataset.motif === 'burn' && !S.burns.length) || (b.dataset.motif === 'liq' && !S.liq.length) || (b.dataset.motif === 'rot' && !window.__btBr?.canShare()); });
   m.classList.toggle('tall', card.fmt === 'tall');
   if (shotUrl) URL.revokeObjectURL(shotUrl);
   m.querySelector('img').src = shotUrl = URL.createObjectURL(card.blob);
@@ -3617,7 +3622,8 @@ $('shm').addEventListener('click', async e => {
   try { const msg = await SHARE_TO[b.dataset.to](); if (msg) logLine('SHARE', '#F0B90B', [msg]); shareMenu(false); }
   catch (err) { if (err?.name !== 'AbortError') logLine('SHARE', SELLC, ['that route did not work here — try "save image"']); }
 });
-$('shr').onclick = shareCard;
+$('shr').onclick = () => shareCard();
+window.__btShare = shareCard;
 
 const cmdForm = $('cmd'), cmdIn = $('cmdIn');
 // opening the log lands on the newest lines
@@ -7445,9 +7451,11 @@ window.__btBrSeason = brSeason;
   function showHud() {
     const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
     hud.style.top = Math.max(8, b - wr.top + 8) + 'px';
-    hud.innerHTML = '<b>ROT ' + G.score.toLocaleString('en-US') + '</b>' + (combo > 1 ? '<i>x' + Math.min(combo, 10) + '</i>' : '') + '<s>' + rankOf(G.score) + '</s>';
-    hud.classList.add('on'); clearTimeout(hudT); hudT = setTimeout(() => hud.classList.remove('on'), 5000);
+    hud.innerHTML = '<b>ROT ' + G.score.toLocaleString('en-US') + '</b>' + (combo > 1 ? '<i>x' + Math.min(combo, 10) + '</i>' : '') + '<s>' + rankOf(G.score) + '</s><button type="button" class="br-shr">SHARE</button>';
+    hud.classList.add('on'); clearTimeout(hudT); hudT = setTimeout(() => hud.classList.remove('on'), 9000);
   }
+  // the chip's SHARE opens the share menu with the rank card (only the button takes a pointer, and only while it shows)
+  hud.addEventListener('click', e => { if (!e.target.closest('.br-shr') || !hud.classList.contains('on')) return; e.stopPropagation(); clearTimeout(hudT); hud.classList.remove('on'); window.__btShare?.('rot'); });
   const save = () => { try { localStorage.setItem('bt-br-game', JSON.stringify(G)); localStorage.setItem('bt-br-tut', '1'); } catch {} };
   function slam(text, x, y, big) {
     const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : '') + (big ? ' rb' : ''); t.textContent = text;
@@ -7458,7 +7466,7 @@ window.__btBrSeason = brSeason;
     const n = r.dataset.n || '', now = performance.now();
     combo = now - lastPop < 2200 ? combo + 1 : 1; lastPop = now;
     const before = rankOf(G.score), gold = r.classList.contains('gold'), pts = (PTS[n] || 5) * (gold ? 5 : 1) * Math.min(combo, 10);
-    G.score += pts; G.best = Math.max(G.best, G.score); save(); showHud();
+    G.score += pts; G.best = Math.max(G.best, G.score); G.maxc = Math.max(G.maxc || 0, Math.min(combo, 10)); save(); showHud();
     label((r.dataset.t || 'BRAIN') + ' +' + pts, cx, cy - 30);
     if (combo >= 3) slam('COMBO x' + Math.min(combo, 10) + '!', cx, cy + 40, combo >= 6);
     if (gold) { mega(); slam('GOLDEN BRAIN!', W() / 2, H() * 0.4, true); }
@@ -7690,5 +7698,68 @@ window.__btBrSeason = brSeason;
     setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight
   }
 
-  window.__btBr = { get on() { return on; }, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+  // SHARE YOUR RANK (operator, 2026-11-06: "rank and score to share, with a totally crazy picture"): a card drawn here in
+  // the browser from the look's own pictures — the brain cosmos, BOBAI on his stage with the disco ball, the creatures
+  // around him, the rank slammed in meme letters with the score under it. Same share menu as a moment (X, Telegram, the
+  // device's sheet, copy, save). The server's cards stay chain-only (owner decision 2026-09-26): a game score is the
+  // player's own number, so it travels as this picture and the post text, never as a card under our domain.
+  const imgOf = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+  async function rotCard(fmt, { logo, pose }) {
+    const tall = fmt === 'tall', W2 = tall ? 1080 : 1600, H2 = tall ? 1350 : 900, c = document.createElement('canvas'); c.width = W2; c.height = H2; const g = c.getContext('2d');
+    const IMP = 'Impact, Anton, "Arial Black", "Helvetica Neue", sans-serif', MONO = 'ui-monospace, Consolas, monospace';
+    const others = CREW.filter(x => x.n !== 'snail' && x.n !== 'washer').sort(() => Math.random() - 0.5).slice(0, 6).map(x => x.n);
+    const [sky, pod, ball, kai, snail, mini, ...cr] = await Promise.all(['sky', 'podium', 'disco', 'kaiju', 'snail', 'mini', ...others].map(n => imgOf(pic(n))));
+    const rank = rankOf(G.score), ri = RANKS.findIndex(r => r[1] === rank), nx = RANKS[ri + 1], sc = G.score.toLocaleString('en-US');
+    const draw = (im, x, y, w, rot = 0, flip = false, a = 1) => { if (!im) return; const h = w * im.naturalHeight / im.naturalWidth; g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(rot * Math.PI / 180); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h / 2, w, h); g.restore(); };
+    const meme = (t, x, y, size, maxW, fill, rot = 0, shadow = '#ff3fd8', align = 'left') => { let f = size; g.font = '400 ' + f + 'px ' + IMP; while (g.measureText(t).width > maxW && f > 24) { f -= 4; g.font = '400 ' + f + 'px ' + IMP; }
+      g.save(); g.translate(x, y); g.rotate(rot * Math.PI / 180); g.textAlign = align; g.lineJoin = 'round'; g.textBaseline = 'alphabetic';
+      g.fillStyle = shadow; g.fillText(t, f * 0.06, f * 0.06); g.lineWidth = Math.max(6, f * 0.11); g.strokeStyle = '#000'; g.strokeText(t, 0, 0);
+      if (Array.isArray(fill)) { const w = g.measureText(t).width, x0 = align === 'center' ? -w / 2 : 0, gr = g.createLinearGradient(x0, -f, x0 + w, 0); fill.forEach((cl, i) => gr.addColorStop(i / (fill.length - 1), cl)); g.fillStyle = gr; } else g.fillStyle = fill;
+      g.fillText(t, 0, 0); g.restore(); return f; };
+    // the cosmos, full bleed and loud
+    g.fillStyle = '#12051c'; g.fillRect(0, 0, W2, H2);
+    if (sky) { const s = Math.max(W2 / sky.naturalWidth, H2 / sky.naturalHeight); g.drawImage(sky, (W2 - sky.naturalWidth * s) / 2, (H2 - sky.naturalHeight * s) / 2, sky.naturalWidth * s, sky.naturalHeight * s); }
+    // a sunburst behind the rank, the colours of the look
+    const bx = tall ? W2 / 2 : W2 * 0.33, by = tall ? H2 * 0.74 : H2 * 0.5, RAYS = ['#ff3fd8', '#2ef2ff', '#ffe600', '#7dff3a'];
+    g.save(); g.globalAlpha = 0.34; for (let i = 0; i < 28; i++) { const a0 = i * Math.PI * 2 / 28; g.beginPath(); g.moveTo(bx, by); g.arc(bx, by, 1500, a0, a0 + Math.PI / 28); g.closePath(); g.fillStyle = RAYS[i % 4]; g.fill(); } g.restore();
+    const dim = g.createRadialGradient(bx, by, 40, bx, by, tall ? 620 : 760); dim.addColorStop(0, 'rgba(10,2,16,.72)'); dim.addColorStop(0.6, 'rgba(10,2,16,.42)'); dim.addColorStop(1, 'rgba(10,2,16,0)'); g.fillStyle = dim; g.fillRect(0, 0, W2, H2);
+    // the creatures around, the kaiju peeking, a rocket snail through it all
+    const spots = tall ? [[110, 300, 150, -14], [970, 270, 160, 12], [140, 640, 130, 9], [950, 650, 140, -10], [520, 165, 0, 0], [860, 930, 120, 16]]
+      : [[1520, 130, 150, 14], [1060, 120, 140, -12], [1530, 470, 130, -9], [880, 760, 0, 0], [640, 110, 120, 10], [1000, 520, 120, -14]];
+    cr.forEach((im, i) => { const [x, y, w, r] = spots[i] || [0, 0, 0, 0]; if (w) draw(im, x, y, w, r, Math.random() < 0.5); });
+    if (tall) draw(kai, W2 - 70, H2 - 150, 300, -18); else draw(kai, W2 - 90, H2 - 110, 400, -16);
+    draw(snail, tall ? 230 : 820, tall ? 180 : 70, tall ? 190 : 210, -12);
+    for (let i = 0; i < 14; i++) draw(mini, tall ? R(40, W2 - 40) : R(900, W2 - 40), tall ? R(130, 780) : R(40, H2 - 40), R(34, 70), R(-40, 40), Math.random() < 0.5, 0.9); /* never over the words */
+    // BOBAI on his stage, the ball in front
+    const pw = tall ? 560 : 560, px = tall ? W2 / 2 : 1190, py = tall ? 600 : 760, ph = pod ? pw * pod.naturalHeight / pod.naturalWidth : 0;
+    const fh = tall ? 400 : 560, fw = pose ? fh * pose.naturalWidth / pose.naturalHeight : 0, feet = py - ph * 0.2 + fh * 0.14; /* the pose pictures keep ~14 % of floor under his shoes: he stands ON the stage */
+    const glow = g.createRadialGradient(px, feet - fh * 0.5, 20, px, feet - fh * 0.5, fh * 0.75); glow.addColorStop(0, 'rgba(255,230,0,.45)'); glow.addColorStop(1, 'rgba(255,63,216,0)'); g.fillStyle = glow; g.fillRect(px - fh, feet - fh * 1.3, fh * 2, fh * 1.6);
+    if (pose) g.drawImage(pose, px - fw / 2, feet - fh, fw, fh);
+    if (pod) g.drawImage(pod, px - pw / 2, py - ph / 2, pw, ph);
+    draw(ball, px + pw * 0.003, py - ph / 2 + ph * 0.70, pw * 0.2, 8);
+    // the words: the game, the rank, the score
+    const LX = tall ? W2 / 2 : 70, al = tall ? 'center' : 'left', MW = tall ? W2 - 120 : 820;
+    if (logo) { const lx = tall ? W2 / 2 - 200 : LX, ly = tall ? 46 : 44; g.save(); g.beginPath(); g.arc(lx + 26, ly + 26, 26, 0, 7); g.clip(); g.drawImage(logo, lx, ly, 52, 52); g.restore(); }
+    g.font = '700 26px ' + MONO; g.textAlign = tall ? 'left' : 'left'; g.fillStyle = '#ffe600'; g.lineWidth = 6; g.strokeStyle = '#000'; g.lineJoin = 'round';
+    const hx = tall ? W2 / 2 - 134 : LX + 66, hy = tall ? 81 : 79; g.strokeText('$BOBAI BRAIN TERMINAL', hx, hy); g.fillText('$BOBAI BRAIN TERMINAL', hx, hy);
+    const Y = tall ? { bp: 872, my: 914, rk: 1045, sc: 1148, ch: 1180 } : { bp: 205, my: 265, rk: 410, sc: 535, ch: 580 }; meme('BRAIN POP', LX, Y.bp, tall ? 64 : 84, MW, '#ffffff', -3, '#2ef2ff', al);
+    g.font = '700 22px ' + MONO; g.textAlign = al; g.fillStyle = '#2ef2ff'; g.strokeStyle = '#000'; g.lineWidth = 6; g.strokeText('MY RANK', LX, Y.my); g.fillText('MY RANK', LX, Y.my);
+    meme(rank, LX, Y.rk, tall ? 150 : 150, MW, ['#ffe600', '#ff9a1f', '#ff3fd8'], -4, '#ff3fd8', al);
+    meme(sc + ' ROT', LX, Y.sc, tall ? 96 : 104, MW, '#7dff3a', -2, '#000', al);
+    // three chips: best combo, brains popped, the next rank
+    const chips = [(G.maxc > 1 ? 'BEST COMBO x' + G.maxc : 'COMBO UP TO x10'), pops.toLocaleString('en-US') + ' POPPED', nx ? (nx[0] - G.score).toLocaleString('en-US') + ' TO ' + nx[1] : 'TOP RANK. FULLY ROTTED'];
+    g.font = '700 ' + (tall ? 21 : 22) + 'px ' + MONO; const cw = chips.map(t => g.measureText(t).width + 36), gap = 14, tw = cw.reduce((a, b) => a + b, 0) + gap * 2;
+    let cx = tall ? (W2 - tw) / 2 : LX; const cy = Y.ch, CC = ['#ff3fd8', '#2ef2ff', '#ffe600'];
+    chips.forEach((t, i) => { g.beginPath(); g.roundRect ? g.roundRect(cx, cy, cw[i], 46, 23) : g.rect(cx, cy, cw[i], 46); g.fillStyle = 'rgba(10,4,16,.85)'; g.fill(); g.lineWidth = 3; g.strokeStyle = CC[i]; g.stroke();
+      g.fillStyle = CC[i]; g.textAlign = 'left'; g.fillText(t, cx + 18, cy + 31); cx += cw[i] + gap; });
+    // the dare and the address
+    meme('CAN YOU OUT-ROT ME?', LX, H2 - (tall ? 60 : 92), tall ? 54 : 56, tall ? MW : 760, '#2ef2ff', -2, '#ff3fd8', al);
+    g.font = '700 26px ' + MONO; g.textAlign = al; g.fillStyle = '#ffe600'; g.strokeStyle = '#000'; g.lineWidth = 6; const ay = tall ? H2 - 22 : H2 - 46; g.strokeText('brainonbnb.com · tap the creatures', LX, ay); g.fillText('brainonbnb.com · tap the creatures', LX, ay);
+    // a frame in the look's four colours
+    const fr = g.createLinearGradient(0, 0, W2, H2); RAYS.forEach((cl, i) => fr.addColorStop(i / 3, cl)); g.lineWidth = 14; g.strokeStyle = fr; g.strokeRect(7, 7, W2 - 14, H2 - 14);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png')), now = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    return { blob, file: new File([blob], 'bobai-brainpop-' + fmt + '-' + now + '.png', { type: 'image/png' }), rot: true,
+      text: 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
+  }
+  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, hud: () => showHud(), set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

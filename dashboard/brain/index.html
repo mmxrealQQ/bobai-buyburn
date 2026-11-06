@@ -246,10 +246,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793938577709">
+<link rel="stylesheet" href="brain/brain.css?v=1793944384919">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793937048">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793941463">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -319,7 +319,7 @@
     <div class="detail" id="bt-detail" aria-live="polite"></div>
     <div class="shm" id="bt-shm" role="dialog" aria-label="Share this moment">
       <div class="shh"><b>Share this moment</b><button class="shx" type="button" aria-label="Close">&times;</button></div>
-      <div class="shk" role="group" aria-label="Which moment"><button type="button" data-motif="now">NOW</button><button type="button" data-motif="burn">LAST BURN</button><button type="button" data-motif="liq">LAST LIQ</button><button type="button" data-motif="day">24 H</button><button type="button" data-motif="week">7 DAYS</button></div>
+      <div class="shk" role="group" aria-label="Which moment"><button type="button" data-motif="now">NOW</button><button type="button" data-motif="burn">LAST BURN</button><button type="button" data-motif="liq">LAST LIQ</button><button type="button" data-motif="day">24 H</button><button type="button" data-motif="week">7 DAYS</button><button type="button" data-motif="rot" hidden>MY ROT RANK</button></div>
       <div class="shf" role="group" aria-label="Image format"><button type="button" data-fmt="wide">16:9 · X / desktop</button><button type="button" data-fmt="tall">4:5 · phone feed</button></div>
       <img alt="The image you are about to share">
       <div class="shb">
@@ -1488,9 +1488,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793937048')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793941463')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793938577710" defer></script>
-<script src="brain/cards.js?v=1793938577710" defer></script>
-<script src="brain/hero.js?v=1793938577710" defer></script>
+<script src="brain/brain.js?v=1793944384920" defer></script>
+<script src="brain/cards.js?v=1793944384920" defer></script>
+<script src="brain/hero.js?v=1793944384920" defer></script>
 </body></html>

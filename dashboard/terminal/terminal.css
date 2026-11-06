@@ -1158,6 +1158,10 @@
 #bt .br-hud{position:absolute;z-index:2;left:50%;top:60px;transform:translateX(-50%) scale(.8);display:flex;gap:10px;align-items:baseline;padding:6px 14px;border-radius:999px;border:2px solid #000;background:rgba(10,4,16,.78);
   font:400 clamp(.95rem,1.8vw,1.3rem)/1 Impact,'Arial Black',sans-serif;letter-spacing:.03em;color:#7dff3a;pointer-events:none;opacity:0;transition:opacity .4s ease,transform .25s cubic-bezier(.2,1.6,.4,1);box-shadow:0 0 0 2px #ff3fd8}
 #bt .br-on .br-hud.on{opacity:1;transform:translateX(-50%) scale(1)}
+/* 6.11. (operator: "rank and score to share"): the chip's SHARE, the one part of it that takes a pointer, and only while it shows */
+#bt .br-hud .br-shr{align-self:center;margin-left:2px;padding:5px 10px;border:2px solid #000;border-radius:999px;background:#ffe600;color:#000;font:inherit;font-size:.72em;letter-spacing:.06em;cursor:pointer;pointer-events:none;box-shadow:0 0 0 2px #ff3fd8}
+#bt .br-on .br-hud.on .br-shr{pointer-events:auto}
+#bt .br-hud .br-shr:hover{background:#7dff3a}
 #bt .br-hud i{font-style:normal;color:#ffe600}
 #bt .br-hud s{text-decoration:none;color:#2ef2ff;font-size:.78em}
 #bt .br-r.gold .br-b img{filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.15) drop-shadow(0 0 8px #ffd400)}

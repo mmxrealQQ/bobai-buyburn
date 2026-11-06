@@ -36,7 +36,7 @@ const click = async (sel, mob) => { const p = JSON.parse(await ev(`(()=>{const e
 const stay = async mob => { if (await waitFor(`!!document.querySelector('#bt .br-ask-yes')`, 40000)) await click('#bt .br-ask-yes', mob); };
 const STATS0 = (await (await fetch(BASE + '/api/pop/stats')).json().catch(() => ({}))).days || {};
 for (const sz of SIZES) {
-  const mob = sz.endsWith('m'), [w, h] = sz.replace('m', '').split('x').map(Number);
+  const mob = sz.endsWith('m'), [w, h] = sz.replace('m', '').split('x').map(Number), innerW = w;
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mob });
   await send('Emulation.setTouchEmulationEnabled', { enabled: mob });
   await send('Page.navigate', { url: BASE + '/robots.txt' }); await sleep(1200);
@@ -57,21 +57,44 @@ for (const sz of SIZES) {
   say(N12.name.includes('mmx_QQ') && N12.name !== 'mmx_QQ' && N12.box && N12b.includes('mmx_QQ') && N12b !== N12.name && /NOOO+THING/.test(N12.prize) && !/NIII|German/.test(N12.prize), `${sz} rule 12: an own name is brainrotted and stays recognisable; the prize line is English`, JSON.stringify({ ...N12, reroll: N12b }));
   await click('#bt .br-pp-go', mob);
   const live =await waitFor(`window.__btBr.pop().live`, 12000);
-  // during the minute: tap what is there, look that only planned creatures fly, and that the clock goes on
-  let taps = 0, foreign = 0, planned = 0, snap = { pops: 0, score: null }; const clk0 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`);
+  // 14 (operator 6.11.): during the run the log does not grow and a station opens no window (desktop: a mouse hovers)
+  if (!mob) {
+    const box = JSON.parse(await ev(`(()=>{const t=document.querySelector('#bt .term').getBoundingClientRect(),s=[...document.querySelectorAll('#bt .br-st')].map(e=>e.getBoundingClientRect()).find(r=>r.width>20);return JSON.stringify({tx:t.left+t.width/2,ty:t.top+t.height/2,th:Math.round(t.height),sx:s?s.left+s.width/2:0,sy:s?s.top+s.height/2:0})})()`));
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.tx, y: box.ty }); await sleep(500);
+    const th2 = await ev(`Math.round(document.querySelector('#bt .term').getBoundingClientRect().height)`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.sx, y: box.sy }); await sleep(500);
+    const det = await ev(`document.querySelector('#bt-detail')?.classList.contains('on')||false`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+    say(th2 === box.th && !det, `${sz} rule 14: in the run the log keeps its size and a station opens no window`, JSON.stringify({ before: box.th, hovered: th2, detail: det }));
+  }
+  // during the minute (2.0): the arena is there, square, inside the window; aim at what is in it (never at a rug), one
+  // deliberate miss in an empty corner; nothing of the look's own flies; the clock goes on; a streak fires a power itself
+  let taps = 0, foreign = 0, planned = 0, snap = { pops: 0, score: null }, missed = null, banner = false, square = null; const clk0 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`);
   const tEnd = Date.now() + 58000;
   while (Date.now() < tEnd) {
-    const c = JSON.parse(await ev(`(()=>{const L=[...document.querySelectorAll('#bt .br > .br-r')].filter(e=>!e.classList.contains('bit'));const out={f:L.filter(e=>e.dataset.ri==null).length,p:L.length,t:null};
-      for(const e of L){if(e.dataset.ri==null||e._popped)continue;const r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;if(x<5||y<5||x>innerWidth-5||y>innerHeight-5)continue;const hit=document.elementFromPoint(x,y);if(hit&&e.contains(hit)){out.t={x,y};break}}return JSON.stringify(out)})()`));
-    foreign = Math.max(foreign, c.f); planned = Math.max(planned, c.p);
-    if (c.t) { await tap(c.t.x, c.t.y, mob); taps++; }
+    const a = JSON.parse(await ev(`JSON.stringify({ aim: window.__btBr.aim(), own: [...document.querySelectorAll('#bt .br > .br-r')].filter(e=>!e.classList.contains('bit')).length, ban: !!document.querySelector('#bt .br-wban.on') })`));
+    foreign = Math.max(foreign, a.own); banner = banner || a.ban;
+    if (a.aim) {
+      const B = a.aim.box; square = square || { w: Math.round(B.width), h: Math.round(B.height), inside: B.left >= 0 && B.right <= innerW && B.top >= 0 };
+      planned = Math.max(planned, a.aim.alive.length);
+      if (missed === null && Date.now() > tEnd - 50000) { // one miss: the emptiest corner
+        const corners = [[30, 30], [970, 30], [30, 970], [970, 970]].map(([x, y]) => [x, y, Math.min(...a.aim.alive.map(c => Math.hypot(c[2] - x, c[3] - y) - c[4] * 3), 9999)]).sort((p, q) => q[2] - p[2]);
+        const before = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); await tap(B.left + corners[0][0] / 1000 * B.width, B.top + corners[0][1] / 1000 * B.height, mob); await sleep(120);
+        const after = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); missed = { before: before.misses, after: after.misses, combo: after.combo };
+      } else {
+        const tgt = a.aim.alive.filter(c => !c[1] && c[2] > 40 && c[2] < 960 && c[3] > 40 && c[3] < 960)[0];
+        if (tgt) { await tap(B.left + tgt[2] / 1000 * B.width, B.top + tgt[3] / 1000 * B.height, mob); taps++; }
+      }
+    }
     const now1 = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); if (now1.run) snap = now1; /* the last state while the run still goes */
-    await sleep(350);
+    await sleep(160);
   }
   const clk1 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`); await shot('daily-run-' + sz);
   const cur = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)), mid = cur.run ? cur : snap;
-  say(live && planned > 0 && foreign === 0, `${sz} rule 2: a run plays only the day's creatures`, JSON.stringify({ live, planned, foreign }));
-  say(mid.pops > 0 && taps > 0 && clk0 !== clk1, `${sz} rule 3: real taps pop them, the terminal goes on`, JSON.stringify({ taps, pops: mid.pops, clk0, clk1 }));
+  say(live && planned > 0 && foreign === 0 && square && Math.abs(square.w - square.h) <= 2 && square.w >= 200 && square.inside, `${sz} rule 2: a run plays the day's creatures in a square arena, nothing else flies`, JSON.stringify({ live, planned, foreign, square }));
+  say(mid.pops > 10 && taps > 0 && clk0 !== clk1, `${sz} rule 3: aimed taps pop them, the terminal goes on`, JSON.stringify({ taps, pops: mid.pops, misses: mid.misses, clk0, clk1 }));
+  say(!!missed && missed.after === missed.before + 1 && missed.combo === 0, `${sz} rule 3b: a tap on nothing is a miss and breaks the streak`, JSON.stringify(missed));
+  say(mid.powers >= 1 && banner, `${sz} rule 3c: a clean streak fires a super power by itself (with its banner)`, JSON.stringify({ powers: mid.powers, banner }));
   const done = await waitFor(`!!(window.__btBr.pop().last) && !window.__btBr.pop().run`, 20000);
   const res = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop().last)`)) || {}; await shot('daily-result-' + sz);
   const resTxt = await ev(`(document.querySelector('#bt .br-pp-c b')||{}).textContent||''`);
@@ -79,6 +102,10 @@ for (const sz of SIZES) {
   // 7 (operator 6.11.): DAILY and OVERALL, the daily board for every day of the season, top 10, the prizes, the player code
   await waitFor(`!!document.querySelector('#bt .br-pp-days span') && !/…/.test(document.querySelector('#bt .br-pp-board').textContent)`, 15000);
   const B1 = JSON.parse(await ev(`(()=>{const q=s=>document.querySelector('#bt '+s);return JSON.stringify({tabs:[...document.querySelectorAll('#bt .br-pp-tabs button')].map(b=>b.textContent).join('|'),day:q('.br-pp-days span')?.textContent,back:q('[data-dd="-1"]')?.disabled,code:q('.br-pp-code')?.textContent||'',next:q('.br-pp-next')?.textContent||''})})()`));
+  // 13 (6.11., the ecosystem): the result names the brain behind the game, with the counted buy link (buy:pop)
+  const buyHref = await ev(`document.querySelector('#bt .br-pp-bob a')?.getAttribute('href')||''`);
+  const buyRes = buyHref ? await fetch(BASE + buyHref, { redirect: 'manual', headers: { 'sec-purpose': 'prefetch' } }) : null; /* a prefetch is never counted as a click */
+  say(buyHref === '/buy?from=pop' && buyRes && buyRes.status === 302 && /pancakeswap\.finance\/swap\?outputCurrency=0x245c/.test(buyRes.headers.get('location') || ''), `${sz} rule 13: the result shows $BOBAI with the counted buy link`, JSON.stringify({ buyHref, status: buyRes && buyRes.status, to: buyRes && (buyRes.headers.get('location') || '').slice(0, 60) }));
   // 8 (6.11. later): a reason to come back — the next daily counted down
   say(/^(Next daily in \d+ h \d+ min\.|Last day of the season\.) New creatures/.test(B1.next), `${sz} rule 8: the result counts down to the next daily`, B1.next);
   await click('#bt [data-sc="all"]', mob); await waitFor(`/SEASON/.test(document.querySelector('#bt .br-pp-days')?.textContent||'') && !/…/.test(document.querySelector('#bt .br-pp-board')?.textContent||'…')`, 15000);

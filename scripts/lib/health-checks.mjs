@@ -264,7 +264,9 @@ export const KEEP_808_WALLETS = {
 // AT LEAST, FOR HIS OWN WALLET (operator, 2026-10-10: "I added BOBAI to c3c — that is normal and must not be an error"):
 // the operator's wallet is his own; it may hold more than 808.41 whenever he likes, only below it is red. The other four
 // are bots' wallets whose code keeps exactly 808.41.
-export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C']);
+// THE GIGGLE POT IS BRAIN POP'S PRIZE POOL TOO (operator, 2026-11-06: "people can donate $BOBAI to the prize pool, use the
+// giggle/prize-pool wallet"): donations raise it, so it holds AT LEAST 808.41; what lies above is the pool (worker-pop /pool)
+export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C', '0x5E4102520A71B2AA18a1208330d4848dea4BD105']);
 // THREE WALLETS KEEP 80,841 BOBAI (operator, 2026-10-20: "these three at 80841, fixed"): topped up once by the NFT relayer
 // (temp/topup-80841.mjs, buy 0x945dbd97…). x402 income is paid in $BOBAI too and keeps all of it, so it holds AT LEAST.
 export const KEEP_80841_WALLETS = {

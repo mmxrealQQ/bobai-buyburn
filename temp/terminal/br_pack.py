@@ -15,7 +15,7 @@ os.makedirs(OUT, exist_ok=True)
 SIZES = {'octo': 300, 'bulb': 260, 'astro': 280, 'snail': 300, 'fridge': 280, 'sock': 260, 'shrimp': 260, 'kaiju': 520,
          'eyeball': 260, 'duck': 260, 'banana': 280, 'pigeon': 280, 'cactus': 260, 'pizza': 260, 'washer': 280,
          'cloud': 300, 'dj': 280, 'mini': 140, 'podium': 640,
-         'stburn': 230, 'stbob': 230, 'stbobs': 230, 'stliq': 230, 'stdefi': 230, 'stgiggle': 230, 'stcreator': 230, 'sttrade': 230}
+         'stburn': 230, 'stbob': 230, 'stbobs': 230, 'stliq': 230, 'stdefi': 230, 'stgiggle': 230, 'stcreator': 230, 'sttrade': 230, 'rug': 230}
 newest = lambda pat: (sorted(glob.glob(os.path.join(SRC, pat))) or [None])[-1]
 
 def clean(path):

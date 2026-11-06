@@ -2752,6 +2752,48 @@ async function announceListings(env) {
   }
 }
 
+// ==================== BRAIN POP CHAMPION (/api/pop, daily) ====================
+// Operator, 2026-11-06: "make the telegram post every day". Each day of the Brain Pop season (6 to 30 Nov) the game's
+// daily winner, posted once into the public group shortly after 00:00 UTC: the day's top 3, how many played, the prize
+// (nothing — the operator's joke), the season leader who is on course for the ONE $BOBAI, and the link to play today.
+// The board is the bobai-pop worker's (brainonbnb.com/api/pop/top); names there are random or the player's own,
+// brainrotted, letters/digits/_ only, so nothing in them can break the HTML. A day nobody played posts nothing.
+const POP_FIRST = '2026-11-06', POP_LAST = '2026-11-30';
+export function renderPopChampion(day, no, rows, players, leader) {
+  const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const n = (v) => Number(v || 0).toLocaleString('en-US'), medal = ['🥇', '🥈', '🥉'];
+  const last = day === POP_LAST;
+  return [
+    `🧠 <b>BRAIN POP · DAY ${no} CHAMPION</b>`,
+    '',
+    ...rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${n(r.score)} ROT`),
+    '',
+    `${n(players)} player${players === 1 ? '' : 's'} · prize: <b>NOOOOOOOTHING</b> 🏆`,
+    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${n(leader.score)} ROT · wins ONE $BOBAI` : `👑 Season leader (wins ONE $BOBAI on 30 Nov): <b>${esc(leader.name)}</b> · ${n(leader.score)} ROT`) : '',
+    '',
+    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/?pop=play',
+  ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
+}
+async function popChampionText(day) {
+  const get = (q) => fetch('https://brainonbnb.com/api/pop/top?' + q, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null));
+  const [d, all] = await Promise.all([get('scope=day&d=' + day), get('scope=all')]);
+  if (!d || !Array.isArray(d.rows)) return undefined; // the board did not answer: try again at the next tick
+  if (!d.rows.length) return null;
+  return renderPopChampion(day, d.no, d.rows, d.players, all && all.rows && all.rows[0]);
+}
+async function postPopChampion(env, tick) {
+  const day = new Date(Date.UTC(tick.getUTCFullYear(), tick.getUTCMonth(), tick.getUTCDate()) - 86400e3).toISOString().slice(0, 10);
+  if (day < POP_FIRST || day > POP_LAST) return;
+  const flag = 'pop_champ:' + day;
+  if (await env.KV.get(flag)) return;
+  const text = await popChampionText(day);
+  if (text === undefined) return;
+  await env.KV.put(flag, text ? 'sent' : 'nobody', { expirationTtl: 3 * 86400 }); // once, also when nobody played
+  if (!text) return;
+  const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
+  if (!sent?.ok) console.error('[POP CHAMPION] Telegram refused ' + day, JSON.stringify(sent));
+}
+
 // ==================== GIGGLE ACADEMY POT (/giggle) ====================
 
 // The pot's windows — the same instants the buyback worker switches on
@@ -4007,6 +4049,13 @@ export default {
     // only aggregates + top movers from the same KV event log that powers
     // /whales24h — no admin data, no secrets. Events are on-chain-derived
     // (BOBAI Transfer logs, scanned every minute by the cron).
+    // the Brain Pop champion post as it would go out (nothing is sent): /pop-champion?d=YYYY-MM-DD
+    if (url.pathname === '/pop-champion' && request.method === 'GET') {
+      const d = url.searchParams.get('d') || '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Response('d=YYYY-MM-DD', { status: 400 });
+      const text = await popChampionText(d);
+      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {
         const [events, trackedW, contracts] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env), loadTrackedContracts(env)]);
@@ -4433,6 +4482,8 @@ export default {
       // A NEW AGENT ON BRAIN PLAZA, ANNOUNCED ONCE (operator, 2026-10-12: the listing includes an announcement)
       try { await announceListings(env); }
       catch (e) { console.error('[LISTING ANNOUNCE ERROR]', e.message || e); }
+      // BRAIN POP: yesterday's champion, once, in the first hour of the UTC day (00:00-00:50 ticks; KV flag)
+      if (nominal.getUTCHours() === 0) { try { await postPopChampion(env, nominal); } catch (e) { console.error('[POP CHAMPION ERROR]', e.message || e); } }
     }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===

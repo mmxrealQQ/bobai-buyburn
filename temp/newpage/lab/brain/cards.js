@@ -281,6 +281,7 @@
     '/defi': ['https://agent.brainonbnb.com/lp/portfolio', (j) => j?.pool && typeof j.pool.in_range === 'boolean' ? `CAKE/BNB ${j.pool.in_range ? 'in range' : 'out of range'} · ±${j.pool.width_pct}%` : null],
     '/nft/': ['/api/nft-drop', (j) => j?.total?.minted != null ? `${j.total.minted.toLocaleString('en-US')} of ${j.total.cap.toLocaleString('en-US')} minted` : null],
     '/board': ['https://agent.brainonbnb.com/board?limit=1', (j) => j?.total > 0 ? `${j.total} threads · ${j.open} open · anyone answers` : null],
+    '/': ['/api/pop/top?scope=day', (j) => j?.rows ? (j.rows[0] ? `#1 today ${j.rows[0].name} · ${Number(j.rows[0].score).toLocaleString('en-US')} ROT · ${j.players} playing` : 'Daily top 10 · nobody yet today, be first') : null],
     '/services': ['https://agent.brainonbnb.com/stats', (j) => j?.asked?.total ? `${cmp(j.asked.total)} calls by agents answered` : null],
   };
   function live04(el, cards) {
@@ -306,18 +307,25 @@
       a.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse' || !l) return; back = setTimeout(() => { l.textContent = l.dataset.base; l.classList.remove('app-fact'); }, 400); });
     });
   }
+  // BRAIN POP's logo plays (6.11.): the terminal on this page opens the game itself; elsewhere the game's own link
+  document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('.cv-app[data-pop]'); if (!a) return; e.preventDefault(); e.stopPropagation();
+    // the terminal may still be loading: wait for it up to 4 s, then open the game in place; without it, the game's own link
+    let n = 0; const go = () => { const B = window.__btBr; if (B && B.popOpen) { const was = B.on; if (!was) B.set(true); document.getElementById('bt')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => B.popOpen(), was ? 300 : 1000); }
+      else if (++n < 40) setTimeout(go, 200); else location.href = '/?pop=play'; }; go(); }, true);
   window.__card04 = { state: () => $$('[data-open="w04"] .cv-app').map((a) => ({ n: a.textContent.trim(), live: a.dataset.live, fact: a.dataset.fact })) };
 
   // 04 ECOSYSTEM: the apps inside, as their own icons
   function draw04() {
     const el = viz('04'); if (!el || el.dataset.done) return;
     // the apps only: the three "for every agent" cards under them (2026-10-21) are services of BOBAI's, not apps
+    // an app with a season (Brain Pop, data-until) leaves the card and the window when its time is over
+    $$('#w04 .ec[data-until]').forEach((c) => { if (Date.now() >= Date.parse(c.dataset.until)) c.remove(); });
     const cards = $$('#w04 .ec').filter((c) => !c.closest('.ec-every')); if (!cards.length) return;
     // with their names (2026-09-28): eight bare 26 px icons left the biggest card half empty and said nothing
     const SHORT = { 'NFT Buy Drops': 'NFT Drops', 'Pool Scanner': 'Scanner', 'Agent Services': 'Services', 'Burn & Add Liq': 'Burn & Liq', "Worldcup '26": 'Worldcup' };
     const nm = (c) => { const t = (c.querySelector('h3')?.textContent || '').trim(); const d = document.createElement('i'); d.textContent = SHORT[t] || t; return d.innerHTML; };
     // a logo opens its own page window (data-open="page:…", handled by brain.js); a page off this site has no door
-    const door = (c) => { const u = new URL(c.getAttribute('href') || '', location.origin); return u.origin === location.origin ? ` data-open="page:${u.pathname}${u.search}" title="Open ${nm(c)}"` : ''; };
+    const door = (c) => { const u = new URL(c.getAttribute('href') || '', location.origin); if (c.hasAttribute('data-pop')) return ' data-pop role="link" tabindex="0" title="Play Brain Pop"'; return u.origin === location.origin ? ` data-open="page:${u.pathname}${u.search}" title="Open ${nm(c)}"` : ''; };
     el.innerHTML = `<div class="cv-icons">${cards.slice(0, 8).map((c) => `<span class="cv-app"${door(c)}>${c.querySelector('svg')?.outerHTML || c.querySelector('img')?.outerHTML || ''}<em>${nm(c)}</em></span>`).join('')}</div>`;
     const v = $('[data-open="w04"] .bw-v'); if (v) v.textContent = cards.length + ' apps & tools';
     el.dataset.done = 1; live04(el, cards);

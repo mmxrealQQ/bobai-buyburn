@@ -65,6 +65,13 @@ for (const sz of SIZES) {
   say(s17.cos.includes('burnB:stbobs') && !s17.cos.some(c => c.endsWith(':stbob')), `${sz} rule 18: $BOB is the stick-figure builder`, s17.cos.join(' '));
   // 18b (operator 6.11.): the trades have their own cashier; the washing machine stays in the terminal, with the crew
   const crew = JSON.parse(await ev(`JSON.stringify(window.__btBr.crew || [])`));
+  // 18c (operator 6.11.: "the mouse on the cashier opens no trades window, on the others it does"): a mouse on the
+  // cashier's picture opens the TRADES window, as on every station
+  if (!mob) {
+    const cb = JSON.parse(await ev(`(()=>{const L=[...document.querySelectorAll('#bt .br-st')];const e=L.find(x=>/sttrade/.test(x.querySelector('img')?.src||''));if(!e)return 'null';const r=e.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height*0.35})})()`));
+    let det = 'no cashier'; if (cb) { await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: cb.x, y: cb.y }); await sleep(700); det = await ev(`(()=>{const d=document.querySelector('#bt-detail');return d&&d.classList.contains('on')?d.textContent.slice(0,40):'closed'})()`); await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 }); }
+    say(det !== 'closed' && det !== 'no cashier', `${sz} rule 18c: a mouse on the cashier opens the trades window`, det);
+  }
   say(s17.cos.includes('src:sttrade') && crew.includes('washer'), `${sz} rule 18b: the trades' cashier at the station, the washing machine still in the crew`, s17.cos.join(' ') + ' · crew ' + crew.length);
   say(s17.cover.length === 0, sz + ' rule 19b: no station creature stands on the disco ball (it steps aside of the ring)', s17.cover.join(' '));
   say(s17.ball && s17.last, `${sz} rule 19: the disco ball is in sight, over every costume`, JSON.stringify({ ball: s17.ball, last: s17.last }));

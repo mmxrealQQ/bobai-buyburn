@@ -246,10 +246,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1793955376264">
+<link rel="stylesheet" href="brain/brain.css?v=1793961576602">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1793954398">
+<link rel="stylesheet" href="terminal/terminal.css?v=1793960562">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -938,6 +938,13 @@
         <span class="ec-live" data-eclive="nft">Capped at 1,925</span>
         <div class="ec-foot"><span class="ec-go">Open <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
+      <!-- BRAIN POP (operator, 2026-11-06: the daily game, then "the ecosystem, number one"): in the terminal's brainrot season only -->
+      <a class="ec fi" href="/?pop=play" data-pop data-until="2026-12-01T00:00:00Z">
+        <div class="ec-top"><img src="terminal/br/mini.webp" width="96" height="96" alt="Brain Pop logo" loading="lazy" decoding="async"><h3>Brain Pop</h3></div>
+        <p>60 seconds, the same creatures for everyone. A daily top 10 until 30 Nov.</p>
+        <span class="ec-live" data-eclive="pop">Daily winner gets nothing</span>
+        <div class="ec-foot"><span class="ec-go">Play <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
     </div>
     <p class="ec-more fi"><span>Also built here</span>
       <a class="ec-also" href="brainscreener/" title="13 anonymous self-tests, free"><span class="ec-top"><img src="ico-brainscreener.png" alt="" loading="lazy" decoding="async"></span>brainScreener</a>
@@ -1488,9 +1495,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1793954398')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1793960562')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1793955376265" defer></script>
-<script src="brain/cards.js?v=1793955376265" defer></script>
-<script src="brain/hero.js?v=1793955376265" defer></script>
+<script src="brain/brain.js?v=1793961576603" defer></script>
+<script src="brain/cards.js?v=1793961576603" defer></script>
+<script src="brain/hero.js?v=1793961576603" defer></script>
 </body></html>

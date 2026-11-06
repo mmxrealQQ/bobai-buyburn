@@ -48,6 +48,8 @@ const PROPS = {
   stdefi: `"Contadino Robotico": a small round chrome robot farmer with a glass dome head that holds a pink brain, a straw hat on the dome, watering a little glowing green plant whose stem zigzags upward like a rising price line, front view.`,
   stgiggle: `"Pentola Ridarella": a chubby colorful candy pot overflowing with wrapped sweets, its lid is a pink brain lifted up, the pot laughing so hard with tears of joy and a huge open mouth, tiny legs kicking, front view.`,
   stcreator: `"Pittore Cervellone": a pink brain creature wearing a red beret and a striped shirt, holding a paint palette and a brush, splashes of bright paint on it, proud artist grin, front view.`,
+  // BRAIN POP 2.0's trap (operator, 2026-11-06: "logic: things you must NOT tap"): the rug pull, never to be tapped
+  rug: `"Candelone Tappetaro": an evil bright RED candlestick creature (a trading chart candle with a long wick on top and below), with a sly villain grin, narrow glowing eyes and thin black eyebrows, holding the corner of a small persian rug in both hands about to yank it away, front view, menacing but funny.`,
   // the TRADES station gets its own creature too (operator, 2026-11-06: "the washing machine is great, it stays in the terminal,
   // but make a character for the trades like the other six"): every buy and sell pays 3 % at its till
   sttrade: `"Cassiere Cervellone": a chubby pink brain creature as a cheeky shop cashier, wearing a green see-through bank visor cap and arm garters, standing behind a tiny shiny retro cash register, one hand slamming its big key, a long paper receipt curling out that shows a big "3%", two gold coins and one green and one red candle-stick hopping on the counter, huge happy greedy eyes, front view.`,

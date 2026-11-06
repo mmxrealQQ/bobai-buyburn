@@ -1194,6 +1194,12 @@
 #bt .br-pp-top li:first-child b{color:#ffe600}
 #bt .br-pp-top li.me{background:rgba(125,255,58,.14);border-radius:6px;color:#7dff3a}
 #bt .br-pp-next{color:#2ef2ff}
+/* during a Brain Pop run (6.11., operator: "the brain.log must not grow during the game, no windows popping up"): the
+ * log, the labels and the bots' names take no pointer, so nothing grows or opens; the chain's alerts still come */
+#bt .br-run .term,#bt .br-run .lab,#bt .br-run #bt-labs,#bt .br-run .bg{pointer-events:none}
+#bt .br-pp-bob{margin:8px 0 0;padding:8px 10px;border-radius:10px;border:1px solid rgba(240,185,11,.45);background:rgba(240,185,11,.08);font-size:.78rem;color:#e9e2d2}
+#bt .br-pp-bob b{color:#f0b90b}
+#bt .br-pp-bob a{display:inline-block;margin-top:4px;padding:4px 10px;border-radius:8px;background:#f0b90b;color:#120e04;font-weight:700;text-decoration:none;white-space:nowrap}
 #bt .br-pp-own{margin-left:4px;padding:3px 8px;border:1px solid #ff3fd8;border-radius:8px;background:transparent;color:#ff3fd8;font:600 .75rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
 #bt .br-pp-nm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-2px 0 8px}
 #bt .br-pp-nm[hidden]{display:none}

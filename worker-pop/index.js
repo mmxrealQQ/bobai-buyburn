@@ -20,8 +20,9 @@
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
 import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, FIRST_DAY, LAST_DAY } from './game.js';
-// BOBAI DEFENDER (6.11., operator: 'play IN the terminal, much better, not click-click'): the engine is now pop-defender.mjs
-import { plan, replay, RUN_MS, V, STATIONS as WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-defender.mjs';
+// 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
+// pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
+import { plan, replay, RUN_MS, V, WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-engine.mjs';
 // scores are kept in whole units of 0.0000001 (the engine's UNIT) and sent as points with seven decimals
 const P7 = (u) => Math.round(u) / UNIT;
 const rowsP = (L) => L.map((r) => ({ ...r, score: P7(r.score) }));
@@ -58,7 +59,7 @@ export class PopBoard {
     try { this.sql.exec('ALTER TABLE runs3 ADD COLUMN seed INT'); } catch {}
     // 1.0's tables go (operator, 6.11.: "the 1.0 highscores need no archive")
     this.sql.exec('DROP TABLE IF EXISTS runs'); this.sql.exec('DROP TABLE IF EXISTS best');
-    // the tap arena's tables go too: Defender's scores are another game (the boards began again with it)
+    // the first 6.9 tables go too: with the super combos and helpers the scores are new (operator: 'highscore at 0')
     this.sql.exec('DROP TABLE IF EXISTS runs2'); this.sql.exec('DROP TABLE IF EXISTS best2');
     // the game's funnel per day (GET /api/pop/stats)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS counts (day TEXT, k TEXT, n INT, PRIMARY KEY (day, k))`);
@@ -161,7 +162,7 @@ export class PopBoard {
         if (took > 15 * 60e3) return J({ error: 'too late for this run, start a new one' }, 400);
         const c = replay(r.day, b.inputs, r.seed || 0);
         if (!c) { this.bump(r.day, 'refused_run'); this.sql.exec(`UPDATE runs3 SET finished = ?, score = 0, pops = 0 WHERE id = ?`, now, r.id); return J({ error: 'not counted: the taps could not be read' }, 422); }
-        this.sql.exec(`UPDATE runs3 SET finished = ?, score = ?, maxc = ?, pops = ?, misses = ?, rugs = ?, timeline = ?, inputs = ? WHERE id = ?`, now, c.score, c.maxc, c.pops, c.misses, c.rugs, JSON.stringify(c.timeline), JSON.stringify(b.inputs.slice(0, 400)), r.id);
+        this.sql.exec(`UPDATE runs3 SET finished = ?, score = ?, maxc = ?, pops = ?, misses = ?, rugs = ?, timeline = ?, inputs = ? WHERE id = ?`, now, c.score, c.maxc, c.pops, c.misses, c.rugs, JSON.stringify(c.timeline), JSON.stringify(b.inputs.slice(0, 900)), r.id);
         let best = c.score, rank = null, players = null;
         if (r.ranked) {
           const old = this.rows(`SELECT score FROM best3 WHERE day = ? AND pid = ?`, r.day, r.pid)[0];

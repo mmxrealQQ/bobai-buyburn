@@ -24,7 +24,7 @@ export const STATIONS = [
   { k: 'creator', name: 'CREATOR', pic: 'stcreator', x: 750, y: 800, say: 'RUGS PAINTED GOLD: SHOOT THEM' },
   { k: 'trades', name: 'TRADES', pic: 'sttrade', x: 500, y: 890, say: 'CASH BONUS: STREAK x 2,500' },
 ];
-export const ST_R = 46, ST_HP = 3, SHOT_R = 11, MISS_COST = 1500, KEEP_PTS = 5000, MAX_SHOTS = 3, COOLDOWN = 350, BOUNCES = 2, SHOT_LIFE = 2400;
+export const ST_R = 46, ST_HP = 3, SHOT_R = 20, MISS_COST = 500, KEEP_PTS = 5000, MAX_SHOTS = 4, COOLDOWN = 250, BOUNCES = 2, SHOT_LIFE = 2400;
 export const SPRITES = ['octo', 'bulb', 'astro', 'fridge', 'sock', 'shrimp', 'eyeball', 'duck', 'banana', 'pigeon', 'cactus', 'pizza', 'washer', 'dj'];
 export const fmt = (u) => (u / UNIT).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
 export const multOf = (combo) => Math.min(10, 1 + Math.floor(combo / 4));
@@ -36,9 +36,9 @@ const R = (r, a, b) => Math.round(a + r() * (b - a));
 // comes from, which station it goes for, its zigzag and its look. Every round new, every round equally hard.
 export function plan(day, seed = 0) {
   const r = rng('defender:' + day), q = rng('defender:' + day + ':' + (seed >>> 0)), out = [];
-  for (let t = 1500; t < 56000;) {
-    const k = t / 56000, roll = r(), rug = t > 8000 && roll < 0.12, gold = !rug && roll > 0.93, fast = !rug && !gold && t > 10000 && r() < 0.18;
-    const e = { n: rug ? 'rug' : SPRITES[Math.floor(q() * SPRITES.length)], rug, gold, at: Math.round(t), sp: R(r, 55 + 60 * k, 80 + 75 * k) * (fast ? 1.8 : 1), hp: 1, r: fast ? 30 : R(r, 34, 44), pts: fast ? 9 : 5 };
+  for (let t = 2000; t < 56000;) {
+    const k = t / 56000, warm = t < 15000, roll = r(), rug = t > 12000 && roll < 0.1, gold = !rug && roll > 0.92, fast = !rug && !gold && t > 18000 && r() < 0.14;
+    const e = { n: rug ? 'rug' : SPRITES[Math.floor(q() * SPRITES.length)], rug, gold, at: Math.round(t), sp: R(r, 38 + 42 * k, 58 + 52 * k) * (fast ? 1.7 : 1) * (warm ? 0.8 : 1), hp: 1, r: fast ? 38 : R(r, 42, 52), pts: fast ? 9 : 5 };
     // where it comes from: a point on the edge (the round's), what it goes for (a station or BOBAI; a rug crosses to the other side)
     const side = Math.floor(q() * 4), a1 = R(q, 60, 940); [e.x0, e.y0] = side === 0 ? [a1, -40] : side === 1 ? [1040, a1] : side === 2 ? [a1, 1040] : [-40, a1];
     e.goal = rug ? -1 : Math.floor(q() * 8); // 0..6 a station, 7 BOBAI
@@ -47,10 +47,10 @@ export function plan(day, seed = 0) {
     if (rug) { const band = R(q, 50, 190), far = q() < 0.5; if (side === 0 || side === 2) { e.x0 = side === 0 ? -40 : 1040; e.y0 = far ? 1000 - band : band; e.tx = 1040 - e.x0 + 0; e.ty = e.y0; e.tx = side === 0 ? 1040 : -40; } else { e.y0 = side === 1 ? -40 : 1040; e.x0 = far ? 1000 - band : band; e.ty = side === 1 ? 1040 : -40; e.tx = e.x0; } e.zig = Math.min(e.zig, 25); }
     e.zig = R(q, 0, 70); e.per = R(q, 140, 260);
     out.push(e);
-    t += (1150 - 700 * k) * (0.7 + 0.6 * r());
+    t += (warm ? 1700 : 1400 - 650 * k) * (0.7 + 0.6 * r());
   }
-  for (const at of [16000, 32000, 47000]) { const side = Math.floor(q() * 4), a1 = R(q, 100, 900); const [x0, y0] = side === 0 ? [a1, -40] : side === 1 ? [1040, a1] : side === 2 ? [a1, 1040] : [-40, a1]; out.push({ n: 'snail', rug: false, gold: true, at, sp: 230, hp: 1, r: 34, pts: 25, x0, y0, goal: 7, zig: 40, per: 120 }); }
-  { const side = Math.floor(q() * 2); out.push({ n: 'kaiju', rug: false, gold: false, at: 38000, sp: 34, hp: 12, r: 95, pts: 150, x0: side ? 1080 : -80, y0: R(q, 300, 700), goal: 7, zig: 0, per: 200 }); }
+  for (const at of [16000, 32000, 47000]) { const side = Math.floor(q() * 4), a1 = R(q, 100, 900); const [x0, y0] = side === 0 ? [a1, -40] : side === 1 ? [1040, a1] : side === 2 ? [a1, 1040] : [-40, a1]; out.push({ n: 'snail', rug: false, gold: true, at, sp: 170, hp: 1, r: 40, pts: 25, x0, y0, goal: 7, zig: 40, per: 120 }); }
+  { const side = Math.floor(q() * 2); out.push({ n: 'kaiju', rug: false, gold: false, at: 38000, sp: 28, hp: 8, r: 105, pts: 150, x0: side ? 1080 : -80, y0: R(q, 300, 700), goal: 7, zig: 0, per: 200 }); }
   out.sort((a, b) => a.at - b.at);
   return out.map((e, i) => ({ i, ...e }));
 }
@@ -70,7 +70,7 @@ export function createRun(P) {
   }
   function pop(e, b, t) {
     e.dead = true;
-    if (e.rug && !(t < S.creator)) { S.rugs++; S.combo = 0; addPts(-2500 * UNIT, t); S.ev.push(['rug', e.i, t, -2500 * UNIT, e.x, e.y]); return; }
+    if (e.rug && !(t < S.creator)) { S.rugs++; S.combo = 0; addPts(-1500 * UNIT, t); S.ev.push(['rug', e.i, t, -1500 * UNIT, e.x, e.y]); return; }
     S.combo++; S.maxc = Math.max(S.maxc, S.combo); S.hits++; if (b) b.hit = true;
     // long shots, bank shots and quick kills pay more — all without steps, so no two scores are alike and none is perfect
     const far = b ? Math.min(1.8, 0.7 + b.dist / 900) : 1, bank = b ? 1 + 0.5 * b.bounce : 1, fresh = 1 + 400 / (t - e.at + 400);
@@ -99,7 +99,7 @@ export function createRun(P) {
       const z = e.zig * tri(e.went / e.per); e.x = e.bx - dy / L * z; e.y = e.by + dx / L * z;
       if (Math.sqrt((g.x - e.bx) * (g.x - e.bx) + (g.y - e.by) * (g.y - e.by)) <= (g.r || 0) + e.r * 0.6) {
         e.dead = true; if (e.rug) continue;
-        if (g === BOBAI) { S.combo = 0; addPts(-2000 * UNIT, t); S.ev.push(['bobai', e.i, t, -2000 * UNIT]); }
+        if (g === BOBAI) { S.combo = 0; addPts(-1000 * UNIT, t); S.ev.push(['bobai', e.i, t, -1000 * UNIT]); }
         else { g.hp--; S.ev.push(['station', STATIONS.indexOf(STATIONS.find((s) => s.k === g.k)), t, g.hp]); if (g.hp === 0) { S.lost++; S.ev.push(['down', STATIONS.findIndex((s) => s.k === g.k), t]); } }
       }
     }

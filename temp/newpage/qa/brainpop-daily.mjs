@@ -46,11 +46,11 @@ for (const sz of SIZES) {
   await waitFor(`!!document.querySelector('#bt .br-pbtn') && getComputedStyle(document.querySelector('#bt .br-pbtn')).display !== 'none'`, 20000); await sleep(2500);
   const b1 = await click('#bt .br-pbtn', mob);
   const opened = await waitFor(`!!document.querySelector('#bt .br-pp-go')`, 20000);
-  const P1 = opened ? JSON.parse(await ev(`(()=>{const c=document.querySelector('#bt .br-pp-c');return JSON.stringify({head:c.querySelector('b').textContent,name:(c.querySelector('.br-pp-me i')||{}).textContent||''})})()`)) : {};
+  const P1 = opened ? JSON.parse(await ev(`(()=>{const c=document.querySelector('#bt .br-pp-c');return JSON.stringify({head:c.querySelector('b').textContent,name:(c.querySelector('.br-pp-me i')||{}).textContent||'',box:!!c.querySelector('.br-pp-nm')&&!c.querySelector('.br-pp-nm').hidden})})()`)) : {};
   await shot('daily-intro-' + sz);
-  say(!!b1 && b1.top && opened && /^BRAIN POP 6\.9 · DAY \d+$/.test(P1.head || '') && (P1.name || '').length >= 3 /* a random name or the player's own, remembered */, `${sz} rule 1: the DAILY button opens the game's window`, JSON.stringify({ b1, P1 }));
+  say(!!b1 && b1.top && opened && /^BRAIN POP 6\.9 · DAY \d+$/.test(P1.head || '') && ((P1.name || '').length >= 3 || P1.box) /* a name remembered, or a new player's open name box */, `${sz} rule 1: the DAILY button opens the game's window`, JSON.stringify({ b1, P1 }));
   // 12 (operator 6.11.): an own name, typed and brainrotted, still shows the name; the prize line in English
-  await click('#bt .br-pp-own', mob); await waitFor(`!document.querySelector('#bt .br-pp-nm').hidden`, 5000);
+  if (await ev(`document.querySelector('#bt .br-pp-nm').hidden`)) await click('#bt .br-pp-own', mob); /* a new player's name box is open already (6.11.) */ await waitFor(`!document.querySelector('#bt .br-pp-nm').hidden`, 5000);
   await ev(`(()=>{const i=document.querySelector('#bt .br-pp-nm input');i.value='';i.focus();return 1})()`); await send('Input.insertText', { text: 'mmx_QQ' });
   await click('#bt .br-pp-rot', mob); await sleep(500);
   const N12 = JSON.parse(await ev(`JSON.stringify({ name: document.querySelector('#bt .br-pp-me i').textContent, prize: document.querySelector('#bt .br-pp-prize').textContent, box: document.querySelector('#bt .br-pp-nm').hidden })`));
@@ -79,10 +79,10 @@ for (const sz of SIZES) {
     const a = JSON.parse(await ev(`JSON.stringify({ aim: window.__btBr.aim(), own: [...document.querySelectorAll('#bt .br > .br-r')].filter(e=>!e.classList.contains('bit')).length, ban: !!document.querySelector('#bt .br-wban.on') })`));
     foreign = Math.max(foreign, a.own); banner = banner || a.ban;
     if (a.aim) {
-      const B = a.aim.box; square = square || { w: Math.round(B.width), h: Math.round(B.height), inside: B.left >= 0 && B.right <= innerW && B.top >= 0 };
+      const B = a.aim.box; square = square || JSON.parse(await ev(`(()=>{const w=document.querySelector('#bt .bt-win').getBoundingClientRect(),f=document.querySelector('#bt .br-arena').getBoundingClientRect();return JSON.stringify({w:Math.round(f.width),h:Math.round(f.height),ww:Math.round(w.width),wh:Math.round(w.height),inside:f.left>=w.left-1&&f.right<=w.right+1&&f.top>=w.top-1&&f.bottom<=w.bottom+1})})()`)); /* 6.11.: the whole terminal is the field */
       planned = Math.max(planned, a.aim.alive.length);
       if (missed === null && Date.now() > tEnd - 50000) { // one miss: the emptiest corner
-        const corners = [[30, 30], [970, 30], [30, 970], [970, 970]].map(([x, y]) => [x, y, Math.min(...a.aim.alive.map(c => Math.hypot(c[2] - x, c[3] - y) - c[4] * 3), 9999)]).sort((p, q) => q[2] - p[2]);
+        const corners = [[30, 30], [970, 30], [30, 970], [30, 500]] /* never the bottom right: RESTART and QUIT lie there */.map(([x, y]) => [x, y, Math.min(...a.aim.alive.map(c => Math.hypot(c[2] - x, c[3] - y) - c[4] * 3), 9999)]).sort((p, q) => q[2] - p[2]);
         const before = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); await tap(B.left + corners[0][0] / 1000 * B.width, B.top + corners[0][1] / 1000 * B.height, mob); await sleep(120);
         const after = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)); missed = { before: before.misses, after: after.misses, combo: after.combo };
       } else {
@@ -96,14 +96,15 @@ for (const sz of SIZES) {
   }
   const clk1 = await ev(`(document.querySelector('#bt-clk')||{}).textContent||''`); await shot('daily-run-' + sz);
   const cur = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop())`)), mid = cur.run ? cur : snap;
-  say(live && planned > 0 && foreign === 0 && square && Math.abs(square.w - square.h) <= 2 && square.w >= 200 && square.inside, `${sz} rule 2: a run plays the day's creatures in a square arena, nothing else flies`, JSON.stringify({ live, planned, foreign, square }));
+  say(live && planned > 0 && foreign === 0 && square && square.inside && square.w >= square.ww - 12 && square.h >= square.wh - 12, `${sz} rule 2: a run plays its creatures over the whole terminal, nothing else flies`, JSON.stringify({ live, planned, foreign, square }));
   say(mid.pops > 10 && taps > 0 && clk0 !== clk1, `${sz} rule 3: aimed taps pop them, the terminal goes on`, JSON.stringify({ taps, pops: mid.pops, misses: mid.misses, clk0, clk1 }));
-  say(!!missed && missed.after === missed.before + 1 && missed.combo === 0, `${sz} rule 3b: a tap on nothing is a miss and breaks the streak`, JSON.stringify(missed));
+  say(!!missed && missed.after === missed.before + 1 && missed.combo <= 1, /* a helper may pop right after: the streak starts again at 1 */ `${sz} rule 3b: a tap on nothing is a miss and breaks the streak`, JSON.stringify(missed));
   say(mid.powers >= 1 && banner, `${sz} rule 3c: a clean streak fires a super power by itself (with its banner)`, JSON.stringify({ powers: mid.powers, banner }));
   const done = await waitFor(`!!(window.__btBr.pop().last) && !window.__btBr.pop().run`, 20000);
   const res = JSON.parse(await ev(`JSON.stringify(window.__btBr.pop().last)`)) || {}; await shot('daily-result-' + sz);
   const resTxt = await ev(`(document.querySelector('#bt .br-pp-c b')||{}).textContent||''`);
-  say(done && Math.round(res.score * 1e7) === mid.score && resTxt === p7(res.score) + ' ROT' && res.ranked === false && String(res.name).includes('mmx_QQ'), `${sz} rule 4: the server counts what the terminal counted`, JSON.stringify({ server: res.score, terminal: mid.score, resTxt, ranked: res.ranked, drops: res.drops }));
+  const fin = await ev(`window.__btBr.pop().fin`); /* the terminal at the very end (helpers still on their way after the last tap count) */
+  say(done && Math.round(res.score * 1e7) === fin && resTxt === p7(res.score) + ' ROT' && res.ranked === false && String(res.name).includes('mmx_QQ'), `${sz} rule 4: the server counts what the terminal counted`, JSON.stringify({ server: res.score, terminal: fin, resTxt, ranked: res.ranked, drops: res.drops }));
   // 7 (operator 6.11.): DAILY and OVERALL, the daily board for every day of the season, top 10, the prizes, the player code
   await waitFor(`!!document.querySelector('#bt .br-pp-days span') && !/…/.test(document.querySelector('#bt .br-pp-board').textContent)`, 15000);
   const B1 = JSON.parse(await ev(`(()=>{const q=s=>document.querySelector('#bt '+s);return JSON.stringify({tabs:[...document.querySelectorAll('#bt .br-pp-tabs button')].map(b=>b.textContent).join('|'),day:q('.br-pp-days span')?.textContent,back:q('[data-dd="-1"]')?.disabled,code:q('.br-pp-code')?.textContent||'',next:q('.br-pp-next')?.textContent||''})})()`));

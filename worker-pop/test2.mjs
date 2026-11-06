@@ -12,13 +12,13 @@ const firstRug = P.find((s) => s.rug); t(firstRug.at > 7000, 'no rug in the firs
 function play({ step, err, careful, weapons, seed = 1 }) {
   let a = seed * 9301 + 49297; const rnd = () => (a = (a * 9301 + 49297) % 233280) / 233280;
   const run = createRun(P), inputs = [];
-  for (let tt = 400; tt <= RUN_MS; tt += step) {
+  for (let tt = 400; tt <= run.endAt(); tt += step) {
     const L = run.alive(tt).filter(([s]) => !(careful && s.rug && !run.golden(s, tt)));
     if (!L.length) continue;
     const [s, q] = L[Math.floor(rnd() * L.length)], x = Math.round(q.x + (rnd() - 0.5) * 2 * err), y = Math.round(q.y + (rnd() - 0.5) * 2 * err);
     if (run.tap(tt, x, y)) inputs.push([tt, x, y]);
   }
-  return { S: run.S, inputs };
+  run.advance(run.endAt()); return { S: run.S, inputs };
 }
 const sloppy = play({ step: 300, err: 90, careful: false, weapons: false });
 const decent = play({ step: 420, err: 35, careful: true, weapons: true });
@@ -45,7 +45,7 @@ t(replay(d, [[s0.at - 500, Math.round(q0.x), Math.round(q0.y)]]).score === 0, 'a
 t(replay(d, [[70000, 500, 500]]).applied === 0, 'nothing after the minute');
 t(replay(d, [[1000, 'w', 6]]).applied === 0, 'a weapon cannot be called, it only comes from a streak');
 { const run = createRun(P); let k = 0; for (let tt = 400; tt < 30000 && !run.S.used.length; tt += 250) { const L = run.alive(tt).filter(([x]) => !x.rug && !x.hp); if (!L.length) continue; const [, q] = L[0]; if (run.tap(tt, Math.round(q.x), Math.round(q.y))) k++; }
-  t(run.S.used[0] === 0 && run.S.armed === 'burn' && run.S.combo === 4, 'four clean pops in a row fire BURN by itself', JSON.stringify({ taps: k, combo: run.S.combo, used: run.S.used })); }
+  t(run.S.used[0] === 0 && run.S.armed === 'burn' && run.S.charge[0] === 0 && run.S.charge[6] === 8, 'eight pops fill the BURN meter: it fires by itself; the cashier (22) keeps charging', JSON.stringify({ taps: k, combo: run.S.combo, used: run.S.used })); }
 t(replay(d, [[s0.at + 300, Math.round(q0.x), Math.round(q0.y)], [s0.at + 310, 10, 10]]).applied === 1, 'faster than a hand (10 ms) is not applied');
 const rug = P.find((s) => s.rug && s.p === 'pop'), qr = pos(rug, rug.at + 200);
 t(replay(d, [[rug.at + 200, Math.round(qr.x), Math.round(qr.y)]]).rugs === 1, 'a rug costs');
@@ -55,4 +55,8 @@ t(WEAPONS.length === 7 && WEAPONS.map((w) => w.k).join() === 'burn,hammer,liq,de
   const r = replay(d, pro.inputs); t(r.score === pro.S.score, 'the helpers count the same in the replay of the server'); }
 { const all = [sloppy, decent, pro, bot].flatMap((x) => x.S.ev.map((e) => e[0])); t(all.includes('split'), 'the spaghetti octopus splits into three minis', all.filter((k) => k === 'split').length);
   t(sloppy.S.misses > 0 && replay(d, [[1000, 2, 2]]).misses === 1 && replay(d, [[1000, 2, 2]]).score === 0, 'a miss costs (never below zero)'); }
+t(pro.S.slow.length > 0 && pro.inputs[pro.inputs.length - 1][0] > RUN_MS, 'slow motion slows the clock too: the round runs past 60 real seconds', JSON.stringify({ slow: pro.S.slow.length, last: pro.inputs[pro.inputs.length - 1][0] }));
+{ const run = createRun(P); let tt = 400; const inputs = []; for (; tt <= 30000; tt += 260) { const L = run.alive(tt).filter(([x]) => !x.rug); if (!L.length) continue; const [, q] = L[0]; if (run.tap(tt, Math.round(q.x), Math.round(q.y))) inputs.push([tt, Math.round(q.x), Math.round(q.y)]); }
+  run.advance(30000); const at30 = run.S.score; run.advance(run.endAt()); const end = run.S.score;
+  t(end <= at30 * 1.25 + 2e12, 'no player, no game: after the last tap the score barely moves (only helpers already on their way)', JSON.stringify({ at30: Math.round(at30 / 1e7), end: Math.round(end / 1e7) })); }
 console.log(`pop 2.0 test: ${pass} PASS, ${fail} FAIL`); process.exit(fail ? 1 : 0);

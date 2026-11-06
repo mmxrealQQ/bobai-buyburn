@@ -2487,6 +2487,22 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       const r = await fetch('https://' + popHost + '.bobbuildonbnb.workers.dev' + url.pathname + url.search, init);
       return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': r.headers.get('cache-control') || 'no-store' } });
     }
+    // BRAIN POP'S SHARE LINK (operator, 6.11.: "share the link on a phone in TG, WhatsApp and X so the brainrot banner comes
+    // and gets people to play"): brainonbnb.com/m/pop (the game) and /m/pop/<run> (a challenge) answer with the poster as the
+    // preview card and send a person straight into the game. Under /m/ because the routes list is full (100).
+    if (url.pathname === '/m/pop' || url.pathname.startsWith('/m/pop/')) {
+      const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play');
+      let title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 on 30 Nov wins the whole $BOBAI prize pool.';
+      if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json(); const nm = String(j.name || '').replace(/[<>&"]/g, '').slice(0, 40), sc = Number(j.score || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        title = nm + ' scored ' + sc + ' ROT in BRAIN POP 6.9 · can you beat it? 🧠'; desc = 'A challenge: same day, your own round. 60 seconds, tap the brainrot. Their score runs along as a ghost.'; } } catch {} }
+      const img = 'https://brainonbnb.com/og-brainpop.jpg', page = 'https://brainonbnb.com' + url.pathname;
+      const html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + title + '</title><meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<meta property="og:type" content="website"><meta property="og:site_name" content="Brain On BNB AI"><meta property="og:url" content="' + page + '"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + desc + '">'
+        + '<meta property="og:image" content="' + img + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BRAIN POP 6.9: BOBAI aims, the brainrot creatures pop">'
+        + '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@BrainOnBNB"><meta name="twitter:title" content="' + title + '"><meta name="twitter:description" content="' + desc + '"><meta name="twitter:image" content="' + img + '">'
+        + '<meta http-equiv="refresh" content="0;url=' + to + '"><link rel="canonical" href="https://brainonbnb.com/"></head><body style="background:#120814;color:#fff;font-family:sans-serif"><p><a href="' + to + '" style="color:#ffe600">Play BRAIN POP 6.9</a></p><script>location.replace(' + JSON.stringify(to) + ')</script></body></html>';
+      return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+    }
     if (url.pathname.startsWith('/m/')) {
       const png = url.pathname.endsWith('.png') && request.method === 'GET';
       if (png) { const hit = await caches.default.match(request); if (hit) return hit; }

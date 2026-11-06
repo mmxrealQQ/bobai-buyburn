@@ -7528,7 +7528,9 @@ window.__btBrSeason = brSeason;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const nf0 = v => Number(v || 0).toLocaleString('en-US');
   const sc7 = v => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }); // a 6.9 score: 563,742.4324762
-  let spawning = false, DAY = null, RUN = null, LAST = null, CH = null, NAMES2 = null, scope = 'day', chOff = false;
+  let FIN = null, LEAD = null, spawning = false, DAY = null, RUN = null, LAST = null, CH = null, NAMES2 = null, scope = 'day', chOff = false;
+  const xhPick = () => { const v = +(lsGet('bt-pop-xh') || 1); return v >= 1 && v <= 4 ? v : 1; }; // the chosen crosshair (1 CS2 classic … 4 circle)
+  const xcPick = () => { const v = lsGet('bt-pop-xc') || 'g'; return 'gcyprw'.includes(v) && v.length === 1 ? v : 'g'; }; // its colour
   const named = () => lsGet('bt-pop-named') === '1' || (pname && !Array.isArray(pname)); // a name chosen once counts (an own name from before too)
   const myName = () => !NAMES2 ? '…' : Array.isArray(pname) ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : (NAMES2.rot && NAMES2.rot[pname.v] || '{N}').replace('{N}', pname.own);
   // the button in the scene, under the title row on the left
@@ -7589,21 +7591,26 @@ window.__btBrSeason = brSeason;
     if (RUN) return; pp.hidden = false; pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>Loading the day…</p></div>';
     try {
       if (CHQ && CHQ !== 'play' && !CH && !chOff) CH = await api('run/' + encodeURIComponent(CHQ)).catch(() => null);
+      if (!CH && !chOff) { LEAD = null; } /* the #1's ghost is read below */
       DAY = await api('day?' + (CH ? 'd=' + CH.day : '') + (pid.startsWith('f00d') ? '&own=1' : '')); /* ?pop=play (a post's link) opens the game; our checks do not count as visitors */ NAMES2 = DAY.names; /* a challenge plays its own day's plan */
     } catch (e) { pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>The game server did not answer (' + esc(e.message) + '). Try again in a moment.</p><div class="br-pp-b"><button type="button" class="br-pp-x">Close</button></div></div>'; return; }
+    if (!CH && DAY.top && DAY.top[0] && DAY.day === DAY.today) LEAD = await api('run/' + DAY.top[0].run).catch(() => null);
     intro();
   }
   function intro() {
     const past = DAY.day !== DAY.today, ch = CH ? '<p class="br-pp-ch">' + esc(CH.name) + ' challenges you: <b>' + sc7(CH.score) + ' ROT</b> on Daily #' + CH.no + '. Beat it! Their score runs along as a ghost.' + (past ? ' (That day is over: a rematch, not on the board.)' : '') + '</p>' : '';
-    const nameHtml = '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it)</b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _ · nothing rude</small></div>';
+    const nameHtml = (named() ? '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' : '') + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it) <button type="button" class="br-pp-re" title="A random brainrot name">🎲 random</button></b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _ · nothing rude</small></div>';
     pp.innerHTML = '<div class="br-pp-c"><button type="button" class="br-pp-snd" title="Sound on/off" aria-label="Sound on/off">' + (muted ? '🔇' : '🔊') + '</button><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b>' + ch
-      + (named() ? '' : nameHtml) /* a new player: the name first, right under the title (operator 6.11.) */
+      + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml
       // HOW TO PLAY, in five seconds (operator: "in 60 seconds you must know what to do")
-      + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>4 IN A ROW</b> fires a super power · 8 SUPER · 16 MEGA · 24 GOD</span></div>'
+      + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>EVERY HIT</b> charges the 7 stations · full = super power · 8 in a row SUPER · 16 MEGA · 24 GOD</span></div>'
       + '<p class="br-pp-n">60 seconds · every round new, every round equally hard · the server replays every tap</p>'
-      + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small></p>' + poolHtml()
-      + (named() ? nameHtml : '')
+      + (matchMedia('(pointer: fine)').matches ? '<div class="br-pp-xh"><b>CROSSHAIR</b>' + [1, 2, 3, 4].map(k => '<button type="button" data-xh="' + k + '" title="' + ['CS2 classic', 'cross with a dot', 'dot', 'circle'][k - 1] + '"' + (xhPick() === k ? ' class="on"' : '') + '></button>').join('') + '</div>'
+        + '<div class="br-pp-xh"><b>COLOR</b>' + ['g', 'c', 'y', 'p', 'r', 'w'].map(c => '<button type="button" class="sw' + (xcPick() === c ? ' on' : '') + '" data-xc="' + c + '" title="' + { g: 'green', c: 'cyan', y: 'yellow', p: 'pink', r: 'red', w: 'white' }[c] + '"></button>').join('') + '</div>' : '')
+      + '</div><div class="br-pp-r"><p class="br-pp-hs">🏆 HIGHSCORE · TOP 10</p>'
       + '<div class="br-pp-bd"></div>' + codeLine()
+      + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small></p>' + poolHtml()
+      + '</div></div>'
       + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
     scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool();
     setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
@@ -7612,14 +7619,16 @@ window.__btBrSeason = brSeason;
     e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('br-pp-x')) { pp.hidden = true; return; }
     if (b.classList.contains('br-pp-snd')) { muted = !muted; lsSet('bt-pop-mute', muted ? '1' : '0'); b.textContent = muted ? '🔇' : '🔊'; if (!muted) SFX.count(true); return; }
+    if (b.dataset.xh) { lsSet('bt-pop-xh', b.dataset.xh); pp.querySelectorAll('[data-xh]').forEach(x => x.classList.toggle('on', x === b)); return; }
+    if (b.dataset.xc) { lsSet('bt-pop-xc', b.dataset.xc); pp.querySelectorAll('[data-xc]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
     if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
-    if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: (pname.v + 1 + ri((NAMES2.rot || [1]).length - 1)) % (NAMES2.rot || [1]).length }; lsSet('bt-pop-name', JSON.stringify(pname)); b.parentNode.querySelector('i').textContent = myName(); api('name', { pid, name: pname }).catch(() => {}); return; }
+    if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: (pname.v + 1 + ri((NAMES2.rot || [1]).length - 1)) % (NAMES2.rot || [1]).length }; lsSet('bt-pop-name', JSON.stringify(pname)); const ii = pp.querySelector('.br-pp-me i'); if (ii) ii.textContent = myName(); else intro(); api('name', { pid, name: pname }).catch(() => {}); return; }
     if (b.classList.contains('br-pp-own')) { const box = pp.querySelector('.br-pp-nm'); box.hidden = !box.hidden; if (!box.hidden) { const inp = box.querySelector('input'); inp.value = Array.isArray(pname) ? '' : pname.own; inp.focus(); } return; }
     if (b.classList.contains('br-pp-rot')) { const box = pp.querySelector('.br-pp-nm'), v = box.querySelector('input').value.trim(), msg = box.querySelector('small');
       if (!/^[A-Za-z0-9_]{3,16}$/.test(v) || !/[A-Za-z]/.test(v)) { msg.textContent = '3 to 16 letters, digits or _ (no spaces, no dots)'; msg.classList.add('bad'); return; }
       pname = { own: v, v: ri((NAMES2.rot || [1]).length) }; lsSet('bt-pop-name', JSON.stringify(pname)); lsSet('bt-pop-named', '1'); box.hidden = true;
-      api('name', { pid, name: pname }).then(() => loadBoard()).catch(e => { msg.textContent = e.message; msg.classList.add('bad'); box.hidden = false; }); /* the boards show it at once */ const i = pp.querySelector('.br-pp-me i'); i.textContent = myName(); i.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)' }); return; }
+      api('name', { pid, name: pname }).then(() => loadBoard()).catch(e => { msg.textContent = e.message; msg.classList.add('bad'); box.hidden = false; }); /* the boards show it at once */ const i = pp.querySelector('.br-pp-me i'); if (!i) { intro(); const j = pp.querySelector('.br-pp-me i'); if (j) j.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)' }); return; } /* a new player: the window shows the name now (6.11.) */ i.textContent = myName(); i.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)' }); return; }
     if (b.dataset.sc) { scope = b.dataset.sc; loadBoard(); return; }
     if (b.dataset.dd) { const n = shift(bday || lastDay(), +b.dataset.dd); if (n >= FIRST && n <= lastDay()) { bday = n; loadBoard(); } return; }
     if (b.classList.contains('br-pp-go') && !named()) { // the name first: what is typed is brainrotted and taken; nothing typed, a nudge
@@ -7629,7 +7638,7 @@ window.__btBrSeason = brSeason;
     }
     if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
     if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }
-    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/?pop=' + LAST.run, text = 'I scored ' + sc7(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
+    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/m/pop/' + LAST.run, text = 'I scored ' + sc7(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') { b.textContent = link; } } }
   });
   // SOUND AND TOUCH (6.11., operator: "make it the best browser game in the world"): every pop, miss, rug and power is
@@ -7683,15 +7692,19 @@ window.__btBrSeason = brSeason;
     for (const d of el.querySelectorAll('.br-r')) { for (const a of d.getAnimations()) a.cancel(); } // the look's own creatures step out
     // the whole terminal window in sight before the arena opens (6.11.: on a phone a scrolled page hid the arena's top under the header)
     { const r = win.getBoundingClientRect(), head = 64; if (r.top < head || r.bottom > innerHeight) window.scrollBy({ top: r.top - Math.max(head, (innerHeight - r.height) / 2), behavior: 'instant' }); }
-    placeArena(); arena.replaceChildren(); arena.hidden = false; ctl.hidden = false; arena.className = 'br-arena';
+    placeArena(); arena.replaceChildren(); arena.hidden = false; ctl.hidden = false; arena.className = 'br-arena xs' + xhPick() + 'c' + xcPick();
     ['3', '2', '1'].forEach((n, i) => RUN.timers.push(setTimeout(() => { slam(n, W() / 2, H() * 0.42, true); SFX.count(false); }, i * 800)));
-    RUN.timers.push(setTimeout(() => { slam('POP!', W() / 2, H() * 0.42, true); SFX.count(true); RUN.t0 = performance.now(); RUN.live = true; RUN.timers.push(setTimeout(endRun, POP_MS + 150)); RUN.tick = setInterval(runHud, 200); runHud(); requestAnimationFrame(frame); }, 2400));
+    RUN.timers.push(setTimeout(() => { slam('POP!', W() / 2, H() * 0.42, true); SFX.count(true); RUN.t0 = performance.now(); RUN.live = true; RUN.timers.push(setTimeout(endRun, POP_MS + 30000)); /* the real end: frame(), when the world's minute is over */ RUN.tick = setInterval(runHud, 200); runHud(); requestAnimationFrame(frame); }, 2400));
   }
-  const ctl = document.createElement('div'); ctl.className = 'br-ctl'; ctl.hidden = true; ctl.innerHTML = '<button type="button" class="re" title="Restart (R)">⟲ RESTART</button><button type="button" class="qu" title="Quit (Esc)">✖ QUIT</button>'; win.appendChild(ctl);
+  const act = document.createElement('div'); act.className = 'br-act'; act.hidden = true; win.appendChild(act);
+  const ctl = document.createElement('div'); ctl.className = 'br-ctl'; ctl.hidden = true; act.hidden = true; ctl.innerHTML = '<button type="button" class="re" title="Restart (R)">⟲ RESTART</button><button type="button" class="qu" title="Quit (Esc)">✖ QUIT</button>'; win.appendChild(ctl);
   // a round given up is never sent: it counts nowhere (the server drops unfinished rounds after a day)
-  function abort() { if (!RUN) return; const R0 = RUN; R0.timers.forEach(clearTimeout); clearInterval(R0.tick); RUN = null; win.classList.remove('br-run'); arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; hud.classList.remove('on'); pbtn.hidden = false; }
+  function abort() { if (!RUN) return; const R0 = RUN; R0.timers.forEach(clearTimeout); clearInterval(R0.tick); RUN = null; win.classList.remove('br-run'); arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; act.hidden = true; hud.classList.remove('on'); pbtn.hidden = false; }
   ctl.addEventListener('pointerdown', e => e.stopPropagation());
-  ctl.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return; if (b.classList.contains('re')) { abort(); begin(); } else { abort(); openPanel(); } });
+  // two taps (6.11.: in the heat of a round a stray tap on QUIT or RESTART would lose it): the first asks, the second within 1.5 s acts
+  ctl.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
+    if (!b.classList.contains('sure')) { b._txt ||= b.textContent; b.classList.add('sure'); b.textContent = 'TAP AGAIN'; clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove('sure'); b.textContent = b._txt; }, 1500); return; }
+    clearTimeout(b._t); b.classList.remove('sure'); b.textContent = b._txt; if (b.classList.contains('re')) { abort(); begin(); } else { abort(); openPanel(); } });
   document.addEventListener('keydown', e => { if (!RUN || e.target.closest?.('input,textarea')) return; if (e.key === 'r' || e.key === 'R') { e.preventDefault(); abort(); begin(); } else if (e.key === 'Escape') { e.preventDefault(); abort(); openPanel(); } });
   const tNow = () => Math.round(performance.now() - RUN.t0);
   function node(s) {
@@ -7700,8 +7713,11 @@ window.__btBrSeason = brSeason;
   }
   function frame() {
     if (!RUN) return; requestAnimationFrame(frame); if (!RUN.live) return;
-    const t = tNow(); if (t > POP_MS) return; placeArena();
+    const t = tNow(); if (t > RUN.run.endAt() + 120) { endRun(); return; } placeArena();
     RUN.run.advance(t); if (RUN.ev < RUN.run.S.ev.length) drain(500, 500); /* the helpers act on their own */
+    { const C = RUN.run.S.charge; for (const st of ST) { const k = ['burnA', 'burnB', 'liq', 'defi', 'giggle', 'creator', 'src'].indexOf(st.k); if (k < 0) continue; let m = st.e.querySelector('.br-chg');
+      if (!m) { m = document.createElement('b'); m.className = 'br-chg'; m.innerHTML = '<i></i><em></em>'; st.e.appendChild(m); }
+      const need = E.WEAPONS[k].need, p = Math.min(1, C[k] / need), key = C[k] + '/' + need; if (m._k !== key) { m._k = key; m.style.setProperty('--p', p.toFixed(3)); m.querySelector('em').textContent = need - C[k]; m.classList.toggle('hot', need - C[k] <= 2); } } }
     const S = RUN.run.S, k = AR.s / 1000, kx = AR.w / 1000, ky = AR.h / 1000, ring = Math.max(0.55, 1 - 0.015 * S.combo) * (S.hammer > 0 ? 3 : 1), seen = new Set();
     for (const [s, q] of RUN.run.alive(t)) {
       seen.add(s.i); let n = RUN.nodes.get(s.i); if (!n) { n = node(s); RUN.nodes.set(s.i, n); }
@@ -7716,10 +7732,10 @@ window.__btBrSeason = brSeason;
   }
   // a shot: anywhere in the arena (touch or mouse), as the server will replay it
   const xh = document.createElement('i'); xh.className = 'br-xh'; xh.hidden = true;
-  arena.addEventListener('pointermove', e => { if (!RUN || e.pointerType !== 'mouse') return; const r = arena.getBoundingClientRect(); if (!xh.isConnected) arena.appendChild(xh); xh.hidden = false; xh.style.transform = 'translate(' + (e.clientX - r.left) + 'px,' + (e.clientY - r.top) + 'px)'; });
+  // THE CROSSHAIR is the cursor (CSS, a small static CS2-style one: 6.11., operator: 'too big, it jumps when clicking'); a phone gets a small ring where the finger landed
   arena.addEventListener('pointerleave', () => { xh.hidden = true; });
   arena.addEventListener('pointerdown', e => {
-    if (RUN && RUN.live) { const r = arena.getBoundingClientRect(); if (!xh.isConnected) arena.appendChild(xh); xh.hidden = false; xh.style.transform = 'translate(' + (e.clientX - r.left) + 'px,' + (e.clientY - r.top) + 'px)'; xh.classList.remove('shot'); void xh.offsetWidth; xh.classList.add('shot'); if (e.pointerType !== 'mouse') { clearTimeout(xh._t); xh._t = setTimeout(() => { xh.hidden = true; }, 380); } }
+    if (RUN && RUN.live && e.pointerType !== 'mouse') { const r = arena.getBoundingClientRect(); if (!xh.isConnected) arena.appendChild(xh); xh.hidden = false; xh.style.left = (e.clientX - r.left) + 'px'; xh.style.top = (e.clientY - r.top) + 'px'; xh.classList.remove('shot'); void xh.offsetWidth; xh.classList.add('shot'); clearTimeout(xh._t); xh._t = setTimeout(() => { xh.hidden = true; }, 300); }
     if (!RUN || !RUN.live) return; e.preventDefault(); e.stopPropagation();
     const r = arena.getBoundingClientRect(), x = Math.round((e.clientX - r.left) / r.width * 1000), y = Math.round((e.clientY - r.top) / r.height * 1000), t = tNow();
     if (RUN.run.tap(t, x, y)) { RUN.inputs.push([t, x, y]); drain(x, y); runHud(); }
@@ -7734,6 +7750,7 @@ window.__btBrSeason = brSeason;
       if (kind === 'pop') { SFX.pop(S.combo, s && s.gold); burst(at[0], at[1], s && s.hp ? 26 : 10); { const q = RUN.run.S.ev[RUN.ev], tq = q[2], pq = s && E.pos(s, RUN.run.world(tq)); ptxt('+' + (v / E.UNIT).toLocaleString('en-US', { maximumFractionDigits: 2 }), pq ? pq.x : x, pq ? pq.y - 40 : y, s && s.gold ? 'gold' : ''); } if (n) { n.remove(); RUN.nodes.delete(i); } pops++; if (s && s.gold) { slam('GOLDEN BRAIN!', W() / 2, H() * 0.36, true); } if (S.combo >= 3 && S.combo % 3 === 0) ptxt(S.combo + ' IN A ROW · x' + E.multOf(S.combo), 500, 120, 'big'); }
       else if (kind === 'miss') { SFX.miss(); const m = document.createElement('b'); m.className = 'br-miss'; m.style.left = (x / 10) + '%'; m.style.top = (y / 10) + '%'; arena.appendChild(m); setTimeout(() => m.remove(), 600); ptxt('MISS -300', x, y - 50, 'bad'); }
       else if (kind === 'slay') { SFX.boom(); const [ax, ay] = toEl(ex, ey); burst(ax, ay, 16); ptxt('RUG SLAYED +' + nf0(v / E.UNIT), ex, ey - 40, 'big gold'); if (n) { n.remove(); RUN.nodes.delete(i); } }
+      else if (kind === 'boss') { SFX.boom(); SFX.power(); const [ax, ay] = toEl(ex, ey); burst(ax, ay, 40); shake(); combo3('BOSS DOWN!', 'CATCH THE 6 GOLDEN BRAINS IT DROPS', 'god'); }
       else if (kind === 'split') { const [ax, ay] = toEl(ex, ey); burst(ax, ay, 6); ptxt('SPLIT! CATCH ALL 3', ex, ey + 60, 'big'); }
       else if (kind === 'rug') { SFX.rug(); slam('RUG PULLED! -4,000', W() / 2, H() * 0.4, true); shake(); if (n) { n.remove(); RUN.nodes.delete(i); } }
       else if (kind === 'hit') { SFX.hit(); if (n) n.animate([{ filter: 'brightness(2)' }, { filter: 'none' }], { duration: 180 }); burst(at[0], at[1], 4); slam('HIT! ' + (RUN.run.S.hp[i] ?? '') + ' LEFT', at[0], at[1] - 50, false); }
@@ -7750,31 +7767,49 @@ window.__btBrSeason = brSeason;
   function combo3(head, sub, cls) { const b = document.createElement('div'); b.className = 'br-combo ' + cls; b.innerHTML = '<b>' + esc(head) + '</b><span>' + esc(sub) + '</span>'; arena.appendChild(b); setTimeout(() => b.remove(), 1800); }
   // a station's power fires by itself: its name and what it does slam in, its creature on the scene jumps
   function power(k) {
-    const w = E.WEAPONS[k]; SFX.power(); banner.hidden = false; banner.innerHTML = '<img alt="" src="' + pic(w.pic) + '"><span><b>' + esc(w.name) + '</b>' + esc(w.say) + '</span>';
+    const w = E.WEAPONS[k]; SFX.power(); flyHelper(k); banner.hidden = false; banner.innerHTML = '<img alt="" src="' + pic(w.pic) + '"><span><b>' + esc(w.name) + '</b>' + esc(w.say) + '</span>';
     banner.classList.remove('on'); void banner.offsetWidth; banner.classList.add('on'); clearTimeout(banner._t); banner._t = setTimeout(() => { banner.classList.remove('on'); banner.hidden = true; }, 2200);
     const stn = ST.find(s => s.k === WST[w.k]); if (stn) { stn.e.classList.remove('jump'); void stn.e.offsetWidth; stn.e.classList.add('jump'); }
     discoOn();
   }
-  const ghostAt = t => { if (!CH || CH.day !== DAY.day) return null; let v = 0; for (const [gt, gs] of CH.timeline) { if (gt > t) break; v = gs; } return v; };
+  function flyHelper(k) {
+    const key = ['burnA', 'burnB', 'liq', 'defi', 'giggle', 'creator', 'src'][k], st = ST.find(z => z.k === key), ar = arena.getBoundingClientRect(); if (!st || !ar.width) return;
+    const b = st.e.getBoundingClientRect(), x0 = b.left - ar.left + b.width / 2, y0 = b.top - ar.top + b.height / 2, x1 = ar.width / 2, y1 = ar.height * 0.45;
+    const f = document.createElement('img'); f.className = 'br-fly'; f.alt = ''; f.src = pic(E.WEAPONS[k].pic); arena.appendChild(f);
+    f.animate([{ transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(.6) rotate(0deg)', opacity: 1 }, { transform: 'translate(' + ((x0 + x1) / 2) + 'px,' + (Math.min(y0, y1) - 80) + 'px) scale(1.5) rotate(' + (x1 > x0 ? 25 : -25) + 'deg)', opacity: 1, offset: 0.5 }, { transform: 'translate(' + x1 + 'px,' + y1 + 'px) scale(2.2) rotate(0deg)', opacity: 0 }], { duration: 900, easing: 'cubic-bezier(.3,.7,.4,1)' }).onfinish = () => f.remove();
+    st.e.classList.remove('jump'); void st.e.offsetWidth; st.e.classList.add('jump');
+  }
+  const ghostAt = t => { const G0 = CH || LEAD; if (!G0 || G0.day !== DAY.day || !G0.timeline) return null; let v = 0; for (const [gt, gs] of G0.timeline) { if (gt > t) break; v = gs; } return v; };
   function runHud() {
-    if (!RUN) return; const t = RUN.live ? Math.min(POP_MS, tNow()) : 0, left = Math.max(0, Math.ceil((POP_MS - t) / 1000)), g = ghostAt(t), S = RUN.run.S;
+    if (!RUN) return; const t = RUN.live ? tNow() : 0, left = Math.max(0, Math.ceil((POP_MS - RUN.run.world(t)) / 1000)), g = ghostAt(t), S = RUN.run.S;
     const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
     if (portrait) { const er = el.getBoundingClientRect(); hud.style.top = Math.round(er.bottom - wr.top - (hud.offsetHeight || 40) - 6) + 'px'; } else hud.style.top = Math.max(8, b - wr.top + 4) + 'px';
-    hud.innerHTML = '<s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + E.fmt(S.score) + '</b><i>x' + E.multOf(S.combo) + '</i><s>' + S.combo + ' in a row</s>' + (S.misses ? '<s class="br-pm">' + S.misses + ' miss' + (S.misses === 1 ? '' : 'es') + '</s>' : '') + (g != null ? '<s class="br-pg">GHOST ' + E.fmt(g) + '</s>' : '');
+    { const tw = RUN.live ? tNow() : 0, A2 = [], P = (pic0, txt, cls) => A2.push('<span class="' + (cls || '') + '"><img alt="" src="' + pic(pic0) + '">' + txt + '</span>'), sec = v => (Math.max(0, v) / 1000).toFixed(1) + 's';
+      const sl = S.slow.find(([a, b]) => tw >= a && tw < b); if (sl) P('stliq', 'SLOW MOTION ' + sec(sl[1] - tw), 'slow');
+      if (S.hammer > 0) P('stbobs', 'HAMMER · ' + S.hammer + ' huge taps', 'ham');
+      if (tw < S.giggle) P('stgiggle', 'GOLD RUSH x3 ' + sec(S.giggle - tw), 'gold');
+      if (S.auto.length) P('stdefi', 'HELPER HARVESTING · ' + S.auto.length, 'help');
+      if (tw < S.creator) P('stcreator', 'RUGS ARE GOLD ' + sec(S.creator - tw), 'gold');
+      if (S.armed === 'burn') P('stburn', 'NEXT TAP EXPLODES', 'burn');
+      if (tw < S.superTo) P('mini', 'SUPER x2 ' + sec(S.superTo - tw), 'super');
+      if (tw < S.godTo) P('kaiju', 'BRAINROT GOD ' + sec(S.godTo - tw), 'god');
+      act.innerHTML = A2.join(''); act.hidden = !A2.length; const hr = hud.getBoundingClientRect(), wr2 = win.getBoundingClientRect(); act.style.top = (portrait ? hr.top - wr2.top - (act.offsetHeight || 30) - 6 : hr.bottom - wr2.top + 6) + 'px'; }
+    hud.innerHTML = '<s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + E.fmt(S.score) + '</b><i>x' + E.multOf(S.combo) + '</i><s>' + S.combo + ' in a row</s>' + (S.misses ? '<s class="br-pm">' + S.misses + ' miss' + (S.misses === 1 ? '' : 'es') + '</s>' : '') + (g != null ? '<s class="br-pg">' + (CH ? 'GHOST ' : '#1 ') + E.fmt(g) + '</s>' : (lsGet('bt-pop-pb') ? '<s class="br-pg">PB ' + Number(lsGet('bt-pop-pb')).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '</s>' : ''));
     hud.classList.add('on'); clearTimeout(hudT);
   }
   async function endRun() {
     if (!RUN) return; const R0 = RUN; win.classList.remove('br-run'); clearInterval(R0.tick); R0.timers.forEach(clearTimeout); R0.live = false;
-    arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; R0.run.advance(POP_MS);
+    arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; act.hidden = true; R0.run.advance(R0.run.endAt()); FIN = R0.run.S.score;
     slam('TIME!', W() / 2, H() * 0.42, true); shake(); SFX.end();
     let res = null, err = null;
     try { res = await api('finish', { run: R0.id, inputs: R0.inputs }); } catch (e) { err = e.message; }
     RUN = null; pbtn.hidden = false; hudT = setTimeout(() => hud.classList.remove('on'), 4000);
-    if (res) { LAST = res; DAY.top = res.top || DAY.top; if (res.code) lsSet('bt-pop-code', res.code); }
+    if (res) { LAST = res; DAY.top = res.top || DAY.top; if (res.code) lsSet('bt-pop-code', res.code);
+      const pb = Number(lsGet('bt-pop-pb') || 0); res._pb = pb; if (res.score > pb) { lsSet('bt-pop-pb', String(res.score)); res._newpb = true; setTimeout(() => { combo3('NEW PERSONAL BEST!', sc7(res.score) + ' ROT', 'god'); }, 300); } }
     const beat = CH && res ? (res.score > CH.score ? '<p class="br-pp-ch">You beat ' + esc(CH.name) + ' by <b>' + sc7(res.score - CH.score) + '</b>! Send it back to them.</p>' : '<p class="br-pp-ch">' + esc(CH.name) + ' keeps it by <b>' + sc7(CH.score - res.score) + '</b>. Again?</p>') : '';
     pp.hidden = false;
     pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? sc7(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
-      + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · ' + res.maxc + ' in a row · ' + res.pops + ' popped · ' + res.misses + ' missed · aim ' + (res.taps ? Math.round(res.pops / res.taps * 100) : 0) + '%' + (res.rugs ? ' · ' + res.rugs + ' rug' + (res.rugs === 1 ? '' : 's') : '') + '</p>' : '<p>' + esc(err || '') + '</p>')
+      + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · ' + res.maxc + ' in a row · ' + res.pops + ' popped · ' + res.misses + ' missed · aim ' + (res.taps ? Math.round(res.pops / res.taps * 100) : 0) + '%' + (res.rugs ? ' · ' + res.rugs + ' rug' + (res.rugs === 1 ? '' : 's') : '') + '</p>' + (res._newpb ? '<p class="br-pp-pb new">🏆 NEW PERSONAL BEST!</p>' : res._pb ? '<p class="br-pp-pb">Your best: ' + sc7(res._pb) + ' · ' + sc7(res._pb - res.score) + ' to beat it. One more?</p>' : '') : '<p>' + esc(err || '') + '</p>')
       + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
@@ -7939,7 +7974,7 @@ window.__btBrSeason = brSeason;
     if (!stick) { stick = true; requestAnimationFrame(place); } }
   // the standard terminal gets its circles back (the same rule as applyPhase: a station with a share)
   const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; ringBg.material.visible = true; for (const m of ringFgs) m.material.visible = true; };
-  function stop() { if (RUN) { win.classList.remove('br-run'); arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; clearInterval(RUN.tick); RUN.timers.forEach(clearTimeout); RUN = null; pbtn.hidden = false; pp.hidden = true; } const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
+  function stop() { if (RUN) { win.classList.remove('br-run'); arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; act.hidden = true; clearInterval(RUN.tick); RUN.timers.forEach(clearTimeout); RUN = null; pbtn.hidden = false; pp.hidden = true; } const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
@@ -8054,9 +8089,9 @@ window.__btBrSeason = brSeason;
     const fr = g.createLinearGradient(0, 0, W2, H2); RAYS.forEach((cl, i) => fr.addColorStop(i / 3, cl)); g.lineWidth = 14; g.strokeStyle = fr; g.strokeRect(7, 7, W2 - 14, H2 - 14);
     const blob = await new Promise(r => c.toBlob(r, 'image/png')), now = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     return { blob, file: new File([blob], 'bobai-brainpop-' + fmt + '-' + now + '.png', { type: 'image/png' }), rot: true,
-      text: D1 ? 'I scored ' + sc + ' ROT as ' + (D1.name || myName()) + ' in Daily Brain Pop #' + D1.no + (D1.ranked ? ', #' + D1.rank + ' of ' + D1.players + ' today' : '') + ' on the $BOBAI Brain Terminal 🧠 Beat me: ' + SITE_URL + '/?pop=' + D1.run
+      text: D1 ? 'I scored ' + sc + ' ROT as ' + (D1.name || myName()) + ' in Daily Brain Pop #' + D1.no + (D1.ranked ? ', #' + D1.rank + ' of ' + D1.players + ' today' : '') + ' on the $BOBAI Brain Terminal 🧠 Beat me: ' + SITE_URL + '/m/pop/' + D1.run
         : 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
   }
-  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
+  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, fin: FIN, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
     /* for the checks: the arena's box on the page and what is in it now (the plan is public anyway) */ aim: () => RUN && RUN.live && AR ? { box: arena.getBoundingClientRect().toJSON(), alive: RUN.run.alive(tNow()).map(([x, q]) => [x.i, x.rug && !RUN.run.golden(x, tNow()), Math.round(q.x), Math.round(q.y), x.r, x.p]) } : null, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

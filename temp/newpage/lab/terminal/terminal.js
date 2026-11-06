@@ -7217,7 +7217,7 @@ window.__btBrSeason = brSeason;
   // EVERY LOAD ASKS (operator, 2026-11-05 night: "on the phone a reload shows the washing machine and the rest at once — the
   // notice should come again"): a visitor who chose brainrot sees the notice at every load, "stay" focused; one who chose
   // the standard terminal keeps it without being asked again (nothing moves for them anyway)
-  const ask = stored !== '0' && q !== '1';
+  const ask = (stored !== '0' || new URLSearchParams(location.search).has('pop')) && q !== '1'; /* a challenge link asks even who chose the standard terminal: they came to play */
   let on = ask ? false : stored ? stored !== '0' : q === '1';
   const Q = new URL(import.meta.url).search;
   const pic = n => BASE + 'br/' + n + '.webp' + Q;
@@ -7301,7 +7301,9 @@ window.__btBrSeason = brSeason;
     return d;
   }
   // one started by a delayed step (a conga's next dancer, a storm's next brain) after the switch went off goes at once
-  const done = (d, a) => { a.onfinish = a.oncancel = () => { d.remove(); alive--; }; if (!on) a.cancel(); return a; };
+  // the last frame holds until the creature is removed (6.11.: on a busy phone the finished one sprang back to its full
+  // size at the corner for a moment before onfinish came, and could be tapped there)
+  const done = (d, a) => { a.effect.updateTiming({ fill: 'forwards' }); a.onfinish = a.oncancel = () => { d.remove(); alive--; }; if (!on || (RUN && !spawning && !d.classList.contains('bit'))) a.cancel(); return a; }; /* a daily run: only the plan brings creatures (a MEGA moment's late step stays out) */
   // no word of the look in the title row: its buttons are half see-through, and a caption under them made them hard to
   // read (1280x720, "LAMPADINO PENSIERINO!" behind SHARE THIS MOMENT) — every caption keeps below the row's bottom
   const topSafe = () => { const hd = win.querySelector('.hud'), wr = el.getBoundingClientRect(); if (!hd) return 60; let b = 0; for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); } return Math.max(40, b - wr.top + 8) + (win.classList.contains('portrait') ? 30 : 96); }; /* a phone too: 10 px into the row on 390x844 (5.11. night) */ /* wide: the title grows by up to ~68 px in the first 20 s as MOMENTS and the mood come in (1440: 131 -> 166, 1280: 131 -> 199, with or without this look) — room is kept for it */
@@ -7448,7 +7450,7 @@ window.__btBrSeason = brSeason;
   let G = { score: 0, best: 0 }; try { G = { ...G, ...JSON.parse(localStorage.getItem('bt-br-game') || '{}') }; } catch {}
   let combo = 0, lastPop = 0, hudT = 0;
   const hud = document.createElement('div'); hud.className = 'br-hud'; hud.setAttribute('aria-hidden', 'true'); capL.after(hud);
-  function showHud() {
+  function showHud() { if (RUN) return runHud();
     const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
     hud.style.top = Math.max(8, b - wr.top + 8) + 'px';
     hud.innerHTML = '<b>ROT ' + G.score.toLocaleString('en-US') + '</b>' + (combo > 1 ? '<i>x' + Math.min(combo, 10) + '</i>' : '') + '<s>' + rankOf(G.score) + '</s><button type="button" class="br-shr">SHARE</button>';
@@ -7476,12 +7478,20 @@ window.__btBrSeason = brSeason;
       if (performance.now() >= LIFE.sayUntil && !VID.want && !HELD && !WAITSAY) speak(pick(['Rank up: ' + after + '. My neurons are proud.', after + '. That is a real title now.', 'You reached ' + after + '. The creatures are scared.', after + '! Put that on-chain. Not really.', 'New rank: ' + after + '. I felt that in my folds.']), 3800);
     }
   }
+  // THE TAP STAYS ON THE CREATURE (6.11., found by brainpop-daily.mjs on a phone): a popped creature is gone before the
+  // finger lifts, and the click that follows fell on whatever lay under it (the view tabs, the ROT switch). For half a
+  // second after a pop, and during a whole daily run inside the window (a miss must not open a bot or switch the look
+  // off mid-run), clicks are swallowed; the game's own window and the score chip keep theirs.
+  let swallow = 0;
+  document.addEventListener('click', e => { const inRun = RUN && RUN.live && win.contains(e.target); if ((performance.now() < swallow || inRun) && !e.target.closest('.br-pp, .br-hud')) { e.stopPropagation(); e.preventDefault(); } }, true);
   el.addEventListener('pointerdown', e => {
     const r = e.target.closest && e.target.closest('.br-r'); if (!r || r.classList.contains('bit') || r._popped) return;
     e.stopPropagation();
     const wr = el.getBoundingClientRect(), b = r.getBoundingClientRect(), cx = b.left - wr.left + b.width / 2, cy = b.top - wr.top + b.height / 2;
     // the boss takes six hits: each one shakes it and spills a few brains, the sixth blows it up
     if (r.dataset.n === 'kaiju' && (r._hp = (r._hp ?? 6) - 1) > 0) {
+      if (RUN && RUN.live && r.dataset.ri != null) RUN.hits.push([+r.dataset.ri, tNow()]); /* the daily run: the server counts the six hits */
+      swallow = performance.now() + 500;
       burst(cx, cy, 4); r.firstChild.animate([{ transform: 'translateX(-14px) rotate(-4deg)' }, { transform: 'translateX(14px) rotate(4deg)' }, { transform: 'none' }], { duration: 260 });
       slam('HIT! ' + r._hp + ' LEFT', cx, cy - b.height * 0.3, false); return;
     }
@@ -7489,9 +7499,143 @@ window.__btBrSeason = brSeason;
     for (const a of r.getAnimations()) a.cancel();
     burst(cx, cy, r.dataset.n === 'kaiju' ? 30 : 12);
     if (r.dataset.n === 'kaiju') { shake(); slam('BOSS DOWN!', cx, cy, true); }
-    pops++; score(r, cx, cy);
+    if (RUN && RUN.live && r.dataset.ri != null) runHit(r, cx, cy); else if (!RUN) { pops++; score(r, cx, cy); }
+    swallow = performance.now() + 500;
     el.animate([{ transform: 'scale(1.015)' }, { transform: 'none' }], { duration: 160 });
   });
+
+  // ================= BRAIN POP DAILY (2026-11-06) =================
+  // Operator (6.11.): "make the game really viral — a real highscore and real gameplay", "do 1 and 2": (1) a daily run of
+  // 60 seconds, the same creatures for everyone that day, with a board (today, 7 days, all time); (2) a challenge link —
+  // brainonbnb.com/?pop=<run> opens that run, its score runs along as a ghost, and the friend tries to beat it.
+  // The server (worker-pop, behind /api/pop/) makes the plan and counts the score again from "creature i, hit at t";
+  // the terminal plays the plan as it is. While a run goes, the look's own random creatures rest; the terminal itself
+  // (burns, liquidity, moments, BOBAI) goes on as always (operator: "the burn and liq game must keep running as it does").
+  const API = '/api/pop/', CHQ = new URLSearchParams(location.search).get('pop');
+  const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  let pid = lsGet('bt-pop-pid'); if (!/^[0-9a-f]{16}$/.test(pid || '')) { pid = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join(''); lsSet('bt-pop-pid', pid); }
+  const ri = n => Math.floor(Math.random() * n);
+  let pname = null; try { pname = JSON.parse(lsGet('bt-pop-name') || 'null'); } catch {}
+  if (!Array.isArray(pname) || pname.length !== 3) { pname = [ri(16), ri(16), 1 + ri(99)]; lsSet('bt-pop-name', JSON.stringify(pname)); }
+  const api = (p, body) => fetch(API + p, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' })
+    .then(r => r.json().catch(() => ({})).then(j => r.ok ? j : Promise.reject(new Error(j.error || 'HTTP ' + r.status))));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nf0 = v => Number(v || 0).toLocaleString('en-US');
+  let spawning = false, DAY = null, RUN = null, LAST = null, CH = null, NAMES2 = null, scope = 'day', chOff = false;
+  const myName = () => NAMES2 ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : '…';
+  // the button in the scene, under the title row on the left
+  const pbtn = document.createElement('button'); pbtn.type = 'button'; pbtn.className = 'br-pbtn'; pbtn.textContent = '▶ PLAY BRAIN POP'; /* operator 6.11.: a PLAY button */ pbtn.hidden = REDUCED; win.appendChild(pbtn); /* ?calm: nothing moves, so no game */
+  function pbtnPlace() { const t = topSafe(); if (pbtn._t !== t) { pbtn._t = t; pbtn.style.top = (t + 6) + 'px'; } }
+  pbtn.addEventListener('click', e => { e.stopPropagation(); openPanel(); });
+  // the window of the game: the day, the name, the board, start; after a run, the result
+  const pp = document.createElement('div'); pp.className = 'br-pp'; pp.setAttribute('role', 'dialog'); pp.setAttribute('aria-label', 'Daily Brain Pop'); pp.hidden = true; win.appendChild(pp);
+  pp.addEventListener('pointerdown', e => e.stopPropagation());
+  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li><span>' + esc(r.name) + '</span><b>' + nf0(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
+  // DAILY | OVERALL (operator 6.11.: "a board for every day until 30 Nov, I can look at them — tomorrow the one of 6 Nov —
+  // always the top 10; daily and then overall"); the daily board pages through the season's days
+  const FIRST = '2026-11-06', LASTD = '2026-11-30';
+  let bday = null;
+  const lastDay = () => { const t = (DAY && DAY.today) || new Date().toISOString().slice(0, 10); return t > LASTD ? LASTD : t; };
+  const shift = (d, k) => new Date(Date.parse(d + 'T00:00:00Z') + k * 86400e3).toISOString().slice(0, 10);
+  const fmtDay = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
+  const tabs = () => '<div class="br-pp-tabs">' + [['day', 'DAILY'], ['all', 'OVERALL']].map(([k, t]) => '<button type="button" data-sc="' + k + '"' + (k === scope ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div>'
+    + (scope === 'day' ? '<div class="br-pp-days"><button type="button" data-dd="-1" aria-label="Day before"' + (bday <= FIRST ? ' disabled' : '') + '>‹</button><span>DAY ' + (Math.round((Date.parse(bday + 'T00:00:00Z') - Date.parse(FIRST + 'T00:00:00Z')) / 86400e3) + 1) + ' · ' + fmtDay(bday) + (bday === lastDay() && bday === ((DAY && DAY.today) || '') ? ' · TODAY' : '') + '</span><button type="button" data-dd="1" aria-label="Day after"' + (bday >= lastDay() ? ' disabled' : '') + '>›</button></div>' : '<div class="br-pp-days"><span>BEST RUN OF THE SEASON · 6 TO 30 NOV</span></div>');
+  async function loadBoard() {
+    const box = pp.querySelector('.br-pp-bd'); if (!box) return; bday ||= lastDay(); box.innerHTML = tabs() + '<div class="br-pp-board"><p class="br-pp-none">…</p></div>';
+    try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box)) return;
+      box.innerHTML = tabs() + '<div class="br-pp-board">' + board(j.rows) + '</div><p class="br-pp-n">' + nf0(j.players) + ' player' + (j.players === 1 ? '' : 's') + (scope === 'day' ? ' that day' : ' this season') + ' · top 10 · your best run counts · the server checks every hit</p>'; }
+    catch { box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
+  }
+  // the player's private code: only this browser shows it; the overall winner shows it to claim the prize
+  const codeLine = () => { const c = lsGet('bt-pop-code'); return c ? '<p class="br-pp-n">Your player code: <b class="br-pp-code">' + esc(c) + '</b> · keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.</p>' : ''; };
+  async function openPanel() {
+    if (RUN) return; pp.hidden = false; pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>Loading the day…</p></div>';
+    try {
+      if (CHQ && !CH && !chOff) CH = await api('run/' + encodeURIComponent(CHQ)).catch(() => null);
+      DAY = await api('day' + (CH ? '?d=' + CH.day : '')); NAMES2 = DAY.names; /* a challenge plays its own day's plan */
+    } catch (e) { pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>The game server did not answer (' + esc(e.message) + '). Try again in a moment.</p><div class="br-pp-b"><button type="button" class="br-pp-x">Close</button></div></div>'; return; }
+    intro();
+  }
+  function intro() {
+    const past = DAY.day !== DAY.today, ch = CH ? '<p class="br-pp-ch">' + esc(CH.name) + ' challenges you: <b>' + nf0(CH.score) + ' ROT</b> on Daily #' + CH.no + '. Beat it! Their score runs along as a ghost.' + (past ? ' (That day is over: a rematch, not on the board.)' : '') + '</p>' : '';
+    pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP #' + DAY.no + '</b>' + ch
+      + '<p>60 seconds. The same creatures for everyone today. Tap them: quick pops build a combo up to x10, golden ones count five times, the rocket snail 10, the big brain with the eyes takes six hits for 50.</p>'
+      + '<p class="br-pp-prize">Daily winner gets: <b>NIIIIIIIIIIIIIIIIIIIIIIIICHTS!</b> <small>(German for NOTHING) hahaha</small><br>Overall winner (best run, 6 to 30 Nov) gets: <b class="one">ONE $BOBAI!</b> <small>one. not one million. ONE.</small></p>'
+      + '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another name">🎲 new name</button></p>'
+      + '<div class="br-pp-bd"></div>' + codeLine()
+      + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
+    scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard();
+    setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
+  }
+  pp.addEventListener('click', async e => {
+    e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('br-pp-x')) { pp.hidden = true; return; }
+    if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
+    if (b.classList.contains('br-pp-re')) { pname = [ri(16), ri(16), 1 + ri(99)]; lsSet('bt-pop-name', JSON.stringify(pname)); b.parentNode.querySelector('i').textContent = myName(); return; }
+    if (b.dataset.sc) { scope = b.dataset.sc; loadBoard(); return; }
+    if (b.dataset.dd) { const n = shift(bday || lastDay(), +b.dataset.dd); if (n >= FIRST && n <= lastDay()) { bday = n; loadBoard(); } return; }
+    if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
+    if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }
+    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/?pop=' + LAST.run, text = 'I scored ' + nf0(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
+      try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') { b.textContent = link; } } }
+  });
+  // THE RUN
+  const POP_MS = 60000;
+  async function begin() {
+    let st; try { st = await api('start', { pid, name: pname, d: DAY.day !== DAY.today ? DAY.day : undefined }); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'Could not start: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
+    pp.hidden = true; pbtn.hidden = true;
+    RUN = { id: st.run, ranked: st.ranked, plan: DAY.plan, pops: [], hits: [], score: 0, combo: 0, last: -1e9, maxc: 0, timers: [], t0: 0, live: false };
+    for (const d of el.querySelectorAll('.br-r')) { for (const a of d.getAnimations()) a.cancel(); } // the look's own creatures step out
+    ['3', '2', '1'].forEach((n, i) => RUN.timers.push(setTimeout(() => slam(n, W() / 2, H() * 0.42, true), i * 800)));
+    RUN.timers.push(setTimeout(() => { slam('POP!', W() / 2, H() * 0.42, true); RUN.t0 = performance.now(); RUN.live = true; for (const s of RUN.plan) RUN.timers.push(setTimeout(() => spawnRun(s), s.at)); RUN.timers.push(setTimeout(endRun, POP_MS + 250)); RUN.tick = setInterval(runHud, 250); runHud(); }, 2400));
+  }
+  function spawnRun(s) {
+    if (!RUN || !on) return;
+    // a creature the timer brought late keeps only what is left of its time: it leaves when the plan says (the server
+    // counts a hit only inside the plan's window; 6.11.: a busy device let one live 0.5 s too long)
+    const late = Math.max(0, tNow() - s.at); if (late >= s.life - 200) return;
+    let a = null; spawning = true;
+    try { if (s.n === 'kaiju') kaiju(); else { const c = CREW.find(x => x.n === s.n) || CREW[0]; a = MOVES[s.m]?.(c) || MOVES.run(c); } } finally { spawning = false; }
+    const d = el.lastElementChild; if (!d || !d.classList.contains('br-r')) return;
+    d.dataset.ri = s.i; if (s.gold) d.classList.add('gold');
+    for (const an of d.getAnimations()) an.effect.updateTiming({ duration: s.life - late }); void a;
+  }
+  const tNow = () => Math.round(performance.now() - RUN.t0);
+  function runHit(r, cx, cy) {
+    const s = RUN.plan[+r.dataset.ri], t = tNow(); if (!s || t > s.at + s.life + 350) return; /* past its time: the server would not count it either */
+    RUN.pops.push([s.i, t]); pops++;
+    RUN.combo = t - RUN.last < 2200 ? RUN.combo + 1 : 1; RUN.last = t; const m = Math.min(RUN.combo, 10); RUN.maxc = Math.max(RUN.maxc, m);
+    const pts = ({ snail: 10, kaiju: 50 }[s.n] || 5) * (s.gold ? 5 : 1) * m; RUN.score += pts;
+    G.score += pts; G.best = Math.max(G.best, G.score); G.maxc = Math.max(G.maxc || 0, m); save();
+    label((r.dataset.t || 'BRAIN') + ' +' + pts, cx, cy - 30);
+    if (RUN.combo >= 3) slam('COMBO x' + m + '!', cx, cy + 40, RUN.combo >= 6);
+    if (s.gold) { shake(); slam('GOLDEN BRAIN!', W() / 2, H() * 0.4, true); }
+    runHud();
+  }
+  const ghostAt = t => { if (!CH || CH.day !== DAY.day) return null; let v = 0; for (const [gt, gs] of CH.timeline) { if (gt > t) break; v = gs; } return v; };
+  function runHud() {
+    if (!RUN) return; const t = RUN.live ? Math.min(POP_MS, tNow()) : 0, left = Math.max(0, Math.ceil((POP_MS - t) / 1000)), g = ghostAt(t);
+    const hd = win.querySelector('.hud'), wr = win.getBoundingClientRect(); let b = 0; if (hd) for (const e of hd.children) { const r = e.getBoundingClientRect(); if (r.width && r.height) b = Math.max(b, r.bottom); }
+    hud.style.top = Math.max(8, b - wr.top + 8) + 'px';
+    hud.innerHTML = '<s>DAY ' + DAY.no + '</s><s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + nf0(RUN.score) + '</b>' + (RUN.combo > 1 ? '<i>x' + Math.min(RUN.combo, 10) + '</i>' : '') + (g != null ? '<s class="br-pg">GHOST ' + nf0(g) + '</s>' : '');
+    hud.classList.add('on'); clearTimeout(hudT);
+  }
+  async function endRun() {
+    if (!RUN) return; const R0 = RUN; clearInterval(R0.tick); R0.timers.forEach(clearTimeout); R0.live = false;
+    for (const d of el.querySelectorAll('.br-r')) for (const a of d.getAnimations()) a.cancel();
+    slam('TIME!', W() / 2, H() * 0.42, true); shake();
+    let res = null, err = null;
+    try { res = await api('finish', { run: R0.id, pops: R0.pops, hits: R0.hits }); } catch (e) { err = e.message; }
+    RUN = null; pbtn.hidden = false; hudT = setTimeout(() => hud.classList.remove('on'), 4000);
+    if (res) { LAST = res; DAY.top = res.top || DAY.top; if (res.code) lsSet('bt-pop-code', res.code); }
+    const beat = CH && res ? (res.score > CH.score ? '<p class="br-pp-ch">You beat ' + esc(CH.name) + ' by <b>' + nf0(res.score - CH.score) + '</b>! Send it back to them.</p>' : '<p class="br-pp-ch">' + esc(CH.name) + ' keeps it by <b>' + nf0(CH.score - res.score) + '</b>. Again?</p>') : '';
+    pp.hidden = false;
+    pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? nf0(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
+      + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · best combo x' + res.maxc + ' · ' + res.pops + ' popped</p>' : '<p>' + esc(err || '') + '</p>')
+      + beat + '<div class="br-pp-bd"></div>' + codeLine()
+      + '<div class="br-pp-b">' + (res ? '<button type="button" class="br-pp-share">SHARE</button><button type="button" class="br-pp-dare">CHALLENGE A FRIEND</button>' : '') + '<button type="button" class="br-pp-again">PLAY AGAIN</button><button type="button" class="br-pp-x">Close</button></div></div>';
+    scope = 'day'; bday = res ? res.day : null; loadBoard();
+  }
 
   // HE ROTS TOO (2026-11-05): now and then, only while he says nothing and no move waits, a line of his own about it. No
   // word of a move in any of them (operator 1.10.: every line with a move word plays THAT move), English only (9.10.)
@@ -7624,7 +7768,7 @@ window.__btBrSeason = brSeason;
   function beat() {
     tA = setTimeout(beat, R(1000, 2800)); /* operator: "absolute max" — closer beats */
     if (on && Math.random() < 0.16) discoOn(); /* the beams about every 12 s (operator: "the disco ball should be seen") */
-    if (!on || document.hidden || REDUCED || !win.offsetWidth) return;
+    if (!on || document.hidden || REDUCED || !win.offsetWidth) return; pbtnPlace(); if (RUN) return; /* a daily run plays its own plan */
     fitScene();
     // a first-timer is told once, when a creature is there to tap
     if (!tutDone && alive > 0 && G.score === 0) { tutDone = true; slam('TAP THE CREATURES!', W() / 2, H() * 0.3, true); return; }
@@ -7632,12 +7776,12 @@ window.__btBrSeason = brSeason;
     if (r < 0.55) creature(); else if (r < 0.8) caption(false); else if (r < 0.9) orbit(); else { creature(); caption(false); }
     if (Math.random() < 0.25) setTimeout(() => creature(), R(300, 900));
   }
-  function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth) mega(); megaBeat(); }, R(16000, 28000)); }
+  function megaBeat() { tB = setTimeout(() => { if (on && !document.hidden && !REDUCED && win.offsetWidth && !RUN) mega(); megaBeat(); }, R(16000, 28000)); }
   // THE SNAIL AND THE BIG BRAIN WITH THE EYES COME FOR SURE (operator, 2026-11-05 night: "I never see the snail"; "the big
   // brain with the eyes must pop up now and then too"): one of fifteen at random and the kaiju only in a quarter of the MEGA
   // moments were too rare — the rocket snail races through every 14-26 s, the millipede brain rises every 30-50 s
   let tS = 0, tK = 0;
-  const free = () => on && !document.hidden && !REDUCED && win.offsetWidth;
+  const free = () => on && !document.hidden && !REDUCED && win.offsetWidth && !RUN;
   function snailBeat() { tS = setTimeout(() => { if (free()) MOVES.run(CREW.find(c => c.n === 'snail')); snailBeat(); }, R(14000, 26000)); }
   function kaijuBeat() { tK = setTimeout(() => { if (free() && !el.querySelector('.br-r[data-n="kaiju"]')) kaiju(); kaijuBeat(); }, R(30000, 50000)); }
   function start() { stop(); load(); fitScene(); tA = setTimeout(beat, 2500); megaBeat(); lineT = setTimeout(rotLine, R(20000, 35000)); dress(); tJ = setTimeout(jumpBeat, R(4000, 7000));
@@ -7645,7 +7789,7 @@ window.__btBrSeason = brSeason;
     if (!stick) { stick = true; requestAnimationFrame(place); } }
   // the standard terminal gets its circles back (the same rule as applyPhase: a station with a share)
   const circles = () => { for (const d of DEST) { const v = d.pct > 0; if (d.obj) d.obj.visible = v; d.orb.visible = v && !d.obj; d.halo.visible = v; } srcOrb.visible = true; ringBg.material.visible = true; for (const m of ringFgs) m.material.visible = true; };
-  function stop() { const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
+  function stop() { if (RUN) { clearInterval(RUN.tick); RUN.timers.forEach(clearTimeout); RUN = null; pbtn.hidden = false; pp.hidden = true; } const was = ST.length > 0; clearTimeout(tA); clearTimeout(tB); clearTimeout(lineT); clearTimeout(tJ); clearTimeout(tS); clearTimeout(tK); stL.replaceChildren(); ST = []; BOTS = []; disco = stage = ring = rc = null; if (was) circles(); for (const a of el.getAnimations({ subtree: true })) a.cancel(); el.replaceChildren(); capL.replaceChildren(); alive = 0; }
 
   // the switch: a brain at the LIVE pill, placed exactly as the Halloween pumpkin was (the same rules, the same classes)
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw br-sw'; sw.id = 'bt-br';
@@ -7684,6 +7828,7 @@ window.__btBrSeason = brSeason;
   }
   sw.addEventListener('click', e => { e.stopPropagation(); set(!on, true); });
   set(on, false);
+  if (on && !ask && CHQ) setTimeout(openPanel, 1500);
   if (ask) {
     const nb = document.createElement('div'); nb.className = 'br-ask'; nb.setAttribute('role', 'dialog'); nb.setAttribute('aria-modal', 'false'); nb.setAttribute('aria-labelledby', 'br-ask-h');
     nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">Brainrot mode is on</b>'
@@ -7692,7 +7837,7 @@ window.__btBrSeason = brSeason;
       + '<div class="br-ask-b"><button type="button" class="br-ask-yes">Stay in brainrot</button><button type="button" class="br-ask-no">Switch to the standard terminal</button></div>'
       + '<small>You can change it any time with the ROT button next to LIVE.' + (calmDevice ? ' Your device asks for reduced motion: switching is recommended.' : '') + '</small></div>';
     win.appendChild(nb);
-    const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} nb.remove(); set(v, false); };
+    const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} nb.remove(); set(v, false); if (v && CHQ) setTimeout(openPanel, 900); /* a challenge link: straight to the game */ };
     nb.querySelector('.br-ask-no').addEventListener('click', e => { e.stopPropagation(); choose(false); });
     nb.querySelector('.br-ask-yes').addEventListener('click', e => { e.stopPropagation(); choose(true); });
     setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight
@@ -7709,7 +7854,7 @@ window.__btBrSeason = brSeason;
     const IMP = 'Impact, Anton, "Arial Black", "Helvetica Neue", sans-serif', MONO = 'ui-monospace, Consolas, monospace';
     const others = CREW.filter(x => x.n !== 'snail' && x.n !== 'washer').sort(() => Math.random() - 0.5).slice(0, 6).map(x => x.n);
     const [sky, pod, ball, kai, snail, mini, ...cr] = await Promise.all(['sky', 'podium', 'disco', 'kaiju', 'snail', 'mini', ...others].map(n => imgOf(pic(n))));
-    const rank = rankOf(G.score), ri = RANKS.findIndex(r => r[1] === rank), nx = RANKS[ri + 1], sc = G.score.toLocaleString('en-US');
+    const D1 = LAST, rank = D1 ? (D1.ranked ? '#' + D1.rank + ' TODAY' : 'DAILY #' + D1.no) : rankOf(G.score), ri = RANKS.findIndex(r => r[1] === rankOf(G.score)), nx = RANKS[ri + 1], sc = (D1 ? D1.score : G.score).toLocaleString('en-US'); /* after a daily run the card is that run: its place, its score */
     const draw = (im, x, y, w, rot = 0, flip = false, a = 1) => { if (!im) return; const h = w * im.naturalHeight / im.naturalWidth; g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(rot * Math.PI / 180); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h / 2, w, h); g.restore(); };
     const meme = (t, x, y, size, maxW, fill, rot = 0, shadow = '#ff3fd8', align = 'left') => { let f = size; g.font = '400 ' + f + 'px ' + IMP; while (g.measureText(t).width > maxW && f > 24) { f -= 4; g.font = '400 ' + f + 'px ' + IMP; }
       g.save(); g.translate(x, y); g.rotate(rot * Math.PI / 180); g.textAlign = align; g.lineJoin = 'round'; g.textBaseline = 'alphabetic';
@@ -7742,12 +7887,12 @@ window.__btBrSeason = brSeason;
     if (logo) { const lx = tall ? W2 / 2 - 200 : LX, ly = tall ? 46 : 44; g.save(); g.beginPath(); g.arc(lx + 26, ly + 26, 26, 0, 7); g.clip(); g.drawImage(logo, lx, ly, 52, 52); g.restore(); }
     g.font = '700 26px ' + MONO; g.textAlign = tall ? 'left' : 'left'; g.fillStyle = '#ffe600'; g.lineWidth = 6; g.strokeStyle = '#000'; g.lineJoin = 'round';
     const hx = tall ? W2 / 2 - 134 : LX + 66, hy = tall ? 81 : 79; g.strokeText('$BOBAI BRAIN TERMINAL', hx, hy); g.fillText('$BOBAI BRAIN TERMINAL', hx, hy);
-    const Y = tall ? { bp: 872, my: 914, rk: 1045, sc: 1148, ch: 1180 } : { bp: 205, my: 265, rk: 410, sc: 535, ch: 580 }; meme('BRAIN POP', LX, Y.bp, tall ? 64 : 84, MW, '#ffffff', -3, '#2ef2ff', al);
-    g.font = '700 22px ' + MONO; g.textAlign = al; g.fillStyle = '#2ef2ff'; g.strokeStyle = '#000'; g.lineWidth = 6; g.strokeText('MY RANK', LX, Y.my); g.fillText('MY RANK', LX, Y.my);
+    const Y = tall ? { bp: 872, my: 914, rk: 1045, sc: 1148, ch: 1180 } : { bp: 205, my: 265, rk: 410, sc: 535, ch: 580 }; meme(D1 ? 'DAILY BRAIN POP #' + D1.no : 'BRAIN POP', LX, Y.bp, tall ? 64 : 84, MW, '#ffffff', -3, '#2ef2ff', al);
+    g.font = '700 22px ' + MONO; g.textAlign = al; g.fillStyle = '#2ef2ff'; g.strokeStyle = '#000'; g.lineWidth = 6; const myL = D1 ? (D1.ranked ? 'OF ' + D1.players.toLocaleString('en-US') + ' PLAYERS' : 'REMATCH') : 'MY RANK'; g.strokeText(myL, LX, Y.my); g.fillText(myL, LX, Y.my);
     meme(rank, LX, Y.rk, tall ? 150 : 150, MW, ['#ffe600', '#ff9a1f', '#ff3fd8'], -4, '#ff3fd8', al);
     meme(sc + ' ROT', LX, Y.sc, tall ? 96 : 104, MW, '#7dff3a', -2, '#000', al);
     // three chips: best combo, brains popped, the next rank
-    const chips = [(G.maxc > 1 ? 'BEST COMBO x' + G.maxc : 'COMBO UP TO x10'), pops.toLocaleString('en-US') + ' POPPED', nx ? (nx[0] - G.score).toLocaleString('en-US') + ' TO ' + nx[1] : 'TOP RANK. FULLY ROTTED'];
+    const chips = D1 ? ['BEST COMBO x' + D1.maxc, D1.pops + ' POPPED', rankOf(G.score)] : [(G.maxc > 1 ? 'BEST COMBO x' + G.maxc : 'COMBO UP TO x10'), pops.toLocaleString('en-US') + ' POPPED', nx ? (nx[0] - G.score).toLocaleString('en-US') + ' TO ' + nx[1] : 'TOP RANK. FULLY ROTTED'];
     g.font = '700 ' + (tall ? 21 : 22) + 'px ' + MONO; const cw = chips.map(t => g.measureText(t).width + 36), gap = 14, tw = cw.reduce((a, b) => a + b, 0) + gap * 2;
     let cx = tall ? (W2 - tw) / 2 : LX; const cy = Y.ch, CC = ['#ff3fd8', '#2ef2ff', '#ffe600'];
     chips.forEach((t, i) => { g.beginPath(); g.roundRect ? g.roundRect(cx, cy, cw[i], 46, 23) : g.rect(cx, cy, cw[i], 46); g.fillStyle = 'rgba(10,4,16,.85)'; g.fill(); g.lineWidth = 3; g.strokeStyle = CC[i]; g.stroke();
@@ -7759,7 +7904,8 @@ window.__btBrSeason = brSeason;
     const fr = g.createLinearGradient(0, 0, W2, H2); RAYS.forEach((cl, i) => fr.addColorStop(i / 3, cl)); g.lineWidth = 14; g.strokeStyle = fr; g.strokeRect(7, 7, W2 - 14, H2 - 14);
     const blob = await new Promise(r => c.toBlob(r, 'image/png')), now = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     return { blob, file: new File([blob], 'bobai-brainpop-' + fmt + '-' + now + '.png', { type: 'image/png' }), rot: true,
-      text: 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
+      text: D1 ? 'I scored ' + sc + ' ROT in Daily Brain Pop #' + D1.no + (D1.ranked ? ', #' + D1.rank + ' of ' + D1.players + ' today' : '') + ' on the $BOBAI Brain Terminal 🧠 Beat me: ' + SITE_URL + '/?pop=' + D1.run
+        : 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
   }
-  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, hud: () => showHud(), set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.pops.length : 0, score: RUN ? RUN.score : null, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }), set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();

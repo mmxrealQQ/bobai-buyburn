@@ -1,0 +1,13 @@
+name = "bobai-pop"
+main = "index.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+# Brain Pop daily run (2026-11-06): one Durable Object holds the runs and the board
+[[durable_objects.bindings]]
+name = "POP"
+class_name = "PopBoard"
+
+[[migrations]]
+tag = "pop-v1"
+new_sqlite_classes = ["PopBoard"]

@@ -2476,6 +2476,14 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is a page whose preview card X, Telegram and WhatsApp draw
     // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
     // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
+    // BRAIN POP DAILY (2026-11-06): the daily run's plan, board and checks live in the bobai-pop worker (worker-pop/);
+    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit
+    if (url.pathname.startsWith('/api/pop/')) {
+      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '' } };
+      if (init.method === 'POST') init.body = (await request.text()).slice(0, 20000);
+      const r = await fetch('https://bobai-pop.bobbuildonbnb.workers.dev' + url.pathname + url.search, init);
+      return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': r.headers.get('cache-control') || 'no-store' } });
+    }
     if (url.pathname.startsWith('/m/')) {
       const png = url.pathname.endsWith('.png') && request.method === 'GET';
       if (png) { const hit = await caches.default.match(request); if (hit) return hit; }

@@ -7231,20 +7231,21 @@ window.__btBrSeason = brSeason;
   // name, its frame, how it moves, its size (px at a 1200 px wide window), r = drawn facing right
   const CREW = [
     { n: 'octo', f: 'wave', m: ['fly', 'pop', 'spin', 'float'], s: 120, t: 'SPAGHETTOPO SINAPSICO' },
-    { n: 'bulb', f: 'step', m: ['run'], s: 105, r: 1, t: 'LAMPADINO PENSIERINO' },
-    { n: 'astro', f: 'reel', m: ['float', 'spin'], s: 120, t: 'NEURONAUTA PESCATORE' },
-    { n: 'snail', f: 'blast', m: ['run'], s: 130, r: 1, fast: 1, t: 'LUMACONE RAZZO' },
+    /* 7.11. (operator: "mix the creatures too", "melted into one name, like the first ones"): crypto degen words (a few NSFW) melted Italian style */
+    { n: 'bulb', f: 'step', m: ['run'], s: 105, r: 1, t: 'LAMPADINO MOONBOYINO' },
+    { n: 'astro', f: 'reel', m: ['float', 'spin'], s: 120, t: 'NEURONAUTA DEGENERATO' },
+    { n: 'snail', f: 'blast', m: ['run'], s: 130, r: 1, fast: 1, t: 'LUMACONE LEVERAGONE' },
     { n: 'fridge', f: 'shut', m: ['run', 'pop', 'rise'], s: 120, t: 'FRIGORIFERO FENICOTTERO' },
-    { n: 'sock', f: 'yell', m: ['rise', 'pop'], s: 110, t: 'CALZINO PROFETA' },
-    { n: 'shrimp', f: 'kick', m: ['run', 'pop', 'spin'], s: 110, t: 'GAMBERONE BALLERONE' },
-    { n: 'eyeball', f: 'look', m: ['run', 'pop'], s: 105, t: 'OCCHIONE RAGNONE' },
+    { n: 'sock', f: 'yell', m: ['rise', 'pop'], s: 110, t: 'CALZINO RUGPULLINO' },
+    { n: 'shrimp', f: 'kick', m: ['run', 'pop', 'spin'], s: 110, t: 'GAMBERONE BAGHOLDERONE' },
+    { n: 'eyeball', f: 'look', m: ['run', 'pop'], s: 105, t: 'OCCHIONE CHARTONE' },
     { n: 'duck', f: 'boost', m: ['fly', 'zoom'], s: 110, r: 1, t: 'PAPERA TURBOCERVELLO' },
-    { n: 'banana', f: 'flex', m: ['pop', 'rise', 'zoom'], s: 120, t: 'BANANINO LOBOTOMINO' },
-    { n: 'pigeon', f: 'flap', m: ['fly'], s: 120, r: 1, t: 'PICCIONE SINAPSONE' },
-    { n: 'cactus', f: 'dance', m: ['run', 'pop', 'rise'], s: 110, t: 'CACTUSINO PENSIERINO' },
+    { n: 'banana', f: 'flex', m: ['pop', 'rise', 'zoom'], s: 120, t: 'BANANINO PISELLINO' },
+    { n: 'pigeon', f: 'flap', m: ['fly'], s: 120, r: 1, t: 'PICCIONE SHITCOINONE' },
+    { n: 'cactus', f: 'dance', m: ['run', 'pop', 'rise'], s: 110, t: 'CACTUSINO ARRAPATINO' },
     { n: 'pizza', f: 'scream', m: ['run', 'spin', 'zoom'], s: 105, t: 'PIZZETTA GIGACERVELLO' },
-    { n: 'washer', f: 'spin', m: ['run', 'pop', 'spin'], s: 120, t: 'LAVATRICE GALATTICA' },
-    { n: 'dj', f: 'scratch', m: ['pop', 'rise', 'run'], s: 120, t: 'TARTARUGA DISCOTECARA' },
+    { n: 'washer', f: 'spin', m: ['run', 'pop', 'spin'], s: 120, t: 'LAVATRICE RICICLATRICE' },
+    { n: 'dj', f: 'scratch', m: ['pop', 'rise', 'run'], s: 120, t: 'TARTARUGA PUMPADISCOTECA' },
   ];
   const NAMES = { kaiju: 'CERVELLONE MILLEPIEDI', mini: 'CERVELLINO ELICOTTERO' };
   const CAPS = ['NEURONS: 0', 'BRAIN.EXE HAS STOPPED', 'CERTIFIED ROTTED', 'MAXIMUM ROT', 'YOUR BRAIN ON $BOBAI', 'NO THOUGHTS. JUST BURNS.',
@@ -7532,7 +7533,7 @@ window.__btBrSeason = brSeason;
   const xhPick = () => { const v = +(lsGet('bt-pop-xh') || 1); return v >= 1 && v <= 4 ? v : 1; }; // the chosen crosshair (1 CS2 classic … 4 circle)
   const xcPick = () => { const v = lsGet('bt-pop-xc') || 'g'; return 'gcyprw'.includes(v) && v.length === 1 ? v : 'g'; }; // its colour
   const named = () => lsGet('bt-pop-named') === '1' || (pname && !Array.isArray(pname)); // a name chosen once counts (an own name from before too)
-  const myName = () => !NAMES2 ? '…' : Array.isArray(pname) ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : (NAMES2.rot && NAMES2.rot[pname.v] || '{N}').replace('{N}', pname.own);
+  const myName = () => !NAMES2 ? '…' : Array.isArray(pname) ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : (NAMES2.rot && NAMES2.rot[pname.v % NAMES2.rot.length] || '{N}').replace('{N}', pname.own); /* 7.11.: the list got shorter, an old place wraps like on the server */
   // the button in the scene, under the title row on the left
   const pbtn = document.createElement('button'); pbtn.type = 'button'; pbtn.className = 'br-pbtn'; pbtn.textContent = '▶ PLAY BRAIN POP'; /* operator 6.11.: a PLAY button */ pbtn.hidden = REDUCED; win.appendChild(pbtn); /* ?calm: nothing moves, so no game */
   function pbtnPlace() { const t = topSafe(); if (pbtn._t !== t) { pbtn._t = t; pbtn.style.top = (t + 6) + 'px'; } }
@@ -7891,7 +7892,7 @@ window.__btBrSeason = brSeason;
   // station gets a stick-figure builder in a hard hat on a stack of bricks, its frame swings the hammer
   const POST = { burnA: ['stburn', 'flare', 'BURN GO BRRR'], burnB: ['stbobs', 'hammer', 'BUILD. BURN. REPEAT.'], liq: ['stliq', 'splash', 'LIQUIDITY SOUP'], defi: ['stdefi', 'grow', 'FARMING THE CHART'],
     giggle: ['stgiggle', 'laugh', 'GIGGLE GIGGLE'], creator: ['stcreator', 'paint', 'ART BY BRAIN'], src: ['sttrade', 'ring', '3% OF EVERY TRADE'] };
-  const STNAME = { stburn: 'CERVELLO PIROMANE', stbobs: 'COSTRUTTORE STECCHINO', stliq: 'GOCCIA NUOTATRICE', stdefi: 'CONTADINO ROBOTICO', stgiggle: 'PENTOLA RIDARELLA', stcreator: 'PITTORE CERVELLONE', washer: 'LAVATRICE GALATTICA', sttrade: 'CASSIERE CERVELLONE' }; /* 6.11.: the trades get their own cashier; the washing machine still runs with the crew */
+  const STNAME = { stburn: 'CERVELLO PIROMANE', stbobs: 'COSTRUTTORE STECCHINO', stliq: 'GOCCIA LIQUIDONA', stdefi: 'CONTADINO YIELDINO', stgiggle: 'PENTOLA RIDARELLA', stcreator: 'PITTORE RUGGATORE', washer: 'LAVATRICE RICICLATRICE', sttrade: 'CASSIERE CERVELLONE' }; /* 6.11.: the trades get their own cashier; the washing machine still runs with the crew */
   const stL = document.createElement('div'); stL.className = 'br br-stl'; stL.setAttribute('aria-hidden', 'true'); win.insertBefore(stL, el);
   // one picture each, bobbing (two pictures swapping on twelve costumes all the time cost a third of the frame rate at
   // 1024 and 1280, brainrot.mjs rule 7); the frame shows only while it jumps or spins (.jump/.spin .z, terminal.css)

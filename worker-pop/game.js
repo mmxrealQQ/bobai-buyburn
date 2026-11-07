@@ -32,24 +32,23 @@ export const NOUN = ['LUMACONE', 'CERVELLINO', 'DEGEN', 'BANANINO', 'WHALE', 'PI
 // and _ (3 to 16, as typed), so no link can ever stand on the board (no dot, no slash, no space); a short block list for
 // insults and for names that pose as us; the name goes into one of these, picked by the player (v); the operator can
 // still hide one (POST /api/pop/hide with the admin key)
-// 7.11. (operator: "a healthy mix of English and the Italian brainrot, a bit NSFW"): the first 14 are the 6.11. forms on their
-// old places; then crypto degen, half English, half Italian, a few cheeky ones. A player keeps an index (v): the list only grows.
+// 7.11. (operator: "the name has to MELT into one name like the first ones, rather fewer but really funny"): the first 14 are
+// the 6.11. forms on their old places; the rest melt the name into a crypto degen word (some NSFW), Italian brainrot style.
+// A player keeps an index (v): a list that got shorter wraps around (nameOf, myName), so no stored name ever breaks.
 export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '{N}ino Lobotomino', 'Signor {N}etti Spaghetti', 'Capitano {N} Neuronauta', '{N}accio Discotecaccio',
   'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina',
-  '100x Leverage {N}ino', 'Exit Liquidity {N}', '{N}accio Pump e Dump', 'Down Bad {N}', 'Diamond Balls {N}', '{N}one Bagholder',
-  'Wen Lambo {N}ito', 'Ser {N} Margin Call', 'Paper Hands {N}', '{N}otto Shitcoinotto', 'Il Dev {N} Rugga e Scappa', 'Hopium {N}uccio',
-  '{N} Senza Stop Loss', 'Liquidated {N}', 'Sugar Daddy {N}', '{N} Got Rugged Naked', 'OnlyFans {N}ina Gas Fee', '{N} Senza Mutande',
-  'Skibidi {N} Toiletto', 'Lord {N} of Rugs', '{N}ella Copium Gyattella', 'Galaxy Brain {N}', 'Turbo Degen {N}', 'Bonk {N} Sculacciato',
-  'Horny {N} the Bull', '{N}ino Mutandino', 'MILF Hunter {N}', '{N} Buys the Top', 'Sexy {N}ella Pomodorella', 'Stripper {N} Staking',
-  '{N} Nude on Discord', 'Nonna {N} in Perizoma', 'Femboy {N} Bullish', '{N} Moans at the Dip', 'Bunga Bunga {N}uccio', 'Gas Fee Gigolo {N}',
-  'Smooth Brain {N}', '{N} Sells the Bottom', 'Mega Pump {N}ella', 'Hot {N} in Your Wallet', '{N} Comes at 69 Gwei', 'Daddy {N} Degenerato',
-  '{N}one Culone', 'Ape Brain {N}', 'Gigachad {N}ino', 'Seed in Mutande {N}', '{N} Wet from Gains', 'Pornocoin {N}one'];
+  '{N}ino Rugpullino', '{N}one Bagholderone', '{N}accio Pumpaccio Dumpaccio', '{N}etto Shitcoinetto', '{N}ella Lamborghinella',
+  '{N}otto Liquidotto', '{N}uccio Degenuccio', '{N}ito Jeetito', '{N}one Moonboyone', '{N}ino Gasolino', '{N}ini Copiumini',
+  '{N}ella Hopiumella', '{N}otto Mangiawickotto', 'Ser {N}ini Leveraggini', '{N}ona Gyattona', '{N}ino Rizzino',
+  '{N}ella Tettarella', '{N}one Culone', '{N}ino Pisellino', '{N}accio Sculacciaccio', '{N}etto Mutandetto',
+  '{N}ona Bunga Bungona', '{N}one Sugar Paparone', '{N}ino Orgasmino Verde', '{N}ella MILFarella', 'Nonna {N}ina Perizomina'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
+export const ROT_MAX = 86; // the longest the list ever was live (7.11.): a form beyond it never existed
 export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();
   return /^[A-Za-z0-9_]{3,16}$/.test(s) && /[A-Za-z]/.test(s) ? s : null; };
 export const nameOf = v => {
-  if (v && typeof v === 'object' && !Array.isArray(v)) { const base = ownName(v.own), k = Number(v.v); if (!base || !Number.isInteger(k) || k < 0 || k >= ROT.length) return null; return ROT[k].replace('{N}', base); }
+  if (v && typeof v === 'object' && !Array.isArray(v)) { const base = ownName(v.own), k = Number(v.v); if (!base || !Number.isInteger(k) || k < 0 || k >= ROT_MAX) return null; return ROT[k % ROT.length].replace('{N}', base); }
   if (!Array.isArray(v) || v.length !== 3) return null; const [a, b, n] = v.map(Number);
   if (![a, b, n].every(Number.isInteger) || a < 0 || a >= ADJ.length || b < 0 || b >= NOUN.length || n < 1 || n > 99) return null; return ADJ[a] + ' ' + NOUN[b] + ' ' + n; };
 

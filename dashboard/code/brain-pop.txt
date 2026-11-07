@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 562 lines.
+# one fetch. 6 files, 568 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -230,7 +230,13 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   'Baby {N}inu 1000x', 'Safe{N}moon', '{N}coin Classic', 'Dogwif{N}', '{N}GPT Turbo Inu', '{N}y McRugface',
   'Lil {N}y Bagz', 'Sir {N}alot the Rekt', '{N}inator Exit 3000', '{N}zilla Wen Lambo', '{N}ster the Shitcoinster', 'Big {N}y Dumpy',
   '{N}stein Degenstein', 'Rugpull{N}ski', '{N}ski Bagholderski', '{N}son McPump', 'Ape{N} Jeetface', '{N}69 Moonshot Inu',
-  '{N}ussy Liquidity', '{N}ussy Pumpussy', 'Daddy {N}ussy Gainz', '{N}boner Greencandle', '{N}dong Moonshot', 'Thot{N} the Airdrop'];
+  '{N}ussy Liquidity', '{N}ussy Pumpussy', 'Daddy {N}ussy Gainz', '{N}boner Greencandle', '{N}dong Moonshot', 'Thot{N} the Airdrop',
+  // 7.11. (operator: "more English, more NSFW degen crypto shit")
+  'Horny{N} Moonboy', '{N}tits McLiquidity', '{N}dick Diamondhands', 'Milf{N} Staking', 'Step{N} Got Rugged', '{N}fap Fapcoin',
+  'Only{N}Fans Airdrop', '{N}hub Premium Degen', '{N}69420 Inu', 'Sugar{N}daddy Whale', '{N}gasm Greencandle', 'Cum{N} to the Moon',
+  '{N}thicc Bagholder', 'Gyatt{N} Gainz', '{N}bussy Liquidity', '{N}nut No Stop Loss', 'Edging{N} the ATH', '{N}hard Pumpenstein',
+  'Lick{N} the Chart', 'Rizz{N} the Rugger', 'Naked{N} Margin Call', 'Spanky{N} McDump', 'Booty{N} Bagz', '{N}horny Shortsqueeze',
+  'Kinky{N} the Whale', '{N}ballz Diamond Edition'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ROT_MAX = Math.max(86, ROT.length); // the longest the list ever was live (7.11.): a form beyond it never existed
@@ -514,7 +520,7 @@ t(dayNo('2026-11-06') === 1 && dayNo('2026-11-07') === 2, 'day numbers');
 t(validDay('2026-11-06', '2026-11-07') && !validDay('2026-11-08', '2026-11-07') && !validDay('2026-11-05', '2026-11-07') && !validDay('2026-02-31', '2026-12-01'), 'only real days from the first to today');
 t(validDay('2026-11-30', '2026-12-05') && !validDay('2026-12-01', '2026-12-05') && seasonOver('2026-12-01') && !seasonOver('2026-11-30'), 'the season: boards until 30 Nov');
 t(nameOf({ own: 'mmx_QQ', v: 0 }) === 'Il Grande mmx_QQone' && nameOf({ own: ' mmx_QQ ', v: 1 }) === 'mmx_QQini Cervellini', 'an own name, as typed, brainrotted', nameOf({ own: 'mmx_QQ', v: 0 }));
-t(['ab', 'x'.repeat(17), 'evil.com', 'a/b', '<b>hi</b>', '1234', 'two words'].every(n => nameOf({ own: n, v: 0 }) === null) && ['BOBAI', 'admin', 'BOBAI_TEAM'].every(n => nameOf({ own: n, v: 0 }) !== null) && nameOf({ own: 'mmx', v: 99 }) === null && nameOf('plain text') === null, 'no short, long, link, rude, posing, digit-only name, no unknown form, no bare text');
+t(['ab', 'x'.repeat(17), 'evil.com', 'a/b', '<b>hi</b>', '1234', 'two words'].every(n => nameOf({ own: n, v: 0 }) === null) && ['BOBAI', 'admin', 'BOBAI_TEAM'].every(n => nameOf({ own: n, v: 0 }) !== null) && nameOf({ own: 'mmx', v: 999 }) === null && nameOf('plain text') === null, 'no short, long, link, rude, posing, digit-only name, no unknown form, no bare text');
 console.log(`pop test: ${pass} PASS, ${fail} FAIL`); process.exit(fail ? 1 : 0);
 
 ==============================================================================

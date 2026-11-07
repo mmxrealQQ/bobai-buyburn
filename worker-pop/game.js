@@ -51,7 +51,13 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   'Baby {N}inu 1000x', 'Safe{N}moon', '{N}coin Classic', 'Dogwif{N}', '{N}GPT Turbo Inu', '{N}y McRugface',
   'Lil {N}y Bagz', 'Sir {N}alot the Rekt', '{N}inator Exit 3000', '{N}zilla Wen Lambo', '{N}ster the Shitcoinster', 'Big {N}y Dumpy',
   '{N}stein Degenstein', 'Rugpull{N}ski', '{N}ski Bagholderski', '{N}son McPump', 'Ape{N} Jeetface', '{N}69 Moonshot Inu',
-  '{N}ussy Liquidity', '{N}ussy Pumpussy', 'Daddy {N}ussy Gainz', '{N}boner Greencandle', '{N}dong Moonshot', 'Thot{N} the Airdrop'];
+  '{N}ussy Liquidity', '{N}ussy Pumpussy', 'Daddy {N}ussy Gainz', '{N}boner Greencandle', '{N}dong Moonshot', 'Thot{N} the Airdrop',
+  // 7.11. (operator: "more English, more NSFW degen crypto shit")
+  'Horny{N} Moonboy', '{N}tits McLiquidity', '{N}dick Diamondhands', 'Milf{N} Staking', 'Step{N} Got Rugged', '{N}fap Fapcoin',
+  'Only{N}Fans Airdrop', '{N}hub Premium Degen', '{N}69420 Inu', 'Sugar{N}daddy Whale', '{N}gasm Greencandle', 'Cum{N} to the Moon',
+  '{N}thicc Bagholder', 'Gyatt{N} Gainz', '{N}bussy Liquidity', '{N}nut No Stop Loss', 'Edging{N} the ATH', '{N}hard Pumpenstein',
+  'Lick{N} the Chart', 'Rizz{N} the Rugger', 'Naked{N} Margin Call', 'Spanky{N} McDump', 'Booty{N} Bagz', '{N}horny Shortsqueeze',
+  'Kinky{N} the Whale', '{N}ballz Diamond Edition'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ROT_MAX = Math.max(86, ROT.length); // the longest the list ever was live (7.11.): a form beyond it never existed

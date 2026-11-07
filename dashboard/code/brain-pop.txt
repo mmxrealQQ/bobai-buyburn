@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 557 lines.
+# one fetch. 6 files, 562 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -225,10 +225,15 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   '{N}etto Airdropetto', '{N}ino Whalino', '{N}accio Rektaccio', '{N}ona Stakingona', '{N}otto Memecoinotto', '{N}ello FOMOnello',
   '{N}ino Slippagino', '{N}ella Sniperella', '{N}uccio Honeypottuccio', '{N}one Ruggatone', '{N}ino Bottino', '{N}ito Wenlambito',
   '{N}ino Manine di Carta', '{N}ella Spogliarella', '{N}one Arrapatone', '{N}ino Bagnatino', '{N}ino Sculacciatino',
-  '{N}ino Leccapiedino', '{N}one Viagrone Verde', '{N}ella Bikinella', '{N}ino Preservativino', '{N}ella Culona Pumpona'];
+  '{N}ino Leccapiedino', '{N}one Viagrone Verde', '{N}ella Bikinella', '{N}ino Preservativino', '{N}ella Culona Pumpona',
+  // 7.11. (operator: "in English too, crypto degen shit"): melted the English memecoin way
+  'Baby {N}inu 1000x', 'Safe{N}moon', '{N}coin Classic', 'Dogwif{N}', '{N}GPT Turbo Inu', '{N}y McRugface',
+  'Lil {N}y Bagz', 'Sir {N}alot the Rekt', '{N}inator Exit 3000', '{N}zilla Wen Lambo', '{N}ster the Shitcoinster', 'Big {N}y Dumpy',
+  '{N}stein Degenstein', 'Rugpull{N}ski', '{N}ski Bagholderski', '{N}son McPump', 'Ape{N} Jeetface', '{N}69 Moonshot Inu',
+  '{N}ussy Liquidity', '{N}ussy Pumpussy', 'Daddy {N}ussy Gainz', '{N}boner Greencandle', '{N}dong Moonshot', 'Thot{N} the Airdrop'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
-export const ROT_MAX = 86; // the longest the list ever was live (7.11.): a form beyond it never existed
+export const ROT_MAX = Math.max(86, ROT.length); // the longest the list ever was live (7.11.): a form beyond it never existed
 export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();
   return /^[A-Za-z0-9_]{3,16}$/.test(s) && /[A-Za-z]/.test(s) ? s : null; };
 export const nameOf = v => {

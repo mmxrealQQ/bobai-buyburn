@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 548 lines.
+# one fetch. 6 files, 553 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -204,20 +204,25 @@ export const LIFE = { run: 4600, fly: 5600, float: 6500, spin: 3200, pop: 2900, 
 export const PTS = { snail: 10, kaiju: 50 }, BASE = 5, GOLD = 5, COMBO_MS = 2200, COMBO_MAX = 10, KAIJU_HP = 6;
 // names without free text: nobody can write anything on the board, they pick from these
 export const ADJ = ['TURBO', 'GALAXY', 'MEGA', 'ULTRA', 'SPICY', 'COSMIC', 'NEON', 'ATOMIC', 'SNEAKY', 'HYPER', 'FUNKY', 'LASER', 'DISCO', 'ROCKET', 'GOLDEN', 'CHAOS'];
-export const NOUN = ['LUMACONE', 'CERVELLINO', 'PAPERA', 'BANANINO', 'GAMBERONE', 'PICCIONE', 'CACTUSINO', 'PIZZETTA', 'LAVATRICE', 'OCCHIONE', 'CALZINO', 'NEURONAUTA', 'FRIGORIFERO', 'TARTARUGA', 'LAMPADINO', 'SPAGHETTOPO'];
+// 7.11. (operator: "take the Italian style out"): English degen words, same places (a stored [a, b, n] keeps working)
+export const NOUN = ['LUMACONE', 'CERVELLINO', 'DEGEN', 'BANANINO', 'WHALE', 'PICCIONE', 'JEET', 'PIZZETTA', 'RUGPULLER', 'OCCHIONE', 'BAGHOLDER', 'NEURONAUTA', 'GIGACHAD', 'TARTARUGA', 'MOONBOY', 'SPAGHETTOPO'];
 // AN OWN NAME TOO, BRAINROTTED (operator, 6.11.: "can't one type one's own name?" — "and when it is saved, brainrot it:
 // the same name made into a pet name that is a brainfuck, like mmx_QQ and something funny with mmx_QQ"): letters, digits
 // and _ (3 to 16, as typed), so no link can ever stand on the board (no dot, no slash, no space); a short block list for
 // insults and for names that pose as us; the name goes into one of these, picked by the player (v); the operator can
 // still hide one (POST /api/pop/hide with the admin key)
+// 7.11. (operator: "a healthy mix of English and the Italian brainrot, a bit NSFW"): the first 14 are the 6.11. forms on their
+// old places; then crypto degen, half English, half Italian, a few cheeky ones. A player keeps an index (v): the list only grows.
 export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '{N}ino Lobotomino', 'Signor {N}etti Spaghetti', 'Capitano {N} Neuronauta', '{N}accio Discotecaccio',
   'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina',
-  // 7.11. (operator: "funnier brainrot names, a bit NSFW", "more crypto shit degen style") — only APPENDED: a stored index must keep its form
-  '100x Leverage {N}ino', '{N} Rugpullini Culone', 'Exit Liquidity {N}', '{N} Senza Stop Loss', 'Down Bad {N}uccio',
-  'Liquidated {N}ella Nuda', '{N}accio Pump e Dump', 'Daddy {N} Degenerato', 'OnlyFans {N}ina Gas Fee', '{N} Mangia Wick',
-  'Paper Hands {N}ino', 'Diamond Balls {N}', '{N}one Bagholder', '{N} Long sul Divano Nudo', 'Seed in Mutande {N}',
-  '{N}otto Shitcoinotto', 'Wen Lambo {N}ito', '{N} Apes Tutto Nudo', 'Ser {N} Margin Call', '{N}ella Copium Gyattella',
-  'Bonk {N} Sculacciato', '{N} Short sulla Mamma', 'Il Dev {N} Rugga e Scappa', 'Hopium {N}uccio Bagnato'];
+  '100x Leverage {N}ino', 'Exit Liquidity {N}', '{N}accio Pump e Dump', 'Down Bad {N}', 'Diamond Balls {N}', '{N}one Bagholder',
+  'Wen Lambo {N}ito', 'Ser {N} Margin Call', 'Paper Hands {N}', '{N}otto Shitcoinotto', 'Il Dev {N} Rugga e Scappa', 'Hopium {N}uccio',
+  '{N} Senza Stop Loss', 'Liquidated {N}', 'Sugar Daddy {N}', '{N} Got Rugged Naked', 'OnlyFans {N}ina Gas Fee', '{N} Senza Mutande',
+  'Skibidi {N} Toiletto', 'Lord {N} of Rugs', '{N}ella Copium Gyattella', 'Galaxy Brain {N}', 'Turbo Degen {N}', 'Bonk {N} Sculacciato',
+  'Horny {N} the Bull', '{N}ino Mutandino', 'MILF Hunter {N}', '{N} Buys the Top', 'Sexy {N}ella Pomodorella', 'Stripper {N} Staking',
+  '{N} Nude on Discord', 'Nonna {N} in Perizoma', 'Femboy {N} Bullish', '{N} Moans at the Dip', 'Bunga Bunga {N}uccio', 'Gas Fee Gigolo {N}',
+  'Smooth Brain {N}', '{N} Sells the Bottom', 'Mega Pump {N}ella', 'Hot {N} in Your Wallet', '{N} Comes at 69 Gwei', 'Daddy {N} Degenerato',
+  '{N}one Culone', 'Ape Brain {N}', 'Gigachad {N}ino', 'Seed in Mutande {N}', '{N} Wet from Gains', 'Pornocoin {N}one'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();

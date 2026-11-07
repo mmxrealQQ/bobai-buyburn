@@ -665,9 +665,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
    "lines": 24349,
-   "zipBytes": 618128,
-   "txtBytes": 1752596,
-   "sha256": "a67aa22e736c5902",
+   "zipBytes": 618251,
+   "txtBytes": 1752847,
+   "sha256": "407ac4f76f45a4eb",
    "reqs": [
     {
      "what": "A wallet to be paid into",

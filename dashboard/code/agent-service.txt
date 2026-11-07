@@ -7312,7 +7312,7 @@ export function evidenceScore({ pulse, jobs, quote }) {
   } else parts.push({ part: 'delivers paid work', max: 30, points: 0, basis: t && t.funded ? 'only its owner\'s own test purchases so far — they do not count' : 'no funded escrow job on record' });
   const b = t?.buyers_outside || 0;
   parts.push({ part: 'outside buyers', max: 20, points: Math.round(20 * Math.min(1, Math.log2(1 + b) / Math.log2(11)) * 10) / 10, basis: b ? `${b} wallet${b === 1 ? '' : 's'} not ours paid it` : 'nobody outside has paid it yet' });
-  parts.push(quote ? { part: 'names a price', max: 10, points: quote.quotes ? 10 : 0, basis: quote.quotes ? `quoted ${quote.price} when asked` : `did not quote when asked${quote.reason ? ': ' + String(quote.reason).slice(0, 90) : ''}` }
+  parts.push(quote ? { part: 'names a price', max: 10, points: quote.quotes ? 10 : 0, basis: quote.quotes ? `quoted ${quote.price} when asked${quote.at && Number.isFinite(Date.parse(quote.at)) ? ' on ' + new Date(quote.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : ''}` /* the day it was asked (7.11.: a sale price measured on 1 Nov read as today's) */ : `did not quote when asked${quote.reason ? ': ' + String(quote.reason).slice(0, 90) : ''}` }
     : { part: 'names a price', max: 10, points: 0, basis: 'not asked: no Hire button on Brain Plaza' });
   return { score: Math.round(parts.reduce((a, p) => a + p.points, 0)), max: 100, parts };
 }

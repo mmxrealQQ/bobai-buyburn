@@ -522,10 +522,10 @@
    "title": "Brain Pop 6.9 — the daily game in the terminal",
    "tagline": "60 seconds, one engine file, every tap replayed by the server.",
    "files": 6,
-   "lines": 542,
-   "zipBytes": 24083,
-   "txtBytes": 54667,
-   "sha256": "5b74bd0540bbc22d",
+   "lines": 548,
+   "zipBytes": 24449,
+   "txtBytes": 55395,
+   "sha256": "bfe913c3552d4010",
    "reqs": [
     {
      "what": "A worker with a Durable Object (SQLite)",

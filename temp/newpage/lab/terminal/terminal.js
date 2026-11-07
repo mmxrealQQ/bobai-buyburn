@@ -7489,7 +7489,7 @@ window.__btBrSeason = brSeason;
   // second after a pop, and during a whole daily run inside the window (a miss must not open a bot or switch the look
   // off mid-run), clicks are swallowed; the game's own window and the score chip keep theirs.
   let swallow = 0;
-  document.addEventListener('click', e => { const inRun = RUN && RUN.live && win.contains(e.target); if ((performance.now() < swallow || inRun) && !e.target.closest('.br-pp, .br-hud')) { e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('click', e => { const inRun = RUN && RUN.live && win.contains(e.target); if ((performance.now() < swallow || inRun) && !e.target.closest('.br-pp, .br-hud, .br-ctl')) { e.stopPropagation(); e.preventDefault(); } }, true); /* .br-ctl: RESTART/QUIT (7.11.: swallowed here, the buttons were dead) */
   el.addEventListener('pointerdown', e => {
     const r = e.target.closest && e.target.closest('.br-r'); if (!r || r.classList.contains('bit') || r._popped) return;
     e.stopPropagation();

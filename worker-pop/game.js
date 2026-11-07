@@ -32,7 +32,13 @@ export const NOUN = ['LUMACONE', 'CERVELLINO', 'PAPERA', 'BANANINO', 'GAMBERONE'
 // insults and for names that pose as us; the name goes into one of these, picked by the player (v); the operator can
 // still hide one (POST /api/pop/hide with the admin key)
 export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '{N}ino Lobotomino', 'Signor {N}etti Spaghetti', 'Capitano {N} Neuronauta', '{N}accio Discotecaccio',
-  'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina'];
+  'Don {N}otto Pizzotto', 'Mega {N}ella Mozzarella', '{N}one Gigacervellone', 'Papa {N}uccio Bombardiro', 'Dottor {N} Senza Neuroni', '{N}ito Turbolito', 'La Leggenda {N}ina',
+  // 7.11. (operator: "funnier brainrot names, a bit NSFW", "more crypto shit degen style") — only APPENDED: a stored index must keep its form
+  '100x Leverage {N}ino', '{N} Rugpullini Culone', 'Exit Liquidity {N}', '{N} Senza Stop Loss', 'Down Bad {N}uccio',
+  'Liquidated {N}ella Nuda', '{N}accio Pump e Dump', 'Daddy {N} Degenerato', 'OnlyFans {N}ina Gas Fee', '{N} Mangia Wick',
+  'Paper Hands {N}ino', 'Diamond Balls {N}', '{N}one Bagholder', '{N} Long sul Divano Nudo', 'Seed in Mutande {N}',
+  '{N}otto Shitcoinotto', 'Wen Lambo {N}ito', '{N} Apes Tutto Nudo', 'Ser {N} Margin Call', '{N}ella Copium Gyattella',
+  'Bonk {N} Sculacciato', '{N} Short sulla Mamma', 'Il Dev {N} Rugga e Scappa', 'Hopium {N}uccio Bagnato'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ownName = v => { if (typeof v !== 'string') return null; const s = v.normalize('NFKC').trim();

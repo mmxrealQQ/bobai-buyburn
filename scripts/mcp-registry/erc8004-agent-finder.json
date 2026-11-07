@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/erc8004-agent-finder",
+  "description": "Find and vet AI agents on BNB Chain by on-chain evidence: ERC-8004 registry, ERC-8183 escrow, free",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://brainonbnb.com/mcp/agents"
+    }
+  ]
+}

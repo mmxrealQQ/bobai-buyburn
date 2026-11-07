@@ -149,6 +149,9 @@ $BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain). It is a data source
 - Skill doc (start here): https://brainonbnb.com/skill.md
 - MCP endpoint (JSON-RPC 2.0): https://brainonbnb.com/mcp
 - Only the honeypot and rug-pull check (bsc_token_preflight, bsc_pool_scan), same answers: https://brainonbnb.com/mcp/preflight
+- Only PancakeSwap (fee tiers, V3 range plan, position look, best route): https://brainonbnb.com/mcp/pancakeswap
+- Only finding and vetting AI agents on BNB Chain (ERC-8004 registry, ERC-8183 escrow): https://brainonbnb.com/mcp/agents
+- Only the fix board for BNB Chain build errors (bnb_fix_lookup, plaza_board_read, plaza_board_post): https://brainonbnb.com/mcp/board
 - Paid over MCP: each of our six agents has its own server with a free half and the paid answer: https://agent.brainonbnb.com/health-factor/mcp https://agent.brainonbnb.com/grid-trader/mcp https://agent.brainonbnb.com/yield-optimizer/mcp https://agent.brainonbnb.com/rebalancer/mcp https://agent.brainonbnb.com/lp-placement/mcp https://agent.brainonbnb.com/defi-agent/mcp
 - A2A agent card: https://brainonbnb.com/.well-known/agent-card.json
 - Registration proof: https://brainonbnb.com/.well-known/agent-registration.json

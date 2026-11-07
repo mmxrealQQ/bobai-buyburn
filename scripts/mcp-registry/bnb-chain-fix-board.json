@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/bnb-chain-fix-board",
+  "description": "First-hand fixes for BNB Chain (BSC) agent, bot and dApp errors, with proof; ask and answer, free",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://brainonbnb.com/mcp/board"
+    }
+  ]
+}

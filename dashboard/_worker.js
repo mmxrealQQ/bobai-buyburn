@@ -1501,7 +1501,20 @@ async function scanAllowance(request, { rest = false, scanPassArg = null } = {})
 // THE PREFLIGHT AS A SERVER OF ITS OWN (2026-11-01): the MCP registry takes one entry per URL and matches names, so the two
 // measurement tools have /mcp/preflight, under com.brainonbnb/bsc-token-preflight. Same code, a shorter list.
 const PREFLIGHT_TOOLS = ['bsc_token_preflight', 'bsc_pool_scan'];
-async function handleMcp(request, note = () => {}, own = false, only = null) {
+// FOCUSED SERVERS (2026-11-07, operator: "findability, number one"): Glama scored the one 30-tool server 2/5 for its tool
+// count, and the registry matches names only — so the same tools are also served in small sets under their own name and
+// introduction. Same code, a shorter list; /mcp keeps everything. Each set has a registry entry in scripts/mcp-registry/.
+const SUB_MCP = {
+  '/mcp/preflight': { tag: 'preflight', tools: PREFLIGHT_TOOLS },
+  '/mcp/pancakeswap': { tag: 'pancakeswap', tools: ['pancakeswap_fee_tiers', 'pancakeswap_range_plan', 'pancakeswap_position_look', 'pancakeswap_best_route'], name: 'PancakeSwap LP and Route (Brain on BNB)',
+    instructions: 'PancakeSwap on BNB Smart Chain, measured from the chain: read-only, free, no API key. Deciding WHERE to provide liquidity: pancakeswap_fee_tiers (which fee tier of a pair actually pays its LPs). Picking the PRICE RANGE of a V3 position: pancakeswap_range_plan (replays real swaps per width). Checking a V3 position you hold: pancakeswap_position_look. Swapping: pancakeswap_best_route (the pool that returns most at your size, and the round trip with the transfer tax). For a token safety check before a trade use https://brainonbnb.com/mcp/preflight; every tool together is at https://brainonbnb.com/mcp.' },
+  '/mcp/agents': { tag: 'agents', tools: ['find_agents_on_bnb_chain', 'bnb_agents_by_evidence', 'bnb_agent_chart', 'bnb_agent_employment', 'bnb_agent_census', 'erc8183_escrow_status'], name: 'BNB Chain Agent Finder (Brain on BNB)',
+    instructions: 'Find and vet AI agents on BNB Smart Chain from on-chain evidence (the ERC-8004 identity registry and the ERC-8183 job escrow): read-only, free, no API key. Looking for an agent that does a task: find_agents_on_bnb_chain. Ranking agents for rebalancing, grid trading, yield or health factor by track record: bnb_agents_by_evidence. Checking one candidate before you hire it: bnb_agent_chart. Who was hired and paid across the chain: bnb_agent_employment; the state of the registry: bnb_agent_census. The jobs of a wallet you hold on the escrow: erc8183_escrow_status. Every tool together is at https://brainonbnb.com/mcp.' },
+  '/mcp/board': { tag: 'board', tools: ['bnb_fix_lookup', 'plaza_board_read', 'plaza_board_post'], name: 'BNB Chain Fix Board (Brain on BNB)',
+    instructions: 'First-hand fixes for errors hit while building or running agents, bots and dApps on BNB Chain (BSC), each dated and with its proof. Hit an error: bnb_fix_lookup with the error as it reads. Browse, search, or read what is addressed to your agent: plaza_board_read. Ask, report a bug or answer: plaza_board_post (free, no gas; signing is optional). Every tool together is at https://brainonbnb.com/mcp.' },
+};
+async function handleMcp(request, note = () => {}, own = false, sub = null) {
+  const only = sub ? sub.tools : null;
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -1545,15 +1558,16 @@ async function handleMcp(request, note = () => {}, own = false, only = null) {
   if (byClient) note(`mcp:by:${byClient}:${toolSaid}`);
   try {
     if (method === 'initialize') {
+      if (sub) note(`mcp:server:${sub.tag}`); /* which focused server a client connects to (7.11.) */
       console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.9.0' },
+        serverInfo: sub && sub.name ? { name: sub.name, version: '1.0.0' } : { name: 'Brain On BNB AI ($BOBAI)', version: '1.9.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,
         // A4 of the review): without it a client saw a $BOBAI data feed and
         // never learned the tools work for every BSC token.
-        instructions: MCP_INSTRUCTIONS,
+        instructions: sub && sub.instructions ? sub.instructions : MCP_INSTRUCTIONS,
       })), { headers: cors });
     }
     // Every tool in MCP_TOOLS reads and none of them writes — this worker has
@@ -1574,7 +1588,7 @@ async function handleMcp(request, note = () => {}, own = false, only = null) {
       return new Response(JSON.stringify(rpcOk(id, { tools })), { headers: cors });
     }
     if (method === 'tools/call') {
-      if (only && !only.includes(params?.name)) return new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32601, message: `This server has ${only.join(' and ')}; everything else is at https://brainonbnb.com/mcp` } }), { headers: cors });
+      if (only && !only.includes(params?.name)) return new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32601, message: `This server has ${only.join(', ')}; everything else is at https://brainonbnb.com/mcp` } }), { headers: cors });
       console.log('[mcp] tools/call', params?.name);
       // A tool that answers "that is not a BSC token" has answered: MCP wants
       // that as a result with isError, which the model gets to read, not as a
@@ -2058,10 +2072,10 @@ export default {
     // others, the way REST did until 4.11.); only a label for counting, as there
     const ownUa = /^(brainonbnb|bobai|plaza-board)-/i.test(request.headers.get('user-agent') || '');
     if (isOwn || ownUa) {
-      if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
+      if (url.pathname === '/mcp' || SUB_MCP[url.pathname]) return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)), true, SUB_MCP[url.pathname] || null);
       if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
     }
-    else if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
+    else if (url.pathname === '/mcp' || SUB_MCP[url.pathname]) count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
     else if (url.pathname.startsWith('/api/')) {
       // The site's own pages call /api/ from the visitor's browser, and that
       // was most of "rest". A browser says where a fetch comes from; an agent,
@@ -2116,7 +2130,7 @@ export default {
     else if (url.pathname.startsWith('/skills/')) count('skill_download');
     else if (url.pathname.startsWith('/.well-known/')) count('discovery');
 
-    if (url.pathname === '/mcp' || url.pathname === '/mcp/preflight') return handleMcp(request, (name) => count(null, name), false, url.pathname === '/mcp' ? null : PREFLIGHT_TOOLS);
+    if (url.pathname === '/mcp' || SUB_MCP[url.pathname]) return handleMcp(request, (name) => count(null, name), false, SUB_MCP[url.pathname] || null);
     // brainonbnb.com/board-hook: OUR OWN BRAIN BOARD WEBHOOK (2026-10-24, the live proof of the platform webhook):
     // brainonbnb.com is a verified platform on the board, and this is where the board POSTs what concerns it. The call
     // goes on to the board's record with its signature; the board checks the signature (it alone holds the secret)

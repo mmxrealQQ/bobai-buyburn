@@ -1505,3 +1505,25 @@
 #bt .br-pp-wl small{display:block;color:#a8a2b4}
 #bt .br-pp-wl a{color:#ffe28a}
 #bt .br-pp-bdg{font-style:normal;margin-left:4px}
+/* PHONES, A TOUCH SMALLER (7.11., operator: "on mobile the banners, combos and the bottom by the chart a little smaller,
+   only minimally, so nothing sits in the middle of the screen; everywhere; don't spoil the brainrot"): portrait only,
+   about 12-15 % smaller, the same colours, strokes and animations */
+#bt .portrait .br-cap{font-size:clamp(1.1rem,3vw,2.2rem)}
+#bt .portrait .br-cap.big{font-size:clamp(1.65rem,5.5vw,4rem);-webkit-text-stroke:2.5px #000}
+#bt .portrait .br-combo{padding:9px 0;gap:3px}
+#bt .portrait .br-combo b{font-size:clamp(1.5rem,5.1vw,3rem);-webkit-text-stroke:1.6px #000;text-shadow:3px 3px 0 #ff3fd8}
+#bt .portrait .br-combo.god b{text-shadow:3px 3px 0 #ffb300,0 0 24px #ffe600}
+#bt .portrait .br-combo span{font-size:clamp(.62rem,1.4vw,.9rem)}
+#bt .portrait .br-ptx{font-size:clamp(.8rem,1.95vw,1.1rem)}
+#bt .portrait .br-ptx.big{font-size:clamp(1.05rem,3vw,1.75rem)}
+#bt .br-run.portrait .br-hud.on{transform:translateX(-50%) scale(.88)}
+#bt .portrait .br-ctl button{padding:6px 10px;font-size:.84rem}
+/* the effects list on a phone: one row across the field (left:50% had squeezed it to half the width, so the chips stood
+   in a column over the middle), each chip a touch smaller; the power card ~20 % smaller, still above the score bar */
+#bt .portrait .br-act{left:8px;right:8px;max-width:none;transform:none;gap:4px}
+#bt .portrait .br-act span{padding:2px 8px 2px 2px;font-size:.72rem}
+#bt .portrait .br-act img{width:19px;height:19px}
+#bt .portrait .br-wban{gap:9px;padding:7px 13px 7px 7px;border-radius:14px}
+#bt .portrait .br-wban img{width:48px;height:48px}
+#bt .portrait .br-wban b{font-size:1.15rem}
+#bt .portrait .br-wban span{font-size:.68rem}

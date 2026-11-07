@@ -7335,15 +7335,26 @@ window.__btBrSeason = brSeason;
   // a caption by its centre, turned: tried until its box clears the title row AND him
   function placeCap(t, xr, yr, minTop) {
     for (let i = 0; i < 16; i++) {
-      t.style.left = R(xr[0], xr[1]) * W() + 'px'; t.style.top = R(yr[0], yr[1]) * H() + 'px'; clearRow(t, minTop);
+      t.style.left = R(xr[0], xr[1]) * W() + 'px'; keepIn(t, parseFloat(t.style.left)); /* a wide word kept inside too (7.11.) */ t.style.top = R(yr[0], yr[1]) * H() + 'px'; clearRow(t, minTop);
       const w = t.offsetWidth, h = t.offsetHeight, cx = parseFloat(t.style.left), cy = parseFloat(t.style.top);
       if (!hitsBob(cx - w / 2, cy - h / 2, w, h, 24)) return;
     }
   }
+  // A WORD STAYS IN THE PICTURE (7.11.: on a 344 px phone "PITTORE RUGGATORE ESCAPED!" ran off the right edge): a caption
+  // centred on its creature is moved in by its own measured width, never past the window's sides
+  // Measured against the visible window (the scene may reach past it), with the caption's tilt counted in; a word wider
+  // than the window (a 30-letter name on a 344 px phone) is set a little smaller until it fits
+  function keepIn(t, x) {
+    let w = t.offsetWidth || 0; if (!w) return;
+    const er = el.getBoundingClientRect(), wr = win.getBoundingClientRect(), lo = wr.left - er.left + 8, hi = wr.right - er.left - 8, room = hi - lo;
+    const tilt = Math.abs(parseFloat(t.style.getPropertyValue('--r')) || 0) * Math.PI / 180, span = () => w * Math.cos(tilt) + t.offsetHeight * Math.sin(tilt);
+    if (span() > room) { const fs = parseFloat(getComputedStyle(t).fontSize) || 16; t.style.fontSize = (fs * room / span() * 0.98).toFixed(1) + 'px'; w = t.offsetWidth; }
+    const half = span() / 2; t.style.left = Math.max(lo + half, Math.min(hi - half, x)) + 'px';
+  }
   function label(text, x, y) {
     const t = document.createElement('div'); t.className = 'br-cap sm'; t.textContent = text + '!';
     t.style.left = Math.max(90, Math.min(W() - 90, x)) + 'px'; t.style.top = Math.max(topSafe() + 14, y) + 'px'; t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-8, 8).toFixed(1) + 'deg');
-    capL.appendChild(t); clearRow(t, topSafe() + 26);
+    capL.appendChild(t); keepIn(t, x); clearRow(t, topSafe() + 26);
     { const w = t.offsetWidth, h = t.offsetHeight, cy = parseFloat(t.style.top); if (hitsBob(parseFloat(t.style.left) - w / 2, cy - h / 2, w, h, 20)) placeCap(t, [0.12, 0.88], [0.2, 0.75], topSafe() + 26); }
     setTimeout(() => t.remove(), 1700);
   }
@@ -7473,9 +7484,12 @@ window.__btBrSeason = brSeason;
   hud.addEventListener('click', e => { if (!e.target.closest('.br-shr') || !hud.classList.contains('on')) return; e.stopPropagation(); clearTimeout(hudT); hud.classList.remove('on'); window.__btShare?.('rot'); });
   const save = () => { try { localStorage.setItem('bt-br-game', JSON.stringify(G)); localStorage.setItem('bt-br-tut', '1'); } catch {} };
   function slam(text, x, y, big) {
+    /* on a phone, during play, a banner stands in the upper quarter, not over the middle where the creatures are (7.11.,
+       operator: "nothing in the middle of the screen"); the countdown and TIME! (not live) keep the middle */
+    if (portrait && RUN && RUN.live) y = Math.min(y, H() * 0.24);
     const t = document.createElement('div'); t.className = 'br-cap' + (big ? ' big' : '') + (big ? ' rb' : ''); t.textContent = text;
     t.style.left = Math.max(120, Math.min(W() - 120, x)) + 'px'; t.style.top = y + 'px'; t.style.setProperty('--c', pick(COLS)); t.style.setProperty('--r', R(-10, 10).toFixed(1) + 'deg');
-    capL.appendChild(t); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
+    capL.appendChild(t); keepIn(t, x); clearRow(t, topSafe() + 26); setTimeout(() => t.remove(), big ? 2200 : 1700);
   }
   function score(r, cx, cy) {
     const n = r.dataset.n || '', now = performance.now();
@@ -7779,7 +7793,9 @@ window.__btBrSeason = brSeason;
     const wr = win.getBoundingClientRect(), er = el.getBoundingClientRect(), l = 4, t = 4, w = Math.round(wr.width - 8), h = Math.round(wr.height - 8);
     if (!AR || AR.w !== w || AR.h !== h) { AR = { l, t, w, h, s: Math.sqrt(w * h), el0: er.left - wr.left, et0: er.top - wr.top }; Object.assign(arena.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' }); }
   }
-  function ptxt(text, x, y, cls) { const b = document.createElement('b'); b.className = 'br-ptx' + (cls ? ' ' + cls : ''); b.textContent = text; b.style.left = Math.max(8, Math.min(92, x / 10)) + '%'; b.style.top = Math.max(6, Math.min(94, y / 10)) + '%'; arena.appendChild(b); setTimeout(() => b.remove(), 900); }
+  function ptxt(text, x, y, cls) { const b = document.createElement('b'); b.className = 'br-ptx' + (cls ? ' ' + cls : ''); b.textContent = text; b.style.left = Math.max(8, Math.min(92, x / 10)) + '%'; b.style.top = Math.max(6, Math.min(94, y / 10)) + '%'; arena.appendChild(b);
+    { const aw = arena.clientWidth, w = b.offsetWidth; if (aw && w) { const half = w / 2 + 6; b.style.left = Math.max(half, Math.min(aw - half, x / 1000 * aw)) + 'px'; } } /* inside the field, by its measured width (7.11.) */
+    setTimeout(() => b.remove(), 900); }
   const toEl = (x, y) => [AR.l - AR.el0 + x / 1000 * AR.w, AR.t - AR.et0 + y / 1000 * AR.h]; // arena units -> the scene layer (bursts, labels)
   async function begin() {
     try { await engine(); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'The game did not load: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }

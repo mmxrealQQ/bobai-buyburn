@@ -489,6 +489,30 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     Number.isFinite(fromToken) ? `${fromToken.toLocaleString('en-US')} vs ${fromBare.toLocaleString('en-US')}` : '');
 }
 
+// ---- what was built on 7.11. (operator: "ecosystem number one") ------------------------------------------------------
+// the focused MCP servers, /connect, /pop, the holder badge, the run cards on shared links, the step before PancakeSwap:
+// each one kept running is a check here, so a quiet breakage reads red in the morning post
+{
+  const rpcList = (path) => fetch(`${SITE}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'user-agent': 'brainonbnb-health' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })
+    .then((x) => x.text()).then((t) => JSON.parse(t.replace(/^data: /m, ''))).catch(() => null);
+  const sets = { '/mcp/preflight': 2, '/mcp/pancakeswap': 4, '/mcp/agents': 6, '/mcp/board': 3 }, got = {};
+  for (const [p, n] of Object.entries(sets)) got[p] = (await rpcList(p))?.result?.tools?.length ?? 0;
+  ok('Ecosystem', 'the four focused MCP servers list their tools', Object.entries(sets).every(([p, n]) => got[p] === n), Object.entries(got).map(([p, n]) => `${p.slice(5)} ${n}`).join(' · '));
+  const page = (p, ua) => fetch(`${SITE}${p}`, { redirect: 'manual', headers: ua ? { 'user-agent': ua } : {} }).then(async (r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '', text: r.status === 200 && /text|json/.test(r.headers.get('content-type') || '') ? await r.text() : '' })).catch(() => null);
+  const con = await page('/connect'); ok('Ecosystem', '/connect offers the one-click installs', con?.status === 200 && /cursor-deeplink/.test(con.text) && /vscode:mcp\/install/.test(con.text), con ? `HTTP ${con.status}` : 'no answer');
+  const pp = await page('/pop'); ok('Ecosystem', '/pop, Brain Pop\'s own page, answers', pp?.status === 200 && /Play now/.test(pp.text), pp ? `HTTP ${pp.status}` : 'no answer');
+  const wl = await getJson(`${SITE}/api/pop/wallet?pid=0000000000000000`); ok('Ecosystem', 'the holder badge endpoint answers', wl.json?.linked === false && Array.isArray(wl.json?.tiers), wl.error || '');
+  const top = await getJson(`${SITE}/api/pop/top?scope=all`), run = top.json?.rows?.[0]?.run;
+  const card = run ? await page(`/og/pop/${run}.png`) : null;
+  ok('Ecosystem', 'a run\'s share card is a picture', !!card && card.status === 200 && /image\/png/.test(card.ct), run ? `${run}: HTTP ${card?.status} ${card?.ct}` : 'no run on the board');
+  const share = run ? await page(`/m/pop/${run}`, 'Twitterbot/1.0') : null;
+  ok('Ecosystem', 'a challenge link shows that run\'s card as its preview', !!share && share.text.includes(`/og/pop/${run}.png`), share ? `HTTP ${share.status}` : 'no run');
+  // HEAD, not GET: /buy counts every GET as a buy click, and a morning check must not add to that figure
+  const head = (ua) => fetch(`${SITE}/buy?from=health`, { method: 'HEAD', redirect: 'manual', headers: { 'user-agent': ua } }).then((r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '' })).catch(() => null);
+  const buyB = await head('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'), buyBot = await head('brainonbnb-health');
+  ok('Ecosystem', 'Buy: a browser gets the 6% step, a bot the redirect', buyB?.status === 200 && /text\/html/.test(buyB.ct) && buyBot?.status === 302 && /pancakeswap\.finance/.test(buyBot.loc), `browser ${buyB?.status} ${buyB?.ct.split(';')[0]} · bot ${buyBot?.status}`);
+}
+
 // ---- the agent surface ----------------------------------------------------
 {
   const r = await fetch(`${SITE}/mcp`, {

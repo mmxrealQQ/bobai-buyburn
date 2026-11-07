@@ -3586,6 +3586,10 @@ const bare = t => t.replace(/\s*(On-chain:\s*)?https?:\/\/\S+/g, '').trim();
 // THE RANK CARD (6.11.) has no server card behind a link (a game score is the player's own number): the picture goes to
 // the clipboard first, then the app opens with the post text — paste it in (on a phone the share sheet carries it whole)
 const rotTo = async (u, app) => { let cp = false; try { await copyImg(); cp = true; } catch { saveImg(); } openApp(u); return app + ' opened — ' + (cp ? 'the image is copied, paste it into the post (Ctrl+V)' : 'the image is saved, attach it to the post'); };
+// THE RUN'S LINK CARRIES ITS CARD (7.11.): brainonbnb.com/m/pop/<run> is previewed by the server with this run's own
+// picture (name, score, place), so X and Telegram need no pasted image — only the link. Telegram had dropped the link.
+const runLink = () => (String(card.text || '').match(/https?:\/\/\S+\/m\/pop\/[a-z0-9]+/) || [null])[0];
+const rotLink = (u, app) => { openApp(u); return app + ' opened — the card of your run shows with the link'; };
 const SHARE_TO = {
   // files + text only: handed a url as well, Telegram and others on iOS keep the link and drop the image (reported by
   // the operator 2026-09-26) — the link rides inside the text instead
@@ -3593,9 +3597,9 @@ const SHARE_TO = {
   // THE CARD RIDES ON THE LINK (2026-09-27): brainonbnb.com/m/<moment> is drawn by the server as the post's big
   // preview card, so X, Telegram and WhatsApp show it on every device with nothing to attach or paste. The text keeps
   // no link of its own: with two links in a post, X picks either one for the card (the bscscan one, too).
-  x: () => card.cur?.rot ? rotTo('https://x.com/intent/post?text=' + encodeURIComponent(card.text), 'X') : (openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())), 'X opened — the post shows the card'),
-  telegram: () => card.cur?.rot ? rotTo('https://t.me/share/url?url=' + encodeURIComponent(SITE_URL) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram') : (openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))), 'Telegram opened — the message shows the card'),
-  whatsapp: () => card.cur?.rot ? rotTo('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp') : (openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())), 'WhatsApp opened — the message shows the card'),
+  x: () => card.cur?.rot ? (runLink() ? rotLink('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(runLink()), 'X') : rotTo('https://x.com/intent/post?text=' + encodeURIComponent(card.text), 'X')): (openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())), 'X opened — the post shows the card'),
+  telegram: () => card.cur?.rot ? (runLink() ? rotLink('https://t.me/share/url?url=' + encodeURIComponent(runLink()) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram') : rotTo('https://t.me/share/url?url=' + encodeURIComponent(SITE_URL) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram')): (openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))), 'Telegram opened — the message shows the card'),
+  whatsapp: () => card.cur?.rot ? (runLink() ? rotLink('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp') : rotTo('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp')) : (openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())), 'WhatsApp opened — the message shows the card'),
   discord: async () => { await copyImg(); return 'image copied — paste it into any Discord channel with Ctrl+V'; },
   copy: async () => { await copyImg(); return 'image copied to the clipboard'; },
   save: () => { saveImg(); return 'image saved'; },
@@ -3625,6 +3629,8 @@ $('shm').addEventListener('click', async e => {
     return;
   }
   const b = e.target.closest('[data-to]'); if (!b) { if (e.target.closest('.shx')) shareMenu(false); return; }
+  /* a Brain Pop run shared: counted by where it went (7.11.; /api/pop/stats share_<to>, our checks marked own) */
+  if (card.cur?.rot) { let own = false; try { own = String(localStorage.getItem('bt-pop-pid') || '').startsWith('f00d'); } catch {} fetch('/api/pop/share?to=' + encodeURIComponent(b.dataset.to) + (own ? '&own=1' : ''), { cache: 'no-store' }).catch(() => {}); }
   try { const msg = await SHARE_TO[b.dataset.to](); if (msg) logLine('SHARE', '#F0B90B', [msg]); shareMenu(false); }
   catch (err) { if (err?.name !== 'AbortError') logLine('SHARE', SELLC, ['that route did not work here — try "save image"']); }
 });
@@ -7727,6 +7733,7 @@ window.__btBrSeason = brSeason;
       else { if (box) { box.hidden = false; const m = box.querySelector('small'); m.textContent = 'Type your name first (or 🎲 for a random one)'; m.classList.add('bad'); inp?.focus(); } return; }
     }
     if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
+    if (b.classList.contains('br-pp-shg') || b.classList.contains('br-pp-dare')) fetch('/api/pop/share?to=' + (b.classList.contains('br-pp-dare') ? 'dare' : 'game') + (pid.startsWith('f00d') ? '&own=1' : ''), { cache: 'no-store' }).catch(() => {}); /* counted (7.11.) */
     if (b.classList.contains('br-pp-shg')) { const link = SITE_URL + '/m/pop', text = 'BRAIN POP 6.9 🧠 60 seconds of pure brainrot. The overall #1 on 30 Nov wins the whole $BOBAI prize pool. Can you out-rot me?';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') b.textContent = link; } setTimeout(() => { b.textContent = '📣 SHARE THE GAME'; }, 2500); return; }
     if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }

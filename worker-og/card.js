@@ -199,3 +199,35 @@ ${tileSvg}
 <path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 }
+
+// THE BRAIN POP CARD (2026-11-07, operator: "sharing"): a shared challenge link (brainonbnb.com/m/pop/<run>) showed the
+// same poster for every run; X, Telegram and WhatsApp now show THIS run: who, the score with its seven decimals, the
+// place of the day, the best streak. The poster underneath, the brainrot colours on top. Pure: run + place in, SVG out.
+export function popCard(r, place = null, poster = null) {
+  const PINK = '#ff3fd8', CYAN = '#2ef2ff', YEL = '#ffe600', LIME = '#7dff3a';
+  const score = Number(r && r.score) || 0, whole = Math.floor(score).toLocaleString('en-US'), dec = (score - Math.floor(score)).toFixed(7).slice(1);
+  const name = cut(r && r.name, 30), no = r && r.no ? '#' + r.no : '';
+  const rankLine = place && place.rank ? `#${place.rank} OF ${place.players} ${place.today ? 'TODAY' : 'ON DAY ' + no}` : (r && r.ranked === false ? 'A REMATCH' : `DAILY BRAIN POP ${no}`);
+  const chips = [r && r.maxc ? `BEST STREAK x${r.maxc}` : '', r && r.pops != null ? `${r.pops} POPPED` : '', r && r.misses != null ? `${r.misses} MISSED` : ''].filter(Boolean);
+  const stroke = (x, y, size, fill, text, anchor = 'start', fam = 'Space Grotesk') => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="${fam}" font-weight="700" font-size="${size}" fill="${fill}" stroke="#000" stroke-width="${Math.max(4, size * 0.09)}" paint-order="stroke" stroke-linejoin="round">${text}</text>`;
+  let cx = 60; const chipSvg = chips.map((t, i) => { const w = 26 + t.length * 13.2, c = [PINK, CYAN, YEL][i]; const s = `<rect x="${cx}" y="452" width="${w}" height="44" rx="22" fill="#0a0410" fill-opacity="0.85" stroke="${c}" stroke-width="3"/><text x="${cx + 16}" y="481" font-family="Inter" font-weight="600" font-size="20" fill="${c}">${esc(t)}</text>`; cx += w + 12; return s; }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>
+  <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0a0410" stop-opacity="0.92"/><stop offset="0.55" stop-color="#0a0410" stop-opacity="0.72"/><stop offset="1" stop-color="#0a0410" stop-opacity="0.05"/></linearGradient>
+  <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${PINK}"/><stop offset="0.33" stop-color="${CYAN}"/><stop offset="0.66" stop-color="${YEL}"/><stop offset="1" stop-color="${LIME}"/></linearGradient>
+  <clipPath id="logo"><circle cx="90" cy="68" r="26"/></clipPath>
+</defs>
+<rect width="${W}" height="${H}" fill="#12051c"/>
+${poster ? `<image x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" xlink:href="${poster}"/>` : ''}
+<rect width="${W}" height="${H}" fill="url(#shade)"/>
+<image x="64" y="42" width="52" height="52" clip-path="url(#logo)" xlink:href="LOGO_DATA_URI"/>
+${stroke(130, 78, 26, YEL, 'BRAIN POP 6.9 · $BOBAI BRAIN TERMINAL', 'start', 'Inter')}
+${stroke(60, 180, 42, '#ffffff', esc(name))}
+${stroke(60, 300, 104, YEL, `${esc(whole)}<tspan font-size="46" fill="${LIME}">${esc(dec)} ROT</tspan>`)}
+${stroke(60, 395, 62, PINK, esc(rankLine))}
+${chipSvg}
+${stroke(60, 566, 48, CYAN, 'CAN YOU OUT-ROT ME?')}
+${stroke(60, 606, 24, YEL, 'brainonbnb.com/m/pop · 60 seconds, tap the brainrot', 'start', 'Inter')}
+<rect x="7" y="7" width="${W - 14}" height="${H - 14}" fill="none" stroke="url(#frame)" stroke-width="14"/>
+</svg>`;
+}

@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 621 lines.
+# one fetch. 6 files, 627 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -429,6 +429,12 @@ export class PopBoard {
         { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); } }
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
+      }
+      // a share, counted by where it went (7.11.: nobody knew whether runs are shared); only known targets, nothing stored
+      if (req.method === 'GET' && p === 'share') {
+        const to = String(u.searchParams.get('to') || ''); if (!/^(x|telegram|whatsapp|discord|copy|sheet|save|dare|game)$/.test(to)) return J({ error: 'unknown target' }, 400);
+        if (!u.searchParams.has('own')) this.bump(today, 'share_' + to);
+        return J({ ok: true });
       }
       if (req.method === 'GET' && p === 'pool') {
         const pl = await this.readPool();

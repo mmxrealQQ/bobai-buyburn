@@ -9,9 +9,12 @@ import grotesk from './fonts/grotesk-700.ttf';
 import inter400 from './fonts/inter-400.ttf';
 import inter600 from './fonts/inter-600.ttf';
 import logo from './logo.png';
-import { card, agentCard, boardCard } from './card.js';
+import { card, agentCard, boardCard, popCard } from './card.js';
 
 let ready = null;
+// the Brain Pop poster under the run card, fetched once per isolate
+let poster = null;
+const posterUri = async () => { if (poster) return poster; try { const r = await fetch('https://brainonbnb.com/og-brainpop.jpg', { signal: AbortSignal.timeout(8000) }); if (r.ok) poster = 'data:image/jpeg;base64,' + b64(await r.arrayBuffer()); } catch {} return poster; };
 const fonts = [new Uint8Array(grotesk), new Uint8Array(inter400), new Uint8Array(inter600)];
 const b64 = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 const LOGO = 'data:image/png;base64,' + b64(logo);
@@ -46,6 +49,25 @@ export default {
       }
       const png = await render(agentCard(c, { face }));
       const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': `public, max-age=${c ? 3600 : 300}`, 'access-control-allow-origin': '*' } });
+      ctx.waitUntil(caches.default.put(key, res.clone()));
+      return res;
+    }
+    // THE BRAIN POP CARD (2026-11-07): /pop/<run>.png — one run: who, the score, the place of its day; the preview of the
+    // challenge link brainonbnb.com/m/pop/<run>. A run is final once counted; its place can still move that day: one hour.
+    const pm = url.pathname.match(/^\/(?:og\/)?pop\/([a-z0-9]{1,12})\.png$/);
+    if (pm) {
+      const key = new Request('https://og.brainonbnb.com/pop/' + pm[1] + '.png');
+      const hit = await caches.default.match(key);
+      if (hit) return hit;
+      // through the site, not bobai-pop.*.workers.dev: a worker may not call a workers.dev worker of the same account (1042)
+      const POP = 'https://brainonbnb.com/api/pop/';
+      const get = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const run = await get(POP + 'run/' + pm[1]);
+      if (!run) return Response.redirect('https://brainonbnb.com/og-brainpop.jpg', 302);
+      let place = null;
+      if (run.ranked) { const t = await get(POP + 'top?scope=day&d=' + run.day); const i = t && Array.isArray(t.rows) ? t.rows.findIndex((x) => x.run === run.run) : -1; if (i >= 0) place = { rank: i + 1, players: t.players, today: run.day === new Date().toISOString().slice(0, 10) }; }
+      const png = await render(popCard(run, place, await posterUri()));
+      const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
       ctx.waitUntil(caches.default.put(key, res.clone()));
       return res;
     }

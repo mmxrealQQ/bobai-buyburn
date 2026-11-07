@@ -111,6 +111,12 @@ export class PopBoard {
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
       }
+      // a share, counted by where it went (7.11.: nobody knew whether runs are shared); only known targets, nothing stored
+      if (req.method === 'GET' && p === 'share') {
+        const to = String(u.searchParams.get('to') || ''); if (!/^(x|telegram|whatsapp|discord|copy|sheet|save|dare|game)$/.test(to)) return J({ error: 'unknown target' }, 400);
+        if (!u.searchParams.has('own')) this.bump(today, 'share_' + to);
+        return J({ ok: true });
+      }
       if (req.method === 'GET' && p === 'pool') {
         const pl = await this.readPool();
         return J({ wallet: POOL_WALLET, bobai: pl ? pl.bobai : null, read_at: pl ? new Date(pl.at).toISOString() : null, rule: 'Only $BOBAI counts. The overall #1 on 30 Nov gets all of it. Anything else sent to this wallet is lost.' }, 200, 'public, max-age=60');

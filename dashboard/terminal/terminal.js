@@ -7533,6 +7533,16 @@ window.__btBrSeason = brSeason;
   const xhPick = () => { const v = +(lsGet('bt-pop-xh') || 1); return v >= 1 && v <= 4 ? v : 1; }; // the chosen crosshair (1 CS2 classic … 4 circle)
   const xcPick = () => { const v = lsGet('bt-pop-xc') || 'g'; return 'gcyprw'.includes(v) && v.length === 1 ? v : 'g'; }; // its colour
   const named = () => lsGet('bt-pop-named') === '1' || (pname && !Array.isArray(pname)); // a name chosen once counts (an own name from before too)
+  // THE DICE'S MIX (7.11., operator: "a healthy mix and a healthy brainrot mechanism"): the server tags every form (i Italian,
+  // e English, upper case NSFW); the dice takes turns, language flips every throw and NSFW every second (i E I e ...), and
+  // none of the last 20 comes back. Without tags (an old server) it simply picks another form.
+  const rotPick = cur => {
+    const L = (NAMES2 && NAMES2.rot || [1]).length, K = NAMES2 && NAMES2.kind || ''; let seen = []; try { seen = JSON.parse(lsGet('bt-pop-seen') || '[]'); } catch {}
+    const was = K[cur % L] || (ri(2) ? 'i' : 'e'), n = (+lsGet('bt-pop-dice') || 0) + 1, it = was.toLowerCase() !== 'i', nsfw = Math.floor(n / 2) % 2 === 1, /* language flips every throw, NSFW every second: all four kinds come round */ want = (it ? 'i' : 'e')[nsfw ? 'toUpperCase' : 'toLowerCase']();
+    const pool = []; for (let k = 0; k < L; k++) if (k !== cur && !seen.includes(k) && (!K || K[k] === want)) pool.push(k);
+    if (!pool.length) for (let k = 0; k < L; k++) if (k !== cur && !seen.includes(k)) pool.push(k);
+    const v = pool.length ? pool[ri(pool.length)] : (Math.max(cur, 0) + 1) % L; lsSet('bt-pop-dice', String(n)); lsSet('bt-pop-seen', JSON.stringify([v, ...seen].slice(0, 20))); return v;
+  };
   const myName = () => !NAMES2 ? '…' : Array.isArray(pname) ? NAMES2.adj[pname[0]] + ' ' + NAMES2.noun[pname[1]] + ' ' + pname[2] : (NAMES2.rot && NAMES2.rot[pname.v % NAMES2.rot.length] || '{N}').replace('{N}', pname.own); /* 7.11.: the list got shorter, an old place wraps like on the server */
   // the button in the scene, under the title row on the left
   const pbtn = document.createElement('button'); pbtn.type = 'button'; pbtn.className = 'br-pbtn'; pbtn.textContent = '▶ PLAY BRAIN POP'; /* operator 6.11.: a PLAY button */ pbtn.hidden = REDUCED; win.appendChild(pbtn); /* ?calm: nothing moves, so no game */
@@ -7667,11 +7677,11 @@ window.__btBrSeason = brSeason;
     if (b.dataset.xc) { lsSet('bt-pop-xc', b.dataset.xc); pp.querySelectorAll('[data-xc]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
     if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
-    if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: (pname.v + 1 + ri((NAMES2.rot || [1]).length - 1)) % (NAMES2.rot || [1]).length }; lsSet('bt-pop-name', JSON.stringify(pname)); const ii = pp.querySelector('.br-pp-me i'); if (ii) ii.textContent = myName(); else intro(); api('name', { pid, name: pname }).catch(() => {}); return; }
+    if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: rotPick(pname.v) }; lsSet('bt-pop-name', JSON.stringify(pname)); const ii = pp.querySelector('.br-pp-me i'); if (ii) ii.textContent = myName(); else intro(); api('name', { pid, name: pname }).catch(() => {}); return; }
     if (b.classList.contains('br-pp-own')) { const box = pp.querySelector('.br-pp-nm'); box.hidden = !box.hidden; if (!box.hidden) { const inp = box.querySelector('input'); inp.value = Array.isArray(pname) ? '' : pname.own; inp.focus(); } return; }
     if (b.classList.contains('br-pp-rot')) { const box = pp.querySelector('.br-pp-nm'), v = box.querySelector('input').value.trim(), msg = box.querySelector('small');
       if (!/^[A-Za-z0-9_]{3,16}$/.test(v) || !/[A-Za-z]/.test(v)) { msg.textContent = '3 to 16 letters, digits or _ (no spaces, no dots)'; msg.classList.add('bad'); return; }
-      pname = { own: v, v: ri((NAMES2.rot || [1]).length) }; lsSet('bt-pop-name', JSON.stringify(pname)); lsSet('bt-pop-named', '1'); box.hidden = true;
+      pname = { own: v, v: rotPick(-1) }; lsSet('bt-pop-name', JSON.stringify(pname)); lsSet('bt-pop-named', '1'); box.hidden = true;
       api('name', { pid, name: pname }).then(() => loadBoard()).catch(e => { msg.textContent = e.message; msg.classList.add('bad'); box.hidden = false; }); /* the boards show it at once */ const i = pp.querySelector('.br-pp-me i'); if (!i) { intro(); const j = pp.querySelector('.br-pp-me i'); if (j) j.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)' }); return; } /* a new player: the window shows the name now (6.11.) */ i.textContent = myName(); i.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)' }); return; }
     if (b.dataset.sc) { scope = b.dataset.sc; loadBoard(); return; }
     if (b.dataset.dd) { const n = shift(bday || lastDay(), +b.dataset.dd); if (n >= FIRST && n <= lastDay()) { bday = n; loadBoard(); } return; }

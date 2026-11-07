@@ -19,7 +19,7 @@
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
-import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, FIRST_DAY, LAST_DAY } from './game.js';
+import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
 import { plan, replay, RUN_MS, V, WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-engine.mjs';
@@ -92,7 +92,7 @@ export class PopBoard {
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
-        return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT }, top: this.top('day', d), players: this.players(d) });
+        return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
       }
       if (req.method === 'GET' && p === 'pool') {
         const pl = await this.readPool();

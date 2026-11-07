@@ -63,7 +63,21 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   '{N}strap 100x Leverage', 'Simp{N} the Shiller', 'Shill{N} McShillface', '{N}lube Liquidity Pool', 'Lubed{N} Slippage',
   'Thirsty{N} Mempool', 'Sloppy{N} Seconds Buyer', 'Hump{N} the Top', 'Squirt{N} the Airdrop', 'Moist{N} Mooncake',
   'Bulge{N} Bullrun', 'Freaky{N} Frontrunner', 'Sandwich{N} Threesome', 'Daddy{N} MEV Bot', '{N}69 Gas War',
-  'Ballsdeep{N} in Bags', '{N}stroke Stochastic', 'Quickie{N} Scalper', 'Premature{N} Exit', 'Hodl{N} Me Daddy'];
+  'Ballsdeep{N} in Bags', '{N}stroke Stochastic', 'Quickie{N} Scalper', 'Premature{N} Exit', 'Hodl{N} Me Daddy',
+  // 7.11. (operator: "Italian melted again, more of them, then it is enough"): the last batch, to keep the mix
+  '{N}ino Candelino Verde', '{N}one Dumpone', '{N}accio Liquidaccio', '{N}etto Frontrunnetto', '{N}uccio Stakeruccio',
+  '{N}ella Blockchainella', '{N}otto Walletotto', '{N}ino Tokenino', '{N}one Rialzistone', '{N}ella Ribassistella',
+  '{N}accio Shillaccio', '{N}ino Scalpino', '{N}one Hodlone', '{N}etto Bridgetto', '{N}uccio Gweiuccio', '{N}ito Mintito',
+  '{N}ona Burnona', '{N}ello Pumpatello', '{N}one Bollone', '{N}ino Monetino Scemino', 'Zio {N}ino Ruggino',
+  '{N}accio Panicaccio', '{N}ella Fomella', '{N}one Ballenone', '{N}one Pallone Bitcoinone',
+  '{N}ella Zoccolella', '{N}one Cazzone', '{N}ino Cazzettino', '{N}accio Chiappaccio', '{N}ona Tettona', '{N}otto Scopotto',
+  '{N}ella Porcella', '{N}uccio Porcelluccio', '{N}ino Nudino', '{N}one Pompinone', '{N}ella Bagnatella',
+  '{N}ina Mutandina Rosa', '{N}accio Sederaccio'];
+// THE DICE'S MIX (7.11., operator: "a healthy mix and a healthy brainrot mechanism"): every form has a kind, i = Italian,
+// e = English, upper case = NSFW; the terminal's dice takes turns (Italian / English, clean / NSFW: i E I e ...) and
+// never shows one of the last 20 again, so no single kind ever floods the board
+const NSFW = /cul|tett|pisell|mutand|sculacc|orgasm|milf|perizom|gyatt|bunga|sugar|spogliar|arrapat|bagnat|leccapied|viagr|bikin|preservat|ussy|boner|dong|thot|horny|tits|dick|fap|onlyfans|hub |69|daddy|gasm|cum|thicc|nut |edging|hard |lick|naked|spanky|booty|kinky|ballz|pegging|throbbing|moan|wet|strap|lube|thirsty|sloppy|hump|squirt|moist|bulge|freaky|threesome|ballsdeep|stroke|quickie|premature|zoccol|cazz|chiapp|scop|porcell|nudin|pompin|sederacc|diamond balls|rizz|senza mutande|^step|^only/i;
+export const ROT_KIND = ROT.map((f, i) => { const en = i >= 62 && i < 138, k = en ? 'e' : 'i'; return NSFW.test(f) ? k.toUpperCase() : k; }).join('');
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ROT_MAX = Math.max(86, ROT.length); // the longest the list ever was live (7.11.): a form beyond it never existed

@@ -136,7 +136,7 @@ issued: <ISO time>" with that wallet (personal_sign — no transaction, nothing 
 - Roadmap: https://brainonbnb.com/roadmap
 - Archive of finished campaigns: https://brainonbnb.com/archive
 - Buy Drops NFTs: https://brainonbnb.com/nft/
-- Brain Pop 6.9, the 60-second game in the terminal (season until 30 Nov; the overall #1 wins the $BOBAI prize pool): https://brainonbnb.com/m/pop · board: https://brainonbnb.com/api/pop/top?scope=day
+- Brain Pop 6.9, the free 60-second game in the terminal (season until 30 Nov; the overall #1 wins the $BOBAI prize pool): its page with the live boards https://brainonbnb.com/pop · play: https://brainonbnb.com/m/pop · board: https://brainonbnb.com/api/pop/top?scope=day
 
 ## Where to buy
 

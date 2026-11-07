@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- BRAIN POP'S OWN PAGE (2026-11-07, operator: "ecosystem number one"): the game lived only inside the terminal and
+       behind /m/pop, which forwards at once — nothing a search engine or an AI search could find. This page says what the
+       game is, shows the live boards and the prize pool, and sends the player in with one tap. The game is unchanged. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>Brain Pop 6.9 — a free 60-second brainrot game on BNB Chain with a $BOBAI prize pool</title>
+  <meta name="description" content="Tap the brainrot creatures for 60 seconds, build streaks, let seven stations fire super powers. Free, no wallet needed. A daily top 10, every tap replayed by the server; the overall #1 on 30 November wins the whole $BOBAI prize pool.">
+  <link rel="canonical" href="https://brainonbnb.com/pop">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Brain Pop 6.9 — can you out-rot me?">
+  <meta property="og:description" content="A free 60-second brainrot game on BNB Chain. Daily top 10, the #1 on 30 Nov takes the whole $BOBAI prize pool.">
+  <meta property="og:image" content="https://brainonbnb.com/og-brainpop.jpg">
+  <meta property="og:url" content="https://brainonbnb.com/pop">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@BrainOnBNB">
+  <meta name="twitter:title" content="Brain Pop 6.9 — can you out-rot me?">
+  <meta name="twitter:description" content="A free 60-second brainrot game on BNB Chain. Daily top 10, the #1 on 30 Nov takes the whole $BOBAI prize pool.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-brainpop.jpg">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Brain Pop 6.9","url":"https://brainonbnb.com/pop","description":"A free 60-second tap game in the $BOBAI Brain Terminal on BNB Chain: pop the brainrot creatures, build streaks, seven stations fire super powers. Daily top 10; the overall #1 on 30 November 2026 wins the $BOBAI prize pool.","genre":["Arcade","Casual"],"gamePlatform":["Web browser","Mobile web"],"applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"Brain On BNB AI","url":"https://brainonbnb.com/"},"image":"https://brainonbnb.com/og-brainpop.jpg"}</script>
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/pop">Brain Pop</a>
+    <a class="nb" href="/buy?from=pop" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <div class="intro hx"><h1>Brain <em>Pop</em> 6.9</h1><div class="hx-claim">60 seconds. Pure <em>brainrot.</em></div><div class="hx-trust"><span><span class="hx-dot"></span>Free · no wallet needed</span><span>Every tap replayed by the server</span></div></div>
+  <section class="sec sec-after-band" id="pop">
+    <div class="pp-play fi"><a class="pp-go" href="/?pop=play">▶ Play now</a><p class="pp-n" id="pp-day">A new daily board every day until 30 November.</p></div>
+    <div class="pp-grid">
+      <div class="pp-card fi"><h2>How it works</h2><ul>
+        <li><b>Tap the creatures.</b> Fast and in a row: your streak multiplies the points, up to x10.</li>
+        <li><b>Never the red RUG candle.</b> A miss breaks your streak.</li>
+        <li><b>Every hit charges seven stations.</b> Full, each fires its super power by itself. 8 in a row is SUPER, 16 MEGA, 24 GOD.</li>
+        <li><b>Fair:</b> every round is new and equally hard, and the server replays your taps before your score counts.</li>
+      </ul></div>
+      <div class="pp-card fi"><h2>The prize pool</h2><p class="pp-pool"><b id="pp-pool">808 $BOBAI</b> <span id="pp-usd"></span></p>
+        <p>The <b>overall #1 on 30 November</b> takes all of it. The daily winner gets nothing but the glory.</p>
+        <p class="pp-small">Only $BOBAI counts: anything else sent to the prize wallet is lost. Holders of 100,000+ $BOBAI can show a 🧠 next to their name.</p></div>
+    </div>
+    <div class="pp-grid">
+      <div class="pp-card fi"><h2>Today's top 10</h2><ol class="pp-top" id="pp-day-top"><li class="pp-wait">loading…</li></ol></div>
+      <div class="pp-card fi"><h2>Season leaders</h2><ol class="pp-top" id="pp-all-top"><li class="pp-wait">loading…</li></ol></div>
+    </div>
+    <p class="fi" style="text-align:center;margin-top:20px"><a class="pp-go pp-go2" href="/?pop=play">▶ Beat them</a></p>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/pop">Brain Pop</a> &middot; <a href="/token">Token</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/connect">Connect</a> &middot; <a href="/faq">Questions</a></p></div>
+  </div></footer>
+</div>
+<script>
+/* the live boards and the pool, from the game's own server (the same /api/pop the game reads); the badge as on the board */
+(() => {
+  const J = (u) => fetch(u, { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const sc = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
+  const B = { holder: ' 🧠', pass: ' 💎' };
+  const fill = (id, j) => { const el = document.getElementById(id); if (!el) return;
+    el.innerHTML = j && j.rows && j.rows.length ? j.rows.map((r) => '<li><span>' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
+    if (j && j.players != null) el.insertAdjacentHTML('afterend', '<p class="pp-small">' + Number(j.players).toLocaleString('en-US') + ' player' + (j.players === 1 ? '' : 's') + (id === 'pp-day-top' ? ' today' : ' this season') + '</p>'); };
+  Promise.all([J('/api/pop/top?scope=day'), J('/api/pop/top?scope=all'), J('/api/pop/pool'), J('/api/price')]).then(([d, a, p, px]) => {
+    fill('pp-day-top', d); fill('pp-all-top', a);
+    if (d && d.no) document.getElementById('pp-day').textContent = 'Daily #' + d.no + ' is on. A new board every day until 30 November.';
+    if (p && p.bobai != null) { document.getElementById('pp-pool').textContent = Number(p.bobai).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' $BOBAI';
+      if (px && px.price_usd) document.getElementById('pp-usd').textContent = '≈ $' + (p.bobai * px.price_usd).toFixed(2) + ' · goal $10'; }
+  });
+})();
+</script>
+<style>
+.pp-play{text-align:center;margin:6px 0 18px}
+.pp-go{display:inline-block;padding:14px 34px;border-radius:999px;background:#ff3fd8;color:#fff;font:700 20px/1 'Space Grotesk',Inter,system-ui,sans-serif;text-decoration:none;border:2px solid #000;box-shadow:0 0 0 3px #ffe600,0 8px 30px rgba(255,63,216,.35)}
+.pp-go:hover{background:#7dff3a;color:#000}
+.pp-go2{font-size:17px;padding:12px 28px}
+.pp-n{margin:12px 0 0;color:var(--muted,#a0a2c0);font:400 14px/1.4 Inter,system-ui,sans-serif}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+.pp-card{padding:18px;border:1px solid rgba(255,63,216,.3);border-radius:16px;background:rgba(255,255,255,.03);min-width:0}
+.pp-card h2{margin:0 0 10px;font:700 18px/1.3 'Space Grotesk',Inter,system-ui,sans-serif;color:#f3efe6}
+.pp-card ul{margin:0;padding-left:18px}.pp-card li,.pp-card p{font:400 14px/1.55 Inter,system-ui,sans-serif;color:#d8d3c6;margin:0 0 7px}
+.pp-card b{color:#ffe28a}
+.pp-pool b{font:700 26px/1.2 'Space Grotesk',Inter,system-ui,sans-serif;color:#ffe600}.pp-pool span{color:var(--muted,#a0a2c0);font-size:14px}
+.pp-small{font-size:12.5px!important;color:var(--muted,#a0a2c0)!important}
+.pp-top{margin:0;padding:0;list-style:none;counter-reset:pp}
+.pp-top li{display:flex;justify-content:space-between;gap:10px;padding:5px 2px;border-bottom:1px solid rgba(255,255,255,.07);counter-increment:pp;margin:0}
+.pp-top li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-top li span::before{content:counter(pp) '. ';color:#a8a2b4}
+.pp-top li b{font:600 13px/1.6 ui-monospace,Consolas,monospace;color:#7dff3a;white-space:nowrap}
+.pp-top li:first-child b{color:#ffe600}
+.pp-top li.pp-wait{color:var(--muted,#a0a2c0)}.pp-top li.pp-wait::before,.pp-top li.pp-wait span::before{content:none}
+</style>
+</body>
+</html>

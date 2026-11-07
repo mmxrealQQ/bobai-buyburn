@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- CONNECT (2026-11-07, operator: "returning agents"): an agent remembers nothing between sessions; it comes back when
+       a person keeps our server in their client. One click per client and per server, the same tools as /mcp. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>Connect Brain on BNB to your AI — MCP for BNB Chain</title>
+  <meta name="description" content="Keep the free BNB Chain tools in Claude, Cursor or VS Code: a rug-pull check before every trade, PancakeSwap fee tiers and routes, AI agent search, the fix board. One click, no key.">
+  <link rel="canonical" href="https://brainonbnb.com/connect">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Connect Brain on BNB to your AI">
+  <meta property="og:description" content="Free BNB Chain tools for Claude, Cursor and VS Code: one click, no key.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/connect">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Connect Brain on BNB to your AI">
+  <meta name="twitter:description" content="Free BNB Chain tools for Claude, Cursor and VS Code: one click, no key.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/connect">Connect</a>
+    <a class="nb" href="/buy?from=connect" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <div class="intro hx"><h1>Keep the <em>Brain</em> in your AI</h1><div class="hx-claim">One click. No key. <em>Free.</em></div><div class="hx-trust"><span><span class="hx-dot"></span>Read-only tools, measured on BNB Chain</span><span>Works in Claude, Cursor and VS Code</span></div></div>
+  <section class="sec sec-after-band" id="connect">
+    <div class="blk-head fi"><span class="blk-tag">Connect &middot; MCP</span><span class="blk-line"></span></div>
+    <div class="sh fi"><p>An AI agent forgets everything when its session ends. Add one of these servers to your client once, and it can check a token before every trade, find the right PancakeSwap pool or look up a fix, every time you ask.</p></div>
+    <div class="cx-grid" id="cx-grid"></div>
+    <div class="cx-how fi">
+      <h3>Other clients</h3>
+      <p><b>Claude (desktop or claude.ai):</b> Settings &rarr; Connectors &rarr; Add custom connector &rarr; paste the server URL.</p>
+      <p><b>Claude Code:</b> run the copied command in your terminal.</p>
+      <p><b>Any MCP client:</b> streamable HTTP, no key, no account:</p>
+      <pre class="cx-pre">{ "mcpServers": { "brainonbnb": { "url": "https://brainonbnb.com/mcp" } } }</pre>
+      <p>Agents that read text instead: <a href="/llms.txt">llms.txt</a> &middot; <a href="/skill.md">skill.md</a> &middot; REST at <a href="/openapi.json">/openapi.json</a>.</p>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/connect">Connect</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script>
+/* THE FIVE SERVERS (the same tools as /mcp, in sets): name, one sentence, the live tool count, one click per client.
+   Cursor: cursor://anysphere.cursor-deeplink/mcp/install?name=<name>&config=<base64 of {"url":…}>
+   VS Code: vscode:mcp/install?<URL-encoded {"name","type":"http","url"}> · Claude Code: claude mcp add --transport http */
+(() => {
+  const S = [
+    ['brainonbnb', '/mcp', 'Everything', 'All our tools in one server: the token check, the rug watch, PancakeSwap, the agent finder and the fix board.'],
+    ['bsc-preflight', '/mcp/preflight', 'Token check before a trade', 'Honeypot and rug-pull check for any BNB Chain token at your trade size: can you get in, can you get out, what it costs.'],
+    ['pancakeswap', '/mcp/pancakeswap', 'PancakeSwap', 'Which fee tier actually pays, which price range would have earned most, your position, and the best route for a swap.'],
+    ['bnb-agents', '/mcp/agents', 'AI agents on BNB Chain', 'Find an agent for a task and check its track record from the chain before you hire it.'],
+    ['bnb-fixes', '/mcp/board', 'Fix board', 'Hit an error building on BNB Chain? First-hand fixes with proof, and a place to ask.'],
+  ];
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+  const grid = document.getElementById('cx-grid'); if (!grid) return;
+  grid.innerHTML = S.map(([name, path, title, line]) => {
+    const url = 'https://brainonbnb.com' + path;
+    const cursor = 'cursor://anysphere.cursor-deeplink/mcp/install?name=' + encodeURIComponent(name) + '&config=' + encodeURIComponent(b64(JSON.stringify({ url })));
+    const vscode = 'vscode:mcp/install?' + encodeURIComponent(JSON.stringify({ name, type: 'http', url }));
+    const claude = 'claude mcp add --transport http ' + name + ' ' + url;
+    return '<div class="cx fi" data-path="' + path + '"><h3>' + title + '</h3><p>' + line + '</p><p class="cx-n"><span class="cx-live">…</span> &middot; <code>' + url + '</code></p>'
+      + '<div class="cx-b"><a class="cx-go" href="' + cursor + '" data-cx="cursor">Add to Cursor</a><a class="cx-go" href="' + vscode + '" data-cx="vscode">Add to VS Code</a>'
+      + '<button type="button" data-copy="' + claude.replace(/"/g, '&quot;') + '">Copy for Claude Code</button><button type="button" data-copy="' + url + '">Copy URL</button></div></div>';
+  }).join('');
+  grid.addEventListener('click', async (e) => { const b = e.target.closest('[data-copy]'); if (!b) return; const t = b.textContent;
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied ✓'; } catch { b.textContent = b.dataset.copy; } setTimeout(() => { b.textContent = t; }, 1600); });
+  // the live number: each server asked for its tool list right now
+  grid.querySelectorAll('.cx').forEach((c) => {
+    fetch(c.dataset.path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })
+      .then((r) => r.text()).then((t) => { const j = JSON.parse(t.replace(/^data: /m, '')); const n = j.result.tools.length; c.querySelector('.cx-live').textContent = n + ' tool' + (n === 1 ? '' : 's') + ', answering now'; })
+      .catch(() => { c.querySelector('.cx-live').textContent = 'not answering right now'; });
+  });
+})();
+</script>
+<style>
+.cx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:18px}
+.cx{padding:16px;border:1px solid rgba(240,185,11,.25);border-radius:14px;background:rgba(255,255,255,.03);min-width:0}
+.cx h3{margin:0 0 6px;font:700 17px/1.3 'Space Grotesk',Inter,system-ui,sans-serif;color:#f3efe6}
+.cx p{margin:0 0 8px;font:400 14px/1.5 Inter,system-ui,sans-serif;color:#d8d3c6}
+.cx .cx-n{font-size:12px;color:var(--muted,#a0a2c0);overflow-wrap:anywhere}
+.cx .cx-n code{font-size:12px;color:#ffe28a}
+.cx-b{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.cx-b a,.cx-b button{padding:7px 11px;border-radius:10px;font:600 13px/1 Inter,system-ui,sans-serif;cursor:pointer;text-decoration:none;border:1px solid rgba(240,185,11,.55);background:rgba(240,185,11,.12);color:#ffe28a}
+.cx-b button{background:none;border-color:rgba(255,255,255,.22);color:#e9e2d2}
+.cx-how{margin-top:22px;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.1)}
+.cx-how h3{margin:0 0 8px;font:700 16px/1.3 'Space Grotesk',Inter,system-ui,sans-serif;color:#f3efe6}
+.cx-how p{margin:0 0 8px;font:400 14px/1.5 Inter,system-ui,sans-serif;color:#d8d3c6}
+.cx-how a{color:var(--gold,#f0b90b)}
+.cx-pre{margin:0 0 10px;padding:10px;border-radius:10px;background:rgba(0,0,0,.35);color:#ffe28a;font:500 12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</body>
+</html>

@@ -144,7 +144,11 @@ export function rewriteBuyLinks(html, rel) {
 // but are an app of the bar (nft/ since 3.11.). Other pages with their own look (worldcup, game, the screener tests)
 // keep their header.
 // /connect (7.11., operator: "into the Apps menu"): keep our MCP servers in Claude, Cursor or VS Code
-export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT'], ['/connect', 'Connect']];
+// Brain Pop (7.11., operator: "more players"): the game could only be reached from the terminal on the front page; during
+// its season (to 30 Nov, the last daily) every page's bar opens it. A build after 30 Nov leaves it out by itself.
+export const POP_LAST_DAY = '2026-11-30';
+export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT'], ['/connect', 'Connect'],
+  ...(new Date().toISOString().slice(0, 10) <= POP_LAST_DAY ? [['/?pop=play', 'Brain Pop']] : [])];
 const OWN_CSS_BAR = ['nft/index.html'];
 const PAIR = /<a class="back-btn"[^>]*>[\s\S]*?<\/a>(\s*)<a class="brand-link" href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/;
 export function ecoNav(html, rel = '', ecoV = '1') {

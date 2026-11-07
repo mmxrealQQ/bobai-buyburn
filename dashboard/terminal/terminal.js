@@ -7610,7 +7610,7 @@ window.__btBrSeason = brSeason;
     try {
       if (CHQ && CHQ !== 'play' && !CH && !chOff) CH = await api('run/' + encodeURIComponent(CHQ)).catch(() => null);
       if (!CH && !chOff) { LEAD = null; } /* the #1's ghost is read below */
-      DAY = await api('day?' + (CH ? 'd=' + CH.day : '') + (pid.startsWith('f00d') ? '&own=1' : '')); /* ?pop=play (a post's link) opens the game; our checks do not count as visitors */ NAMES2 = DAY.names; /* a challenge plays its own day's plan */
+      DAY = await api('day?p=' + pid + (CH ? '&d=' + CH.day : '') + (pid.startsWith('f00d') ? '&own=1' : '')); /* ?pop=play (a post's link) opens the game; our checks do not count as visitors */ NAMES2 = DAY.names; /* a challenge plays its own day's plan */
     } catch (e) { pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>The game server did not answer (' + esc(e.message) + '). Try again in a moment.</p><div class="br-pp-b"><button type="button" class="br-pp-x">Close</button></div></div>'; return; }
     if (!CH && DAY.top && DAY.top[0] && DAY.day === DAY.today) LEAD = await api('run/' + DAY.top[0].run).catch(() => null);
     intro();

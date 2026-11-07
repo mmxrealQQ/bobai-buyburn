@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 618 lines.
+# one fetch. 6 files, 621 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -386,6 +386,8 @@ export class PopBoard {
     // the game's funnel per day (GET /api/pop/stats)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS counts (day TEXT, k TEXT, n INT, PRIMARY KEY (day, k))`);
     // THE HOLDER BADGE (7.11.): a player's linked wallet and its $BOBAI as last read; only the badge reaches a board
+    // who opened the game window, once per player and day (7.11.: 'opened' counts every opening, not people)
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS seen (day TEXT, pid TEXT, PRIMARY KEY (day, pid))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS wallets (pid TEXT PRIMARY KEY, wallet TEXT, bobai REAL, read_at INT, linked_at INT)`);
   }
   rows(q, ...a) { return [...this.sql.exec(q, ...a)]; }
@@ -424,6 +426,7 @@ export class PopBoard {
     try {
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
+        { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); } }
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
       }

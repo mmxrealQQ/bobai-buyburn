@@ -143,7 +143,8 @@ export function rewriteBuyLinks(html, rel) {
 // every page that gets the bar: the pages on styles.css, and the ones in OWN_CSS_BAR that carry their own stylesheet
 // but are an app of the bar (nft/ since 3.11.). Other pages with their own look (worldcup, game, the screener tests)
 // keep their header.
-export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT']];
+// /connect (7.11., operator: "into the Apps menu"): keep our MCP servers in Claude, Cursor or VS Code
+export const ECO_APPS = [['/scanner', 'Scanner'], ['/registry', 'Plaza'], ['/board', 'Board'], ['/services', 'Services'], ['/defi', 'DeFi Agent'], ['/nft/', 'NFT'], ['/connect', 'Connect']];
 const OWN_CSS_BAR = ['nft/index.html'];
 const PAIR = /<a class="back-btn"[^>]*>[\s\S]*?<\/a>(\s*)<a class="brand-link" href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/;
 export function ecoNav(html, rel = '', ecoV = '1') {

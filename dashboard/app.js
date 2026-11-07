@@ -1223,7 +1223,11 @@ function fillLpPortfolio(){
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
       tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost (' + (Array.isArray(m.worth.beside_parts) && m.worth.beside_parts.length ? m.worth.beside_parts.map(function(p){return esc(String(p.label).replace(', at cost',''))}).join(', ') : '$BOBAI held, fees') + ')' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
-      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
+      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb))
+      // THE RANGE STANDING NOW, AS BIG AS THE TOTAL (7.11., operator: "show the figure since the range"): the result above
+      // carries every range since 3 Sep, the narrow September ones too; whether the agent works today is this one
+      + (p.since_range && p.since_range.vs_holding_pct != null ? (() => { const r = p.since_range, v = Number(r.vs_holding_pct);
+        return tile('This range vs holding', (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%', [signed(r.vs_holding_bnb) + ' against holding 50/50', (r.width_pct ? '±' + esc(r.width_pct) + '%' : 'this range') + ' since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days', 'fees ' + signed(r.fees_bnb) + ', price ' + signed(r.price_bnb)].join(' · '), dir(r.vs_holding_bnb)); })() : '');
     const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
     const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'
       + (split ? src('📈 Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src('📈 Range, before fees', signed(p.from_range_bnb), dir(p.from_range_bnb))

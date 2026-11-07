@@ -44,7 +44,11 @@
     /* The portfolio: three figures a visitor reads first, then the lists the
        Telegram card carries, in the same order and from the same model. */
     .pf-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
-    @media(max-width:700px){.pf-top{grid-template-columns:1fr}}
+    /* four figures since 7.11. (the range standing now beside the total): one row of four on a wide screen, two by two
+       on a tablet, one column on a phone */
+    .pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:repeat(4,1fr)}
+    @media(max-width:1000px){.pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:700px){.pf-top,.pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:1fr}}
     /* The card's date: the newest range check, the same the Telegram card carries. */
     .pf-date{grid-column:1/-1;font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 -4px 2px}
     .pf-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
@@ -271,7 +275,7 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=134" defer></script>
+<script src="app.js?v=135" defer></script>
 <script>
   // the folds (2026-10-24): a tap or Enter on a fold's first line opens it; links and buttons inside keep working.
   // The second opinion is drawn later by app.js, so its first line is marked again whenever it is redrawn.

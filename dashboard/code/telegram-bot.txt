@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5835 lines.
+# one fetch. 12 files, 5849 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3476,8 +3476,21 @@ async function postPopChampion(env, tick) {
   if (text === undefined) return;
   await env.KV.put(flag, text ? 'sent' : 'nobody', { expirationTtl: 3 * 86400 }); // once, also when nobody played
   if (!text) return;
+  // THE CHAMPION'S CARD (7.11., operator: "ecosystem number one"): the post is the champion's own run card (name, score,
+  // place — bobai-og /pop/<run>.png) with the text as its caption and a line into the challenge; text alone if it fails
+  const champ = await popChampionRun(day);
+  if (champ) {
+    const caption = text.replace('▶️ Play today: https://brainonbnb.com/m/pop', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ);
+    const ph = await tg('sendPhoto', { chat_id: TG_CHAT_ID, photo: 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + day, caption, parse_mode: 'HTML' }).catch(() => null);
+    if (ph?.ok) return;
+    console.error('[POP CHAMPION] photo refused, text instead ' + day, JSON.stringify(ph));
+  }
   const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
   if (!sent?.ok) console.error('[POP CHAMPION] Telegram refused ' + day, JSON.stringify(sent));
+}
+// the day's #1 run id (its card and its challenge link)
+async function popChampionRun(day) {
+  try { const r = await fetch('https://brainonbnb.com/api/pop/top?scope=day&d=' + day, { signal: AbortSignal.timeout(10000) }); if (!r.ok) return null; const j = await r.json(); const id = j && j.rows && j.rows[0] && j.rows[0].run; return /^[a-z0-9]{1,12}$/.test(id || '') ? id : null; } catch { return null; }
 }
 
 // ==================== GIGGLE ACADEMY POT (/giggle) ====================
@@ -4739,8 +4752,9 @@ export default {
     if (url.pathname === '/pop-champion' && request.method === 'GET') {
       const d = url.searchParams.get('d') || '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Response('d=YYYY-MM-DD', { status: 400 });
-      const text = await popChampionText(d);
-      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text }), { headers: { 'content-type': 'application/json' } });
+      const text = await popChampionText(d), champ = await popChampionRun(d);
+      /* the post as it would go out (7.11.): the champion's card as the photo, the text as its caption with the challenge line */
+      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text, photo: champ ? 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + d : null, caption: champ && text ? text.replace('▶️ Play today: https://brainonbnb.com/m/pop', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ) : null }), { headers: { 'content-type': 'application/json' } });
     }
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {

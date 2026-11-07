@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4073 lines.
+# one fetch. 5 files, 4093 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2082,8 +2082,28 @@ export default {
       const from = url.searchParams.get('from') || '';
       const source = BUY_SOURCES.has(from) ? from : (from ? 'other' : 'direct');
       const prefetch = /prefetch|prerender/i.test(`${request.headers.get('sec-purpose') || ''} ${request.headers.get('purpose') || ''}`);
-      if (!isOwn && !prefetch && request.method === 'GET') count(null, `${uaFamily(request.headers.get('user-agent')) === 'browser' ? 'buy' : 'buybot'}:${source}`);
-      return new Response(null, { status: 302, headers: { Location: BUY_TARGET, 'Cache-Control': 'no-store' } });
+      const browser = uaFamily(request.headers.get('user-agent')) === 'browser', go = url.searchParams.get('go') === '1';
+      // THE STEP BEFORE PANCAKESWAP (7.11., operator: "the way to buy"): a first buy with PancakeSwap's own slippage fails
+      // on the 3% tax (measured: buy 600 bps needed), and the 6% hint lived in a tooltip no phone shows. A browser gets one
+      // short page first — slippage 6%, the contract to compare, a straight word — and a button on to PancakeSwap; who
+      // knows it skips it next time. go=1 is that button: counted as buygo:<source>, so buy -> buygo is who went on.
+      if (!isOwn && !prefetch && request.method === 'GET') count(null, go ? `buygo:${source}` : `${browser ? 'buy' : 'buybot'}:${source}`);
+      if (!browser || go) return new Response(null, { status: 302, headers: { Location: BUY_TARGET, 'Cache-Control': 'no-store' } });
+      const next = '/buy?go=1&from=' + encodeURIComponent(source);
+      const html = '<!doctype html><html lang="en" style="background:#0c0b0c"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Buy $BOBAI on PancakeSwap</title><meta name="robots" content="noindex">'
+        + '<style>body{margin:0;background:#0c0b0c;color:#f3efe6;font:400 16px/1.5 Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center}'
+        + '.c{max-width:460px;margin:16px;padding:22px;border:1px solid rgba(240,185,11,.35);border-radius:18px;background:#141217}h1{margin:0 0 4px;font-size:22px}h1 b{color:#f0b90b}.s{margin:0 0 16px;color:#a0a2c0;font-size:14px}'
+        + 'ol{margin:0 0 18px;padding-left:20px}li{margin:0 0 10px}li b{color:#ffe28a}code{font:500 13px ui-monospace,Consolas,monospace;color:#ffe28a;overflow-wrap:anywhere}button{margin-left:6px;padding:2px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:none;color:#e9e2d2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer}'
+        + 'a.go{display:block;text-align:center;padding:13px;border-radius:12px;background:#f0b90b;color:#000;font-weight:700;text-decoration:none;font-size:17px}label{display:block;margin-top:12px;color:#a0a2c0;font-size:13px}</style></head><body><div class="c">'
+        + '<h1>Buy <b>$BOBAI</b></h1><p class="s">On PancakeSwap, BNB Smart Chain. Three things before you swap:</p><ol>'
+        + '<li><b>Set slippage to 6%.</b> Every buy and sell pays a 3% tax, so with less the swap fails. In PancakeSwap: the gear icon &rarr; Slippage tolerance &rarr; 6.</li>'
+        + '<li><b>Check the contract</b> PancakeSwap shows: <code>0x245c386dcfed896f5c346107596141e5edcbffff</code><button type="button" id="cp">copy</button></li>'
+        + '<li><b>It is a memecoin.</b> Only put in what you can afford to lose.</li></ol>'
+        + '<a class="go" id="go" href="' + next + '">Open PancakeSwap</a><label><input type="checkbox" id="sk"> I know this, skip it next time</label></div>'
+        + '<script>try{if(localStorage.getItem("bt-buy-skip")==="1")location.replace(' + JSON.stringify(next) + ')}catch(e){}'
+        + 'document.getElementById("sk").onchange=function(){try{localStorage.setItem("bt-buy-skip",this.checked?"1":"0")}catch(e){}};'
+        + 'document.getElementById("cp").onclick=function(){var b=this;navigator.clipboard.writeText("0x245c386dcfed896f5c346107596141e5edcbffff").then(function(){b.textContent="copied"}).catch(function(){})};</script></body></html>';
+      return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
     }
     // our own checks over MCP name themselves too (5.11.: brainonbnb-mcp-all-check and brainonbnb-look stood in mcp:by: as
     // others, the way REST did until 4.11.); only a label for counting, as there

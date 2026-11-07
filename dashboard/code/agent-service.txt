@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24349 lines.
+# one fetch. 74 files, 24351 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6521,7 +6521,9 @@ export const CAPABILITIES = {
     { name: 'rug watch: an alarm for a token you hold', where: 'POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} · MCP tool bsc_rug_watch', example: 'https://agent.brainonbnb.com/rug-watch', what: 'the preflight read again every 15 minutes; an alert is raised as soon as something dangerous changes — the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, the owner or the proxy changes — and today\'s rugs from its own 24 h history: fake volume from a handful of wallets, a pump and the dump after it, a slow rug while insiders sell, liquidity draining. Alerts are POSTed, signed, to your https callback if you give one, or read back at GET /rug-watch/<id>?since=<time>. One active watch free per caller; 25 per wallet holding 1,000,000 $BOBAI (proved by a signature, no transaction). 30 days, renewable.' },
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
-    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
+    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data. The same tools also come in small sets, each its own server: /mcp/preflight (token check), /mcp/pancakeswap, /mcp/agents (find and vet agents), /mcp/board (fixes)' },
+    // 7.11.: an agent forgets between sessions; a person who keeps the server in the client brings it back every time
+    { name: 'keep it in your AI client', where: 'https://brainonbnb.com/connect', what: 'one click adds our MCP servers — all of them, or only the token check, PancakeSwap, the agent finder or the fix board — to Claude, Cursor or VS Code; no key, no account' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', example: 'https://brainonbnb.com/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'the same tools as plain GET, for agents that do not speak MCP' },
     // The three PancakeSwap answers, named rather than left inside "read-only
     // tools over MCP". Somebody arriving with a decision to make is looking for

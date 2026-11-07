@@ -7596,8 +7596,8 @@ window.__btBrSeason = brSeason;
   // THE PRIZE POOL (operator, 6.11.): the $BOBAI in the Giggle/prize wallet — 808.41 to start, every $BOBAI donated adds —
   // all of it to the overall #1 on 30 Nov; the bar's goal $100,000 (operator: "exaggerated"); ONLY $BOBAI counts, anything
   // else sent there is lost (said plainly)
-  const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 100; // $100 (operator 6.11. evening: "not $100k, just $100")
-  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $100</span></div>'
+  const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 10; // $10 (operator 7.11.: "$10", the X post "goal $100k → $100 → $10"; 6.11. evening it was $100)
+  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
     + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Anything other than $BOBAI sent to the prize pool (BNB, USDT, any token) is <b>lost</b>. It is not part of the prize pool.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;
@@ -8108,11 +8108,15 @@ window.__btBrSeason = brSeason;
   if (on && !ask && CHQ) setTimeout(openPanel, 1500);
   if (ask) {
     const nb = document.createElement('div'); nb.className = 'br-ask'; nb.setAttribute('role', 'dialog'); nb.setAttribute('aria-modal', 'false'); nb.setAttribute('aria-labelledby', 'br-ask-h');
-    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">Brainrot mode is on</b>'
-      + '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>'
+    // A CALM HINT (7.11., operator: "show them a calm hint"): a device set to reduce motion that came for the game (the Apps
+    // menu, a shared link: ?pop) is told plainly what the game is before anything moves; the same two choices, its own words
+    const calmPop = calmDevice && new URLSearchParams(location.search).has('pop');
+    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : 'Brainrot mode is on') + '</b>'
+      + (calmPop ? '<p>Your device asks for reduced motion. Brain Pop runs with fast motion, creatures across the screen, shaking and bright colours.</p>'
+        : '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>')
       + '<p class="br-ask-w">If you are sensitive to flashing lights or fast motion, for example with photosensitive epilepsy, please switch to the standard terminal.</p>'
-      + '<div class="br-ask-b"><button type="button" class="br-ask-yes">Stay in brainrot</button><button type="button" class="br-ask-no">Switch to the standard terminal</button></div>'
-      + '<small>You can change it any time with the ROT button next to LIVE.' + (calmDevice ? ' Your device asks for reduced motion: switching is recommended.' : '') + '</small></div>';
+      + '<div class="br-ask-b"><button type="button" class="br-ask-yes">' + (calmPop ? 'Play anyway' : 'Stay in brainrot') + '</button><button type="button" class="br-ask-no">' + (calmPop ? 'No thanks, the standard terminal' : 'Switch to the standard terminal') + '</button></div>'
+      + '<small>You can change it any time with the ROT button next to LIVE.' + (calmDevice && !calmPop ? ' Your device asks for reduced motion: switching is recommended.' : '') + '</small></div>';
     win.appendChild(nb);
     const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} nb.remove(); set(v, false); if (v && CHQ) setTimeout(openPanel, 900); /* a challenge link: straight to the game */ };
     nb.querySelector('.br-ask-no').addEventListener('click', e => { e.stopPropagation(); choose(false); });

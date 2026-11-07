@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 6 files, 588 lines.
+# one fetch. 6 files, 618 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -335,10 +335,13 @@ export function check(day, pops, hits = []) {
 //   POST /api/pop/name {pid, name}                   a new name shows on the boards at once
 //   GET  /api/pop/claim/<code>                       the prize check (the player's private code)
 //   GET  /api/pop/stats                              the funnel per day
+//   GET  /api/pop/wallet?pid=                        the player's holder badge (7.11.): linked?, $BOBAI, badge
+//   POST /api/pop/wallet {pid, wallet, issued, signature} | {pid, unlink: true}   link a wallet by a signature (no transaction)
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
 import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
+import { checkLink, balanceOf, tierOf, linkMessage, TIERS, STALE_MS } from './wallet.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
 import { plan, replay, RUN_MS, V, WEAPONS, UNIT } from '../temp/terminal-site/terminal/pop-engine.mjs';
@@ -382,14 +385,25 @@ export class PopBoard {
     this.sql.exec('DROP TABLE IF EXISTS runs2'); this.sql.exec('DROP TABLE IF EXISTS best2');
     // the game's funnel per day (GET /api/pop/stats)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS counts (day TEXT, k TEXT, n INT, PRIMARY KEY (day, k))`);
+    // THE HOLDER BADGE (7.11.): a player's linked wallet and its $BOBAI as last read; only the badge reaches a board
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS wallets (pid TEXT PRIMARY KEY, wallet TEXT, bobai REAL, read_at INT, linked_at INT)`);
   }
   rows(q, ...a) { return [...this.sql.exec(q, ...a)]; }
   bump(day, k, by = 1) { this.sql.exec(`INSERT INTO counts (day, k, n) VALUES (?, ?, ?) ON CONFLICT (day, k) DO UPDATE SET n = n + ?`, day, String(k).slice(0, 60), by, by); }
   top(scope, day, n = 10) {
-    if (scope === 'day') return rowsP(this.rows(`SELECT name, score, run FROM best3 WHERE day = ? ORDER BY score DESC, at ASC LIMIT ?`, day, n));
+    if (scope === 'day') return this.badged(rowsP(this.rows(`SELECT b.name, b.score, b.run, w.bobai FROM best3 b LEFT JOIN wallets w ON w.pid = b.pid WHERE b.day = ? ORDER BY b.score DESC, b.at ASC LIMIT ?`, day, n)));
     // overall: a player's best single run of the season (under the name they play as now)
-    return rowsP(this.rows(`SELECT b.name, b.score, b.run FROM best3 b JOIN (SELECT pid, MAX(score) s FROM best3 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
-      GROUP BY b.pid ORDER BY b.score DESC, MIN(b.at) ASC LIMIT ?`, n));
+    return this.badged(rowsP(this.rows(`SELECT b.name, b.score, b.run, w.bobai FROM best3 b JOIN (SELECT pid, MAX(score) s FROM best3 GROUP BY pid) m ON b.pid = m.pid AND b.score = m.s
+      LEFT JOIN wallets w ON w.pid = b.pid GROUP BY b.pid ORDER BY b.score DESC, MIN(b.at) ASC LIMIT ?`, n)));
+  }
+  // the badge in place of the balance: a board never carries a wallet or an amount
+  badged(L) { return L.map(({ bobai, ...r }) => ({ ...r, badge: bobai == null ? null : tierOf(bobai) })); }
+  // a linked wallet read again when its reading is older than 6 h (a holder who sold loses the badge)
+  async refreshWallet(pid, force = false) {
+    const w = this.rows('SELECT wallet, bobai, read_at FROM wallets WHERE pid = ?', pid)[0]; if (!w) return null;
+    if (!force && Date.now() - w.read_at < STALE_MS) return w;
+    const b = await balanceOf(w.wallet); if (b == null) return w;
+    this.sql.exec('UPDATE wallets SET bobai = ?, read_at = ? WHERE pid = ?', b, Date.now(), pid); return { ...w, bobai: b, read_at: Date.now() };
   }
   players(day) { return this.rows(`SELECT COUNT(*) c FROM best3 WHERE day = ?`, day)[0].c; }
   async readPool() {
@@ -446,6 +460,21 @@ export class PopBoard {
         if (!r) return J({ error: 'no such run' }, 404);
         return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), seed: r.seed, name: r.name, score: P7(r.score), maxc: r.maxc, pops: r.pops, misses: r.misses, rugs: r.rugs, ranked: !!r.ranked, timeline: JSON.parse(r.timeline || '[]'), inputs: JSON.parse(r.inputs || '[]') }, 200, 'public, max-age=300');
       }
+      // THE HOLDER BADGE (7.11.): read or link; a link is a signature (personal_sign) of linkMessage, never a transaction
+      if (p === 'wallet' && req.method === 'GET') {
+        const pid = String(u.searchParams.get('pid') || ''); if (!/^[0-9a-f]{16}$/.test(pid)) return J({ error: 'pid (16 hex) needed' }, 400);
+        const w = await this.refreshWallet(pid);
+        return J({ linked: !!w, wallet: w ? w.wallet : null, bobai: w ? w.bobai : null, badge: w ? tierOf(w.bobai) : null, tiers: TIERS, message: 'BOBAI Brain Pop holder badge\nplayer: <pid>\nwallet: <lowercase address>\nissued: <ISO time>' });
+      }
+      if (p === 'wallet' && req.method === 'POST') {
+        const b = await req.json().catch(() => ({}));
+        if (b.unlink) { const pid = String(b.pid || ''); if (!/^[0-9a-f]{16}$/.test(pid)) return J({ error: 'pid (16 hex) needed' }, 400); this.sql.exec('DELETE FROM wallets WHERE pid = ?', pid); return J({ linked: false }); }
+        const c = await checkLink(b, now); if (!c.ok) return J({ error: c.error }, c.status);
+        const bal = await balanceOf(c.wallet); if (bal == null) return J({ error: 'the chain did not answer, try again in a minute' }, 503);
+        this.sql.exec('INSERT OR REPLACE INTO wallets (pid, wallet, bobai, read_at, linked_at) VALUES (?, ?, ?, ?, ?)', c.pid, c.wallet, bal, now, now);
+        if (!test0(c.pid)) this.bump(today, 'wallet_linked' + (tierOf(bal) ? '_' + tierOf(bal) : ''));
+        return J({ linked: true, wallet: c.wallet, bobai: bal, badge: tierOf(bal), tiers: TIERS });
+      }
       // a new name shows on the boards at once (BRAINROT IT or the dice), not only after the next run
       if (req.method === 'POST' && p === 'name') {
         const b = await req.json().catch(() => ({})), name = nameOf(b.name), pid = String(b.pid || '');
@@ -491,6 +520,7 @@ export class PopBoard {
           rank = this.rows(`SELECT COUNT(*) c FROM best3 WHERE day = ? AND (score > ? OR (score = ? AND at < ?))`, r.day, me.score, me.score, me.at)[0].c + 1;
           players = this.players(r.day);
         }
+        await this.refreshWallet(r.pid).catch(() => null); // a badge on the board is as fresh as the player's last run
         if (!test0(r.pid)) { this.bump(r.day, 'finished'); if (c.applied < b.inputs.length) this.bump(r.day, 'taps_not_applied', b.inputs.length - c.applied); }
         return J({ v: V, run: r.id, day: r.day, no: dayNo(r.day), seed: r.seed, name: r.name, score: P7(c.score), maxc: c.maxc, pops: c.pops, misses: c.misses, rugs: c.rugs, taps: c.taps, weapons: c.weapons, code: await claimOf(r.pid), ranked: !!r.ranked, best: P7(best), rank, players, top: this.top('day', r.day) });
       }

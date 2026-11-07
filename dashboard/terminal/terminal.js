@@ -7568,7 +7568,11 @@ window.__btBrSeason = brSeason;
   const pp = document.createElement('div'); pp.className = 'br-pp'; pp.setAttribute('role', 'dialog'); pp.setAttribute('aria-label', 'Daily Brain Pop'); pp.hidden = true; win.appendChild(pp);
   pp.addEventListener('pointerdown', e => e.stopPropagation());
   pp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && e.target.matches('.br-pp-nm input')) { e.preventDefault(); pp.querySelector('.br-pp-rot')?.click(); } }); /* typing a name never reaches the terminal's own keys */
-  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span>' + esc(r.name) + '</span><b>' + sc7(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
+  // THE HOLDER BADGE (7.11., operator: "Brain Pop as the way to $BOBAI"): 🧠 holds 100,000+ $BOBAI, 💎 1,000,000+ — proven
+  // by a signature and read from the chain by the server; the board never shows a wallet or an amount
+  const BADGE = { holder: ['🧠', 'Holds 100,000+ $BOBAI (proven by a signature, read from the chain)'], pass: ['💎', 'Holds 1,000,000+ $BOBAI (proven by a signature, read from the chain)'] };
+  const badgeOf = b => BADGE[b] ? '<em class="br-pp-bdg ' + b + '" title="' + BADGE[b][1] + '">' + BADGE[b][0] + '</em>' : '';
+  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span>' + esc(r.name) + badgeOf(r.badge) + '</span><b>' + sc7(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
   // DAILY | OVERALL (operator 6.11.: "a board for every day until 30 Nov, I can look at them — tomorrow the one of 6 Nov —
   // always the top 10; daily and then overall"); the daily board pages through the season's days
   const FIRST = '2026-11-06', LASTD = '2026-11-30';
@@ -7578,11 +7582,14 @@ window.__btBrSeason = brSeason;
   const fmtDay = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
   const tabs = () => '<div class="br-pp-tabs">' + [['day', 'DAILY'], ['all', 'OVERALL']].map(([k, t]) => '<button type="button" data-sc="' + k + '"' + (k === scope ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div>'
     + (scope === 'day' ? '<div class="br-pp-days"><button type="button" data-dd="-1" aria-label="Day before"' + (bday <= FIRST ? ' disabled' : '') + '>‹</button><span>DAY ' + (Math.round((Date.parse(bday + 'T00:00:00Z') - Date.parse(FIRST + 'T00:00:00Z')) / 86400e3) + 1) + ' · ' + fmtDay(bday) + (bday === lastDay() && bday === ((DAY && DAY.today) || '') ? ' · TODAY' : '') + '</span><button type="button" data-dd="1" aria-label="Day after"' + (bday >= lastDay() ? ' disabled' : '') + '>›</button></div>' : '<div class="br-pp-days"><span>BEST RUN OF THE SEASON · 6 TO 30 NOV</span></div>');
+  let boardSeq = 0;
   async function loadBoard() {
     const box = pp.querySelector('.br-pp-bd'); if (!box) return; bday ||= lastDay(); box.innerHTML = tabs() + '<div class="br-pp-board"><p class="br-pp-none">…</p></div>';
-    try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box)) return;
+    /* only the latest ask may fill the board (7.11.: a slow answer to an earlier tab overwrote the board just picked) */
+    const seq = ++boardSeq;
+    try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box) || seq !== boardSeq) return;
       box.innerHTML = tabs() + '<div class="br-pp-board">' + board(j.rows) + '</div><p class="br-pp-n">' + nf0(j.players) + ' player' + (j.players === 1 ? '' : 's') + (scope === 'day' ? ' that day' : ' this season') + ' · top 10 · your best run counts · the server checks every hit</p>'; }
-    catch { box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
+    catch { if (seq !== boardSeq || !pp.contains(box)) return; box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
   }
   // the player's private code: only this browser shows it; the overall winner shows it to claim the prize
   const codeLine = () => { const c = lsGet('bt-pop-code'); return c ? '<p class="br-pp-n">Your player code: <b class="br-pp-code">' + esc(c) + '</b> · keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.</p>' : ''; };
@@ -7640,6 +7647,7 @@ window.__btBrSeason = brSeason;
       + '<h4>🕹 CONTROLS</h4><ul>'
       + '<li><b>Crosshair:</b> pick its shape and colour on the PLAY page (desktop).</li>'
       + '<li><b>RESTART / QUIT:</b> bottom right of the field, tap twice to be sure.</li>'
+      + '<li><b>HOLDER BADGE:</b> link your wallet in the start window (one signature, no transaction): 🧠 from 100,000 $BOBAI, 💎 from 1,000,000. It only shows; it never changes a score.</li>'
       + '<li><b>Sound:</b> on or off next to the crosshair on the PLAY page.</li>'
       + '<li>The labels on the field show which power is active right now and how long it lasts.</li></ul>'
       + '<h4>🏆 TIPS FROM THE PROS</h4><ul>'
@@ -7652,7 +7660,7 @@ window.__btBrSeason = brSeason;
     const nameHtml = (named() ? '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' : '') + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it) <button type="button" class="br-pp-re" title="A random brainrot name">🎲 random</button></b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _</small></div>';
     pp.innerHTML = '<div class="br-pp-c"><div class="br-pp-hd"><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b><button type="button" class="br-pp-tab on" data-tab="play">▶ PLAY</button><button type="button" class="br-pp-tab" data-tab="guide">📖 HOW TO PLAY</button></div>' + ch
       + '<div class="br-pp-guide" hidden></div>'
-      + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml
+      + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml + '<p class="br-pp-wl"></p>'
       // HOW TO PLAY, in five seconds (operator: "in 60 seconds you must know what to do")
       + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>EVERY HIT</b> charges the 7 stations · full = super power · 8 in a row SUPER · 16 MEGA · 24 GOD</span></div>'
       + '<p class="br-pp-n">60 seconds · every round new, every round equally hard · the server replays every tap</p>'
@@ -7664,8 +7672,34 @@ window.__btBrSeason = brSeason;
       + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b> <small>hahaha</small></p>' + poolHtml()
       + '</div></div>'
       + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button><button type="button" class="br-pp-shg">📣 SHARE THE GAME</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
-    scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool();
+    scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool(); fillWallet();
     setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
+  }
+  // the holder badge line in the start window: link (a signature, no transaction), what is linked, unlink
+  async function fillWallet(note, known) {
+    const wl = pp.querySelector('.br-pp-wl'); if (!wl) return;
+    /* known: the server's answer to a link or unlink, shown as it came (7.11.: on live a second read right after the link
+       never left the page and the line fell back to LINK WALLET) */
+    let w = known || null; if (!w) try { w = await api('wallet?pid=' + pid + '&t=' + Date.now()); } catch {}
+    if (!pp.contains(wl)) return;
+    const amt = w && w.bobai != null ? nf0(w.bobai) + ' $BOBAI' : '';
+    wl.innerHTML = (!w || !w.linked
+      ? '🧠 Hold $BOBAI? Show it on the board: <button type="button" class="br-pp-link">🔗 LINK WALLET</button> <small>one signature, no transaction, no gas · 🧠 from 100,000 · 💎 from 1,000,000</small>'
+      : w.badge ? '<b>' + BADGE[w.badge][0] + ' ' + (w.badge === 'pass' ? 'HOLDER PASS' : 'HOLDER') + '</b> next to your name on the board · ' + amt + ' <button type="button" class="br-pp-unlink">unlink</button>'
+      : 'Wallet linked · ' + amt + ' · 🧠 shows from 100,000 · <a href="/buy?from=pop-badge" target="_blank" rel="noopener">BUY $BOBAI ↗</a> <button type="button" class="br-pp-unlink">unlink</button>')
+      + (note ? '<small class="br-pp-wn">' + esc(note) + '</small>' : '');
+  }
+  async function linkWallet() {
+    const eth = window.ethereum;
+    if (!eth || !eth.request) { fillWallet('No wallet in this browser. Open brainonbnb.com in your wallet app’s browser (MetaMask, Trust Wallet, Binance Wallet) and link there: one signature, no transaction.'); return; }
+    try {
+      const [acc] = await eth.request({ method: 'eth_requestAccounts' }); const wallet = String(acc).toLowerCase(), issued = new Date().toISOString();
+      const msg = 'BOBAI Brain Pop holder badge\nplayer: ' + pid + '\nwallet: ' + wallet + '\nissued: ' + issued;
+      const hex = '0x' + [...new TextEncoder().encode(msg)].map(c => c.toString(16).padStart(2, '0')).join('');
+      const signature = await eth.request({ method: 'personal_sign', params: [hex, acc] });
+      const r = await api('wallet', { pid, wallet, issued, signature });
+      await fillWallet(r.badge ? '' : 'Linked. The badge shows from 100,000 $BOBAI.', r); loadBoard();
+    } catch (e) { fillWallet(/reject|denied|4001/i.test(String(e && (e.message || e.code))) ? 'Not linked: the signature was declined.' : 'Not linked: ' + (e && e.message || e)); }
   }
   pp.addEventListener('click', async e => {
     e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
@@ -7675,6 +7709,8 @@ window.__btBrSeason = brSeason;
     if (b.classList.contains('br-pp-snd')) { muted = !muted; lsSet('bt-pop-mute', muted ? '1' : '0'); b.textContent = muted ? '🔇 OFF' : '🔊 ON'; if (!muted) SFX.count(true); return; }
     if (b.dataset.xh) { lsSet('bt-pop-xh', b.dataset.xh); pp.querySelectorAll('[data-xh]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.dataset.xc) { lsSet('bt-pop-xc', b.dataset.xc); pp.querySelectorAll('[data-xc]').forEach(x => x.classList.toggle('on', x === b)); return; }
+    if (b.classList.contains('br-pp-link')) { b.disabled = true; b.textContent = 'CHECK YOUR WALLET…'; await linkWallet(); return; }
+    if (b.classList.contains('br-pp-unlink')) { let r = null; try { r = await api('wallet', { pid, unlink: true }); } catch {} fillWallet('', r); loadBoard(); return; }
     if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
     if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
     if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: rotPick(pname.v) }; lsSet('bt-pop-name', JSON.stringify(pname)); const ii = pp.querySelector('.br-pp-me i'); if (ii) ii.textContent = myName(); else intro(); api('name', { pid, name: pname }).catch(() => {}); return; }
@@ -7869,7 +7905,7 @@ window.__btBrSeason = brSeason;
       + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
-      + '<p class="br-pp-bob">The game is free. The brain behind it is <b>$BOBAI</b>: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. <a href="/buy?from=pop" target="_blank" rel="noopener">BUY $BOBAI ↗</a></p>'
+      + '<p class="br-pp-bob">The game is free. The brain behind it is <b>$BOBAI</b>: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI, and holding 100,000+ puts 🧠 next to your name on the board. <a href="/buy?from=pop" target="_blank" rel="noopener">BUY $BOBAI ↗</a></p>'
       + '<div class="br-pp-b">' + (res ? '<button type="button" class="br-pp-share">SHARE</button><button type="button" class="br-pp-dare">CHALLENGE A FRIEND</button>' : '') + '<button type="button" class="br-pp-again">PLAY AGAIN</button><button type="button" class="br-pp-x">Close</button></div></div>';
     scope = 'day'; bday = res ? res.day : null; loadBoard();
     // a reason to come back: the next day's plan, counted down (until the season's last day)

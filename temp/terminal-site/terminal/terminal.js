@@ -7582,11 +7582,14 @@ window.__btBrSeason = brSeason;
   const fmtDay = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
   const tabs = () => '<div class="br-pp-tabs">' + [['day', 'DAILY'], ['all', 'OVERALL']].map(([k, t]) => '<button type="button" data-sc="' + k + '"' + (k === scope ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div>'
     + (scope === 'day' ? '<div class="br-pp-days"><button type="button" data-dd="-1" aria-label="Day before"' + (bday <= FIRST ? ' disabled' : '') + '>‹</button><span>DAY ' + (Math.round((Date.parse(bday + 'T00:00:00Z') - Date.parse(FIRST + 'T00:00:00Z')) / 86400e3) + 1) + ' · ' + fmtDay(bday) + (bday === lastDay() && bday === ((DAY && DAY.today) || '') ? ' · TODAY' : '') + '</span><button type="button" data-dd="1" aria-label="Day after"' + (bday >= lastDay() ? ' disabled' : '') + '>›</button></div>' : '<div class="br-pp-days"><span>BEST RUN OF THE SEASON · 6 TO 30 NOV</span></div>');
+  let boardSeq = 0;
   async function loadBoard() {
     const box = pp.querySelector('.br-pp-bd'); if (!box) return; bday ||= lastDay(); box.innerHTML = tabs() + '<div class="br-pp-board"><p class="br-pp-none">…</p></div>';
-    try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box)) return;
+    /* only the latest ask may fill the board (7.11.: a slow answer to an earlier tab overwrote the board just picked) */
+    const seq = ++boardSeq;
+    try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box) || seq !== boardSeq) return;
       box.innerHTML = tabs() + '<div class="br-pp-board">' + board(j.rows) + '</div><p class="br-pp-n">' + nf0(j.players) + ' player' + (j.players === 1 ? '' : 's') + (scope === 'day' ? ' that day' : ' this season') + ' · top 10 · your best run counts · the server checks every hit</p>'; }
-    catch { box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
+    catch { if (seq !== boardSeq || !pp.contains(box)) return; box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
   }
   // the player's private code: only this browser shows it; the overall winner shows it to claim the prize
   const codeLine = () => { const c = lsGet('bt-pop-code'); return c ? '<p class="br-pp-n">Your player code: <b class="br-pp-code">' + esc(c) + '</b> · keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.</p>' : ''; };
@@ -7673,9 +7676,11 @@ window.__btBrSeason = brSeason;
     setTimeout(() => pp.querySelector('.br-pp-go')?.focus({ preventScroll: true }), 50);
   }
   // the holder badge line in the start window: link (a signature, no transaction), what is linked, unlink
-  async function fillWallet(note) {
+  async function fillWallet(note, known) {
     const wl = pp.querySelector('.br-pp-wl'); if (!wl) return;
-    let w = null; try { w = await api('wallet?pid=' + pid); } catch {}
+    /* known: the server's answer to a link or unlink, shown as it came (7.11.: on live a second read right after the link
+       never left the page and the line fell back to LINK WALLET) */
+    let w = known || null; if (!w) try { w = await api('wallet?pid=' + pid + '&t=' + Date.now()); } catch {}
     if (!pp.contains(wl)) return;
     const amt = w && w.bobai != null ? nf0(w.bobai) + ' $BOBAI' : '';
     wl.innerHTML = (!w || !w.linked
@@ -7693,7 +7698,7 @@ window.__btBrSeason = brSeason;
       const hex = '0x' + [...new TextEncoder().encode(msg)].map(c => c.toString(16).padStart(2, '0')).join('');
       const signature = await eth.request({ method: 'personal_sign', params: [hex, acc] });
       const r = await api('wallet', { pid, wallet, issued, signature });
-      await fillWallet(r.badge ? '' : 'Linked. The badge shows from 100,000 $BOBAI.'); loadBoard();
+      await fillWallet(r.badge ? '' : 'Linked. The badge shows from 100,000 $BOBAI.', r); loadBoard();
     } catch (e) { fillWallet(/reject|denied|4001/i.test(String(e && (e.message || e.code))) ? 'Not linked: the signature was declined.' : 'Not linked: ' + (e && e.message || e)); }
   }
   pp.addEventListener('click', async e => {
@@ -7705,7 +7710,7 @@ window.__btBrSeason = brSeason;
     if (b.dataset.xh) { lsSet('bt-pop-xh', b.dataset.xh); pp.querySelectorAll('[data-xh]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.dataset.xc) { lsSet('bt-pop-xc', b.dataset.xc); pp.querySelectorAll('[data-xc]').forEach(x => x.classList.toggle('on', x === b)); return; }
     if (b.classList.contains('br-pp-link')) { b.disabled = true; b.textContent = 'CHECK YOUR WALLET…'; await linkWallet(); return; }
-    if (b.classList.contains('br-pp-unlink')) { try { await api('wallet', { pid, unlink: true }); } catch {} fillWallet(); loadBoard(); return; }
+    if (b.classList.contains('br-pp-unlink')) { let r = null; try { r = await api('wallet', { pid, unlink: true }); } catch {} fillWallet('', r); loadBoard(); return; }
     if (b.classList.contains('br-pp-copy')) { try { await navigator.clipboard.writeText(POOL); b.textContent = 'COPIED ✓'; } catch { b.textContent = POOL; } return; }
     if (b.classList.contains('br-pp-today')) { chOff = true; CH = null; DAY = null; openPanel(); return; }
     if (b.classList.contains('br-pp-re')) { lsSet('bt-pop-named', '1'); pname = Array.isArray(pname) ? [ri(16), ri(16), 1 + ri(99)] : { own: pname.own, v: rotPick(pname.v) }; lsSet('bt-pop-name', JSON.stringify(pname)); const ii = pp.querySelector('.br-pp-me i'); if (ii) ii.textContent = myName(); else intro(); api('name', { pid, name: pname }).catch(() => {}); return; }

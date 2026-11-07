@@ -1497,3 +1497,11 @@
 #bt .portrait .br-pp-guide{columns:1}
 #bt .br-pp-xh button.br-pp-snd{width:auto;padding:0 12px;color:#f3eee6;font:700 .8rem/1 Inter,system-ui,sans-serif}
 #bt .br-pp-b .br-pp-shg{background:#ff3fd8;color:#fff}
+/* THE HOLDER BADGE (7.11.): the wallet line in Brain Pop's start window and the badge next to a name on the board */
+#bt .br-pp-wl{margin:6px 0 0;font-size:.78rem;line-height:1.45;color:#e9e2d2}
+#bt .br-pp-wl:empty{display:none}
+#bt .br-pp-wl button{padding:3px 8px;border:1px solid rgba(240,185,11,.6);border-radius:8px;background:rgba(240,185,11,.14);color:#ffe28a;font:inherit;font-weight:700;cursor:pointer}
+#bt .br-pp-wl button.br-pp-unlink{font-weight:400;border-color:rgba(255,255,255,.2);background:none;color:#a8a2b4}
+#bt .br-pp-wl small{display:block;color:#a8a2b4}
+#bt .br-pp-wl a{color:#ffe28a}
+#bt .br-pp-bdg{font-style:normal;margin-left:4px}

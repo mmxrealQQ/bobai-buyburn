@@ -65,7 +65,7 @@ export default {
       const run = await get(POP + 'run/' + pm[1]);
       if (!run) return Response.redirect('https://brainonbnb.com/og-brainpop.jpg', 302);
       let place = null;
-      if (run.ranked) { const t = await get(POP + 'top?scope=day&d=' + run.day); const i = t && Array.isArray(t.rows) ? t.rows.findIndex((x) => x.run === run.run) : -1; if (i >= 0) place = { rank: i + 1, players: t.players, today: run.day === new Date().toISOString().slice(0, 10) }; }
+      if (run.ranked) { const t = await get(POP + 'top?scope=day&d=' + run.day); const i = t && Array.isArray(t.rows) ? t.rows.findIndex((x) => x.run === run.run) : -1; if (i >= 0) { place = { rank: i + 1, players: t.players, today: run.day === new Date().toISOString().slice(0, 10) }; run.name = t.rows[i].name || run.name; /* the name the player plays as now, as the board and the Telegram post show it */ } }
       const png = await render(popCard(run, place, await posterUri()));
       const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
       ctx.waitUntil(caches.default.put(key, res.clone()));

@@ -57,7 +57,13 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   'Only{N}Fans Airdrop', '{N}hub Premium Degen', '{N}69420 Inu', 'Sugar{N}daddy Whale', '{N}gasm Greencandle', 'Cum{N} to the Moon',
   '{N}thicc Bagholder', 'Gyatt{N} Gainz', '{N}bussy Liquidity', '{N}nut No Stop Loss', 'Edging{N} the ATH', '{N}hard Pumpenstein',
   'Lick{N} the Chart', 'Rizz{N} the Rugger', 'Naked{N} Margin Call', 'Spanky{N} McDump', 'Booty{N} Bagz', '{N}horny Shortsqueeze',
-  'Kinky{N} the Whale', '{N}ballz Diamond Edition'];
+  'Kinky{N} the Whale', '{N}ballz Diamond Edition',
+  // 7.11. (operator: "more of those")
+  '{N}pegging the Peg', 'Depeg{N} Daddy', 'Throbbing{N} Bull Run', 'Copetrader{N}', '{N}moan Bear Market', 'Wet{N} Wallet',
+  '{N}strap 100x Leverage', 'Simp{N} the Shiller', 'Shill{N} McShillface', '{N}lube Liquidity Pool', 'Lubed{N} Slippage',
+  'Thirsty{N} Mempool', 'Sloppy{N} Seconds Buyer', 'Hump{N} the Top', 'Squirt{N} the Airdrop', 'Moist{N} Mooncake',
+  'Bulge{N} Bullrun', 'Freaky{N} Frontrunner', 'Sandwich{N} Threesome', 'Daddy{N} MEV Bot', '{N}69 Gas War',
+  'Ballsdeep{N} in Bags', '{N}stroke Stochastic', 'Quickie{N} Scalper', 'Premature{N} Exit', 'Hodl{N} Me Daddy'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ROT_MAX = Math.max(86, ROT.length); // the longest the list ever was live (7.11.): a form beyond it never existed

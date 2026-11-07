@@ -2659,6 +2659,7 @@ const BOT_COMMANDS = [
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
+  { command: 'pop',      description: 'Brain Pop: the top 3 of today, the season leader, the prize pool, play' },
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
@@ -2679,7 +2680,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v19-whales-abc';
+const COMMANDS_VERSION = 'v20-pop';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2759,6 +2760,24 @@ async function announceListings(env) {
 // The board is the bobai-pop worker's (brainonbnb.com/api/pop/top); names there are random or the player's own,
 // brainrotted, letters/digits/_ only, so nothing in them can break the HTML. A day nobody played posts nothing.
 const POP_FIRST = '2026-11-06', POP_LAST = '2026-11-30';
+// /pop (7.11., operator: "ecosystem number one, nothing forgotten"): the game's live state in the chat — today's top 3,
+// the season leader, the prize pool against its $10 goal, the way in. Pure: the boards, the pool and the price in, HTML out.
+export function renderPopNow(today, d, all, pool, priceUsd) {
+  const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const p7 = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }), medal = ['🥇', '🥈', '🥉'];
+  const over = today > POP_LAST, rows = (d && d.rows) || [], leader = all && all.rows && all.rows[0];
+  const bobai = pool && pool.bobai != null ? Number(pool.bobai) : null, usd = bobai != null && priceUsd ? bobai * priceUsd : null;
+  return [
+    over ? '🧠 <b>BRAIN POP · SEASON OVER</b>' : `🧠 <b>BRAIN POP · DAY ${d && d.no ? d.no : ''} · LIVE</b>`,
+    '',
+    ...(over ? [] : rows.length ? rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`) : ['Nobody on today\'s board yet. The first run takes the crown.']),
+    over ? '' : `${Number((d && d.players) || 0).toLocaleString('en-US')} player${(d && d.players) === 1 ? '' : 's'} today`,
+    leader ? `👑 ${over ? 'Champion' : 'Season leader'}: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : '',
+    bobai != null ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · goal $10 · the overall #1 on 30 Nov takes it all` : '',
+    '',
+    over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/pop',
+  ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
+}
 export function renderPopChampion(day, no, rows, players, leader) {
   const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const n = (v) => Number(v || 0).toLocaleString('en-US'), p7 = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }), medal = ['🥇', '🥈', '🥉']; // 6.9: scores with seven decimals
@@ -3303,6 +3322,13 @@ async function handleCommand(msg, env) {
       break;
     }
 
+    case '/pop':
+    case 'pop': {
+      const get = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const [d, all, pool, px] = await Promise.all([get('https://brainonbnb.com/api/pop/top?scope=day'), get('https://brainonbnb.com/api/pop/top?scope=all'), get('https://brainonbnb.com/api/pop/pool'), get('https://brainonbnb.com/api/price')]);
+      reply = d || all ? renderPopNow(new Date().toISOString().slice(0, 10), d, all, pool, px && px.price_usd) : 'The Brain Pop board did not answer just now. Try again in a minute, or play: https://brainonbnb.com/pop';
+      break;
+    }
     case '/giggle':
     case 'giggle': {
       let burns = null;
@@ -3532,6 +3558,7 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
+🎮 /pop — Brain Pop: today's board, the prize pool, play
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links

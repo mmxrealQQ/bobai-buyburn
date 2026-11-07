@@ -2532,7 +2532,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     if (url.pathname === '/m/pop' || url.pathname.startsWith('/m/pop/')) {
       const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play');
       let found = false, title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 on 30 Nov wins the whole $BOBAI prize pool.';
-      if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json(); const nm = String(j.name || '').replace(/[<>&"]/g, '').slice(0, 40), sc = Number(j.score || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json();
+        /* the name the player plays as now, from the day's board, as the run's card shows it (7.11.: the title kept the name of the run's time) */
+        try { const t = await (await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/top?scope=day&d=' + j.day, { cf: { cacheTtl: 120 } })).json(); const row = (t.rows || []).find((x) => x.run === j.run); if (row && row.name) j.name = row.name; } catch {}
+        const nm = String(j.name || '').replace(/[<>&"]/g, '').slice(0, 40), sc = Number(j.score || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
         title = nm + ' scored ' + sc + ' ROT in BRAIN POP 6.9 · can you beat it? 🧠'; desc = 'A challenge: same day, your own round. 60 seconds, tap the brainrot. Their score runs along as a ghost.'; found = true; } } catch {} }
       // THE RUN'S OWN CARD (7.11., operator: "sharing"): a found run is previewed with its own picture — name, score, place
       // of the day (bobai-og /pop/<run>.png); the game's poster stays for /m/pop and for a run that is not there

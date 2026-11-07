@@ -1897,7 +1897,7 @@ function openApi() {
 // Where a buy click may say it came from: the pages (scripts/deploy-dashboard.mjs buySource names them), and three
 // places that name themselves. A name outside this list is 'other', so nobody can invent lines in /stats/detail.
 const BUY_TARGET = 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc';
-const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'services', 'registry', 'scanner', 'board', 'library', 'roadmap', 'whitepaper', 'pass', 'archive', 'nft', 'neu', '404', 'llms', 'skill', 'mcp', 'pop']); // pop: the Brain Pop game's result window (6.11.)
+const BUY_SOURCES = new Set(['home', 'classic', 'token', 'faq', 'defi', 'services', 'registry', 'scanner', 'board', 'library', 'roadmap', 'whitepaper', 'pass', 'archive', 'nft', 'neu', '404', 'llms', 'skill', 'mcp', 'pop', 'pop-badge']); // pop: the Brain Pop game's result window (6.11.); pop-badge: its holder badge line (7.11.)
 
 // What kind of caller, coarsely — never the string itself. Order matters:
 // crawlers and tools put "Mozilla" in front of their own name.

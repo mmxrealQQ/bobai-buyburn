@@ -246,7 +246,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1794063319377">
+<link rel="stylesheet" href="brain/brain.css?v=1794063770532">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1794063319">
@@ -941,7 +941,7 @@
       <!-- BRAIN POP (operator, 2026-11-06: the daily game, then "the ecosystem, number one"): in the terminal's brainrot season only -->
       <a class="ec fi" href="/?pop=play" data-pop data-until="2026-12-01T00:00:00Z">
         <div class="ec-top"><img src="terminal/br/mini.webp" width="96" height="96" alt="Brain Pop logo" loading="lazy" decoding="async"><h3>Brain Pop</h3></div>
-        <p>60 seconds, the whole terminal is the field. Daily top 10; the overall #1 on 30 Nov wins the $BOBAI prize pool.</p>
+        <p>60 seconds, the same creatures for everyone. A daily top 10 until 30 Nov.</p>
         <span class="ec-live" data-eclive="pop">Daily winner gets nothing</span>
         <div class="ec-foot"><span class="ec-go">Play <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
@@ -1111,7 +1111,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,782 lines &middot; 98 KB</span>
+          <span class="lib-m">12 files &middot; 5,849 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1272,6 +1272,29 @@
       <details class="lib-i">
         <summary>
           <span class="lib-h">
+            <span class="lib-t">Brain Pop 6.9 — the daily game in the terminal</span>
+            <span class="lib-s">60 seconds, one engine file, every tap replayed by the server.</span>
+          </span>
+          <span class="lib-m">6 files &middot; 627 lines &middot; 27 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A worker with a Durable Object (SQLite)</span><span class="lib-o"><em>ours</em> Cloudflare Workers, class PopBoard</span><span class="lib-o"><em>also</em> any server that can run an ES module and keep two small tables</span></li><li><span class="lib-q">The same engine file on both sides</span><span class="lib-o"><em>ours</em> pop-engine.mjs, imported by the page and by the worker</span><span class="lib-o"><em>also</em> keep one file; a copy that drifts makes the replay disagree with the screen</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="brain-pop" data-title="Brain Pop 6.9 — the daily game in the terminal">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/brain-pop.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/brain-pop.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/brain-pop.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/brain-pop.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
             <span class="lib-t">brainScreener</span>
             <span class="lib-s">Thirteen self-tests. No accounts, no tracking, no backend.</span>
           </span>
@@ -1298,7 +1321,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,959 lines &middot; 0.1 MB</span>
+          <span class="lib-m">5 files &middot; 4,093 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1321,7 +1344,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">74 files &middot; 24,272 lines &middot; 0.6 MB</span>
+          <span class="lib-m">74 files &middot; 24,349 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1344,7 +1367,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 5,082 lines &middot; 0.1 MB</span>
+          <span class="lib-m">7 files &middot; 5,084 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1497,7 +1520,7 @@
 // the terminal opens with the page: it IS the page
 (async () => { try { (await import('./terminal/terminal.js?v=1794063319')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1794063319378" defer></script>
-<script src="brain/cards.js?v=1794063319378" defer></script>
-<script src="brain/hero.js?v=1794063319378" defer></script>
+<script src="brain/brain.js?v=1794063770533" defer></script>
+<script src="brain/cards.js?v=1794063770533" defer></script>
+<script src="brain/hero.js?v=1794063770533" defer></script>
 </body></html>

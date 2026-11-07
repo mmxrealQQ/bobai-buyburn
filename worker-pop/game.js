@@ -41,7 +41,12 @@ export const ROT = ['Il Grande {N}one', '{N}ini Cervellini', 'Barone {N}elli', '
   '{N}otto Liquidotto', '{N}uccio Degenuccio', '{N}ito Jeetito', '{N}one Moonboyone', '{N}ino Gasolino', '{N}ini Copiumini',
   '{N}ella Hopiumella', '{N}otto Mangiawickotto', 'Ser {N}ini Leveraggini', '{N}ona Gyattona', '{N}ino Rizzino',
   '{N}ella Tettarella', '{N}one Culone', '{N}ino Pisellino', '{N}accio Sculacciaccio', '{N}etto Mutandetto',
-  '{N}ona Bunga Bungona', '{N}one Sugar Paparone', '{N}ino Orgasmino Verde', '{N}ella MILFarella', 'Nonna {N}ina Perizomina'];
+  '{N}ona Bunga Bungona', '{N}one Sugar Paparone', '{N}ino Orgasmino Verde', '{N}ella MILFarella', 'Nonna {N}ina Perizomina',
+  // 7.11. (operator: "great, a few more of those")
+  '{N}etto Airdropetto', '{N}ino Whalino', '{N}accio Rektaccio', '{N}ona Stakingona', '{N}otto Memecoinotto', '{N}ello FOMOnello',
+  '{N}ino Slippagino', '{N}ella Sniperella', '{N}uccio Honeypottuccio', '{N}one Ruggatone', '{N}ino Bottino', '{N}ito Wenlambito',
+  '{N}ino Manine di Carta', '{N}ella Spogliarella', '{N}one Arrapatone', '{N}ino Bagnatino', '{N}ino Sculacciatino',
+  '{N}ino Leccapiedino', '{N}one Viagrone Verde', '{N}ella Bikinella', '{N}ino Preservativino', '{N}ella Culona Pumpona'];
 // (6.11. evening, operator: "every name is allowed, it is brainrot; otherwise I delete them by hand") — the block list is gone;
 // only the shape stays: letters, digits, _ (no link, no space, no HTML); the operator hides one with POST /api/pop/hide
 export const ROT_MAX = 86; // the longest the list ever was live (7.11.): a form beyond it never existed

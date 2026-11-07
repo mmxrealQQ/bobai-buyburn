@@ -257,7 +257,7 @@ txt: https://brainonbnb.com/code/browser-game.txt
 Brain Pop 6.9 — the daily game in the terminal
 ----------------------------------------------
 60 seconds, one engine file, every tap replayed by the server.
-6 files, 552 lines
+6 files, 557 lines
 needs:
   - A worker with a Durable Object (SQLite)
       ours: Cloudflare Workers, class PopBoard

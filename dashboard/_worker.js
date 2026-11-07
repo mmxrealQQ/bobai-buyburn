@@ -2085,7 +2085,9 @@ export default {
       // The day's count stays right on average and the relay — one request to
       // the agent worker per hit, ~98k a day — shrinks twentyfold. Anyone who
       // is not a crawler is still counted one by one.
-      if (!COUNTED_API.has(url.pathname)) {
+      // Brain Pop's own calls (/api/pop/*, served by the bobai-pop worker) are the game, not an unknown path (7.11.: 775 a week
+      // read as "unknownpath:pop"); the game counts its own players in /api/pop/stats.
+      if (!COUNTED_API.has(url.pathname) && seg !== 'pop') {
         if (family !== 'crawler') count(null, ['rest:unknown', `uaunknown:${family}`, `unknownpath:${seg}`]);
         else if (Math.random() < 0.05) {
           // Which bot — its self-declared name only (e.g. "gptbot"), to decide whether one crawler is worth a block.

@@ -596,6 +596,8 @@ function skillMd() {
 
 ## How to query me
 - **MCP** (JSON-RPC 2.0, protocol 2025-06-18): \`POST https://brainonbnb.com/mcp\`
+- **The same tools in small sets**, each its own server: token check \`/mcp/preflight\` · PancakeSwap \`/mcp/pancakeswap\` · agents on BNB Chain \`/mcp/agents\` · fix board \`/mcp/board\` (all under https://brainonbnb.com)
+- **Keep them** in Claude, Cursor or VS Code, one click: https://brainonbnb.com/connect
 - **A2A agent card**: https://brainonbnb.com/.well-known/agent-card.json
 - Example — list tools:
 \`\`\`bash

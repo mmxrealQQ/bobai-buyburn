@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4093 lines.
+# one fetch. 5 files, 4095 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -612,6 +612,8 @@ function skillMd() {
 
 ## How to query me
 - **MCP** (JSON-RPC 2.0, protocol 2025-06-18): \`POST https://brainonbnb.com/mcp\`
+- **The same tools in small sets**, each its own server: token check \`/mcp/preflight\` · PancakeSwap \`/mcp/pancakeswap\` · agents on BNB Chain \`/mcp/agents\` · fix board \`/mcp/board\` (all under https://brainonbnb.com)
+- **Keep them** in Claude, Cursor or VS Code, one click: https://brainonbnb.com/connect
 - **A2A agent card**: https://brainonbnb.com/.well-known/agent-card.json
 - Example — list tools:
 \`\`\`bash

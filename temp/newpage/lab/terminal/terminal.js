@@ -7689,7 +7689,7 @@ window.__btBrSeason = brSeason;
       + '<div class="br-pp-xh"><b>SOUND</b><button type="button" class="br-pp-snd" aria-label="Sound on/off">' + (muted ? '🔇 OFF' : '🔊 ON') + '</button></div>'
       + '</div><div class="br-pp-r"><p class="br-pp-hs">🏆 HIGHSCORE · TOP 10</p>'
       + '<div class="br-pp-bd"></div>' + codeLine()
-      + '<p class="br-pp-prize">Daily winner gets: <b>NOOOOOOOOOOOOOOOOOTHING!</b></p>' + poolHtml()
+      + '<p class="br-pp-prize">Daily prize: <b>NOOOOOOOOOOOOOOOOOTHING!</b></p>' + poolHtml()
       + '</div></div>'
       + '<div class="br-pp-b"><button type="button" class="br-pp-go">▶ PLAY</button><button type="button" class="br-pp-shg">📣 SHARE THE GAME</button>' + (past ? '<button type="button" class="br-pp-today">TODAY&rsquo;S DAILY</button>' : '') + '<button type="button" class="br-pp-x">Close</button></div></div>';
     scope = 'day'; bday = DAY.day > lastDay() ? lastDay() : DAY.day; loadBoard(); fillPool(); fillWallet();

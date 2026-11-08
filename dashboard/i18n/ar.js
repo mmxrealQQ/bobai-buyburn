@@ -2,9 +2,9 @@
 // figures, the windows, the game, a title, a placeholder — is put through the one dictionary (core.js, the same the
 // site worker uses for the HTML). The layout is not touched: no mirroring, no new boxes; only words change. Links to
 // this site's pages stay inside /ar/. A text with no entry stays English and lands in window.__arMiss for the checker.
-import { translate, toAr, ltr } from '/i18n/core.js?v=3';
+import { translate, toAr, ltr, NOAR } from '/i18n/core.js?v=5';
 
-const SKIP = 'script,style,noscript,code,pre,textarea,svg,[translate="no"],.notranslate,[data-noar],#bt';
+const SKIP = NOAR;
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 const done = new WeakMap(); // text node -> the Arabic we wrote (so our own write is not translated again)
 const miss = (window.__arMiss = window.__arMiss || new Set());
@@ -68,5 +68,7 @@ fetch('/i18n/ar.json?v=' + (document.documentElement.getAttribute('data-arv') ||
   window.__arReady = true;
 }).catch(() => { window.__arReady = 'failed'; });
 
+// for the checker: does the dictionary know this text (also when its Arabic is the English itself, a name)?
+window.__arHas = (s) => !!dict && translate(dict, s) !== undefined;
 // for the terminal and the game: the Arabic of one whole line before it is typed (English when there is no entry)
 window.__arT = (s) => { if (!dict) return s; const ar = translate(dict, s); if (ar === undefined) { miss.add(String(s).trim()); return s; } return ar ?? s; };

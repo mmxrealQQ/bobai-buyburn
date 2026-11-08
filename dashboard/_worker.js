@@ -12,7 +12,7 @@ import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.j
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { titleAndBody } from '../shared/plaza-board.js';
 import { groupLibrary, dateLine, checkLine } from '../shared/board-topics.js';
-import { translate, decodeHtml, escapeHtml, toAr, AR_PAGES } from './i18n/core.js';
+import { translate, decodeHtml, escapeHtml, toAr, AR_PAGES, NOAR } from './i18n/core.js';
 import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -2798,7 +2798,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '3', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '5', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
 // sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
 function langSwitch(enPath, search, ar) {
@@ -2811,7 +2811,7 @@ const LANG_HEAD = `<script>(function(){try{var ar=location.pathname==='/ar'||loc
   + `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('.ar-sw a');if(a)localStorage.setItem('bt-lang',a.getAttribute('data-lang'))},true);`
   + `if(!ar&&window.top===window&&localStorage.getItem('bt-lang')==='ar')location.replace((location.pathname==='/'?'/ar/':'/ar'+location.pathname)+location.search+location.hash)}catch(e){}})()</script>`;
 // where the switch stands in each kind of header (before the header's last button); the first that exists wins
-const SWITCH_AT = ['.nav .nb'];
+const SWITCH_AT = ['.nav .nb', 'a.bp-sw']; // the subpages' and Classic's bar (before "Buy $BOBAI"); the Brain page's header (before "Classic")
 function langLayer(res, enPath, search, ar, dict, embedded) {
   let placed = false;
   const at = { element(e) { if (placed || embedded) return; placed = true; e.before(langSwitch(enPath, search, ar), { html: true }); } };
@@ -2827,7 +2827,7 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   rw = rw
     .on('html', { element(e) { e.setAttribute('lang', 'ar'); e.setAttribute('data-arv', String(AR_DICT.v)); } })
     .on('head', { element(e) { e.append(`<link rel="stylesheet" href="/i18n/ar.css?v=${AR_V}"><script type="module" src="/i18n/ar.js?v=${AR_V}"></script>`, { html: true }); } })
-    .on('script,style,noscript,code,pre,textarea,svg,[translate="no"],.notranslate,[data-noar]', deep)
+    .on(NOAR, deep)
     .on('[placeholder],[title],[aria-label],img[alt]', attr(['placeholder', 'title', 'aria-label', 'alt']))
     .on('meta[name="description"],meta[property="og:title"],meta[property="og:description"],meta[name="twitter:title"],meta[name="twitter:description"],meta[property="og:image:alt"]', attr(['content']))
     .on('link[rel="canonical"],meta[property="og:url"]', { element(e) { for (const n of ['href', 'content']) { const v = e.getAttribute(n); if (v) e.setAttribute(n, abs(v)); } } })

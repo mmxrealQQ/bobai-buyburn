@@ -72,7 +72,7 @@
   const sc = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
   const B = { holder: ' 🧠', pass: ' 💎' };
   const fill = (id, j) => { const el = document.getElementById(id); if (!el) return;
-    el.innerHTML = j && j.rows && j.rows.length ? j.rows.map((r) => '<li><span>' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
+    el.innerHTML = j && j.rows && j.rows.length ? j.rows.map((r) => '<li><span translate="no">' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
     if (j && j.players != null) el.insertAdjacentHTML('afterend', '<p class="pp-small">' + Number(j.players).toLocaleString('en-US') + ' player' + (j.players === 1 ? '' : 's') + (id === 'pp-day-top' ? ' today' : ' this season') + '</p>'); };
   Promise.all([J('/api/pop/top?scope=day'), J('/api/pop/top?scope=all'), J('/api/pop/pool'), J('/api/price')]).then(([d, a, p, px]) => {
     fill('pp-day-top', d); fill('pp-all-top', a);

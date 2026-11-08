@@ -35,5 +35,5 @@ for (const p of paths) {
   res[p] = keys.filter((k) => dict[k] == null);
   console.error(p, keys.length, 'keys,', res[p].length, 'missing');
 }
-fs.writeFileSync('D:/ai/fourmeme/temp/i18n/todo.json', JSON.stringify(res, null, 1));
+fs.writeFileSync('D:/ai/fourmeme/temp/i18n/keys-todo.json', JSON.stringify(res, null, 1));
 ws.close(); ch.kill(); process.exit(0);

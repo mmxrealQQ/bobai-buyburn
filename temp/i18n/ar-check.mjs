@@ -12,6 +12,7 @@ const [base0, ...args] = process.argv.slice(2);
 const base = (base0 || 'https://arabic.bobai-dashboard.pages.dev').replace(/\/$/, '');
 const ALL = ['/', '/classic', '/token', '/faq', '/pop', '/scanner', '/registry', '/list', '/services', '/defi', '/library', '/whitepaper', '/advantage', '/session', '/source', '/roadmap', '/archive', '/screener', '/board', '/connect', '/jobs', '/pass', '/pancakeswap', '/venus', '/settle', '/set-and-earn', '/nft'];
 const PAGES = args.length ? args : ALL;
+const NOAR = fs.readFileSync('D:/ai/fourmeme/dashboard/i18n/core.js', 'utf8').match(/export const NOAR = ([\s\S]*?);\n/)[1].replace(/'\s*\+\s*'/g, '').slice(1, -1);
 const GLOSS = /^(BOBAI|BOB|BNB|BSC|LP|NFTs?|DeFi|UTC|CAKE|USDT|USD|AI|API|MCP|A2A|ERC|PancakeSwap|Pancake|Four\.Meme|Giggle|Academy|Brain|Plaza|Board|Pop|Terminal|Screener|Brainmap|Classic|Telegram|GitHub|Cloudflare|Workers|Liq|Liquidity|Boost|II|III|Build|On|Venus|Mandate|Binance|Web3|WC|ROT|EN|CZ|x402|ETH|OK|ID|json|burns|md|txt|llms|Claude|Cursor|Brainrot|BOBAIs|Studio|Agent|Era|Copy|Base|Keel|Marque|Pokter|Glama|Smithery|Bitquery|Moralis|BscScan|DexScreener|CoinGecko|CoinMarketCap|CMC)$/;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-arc-' + port;
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
@@ -28,9 +29,9 @@ const LOOK = `(async () => {
   const gloss = ${GLOSS}, eng = new Set();
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = w.nextNode());) {
-    const p = n.parentElement; if (!p || p.closest('script,style,noscript,code,pre,textarea,svg,[translate="no"],.notranslate,[data-noar],#bt')) continue;
+    const p = n.parentElement; if (!p || p.closest(${JSON.stringify(NOAR)})) continue;
     const words = (n.nodeValue.replace(/https?:\\/\\/\\S+|0x[0-9a-fA-F….]+|\\$[A-Z]+/g, '').match(/[A-Za-z][A-Za-z'’-]{2,}/g) || []).filter((x) => !gloss.test(x));
-    if (words.length && !/[\\u0600-\\u06FF]/.test(n.nodeValue)) eng.add(n.nodeValue.replace(/\\s+/g, ' ').trim().slice(0, 120));
+    if (words.length && !/[\\u0600-\\u06FF]/.test(n.nodeValue) && !(window.__arHas && window.__arHas(n.nodeValue))) eng.add(n.nodeValue.replace(/\\s+/g, ' ').trim().slice(0, 120));
   }
   const nav = document.querySelector('nav, header, .bp-top');
   return { ready: window.__arReady, miss: [...(window.__arMiss || [])], eng: [...eng], wide: document.documentElement.scrollWidth > innerWidth + 1, navH: nav ? Math.round(nav.getBoundingClientRect().height) : 0 };

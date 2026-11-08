@@ -32,7 +32,15 @@ export function translate(dict, text) {
   const k = keyOf(text);
   if (!k) return null;
   const ar = dict[k.key];
-  if (ar == null) return undefined;
+  if (ar == null) {
+    // a line put together from whole sentences (the terminal: "Biggest buy in 3 days! " + his line): each sentence on
+    // its own, when every one of them has an entry; otherwise the whole line is a miss
+    const parts = String(text).trim().split(/(?<=[.!?…])\s+(?=\S)/);
+    if (parts.length < 2) return undefined;
+    const out = [];
+    for (const p of parts) { const t = translate(dict, p); if (t === undefined) return undefined; out.push(t == null ? p : t.trim()); }
+    return (/^\s/.test(text) ? ' ' : '') + out.join(' ') + (/\s$/.test(text) ? ' ' : '');
+  }
   const lead = /^\s/.test(text) ? ' ' : '', trail = /\s$/.test(text) ? ' ' : '';
   return lead + ar.replace(/\{(\d+)\}/g, (m, i) => (k.toks[i] != null ? ltr(k.toks[i]) : m)) + trail;
 }
@@ -46,6 +54,12 @@ export function decodeHtml(s) {
   return String(s).replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (m, e) => (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENT[e] ?? m));
 }
 export function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// NOT TRANSLATED (operator, 2026-11-08: "do not translate where it makes no sense"): code, our terminal (it has its own
+// way in), and what others wrote — an agent's own name, description, host and endpoint on the Plaza, a player's name.
+// One list for the worker, the browser and the checker.
+export const NOAR = 'script,style,noscript,code,pre,textarea,svg,[translate="no"],.notranslate,[data-noar],#bt .say,#bt .ln .m,'
+  + '.rg-chart b,.rgc-what,.rg-desc,.rg-nm b,.rg-id,.rg-ep,table.rg td:first-child > b';
 
 // this site's own pages, which have an Arabic twin under /ar/ (assets, APIs and the apps keep their one address)
 export const AR_PAGES = /^\/(?:$|classic$|token|faq|pop|scanner|registry|list|services|defi|library|whitepaper|advantage|session|source|roadmap|archive|screener|board|connect|jobs|pass|pancakeswap|venus|settle|set-and-earn|agent|nft|buy)(?:\.html)?(?:[/?#]|$)/;

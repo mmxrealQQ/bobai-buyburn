@@ -50,6 +50,14 @@ const R = (r, a, b) => Math.round(a + r() * (b - a));
 // creatures show still changes every round (q).
 export const SAME_DAY_FROM = '2026-11-09', SAME_DAY_AS = '2026-06-04';
 export const difficultyDay = (day) => (day >= SAME_DAY_FROM ? SAME_DAY_AS : day);
+// EASIER COMBOS, MORE POWERS (operator, 2026-11-08: "combos and helpers easier and more helpful, more fun and pull —
+// without destroying the game"; chosen: 1 + 2): from the same day as the fixed die, a streak forgives 2.6 s between two
+// pops (was 2 s), the stations need 6/8/10/11/12/14/16 hits (was 8/10/12/14/16/18/22) and a miss drains every meter by
+// 2 (was 3). Days 1-3 keep the old rules, so every run on record replays to the score it got. plan() carries its rules.
+export function rulesFor(day) {
+  const neu = String(day || '') >= SAME_DAY_FROM;
+  return neu ? { combo: 2600, need: [6, 8, 10, 11, 12, 14, 16], missDrain: 2 } : { combo: COMBO_MS, need: WEAPONS.map((w) => w.need), missDrain: 3 };
+}
 export function plan(day, seed = 0) {
   const r = rng('brainpop2:' + difficultyDay(day)), q = rng('brainpop2:' + day + ':' + (seed >>> 0)), out = [];
   for (let t = 900; t < 57500;) {
@@ -71,7 +79,9 @@ export function plan(day, seed = 0) {
   for (const at of [15000, 31000, 48000]) { const y = R(q, 200, 800), ltr = q() < 0.5; out.push({ n: 'snail', rug: false, gold: false, at, r: 52, pts: 25, p: 'line', x0: ltr ? -80 : 1080, y0: y, x1: ltr ? 1080 : -80, y1: y, w: 30, f: 2, life: 2600 }); }
   const kx = R(q, 300, 700); out.push({ n: 'kaiju', rug: false, gold: false, at: 36000, r: 150, pts: 120, hp: 8, p: 'line', x0: kx, y0: 1150, x1: 1000 - kx, y1: -150, w: 260, f: 1, life: 9000 });
   out.sort((x, y) => x.at - y.at);
-  return out.map((x, i) => ({ i, ...x }));
+  const P = out.map((x, i) => ({ i, ...x }));
+  P.rules = rulesFor(day); // not part of the plan's JSON (an array keeps only its items), read by createRun
+  return P;
 }
 // where a creature is at world time w (or null when it is not in the arena)
 export function pos(s, w) {
@@ -85,6 +95,7 @@ export const multOf = (combo) => Math.min(10, 1 + Math.floor(combo / 4));
 // ONE RUN: feed it taps in time order — tap(t, x, y) — and read its state; the server replays the same
 export const turn = (v, x, y) => { let a = x, b = y; if (v & 4) { const c = a; a = b; b = c; } if (v & 1) a = 1000 - a; if (v & 2) b = 1000 - b; return [a, b]; };
 export function createRun(P, variant = 0) {
+  const RU = (P && P.rules) || rulesFor(''); // the day's rules (plan() attaches them); a bare list plays the first rules
   const vr = (variant | 0) & 7, at = (s, w) => { const q = pos(s, w); if (!q) return null; const [x, y] = turn(vr, q.x, q.y); return { x, y, u: q.u }; };
   const S = { score: 0, combo: 0, maxc: 0, misses: 0, pops: 0, taps: 0, rugs: 0, last: -1e9, prev: -1e9, dead: new Set(), hp: {}, used: [], armed: null,
     hammer: 0, defi: 0, giggle: -1, creator: -1, slow: [], fired: 0, auto: [], superTo: -1, godTo: -1, timeline: [], ev: [], extra: [], charge: [0, 0, 0, 0, 0, 0, 0] };
@@ -102,7 +113,7 @@ export function createRun(P, variant = 0) {
   function popOne(s, t, chain, aim, byPlayer = true) {
     S.dead.add(s.i);
     if (s.rug && !(t < S.creator)) { S.rugs++; S.combo = 0; drainAll(6); S.score = Math.max(0, S.score - 4000 * UNIT); S.ev.push(['rug', s.i, t, -4000 * UNIT]); return; }
-    S.combo = t - S.last <= COMBO_MS || chain ? S.combo + 1 : 1; S.last = t; S.maxc = Math.max(S.maxc, S.combo); S.pops++;
+    S.combo = t - S.last <= RU.combo || chain ? S.combo + 1 : 1; S.last = t; S.maxc = Math.max(S.maxc, S.combo); S.pops++;
     // aim: 0.5 at the ring's edge … 1.5 dead centre; reaction: 2.5 at the first instant … towards 1 the longer it lives
     const rt = Math.max(0, world(t) - s.at), fAim = 0.5 + Math.max(0, Math.min(1, aim)), fRx = 1 + 600 / (rt + 400);
     let pts = (s.rug ? 5 : s.pts) * 100 * multOf(S.combo) * (golden(s, t) ? 5 : 1) * fAim * fRx;
@@ -116,7 +127,7 @@ export function createRun(P, variant = 0) {
     else if (S.combo === 16) { for (let k = 1; k <= 4; k++) helpAt(t + k * 150); S.ev.push(['mega', -1, t, 16]); }
     else if (S.combo >= 24 && S.combo % 8 === 0) { S.godTo = t + 5000; S.ev.push(['god', -1, t, S.combo]); }
     // every station's meter fills; a full one fires its power by itself
-    if (byPlayer) for (let k = 0; k < WEAPONS.length; k++) { S.charge[k] += golden(s, t) ? 2 : 1; if (S.charge[k] >= WEAPONS[k].need) { S.charge[k] = 0; power(t, k); } }
+    if (byPlayer) for (let k = 0; k < WEAPONS.length; k++) { S.charge[k] += golden(s, t) ? 2 : 1; if (S.charge[k] >= RU.need[k]) { S.charge[k] = 0; power(t, k); } }
   }
   function power(t, k) {
     const w = WEAPONS[k].k; S.fired++; S.used.push(k); S.ev.push(['fire', k, t, 0]);
@@ -150,7 +161,7 @@ export function createRun(P, variant = 0) {
     if (S.armed === 'burn') { S.armed = null; blast(t, x, y); return true; } // the explosion: everything within 230 pops, rugs too
     const scale = Math.max(0.55, 1 - 0.015 * S.combo) * (S.hammer > 0 ? 3 : 1); if (S.hammer > 0) S.hammer--;
     let best = null, bd = 1e9, br = 1; for (const [s, q] of L) { const d = Math.hypot(q.x - x, q.y - y); if (d <= s.r * scale && d < bd) { bd = d; best = s; br = s.r * scale; } }
-    if (!best) { S.misses++; S.combo = 0; drainAll(3); S.score = Math.max(0, S.score - MISS_COST * UNIT); S.ev.push(['miss', -1, t, -MISS_COST * UNIT, x, y]); S.timeline.push([t, S.score]); return true; }
+    if (!best) { S.misses++; S.combo = 0; drainAll(RU.missDrain); S.score = Math.max(0, S.score - MISS_COST * UNIT); S.ev.push(['miss', -1, t, -MISS_COST * UNIT, x, y]); S.timeline.push([t, S.score]); return true; }
     if (best.hp) { S.hp[best.i] = (S.hp[best.i] ?? best.hp) - 1; if (S.hp[best.i] > 0) { S.ev.push(['hit', best.i, t, 0]); S.last = t; return true; } }
     popOne(best, t, false, 1 - bd / br); S.timeline.push([t, S.score]); return true;
   }

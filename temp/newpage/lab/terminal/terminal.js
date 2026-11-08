@@ -7642,7 +7642,7 @@ window.__btBrSeason = brSeason;
     intro();
   }
   function guideHtml() {
-    const W = E.WEAPONS, n = v => Number(v).toLocaleString('en-US'), row = (img, h, t) => '<div class="br-gd-r">' + (img ? '<img alt="" src="' + pic(img) + '">' : '') + '<p><b>' + h + '</b>' + t + '</p></div>';
+    const RL = E.rulesFor ? E.rulesFor(DAY && DAY.day) : null, W = E.WEAPONS.map((w, i) => (RL ? { ...w, need: RL.need[i] } : w)), n = v => Number(v).toLocaleString('en-US'), row = (img, h, t) => '<div class="br-gd-r">' + (img ? '<img alt="" src="' + pic(img) + '">' : '') + '<p><b>' + h + '</b>' + t + '</p></div>';
     const what = { burn: 'An explosion lands on the biggest crowd: everything in range pops at once (rugs are spared). Nothing on screen? Then your next tap explodes.', hammer: 'Your next 6 taps are huge: the hit area is 3 times bigger.', liq: 'Slow motion for 4 seconds: the creatures AND the clock run at half speed, so you win extra time (up to 12 extra seconds per round).', defi: 'A helper flies in and pops 6 creatures for you over 3 seconds. It always takes the one about to escape, never a rug.', giggle: 'Gold rush: triple points for 4 seconds.', creator: 'Every rug on screen blows up and pays ' + n(E.SLAY_PTS) + ' x your multiplier. For 5 seconds new rugs are golden and safe to tap.', trades: 'Cash bonus: your current streak x 2,500 points. It needs the most hits, so keep the streak high.' };
     return '<h4>🎯 THE GOAL</h4>'
       + '<p>' + (E.RUN_MS / 1000) + ' seconds. The whole terminal is the field. Tap the brainrot creatures and score as much ROT as you can. Every day is equally hard, the same for everyone; every round brings its own creatures. The server replays every tap, so every score is real. Daily top 10; the overall #1 on 30 Nov wins the whole $BOBAI prize pool.</p>'
@@ -7652,7 +7652,7 @@ window.__btBrSeason = brSeason;
       + '<li><b>Aim:</b> hit the middle for up to 1.5x, the edge gives 0.5x.</li>'
       + '<li><b>Speed:</b> tap a creature right as it appears for up to 2.5x. The longer it lives, the less it pays.</li></ul>'
       + '<h4>🔥 STREAK AND MULTIPLIER</h4><ul>'
-      + '<li>Pop again within ' + (E.COMBO_MS / 1000) + ' seconds and the streak goes on.</li>'
+      + '<li>Pop again within ' + ((RL ? RL.combo : E.COMBO_MS) / 1000) + ' seconds and the streak goes on.</li>'
       + '<li>Every 4 in a row: +1 multiplier, up to <b>x10</b>.</li>'
       + '<li>The longer the streak, the smaller the hit area (down to 55 %). Skill, not luck.</li></ul>'
       + '<h4>⚡ COMBOS</h4>'
@@ -7663,7 +7663,7 @@ window.__btBrSeason = brSeason;
       + '<p>Six on the right, the cashier (TRADES) on the left. Each has a meter. <b>Only your own hits charge them</b>: +1 per pop, +2 for a golden one (helpers and explosions never charge). When a meter is full, the station fires <b>by itself</b>, nothing to click. Then it charges again.</p>'
       + W.map(w => row(w.pic, w.name + ' · every ' + w.need + ' hits', ' ' + (what[w.k] || esc(w.say)))).join('')
       + '<h4>❌ DON&rsquo;T</h4>'
-      + row('', '✖ A MISS', ' Tapping nothing costs ' + n(E.MISS_COST) + ' points, breaks your streak and drains every meter by 3.')
+      + row('', '✖ A MISS', ' Tapping nothing costs ' + n(E.MISS_COST) + ' points, breaks your streak and drains every meter by ' + (RL ? RL.missDrain : 3) + '.')
       + row('rug', 'THE RUG (red candle)', ' From second 7 on. Tapping it costs 4,000 points, breaks your streak and drains every meter by 6. Only the RUG SLAYER makes them safe.')
       + '<h4>👾 SPECIAL CREATURES</h4>'
       + row('octo', 'OCTOPUS', ' Splits into 3 little brains: pop them fast for a quick streak.')
@@ -7838,7 +7838,7 @@ window.__btBrSeason = brSeason;
     RUN.run.advance(t); if (RUN.ev < RUN.run.S.ev.length) drain(500, 500); /* the helpers act on their own */
     { const C = RUN.run.S.charge; for (const st of ST) { const k = ['burnA', 'burnB', 'liq', 'defi', 'giggle', 'creator', 'src'].indexOf(st.k); if (k < 0) continue; let m = st.e.querySelector('.br-chg');
       if (!m) { m = document.createElement('b'); m.className = 'br-chg'; m.innerHTML = '<i></i><em></em>'; st.e.appendChild(m); }
-      const need = E.WEAPONS[k].need, p = Math.min(1, C[k] / need), key = C[k] + '/' + need; if (m._k !== key) { m._k = key; m.style.setProperty('--p', p.toFixed(3)); m.querySelector('em').textContent = need - C[k]; m.classList.toggle('hot', need - C[k] <= 2); } } }
+      const need = (RUN && RUN.plan && RUN.plan.rules ? RUN.plan.rules.need[k] : E.WEAPONS[k].need), p = Math.min(1, C[k] / need), key = C[k] + '/' + need; if (m._k !== key) { m._k = key; m.style.setProperty('--p', p.toFixed(3)); m.querySelector('em').textContent = need - C[k]; m.classList.toggle('hot', need - C[k] <= 2); } } }
     const S = RUN.run.S, k = AR.s / 1000, kx = AR.w / 1000, ky = AR.h / 1000, ring = Math.max(0.55, 1 - 0.015 * S.combo) * (S.hammer > 0 ? 3 : 1), seen = new Set();
     for (const [s, q] of RUN.run.alive(t)) {
       seen.add(s.i); let n = RUN.nodes.get(s.i); if (!n) { n = node(s); RUN.nodes.set(s.i, n); }

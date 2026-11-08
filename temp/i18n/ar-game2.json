@@ -12,5 +12,10 @@
  "{0} AWAY FROM SUPER": "على بُعد {0} من SUPER",
  "{0} AWAY FROM MEGA": "على بُعد {0} من MEGA",
  "{0} AWAY FROM GOD": "على بُعد {0} من GOD",
- "NEW #{0}!": "#{0} جديد!"
+ "NEW #{0}!": "#{0} جديد!",
+ "{0} DAYS IN A ROW": "{0} أيام متتالية",
+ "{0} DAY IN A ROW": "{0} يوم متتالٍ",
+ "· come back tomorrow for {0}": "· عُد غدًا لتصل إلى {0}",
+ "🔥 Play today to keep your": "🔥 العب اليوم لتحافظ على",
+ "{0}-day streak": "سلسلة {0} أيام"
 }

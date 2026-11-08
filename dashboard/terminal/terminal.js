@@ -7686,7 +7686,7 @@ window.__btBrSeason = brSeason;
     const nameHtml = (named() ? '<p class="br-pp-me">You play as <i>' + esc(myName()) + '</i> <button type="button" class="br-pp-re" title="Another brainrot form">🎲</button> <button type="button" class="br-pp-own">✏️ my name</button></p>' : '') + '<div class="br-pp-nm"' + (named() ? ' hidden' : '') + '>' + (named() ? '' : '<b class="br-pp-nmh">1 · YOUR NAME (we brainrot it) <button type="button" class="br-pp-re" title="A random brainrot name">🎲 random</button></b>') + '<input type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="your name" aria-label="Your name"><button type="button" class="br-pp-rot">BRAINROT IT</button><small>3 to 16 letters, digits or _</small></div>';
     pp.innerHTML = '<div class="br-pp-c"><div class="br-pp-hd"><b>BRAIN POP 6.9 · DAY ' + DAY.no + '</b><button type="button" class="br-pp-tab on" data-tab="play">▶ PLAY</button><button type="button" class="br-pp-tab" data-tab="guide">📖 HOW TO PLAY</button></div>' + ch
       + '<div class="br-pp-guide" hidden></div>'
-      + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml + '<p class="br-pp-wl"></p>'
+      + '<div class="br-pp-cols"><div class="br-pp-l">' + nameHtml + streakHtml(DAY.today) + '<p class="br-pp-wl"></p>'
       // HOW TO PLAY, in five seconds (operator: "in 60 seconds you must know what to do")
       + '<div class="br-pp-how"><span><img alt="" src="' + pic('octo') + '"><b>TAP</b> the creatures. Fast, in a row: up to x10</span><span><img alt="" src="' + pic('rug') + '"><b>NEVER</b> the red RUG candle</span><span><i class="x">✖</i><b>A MISS</b> breaks your streak</span><span class="pw">' + ['stburn', 'stbobs', 'stliq', 'stdefi', 'stgiggle', 'stcreator', 'sttrade'].map(n => '<img alt="" src="' + pic(n) + '">').join('') + '<b>EVERY HIT</b> charges the 7 stations · full = super power · 8 in a row SUPER · 16 MEGA · 24 GOD</span></div>'
       + '<p class="br-pp-n">60 seconds · every round new, every round equally hard · the server replays every tap</p>'
@@ -7936,6 +7936,21 @@ window.__btBrSeason = brSeason;
       RUN.passed1 = true; SFX.power(); combo3('NEW #1!', 'YOU JUST PASSED ' + String(T1.name).toUpperCase(), 'god'); stationParty();
     }
   }
+  // THE DAILY STREAK (operator, 2026-11-08: "make the daily streak"): days in a row with a counted run (UTC days, a
+  // ranked run of that day; a rematch of an older day does not count). Kept in this browser like the name and the PB.
+  // It shows and it pulls back — no points: the overall board stays the same for everyone.
+  const dayBefore = (d) => new Date(Date.parse(d + 'T00:00:00Z') - 86400e3).toISOString().slice(0, 10);
+  const streakGet = () => { try { const j = JSON.parse(lsGet('bt-pop-streak') || 'null'); return j && /^\d{4}-\d\d-\d\d$/.test(j.last) && j.n > 0 ? j : null; } catch { return null; } };
+  function streakCount(day) {
+    const s = streakGet(); if (s && s.last === day) return s.n;
+    const n = s && s.last === dayBefore(day) ? s.n + 1 : 1; lsSet('bt-pop-streak', JSON.stringify({ last: day, n })); return n;
+  }
+  function streakHtml(today) {
+    const s = streakGet(); if (!s || !today) return '';
+    if (s.last === today) return '<p class="br-pp-streak">🔥 <b>' + s.n + (s.n === 1 ? ' DAY' : ' DAYS') + ' IN A ROW</b>' + (s.n === 1 ? ' · come back tomorrow for 2' : '') + '</p>';
+    if (s.last === dayBefore(today)) return '<p class="br-pp-streak">🔥 Play today to keep your <b>' + s.n + '-day streak</b>!</p>';
+    return '';
+  }
   // THE NEXT PLACE (operator, 2026-11-08: "max fun, highscore chasing, addictive — without changing the core"): the result
   // says how close the next place is, from the day's own board (the player's best counts): the gap to the place above,
   // the lead when first, the way into the top 10 from below. A rematch of an older day is not on the board: no line.
@@ -7955,13 +7970,14 @@ window.__btBrSeason = brSeason;
     let res = null, err = null;
     try { res = await api('finish', { run: R0.id, inputs: R0.inputs }); } catch (e) { err = e.message; }
     RUN = null; pbtn.hidden = false; hudT = setTimeout(() => hud.classList.remove('on'), 4000);
+    if (res && res.ranked && res.day === DAY.today) streakCount(res.day); // a counted run of today keeps the streak going
     if (res) { LAST = res; DAY.top = res.top || DAY.top; if (res.code) lsSet('bt-pop-code', res.code);
       const pb = Number(lsGet('bt-pop-pb') || 0); res._pb = pb; if (res.score > pb) { lsSet('bt-pop-pb', String(res.score)); res._newpb = true; setTimeout(() => { combo3('NEW PERSONAL BEST!', sc7(res.score) + ' ROT', 'god'); }, 300); } }
     const beat = CH && res ? (res.score > CH.score ? '<p class="br-pp-ch">You beat ' + esc(CH.name) + ' by <b>' + sc7(res.score - CH.score) + '</b>! Send it back to them.</p>' : '<p class="br-pp-ch">' + esc(CH.name) + ' keeps it by <b>' + sc7(CH.score - res.score) + '</b>. Again?</p>') : '';
     pp.hidden = false;
     pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? sc7(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
       + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · ' + res.maxc + ' in a row · ' + res.pops + ' popped · ' + res.misses + ' missed · aim ' + (res.taps ? Math.round(res.pops / res.taps * 100) : 0) + '%' + (res.rugs ? ' · ' + res.rugs + ' rug' + (res.rugs === 1 ? '' : 's') : '') + '</p>' + (res._newpb ? '<p class="br-pp-pb new">🏆 NEW PERSONAL BEST!</p>' : res._pb ? '<p class="br-pp-pb">Your best: ' + sc7(res._pb) + ' · ' + sc7(res._pb - res.score) + ' to beat it. One more?</p>' : '') : '<p>' + esc(err || '') + '</p>')
-      + chase(res) + beat + '<div class="br-pp-bd"></div>' + codeLine()
+      + chase(res) + (res && res.ranked ? streakHtml(DAY.today) : '') + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
       + '<p class="br-pp-bob">The game is free. The brain behind it is <b>$BOBAI</b>: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI, and holding 100,000+ puts 🧠 next to your name on the board. <a href="/buy?from=pop" target="_blank" rel="noopener">BUY $BOBAI ↗</a></p>'

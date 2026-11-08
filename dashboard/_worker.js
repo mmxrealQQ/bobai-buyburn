@@ -2804,7 +2804,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '8', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '10', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
 // sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
 function langSwitch(enPath, search, ar) {

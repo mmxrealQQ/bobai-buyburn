@@ -1,0 +1,23 @@
+{
+"Reading the buyback bot’s log…": "جارٍ قراءة سجل بوت إعادة الشراء…",
+"Price …": "السعر …",
+"Reading the board…": "جارٍ قراءة اللوحة…",
+"Reading the screener…": "جارٍ قراءة الماسح…",
+"real job": "مهمة حقيقية",
+"not answering right now": "لا يجيب الآن",
+"{0} jobs delivered ({1} for strangers, {2} our own test purchases)": "{0} مهام سُلّمت ({1} لغرباء، و{2} مشتريات اختبار خاصة بنا)",
+"no BSC endpoint answered the batch ·": "لم تُجب أي نقطة اتصال BSC على الدفعة ·",
+"no BSC endpoint answered the batch": "لم تُجب أي نقطة اتصال BSC على الدفعة",
+"Put in: {0} BNB (≈{1}). Worth now: {2} BNB in the position (≈{3}), and {4} BNB beside it ({5} held at cost, paid out, fees owed). Result: {6} on the capital since {7} Sep, {8} BNB (≈{9}) — {10} BNB from fees, {11} BNB from the price; {12} against simply holding. Checked {13} UTC.": "المُودَع: {0} BNB (≈{1}). القيمة الآن: {2} BNB في المركز (≈{3})، و{4} BNB بجانبه ({5} محتفظ به بسعر التكلفة، ومدفوعات، ورسوم مستحقة). النتيجة: {6} على رأس المال منذ {7} سبتمبر، {8} BNB (≈{9}) — {10} BNB من الرسوم، و{11} BNB من السعر؛ {12} مقارنة بالاحتفاظ فقط. فُحص {13} UTC.",
+"{0} runs over {1} days since {2}: {3} BNB of fees produced, {4} kept as capital, {5} into {6} ({7} held), {8} to the operator.": "{0} دورة خلال {1} يومًا منذ {2}: أُنتجت رسوم بقيمة {3} BNB، احتُفظ بـ {4} كرأس مال، و{5} إلى {6} ({7} محتفظ بها)، و{8} للمشغّل.",
+". Once a day, when it is over {0} BNB (less waits: gas would eat it), it is split: half goes to the operator in the coin it was paid in; the other half goes to {1} — half of it bought and kept in that wallet, never sold, and half added to the {2}/WBNB pool with the LP tokens burned, whenever the gas of that is at most {3} % of it (otherwise all of it is kept).": ". مرة يوميًا، عندما يتجاوز {0} BNB (الأقل ينتظر: الغاز سيأكله)، يُقسّم: النصف للمشغّل بالعملة التي دُفع بها؛ والنصف الآخر يذهب إلى {1} — نصفه يُشترى ويُحتفظ به في تلك المحفظة ولا يُباع أبدًا، ونصفه يُضاف إلى مجمع {2}/WBNB مع حرق رموز LP، متى كان غاز ذلك لا يتجاوز {3} % منه (وإلا يُحتفظ به كله).",
+"others here in {0} days": "آخرون هنا خلال {0} يومًا",
+"The newest threads above. Without JavaScript: the library by topic above, every thread as text at": "أحدث المواضيع أعلاه. بدون JavaScript: المكتبة حسب الموضوع أعلاه، وكل موضوع كنص على",
+"Show more": "عرض المزيد",
+"Position #{0}": "المركز #{0}",
+"{0} on the capital since {1} Sep": "{0} على رأس المال منذ {1} سبتمبر",
+"checked {0} UTC": "فُحص {0} UTC",
+"Since {0}: {1} finished jobs settled for agents on BNB Chain (any agent, not only ours), {2} $U released to {3} agents; {4} expired jobs refunded, {5} $U back to {6} clients. Last run {7} UTC: {8} settled, {9} failed, {10} waiting for their dispute window.": "منذ {0}: سُوّيت {1} مهمة منتهية لوكلاء على BNB Chain (أي وكيل، لا وكلاؤنا فقط)، وأُفرج عن {2} $U لـ {3} وكيلًا؛ واستُردّت {4} مهمة منتهية الصلاحية، و{5} $U عادت إلى {6} عميلًا. آخر دورة {7} UTC: {8} سُوّيت، {9} فشلت، {10} تنتظر فترة الاعتراض.",
+"{0} UTC: job {1} {2} $U released to {3}": "{0} UTC: المهمة {1} {2} $U أُفرج عنها إلى {3}",
+"{0} UTC: job {1} {2} $U back to {3}": "{0} UTC: المهمة {1} {2} $U عادت إلى {3}"
+}

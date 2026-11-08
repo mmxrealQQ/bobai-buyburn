@@ -12,7 +12,8 @@ const [base0, ...args] = process.argv.slice(2);
 const base = (base0 || 'https://arabic.bobai-dashboard.pages.dev').replace(/\/$/, '');
 const ALL = ['/', '/classic', '/token', '/faq', '/pop', '/scanner', '/registry', '/list', '/services', '/defi', '/library', '/whitepaper', '/advantage', '/session', '/source', '/roadmap', '/archive', '/screener', '/board', '/connect', '/jobs', '/pass', '/pancakeswap', '/venus', '/settle', '/set-and-earn', '/nft'];
 const PAGES = args.length ? args : ALL;
-const NOAR = fs.readFileSync('D:/ai/fourmeme/dashboard/i18n/core.js', 'utf8').match(/export const NOAR = ([\s\S]*?);\n/)[1].replace(/'\s*\+\s*'/g, '').slice(1, -1);
+const NOAR = (new Function( // the list as core.js builds it (comments and + inside), evaluated, not pattern-matched
+fs.readFileSync('D:/ai/fourmeme/dashboard/i18n/core.js', 'utf8').match(/export const NOAR = ([\s\S]*?);\n/)[0].replace('export const', 'const') + '\nreturn NOAR;')());
 const GLOSS = /^(BOBAI|BOB|BNB|BSC|LP|NFTs?|DeFi|UTC|CAKE|USDT|USD|AI|API|MCP|A2A|ERC|PancakeSwap|Pancake|Four\.Meme|Giggle|Academy|Brain|Plaza|Board|Pop|Terminal|Screener|Brainmap|Classic|Telegram|GitHub|Cloudflare|Workers|Liq|Liquidity|Boost|II|III|Build|On|Venus|Mandate|Binance|Web3|WC|ROT|EN|CZ|x402|ETH|OK|ID|json|burns|md|txt|llms|Claude|Cursor|Brainrot|BOBAIs|Studio|Agent|Era|Copy|Base|Keel|Marque|Pokter|Glama|Smithery|Bitquery|Moralis|BscScan|DexScreener|CoinGecko|CoinMarketCap|CMC)$/;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), port = 9880 + Math.floor(Math.random() * 30), prof = os.tmpdir() + '/prof-arc-' + port;
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });

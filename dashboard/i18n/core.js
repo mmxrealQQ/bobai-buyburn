@@ -21,6 +21,7 @@ const TOKEN = new RegExp([
 export function keyOf(text) {
   const s = String(text).replace(/[⁦-⁩]/g, '').replace(/\s+/g, ' ').trim(); // our own isolates are not part of the text
   if (!/[A-Za-z]{2}/.test(s) || /[؀-ۿ]/.test(s)) return null; // already Arabic: nothing to do
+  if (s.includes('▌')) return null; // a line still being typed (the cursor): its whole text comes a moment later
   const toks = [];
   const key = s.replace(TOKEN, (m) => { toks.push(m); return '{' + (toks.length - 1) + '}'; });
   if (!/[A-Za-z]{2}/.test(key.replace(/\{\d+\}/g, ''))) return null; // only tokens (an address, "$BOBAI", "12%")
@@ -33,6 +34,10 @@ export function translate(dict, text) {
   if (!k) return null;
   const ar = dict[k.key];
   if (ar == null) {
+    // a brainrot creature's name stays (Italian nonsense, the game's own words); only what is said about it changes
+    const pm = String(text).trim().match(/^([A-Z][A-Z' ]{3,}[A-Z]) (ESCAPED|POPPED|IS BACK)!$/);
+    if (pm) return ({ ESCAPED: '⁦' + pm[1] + '⁩ هرب!', POPPED: '⁦' + pm[1] + '⁩ انفجر!', 'IS BACK': '⁦' + pm[1] + '⁩ عاد!' })[pm[2]];
+    if (/^[A-Z][A-Z' ]{5,}!$/.test(String(text).trim()) && dict[String(text).trim()] == null) return null; // a shouted creature name ("CERVELLONE MILLEPIEDI!") stays as it is
     // a line put together from whole sentences (the terminal: "Biggest buy in 3 days! " + his line): each sentence on
     // its own, when every one of them has an entry; otherwise the whole line is a miss
     const parts = String(text).trim().split(/(?<=[.!?…])\s+(?=\S)/);

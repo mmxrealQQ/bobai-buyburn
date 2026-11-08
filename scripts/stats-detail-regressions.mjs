@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 // package.json that does not say so; tell Node for this process only.
 registerHooks({
   load(url, context, nextLoad) {
-    return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context);
+    return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context);
   },
 });
 

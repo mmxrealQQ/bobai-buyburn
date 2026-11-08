@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 
 registerHooks({
   load(url, context, nextLoad) {
-    return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context);
+    return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context);
   },
 });
 const ROOT = path.resolve(import.meta.dirname, '..');

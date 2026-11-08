@@ -5,7 +5,7 @@
 import path from 'node:path';
 import { registerHooks } from 'node:module';
 // dashboard/*.js are ES modules under a package.json that does not say so (as in stats-detail-regressions)
-registerHooks({ load(url, context, nextLoad) { return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context); } });
+registerHooks({ load(url, context, nextLoad) { return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? nextLoad(url, { ...context, format: 'module' }) : nextLoad(url, context); } });
 import { pathToFileURL, fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { pickAddress, addressShape } = await import(pathToFileURL(path.join(ROOT, 'dashboard/_worker.js')).href);

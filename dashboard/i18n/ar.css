@@ -1,9 +1,10 @@
 /* ARABIC A-Z (2026-11-08): only on /ar/ pages. The site's own faces get an Arabic face for Arabic letters only
    (unicode-range): Latin, figures, $BOBAI and addresses keep Inter / Space Grotesk / JetBrains Mono exactly as on the
-   English page; the layout is not touched. Noto Sans Arabic, variable (one file for every weight), SIL OFL. */
-@font-face{font-family:'Inter';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
-@font-face{font-family:'Space Grotesk';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
-@font-face{font-family:'JetBrains Mono';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+   English page; the layout is not touched. Noto Sans Arabic, variable (one file for every weight), SIL OFL. Its own metrics are taller than Inter's (2026-11-08: two card lines overlapped on the front page), so the face
+   is given Inter-like ascent/descent: the line boxes stay exactly as tall as on the English page. */
+@font-face{font-family:'Inter';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;ascent-override:92%;descent-override:26%;line-gap-override:0%;size-adjust:96%;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+@font-face{font-family:'Space Grotesk';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;ascent-override:92%;descent-override:26%;line-gap-override:0%;size-adjust:96%;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+@font-face{font-family:'JetBrains Mono';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;ascent-override:92%;descent-override:26%;line-gap-override:0%;size-adjust:96%;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
 /* each paragraph takes its direction from its own first letter: an Arabic sentence reads right to left (its full stop
    at its end, its figures in place), a line that starts with a figure or $BOBAI stays as it was. Only blocks: an inline
    piece inside a sentence stays part of that sentence. Boxes, grids and rows keep their order (direction is untouched).

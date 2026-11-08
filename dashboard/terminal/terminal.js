@@ -1223,6 +1223,8 @@ function tellJoke(ms, queued = false, asked = false) {
 const bubble = document.createElement('div'); bubble.className = 'say'; bubble.setAttribute('aria-live', 'polite');
 /* ARABIC A-Z (2026-11-08): on /ar/ the page's i18n/ar.js offers window.__arT; his lines and the log go through it as they are shown (English elsewhere) */
 const arT = (s) => (typeof s === 'string' && window.__arT ? window.__arT(s) : s);
+/* a line he began before the dictionary had loaded (English) comes again in Arabic once it is there; never cut, it waits its turn */
+window.addEventListener('ar-ready', () => { try { if (LASTSAY && bubble.classList.contains('on') && !/[؀-ۿ]/.test(bubble.textContent)) speak(LASTSAY.text, LASTSAY.ms); } catch {} });
 win.appendChild(bubble);
 let typing = 0;
 // ---------- his body lives: each move has its own rhythm ----------

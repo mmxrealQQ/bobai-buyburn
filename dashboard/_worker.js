@@ -2798,7 +2798,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '5', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '8', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
 // sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
 function langSwitch(enPath, search, ar) {
@@ -2826,7 +2826,7 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   const abs = (u) => u.replace(/^https:\/\/brainonbnb\.com(\/[^?#]*)/, (m, p) => { const t = toAr(p); return t === p ? m : 'https://brainonbnb.com' + t; });
   rw = rw
     .on('html', { element(e) { e.setAttribute('lang', 'ar'); e.setAttribute('data-arv', String(AR_DICT.v)); } })
-    .on('head', { element(e) { e.append(`<link rel="stylesheet" href="/i18n/ar.css?v=${AR_V}"><script type="module" src="/i18n/ar.js?v=${AR_V}"></script>`, { html: true }); } })
+    .on('head', { element(e) { e.append(`<link rel="preload" href="/i18n/ar.json?v=${AR_DICT.v}" as="fetch" crossorigin="anonymous"><link rel="stylesheet" href="/i18n/ar.css?v=${AR_V}"><script type="module" src="/i18n/ar.js?v=${AR_V}"></script>`, { html: true }); /* the dictionary fetched with the page, not after the script */ } })
     .on(NOAR, deep)
     .on('[placeholder],[title],[aria-label],img[alt]', attr(['placeholder', 'title', 'aria-label', 'alt']))
     .on('meta[name="description"],meta[property="og:title"],meta[property="og:description"],meta[name="twitter:title"],meta[name="twitter:description"],meta[property="og:image:alt"]', attr(['content']))

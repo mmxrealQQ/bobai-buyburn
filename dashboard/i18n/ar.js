@@ -2,7 +2,7 @@
 // figures, the windows, the game, a title, a placeholder — is put through the one dictionary (core.js, the same the
 // site worker uses for the HTML). The layout is not touched: no mirroring, no new boxes; only words change. Links to
 // this site's pages stay inside /ar/. A text with no entry stays English and lands in window.__arMiss for the checker.
-import { translate, toAr, ltr, NOAR } from '/i18n/core.js?v=5';
+import { translate, toAr, ltr, NOAR } from '/i18n/core.js?v=6';
 
 const SKIP = NOAR;
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
@@ -65,7 +65,7 @@ fetch('/i18n/ar.json?v=' + (document.documentElement.getAttribute('data-arv') ||
     }
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...ATTRS, 'href', 'src'] });
   new MutationObserver(title).observe(document.querySelector('title') || document.head, { childList: true, characterData: true, subtree: true });
-  window.__arReady = true;
+  window.__arReady = true; window.dispatchEvent(new Event('ar-ready')); // the terminal re-types a line it began in English before this
 }).catch(() => { window.__arReady = 'failed'; });
 
 // for the checker: does the dictionary know this text (also when its Arabic is the English itself, a name)?

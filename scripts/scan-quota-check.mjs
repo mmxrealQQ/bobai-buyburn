@@ -17,7 +17,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { registerHooks } from 'node:module';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
-registerHooks({ load(url, ctx, next) { return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? next(url, { ...ctx, format: 'module' }) : next(url, ctx); } });
+registerHooks({ load(url, ctx, next) { return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? next(url, { ...ctx, format: 'module' }) : next(url, ctx); } });
 const P = await import(pathToFileURL(path.resolve(import.meta.dirname, '../shared/scan-pass.js')).href);
 
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');

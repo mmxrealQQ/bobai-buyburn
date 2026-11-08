@@ -13,7 +13,7 @@
 //   node scripts/pool-scan-infinity-check.mjs [base]     (default https://brainonbnb.com)   exit 1 on any FAIL
 import { registerHooks } from 'node:module';
 import { ownTestHeaders } from './lib/own-test-headers.mjs';
-registerHooks({ load(url, c, n) { return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? n(url, { ...c, format: 'module' }) : n(url, c); } });
+registerHooks({ load(url, c, n) { return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? n(url, { ...c, format: 'module' }) : n(url, c); } });
 const OWN = ownTestHeaders();   // our checks are not callers: uncounted against the 1,000 free scans a day
 const BASE = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 let pass = 0, fail = 0;

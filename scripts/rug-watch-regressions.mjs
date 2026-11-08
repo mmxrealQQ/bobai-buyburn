@@ -19,7 +19,7 @@ import { pathToFileURL } from 'node:url';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 registerHooks({
-  load(url, ctx, next) { return /\/(dashboard|shared)\/[^/]+\.js$/.test(url) ? next(url, { ...ctx, format: 'module' }) : next(url, ctx); },
+  load(url, ctx, next) { return /\/(dashboard|shared)\/(?:i18n\/)?[^/]+\.js$/.test(url) ? next(url, { ...ctx, format: 'module' }) : next(url, ctx); },
 });
 const ROOT = path.resolve(import.meta.dirname, '..');
 const imp = async (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);

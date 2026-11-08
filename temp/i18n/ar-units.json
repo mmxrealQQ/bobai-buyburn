@@ -87,5 +87,11 @@
  "unshaken": "ثابت",
  "bored": "ملول",
  "{0} BOBAI burned": "{0} BOBAI محروقة",
- "{0} into liquidity, LP burned": "{0} إلى السيولة، وحُرقت LP"
+ "{0} into liquidity, LP burned": "{0} إلى السيولة، وحُرقت LP",
+ "{0} trade and {1} in the last {2} hours": "{0} صفقة و{1} في آخر {2} ساعة",
+ "{0} trades and {1} in the last {2} hours": "{0} صفقة و{1} في آخر {2} ساعة",
+ "{0} trade and {1} in the last {2} hour": "{0} صفقة و{1} في آخر {2} ساعة",
+ "{0} trades and {1} in the last {2} hour": "{0} صفقة و{1} في آخر {2} ساعة",
+ "{0} trade and {1} in the last {2} minutes": "{0} صفقة و{1} في آخر {2} دقيقة",
+ "{0} trades and {1} in the last {2} minutes": "{0} صفقة و{1} في آخر {2} دقيقة"
 }

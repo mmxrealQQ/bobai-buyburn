@@ -144,8 +144,9 @@ if (!APPLY) {
 {
   const r = JSON.parse(rd(path.join(OUT, '_routes.json')));
   const add = ['/', '/index.html', '/classic', '/classic/', '/brain', '/brain/', '/brain/index.html'];
-  for (const k of ['scanner', 'registry', 'list', 'services', 'defi', 'liquidity', 'agents', 'nft', 'library', 'whitepaper', 'advantage', 'session', 'source', 'token', 'faq', 'roadmap', 'archive', 'board', 'jobs', 'settle', 'venus', 'pass', 'set-and-earn']) add.push('/' + k, k === 'nft' ? '/nft/' : '/' + k + '.html'); // /nft.html was traded for /nft/ on 4.11. (the raw-HTML pass: the worker writes the NFT page's record into /nft/; Pages allows 100 rules)
+  for (const k of ['scanner', 'registry', 'list', 'services', 'defi', 'nft', 'library', 'whitepaper', 'advantage', 'session', 'source', 'token', 'faq', 'roadmap', 'archive', 'board', 'jobs', 'settle', 'venus', 'pass', 'set-and-earn']) add.push('/' + k, k === 'nft' ? '/nft/' : '/' + k + '.html'); // /nft.html was traded for /nft/ on 4.11. (the raw-HTML pass: the worker writes the NFT page's record into /nft/; Pages allows 100 rules)
   add.push('/sitemap.xml', '/screener', '/screener.html', '/agent', '/agent/*', '/agent.html'); // the screener and the agent chart open in a window too (2026-10-12: without these the worker never ran for them, so inside a window they had no window look and their links left the window)
+  add.push('/ar', '/ar/*'); // the Arabic twin of every page (2026-11-08); /liquidity and /agents left the list for it (they are _redirects to /defi, served without the worker)
   add.push('/og/*'); // the share card of a scan (2026-10-13), proxied to worker-og in _worker.js
   add.push('/brainscreener', '/brainscreener/*', '/game', '/game/*', '/worldcup', '/worldcup/*', '/builder', '/builder/*'); // builder sheet: password in _worker.js
   r.include = [...new Set([...r.include, ...add])];

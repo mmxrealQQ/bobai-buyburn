@@ -46,10 +46,6 @@
     "/defi/",
     "/defi/.well-known/agent-card.json",
     "/defi.html",
-    "/liquidity",
-    "/liquidity.html",
-    "/agents",
-    "/agents.html",
     "/nft",
     "/nft/",
     "/library",
@@ -100,7 +96,9 @@
     "/pass",
     "/pass.html",
     "/set-and-earn",
-    "/set-and-earn.html"
+    "/set-and-earn.html",
+    "/ar",
+    "/ar/*"
   ],
   "exclude": []
 }

@@ -12,6 +12,7 @@ import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.j
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { titleAndBody } from '../shared/plaza-board.js';
 import { groupLibrary, dateLine, checkLine } from '../shared/board-topics.js';
+import { translate, decodeHtml, escapeHtml, toAr, AR_PAGES } from './i18n/core.js';
 import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -1959,7 +1960,7 @@ function etagMatches(header, tag) {
   return header.split(',').some((v) => v.trim().replace(/^W\//, '') === tag);
 }
 
-export default {
+const SITE = {
   async fetch(request, env, ctx) {
     WORKER_ENV = env;
     // The chain layer asks a keyed BSC endpoint first when this project has
@@ -2781,6 +2782,87 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     const newResponse = new Response(response.body, response);
     secure(newResponse.headers);
     return newResponse;
+  },
+};
+
+// ==================== ARABIC A-Z (operator, 2026-11-08) ====================
+// "The whole page, A to Z, Classic too, in Arabic — the layout stays exactly as it is." Every page of this site has an
+// Arabic twin under /ar/: the SAME page (the same handler above answers it, with every rewriter it has), its text put
+// through the one dictionary (i18n/core.js + i18n/ar.json) on the way out, so a search engine, a link preview and a
+// reader without JavaScript get Arabic too; i18n/ar.js does the same in the browser for what the page writes later.
+// Links into this site stay inside /ar/. Every page, English and Arabic, carries the switch "EN | ع"; the choice is
+// remembered in this browser. A text with no entry stays English (never guessed); the checker lists those.
+let AR_DICT = { at: 0, t: null, v: 0 };
+async function arDict(env, origin) {
+  if (AR_DICT.t && Date.now() - AR_DICT.at < 300e3) return AR_DICT.t;
+  try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
+  return AR_DICT.t || {};
+}
+const AR_V = '3', AR_LIVE = false; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+// the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
+// sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
+function langSwitch(enPath, search, ar) {
+  const en = enPath + search, arp = (enPath === '/' ? '/ar/' : '/ar' + enPath) + search;
+  return `<span class="ar-sw" translate="no" style="display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.16);border-radius:999px;overflow:hidden;font:600 12px/1 Inter,system-ui,sans-serif;vertical-align:middle;flex:none">`
+    + `<a href="${en}" data-lang="en" style="padding:7px 9px;text-decoration:none;color:${ar ? '#a0a2c0' : '#f3efe6'};background:${ar ? 'transparent' : 'rgba(240,185,11,.16)'}">EN</a>`
+    + `<a href="${arp}" data-lang="ar" lang="ar" style="padding:7px 10px;text-decoration:none;color:${ar ? '#f3efe6' : '#a0a2c0'};background:${ar ? 'rgba(240,185,11,.16)' : 'transparent'}">ع</a></span>`;
+}
+const LANG_HEAD = `<script>(function(){try{var ar=location.pathname==='/ar'||location.pathname.indexOf('/ar/')===0;`
+  + `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('.ar-sw a');if(a)localStorage.setItem('bt-lang',a.getAttribute('data-lang'))},true);`
+  + `if(!ar&&window.top===window&&localStorage.getItem('bt-lang')==='ar')location.replace((location.pathname==='/'?'/ar/':'/ar'+location.pathname)+location.search+location.hash)}catch(e){}})()</script>`;
+// where the switch stands in each kind of header (before the header's last button); the first that exists wins
+const SWITCH_AT = ['.nav .nb'];
+function langLayer(res, enPath, search, ar, dict, embedded) {
+  let placed = false;
+  const at = { element(e) { if (placed || embedded) return; placed = true; e.before(langSwitch(enPath, search, ar), { html: true }); } };
+  let rw = new HTMLRewriter().on('head', { element(e) { e.prepend(LANG_HEAD, { html: true }); } });
+  for (const s of SWITCH_AT) rw = rw.on(s, at);
+  if (!ar) return rw.transform(res);
+  const T = (s) => { const v = translate(dict, s); return typeof v === 'string' ? v : null; };
+  let skip = 0, buf = '';
+  const deep = { element(e) { skip++; e.onEndTag(() => { skip--; }); } };
+  const attr = (names) => ({ element(e) { for (const n of names) { const v = e.getAttribute(n); if (!v) continue; const t = T(decodeHtml(v)); if (t) e.setAttribute(n, t); } } });
+  const pagePath = (h) => (h && h.startsWith('/') && !h.startsWith('/ar/') ? toAr(h) : h);
+  const abs = (u) => u.replace(/^https:\/\/brainonbnb\.com(\/[^?#]*)/, (m, p) => { const t = toAr(p); return t === p ? m : 'https://brainonbnb.com' + t; });
+  rw = rw
+    .on('html', { element(e) { e.setAttribute('lang', 'ar'); e.setAttribute('data-arv', String(AR_DICT.v)); } })
+    .on('head', { element(e) { e.append(`<link rel="stylesheet" href="/i18n/ar.css?v=${AR_V}"><script type="module" src="/i18n/ar.js?v=${AR_V}"></script>`, { html: true }); } })
+    .on('script,style,noscript,code,pre,textarea,svg,[translate="no"],.notranslate,[data-noar]', deep)
+    .on('[placeholder],[title],[aria-label],img[alt]', attr(['placeholder', 'title', 'aria-label', 'alt']))
+    .on('meta[name="description"],meta[property="og:title"],meta[property="og:description"],meta[name="twitter:title"],meta[name="twitter:description"],meta[property="og:image:alt"]', attr(['content']))
+    .on('link[rel="canonical"],meta[property="og:url"]', { element(e) { for (const n of ['href', 'content']) { const v = e.getAttribute(n); if (v) e.setAttribute(n, abs(v)); } } })
+    .on('a[href]', { element(e) { const h = e.getAttribute('href'); const t = pagePath(h); if (t !== h) e.setAttribute('href', t); } })
+    .on('iframe[src]', { element(e) { const h = e.getAttribute('src'); const t = pagePath(h); if (t !== h) e.setAttribute('src', t); } })
+    .onDocument({ text(t) {
+      if (skip > 0) { buf = ''; return; }
+      buf += t.text;
+      if (!t.lastInTextNode) { t.remove(); return; }
+      const whole = buf; buf = '';
+      const out = /[A-Za-z]{2}/.test(whole) ? T(decodeHtml(whole)) : null;
+      t.replace(out != null ? escapeHtml(out) : whole, { html: true });
+    } });
+  return rw.transform(res);
+}
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    // NOT LIVE YET (2026-11-08, "slow, quiet, perfect"): on brainonbnb.com the Arabic twin and the switch stay hidden
+    // until every page passes its check; the preview hosts show them
+    if (!AR_LIVE && url.hostname === 'brainonbnb.com') return SITE.fetch(request, env, ctx);
+    const ar = url.pathname === '/ar' || url.pathname.startsWith('/ar/');
+    if (url.pathname === '/ar') return Response.redirect(url.origin + '/ar/' + url.search, 301);
+    const enPath = ar ? url.pathname.slice(3) || '/' : url.pathname;
+    const res = await SITE.fetch(ar ? new Request(url.origin + enPath + url.search, request) : request, env, ctx);
+    // a redirect inside the site stays in the language it was asked in
+    if (ar && res.status >= 300 && res.status < 400 && res.headers.get('location')) {
+      const loc = res.headers.get('location'), h = new Headers(res.headers);
+      const p = loc.replace(/^https?:\/\/[^/]+/, ''); if (p.startsWith('/') && toAr(p) !== p) h.set('location', toAr(p));
+      return new Response(res.body, { status: res.status, headers: h });
+    }
+    if (!(res.headers.get('content-type') || '').includes('text/html') || !AR_PAGES.test(enPath) || request.method !== 'GET') return res;
+    const embedded = url.searchParams.get('embed') === '1' || request.headers.get('sec-fetch-dest') === 'iframe';
+    const t = langLayer(res, enPath, url.search.replace(/[?&]embed=1/, '').replace(/^&/, '?'), ar, ar ? await arDict(env, url.origin) : null, embedded);
+    return new Response(t.body, { status: t.status, headers: new Headers(res.headers) });
   },
 };
 

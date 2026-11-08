@@ -1,0 +1,15 @@
+/* ARABIC A-Z (2026-11-08): only on /ar/ pages. The site's own faces get an Arabic face for Arabic letters only
+   (unicode-range): Latin, figures, $BOBAI and addresses keep Inter / Space Grotesk / JetBrains Mono exactly as on the
+   English page; the layout is not touched. Noto Sans Arabic, variable (one file for every weight), SIL OFL. */
+@font-face{font-family:'Inter';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+@font-face{font-family:'Space Grotesk';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+@font-face{font-family:'JetBrains Mono';src:url(/fonts/notoarabic-var.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+0870-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+/* each paragraph takes its direction from its own first letter: an Arabic sentence reads right to left (its full stop
+   at its end, its figures in place), a line that starts with a figure or $BOBAI stays as it was. Only blocks: an inline
+   piece inside a sentence stays part of that sentence. Boxes, grids and rows keep their order (direction is untouched).
+   ar.js marks the nearest block (by its computed display) around every translated text with .ar-p. */
+.ar-p{unicode-bidi:plaintext}
+/* the language switch: one quiet pill, same height as the header's own buttons */
+.ar-sw{display:inline-flex;align-items:center;gap:0;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font:600 12px/1 'Inter',system-ui,sans-serif;vertical-align:middle}
+.ar-sw a{padding:6px 9px;color:#a0a2c0;text-decoration:none}
+.ar-sw a.on{background:rgba(240,185,11,.16);color:#f3efe6}

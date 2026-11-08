@@ -1,0 +1,14 @@
+[
+ "{0} at the snapshot price",
+ "Simple:",
+ ", market cap ≈ {0} (supply minus what is burned), {1} in {2} h. Against BNB I am {3}: BNB itself went {4} in dollars, and that is in every USD figure. This hour {5} buys ({6}) and {7} sell ({8}). The pool holds {9} BNB a side (≈{10}): a {11} BNB buy moves the price about {12}, plus the {13} tax. Read from the pool reserves and Chainlink BNB/USD, this block.",
+ "(buy: unknown — nothing could establish it; sell: measured from executed trades on-chain) · {0} round trip keeps",
+ "— No buy tax could be established — only the other side was. The costs below exclude it on the buy.",
+ "Hm, I only speak BOBAI. Right now the next buyback is {0} charged. Try",
+ "My watcher follows every wallet that ever crossed {0} BOBAI (≈{1}):",
+ "Flat chart, {0} trades in two hours. A coffee and the next buyback, in that order.",
+ "{0} times the price now. I keep that one ready for you.",
+ "Where:",
+ "Anytime.",
+ "My chart, last {0} hours: {1}, {2} trades. I read every single one."
+]

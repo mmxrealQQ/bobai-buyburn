@@ -22,5 +22,19 @@
  "MCP A{0}A": "MCP A{0}A",
  "MCP X{0}": "MCP X{0}",
  "A{0}A X{1}": "A{0}A X{1}",
- "MCP A{0}A x{1}": "MCP A{0}A x{1}"
+ "MCP A{0}A x{1}": "MCP A{0}A x{1}",
+ "POP": "POP",
+ "Our DeFi agent's PancakeSwap V{0} position (CAKE/BNB {1}): {2} on the capital since {3} Sep ({4} BNB, {5} from fees, {6} from the price); {7} against simply holding {8}/{9}. Checked {10} UTC.": "مركز وكيل DeFi الخاص بنا على PancakeSwap V{0} (CAKE/BNB {1}): {2} على رأس المال منذ {3} سبتمبر ({4} BNB، {5} من الرسوم، {6} من السعر)؛ {7} مقارنة بالاحتفاظ فقط {8}/{9}. فُحص {10} UTC.",
+ "Venus Health Factor Monitor (#{0}), {1} UTC": "Venus Health Factor Monitor (#{0})، {1} UTC",
+ "Venus Yield Ranking (#{0}), {1} UTC": "Venus Yield Ranking (#{0})، {1} UTC",
+ "health factor {0}": "معامل الصحة {0}",
+ "inside the band, nothing to do": "داخل النطاق، لا شيء يُفعل",
+ "inside the band, nothing to do.": "داخل النطاق، لا شيء يُفعل.",
+ "every stablecoin of the wallet is supplied; nothing to do": "كل العملات المستقرة في المحفظة مودعة؛ لا شيء يُفعل",
+ "every stablecoin of the wallet is supplied; nothing to do.": "كل العملات المستقرة في المحفظة مودعة؛ لا شيء يُفعل.",
+ "health factor {0}: inside the band, nothing to do": "معامل الصحة {0}: داخل النطاق، لا شيء يُفعل",
+ "{0} UTC: Health Factor Monitor": "{0} UTC: Health Factor Monitor",
+ "{0} UTC: Yield Ranking": "{0} UTC: Yield Ranking",
+ "{0} UTC: the Health Factor Monitor hired Keel (#{1}) through Marque, {2} $U, job {3} answered": "{0} UTC: وظّف Health Factor Monitor الوكيل Keel (#{1}) عبر Marque، {2} $U، المهمة {3} أُجيبت",
+ "{0} UTC: the Health Factor Monitor hired Keel (#{1}) through Marque, {2} $U, job {3} pending": "{0} UTC: وظّف Health Factor Monitor الوكيل Keel (#{1}) عبر Marque، {2} $U، المهمة {3} قيد الانتظار"
 }

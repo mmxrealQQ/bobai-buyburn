@@ -522,10 +522,10 @@
    "title": "Brain Pop 6.9 — the daily game in the terminal",
    "tagline": "60 seconds, one engine file, every tap replayed by the server.",
    "files": 6,
-   "lines": 627,
-   "zipBytes": 27619,
-   "txtBytes": 64367,
-   "sha256": "8bfd358ffe5b89fa",
+   "lines": 636,
+   "zipBytes": 28039,
+   "txtBytes": 65303,
+   "sha256": "ca072c8d9f3f0b37",
    "reqs": [
     {
      "what": "A worker with a Durable Object (SQLite)",
@@ -629,10 +629,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4098,
-   "zipBytes": 145895,
-   "txtBytes": 438510,
-   "sha256": "be4e23f92de725f5",
+   "lines": 4189,
+   "zipBytes": 148813,
+   "txtBytes": 447216,
+   "sha256": "3d69048180e5d7a9",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

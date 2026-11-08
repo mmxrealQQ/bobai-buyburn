@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Worldcup '26 — Prize Pool</title>
+  <meta property="og:title" content="Worldcup '26 Prize Pool">
+  <meta property="og:description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/prize-pool">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 Prize Pool">
+  <meta name="twitter:description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .container.wide{max-width:920px}
+
+    /* POOL CARD */
+    .pool{background:linear-gradient(135deg,rgba(240,185,11,.06),rgba(64,64,255,.04));border:1px solid rgba(240,185,11,.25);border-radius:14px;padding:20px;margin-bottom:24px}
+    .pool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .pool-title{font-family:'Space Grotesk';font-weight:700;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
+    .pool-total{font-family:'Space Grotesk';font-weight:700;font-size:34px;color:var(--text);line-height:1.05;margin-bottom:2px}
+    .pool-usd{font-size:14px;color:var(--muted);margin-bottom:14px}
+    .pool-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .pool-cell{padding:12px 10px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;text-align:center}
+    .pool-cell .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+    .pool-cell .val{font-family:'Space Grotesk';font-weight:700;font-size:16px;color:var(--text);line-height:1.1}
+    .pool-cell .val-usd{font-size:11.5px;color:var(--gold);font-weight:600;margin-top:2px;font-family:'Space Grotesk'}
+    .pool-cell .pct{font-size:10px;color:var(--muted);margin-top:4px}
+
+    /* SECTION HEADER */
+    .section-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 4px 10px;font-family:'Space Grotesk';font-weight:600;font-size:11.5px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}
+    .section-h .right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:11px}
+
+    /* PAYOUT TABLE */
+    .ptable-wrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:24px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .ptable-wrap::-webkit-scrollbar{height:6px}
+    .ptable-wrap::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .ptable{width:100%;border-collapse:collapse;font-size:12.5px}
+    .ptable thead{background:rgba(0,0,0,.4)}
+    .ptable th{padding:9px 10px;text-align:left;font-family:'Space Grotesk';font-weight:600;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.04)}
+    .ptable td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);vertical-align:middle}
+    .ptable tbody tr:last-child td{border-bottom:none}
+    .ptable tr.pot-h td{background:rgba(240,185,11,.05);color:var(--gold);font-family:'Space Grotesk';font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    .ptable td.rank-icon{width:34px;text-align:center;font-size:14px}
+    .ptable td.tnum{font-family:'Space Grotesk';font-weight:600;text-align:right;white-space:nowrap}
+    .ptable td.tusd{color:var(--gold);font-size:11.5px;font-weight:600;text-align:right;white-space:nowrap}
+    .ptable .pct-cell{color:var(--muted);font-size:11px;white-space:nowrap}
+
+    /* TX TABLE */
+    .txwrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
+    .txscroll{max-height:400px;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .txscroll::-webkit-scrollbar{width:6px;height:6px}
+    .txscroll::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .txfilter{display:flex;gap:4px;padding:8px;background:rgba(0,0,0,.4);border-bottom:1px solid var(--border)}
+    .txfilter button{padding:6px 11px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
+    .txfilter button:hover{border-color:rgba(240,185,11,.3)}
+    .txfilter button.active{background:var(--gold-glow);color:var(--gold);border-color:var(--gold)}
+    .txfilter .right{margin-left:auto;display:flex;align-items:center;font-size:10.5px;color:var(--muted);padding:0 6px}
+    .txfilter .right a{color:var(--gold);text-decoration:none}
+    .txfilter .right a:hover{text-decoration:underline}
+
+    .txtable{width:100%;border-collapse:collapse;font-size:12.5px}
+    .txtable th,.txtable td{padding:9px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.04)}
+    .txtable th{position:sticky;top:0;z-index:2;font-family:'Space Grotesk';font-weight:600;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;background:#0c0c1c;white-space:nowrap}
+    .txtable td{color:var(--text);vertical-align:middle}
+    .txtable tbody tr:last-child td{border-bottom:none}
+    .txtable tbody tr:hover{background:rgba(240,185,11,.03)}
+    .txtable .ttime{color:var(--muted);font-size:11.5px;white-space:nowrap}
+    .txtable .tchip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.5px;font-family:'Space Grotesk'}
+    .tchip.bnb{background:rgba(243,186,47,.12);color:#f3ba2f;border:1px solid rgba(243,186,47,.3)}
+    .tchip.usdt{background:rgba(38,161,123,.12);color:#26a17b;border:1px solid rgba(38,161,123,.3)}
+    .tchip.tax{background:rgba(180,140,255,.12);color:#b48cff;border:1px solid rgba(180,140,255,.3)}
+    .txtable .tnum{font-family:'Space Grotesk';font-weight:600;text-align:right;white-space:nowrap}
+    .txtable .tusd{color:var(--gold);font-size:11px;font-weight:600;text-align:right;white-space:nowrap}
+    .txtable .txl{color:var(--gold);font-family:'Space Grotesk';font-size:11px;text-decoration:none;white-space:nowrap}
+    .txtable .txl:hover{text-decoration:underline}
+    .txempty{padding:32px 16px;text-align:center;color:var(--muted);font-size:12.5px}
+
+    /* AUSZAHLUNG / PAYOUT FLOW */
+    .flow{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:24px}
+    .flow-intro{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px}
+    .flow-intro b{color:var(--text)}
+    .flow-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+    .flow-step{display:flex;gap:12px;padding:11px 12px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:8px}
+    .flow-step .num{flex-shrink:0;width:26px;height:26px;background:var(--gold-glow);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:12px}
+    .flow-step .body{font-size:12.5px;color:var(--text);line-height:1.5}
+    .flow-step .body b{color:var(--gold);font-family:'Space Grotesk'}
+    .flow-step .body .muted{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
+    .flow-note{padding:11px 14px;background:rgba(64,64,255,.05);border:1px solid rgba(64,64,255,.2);border-radius:8px;font-size:11.5px;color:#9090ff;line-height:1.55}
+
+    /* ===== PAID-OUT STATES (group pot) ===== */
+    .pool-cell.paid{border-color:rgba(0,230,118,.32);background:rgba(0,230,118,.04);position:relative}
+    .pool-cell.paid::before{content:'';position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(135deg,rgba(0,230,118,.10),transparent 60%);pointer-events:none}
+    .pool-cell.paid .lbl{color:#5fffa0}
+    .pool-cell.paid .pct{color:#5fffa0;font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+    .paid-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:rgba(0,230,118,.12);border:1px solid rgba(0,230,118,.32);color:#5fffa0;font-family:'Space Grotesk';font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+    .receipt-btn{margin-top:12px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,rgba(0,230,118,.22),rgba(0,230,118,.08));border:1px solid rgba(0,230,118,.45);color:#7fffb0;font-family:'Space Grotesk';font-weight:700;font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;padding:11px 14px;border-radius:10px;cursor:pointer;transition:all .18s;box-shadow:0 2px 12px rgba(0,230,118,.08);position:relative;overflow:hidden}
+    .receipt-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);transition:transform .6s}
+    .receipt-btn:hover::before{transform:translateX(100%)}
+    .receipt-btn:hover{background:linear-gradient(135deg,rgba(0,230,118,.34),rgba(0,230,118,.14));border-color:rgba(0,230,118,.7);color:#a5ffce;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,230,118,.18)}
+    .receipt-btn:active{transform:translateY(0);box-shadow:0 1px 6px rgba(0,230,118,.1)}
+    .receipt-btn .ic{font-size:14px;line-height:1}
+    .ptable tr.pot-h.paid td{background:rgba(0,230,118,.08);color:#7fffb0}
+    .ptable tr.row.paid td{background:rgba(0,230,118,.04);border-color:rgba(0,230,118,.12)}
+    .ptable tr.row.paid td.rank-icon{position:relative}
+    .ptable tr.row.paid .tusd{color:#5fffa0}
+
+    /* ===== RECEIPT MODAL ===== */
+    .rc-modal{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto}
+    .rc-modal[aria-hidden="false"]{display:flex;animation:rcFade .2s ease-out}
+    @keyframes rcFade{from{opacity:0}to{opacity:1}}
+    .rc-backdrop{position:fixed;inset:0;background:rgba(2,2,8,.85);backdrop-filter:blur(8px) saturate(1.3);z-index:-1}
+    .rc-box{position:relative;width:100%;max-width:680px;background:linear-gradient(160deg,#0d1015 0%,#0a0d12 50%,#080b10 100%);border:1px solid rgba(0,230,118,.28);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02);overflow:hidden;animation:rcSlide .25s ease-out}
+    @keyframes rcSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .rc-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.4);color:#cbd0e0;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:3;backdrop-filter:blur(6px)}
+    .rc-close:hover{background:rgba(255,48,40,.18);border-color:rgba(255,48,40,.45);color:#ff8580;transform:rotate(90deg)}
+    .rc-header{padding:24px 28px 18px;border-bottom:1px solid rgba(0,230,118,.15);background:linear-gradient(135deg,rgba(0,230,118,.05),transparent 70%);display:grid;grid-template-columns:96px 1fr;gap:18px;align-items:center}
+    .rc-header .illus{width:96px;height:96px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
+    .rc-header .illus img{max-width:100%;max-height:100%;object-fit:contain}
+    .rc-header .head-text{min-width:0}
+    .rc-header h2{font-family:'Space Grotesk';font-weight:700;font-size:21px;color:var(--text);margin:0 0 4px;letter-spacing:-.3px}
+    .rc-header .sub{font-size:12.5px;color:var(--muted);line-height:1.5}
+    .rc-header .sub b{color:#7fffb0}
+    .rc-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0}
+    .rc-tot{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:9px 8px;text-align:center}
+    .rc-tot .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+    .rc-tot .v{font-family:'Space Grotesk';font-weight:700;font-size:13.5px;color:var(--text)}
+    .rc-body{padding:18px 22px 22px;max-height:60vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,230,118,.3) transparent}
+    .rc-body::-webkit-scrollbar{width:6px}
+    .rc-body::-webkit-scrollbar-thumb{background:rgba(0,230,118,.25);border-radius:3px}
+    .rc-group{margin-bottom:14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .rc-group:last-child{margin-bottom:0}
+    .rc-group-h{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,230,118,.04);border-bottom:1px solid rgba(0,230,118,.1);font-family:'Space Grotesk';font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:#7fffb0;font-weight:700}
+    .rc-group-h .right{color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:none}
+    .rc-rows{display:flex;flex-direction:column}
+    .rc-row{display:grid;grid-template-columns:30px 1fr auto auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12.5px}
+    .rc-row:last-child{border-bottom:none}
+    .rc-row .ic{font-size:16px;text-align:center}
+    .rc-row .who{display:flex;flex-direction:column;gap:1px;min-width:0}
+    .rc-row .who .name{color:var(--text);font-weight:600;font-family:'Space Grotesk';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rc-row .who .country{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:4px}
+    .rc-row .who .country .twe-flag{width:14px;height:14px}
+    .rc-row .amt{font-family:'Space Grotesk';font-weight:700;font-size:12px;text-align:right;white-space:nowrap}
+    .rc-row .amt .b{color:var(--text)}
+    .rc-row .amt .u{color:#5fffa0;font-size:10.5px;margin-top:1px;display:block}
+    .rc-row .tx{font-family:'Space Grotesk';font-size:10.5px;color:#7fffb0;text-decoration:none;white-space:nowrap;padding:4px 8px;border:1px solid rgba(0,230,118,.25);border-radius:5px;background:rgba(0,230,118,.06);transition:all .15s}
+    .rc-row .tx:hover{background:rgba(0,230,118,.14);border-color:rgba(0,230,118,.5)}
+    .rc-row .tx-pending{font-family:'Space Grotesk';font-size:10px;color:var(--muted);padding:4px 8px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;letter-spacing:.4px}
+    .rc-row .tx.tx-paid{background:rgba(0,230,118,.10);border-color:rgba(0,230,118,.32);color:#7fffb0;cursor:default}
+    .rc-footer{padding:16px 22px 20px;border-top:1px solid rgba(0,230,118,.15);background:rgba(0,230,118,.025);display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .rc-footer .verify{font-size:12px;color:var(--muted);line-height:1.45;flex:1;min-width:0}
+    .rc-footer .verify a{color:#7fffb0;text-decoration:none;font-weight:600}
+    .rc-footer .verify a:hover{text-decoration:underline;color:#a5ffce}
+    .rc-footer .share{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,rgba(0,230,118,.22),rgba(0,230,118,.08));border:1px solid rgba(0,230,118,.45);color:#7fffb0;font-family:'Space Grotesk';font-weight:700;font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;padding:10px 18px;border-radius:10px;cursor:pointer;transition:all .18s;flex-shrink:0;box-shadow:0 2px 12px rgba(0,230,118,.08)}
+    .rc-footer .share:hover{background:linear-gradient(135deg,rgba(0,230,118,.34),rgba(0,230,118,.14));border-color:rgba(0,230,118,.7);color:#a5ffce;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,230,118,.18)}
+    .rc-footer .share:active{transform:translateY(0)}
+    .rc-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
+
+    @media (max-width: 560px){
+      .pool-total{font-size:26px}
+      .pool-breakdown{grid-template-columns:1fr;gap:6px}
+      .txtable{font-size:11.5px}
+      .txtable th,.txtable td{padding:7px 6px}
+      .txtable .ttime{font-size:10.5px}
+      .txtable .tnum{font-size:11px}
+      .flow-step{padding:9px 10px}
+      .flow-step .body{font-size:12px}
+      .rc-box{border-radius:14px}
+      .rc-close{top:10px;right:10px;width:34px;height:34px;font-size:16px}
+      .rc-header{padding:20px 54px 14px 14px;grid-template-columns:64px 1fr;gap:12px}
+      .rc-header .illus{width:64px;height:64px}
+      .rc-header h2{font-size:17px}
+      .rc-header .sub{font-size:11.5px}
+      .rc-totals{grid-template-columns:1fr 1fr;gap:6px}
+      .rc-tot .v{font-size:12.5px}
+      .rc-body{padding:14px}
+      .rc-row{grid-template-columns:24px 1fr auto;gap:8px;padding:10px 10px;font-size:12px}
+      .rc-row .tx{grid-column:1/-1;text-align:center;margin-top:6px}
+      .rc-row .tx-pending{grid-column:1/-1;text-align:center;margin-top:6px}
+      .rc-footer{padding:14px;flex-direction:column;align-items:stretch;text-align:center;gap:12px}
+      .rc-footer .verify{text-align:center;font-size:11.5px}
+      .rc-footer .share{justify-content:center;padding:12px 18px;font-size:12px}
+    }
+  </style>
+</head>
+<body data-public="true">
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div data-hero="prize-pool-hero"></div>
+        <div class="card">
+          <h1><span class="accent">Prize Pool</span></h1>
+          <p class="sub">The BOBAI pool, split into Group / End / Crypto pots · <b>finished</b>: every pot was paid on Jul 20, 2026</p>
+          <p class="sub" style="margin-top:6px;padding:10px 12px;border:1px solid rgba(240,185,11,.3);border-radius:10px;background:rgba(240,185,11,.06)">Archive. The game ran 11 June – 19 July 2026. The amounts each winner received, with the value at payout and every transaction, stand on <a href="/worldcup/" style="color:var(--gold)">the archive page</a>; the dollar values on this page are at today's price.</p>
+
+          <!-- POOL CARD -->
+          <div class="pool">
+            <div class="pool-head">
+              <div class="pool-title">🏆 Prize Pool</div>
+              <div style="font-size:10.5px;color:var(--muted)" id="pool-updated">pool fills from kickoff</div>
+            </div>
+            <div class="pool-total" id="pool-bobai">0 BOBAI</div>
+            <div class="pool-usd" id="pool-usd">≈ $0.00</div>
+            <div class="pool-breakdown">
+              <div class="pool-cell" id="pool-group-cell">
+                <div class="lbl" id="pool-group-lbl">Group pot · 60 %</div>
+                <div class="val" id="pool-group">0</div>
+                <div class="val-usd" id="pool-group-usd">≈ $0</div>
+                <div class="pct" id="pool-group-pct">paid 1 day after group stage</div>
+                <button id="receipt-btn" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('group')">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
+              </div>
+              <div class="pool-cell" id="pool-end-cell">
+                <div class="lbl" id="pool-end-lbl">End pool · 30 %</div>
+                <div class="val" id="pool-end">0</div>
+                <div class="val-usd" id="pool-end-usd">≈ $0</div>
+                <div class="pct" id="pool-end-pct">paid 1 day after Final</div>
+                <button id="receipt-btn-final" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('final')">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
+              </div>
+              <div class="pool-cell" id="pool-crypto-cell">
+                <div class="lbl">Crypto pot · 10 %</div>
+                <div class="val" id="pool-crypto">0</div>
+                <div class="val-usd" id="pool-crypto-usd">≈ $0</div>
+                <div class="pct" id="pool-crypto-pct">paid 1 day after Final</div>
+                <button id="receipt-btn-final2" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('final')">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
+              </div>
+            </div>
+
+            <!-- DONATION BOX removed 2026-10-28: the game ended on Jul 19 and the wallet is now the Giggle Academy pot -->
+          </div>
+
+          <!-- HOW THE POOL GROWS -->
+          <div class="section-h">
+            <span>💧 How the pool grew</span>
+            <span class="right">3 transparent sources · all on-chain</span>
+          </div>
+          <div class="flow" style="margin-bottom:24px">
+            <div class="flow-steps">
+              <div class="flow-step">
+                <div class="num">1</div>
+                <div class="body">
+                  <b>Donations</b> — during the game, BNB or USDT (BEP-20) sent to the prize-pool wallet was swapped to BOBAI and credited on-chain. The game is over: that wallet is now the Giggle Academy pot, so do not send to it for this game.
+                  <span class="muted">Live in the credits table below. Every swap verifiable on BscScan.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">2</div>
+                <div class="body">
+                  <b>BOBAI tax auto-flow</b> &mdash; from <b>Jun 11, 00:01 UTC</b> until the Final (<b>Jul 19, 23:59 UTC</b>), <b>0.52% of every BOBAI trade tax</b> auto-flows into this wallet: 0.26% redirected from the BOB burn slice + 0.26% from the creator slice. The 3% on-chain tax rate stays fixed; only the off-chain distribution changes for the WC26 window.
+                  <span class="muted">After the Final, the distribution went back to the standard split. <a href="https://brainonbnb.com/token#about" target="_blank" rel="noopener">See full tax schedule →</a></span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">3</div>
+                <div class="body">
+                  <b>Cap-cascade residual</b> &mdash; if a winner hits the 26× holder cap and no eligible winner can absorb the excess, the residual is added as <b>permanent BOBAI/BNB liquidity</b> with LP burned — never refunded, never kept.
+                  <span class="muted">Edge case only. Already factored into per-position payouts below.</span>
+                </div>
+              </div>
+            </div>
+            <div class="flow-note">
+              💡 The prize-pool wallet has <b>one outflow only</b>: winner payouts (twice — after group stage and after the Final). No buybacks, no burns, no admin discretion in between.
+            </div>
+          </div>
+
+          <!-- PER-POSITION PAYOUTS -->
+          <div class="section-h">
+            <span>💎 Shares per position, as the rules set them</span>
+            <span class="right">before the holder cap — the amounts paid are on <a href="/worldcup/" style="color:var(--gold)">the archive page</a></span>
+          </div>
+          <div class="ptable-wrap">
+            <table class="ptable">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Position</th>
+                  <th>Slots</th>
+                  <th class="pct-cell" style="text-align:right">Pool share</th>
+                  <th class="tnum" style="text-align:right">BOBAI per slot</th>
+                  <th class="tusd" style="text-align:right">$ per slot</th>
+                </tr>
+              </thead>
+              <tbody id="payout-body">
+                <tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- TX HISTORY -->
+          <div class="section-h">
+            <span>Pool credits</span>
+            <span class="right">every swap on-chain</span>
+          </div>
+          <div class="txwrap">
+            <div class="txfilter" id="txfilter">
+              <button data-filter="all" class="active">All</button>
+              <button data-filter="donation">💚 Donations</button>
+              <button data-filter="tax">⚙️ Tax adds</button>
+              <span class="right"><a id="addr-link" href="#" target="_blank" rel="noopener">verify on BscScan ↗</a></span>
+            </div>
+            <div class="txscroll">
+              <table class="txtable">
+                <thead>
+                  <tr>
+                    <th>Time (UTC)</th>
+                    <th>Type</th>
+                    <th class="tnum" style="text-align:right">Amount in</th>
+                    <th class="tnum" style="text-align:right">BOBAI added</th>
+                    <th class="tusd" style="text-align:right">$ Value</th>
+                    <th>Tx</th>
+                  </tr>
+                </thead>
+                <tbody id="tx-body">
+                  <tr><td colspan="6" class="txempty">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- AUSZAHLUNGSERKLÄRUNG -->
+          <div class="section-h">
+            <span>📋 How payouts work</span>
+            <span class="right">full audit logged on-chain + as PDF</span>
+          </div>
+          <div class="flow">
+            <div class="flow-intro">
+              Payouts happen <b>twice</b>: <b>1 day after group stage</b> (Group pot) and <b>1 day after the Final</b> (End pool + Crypto pot). Both runs follow the same transparent procedure — manually triggered by the admin, never auto-drained.
+            </div>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <div class="num">1</div>
+                <div class="body">
+                  <b>Snapshot leaderboard</b> at lock time (last group match end, or Final end).
+                  <span class="muted">All scores frozen. Bonus questions count toward total points.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">2</div>
+                <div class="body">
+                  <b>Read wallet eligibility</b> — only players with a linked BEP-20 wallet receive transfers.
+                  <span class="muted">Unlinked players keep leaderboard position but their share redistributes to eligible winners.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">3</div>
+                <div class="body">
+                  <b>Read on-chain BOBAI balance</b> of each eligible wallet (live from blockchain, not from a database — un-fakeable).
+                  <span class="muted">Used for the 26× holder cap + tie-breaker.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">4</div>
+                <div class="body">
+                  <b>Compute raw shares</b> per pot:
+                  <span class="muted">Group: 55 % / 30 % / 15 % flat across 1st/2nd/best-3rd brackets. End pool: 50/25/15/10 % tiered for top 4. Crypto: 3.3 %/coin to closest guesses.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">5</div>
+                <div class="body">
+                  <b>Apply 26× holder cap</b> per winner, <b>per pot independently</b>. Excess flows to remaining uncapped winners proportionally within the same pot — never crosses pot boundaries.
+                  <span class="muted">Cascade repeats until every dollar lands within someone's cap. Any residual that no eligible winner can absorb is added as <b>permanent BOBAI/BNB liquidity</b> on PancakeSwap with LP burned to the dead address — never refunded, never kept.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">6</div>
+                <div class="body">
+                  <b>Test payout: 1 % first</b>. Admin signs a tiny test batch to verify addresses + amounts on-chain before full execution.
+                  <span class="muted">If anything looks off, full payout aborts. No 99 % surprise.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">7</div>
+                <div class="body">
+                  <b>Full payout in randomized group order</b> (e.g. Group F before Group A) — so on-chain observers can't match wallets to group rank.
+                  <span class="muted">Only End-Pool top 4 + 3 Crypto winners stay matchable, since those are unique single-winner positions already on the leaderboard.</span>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="num">8</div>
+                <div class="body">
+                  <b>Audit PDF published</b> after each run.
+                  <span class="muted">Lists every winner, raw share, cap applied, redistribution rounds, and final tx hash. Verifiable from this page.</span>
+                </div>
+              </div>
+            </div>
+            <div class="flow-note">
+              💡 The same player can win in <b>multiple groups</b> (e.g. 1st in A + 2nd in D + best-3rd in F) — each placement is paid separately. Linked wallet is keyed to a username, not to a single group.
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== PAYOUT RECEIPT MODAL (group + final, content set per pot) ===== -->
+    <div class="rc-modal" id="receipt-modal" aria-hidden="true" role="dialog" aria-labelledby="rc-title" onclick="if(event.target===this)closeReceipt()">
+      <div class="rc-backdrop" onclick="closeReceipt()"></div>
+      <div class="rc-box" role="document">
+        <button class="rc-close" type="button" onclick="closeReceipt()" aria-label="Close">×</button>
+        <div class="rc-header">
+          <div class="illus">
+            <img src="./illus/receipt-payout.webp" alt="" onerror="this.onerror=null;this.src='./illus/receipt-payout.png'">
+          </div>
+          <div class="head-text">
+            <h2 id="rc-title">Group Pot · Payout Receipt</h2>
+            <div class="sub" id="rc-sub">12 groups · 32 winners · paid <b id="rc-date">—</b></div>
+            <div class="rc-totals">
+              <div class="rc-tot"><div class="l">Total Paid</div><div class="v" id="rc-total-bobai">—</div></div>
+              <div class="rc-tot"><div class="l">USD Value</div><div class="v" id="rc-total-usd">—</div></div>
+              <div class="rc-tot"><div class="l">Wallets</div><div class="v" id="rc-total-wallets">—</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rc-body" id="rc-body">
+          <div class="rc-empty">Loading payout receipt…</div>
+        </div>
+        <div class="rc-footer">
+          <div class="verify">
+            Every transfer is verifiable on-chain ·
+            <a id="rc-wallet-link" href="#" target="_blank" rel="noopener">View prize wallet on BscScan ↗</a>
+          </div>
+          <button class="share" type="button" onclick="shareReceipt()">🔗 Copy link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=12"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=13"></script>
+  <script src="./assets/profile.js?v=18"></script>
+  <script src="./assets/avatar.js?v=7"></script>
+  <script src="./assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+
+    function fmtBobai(n){
+      if (n == null) return '0';
+      const v = Number(n);
+      if (v >= 1_000_000) return (v/1_000_000).toFixed(2) + 'M';
+      if (v >= 1_000)     return (v/1_000).toFixed(1) + 'K';
+      return v.toFixed(0);
+    }
+    // Returns formatted USD or 'n/a' if price feed unavailable. Use this anywhere
+    // a USD value is derived from `bobai_price_usd` so an outage doesn't show $0.00.
+    function fmtUsdOrNa(bobaiAmount, price){
+      return price > 0 ? fmtUsd(bobaiAmount * price) : 'n/a';
+    }
+    function fmtUsd(n){
+      if (n == null || !isFinite(n)) return '$0.00';
+      if (n >= 1_000_000) return '$' + (n/1_000_000).toFixed(2) + 'M';
+      if (n >= 1_000)     return '$' + (n/1_000).toFixed(1) + 'K';
+      if (n >= 1)         return '$' + n.toFixed(2);
+      if (n > 0)          return '$' + n.toFixed(4);
+      return '$0.00';
+    }
+    function fmtAmountIn(token, n){
+      const v = parseFloat(n) || 0;
+      if (v >= 1) return v.toFixed(4) + ' ' + token;
+      return v.toFixed(6) + ' ' + token;
+    }
+    function fmtTime(iso){
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2,'0');
+      return d.getUTCFullYear() + '-' + pad(d.getUTCMonth()+1) + '-' + pad(d.getUTCDate()) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+    }
+    function txLink(h){
+      if (!h) return '—';
+      return `<a class="txl" href="https://bscscan.com/tx/${h}" target="_blank" rel="noopener">${h.slice(0,6)}…${h.slice(-4)}</a>`;
+    }
+
+    // Latest pool state (for $ calculations on tx rows)
+    let livePrice = 0;
+    let liveTotalBobai = 0;
+
+    let groupPaidAt = null;
+    let finalPaidAt = null;      // derived from wc_payouts pot=end/crypto rows
+    let payoutRowsCache = null;  // all wc_payouts rows, loaded once per refresh
+
+    async function loadAllPayoutRows(){
+      const r = await window.WC_PROFILE.loadPayouts();
+      if (r.error) return payoutRowsCache || [];
+      payoutRowsCache = r.rows || [];
+      const finalRows = payoutRowsCache.filter(x => x.pot === 'end' || x.pot === 'crypto');
+      const paidTs = finalRows.filter(x => x.tx_hash && x.paid_at).map(x => new Date(x.paid_at).getTime());
+      finalPaidAt = paidTs.length ? new Date(Math.min(...paidTs)).toISOString() : null;
+      return payoutRowsCache;
+    }
+
+    async function loadPool(){
+      const r = await window.WC_PROFILE.loadPool();
+      if (r.error) return;
+      const p = r.pool || {};
+      const total = parseFloat(p.total_bobai) || 0;
+      const px    = parseFloat(p.bobai_price_usd) || 0;
+      const group  = parseFloat(p.group_pot)  || 0;
+      const end    = parseFloat(p.endpool)    || 0;
+      const crypto = parseFloat(p.crypto_pot) || 0;
+      groupPaidAt = p.group_paid_at || null;
+
+      livePrice = px;
+      liveTotalBobai = total;
+
+      $('#pool-bobai').textContent  = fmtBobai(total) + ' BOBAI';
+      $('#pool-usd').textContent    = '≈ ' + fmtUsdOrNa(total, px);
+      $('#pool-group').textContent  = fmtBobai(group) + ' BOBAI';
+      $('#pool-end').textContent    = fmtBobai(end) + ' BOBAI';
+      $('#pool-crypto').textContent = fmtBobai(crypto) + ' BOBAI';
+      $('#pool-group-usd').textContent  = '≈ ' + fmtUsdOrNa(group,  px);
+      $('#pool-end-usd').textContent    = '≈ ' + fmtUsdOrNa(end,    px);
+      $('#pool-crypto-usd').textContent = '≈ ' + fmtUsdOrNa(crypto, px);
+      if (p.updated_at) {
+        $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleTimeString();
+      }
+
+      // Toggle paid-out visual state once the admin marks the group pot paid.
+      const cell = $('#pool-group-cell');
+      const pct  = $('#pool-group-pct');
+      const lbl  = $('#pool-group-lbl');
+      const lblEnd = $('#pool-end-lbl');
+      const btn  = $('#receipt-btn');
+      if (groupPaidAt) {
+        cell.classList.add('paid');
+        const d = new Date(groupPaidAt);
+        const datePill = d.toISOString().slice(0, 10);
+        pct.innerHTML = `<span class="paid-pill">✅ Paid · ${datePill}</span>`;
+        lbl.textContent = 'Group pot · 60 % (final snapshot)';
+        lblEnd.textContent = 'End pool · 90 %';
+        btn.style.display = '';
+      } else {
+        cell.classList.remove('paid');
+        pct.textContent = 'paid 1 day after group stage';
+        lbl.textContent = 'Group pot · 60 %';
+        lblEnd.textContent = 'End pool · 30 %';
+        btn.style.display = 'none';
+      }
+
+      // End-pool + Crypto cells flip to paid once wc_payouts carries confirmed
+      // end/crypto rows (Final payout 2026-07-20).
+      await loadAllPayoutRows();
+      const finalPaid = !!finalPaidAt;
+      const datePillF = finalPaid ? finalPaidAt.slice(0, 10) : null;
+      for (const [cellId, pctId, btnId] of [
+        ['pool-end-cell',    'pool-end-pct',    'receipt-btn-final'],
+        ['pool-crypto-cell', 'pool-crypto-pct', 'receipt-btn-final2'],
+      ]) {
+        const c = $('#' + cellId), pc = $('#' + pctId), b = $('#' + btnId);
+        if (finalPaid) {
+          c.classList.add('paid');
+          pc.innerHTML = `<span class="paid-pill">✅ Paid · ${datePillF}</span>`;
+          b.style.display = '';
+          $('#pool-end-lbl').textContent = 'End pool · 90 % (final snapshot)';
+        } else {
+          c.classList.remove('paid');
+          pc.textContent = 'paid 1 day after Final';
+          b.style.display = 'none';
+        }
+      }
+
+      renderPayouts(group, end, crypto, px, !!groupPaidAt, finalPaid);
+    }
+
+    // Per-position expected payouts (kept in sync with the leaderboard's POOL_SPLIT)
+    function renderPayouts(group, end, crypto, px, groupPaid, finalPaid){
+      const tbody = $('#payout-body');
+      const rows = [];
+
+      // Pool share = % of the pot named in the section header (group/end/crypto).
+      // Group brackets are FLAT within: 12 winners share the bracket pot equally.
+      const groupSection = groupPaid
+        ? 'Group pot · ✅ paid out'
+        : 'Group pot · paid 1 day after group stage';
+      rows.push({ section: groupSection, sectionPot: 'group' });
+      rows.push({ pot:'group', icon:'🥇', label:'Group 1st', slots:12, share:0.55, bobai: (group*0.55)/12 });
+      rows.push({ pot:'group', icon:'🥈', label:'Group 2nd', slots:12, share:0.30, bobai: (group*0.30)/12 });
+      rows.push({ pot:'group', icon:'🥉', label:'Best 3rd',  slots:8,  share:0.15, bobai: (group*0.15)/8  });
+
+      rows.push({ section: finalPaid ? 'End pool · ✅ paid out' : 'End pool · paid 1 day after Final', sectionPot: 'end' });
+      rows.push({ pot:'end', icon:'🥇', label:'Overall 1st', slots:1, share:0.50, bobai: end*0.50 });
+      rows.push({ pot:'end', icon:'🥈', label:'Overall 2nd', slots:1, share:0.25, bobai: end*0.25 });
+      rows.push({ pot:'end', icon:'🥉', label:'Overall 3rd', slots:1, share:0.15, bobai: end*0.15 });
+      rows.push({ pot:'end', icon:'4️⃣', label:'Overall 4th', slots:1, share:0.10, bobai: end*0.10 });
+
+      rows.push({ section: finalPaid ? 'Crypto pot · ✅ paid out' : 'Crypto pot · paid 1 day after Final', sectionPot: 'crypto' });
+      rows.push({ pot:'crypto', icon:'₿',  label:'Closest BTC guess',   slots:1, share:1/3, bobai: crypto/3 });
+      rows.push({ pot:'crypto', icon:'🟡', label:'Closest BNB guess',   slots:1, share:1/3, bobai: crypto/3 });
+      rows.push({ pot:'crypto', icon:'🧠', label:'Closest BOBAI guess', slots:1, share:1/3, bobai: crypto/3 });
+
+      tbody.innerHTML = rows.map(r => {
+        if (r.section) {
+          const paidSection = (groupPaid && r.sectionPot === 'group') || (finalPaid && r.sectionPot !== 'group');
+          return `<tr class="${paidSection ? 'pot-h paid' : 'pot-h'}"><td colspan="6">${r.section}</td></tr>`;
+        }
+        const slotsLabel = r.slots > 1 ? `× ${r.slots}` : '× 1';
+        const pctLabel = (r.share * 100).toFixed(r.share < 0.1 ? 2 : (r.share < 1 ? 1 : 0)) + ' %';
+        const paidRow = (groupPaid && r.pot === 'group') || (finalPaid && (r.pot === 'end' || r.pot === 'crypto'));
+        return `<tr class="${paidRow ? 'row paid' : 'row'}">
+          <td class="rank-icon">${r.icon}</td>
+          <td>${r.label}</td>
+          <td class="pct-cell">${slotsLabel}</td>
+          <td class="pct-cell" style="text-align:right">${pctLabel}</td>
+          <td class="tnum">${fmtBobai(r.bobai)}</td>
+          <td class="tusd">${fmtUsdOrNa(r.bobai, px)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ─── Receipt Modal (generic: 'group' = group pot · 'final' = end-pool + crypto) ───
+    let receiptLoadedKind = null;
+    let receiptKind = 'group';
+
+    async function loadReceipt(kind){
+      const body = $('#rc-body');
+      try {
+        const rows = await loadAllPayoutRows();
+        if (kind === 'final') {
+          renderFinalReceipt(rows.filter(r => r.pot === 'end' || r.pot === 'crypto'));
+        } else {
+          renderReceipt(rows.filter(r => r.pot === 'group'));
+        }
+        receiptLoadedKind = kind;
+      } catch (e) {
+        body.innerHTML = `<div class="rc-empty">Could not load receipt: ${e.message}</div>`;
+      }
+    }
+
+    function positionOrder(pos){
+      const order = { '1st': 1, '2nd': 2, 'best_3rd': 3 };
+      return order[pos] ?? 99;
+    }
+    function positionLabel(pos){
+      if (pos === '1st') return '🥇 1st';
+      if (pos === '2nd') return '🥈 2nd';
+      if (pos === 'best_3rd') return '🥉 Best 3rd';
+      return pos;
+    }
+    function countryFlag(code){
+      if (!code || code.length !== 2) return '';
+      const A = 0x1F1E6, base = 'A'.charCodeAt(0);
+      return String.fromCodePoint(A + (code.toUpperCase().charCodeAt(0) - base))
+           + String.fromCodePoint(A + (code.toUpperCase().charCodeAt(1) - base));
+    }
+    function countryName(code){
+      // Optional: window.WC_COUNTRIES is the same object the rest of the app uses
+      if (window.WC_COUNTRIES && code) {
+        const c = window.WC_COUNTRIES.find?.(x => x.code === code);
+        if (c?.name) return c.name;
+      }
+      return code || '';
+    }
+
+    function renderReceipt(rows){
+      const body = $('#rc-body');
+      if (!rows.length) {
+        body.innerHTML = `<div class="rc-empty">
+          <div style="font-size:32px;margin-bottom:8px">⏳</div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--text);margin-bottom:6px">Payout in progress</div>
+          <div>Transactions will appear here as they confirm on-chain.<br>Refresh to update.</div>
+        </div>`;
+        $('#rc-total-bobai').textContent = '—';
+        $('#rc-total-usd').textContent = '—';
+        $('#rc-total-wallets').textContent = '—';
+        return;
+      }
+
+      // Group by group_letter (A..L)
+      const groups = {};
+      let totalBobai = 0;
+      const wallets = new Set();
+      for (const r of rows) {
+        const key = r.group_letter || '?';
+        (groups[key] ||= []).push(r);
+        totalBobai += Number(r.bobai_amount) || 0;
+        if (r.wallet) wallets.add(r.wallet.toLowerCase());
+      }
+      const letters = Object.keys(groups).sort();
+
+      // Header totals
+      $('#rc-total-bobai').textContent = fmtBobai(totalBobai) + ' BOBAI';
+      $('#rc-total-usd').textContent   = fmtUsdOrNa(totalBobai, livePrice);
+      $('#rc-total-wallets').textContent = wallets.size;
+      const earliest = rows.reduce((a, r) => {
+        const t = new Date(r.paid_at).getTime();
+        return (!a || t < a) ? t : a;
+      }, null);
+      if (earliest) $('#rc-date').textContent = new Date(earliest).toISOString().slice(0, 10);
+
+      body.innerHTML = letters.map(letter => {
+        const list = groups[letter].slice().sort((a, b) => positionOrder(a.position) - positionOrder(b.position));
+        const sum = list.reduce((s, r) => s + (Number(r.bobai_amount) || 0), 0);
+        return `<div class="rc-group">
+          <div class="rc-group-h">
+            <span>Group ${letter}</span>
+            <span class="right">${fmtBobai(sum)} BOBAI · ${list.length} winner${list.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="rc-rows">
+            ${list.map(r => `
+              <div class="rc-row">
+                <div class="ic">${positionLabel(r.position).split(' ')[0]}</div>
+                <div class="who">
+                  <div class="name">${escapeHtml(r.username || '—')}</div>
+                  <div class="country">${countryFlag(r.country_code)} ${escapeHtml(countryName(r.country_code))}</div>
+                </div>
+                <div class="amt">
+                  <div class="b">${fmtBobai(Number(r.bobai_amount))} BOBAI</div>
+                  <span class="u">${r.usd_at_payout != null ? fmtUsd(Number(r.usd_at_payout)) : fmtUsdOrNa(Number(r.bobai_amount), livePrice)}</span>
+                </div>
+                ${r.tx_hash
+                  ? `<span class="tx tx-paid" title="On-chain confirmed. Verify aggregate outflows on the prize wallet (linked in footer).">✓ paid</span>`
+                  : (Number(r.bobai_amount) === 0
+                      ? `<span class="tx-pending" style="color:#ffc066;border-color:rgba(255,180,0,.32)">26× cap not reached</span>`
+                      : `<span class="tx-pending">pending</span>`)}
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ─── Final receipt (End-Pool top-4 + 3 crypto pots, paid 2026-07-20) ──
+    function finalSlotMeta(pos){
+      const M = {
+        end_1:        { ic: '🥇', label: 'Overall 1st · 50 %' },
+        end_2:        { ic: '🥈', label: 'Overall 2nd · 25 %' },
+        end_3:        { ic: '🥉', label: 'Overall 3rd · 15 %' },
+        end_4:        { ic: '4️⃣', label: 'Overall 4th · 10 %' },
+        crypto_btc:   { ic: '₿',  label: 'Closest BTC guess' },
+        crypto_bnb:   { ic: '🟡', label: 'Closest BNB guess' },
+        crypto_bobai: { ic: '🧠', label: 'Closest BOBAI guess' },
+      };
+      return M[pos] || { ic: '·', label: pos };
+    }
+    function renderFinalReceipt(rows){
+      const body = $('#rc-body');
+      if (!rows.length) {
+        body.innerHTML = `<div class="rc-empty">
+          <div style="font-size:32px;margin-bottom:8px">⏳</div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--text);margin-bottom:6px">Payout in progress</div>
+          <div>Transactions will appear here as they confirm on-chain.<br>Refresh to update.</div>
+        </div>`;
+        $('#rc-total-bobai').textContent = '—';
+        $('#rc-total-usd').textContent = '—';
+        $('#rc-total-wallets').textContent = '—';
+        return;
+      }
+      let totalBobai = 0;
+      const wallets = new Set();
+      rows.forEach(r => {
+        totalBobai += Number(r.bobai_amount) || 0;
+        if (r.wallet && Number(r.bobai_amount) > 0) wallets.add(r.wallet.toLowerCase());
+      });
+      $('#rc-total-bobai').textContent = fmtBobai(totalBobai) + ' BOBAI';
+      $('#rc-total-usd').textContent   = fmtUsdOrNa(totalBobai, livePrice);
+      $('#rc-total-wallets').textContent = wallets.size;
+      const earliest = rows.reduce((a, r) => {
+        if (!r.paid_at) return a;
+        const t = new Date(r.paid_at).getTime();
+        return (!a || t < a) ? t : a;
+      }, null);
+      if (earliest) $('#rc-date').textContent = new Date(earliest).toISOString().slice(0, 10);
+
+      const order = ['end_1','end_2','end_3','end_4','crypto_btc','crypto_bnb','crypto_bobai'];
+      const byPos = new Map(rows.map(r => [r.position, r]));
+      const sections = [
+        { title: 'End Pool — Overall Top 4 (50 / 25 / 15 / 10 %)', slots: order.slice(0, 4) },
+        { title: 'Crypto Pots — winner-take-all per coin (frozen at Final kickoff, 19 Jul 19:00 UTC)', slots: order.slice(4) },
+      ];
+      body.innerHTML = sections.map(sec => {
+        const list = sec.slots.map(p => byPos.get(p)).filter(Boolean);
+        const sum = list.reduce((s, r) => s + (Number(r.bobai_amount) || 0), 0);
+        return `<div class="rc-group">
+          <div class="rc-group-h">
+            <span>${sec.title}</span>
+            <span class="right">${fmtBobai(sum)} BOBAI</span>
+          </div>
+          <div class="rc-rows">
+            ${list.map(r => {
+              const meta = finalSlotMeta(r.position);
+              const zero = Number(r.bobai_amount) === 0;
+              const note = r.notes ? `<div class="country" style="color:#ffc066">${escapeHtml(r.notes)}</div>` : '';
+              return `<div class="rc-row">
+                <div class="ic">${meta.ic}</div>
+                <div class="who">
+                  <div class="name">${escapeHtml(r.username || '—')} <span style="color:var(--muted);font-weight:500;font-size:11px">· ${meta.label}</span></div>
+                  <div class="country">${countryFlag(r.country_code)} ${escapeHtml(countryName(r.country_code))}</div>
+                  ${note}
+                </div>
+                <div class="amt">
+                  <div class="b">${fmtBobai(Number(r.bobai_amount))} BOBAI</div>
+                  <span class="u">${r.usd_at_payout != null ? fmtUsd(Number(r.usd_at_payout)) : fmtUsdOrNa(Number(r.bobai_amount), livePrice)}</span>
+                </div>
+                ${r.tx_hash
+                  ? `<span class="tx tx-paid" title="On-chain confirmed. Verify aggregate outflows on the prize wallet (linked in footer).">✓ paid</span>`
+                  : (zero
+                      ? `<span class="tx-pending" style="color:#ffc066;border-color:rgba(255,180,0,.32)">26× cap not reached</span>`
+                      : `<span class="tx-pending">pending</span>`)}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function openReceipt(kind){
+      receiptKind = kind || 'group';
+      // Header copy per pot
+      if (receiptKind === 'final') {
+        $('#rc-title').textContent = 'Final · Payout Receipt';
+        $('#rc-sub').innerHTML = 'End-Pool top 4 + 3 crypto pots · paid <b id="rc-date">—</b>';
+      } else {
+        $('#rc-title').textContent = 'Group Pot · Payout Receipt';
+        $('#rc-sub').innerHTML = '12 groups · 32 winners · paid <b id="rc-date">—</b>';
+      }
+      $('#receipt-modal').setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      await loadReceipt(receiptKind);  // always fresh — #rc-date lives inside the rebuilt sub-line
+      if (window.twemoji) window.twemoji.parse($('#receipt-modal'));
+    }
+    function closeReceipt(){
+      $('#receipt-modal').setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('#receipt-modal').getAttribute('aria-hidden') === 'false') closeReceipt();
+    });
+    async function shareReceipt(){
+      const url = location.origin + location.pathname + '?receipt=' + receiptKind;
+      try {
+        await navigator.clipboard.writeText(url);
+        const b = document.querySelector('.rc-footer .share');
+        const orig = b.textContent;
+        b.textContent = '✓ Copied';
+        setTimeout(() => { b.textContent = orig; }, 1500);
+      } catch { /* ignore */ }
+    }
+    // Make the modal-control functions reachable from inline onclick attributes
+    window.openReceipt = openReceipt;
+    window.closeReceipt = closeReceipt;
+    window.shareReceipt = shareReceipt;
+
+    // ─── Tx History ───────────────────────────────────────────────
+    let currentFilter = 'all';
+    let txCache = [];
+
+    async function loadTxs(){
+      try {
+        const sb = supabase.createClient(window.WC_CONFIG.SUPABASE_URL, window.WC_CONFIG.SUPABASE_ANON_KEY);
+        const { data, error } = await sb
+          .from('wc_donations')
+          .select('id, from_address, token, amount_in, amount_bobai, tx_hash, swap_tx_hash, created_at')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) { console.warn('tx fetch:', error.message); return; }
+        txCache = data || [];
+        renderTxs();
+      } catch (e) { console.warn('tx fetch error:', e.message); }
+    }
+
+    function renderTxs(){
+      const tbody = $('#tx-body');
+      const rows = txCache.filter(row => {
+        if (currentFilter === 'all')      return true;
+        if (currentFilter === 'tax')      return row.token === 'TAX';
+        if (currentFilter === 'donation') return row.token === 'BNB' || row.token === 'USDT';
+        return true;
+      });
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="txempty">No ${currentFilter === 'all' ? '' : currentFilter + ' '}entries yet — waiting for the first swap.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const chipClass = r.token === 'TAX' ? 'tax' : (r.token === 'BNB' ? 'bnb' : 'usdt');
+        const chipLabel = r.token === 'TAX' ? '⚙️ Tax' : (r.token === 'BNB' ? '🟡 BNB' : '💵 USDT');
+        const bobai = parseFloat(r.amount_bobai) || 0;
+        return `<tr>
+          <td class="ttime">${fmtTime(r.created_at)}</td>
+          <td><span class="tchip ${chipClass}">${chipLabel}</span></td>
+          <td class="tnum">${fmtAmountIn(r.token === 'TAX' ? 'BNB' : r.token, r.amount_in)}</td>
+          <td class="tnum">${fmtBobai(bobai)}</td>
+          <td class="tusd">${fmtUsdOrNa(bobai, livePrice)}</td>
+          <td>${txLink(r.swap_tx_hash || r.tx_hash)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Filter buttons
+    $('#txfilter').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-filter]');
+      if (!btn) return;
+      document.querySelectorAll('#txfilter button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderTxs();
+    });
+
+    // ─── Donation address copy + BscScan link ─────────────────────
+    (() => {
+      const addr = window.WC_CONFIG?.PRIZE_WALLET;
+      if (!addr) return;
+      const linkEl = $('#prize-addr');
+      if (linkEl) { linkEl.textContent = addr; linkEl.href = `https://bscscan.com/address/${addr}`; }
+      $('#addr-link').href = `https://bscscan.com/address/${addr}`;
+      $('#rc-wallet-link').href = `https://bscscan.com/address/${addr}`;
+      if ($('#copy-addr')) $('#copy-addr').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(addr);
+          const b = $('#copy-addr');
+          const orig = b.textContent;
+          b.textContent = '✓ Copied';
+          setTimeout(() => { b.textContent = orig; }, 1500);
+        } catch { /* ignore */ }
+      });
+    })();
+
+    // ─── Init ─────────────────────────────────────────────────────
+    (async ()=>{
+      await window.WC_AUTH.currentProfile();
+      await loadPool();
+      await loadTxs();
+      setInterval(loadPool, 30000);
+      setInterval(loadTxs, 30000);
+
+      // Auto-open the receipt modal if the link was shared with ?receipt=group|final
+      const rq = new URLSearchParams(location.search).get('receipt');
+      if (rq === 'group' && groupPaidAt) openReceipt('group');
+      if (rq === 'final' && finalPaidAt) openReceipt('final');
+    })();
+  </script>
+</body>
+</html>

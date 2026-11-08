@@ -2394,7 +2394,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // agent charts (score above zero, a day of pulse, or ours) are written into the static file's marked block from the
     // live screener on every request (cached an hour); the screener down, the static block as last written stays.
     if (url.pathname === '/sitemap.xml' && request.method === 'GET') {
-      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents-board');
+      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents-board-ar' + (AR_LIVE ? '1' : '0'));
       const hit = await cache.match(key); if (hit) return hit;
       const base = await env.ASSETS.fetch(new Request(url.origin + '/sitemap.xml', request));
       let xml = await base.text();
@@ -2408,6 +2408,12 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       // every library entry, one page each (2026-10-27): the words of an error are what an agent searches for
       const lib = await boardLibrary();
       if (lib.length && xml.includes('</urlset>')) xml = xml.replace('</urlset>', lib.map((t) => `  <url>\n    <loc>https://brainonbnb.com/board/${t.id}</loc>\n    <lastmod>${boardDay(t.updated || t.created)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`).join('\n') + '\n</urlset>');
+      // the Arabic twin of every page of ours (2026-11-08), once it is live; agent charts and board threads stay English only
+      if (AR_LIVE && xml.includes('</urlset>')) {
+        const day = new Date().toISOString().slice(0, 10), seen = new Set();
+        const ar = [...xml.matchAll(/<loc>https:\/\/brainonbnb\.com(\/[^<]*)<\/loc>/g)].map((m) => m[1]).filter((p) => AR_PAGES.test(p) && !/^\/(agent|board)\/\d/.test(p) && !seen.has(p) && seen.add(p));
+        xml = xml.replace('</urlset>', ar.map((p) => `  <url>\n    <loc>https://brainonbnb.com${p === '/' ? '/ar/' : '/ar' + p}</loc>\n    <lastmod>${day}</lastmod>\n    <changefreq>weekly</changefreq>\n  </url>`).join('\n') + '\n</urlset>');
+      }
       const res = new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' } });
       await cache.put(key, res.clone()).catch(() => {});
       return res;
@@ -2815,14 +2821,17 @@ const SWITCH_AT = ['.nav .nb', 'a.bp-sw']; // the subpages' and Classic's bar (b
 function langLayer(res, enPath, search, ar, dict, embedded) {
   let placed = false;
   const at = { element(e) { if (placed || embedded) return; placed = true; e.before(langSwitch(enPath, search, ar), { html: true }); } };
-  let rw = new HTMLRewriter().on('head', { element(e) { e.prepend(LANG_HEAD, { html: true }); } });
+  // each page names its twin for search engines (hreflang), both ways, plus x-default = English
+  const enUrl = 'https://brainonbnb.com' + enPath, arUrl = 'https://brainonbnb.com' + (enPath === '/' ? '/ar/' : '/ar' + enPath);
+  const alt = embedded ? '' : `<link rel="alternate" hreflang="en" href="${enUrl}"><link rel="alternate" hreflang="ar" href="${arUrl}"><link rel="alternate" hreflang="x-default" href="${enUrl}">`;
+  let rw = new HTMLRewriter().on('head', { element(e) { e.prepend(LANG_HEAD + alt, { html: true }); } });
   for (const s of SWITCH_AT) rw = rw.on(s, at);
   if (!ar) return rw.transform(res);
   const T = (s) => { const v = translate(dict, s); return typeof v === 'string' ? v : null; };
   let skip = 0, buf = '';
   const deep = { element(e) { skip++; e.onEndTag(() => { skip--; }); } };
   const attr = (names) => ({ element(e) { for (const n of names) { const v = e.getAttribute(n); if (!v) continue; const t = T(decodeHtml(v)); if (t) e.setAttribute(n, t); } } });
-  const pagePath = (h) => (h && h.startsWith('/') && !h.startsWith('/ar/') ? toAr(h) : h);
+  const pagePath = (h) => (h === '/whitepaper.pdf' ? '/whitepaper-ar.pdf' : h && h.startsWith('/') && !h.startsWith('/ar/') ? toAr(h) : h); // the whitepaper's PDF in Arabic (temp/i18n/wp-pdf.mjs prints it from /ar/whitepaper)
   const abs = (u) => u.replace(/^https:\/\/brainonbnb\.com(\/[^?#]*)/, (m, p) => { const t = toAr(p); return t === p ? m : 'https://brainonbnb.com' + t; });
   rw = rw
     .on('html', { element(e) { e.setAttribute('lang', 'ar'); e.setAttribute('data-arv', String(AR_DICT.v)); } })

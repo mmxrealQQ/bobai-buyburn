@@ -1221,6 +1221,10 @@ function tellJoke(ms, queued = false, asked = false) {
 }
 // the speech bubble, above his head; letters arrive one by one like he is thinking them
 const bubble = document.createElement('div'); bubble.className = 'say'; bubble.setAttribute('aria-live', 'polite');
+/* ARABIC A-Z (2026-11-08): on /ar/ the page's i18n/ar.js offers window.__arT; his lines and the log go through it as they are shown (English elsewhere) */
+const arT = (s) => (typeof s === 'string' && window.__arT ? window.__arT(s) : s);
+/* a line he began before the dictionary had loaded (English) comes again in Arabic once it is there; never cut, it waits its turn */
+window.addEventListener('ar-ready', () => { try { if (LASTSAY && bubble.classList.contains('on') && !/[؀-ۿ]/.test(bubble.textContent)) speak(LASTSAY.text, LASTSAY.ms); } catch {} });
 win.appendChild(bubble);
 let typing = 0;
 // ---------- his body lives: each move has its own rhythm ----------
@@ -1763,6 +1767,8 @@ function speak(text, ms = 5200) {
     // moment hid the bubble (.in-moment .say), and the line of a burn or a buy starts with its board and is about as long —
     // so it was never seen, or for a blink at the board's end. Live, the line stays up beside the board (.say.scene)
     void bubble.offsetWidth; bubble.classList.add('on'); bubble.classList.toggle('scene', mode === 'live');
+    // ARABIC (2026-11-08): on /ar/ the line is typed in Arabic; everything that decides his move read the English above
+    const text0 = text; text = arT(text0);
     SHOWN = { id, end: performance.now() + text.length * 22 + 2600 }; // what a line on screen is owed before another may replace it
     if (portrait) { bubble.classList.add('top'); win.classList.add('talking'); placeBubble(); } // phone: the top row at once, not a frame later over MOMENTS (2026-09-30); after sayUntil, or placeBubble closes it
     FACE.talkUntil = performance.now() + Math.min(3200, text.length * 22 + 500); // he says it while it types
@@ -2924,7 +2930,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
   if (old) tt.title = new Date(t).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const g = document.createElement('span'); g.className = 'g'; g.textContent = tag;
   const m = document.createElement('span'); m.className = 'm';
-  for (const p of parts) { if (!p) continue; const s = document.createElement(Array.isArray(p) ? 'b' : 'span'); s.textContent = Array.isArray(p) ? p[0] : p; m.append(s); }
+  for (const p of parts) { if (!p) continue; const s = document.createElement(Array.isArray(p) ? 'b' : 'span'); s.textContent = Array.isArray(p) ? p[0] : arT(p); m.append(s); }
   for (const [lab, h] of txs) if (h) { const a = document.createElement('a'); a.href = TX + h; a.target = '_blank'; a.rel = 'noopener'; a.textContent = lab + ' ↗'; m.append(a); }
   l.append(tt, g, m);
   // THE LOG IS THE VISIT (operator, 2026-09-28): an event the replay plays from the past is not written in — only what
@@ -7592,7 +7598,7 @@ window.__btBrSeason = brSeason;
   // by a signature and read from the chain by the server; the board never shows a wallet or an amount
   const BADGE = { holder: ['🧠', 'Holds 100,000+ $BOBAI (proven by a signature, read from the chain)'], pass: ['💎', 'Holds 1,000,000+ $BOBAI (proven by a signature, read from the chain)'] };
   const badgeOf = b => BADGE[b] ? '<em class="br-pp-bdg ' + b + '" title="' + BADGE[b][1] + '">' + BADGE[b][0] + '</em>' : '';
-  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span>' + esc(r.name) + badgeOf(r.badge) + '</span><b>' + sc7(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
+  const board = rows => rows && rows.length ? '<ol class="br-pp-top">' + rows.map(r => '<li' + (r.name === myName() ? ' class="me"' : '') + '><span translate="no">' + esc(r.name) + badgeOf(r.badge) + '</span><b>' + sc7(r.score) + '</b></li>').join('') + '</ol>' : '<p class="br-pp-none">Nobody yet. The first run takes the crown.</p>';
   // DAILY | OVERALL (operator 6.11.: "a board for every day until 30 Nov, I can look at them — tomorrow the one of 6 Nov —
   // always the top 10; daily and then overall"); the daily board pages through the season's days
   const FIRST = '2026-11-06', LASTD = '2026-11-30';
@@ -7639,7 +7645,7 @@ window.__btBrSeason = brSeason;
     const W = E.WEAPONS, n = v => Number(v).toLocaleString('en-US'), row = (img, h, t) => '<div class="br-gd-r">' + (img ? '<img alt="" src="' + pic(img) + '">' : '') + '<p><b>' + h + '</b>' + t + '</p></div>';
     const what = { burn: 'An explosion lands on the biggest crowd: everything in range pops at once (rugs are spared). Nothing on screen? Then your next tap explodes.', hammer: 'Your next 6 taps are huge: the hit area is 3 times bigger.', liq: 'Slow motion for 4 seconds: the creatures AND the clock run at half speed, so you win extra time (up to 12 extra seconds per round).', defi: 'A helper flies in and pops 6 creatures for you over 3 seconds. It always takes the one about to escape, never a rug.', giggle: 'Gold rush: triple points for 4 seconds.', creator: 'Every rug on screen blows up and pays ' + n(E.SLAY_PTS) + ' x your multiplier. For 5 seconds new rugs are golden and safe to tap.', trades: 'Cash bonus: your current streak x 2,500 points. It needs the most hits, so keep the streak high.' };
     return '<h4>🎯 THE GOAL</h4>'
-      + '<p>' + (E.RUN_MS / 1000) + ' seconds. The whole terminal is the field. Tap the brainrot creatures and score as much ROT as you can. Every day has its own difficulty, the same for everyone; every round brings its own creatures. The server replays every tap, so every score is real. Daily top 10; the overall #1 on 30 Nov wins the whole $BOBAI prize pool.</p>'
+      + '<p>' + (E.RUN_MS / 1000) + ' seconds. The whole terminal is the field. Tap the brainrot creatures and score as much ROT as you can. Every day is equally hard, the same for everyone; every round brings its own creatures. The server replays every tap, so every score is real. Daily top 10; the overall #1 on 30 Nov wins the whole $BOBAI prize pool.</p>'
       + '<h4>💯 POINTS PER POP</h4>'
       + '<p><b>worth x multiplier x aim x speed</b></p><ul>'
       + '<li><b>Worth:</b> small creatures 8, big ones 5. Golden ones count 5 times.</li>'

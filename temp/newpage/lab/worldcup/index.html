@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Worldcup '26 — Archive: results and payouts</title>
+  <meta name="description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
+  <meta name="keywords" content="FIFA World Cup 2026 prediction game, World Cup 2026 tipgame, crypto World Cup game, BNB Chain prediction game, free crypto prize pool, BOBAI Worldcup, Brain On BNB AI, on-chain football tipping, World Cup 2026 score prediction, crypto fantasy football">
+  <link rel="canonical" href="https://brainonbnb.com/worldcup/">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="apple-touch-icon" href="/logo.png?v=4">
+  <meta property="og:title" content="BOBAI Worldcup '26 — Archive: results and payouts">
+  <meta property="og:description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
+  <meta property="og:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Archive: results and payouts">
+  <meta name="twitter:description" content="Archive of BOBAI Worldcup '26, the free FIFA World Cup 2026 prediction game on BNB Chain (11 June – 19 July 2026): final standings, every prize-pool payout and the rules it ran by.">
+  <meta name="twitter:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
+  <meta name="robots" content="index, follow">
+  <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=20">
+  <style>
+    /* Landing-specific overrides on top of shared style.css */
+    main{flex:1;padding:48px 24px}
+    .stage{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(380px,1fr) minmax(0,680px) minmax(380px,1fr);gap:40px;align-items:start}
+    @media (max-width: 1024px){
+      .stage{grid-template-columns:minmax(0,1fr);gap:24px;max-width:680px} /* minmax(0,…): a bare 1fr kept the column at its content's min width, 343 px on a 360 px phone (2026-10-07) */
+    }
+    .illu{position:sticky;top:84px;display:flex;justify-content:center}
+    .illu-img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center;border-radius:var(--radius);filter:drop-shadow(0 12px 40px rgba(240,185,11,.18))}
+    @media (max-width: 1024px){
+      .illu{position:static;max-width:360px;margin:0 auto}
+    }
+
+    .hero{text-align:center}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    h1.hero-h1{font-family:'Space Grotesk';font-weight:700;font-size:clamp(36px,6vw,64px);line-height:1.05;letter-spacing:-.02em;margin-bottom:20px;text-align:center}
+    h1.hero-h1 .accent{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 60%,#fff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .hero-sub{font-size:clamp(15px,2vw,18px);color:var(--muted);line-height:1.6;max-width:560px;margin:0 auto 36px}
+
+    .cd-block{margin-bottom:32px}
+    .arch-links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+    .arch-links .btn{width:auto;padding:10px 16px;font-size:14px;text-decoration:none}
+    .arch-pay .sub{text-align:left}
+    .pool-at{font-size:12px;opacity:.7}
+    .arch-pay{text-align:left;margin-bottom:28px}
+    .arch-pay h2{font-family:'Space Grotesk';font-weight:700;font-size:18px;margin-bottom:6px;color:var(--text)}
+    .arch-pay h3{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin:18px 0 8px}
+    .arch-pay .sub a{color:var(--gold)}
+    .arch-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+    .arch-row .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .arch-row .amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .arch-row .amt small{display:block;opacity:.65;font-size:12px;white-space:normal}
+    .arch-row > *{min-width:0}
+    .arch-row .pl{color:var(--muted,#9aa)}
+    .arch-row.arch-none .amt{grid-column:1/-1;text-align:left;white-space:normal;margin-top:-4px}
+    .arch-row.arch-none .amt small{opacity:.55}
+    .arch-row a{color:var(--gold)}
+    .arch-sum{margin-top:10px;font-size:13px;opacity:.8}
+    .arch-login{margin:0 0 8px;text-align:left}
+    .arch-login > summary{cursor:pointer;color:var(--muted,#9aa);font-size:14px;padding:8px 0;text-align:center}
+    .arch-login[open] > summary{margin-bottom:12px}
+    @media (max-width:520px){ .arch-row{grid-template-columns:minmax(0,1fr) minmax(0,auto)} .arch-row .amt{max-width:62vw} .arch-row .pl{grid-column:1/-1;order:3;font-size:12px} .arch-row.arch-none .amt{order:4;max-width:none} }
+    .cd-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+
+    /* Live Prize Pool — dezent über Countdown */
+    .pool-block{margin:0 auto 28px;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 22px;background:var(--gold-glow);border:1px solid rgba(240,185,11,.22);border-radius:var(--radius);text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+    .pool-block:hover{border-color:rgba(240,185,11,.45);transform:translateY(-1px)}
+    .pool-title{font-family:'Space Grotesk';font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px}
+    .pool-title .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s infinite}
+    .pool-values{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;justify-content:center}
+    .pool-bobai{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--text);letter-spacing:-.01em}
+    .pool-bobai .unit{color:var(--gold);font-weight:600;font-size:14px;margin-left:4px}
+    .pool-usd{color:var(--muted);font-size:14px;font-weight:500}
+    .pool-block.loading .pool-bobai,.pool-block.loading .pool-usd{opacity:.35}
+    .pool-fund{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45;text-align:center;max-width:460px}
+    .pool-fund b{color:var(--gold);font-weight:600}
+    .countdown{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+    .cd-cell{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;min-width:88px}
+    .cd-num{font-family:'Space Grotesk';font-weight:700;font-size:32px;color:var(--gold);line-height:1}
+    .cd-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:6px}
+
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:40px;text-align:left}
+    .feat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+    .feat-icon{font-size:22px;margin-bottom:10px;display:block}
+    .feat-title{font-weight:600;font-size:14px;margin-bottom:4px}
+    .feat-text{font-size:12.5px;color:var(--muted);line-height:1.5}
+
+    /* Country picker (mirrored from /app/index.html) */
+    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;text-align:left}
+    .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
+    .country-cell:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.15)}
+    .country-cell.sel{background:var(--gold-glow);border-color:var(--gold)}
+    .country-cell .fl{font-size:22px;line-height:1}
+    .country-cell .nm{font-size:9.5px;color:var(--muted);text-align:center;line-height:1.2}
+    .country-cell.sel .nm{color:var(--gold)}
+
+    /* Form card spacing inside the hero column */
+    .auth-card{text-align:left;margin-top:0}
+    .auth-card h2{font-family:'Space Grotesk';font-weight:700;font-size:18px;letter-spacing:-.01em;margin-bottom:4px;text-align:center;color:var(--text)}
+    .auth-card .sub{margin-bottom:20px}
+
+    footer{padding:24px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+    footer a{color:var(--gold);text-decoration:none}
+    footer a:hover{text-decoration:underline}
+
+    /* Security briefing modal (shown after clicking "Create account") */
+    .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+    .modal-back.open{display:flex}
+    .modal{max-width:520px;width:100%;max-height:calc(100vh - 32px);background:var(--bg);border:1px solid var(--gold);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+    .modal-body{padding:22px 22px 12px;overflow-y:auto}
+    .modal h4{font-family:'Space Grotesk';font-size:15px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin:0 0 6px}
+    .modal .lead{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 16px}
+    .modal .sec-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);margin:14px 0 6px;display:flex;align-items:center;gap:6px}
+    .modal .sec-title:first-of-type{margin-top:0}
+    .modal ul.sec{list-style:none;padding:0;margin:0 0 4px;font-size:12.5px;color:var(--text);line-height:1.55}
+    .modal ul.sec li{position:relative;padding:5px 0 5px 16px}
+    .modal ul.sec li::before{content:'';position:absolute;left:2px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--gold);opacity:.6}
+    .modal ul.sec a{color:var(--gold);text-decoration:none}
+    .modal ul.sec a:hover{text-decoration:underline}
+    .modal .check-row{display:flex;align-items:flex-start;gap:9px;margin:14px 0 0;padding:12px;background:rgba(240,185,11,.06);border:1px solid rgba(240,185,11,.2);border-radius:8px;font-size:13px;color:var(--text);line-height:1.5;cursor:pointer}
+    .modal .check-row input{margin-top:2px;flex-shrink:0;accent-color:var(--gold);cursor:pointer;width:16px;height:16px}
+    .modal-actions{padding:14px 22px 18px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap}
+    .modal-actions .btn{flex:1;min-width:140px}
+  </style>
+</head>
+<body data-public="true">
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./app/dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./app/tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./app/bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./app/crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./app/leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./app/prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./app/rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="stage">
+        <aside class="illu" aria-hidden="true">
+          <img src="illus/left.webp" alt="" class="illu-img">
+        </aside>
+
+        <section class="hero">
+          <a class="pool-block loading" id="pool-block" href="./app/prize-pool.html" title="The prize pool, pot by pot, with the receipts">
+            <div class="pool-title"><span>🏆 Prize pool · paid out</span></div>
+            <div class="pool-values">
+              <div class="pool-bobai"><span id="pool-bobai">—</span><span class="unit">BOBAI</span></div>
+              <div class="pool-usd">·  ≈ <span id="pool-usd">$—</span> <span class="pool-at">at payout</span></div>
+            </div>
+            <div class="pool-fund" id="pool-fund">Donations + <b>0.52% of every BOBAI trade</b>, Jun 11 → Jul 19, 2026 · paid out Jun 28 (groups) and Jul 20 (final)</div>
+          </a>
+
+          <h1 class="hero-h1"><span class="accent">BOBAI</span><br><span class="accent">Worldcup '26</span></h1>
+          <p class="hero-sub">The on-chain tipping game of the World Cup 2026 ran from 11 June to 19 July 2026: every match tipped, a leaderboard, and a BOBAI prize pool paid out on BNB Chain. This is its archive — how it ended and every payout.</p>
+
+          <div class="cd-block arch">
+            <div class="cd-title">🏁 Ended 19 July 2026 · final standings</div>
+            <div class="countdown arch-stats" id="arch-stats">
+              <div class="cd-cell"><div class="cd-num" id="a-players">—</div><div class="cd-lbl">Players</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-tips">—</div><div class="cd-lbl">Match tips</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-payouts">—</div><div class="cd-lbl">Payouts</div></div>
+              <div class="cd-cell"><div class="cd-num" id="a-winners">—</div><div class="cd-lbl">Winners</div></div>
+            </div>
+            <div class="arch-links">
+              <a class="btn" href="./app/leaderboard.html">📊 Final leaderboard</a>
+              <a class="btn ghost" href="./app/prize-pool.html">💰 Prize pool &amp; receipts</a>
+              <a class="btn ghost" href="./app/rules.html">📖 Rules it ran by</a>
+            </div>
+          </div>
+
+          <section class="card arch-pay" id="arch-pay" aria-labelledby="arch-pay-h">
+            <h2 id="arch-pay-h">Every payout</h2>
+            <p class="sub">Sent from the public prize wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105#tokentxns" rel="noopener" target="_blank">0x5E41…D105</a>. End pool and crypto winners hold single public places, so their transactions are linked. The group pot was sent in shuffled order and is shown without per-row links, so a wallet cannot be matched to a group place (rules §9).</p>
+            <div id="arch-list" class="arch-list"><p class="sub">Reading the payouts…</p></div>
+          </section>
+
+          <details class="arch-login">
+            <summary>Players: sign in to see your own tips and points</summary>
+          <div class="card auth-card" id="auth">
+            <h2>Sign in</h2>
+            <p class="sub">The game is over; your tips, points and payout stay readable in your account.</p>
+
+            <div class="tabs">
+              <button class="tab active" data-tab="login">Sign in</button>
+              <button class="tab" data-tab="register" hidden>Register</button>
+            </div>
+
+            <div id="alert"></div>
+
+            <!-- LOGIN -->
+            <form id="form-login" class="tab-pane">
+              <div class="field">
+                <label>Username or Email</label>
+                <input type="text" name="identifier" autocomplete="username" required>
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <input type="password" name="password" autocomplete="current-password" required>
+              </div>
+              <button type="submit" class="btn">Sign in</button>
+              <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px;text-align:center">
+                <a href="#" id="link-forgot" style="color:var(--gold)">Forgot password?</a>
+              </p>
+            </form>
+
+            <!-- REGISTER -->
+            <form id="form-register" class="tab-pane hidden">
+              <div class="field">
+                <label>Username</label>
+                <input type="text" name="username" autocomplete="username" required>
+                <div class="hint">3–20 chars, letters/numbers/underscore. Shown on the leaderboard.</div>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <input type="email" name="email" autocomplete="email" required>
+                <div class="hint">Used only for password reset. Never shown publicly, never spammed.</div>
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <input type="password" name="password" autocomplete="new-password" minlength="6" required>
+                <div class="hint">Min 6 characters.</div>
+              </div>
+              <div class="field">
+                <label>Confirm password</label>
+                <input type="password" name="password_confirm" autocomplete="new-password" minlength="6" required>
+                <div class="hint">Re-enter the same password.</div>
+              </div>
+              <div class="field">
+                <label>Pick your country (avatar)</label>
+                <div id="country-grid" class="country-grid"></div>
+                <input type="hidden" name="country" id="country-input">
+                <div class="hint">You can change this later. Picker shows team flags; your <b>avatar</b> on the dashboard + leaderboard will be rendered as <b>BOBAI in that country's national jersey</b>.</div>
+              </div>
+              <button type="submit" class="btn">Create account</button>
+            </form>
+
+            <!-- FORGOT PASSWORD -->
+            <form id="form-forgot" class="tab-pane hidden">
+              <div class="field">
+                <label>Email</label>
+                <input type="email" name="email" autocomplete="email" required>
+                <div class="hint">We'll send you a reset link.</div>
+              </div>
+              <button type="submit" class="btn">Send reset link</button>
+              <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px;text-align:center">
+                <a href="#" id="link-back-login" style="color:var(--gold)">← Back to sign in</a>
+              </p>
+            </form>
+          </div>
+          </details>
+
+          <div class="features">
+            <div class="feat">
+              <span class="feat-icon">🏆</span>
+              <div class="feat-title">104 Matches</div>
+              <div class="feat-text">48 teams, 12 groups, the full knockout bracket — every game was tipped.</div>
+            </div>
+            <div class="feat">
+              <span class="feat-icon">💰</span>
+              <div class="feat-title">On-Chain Pool</div>
+              <div class="feat-text">0.52% of every BOBAI trade flowed into a public prize wallet from Jun 11 to Jul 19.</div>
+            </div>
+            <div class="feat">
+              <span class="feat-icon">🔍</span>
+              <div class="feat-title">Fully Transparent</div>
+              <div class="feat-text">Leaderboard and payouts stay public — every transfer is on BSC.</div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="illu" aria-hidden="true">
+          <img src="illus/right.webp?v=2" alt="" class="illu-img">
+        </aside>
+      </div>
+    </main>
+
+    <footer>
+      A <a href="/">Brain On BNB AI</a> (BOBAI) feature · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> · 11 June – 19 July 2026 · archive
+    </footer>
+  </div>
+
+  <!-- Security briefing modal — shown after the user clicks "Create account" -->
+  <div id="register-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="reg-modal-title">
+    <div class="modal">
+      <div class="modal-body">
+        <h4 id="reg-modal-title">Before we create your account</h4>
+        <p class="lead">BOBAI Worldcup '26 is a community game. Please read this once — it protects you and keeps the game fair for everyone.</p>
+
+        <div class="sec-title"><span>🔐</span><span>Security</span></div>
+        <ul class="sec">
+          <li>BOBAI will <b>never</b> DM you anywhere. Trust only the official BOBAI channels and messages from your own CEX/DEX.</li>
+          <li><b>Never</b> connect your wallet, scan a QR code, or share your seed phrase / private key in connection with BOBAI — no matter what's promised (airdrops, prizes, support…).</li>
+        </ul>
+
+        <div class="sec-title"><span>⚽</span><span>About this game</span></div>
+        <ul class="sec">
+          <li>Not affiliated with FIFA, Binance, or any tournament organizer.</li>
+          <li>Playing is <b>always free</b>.</li>
+          <li>Cheating or manipulation = <b>ban without warning</b>.</li>
+          <li>We build with care, but bugs can happen — nothing is 100% guaranteed (we aim for 99.9%).</li>
+          <li>Prize-pool payouts are capped at <b>26× your BOBAI balance</b>. Full details in the <a href="./app/rules.html" target="_blank" rel="noopener">Rules</a>.</li>
+        </ul>
+
+        <label class="check-row">
+          <input type="checkbox" id="reg-ack">
+          <span>I've read and understood the above.</span>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="reg-cancel">Cancel</button>
+        <button type="button" class="btn" id="reg-go" disabled>Create my account</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/worldcup/app/assets/config.js?v=11"></script>
+  <script src="/worldcup/app/assets/countries.js?v=11"></script>
+  <script src="/worldcup/app/assets/auth.js?v=13"></script>
+  <script src="/worldcup/app/assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="/worldcup/app/assets/twemojify.js?v=1"></script>
+  <script>
+    /* On the landing page itself, "Sign in · Register" should scroll to the auth
+       form below instead of reloading. nav.js writes those links after fetching
+       auth state, so we re-target them once they exist. */
+    (function retargetAuthLinks(){
+      const tryFix = () => {
+        const userEl = document.querySelector('.user');
+        if (!userEl) return false;
+        const links = userEl.querySelectorAll('a[href="/worldcup/"]');
+        if (!links.length) return false;
+        links.forEach(a => { a.setAttribute('href', '#auth'); a.addEventListener('click', () => { const d = document.querySelector('details.arch-login'); if (d) d.open = true; }); });
+        return true;
+      };
+      if (tryFix()) return;
+      // nav.js runs an async profile-fetch; poll briefly until it has rewritten the slot.
+      let tries = 0;
+      const t = setInterval(() => {
+        if (tryFix() || ++tries > 40) clearInterval(t);
+      }, 100);
+    })();
+  </script>
+  <script>
+    /* THE ARCHIVE (2026-10-07): the game ended on 19 Jul 2026. The figures are what was sent (wc_payouts, the
+       receipts the payout tool wrote) and the dollars they were worth when they were sent (usd_at_payout) — no
+       live price feed. Group-pot rows carry no transaction link (shuffled order, rules §9: a link would tie a
+       wallet to a group place); end-pool and crypto winners hold single public places and are linked. */
+    function $(id){ return document.getElementById(id); }
+    function fmtBobai(n){
+      if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+      if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+      if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+      return Math.round(n).toLocaleString('en-US');
+    }
+    function fmtUsd(n){
+      if (n >= 1000) return '$'+Math.round(n).toLocaleString('en-US');
+      return '$'+n.toFixed(2);
+    }
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    const flag = (cc) => { cc = String(cc || '').toUpperCase(); return /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((c) => 0x1F1A5 + c.charCodeAt(0))) + ' ' : ''; };
+    const PLACE = { end_1: '1st overall', end_2: '2nd overall', end_3: '3rd overall', end_4: '4th overall' };
+    function placeOf(r){
+      if (r.pot === 'end') return PLACE[r.position] || r.position;
+      if (r.pot === 'crypto') return 'Closest ' + String(r.position || '').replace(/^crypto_/, '').toUpperCase() + ' price';
+      const g = r.group_letter ? 'Group ' + r.group_letter + ' · ' : '';
+      const p = String(r.position || '');
+      return g + (/1/.test(p) ? 'winner' : /2/.test(p) ? 'runner-up' : /3/.test(p) ? 'best 3rd' : p);
+    }
+    function row(r, link){
+      const amt = Number(r.bobai_amount) || 0, usd = Number(r.usd_at_payout) || 0;
+      const paid = amt > 0 && r.tx_hash;
+      const right = amt > 0
+        ? fmtBobai(amt) + ' BOBAI' + (usd > 0 ? '<small>≈ ' + fmtUsd(usd) + ' at payout</small>' : '') + (link && paid ? '<small><a href="https://bscscan.com/tx/' + esc(r.tx_hash) + '" target="_blank" rel="noopener">transaction ↗</a></small>' : paid ? '<small>✓ paid</small>' : '')
+        : '<small>26× cap not reached — its share went to the others</small>';
+      // an unpaid place (cap not reached) puts its note on a line of its own (2026-10-12: as a third column it squeezed the
+      // place to one word a line and the name to a sliver of its flag)
+      return '<div class="arch-row' + (amt > 0 ? '' : ' arch-none') + '"><div class="who">' + flag(r.country_code) + esc(r.username || '—') + '</div><div class="pl">' + esc(placeOf(r)) + '</div><div class="amt">' + right + '</div></div>';
+    }
+    async function rest(path, extra){
+      const cfg = window.WC_CONFIG;
+      return fetch(cfg.SUPABASE_URL + '/rest/v1/' + path, { headers: Object.assign({ apikey: cfg.SUPABASE_ANON_KEY, Accept: 'application/json' }, extra || {}) });
+    }
+    async function loadArchive(){
+      try {
+        const res = await rest('wc_payouts?select=pot,group_letter,position,username,country_code,bobai_amount,usd_at_payout,tx_hash,paid_at&order=pot.asc,group_letter.asc,position.asc');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = await res.json();
+        const sent = rows.filter((r) => Number(r.bobai_amount) > 0 && r.tx_hash);
+        const total = sent.reduce((a, r) => a + Number(r.bobai_amount), 0), usd = sent.reduce((a, r) => a + (Number(r.usd_at_payout) || 0), 0);
+        $('pool-bobai').textContent = fmtBobai(total);
+        $('pool-usd').textContent = usd > 0 ? fmtUsd(usd) : 'n/a';
+        $('pool-block').classList.remove('loading');
+        $('a-payouts').textContent = sent.length;
+        $('a-winners').textContent = new Set(sent.map((r) => r.username)).size;
+        const by = (p) => rows.filter((r) => r.pot === p);
+        const end = by('end').sort((a, b) => String(a.position).localeCompare(String(b.position)));
+        const crypto = by('crypto'), group = rows.filter((r) => r.pot !== 'end' && r.pot !== 'crypto');
+        const sum = (list) => { const s = list.filter((r) => Number(r.bobai_amount) > 0 && r.tx_hash); return s.length ? '<div class="arch-sum">' + s.length + ' payouts · ' + fmtBobai(s.reduce((a, r) => a + Number(r.bobai_amount), 0)) + ' BOBAI</div>' : ''; };
+        let html = '';
+        if (end.length) html += '<h3>End pool · top 4 overall · paid 20 Jul 2026</h3>' + end.map((r) => row(r, true)).join('') + sum(end);
+        if (crypto.length) html += '<h3>Crypto pots · closest price at the Final kickoff</h3>' + crypto.map((r) => row(r, true)).join('') + sum(crypto);
+        if (group.length) html += '<h3>Group pot · paid 28 Jun 2026, in shuffled order</h3>' + group.map((r) => row(r, false)).join('') + sum(group);
+        $('arch-list').innerHTML = html || '<p class="sub">No payout on record.</p>';
+        if (window.twemoji) twemoji.parse($('arch-list'));
+      } catch (e) {
+        $('arch-list').innerHTML = '<p class="sub">The payouts could not be read right now — the full record is on the <a href="./app/prize-pool.html">prize-pool page</a>.</p>';
+      }
+      try {
+        const r = await rest('wc_users?select=id', { Prefer: 'count=exact', Range: '0-0' });
+        const m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
+        if (m) $('a-players').textContent = m[1];
+        const t = await rest('wc_tips?select=id', { Prefer: 'count=exact', Range: '0-0' });
+        const n = /\/(\d+)$/.exec(t.headers.get('content-range') || '');
+        if (n) $('a-tips').textContent = Number(n[1]).toLocaleString('en-US');
+      } catch (_) { /* the cells keep their dash */ }
+    }
+    loadArchive();
+    /* the sign-in card sits folded in the archive: a link to #auth opens it */
+    if (location.hash === '#auth') { const d = document.querySelector('details.arch-login'); if (d) d.open = true; }
+
+    /* Auth form (mirrors /worldcup/app/index.html) */
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+    const qs = (s,r=document)=>r.querySelector(s);
+
+    function showAlert(type, msg){
+      const el = qs('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    /* Render country grid */
+    (function renderCountries(){
+      const grid = qs('#country-grid');
+      const cInput = qs('#country-input');
+      if (!grid || !window.WC_COUNTRIES) return;
+      window.WC_COUNTRIES.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'country-cell';
+        b.dataset.code = c.code;
+        b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+        b.addEventListener('click', ()=>{
+          $$('.country-cell').forEach(x=>x.classList.remove('sel'));
+          b.classList.add('sel');
+          cInput.value = c.code;
+        });
+        grid.appendChild(b);
+      });
+    })();
+
+    /* Tab switching */
+    function showPane(which){
+      $$('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===which));
+      qs('#form-login').classList.toggle('hidden', which!=='login');
+      qs('#form-register').classList.toggle('hidden', which!=='register');
+      qs('#form-forgot').classList.toggle('hidden', which!=='forgot');
+      showAlert();
+    }
+    $$('.tab').forEach(t=>t.addEventListener('click',()=>showPane(t.dataset.tab)));
+    qs('#link-forgot').addEventListener('click', (e)=>{ e.preventDefault(); showPane('forgot'); });
+    qs('#link-back-login').addEventListener('click', (e)=>{ e.preventDefault(); showPane('login'); });
+
+    /* Login */
+    qs('#form-login').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      const r = await window.WC_AUTH.login({
+        identifier: fd.get('identifier'),
+        password: fd.get('password'),
+      });
+      btn.disabled = false; btn.textContent = 'Sign in';
+      if (r.error) { showAlert('error', r.error); return; }
+      window.location.href = './app/dashboard.html';
+    });
+
+    /* Register — open the security-briefing modal first, then actually register */
+    const regModal = qs('#register-modal');
+    const regAck = qs('#reg-ack');
+    const regGo = qs('#reg-go');
+    const regCancel = qs('#reg-cancel');
+    let pendingRegister = null; // { username, email, password, passwordConfirm, country }
+
+    function openRegModal(){
+      regAck.checked = false;
+      regGo.disabled = true;
+      regGo.textContent = 'Create my account';
+      regModal.classList.add('open');
+      regModal.querySelector('.modal-body').scrollTop = 0;
+    }
+    function closeRegModal(){
+      regModal.classList.remove('open');
+    }
+
+    regAck.addEventListener('change', ()=>{ regGo.disabled = !regAck.checked; });
+    regCancel.addEventListener('click', ()=>{ closeRegModal(); pendingRegister = null; });
+    regModal.addEventListener('click', (e)=>{ if (e.target === regModal) { closeRegModal(); pendingRegister = null; } });
+
+    qs('#form-register').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      if (!fd.get('country')) {
+        showAlert('error', 'Please pick your country flag below.');
+        document.getElementById('country-grid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
+      pendingRegister = {
+        username: fd.get('username'),
+        email: fd.get('email'),
+        password: fd.get('password'),
+        passwordConfirm: fd.get('password_confirm'),
+        country: fd.get('country'),
+      };
+      openRegModal();
+    });
+
+    regGo.addEventListener('click', async ()=>{
+      if (!regAck.checked || !pendingRegister) return;
+      regGo.disabled = true; regGo.textContent = 'Creating…';
+      const r = await window.WC_AUTH.register(pendingRegister);
+      regGo.disabled = false; regGo.textContent = 'Create my account';
+      if (r.error) {
+        closeRegModal();
+        showAlert('error', r.error);
+        return;
+      }
+      const email = pendingRegister.email;
+      pendingRegister = null;
+      closeRegModal();
+      if (r.needsConfirmation) {
+        const safeEmail = email.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.<br><br>⚠ <b>Don't see it?</b> Check your <b>spam / junk</b> folder — confirmation mails sometimes land there.`);
+        requestAnimationFrame(() => {
+          const alertEl = document.getElementById('alert');
+          if (!alertEl) return;
+          // Measure entire <nav> (includes .nav 58px + .tabbar 37px on landing page)
+          const navEl = document.querySelector('nav');
+          const navH = navEl ? navEl.offsetHeight : 58;
+          const top = alertEl.getBoundingClientRect().top + window.pageYOffset - navH - 16;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        });
+        return;
+      }
+      showAlert('ok', 'Account created — redirecting…');
+      setTimeout(()=>{ window.location.href = './app/dashboard.html'; }, 700);
+    });
+
+    /* Forgot password */
+    qs('#form-forgot').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const r = await window.WC_AUTH.resetPasswordRequest(fd.get('email'));
+      btn.disabled = false; btn.textContent = 'Send reset link';
+      if (r.error) { showAlert('error', r.error); return; }
+      showAlert('ok', 'If an account exists for that email, a reset link has been sent. Check your inbox.');
+    });
+
+    /* If already logged in, jump straight to the app dashboard */
+    (async ()=>{
+      const p = await window.WC_AUTH.currentProfile();
+      if (p) window.location.href = './app/dashboard.html';
+    })();
+  </script>
+</body>
+</html>

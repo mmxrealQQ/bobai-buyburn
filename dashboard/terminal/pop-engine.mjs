@@ -41,8 +41,17 @@ const R = (r, a, b) => Math.round(a + r() * (b - a));
 // the same for every round that day. The ROUND's die (q, a seed the server draws at the start) sets where each one shows,
 // which way it flies, its wobble and its look. So no round looks like another, nothing can be learnt by heart, and luck
 // never makes one round easier than another.
+// EVERY DAY EQUALLY HARD (operator, 2026-11-08: "every day the same maximum must be reachable, or the overall board is not
+// fair"; "max points, max combos, the helpers popping — the most fun, but every day equally fair"): measured, the day's
+// die made days up to 30% apart (81-105 creatures, 2-12 golden, 7-27 rugs). From 9 Nov every day takes ONE fixed die,
+// chosen from 1,000 for the most play with the rugs kept (7): 107 creatures, 13 golden, base points 1,072 (day 2: 974),
+// the longest gap between two creatures 0.83 s (day 2: 0.99 s), so streaks, SUPER/MEGA/GOD and the helpers come more
+// often. Days 1-3 keep their own die, so every run already on record replays exactly as it was scored. Where the
+// creatures show still changes every round (q).
+export const SAME_DAY_FROM = '2026-11-09', SAME_DAY_AS = '2026-06-04';
+export const difficultyDay = (day) => (day >= SAME_DAY_FROM ? SAME_DAY_AS : day);
 export function plan(day, seed = 0) {
-  const r = rng('brainpop2:' + day), q = rng('brainpop2:' + day + ':' + (seed >>> 0)), out = [];
+  const r = rng('brainpop2:' + difficultyDay(day)), q = rng('brainpop2:' + day + ':' + (seed >>> 0)), out = [];
   for (let t = 900; t < 57500;) {
     const k = t / 57500, rug = t > 7000 && r() < 0.13, gold = !rug && r() < 1 / 14, pick = r(), n = SPRITES[Math.floor(q() * SPRITES.length)];
     const rad = R(r, 64 - 18 * k, 78 - 14 * k), s = { n: rug ? 'rug' : n, rug, gold, at: Math.round(t), r: rad, pts: rad < 56 ? 8 : 5 };

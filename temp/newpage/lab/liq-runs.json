@@ -1,0 +1,294 @@
+{
+  "_note": "Chain-verified split of the LP sitting at the dead address, from a full eth_getLogs scan of every Transfer into it (blocks 88990359 - 115088761, scanned 2026-08-10). Exactly three senders exist and they sum to the on-chain balance to the decimal. The launch mint is a single past event and can never change, so the page treats it as the fixed value and derives the dev total as the remainder — that way it stays correct after every future run without redeploying.",
+  "verifiedAtBlock": 115088761,
+  "launch": {
+    "lp": 59396.96961656815,
+    "from": "0x0000000000000000000000000000000000000000",
+    "block": 88990359,
+    "note": "LP minted straight into the dead address when the pool was created"
+  },
+  "dev": {
+    "wallet": "0x15Ba17075ef5E0736292b030e3715d9100fe3d38",
+    "burns": 126,
+    "lp": 15461.53
+  },
+  "bot": {
+    "wallet": "0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce",
+    "burns": 57,
+    "lp": 1069.42
+  },
+  "runs": [
+    {
+      "time": "2026-08-12T05:08:51.208Z",
+      "lp": "156.520245357555023935",
+      "bobai": "526077.438334195994444197",
+      "bnb": "0.054585522121827616",
+      "addLiqTx": "0x3013de79b5c6d4f9ca36ce7d9f76431cf63a9552961f6fdae6bdcf0477f06ee9",
+      "lpBurnTx": "0x533af78f5091d13c8c005550a642b4301fb51a64a3257d19188b0ac3808df57c"
+    },
+    {
+      "time": "2026-08-14T07:12:28.134Z",
+      "lp": "191.988613916752844433",
+      "bobai": "645687.853202738209564886",
+      "bnb": "0.067028998653364727",
+      "addLiqTx": "0x1f74acc401fffeb2682ffd61dac3e76f9b7964fc89aa1b8133c45d07ab00b005",
+      "lpBurnTx": "0xa5339871f893680315cc0ef3296f430a8a17438be8d9289e38d98f719d3e3728"
+    },
+    {
+      "time": "2026-08-15T04:49:05.051Z",
+      "lp": "227.933640240490733327",
+      "bobai": "763992.7476711",
+      "bnb": "0.079665991072054433",
+      "addLiqTx": "0x4ba6d39290857debf86373ad95d0604fd3481f1601a03085978cdf1b71ff01f5",
+      "lpBurnTx": "0x093a045ba5ecfa6de4050de6900c7e6c8d67c7dae83f81321aede93327c53254"
+    },
+    {
+      "time": "2026-08-17T03:56:42.650Z",
+      "lp": "61.815140279209309726",
+      "bobai": "205713.194678085809795464",
+      "bnb": "0.02293958091107474",
+      "addLiqTx": "0xe5c799924278fc893fbf2c55291bad5b60952a7f9409ccd1f50f3521e0c6a95a",
+      "lpBurnTx": "0xeb1d0e649f547c813ac0c62fc5f5e1bad5fed4dd03dad8ed1c61b28279295573"
+    },
+    {
+      "time": "2026-08-20T04:45:49.839Z",
+      "lp": "84.207937785486265774",
+      "bobai": "274892.923776905",
+      "bnb": "0.031102539595270286",
+      "addLiqTx": "0x4fc3f14c8d5c44e7dcb991261ea962a68f4e0e22d13548c4a68c2b523c98ae3c",
+      "lpBurnTx": "0xb421164bd1a3ccae6eeff5d74211cc198340a48e3eb44fed42829aa9ab0a6d0a"
+    },
+    {
+      "time": "2026-08-23T11:10:01.172Z",
+      "lp": "783.201830455147372607",
+      "bobai": "2524707.916527715",
+      "bnb": "0.287799569778809731",
+      "addLiqTx": "0xed0b67f314bc27ba981b9237382b53938d2113d8ab8f9c00bc45dd4a5742fdf4",
+      "lpBurnTx": "0x47f807ada00420c2e5b8c24bc36fa1c64ff7815c7c7f58340b260d54b574be01"
+    },
+    {
+      "time": "2026-08-27T03:49:49.186Z",
+      "lp": "101.987459712852748029",
+      "bobai": "308695.030907849296486006",
+      "bnb": "0.040064131622777276",
+      "addLiqTx": "0x703068b42d5e011f40d38f1dec9b8e917e184691c28b1211410a5f78ce08dd4c",
+      "lpBurnTx": "0xff4bd63e0bb005a1cd7fbbbf6aacad9a5f0b9a2a293a354c95639c1c6e9e1543"
+    },
+    {
+      "time": "2026-08-30T04:13:48.179Z",
+      "lp": "411.787911031872956845",
+      "bobai": "1198243.898354935",
+      "bnb": "0.168439351572907234",
+      "addLiqTx": "0xc31ec0644d7ad2b123bf98aba2dd67bd9f6315b28db5694856e7310f6ea6fa13",
+      "lpBurnTx": "0x984171a63bd4b8edada9de76af34272336d5bc250d88adc4d64dfb5cc2d1b422"
+    },
+    {
+      "time": "2026-09-02T08:15:19.768Z",
+      "lp": "140.519972224163710608",
+      "bobai": "387337.967481759596110857",
+      "bnb": "0.059673393186725685",
+      "addLiqTx": "0xe5b0cf61885bdd6249be18423b5d834c11e9b99dbcdb063c352bf462214c0713",
+      "lpBurnTx": "0x61ea743185c63bbe9ae718aef4ec14413332d8b312010577757421de2703538f"
+    },
+    {
+      "time": "2026-09-05T05:58:47.146Z",
+      "lp": "543.005543527647942239",
+      "bobai": "1505675.38764002419277428",
+      "bnb": "0.232734683580717464",
+      "addLiqTx": "0xf148ba72a76f3deeb94441279a5b00c1f8317c8a8bb2098e65cc31123938a96c",
+      "lpBurnTx": "0x8d577ed27e3d0de0f135539bffbbcdcbfc7c7570e6d1fd0dbe4d1acdc1598e03"
+    },
+    {
+      "time": "2026-09-06T03:35:37.381Z",
+      "lp": "159.002734319236198721",
+      "bobai": "435740.910476483693411857",
+      "bnb": "0.067847637356759035",
+      "addLiqTx": "0xdc7e2aa6ab5776e19679bfe65a22d95e92a231fb8d0fbc661efb7283f9cd1070",
+      "lpBurnTx": "0x113b67b3d0d6efa9b081cf65183f8504e460991775f442baace82e221af4d18f"
+    },
+    {
+      "time": "2026-09-07T12:28:00.405Z",
+      "lp": "108.305465279753902961",
+      "bobai": "277138.723693162515945014",
+      "bnb": "0.049889990694516303",
+      "addLiqTx": "0x22f6d8ccadd7189ce9a2c54d7bdfe020430dd069f5483473da96ca4de7f755bc",
+      "lpBurnTx": "0x8bdbff925105a35884f2dbbcc3736621701aa17a61f1657477e7b3a46a4deb49"
+    },
+    {
+      "time": "2026-09-08T17:28:02.398Z",
+      "lp": "145.142230035305607596",
+      "bobai": "353777.071957450607479061",
+      "bnb": "0.069765661424243672",
+      "addLiqTx": "0x8d51a0ab3e1f6857c3fd96f207b5e0926fb99e336e8b257b1757ff3fe8f166df",
+      "lpBurnTx": "0x64def6b3f29d0501f6505106914018bb59e6a11ec66fa2bd2ae9061ea45f8887"
+    },
+    {
+      "time": "2026-09-11T03:09:10.705Z",
+      "lp": "92.324940134158518043",
+      "bobai": "230592.726896767131231781",
+      "bnb": "0.043832054311591546",
+      "addLiqTx": "0xf052c5c44f46250f86dea7159a8d21f80c66530af012a42214a5fe6c16c69b26",
+      "lpBurnTx": "0x2b069d6abbae5c84c167215fd77e74670724489e3ee73f94569ef5025f5ea869"
+    },
+    {
+      "time": "2026-09-13T05:22:16.202Z",
+      "lp": "121.051728250620290493",
+      "bobai": "294652.509920113730324586",
+      "bnb": "0.058326126625545951",
+      "addLiqTx": "0xde375531951a39782f7db689c6d9acca1a8033ca2f924b202adbcdddfe339c98",
+      "lpBurnTx": "0xe77a8b0e2396051990cb3d7774473f2cd9020816f45d90461342b21877217ab9"
+    },
+    {
+      "time": "2026-09-18T04:02:17.082Z",
+      "lp": "127.569334902194308976",
+      "bobai": "301067.192429168286701769",
+      "bnb": "0.063249515722397542",
+      "addLiqTx": "0x3e158177078f05539012aa4fd13f6cf448bdbd15053320ef3c56205b9fe4d295",
+      "lpBurnTx": "0xad7ec3f33adcf64be6c78439a2bc061f3d206c29b9fb5d30a758188b982006ed"
+    },
+    {
+      "time": "2026-09-21T05:04:49.863Z",
+      "lp": "178.721535867611846644",
+      "bobai": "402037.193029774306697835",
+      "bnb": "0.093869669757157321",
+      "addLiqTx": "0xff395c70fa3851f4fe65087260e6829f20602fd9b66dfdac9dbbbbf54b4d093c",
+      "lpBurnTx": "0x3f96f9cd132cc42ce628800136c9619eda34595a068c32c2ecec3c715ffe34b9"
+    },
+    {
+      "time": "2026-09-24T04:22:50.621Z",
+      "lp": "65.470860609557271696",
+      "bobai": "144275.356111052881985567",
+      "bnb": "0.055567626599977154",
+      "addLiqTx": "0x8d8378cf46b6ec18f19578bb164816ede7002e89f54d16b37f59ffec589541b4",
+      "lpBurnTx": "0xcd2082e5fdfb12eabc87fda2228a12f3b0cc638eb35374ff95e119e7a52cab9a"
+    },
+    {
+      "time": "2026-09-27T04:30:22.705Z",
+      "lp": "91.650938829274092124",
+      "bobai": "189447.445474105813048722",
+      "bnb": "0.052254606140205116",
+      "addLiqTx": "0xcfa93c73bf60c5723900b577e018711e2c6220411cabe6dfe3645103af68ed49",
+      "lpBurnTx": "0x3e73fe331a82c86260f3a11a6480cc3316684b358862f7ff631452ea21e0e3e4"
+    },
+    {
+      "time": "2026-09-29T03:51:47.586Z",
+      "lp": "102.308525846413422467",
+      "bobai": "197424.287918301736522587",
+      "bnb": "0.062116256758598009",
+      "addLiqTx": "0x2503100d6e8013b71bf7533619b519a98484428976506910816f7e3aea053fa2",
+      "lpBurnTx": "0xdd074a964304a3b0933a83150e2f6b255cd006ccc6c268c90134093e946fb3ea"
+    },
+    {
+      "time": "2026-10-02T04:27:46.781Z",
+      "lp": "85.196107203888900492",
+      "bobai": "132818.257260344319856345",
+      "bnb": "0.064120764052613948",
+      "addLiqTx": "0x1215c86e5d6927ecd2b1209c3964b69fee7f39063e145dfa187bf760648eecf9",
+      "lpBurnTx": "0x4148b2c3508e03d62514766b9a1ccd1f66c78bbb6095da9bd81f53dbb3977874"
+    },
+    {
+      "time": "2026-10-04T06:12:22.778Z",
+      "lp": "77.423891173169067874",
+      "bobai": "122227.378716162772226673",
+      "bnb": "0.057680829292448011",
+      "addLiqTx": "0x5ee16e29ec2108ea31a0992e6d47b2f08ca28bd69fa05832caaf908f8d9cfedf",
+      "lpBurnTx": "0x342deba8ba550eebf63e5cfd8740058709fb81e40b2714fc7778dc191c4a38f6"
+    },
+    {
+      "time": "2026-10-05T03:11:41.238Z",
+      "lp": "21.234809334333836857",
+      "bobai": "33009.569974712325695503",
+      "bnb": "0.017480455854899601",
+      "addLiqTx": "0x5f4f81b392d40fece9583aa8e70353110bf9699cc94589113df17ec8c4489291",
+      "lpBurnTx": "0xd0f19c307bff2f0a19da78a0f5eb7585ea6af35c086a91400f864a6d9fdd6681"
+    },
+    {
+      "time": "2026-10-07T03:12:48.000Z",
+      "lp": "84.943319669376117934",
+      "bobai": "171762.103316414776677542",
+      "bnb": "0.049756420846198067",
+      "addLiqTx": "0x8e5fda39a792288ac409af37523469ed1d126db2a7966915c97e970cac3370d8",
+      "lpBurnTx": "0xc5cbeb53e7e1c09050d7090492c249fcf89c8aacc12e8b8b88c04829195bc153"
+    },
+    {
+      "time": "2026-10-08T04:52:56.845Z",
+      "lp": "31.745685568518683164",
+      "bobai": "64092.952632985",
+      "bnb": "0.019847408187752038",
+      "addLiqTx": "0x1616d8b62008446ff2d900cdbb7eead4687fe86efc7c93090c969f51f8a97c2a",
+      "lpBurnTx": "0xa0605e77583e154ed90cdf297b5b1f5d904dff1d34d0c958e9b31e19b0d5bf08"
+    },
+    {
+      "time": "2026-10-21T07:50:07.893Z",
+      "lp": "57.074664874679028415",
+      "bobai": "98105.670567457679495854",
+      "bnb": "0.03976904692912288",
+      "addLiqTx": "0x075699068928e4598f155c79776d3c906bb8e1474036c19f50167e8a8e4acd07",
+      "lpBurnTx": "0x8b8f18d9a89a0cf2deef12e798770fbec482d69c4ac85d1e2c58d53c12788c3d"
+    },
+    {
+      "time": "2026-10-23T14:21:50.890Z",
+      "lp": "136.961751654423492066",
+      "bobai": "237614.610631524547600001",
+      "bnb": "0.093761942243358522",
+      "addLiqTx": "0x50ecd22e5509fb64d965b7ae20589499333f2d7334f1aad3554347aab6cb41ff",
+      "lpBurnTx": "0xdbb01d354405c6bdc91b47af9a2581bd728df71a8fa3c5007814b275f4fe5767"
+    },
+    {
+      "time": "2026-10-24T02:06:13.876Z",
+      "lp": "45.18244265623273661",
+      "bobai": "75221.20832751398558976",
+      "bnb": "0.032998690938199811",
+      "addLiqTx": "0xea35759b36ab35a5e158fbcf497b38ec770b614577c79e27c7b587cacaba6296",
+      "lpBurnTx": "0x2185fe37f68aa335f60fc235099d155506fdc1545e6fa4c0229f060462e385fc"
+    },
+    {
+      "time": "2026-10-24T14:07:02.198Z",
+      "lp": "0.774011664170486224",
+      "bobai": "1230.225183258787792085",
+      "bnb": "0.002525737444215055",
+      "addLiqTx": "0x09381bca6eb632bd68758847b2498ac1fd558a189089610769cc3d1e1c6b5f74",
+      "lpBurnTx": "0x044bfecc832b85b4e728a0951ae71ec251538439570eb83dab5601066c7efcc8"
+    },
+    {
+      "time": "2026-10-25T03:48:54.722Z",
+      "lp": "87.545386146315982941",
+      "bobai": "132719.939403032347717978",
+      "bnb": "0.079173307975627001",
+      "addLiqTx": "0x7506b86bcfeb1deb17e355a469dd52b5a7f324d67fe46d9bb25a753ae47e1064",
+      "lpBurnTx": "0x16fdff4dc7d159ccf072e55a1d7ea4efd1848c213e337ae530a2dd30f05cda09"
+    },
+    {
+      "time": "2026-10-29T03:05:46.812Z",
+      "lp": "61.327542567447989494",
+      "bobai": "104445.076146747232469097",
+      "bnb": "0.043796864537724481",
+      "addLiqTx": "0xc5d0640295bb2cae073668c3a82e705a7133c10925776064f71194fca4ce8983",
+      "lpBurnTx": "0x704f4cdbb14df3862543090b846e7b1c2f8e1c14a86e149b40ffd3c108487e26"
+    },
+    {
+      "time": "2026-11-01T09:27:32.776Z",
+      "lp": "39.48858694610534078",
+      "bobai": "81035.970743159055517616",
+      "bnb": "0.02267762491176361",
+      "addLiqTx": "0x1d73caeaa9c0d642ebfbd4ce3adc026b8ad29479725b629768f4cdcd5a358404",
+      "lpBurnTx": "0x1deb36e2a23c826cdcf616a1d8eb1d35084751055791753e8d7eb360b188ddde"
+    },
+    {
+      "time": "2026-11-01T09:43:13.174Z",
+      "lp": "0.677979247507489089",
+      "bobai": "1361.908605879108174487",
+      "bnb": "0.00039777658207178",
+      "addLiqTx": "0xb7b093c2476e7fca77cf39fc2f1dc1b6a30dc22d9ecf3042dc302cc22810bc36",
+      "lpBurnTx": "0x269f0c5c6a1327743da4e4a1e6dcc81a961510f974762368c1f582f0661bf2e4"
+    },
+    {
+      "time": "2026-11-01T10:03:47.527Z",
+      "lp": "131.260518769810069267",
+      "bobai": "259791.7477178548",
+      "bnb": "0.078164713103456469",
+      "addLiqTx": "0x37670835bbc12da669d1282d9ba37994ccaa0d208c325d31d89b71cac8a301d1",
+      "lpBurnTx": "0x743dc726ab11b9b159e9d0b6fff48cdd12c9e61c32c2886911f13e7cedc6ea82"
+    }
+  ]
+}

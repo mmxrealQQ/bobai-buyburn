@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Worldcup '26 — Illustrator Checklist</title>
+  <meta property="og:title" content="BOBAI Worldcup '26 — Illustrator Checklist">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/for-designer">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Illustrator Checklist">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .container.wide{max-width:980px}
+    h2{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--gold);margin:32px 0 12px;letter-spacing:-.01em}
+    h2:first-of-type{margin-top:0}
+    p, li{color:var(--muted);font-size:13.5px;line-height:1.65}
+    code{background:rgba(0,0,0,.5);padding:1px 6px;border-radius:4px;font-size:12px;color:#ffb1de;font-family:'Space Grotesk','Courier New',monospace}
+
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+    .stat-card{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .stat-card .lbl{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
+    .stat-card .val{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);line-height:1.1}
+    .stat-card.ok .val{color:var(--green)}
+    .stat-card.warn .val{color:#ffc066}
+
+    .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
+    .filter-bar button{flex:1;min-width:90px;padding:8px;font-size:11.5px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-family:inherit;letter-spacing:.4px}
+    .filter-bar button.active{background:var(--gold-glow);color:var(--gold)}
+
+    .checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .item{position:relative;padding:14px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;transition:all .15s}
+    .item.done{background:rgba(0,230,118,.05);border-color:rgba(0,230,118,.3)}
+    .item.missing{background:rgba(255,180,0,.04);border-color:rgba(255,180,0,.2)}
+    .item.pending{opacity:.55}
+    .item .preview{flex-shrink:0;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
+    .item .preview img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:rgba(0,0,0,.4)}
+    .item .preview .ph{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(0,0,0,.4);border-radius:8px;line-height:1}
+    .item .info{min-width:0;flex:1}
+    .item .info .name{font-family:'Space Grotesk';font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .item .info .file{font-family:'Space Grotesk','Courier New',monospace;font-size:11px;color:#ffb1de;background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;display:inline-block}
+    .item .info .status{font-size:10.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+    .item.done .status{color:var(--green)}
+    .item.missing .status{color:#ffc066}
+    .copy-btn{position:absolute;top:8px;right:8px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;font-family:inherit;letter-spacing:.5px;text-transform:uppercase}
+    .copy-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+    /* Other illustrations — larger cards */
+    .illus-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+    .illus-card{padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
+    .illus-card.done{border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.04)}
+    .illus-card .badge-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .illus-card .ttl{font-family:'Space Grotesk';font-weight:700;font-size:14.5px;color:var(--text);margin-bottom:6px}
+    .illus-card .lbl{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;color:var(--gold)}
+    .illus-card .specs{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+    .illus-card .file{font-family:'Space Grotesk','Courier New',monospace;font-size:11.5px;color:#ffb1de;background:rgba(0,0,0,.4);padding:5px 10px;border-radius:6px;display:inline-block;margin-bottom:8px;word-break:break-all}
+    .illus-card .used{font-size:11px;color:var(--muted)}
+    .illus-card.done .lbl{color:var(--green)}
+
+    .stage-block{background:rgba(64,64,255,.05);border:1px solid rgba(64,64,255,.2);border-radius:10px;padding:14px 18px;color:#9090ff;font-size:12.5px;line-height:1.65;margin-bottom:24px}
+    .stage-block b{color:#b0b0ff}
+
+    .design-toggle{position:fixed;bottom:18px;right:18px;padding:12px 18px;background:rgba(255,64,180,.15);border:1px solid #ff40b4;color:#ff40b4;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border-radius:10px;cursor:pointer;font-family:'Space Grotesk';z-index:50;backdrop-filter:blur(8px)}
+    .design-toggle:hover{background:rgba(255,64,180,.25)}
+    .item.done .preview img{cursor:zoom-in;transition:transform .15s}
+    .item.done:hover .preview img{transform:scale(1.06)}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div class="card">
+          <h1><span class="accent">Illustrator Checklist</span></h1>
+          <p class="sub">Live status of every illustration slot. Drop files into the right folder — page auto-detects them on reload.</p>
+
+          <!-- LIVE STATS -->
+          <div class="stats-row">
+            <div class="stat-card ok"><div class="lbl">Done</div><div class="val" id="st-done">0</div></div>
+            <div class="stat-card warn"><div class="lbl">Missing</div><div class="val" id="st-missing">0</div></div>
+            <div class="stat-card"><div class="lbl">Total slots</div><div class="val" id="st-total">0</div></div>
+            <div class="stat-card"><div class="lbl">% complete</div><div class="val" id="st-pct">0%</div></div>
+          </div>
+
+          <!-- HOW IT WORKS -->
+          <div class="stage-block">
+            <b>How this works:</b><br>
+            1. Each card below points to a file. Deliver as <b>WebP</b> (preferred) or <b>transparent PNG</b>.<br>
+            2. Drop the file into <code>dashboard/worldcup/app/illus/</code> (avatars go in the <code>avatars/</code> subfolder).<br>
+            3. Reload this page → the card flips to <b style="color:var(--green)">✓ DELIVERED</b> and the new art shows up automatically across the whole app.<br>
+            4. No code changes needed on our side.<br>
+            <span style="display:inline-block;margin-top:8px">Want to preview where the art will land?</span>
+            <a href="?design=1" style="color:#ff40b4">→ enable Designer Mode</a> (highlights every slot across the app in magenta with filenames).
+          </div>
+
+          <!-- AVATARS -->
+          <h2>1. National-team BOBAI avatars (48 files · required)</h2>
+          <p>One illustration per qualified country. <b>BOBAI character wearing that team's national kit.</b> 512×512 WebP, transparent background. Same character + proportions across all 48 — only the kit changes. No realistic human faces.</p>
+          <p>Used on: <b>Dashboard profile · Leaderboard rows · Public profile · Bonus → Champion picker</b>. Until each avatar is delivered, the slot shows the country flag emoji as a fallback.</p>
+
+          <div class="filter-bar">
+            <button data-filter="all" class="active">All 48</button>
+            <button data-filter="missing">Missing only</button>
+            <button data-filter="done">Delivered only</button>
+          </div>
+          <div id="avatar-list" class="checklist"></div>
+
+          <!-- OTHER ILLUSTRATIONS -->
+          <h2>2. Decorative illustrations (nice-to-have)</h2>
+          <div id="illus-list" class="illus-list"></div>
+
+          <!-- WORKFLOW -->
+          <h2>3. Quick links</h2>
+          <ul>
+            <li>Live preview of every slot in <b>Designer Mode</b>: <a href="?design=1" style="color:var(--gold)">enable here</a> · <a href="?design=0" style="color:var(--gold)">disable</a> (also affects all other pages in this session)</li>
+            <li>See where avatars land in production:
+              <a href="./index.html" style="color:var(--gold)">Register</a> ·
+              <a href="./dashboard.html" style="color:var(--gold)">Dashboard</a> ·
+              <a href="./bonus.html" style="color:var(--gold)">Bonus / Champion</a> ·
+              <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> ·
+              <a href="./user.html?u=mmx_QQ" style="color:var(--gold)">Public profile</a>
+            </li>
+            <li>Specs reminder: WebP preferred (smaller), PNG fine. Always <b>transparent background</b>. Square unless specified.</li>
+          </ul>
+
+          <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+            Questions / hand-off? <a href="https://t.me/bobai_official" style="color:var(--gold)">@bobai_official</a> on Telegram.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <button class="design-toggle" onclick="toggleDesign()">🎨 Designer Mode: <span id="dm-state">OFF</span></button>
+
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/avatar.js?v=7"></script>
+  <script src="./assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    // Designer mode toggle button
+    $('#dm-state').textContent = window.WC_AVATAR.designOn ? 'ON' : 'OFF';
+    function toggleDesign(){
+      const nowOn = !window.WC_AVATAR.designOn;
+      if (nowOn) localStorage.setItem('wc_design', '1');
+      else       localStorage.removeItem('wc_design');
+      window.location.href = window.location.pathname + (nowOn ? '?design=1' : '');
+    }
+
+    // Inventory all illustration slots, then HEAD-check each in parallel
+    const inv = window.WC_AVATAR.inventory();
+    const avatars = inv.filter(x => x.kind === 'avatar');
+    const illus   = inv.filter(x => x.kind === 'illus');
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]); }
+    async function copyToClipboard(text, btn){
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(()=>{ btn.textContent = orig; }, 1200);
+      } catch (e) { /* noop */ }
+    }
+
+    function renderAvatars(filter){
+      const list = $('#avatar-list');
+      const rows = avatars
+        .filter(a => filter === 'all' || a._state === filter)
+        .map(a => {
+          const stateCls = a._state || 'pending';
+          const stateLabel = stateCls === 'done' ? `✓ delivered (.${a._ext})`
+                          : stateCls === 'missing' ? 'pending'
+                          : 'checking…';
+          const preview = stateCls === 'done'
+            ? `<img src="${a.basePath}.${a._ext}" alt="">`
+            : `<div class="ph">${a.flag}</div>`;
+          const justFile = a.filename.split('/').pop();
+          const fileLabel = stateCls === 'done'
+            ? `${justFile}.${a._ext}`
+            : `${justFile}.{webp | png | jpg}`;
+          return `<div class="item ${stateCls}">
+            <button class="copy-btn" data-copy="${justFile}.webp">📋</button>
+            <div class="preview">${preview}</div>
+            <div class="info">
+              <div class="name">${escapeHtml(a.name)}</div>
+              <div class="file">${fileLabel}</div>
+              <div class="status">${stateLabel}</div>
+            </div>
+          </div>`;
+        })
+        .join('');
+      list.innerHTML = rows || '<p style="grid-column:1/-1;text-align:center;padding:30px">No avatars match this filter.</p>';
+      $$('#avatar-list .copy-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(b.dataset.copy, b);
+        });
+      });
+    }
+
+    function renderIllus(){
+      const list = $('#illus-list');
+      list.innerHTML = illus.map(i => {
+        const cls = i._state === 'done' ? 'done' : '';
+        const stateLabel = i._state === 'done' ? `✓ DELIVERED (.${i._ext})`
+                        : i._state === 'missing' ? 'PENDING'
+                        : 'checking…';
+        const justFile = i.filename.split('/').pop();
+        const fileLabel = i._state === 'done'
+          ? `${i.filename}.${i._ext}`
+          : `${i.filename}.{webp | png | jpg}`;
+        return `<div class="illus-card ${cls}" data-file="${i.filename}">
+          <div class="badge-row">
+            <span class="lbl">${stateLabel}</span>
+            <button class="copy-btn" data-copy="${justFile}.webp" style="position:static">📋 Copy filename</button>
+          </div>
+          <div class="ttl">${escapeHtml(i.name)}</div>
+          <div class="file">${fileLabel}</div>
+          <div class="specs">${escapeHtml(i.specs)}</div>
+          <div class="used">Used on: ${escapeHtml(i.usedOn)}</div>
+        </div>`;
+      }).join('');
+      $$('#illus-list .copy-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(b.dataset.copy, b);
+        });
+      });
+    }
+
+    function updateStats(){
+      const all = inv.filter(x => x._state); // only counted once HEAD-checked
+      const done = all.filter(x => x._state === 'done').length;
+      const miss = all.filter(x => x._state === 'missing').length;
+      $('#st-done').textContent = done;
+      $('#st-missing').textContent = miss;
+      $('#st-total').textContent = inv.length;
+      const pct = inv.length ? Math.round((done / inv.length) * 100) : 0;
+      $('#st-pct').textContent = pct + '%';
+    }
+
+    // Run HEAD checks. findFormat() probes all formats in parallel per slot,
+    // so each slot only takes one round-trip. We still limit concurrency so we
+    // don't open hundreds of sockets at once.
+    async function checkAll(){
+      const queue = [...inv];
+      const CONC = 16;
+      const workers = Array.from({ length: CONC }, async () => {
+        while (queue.length) {
+          const it = queue.shift();
+          const ext = await window.WC_AVATAR.findFormat(it.basePath);
+          if (ext) { it._state = 'done'; it._ext = ext; }
+          else     { it._state = 'missing'; it._ext = null; }
+        }
+      });
+      const renderInterval = setInterval(()=>{
+        renderAvatars(currentFilter);
+        renderIllus();
+        updateStats();
+      }, 250);
+      await Promise.all(workers);
+      clearInterval(renderInterval);
+      renderAvatars(currentFilter);
+      renderIllus();
+      updateStats();
+    }
+
+    let currentFilter = 'all';
+    $$('.filter-bar button').forEach(b => b.addEventListener('click', ()=>{
+      $$('.filter-bar button').forEach(x => x.classList.toggle('active', x === b));
+      currentFilter = b.dataset.filter;
+      renderAvatars(currentFilter);
+    }));
+
+    // Initial render (all pending) then start checking
+    renderAvatars(currentFilter);
+    renderIllus();
+    updateStats();
+    checkAll();
+    // Click-to-zoom handled centrally by avatar.js (matches .item.done .preview img + .wc-ava-img)
+  </script>
+</body>
+</html>

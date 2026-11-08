@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>BOBAI Worldcup '26</title>
+  <meta property="og:title" content="BOBAI Worldcup '26 — Tipgame">
+  <meta property="og:description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Tipgame">
+  <meta name="twitter:description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
+    .country-cell:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.15)}
+    .country-cell.sel{background:var(--gold-glow);border-color:var(--gold)}
+    .country-cell .fl{font-size:22px;line-height:1}
+    .country-cell .nm{font-size:9.5px;color:var(--muted);text-align:center;line-height:1.2}
+    .country-cell.sel .nm{color:var(--gold)}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/worldcup/" aria-label="Back to Worldcup">
+          <span>←</span> Worldcup
+        </a>
+        <div class="brand">BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container">
+        <div class="card">
+          <h1><span class="accent">Welcome</span></h1>
+          <p class="sub">Sign in to place tips, or create a new account.</p>
+
+          <div class="tabs">
+            <button class="tab active" data-tab="login">Sign in</button>
+            <button class="tab" data-tab="register">Register</button>
+          </div>
+
+          <div id="alert"></div>
+
+          <!-- LOGIN -->
+          <form id="form-login" class="tab-pane">
+            <div class="field">
+              <label>Username or Email</label>
+              <input type="text" name="identifier" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn">Sign in</button>
+            <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px">
+              <a href="#" id="link-forgot" style="color:var(--gold)">Forgot password?</a>
+            </p>
+          </form>
+
+          <!-- REGISTER -->
+          <form id="form-register" class="tab-pane hidden">
+            <div class="field">
+              <label>Username</label>
+              <input type="text" name="username" autocomplete="username" required>
+              <div class="hint">3–20 chars, letters/numbers/underscore. Shown on the leaderboard.</div>
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" autocomplete="email" required>
+              <div class="hint">Used only for password reset. Never shown publicly, never spammed.</div>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" name="password" autocomplete="new-password" minlength="6" required>
+              <div class="hint">Min 6 characters.</div>
+            </div>
+            <div class="field">
+              <label>Confirm password</label>
+              <input type="password" name="password_confirm" autocomplete="new-password" minlength="6" required>
+              <div class="hint">Re-enter the same password.</div>
+            </div>
+            <div class="field">
+              <label>Pick your country (avatar)</label>
+              <div id="country-grid" class="country-grid"></div>
+              <input type="hidden" name="country" id="country-input">
+              <div class="hint">You can change this later. Picker shows team flags; your <b>avatar</b> on the dashboard + leaderboard will be rendered as <b>BOBAI in that country's national jersey</b> (illustration brief in progress).</div>
+            </div>
+            <button type="submit" class="btn">Create account</button>
+          </form>
+
+          <!-- FORGOT PASSWORD -->
+          <form id="form-forgot" class="tab-pane hidden">
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" autocomplete="email" required>
+              <div class="hint">We'll send you a reset link.</div>
+            </div>
+            <button type="submit" class="btn">Send reset link</button>
+            <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px">
+              <a href="#" id="link-back-login" style="color:var(--gold)">← Back to sign in</a>
+            </p>
+          </form>
+
+          <p class="sub" style="margin-top:24px;margin-bottom:0">
+            Registration is open · Kickoff <b>11 June 2026</b>
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=12"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=13"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    // Render country grid
+    const grid = $('#country-grid');
+    const cInput = $('#country-input');
+    window.WC_COUNTRIES.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'country-cell';
+      b.dataset.code = c.code;
+      b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+      b.addEventListener('click', ()=>{
+        $$('.country-cell').forEach(x=>x.classList.remove('sel'));
+        b.classList.add('sel');
+        cInput.value = c.code;
+      });
+      grid.appendChild(b);
+    });
+
+    // Tab switching (login/register only; forgot is a separate pane)
+    function showPane(which){
+      $$('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===which));
+      $('#form-login').classList.toggle('hidden', which!=='login');
+      $('#form-register').classList.toggle('hidden', which!=='register');
+      $('#form-forgot').classList.toggle('hidden', which!=='forgot');
+      showAlert();
+    }
+    $$('.tab').forEach(t=>t.addEventListener('click',()=>showPane(t.dataset.tab)));
+    $('#link-forgot').addEventListener('click', (e)=>{ e.preventDefault(); showPane('forgot'); });
+    $('#link-back-login').addEventListener('click', (e)=>{ e.preventDefault(); showPane('login'); });
+
+    // Login
+    $('#form-login').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      const r = await window.WC_AUTH.login({
+        identifier: fd.get('identifier'),
+        password: fd.get('password'),
+      });
+      btn.disabled = false; btn.textContent = 'Sign in';
+      if (r.error) { showAlert('error', r.error); return; }
+      window.location.href = './dashboard.html';
+    });
+
+    // Register
+    $('#form-register').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      if (!fd.get('country')) {
+        showAlert('error', 'Please pick your country flag below.');
+        document.getElementById('country-grid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Creating…';
+      const r = await window.WC_AUTH.register({
+        username: fd.get('username'),
+        email: fd.get('email'),
+        password: fd.get('password'),
+        passwordConfirm: fd.get('password_confirm'),
+        country: fd.get('country'),
+      });
+      btn.disabled = false; btn.textContent = 'Create account';
+      if (r.error) { showAlert('error', r.error); return; }
+      if (r.needsConfirmation) {
+        const email = fd.get('email') || '';
+        const safeEmail = email.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.<br><br>⚠ <b>Don't see it?</b> Check your <b>spam / junk</b> folder — confirmation mails sometimes land there.`);
+        // Scroll alert just under the top nav with minimal gap.
+        // requestAnimationFrame waits for the alert HTML to render so we
+        // compute its real position, not the empty-div position.
+        requestAnimationFrame(() => {
+          const alertEl = document.getElementById('alert');
+          if (!alertEl) return;
+          // Measure entire <nav> in case it has additional rows (.tabbar etc.)
+          const navEl = document.querySelector('nav');
+          const navH = navEl ? navEl.offsetHeight : 58;
+          const top = alertEl.getBoundingClientRect().top + window.pageYOffset - navH - 16;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        });
+        return;
+      }
+      showAlert('ok', 'Account created — redirecting…');
+      setTimeout(()=>{ window.location.href = './dashboard.html'; }, 700);
+    });
+
+    // Forgot password
+    $('#form-forgot').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const r = await window.WC_AUTH.resetPasswordRequest(fd.get('email'));
+      btn.disabled = false; btn.textContent = 'Send reset link';
+      if (r.error) { showAlert('error', r.error); return; }
+      showAlert('ok', 'If an account exists for that email, a reset link has been sent. Check your inbox.');
+    });
+
+    // If already logged in, jump to dashboard
+    (async ()=>{
+      const p = await window.WC_AUTH.currentProfile();
+      if (p) window.location.href = './dashboard.html';
+    })();
+  </script>
+</body>
+</html>

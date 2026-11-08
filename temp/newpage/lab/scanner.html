@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<!-- Background straight on <html> so the first paint is dark before any
+     stylesheet is parsed — same reason, and same value, as index.html. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
+  <title>Pool Scanner — what would buying this token really cost?</title>
+  <meta name="description" content="Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked, or withdrawable.">
+  <link rel="canonical" href="https://brainonbnb.com/scanner">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Pool Scanner — what would buying this token really cost?">
+  <meta property="og:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token. Read live from the chain.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/scanner">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pool Scanner — what would buying this token really cost?">
+  <meta name="twitter:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <!-- The dashboard's own stylesheet, same ?v= as index.html so a visitor who
+       has been there already has it in cache. Nav, footer, section frame, the
+       colour tokens and the aurora all come from it — this page is part of the
+       site rather than a lookalike. Bump this ?v= together with index.html. -->
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
+  <style>
+    /* Only what the dashboard has no equivalent for: the search field, the
+       result header, the ladder and the flag grid. Everything reuses the
+       dashboard's variables (--gold, --card, --border, --muted, --radius) so
+       the two pages cannot drift apart. */
+    /* Sub-page nav, taken verbatim from nft/index.html so the three pages are
+       visually identical. These classes are not in styles.css — each sub-page
+       carries its own copy. */
+    /* No sideways swiping on a phone. Measured first: at 360/390/430px, with a
+       result on screen and across five different tokens, nothing on this page
+       overflows horizontally — so there is nothing to clip and no overflow-x
+       here (that trick once cost the dashboard a second scrollbar). What is
+       left is the overscroll itself: the horizontal rubber-band drag the
+       browser allows even when the content fits. This turns that off, and
+       stops any inner scroll box from handing its swipe on to the page.
+       Vertical scrolling is untouched. */
+    html{overscroll-behavior-x:none}
+    body{overscroll-behavior-x:none}
+
+  /* .back-btn / .brand-link and their narrow-screen rules now live in
+     styles.css, where every page that uses this header can see them. */
+
+
+    .sc-hero{padding:8px 0 6px;text-align:center}
+    .sc-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+      font-weight:700;letter-spacing:-1px;line-height:1.14}
+    .sc-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+    .sc-form{display:flex;gap:10px;margin:26px auto 0;max-width:640px}
+    .sc-form input{flex:1;min-width:0;background:rgba(255,255,255,.04);color:var(--text);
+      border:1px solid var(--border);border-radius:14px;padding:15px 17px;font-size:.87rem;
+      font-family:'Space Grotesk',sans-serif}
+    .sc-form input::placeholder{color:var(--muted);opacity:.7}
+    .sc-form input:focus{outline:none;border-color:var(--gold)}
+    .sc-form>button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;
+      border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
+      font-family:inherit;white-space:nowrap;letter-spacing:.3px}
+    .sc-form>button:disabled{opacity:.5;cursor:default}
+    /* The zero-knowledge way in: one tap on a known token, or on something
+       this visitor scanned before. Nobody arrives with an address in hand. */
+    .sc-try{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+      margin:12px auto 0;max-width:640px;font-size:.78rem}
+    .sc-try .sc-try-l{color:var(--muted)}
+    .sc-try button{background:transparent;color:var(--text);border:1px solid var(--border);
+      border-radius:999px;padding:6px 12px;font:inherit;font-size:.78rem;cursor:pointer;
+      transition:border-color .2s,background .2s}
+    .sc-try button:hover,.sc-try button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
+    .sc-try button.sc-try-recent{color:var(--muted)}
+    /* What is on four.meme's curve right now. A table, because six figures
+       per row want columns; behind a button, because it costs reads. */
+    .sc-feed{max-width:820px;margin:22px auto 0;text-align:left;border:1px solid var(--border);border-radius:16px;padding:14px 16px;background:rgba(255,255,255,.02)}
+    .sc-feed-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+    .sc-feed-h b{font-family:'Space Grotesk',sans-serif;font-size:.92rem}
+    .sc-feed-h span{flex:1;min-width:220px;font-size:.76rem;color:var(--muted);line-height:1.5}
+    .sc-feed-h button{background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.4);border-radius:999px;padding:6px 14px;font:inherit;font-size:.76rem;cursor:pointer}
+    .sc-feed-h button:hover,.sc-feed-h button:focus-visible{background:rgba(240,185,11,.1);outline:none}
+    .sc-feed-h button:disabled{opacity:.5;cursor:default}
+    .sc-feed-t{width:100%;border-collapse:collapse;margin-top:12px;font-size:.78rem}
+    .sc-feed-t th{text-align:left;font-weight:600;color:var(--muted);font-size:.68rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
+    .sc-feed-t td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;white-space:nowrap}
+    .sc-feed-t tr[tabindex]{cursor:pointer}
+    .sc-feed-t tr[tabindex]:hover td,.sc-feed-t tr[tabindex]:focus-visible td{background:rgba(240,185,11,.06)}
+    .sc-feed-t tr:focus-visible{outline:none}
+    .sc-feed-t td b{display:block;font-size:.82rem}
+    .sc-feed-a{color:var(--muted);font-size:.68rem}
+    .sc-feed-m{color:var(--muted)}
+    .sc-feed-c.good{color:#3fe09a}.sc-feed-c.mid{color:#ffc46b}.sc-feed-c.bad{color:#ff8f6b}
+    .sc-feed-note{font-size:.7rem;color:var(--muted);line-height:1.55;margin:10px 0 0}
+    @media(max-width:640px){.sc-feed{padding:12px}.sc-feed-t{display:block;overflow-x:auto}}
+    .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
+    .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
+    /* Scanning a second token. The address that was just read stays in the
+       field on purpose — it is the answer to "what am I looking at" — but that
+       turned the next scan into a chore: select forty-two characters, delete,
+       paste. A cross in the field, and a button under the result, because by
+       the time you have read the result the field is far above the fold. */
+    .sc-field{position:relative;flex:1;min-width:0;display:flex}
+    .sc-field input{width:100%;padding-right:40px}
+    .sc-x[hidden]{display:none}
+    .sc-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:26px;height:26px;
+      padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:var(--muted);
+      font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center;
+      transition:background .2s,color .2s}
+    .sc-x:hover{background:rgba(240,185,11,.2);color:var(--text)}
+    .sc-x:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+    .sc-again{margin:24px 0 0;text-align:center}
+    .sc-again button{background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.35);
+      border-radius:10px;padding:11px 22px;font:inherit;font-weight:600;cursor:pointer;
+      transition:background .2s,border-color .2s}
+    .sc-again button:hover{background:rgba(240,185,11,.12);border-color:rgba(240,185,11,.6)}
+    .sc-again button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+    @media (max-width:560px){.sc-form{flex-direction:column}.sc-form>button{width:100%}}
+
+    .hd{padding-bottom:18px;border-bottom:1px solid var(--border);margin-top:30px}
+    .hd-t{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+    .hd-t h2{font-family:'Space Grotesk',sans-serif;font-size:1.65rem;font-weight:700;letter-spacing:-.5px}
+    .hd-n{color:var(--muted);font-size:.88rem}
+    .hd-m{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+    .badge{font-size:.64rem;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-radius:999px;
+      border:1px solid rgba(240,185,11,.4);color:var(--gold);background:rgba(240,185,11,.08)}
+    .badge-q,.badge-d{border-color:var(--border);color:var(--muted);background:rgba(255,255,255,.03)}
+    .hd-l{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.73rem}
+    .lk{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(240,185,11,.3);
+      font-family:'Space Grotesk',sans-serif}
+    .lk:hover{border-bottom-color:var(--gold)}
+    .lk.dim{color:var(--muted);border-bottom-color:var(--border)}
+
+    .st-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:12px;margin-top:16px}
+    .st{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+    .st-v{font-family:'Space Grotesk',sans-serif;font-size:1.45rem;font-weight:700;letter-spacing:-.8px;
+      color:var(--gold);line-height:1.15;word-break:break-word}
+    .st-v.st-lg{font-size:1.12rem;letter-spacing:-.4px}
+    .st-v.st-xl{font-size:.92rem;letter-spacing:-.3px}
+    .st-v.dim{color:var(--muted)}
+    .st-l{font-size:.75rem;font-weight:600;margin-top:5px}
+    .st-s{font-size:.68rem;color:var(--muted);margin-top:5px;line-height:1.5}
+
+    .cd{margin-top:16px;border:1px solid rgba(240,185,11,.16);border-radius:var(--radius);
+      background:linear-gradient(180deg,rgba(240,185,11,.05),rgba(240,185,11,0) 60%),var(--card);
+      padding:22px 21px 19px}
+    .cd-h h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:600}
+    .cd-h p{font-size:.75rem;color:var(--muted);margin-top:7px;line-height:1.6;max-width:74ch}
+    /* one line per card on a phone (26.10.): title, its live figure, an arrow; a tap opens it */
+    .fx-h{display:none}
+    @media (max-width:640px){
+      .cd.fx{padding:0}
+      .fx-h{display:flex;align-items:center;gap:10px;width:100%;padding:15px 16px;background:none;border:0;color:var(--text,#eee);
+        text-align:left;cursor:pointer;font:inherit}
+      .fx-t{flex:1;font-family:'Space Grotesk',sans-serif;font-size:.95rem;font-weight:600;line-height:1.3}
+      .fx-k{color:var(--gold);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;white-space:nowrap}
+      .fx-c{color:var(--gold);font-size:1.1rem;transition:transform .2s}
+      .fx-open .fx-c{transform:rotate(90deg)}
+      .cd.fx:not(.fx-open)>:not(.fx-h){display:none!important}
+      .cd.fx>.cd-h h3{display:none}
+      .cd.fx.fx-open{padding:0 16px 16px}.cd.fx.fx-open>.fx-h{margin:0 -16px;width:calc(100% + 32px)}
+      .cd.fx>.cd-h p{margin-top:0}
+    }
+    .cd-foot{font-size:.69rem;color:var(--muted);line-height:1.6;margin-top:15px;
+      padding-top:13px;border-top:1px solid var(--border)}
+
+    .lad{display:grid;grid-template-columns:1fr 1fr;gap:14px 32px;margin-top:16px}
+    .lad-h{display:flex;align-items:baseline;gap:9px;padding-bottom:8px}
+    .lad-t{font-size:.77rem;font-weight:700}
+    .lad-d{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+    .lad-buy .lad-t{color:#3fe09a} .lad-sell .lad-t{color:#ff8f6b}
+    .lad-r{display:flex;align-items:center;gap:11px;padding:6px 0}
+    .lad-hr{font-size:.61rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;
+      border-bottom:1px solid var(--border);padding-bottom:6px}
+    .lad-s{font-family:'Space Grotesk',sans-serif;font-size:.76rem;font-weight:600;
+      width:50px;flex-shrink:0;color:var(--muted)}
+    .lad-b{flex:1;min-width:20px;height:7px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+    .lad-hr .lad-b{background:none}
+    .lad-b i{display:block;height:100%;border-radius:4px;transform:scaleX(0);transform-origin:0 50%;
+      background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
+    .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lad-p.lad-dry{color:#a9a49a;font-weight:500;font-style:italic}
+.lad-b i.dry{background:#5b574f}
+    .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
+      width:64px;flex-shrink:0;text-align:right}
+    .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
+      width:60px;flex-shrink:0;text-align:right}
+    @media (max-width:760px){.lad{grid-template-columns:1fr;gap:20px}}
+    @media (prefers-reduced-motion:reduce){.lad-b i{transition:none}}
+
+    .warn{border-radius:14px;padding:15px 17px;margin-top:16px;
+      border:1px solid rgba(255,48,40,.45);background:rgba(255,48,40,.07)}
+    .warn b{display:block;font-size:.81rem;color:#ff8f6b;margin-bottom:5px}
+    .warn span{display:block;font-size:.74rem;color:var(--muted);line-height:1.65}
+    .warn-soft{border-color:rgba(240,185,11,.4);background:rgba(240,185,11,.06)}
+    .warn-soft b{color:var(--gold)}
+
+    .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:10px;margin-top:14px}
+    .f{border:1px solid var(--border);border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.02)}
+    .f b{display:block;font-size:.74rem;font-weight:600}
+    .f span{display:block;font-size:.68rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .f-ok b{color:#3fe09a} .f-on b{color:var(--gold)} .f-bad b{color:#ff5a4a}
+    .f-unk b{color:var(--muted)}
+
+    .vn{margin-top:12px}
+    .vn-r{display:flex;align-items:baseline;gap:14px;padding:9px 0;
+      border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .vn-r:last-child{border-bottom:0}
+    .vn-n{font-size:.75rem;font-weight:600;min-width:160px;flex:1}
+    .vn-v{font-family:'Space Grotesk',sans-serif;font-size:.83rem;font-weight:700;
+      color:var(--gold);min-width:90px;text-align:right}
+
+    /* who holds it (2026-09-26): three figures, then the five largest wallets as bars */
+    .hd-k{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .hd-f{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
+    .hd-f b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.25rem;color:var(--gold)}
+    .hd-f span{font-size:.7rem;color:var(--muted)}
+    /* the header links apart again (2026-09-28): display:block here had switched off .hd-l's gap, the four links ran together */
+    #sc-out .hd-l{display:flex;flex-wrap:wrap;gap:8px 20px;width:100%;margin-top:12px}
+    #sc-out .hd-r{width:100%}
+    .hd-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr 64px;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+    .hd-r:last-child{border-bottom:0}
+    .hd-b{display:block;height:8px;border-radius:9px;background:linear-gradient(90deg,var(--gold),rgba(240,185,11,.35))}
+    .hd-p{font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:700;text-align:right}
+    @media (max-width:520px){.hd-k{grid-template-columns:1fr 1fr 1fr;gap:6px}.hd-f{padding:8px}.hd-f b{font-size:1rem}.hd-r{grid-template-columns:110px 1fr 54px;gap:8px}}
+
+    .sc-what{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));
+      gap:12px;margin-top:34px}
+    /* display:grid outranks the UA's [hidden]{display:none}; without this the
+       teaser stayed on screen above every result. */
+    .sc-what[hidden]{display:none}
+    .sc-what-h,.sc-what-f{grid-column:1/-1;margin:0}
+    .sc-what-h{font-size:.95rem;line-height:1.6;color:var(--text)}
+    .sc-what-h b{color:var(--gold);font-weight:600}
+    .sc-what-f{font-size:.78rem;line-height:1.6;color:var(--muted)}
+    .sc-w{border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;
+      background:rgba(255,255,255,.02)}
+    .sc-w b{display:block;font-size:.8rem;font-weight:600;color:var(--gold)}
+    .sc-w span{display:block;font-size:.73rem;color:var(--muted);line-height:1.6;margin-top:6px}
+
+    /* The standing note. The opening dialog is dismissed in a second and then
+       forgotten, and it is gone by the time there are actual numbers on screen —
+       which is exactly when this needs to be readable. So it lives in the
+       document, below the result, and nothing ever hides it. */
+    .sc-note{margin-top:34px;padding:20px 22px;border:1px solid rgba(240,185,11,.22);
+      border-radius:16px;background:rgba(240,185,11,.035)}
+    .sc-note h2{font-family:'Space Grotesk',sans-serif;font-size:.86rem;font-weight:700;
+      color:var(--gold);letter-spacing:-.2px;margin-bottom:10px}
+    .sc-note p{font-size:.76rem;color:var(--muted);line-height:1.75;max-width:74ch}
+    .sc-note p+p{margin-top:10px}
+    .sc-note b{color:var(--text);font-weight:600}
+    @media (max-width:640px){.sc-note{padding:17px 16px}.sc-note p{font-size:.74rem}}
+
+    /* One palette for both places colour appears. Deliberately muted: these are
+       cost bands, not a verdict, and they must not shout louder than the number. */
+    .good{color:#3fe09a!important} .mid{color:#ffc46b!important} .bad{color:#ff8f6b!important}
+    .lad-x.good,.lad-x.mid,.lad-x.bad{font-weight:600}
+    .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
+
+    /* THE SHORT ANSWER, above every measurement.
+       The result opened with "Hard USDT backing" and "Liquidity / Mcap" — both
+       correct, neither a phrase anybody uses about their own money. These three
+       lines say what a trade costs, whether the token takes a cut, and whether
+       the liquidity can be pulled. The colour is the same vocabulary the ladder
+       already uses, so a green line here and a green cell there mean the same
+       thing. A line that could not be measured is grey and says so: a tick that
+       means "we did not look" would be the one dishonest thing on this page. */
+    .vd-card{margin-top:14px;border-color:rgba(240,185,11,.3);background:rgba(240,185,11,.04)}
+    .vd{display:grid;gap:9px;margin-top:4px}
+    .vd-r{position:relative;padding:10px 13px 10px 38px;border:1px solid var(--line,rgba(240,185,11,.16));
+      border-radius:12px;background:rgba(0,0,0,.18);min-width:0}
+    .vd-r b{display:block;font-size:.88rem;line-height:1.45;font-weight:600;overflow-wrap:anywhere}
+    .vd-r span{display:block;font-size:.75rem;line-height:1.6;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+    .vd-r::before{position:absolute;left:12px;top:11px;font-size:.9rem;line-height:1.2;font-weight:700}
+    .vd-good::before{content:'\2713';color:#3fe09a}
+    .vd-mid::before{content:'\0021';color:#ffc46b}
+    .vd-bad::before{content:'\26a0';color:#ff8f6b}
+    .vd-unknown::before{content:'\003f';color:var(--muted)}
+    .vd-good{border-color:rgba(63,224,154,.28)}
+    .vd-mid{border-color:rgba(255,196,107,.28)}
+    .vd-bad{border-color:rgba(255,143,107,.32)}
+    .vd-good b{color:#3fe09a} .vd-mid b{color:#ffc46b} .vd-bad b{color:#ff8f6b}
+    .vd-unknown b{color:var(--muted)}
+
+    /* Fee tiers. Four columns on a desk, two on a phone — the tier name and
+       what it pays are the pair that has to stay side by side, because reading
+       one without the other is the mistake this card exists to prevent. */
+    .sc-tierbtn{margin-top:4px;padding:8px 15px;border-radius:9px;cursor:pointer;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.28);
+      color:var(--gold,#f0b90b);font:inherit;font-size:.78rem;font-weight:600;
+      transition:background .2s,border-color .2s}
+    .sc-tierbtn:hover:not(:disabled){background:rgba(240,185,11,.16);border-color:rgba(240,185,11,.5)}
+    .sc-tierbtn:disabled{opacity:.55;cursor:default}
+    .tier-ans{margin-top:14px}
+    .rt-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:4px}
+    .rt-lab{font-size:.74rem;color:var(--muted);letter-spacing:.03em}
+    .rt-inp{width:110px;padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-variant-numeric:tabular-nums}
+    .rt-form .sc-tierbtn{margin-top:0}
+    .rt-t{margin-top:16px}
+    .rt-r{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr);gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem}
+    .rt-r>span{min-width:0;overflow-wrap:anywhere}
+    .rt-hr{border-top:0;font-size:.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .rt-num{text-align:right;font-variant-numeric:tabular-nums}
+    .tier-t{margin-top:16px}
+    .tier-r{display:grid;
+      grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
+      gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem}
+    .tier-hr{border-top:0;font-size:.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .tier-r>span{min-width:0;overflow-wrap:anywhere}
+    .tier-c,.tier-w,.tier-v,.tier-f{text-align:right;font-variant-numeric:tabular-nums}
+    .tier-best .tier-n{font-weight:600}
+    .tier-tag{display:block;font-style:normal;font-size:.62rem;color:var(--muted);letter-spacing:.03em}
+    .tier-said{margin-top:13px;font-size:.82rem;line-height:1.55}
+    /* Each figure carries its own label, shown only where the header row is
+       not. Four unlabelled numbers stacked on a phone is more information
+       arriving as less. */
+    .tl{display:none}
+    @media(max-width:560px){
+      .tier-r{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:4px}
+      .tier-hr{display:none}
+      .tier-n{grid-column:1;grid-row:1}
+      .tier-f{grid-column:2;grid-row:1}
+      .tier-c{grid-column:1;grid-row:2;text-align:left}
+      .tier-w{grid-column:2;grid-row:2}
+      .tier-v{grid-column:1;grid-row:3;text-align:left}
+      .tier-c,.tier-w,.tier-v{font-size:.72rem;color:var(--muted)}
+      .tl{display:block;font-style:normal;font-size:.6rem;letter-spacing:.04em;
+        text-transform:uppercase;color:var(--muted);opacity:.75}
+    }
+
+    .sc-share{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 14px;padding:10px 14px;border:1px solid rgba(240,185,11,.35);border-radius:14px;background:rgba(240,185,11,.05)}
+    .sc-share span{min-width:0;overflow-wrap:anywhere;font-size:.86rem}.sc-share b{color:var(--gold)}
+    .sc-share code{font-size:.8rem;color:var(--muted)}
+    .sc-share button{border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold);border-radius:999px;padding:7px 14px;font:600 .82rem Inter,sans-serif;cursor:pointer;white-space:nowrap}
+    .sc-acts{display:flex;flex-wrap:wrap;gap:8px}
+.sc-share a.sc-sh{border:1px solid rgba(240,185,11,.45);color:var(--gold);border-radius:999px;padding:7px 14px;font:600 .82rem Inter,sans-serif;white-space:nowrap;text-decoration:none}
+.sc-share a.sc-sh:hover,.sc-share button:hover{background:rgba(240,185,11,.1)}
+.sc-share button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+    .sc-wip{max-width:640px;margin:0 auto 14px;font-size:.82rem;color:var(--muted);text-align:center;line-height:1.5}
+    .sc-wip b{color:var(--gold)}
+    .sc-wip a{color:var(--gold)}
+    .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
+
+    /* The "still being built" notice. Deliberately NOT a native dialog: those
+       block every subsequent browser event, and on a phone they look like a
+       browser warning rather than something this page is saying.
+       No backdrop-filter here — the page already carries fourteen blurred
+       layers, and a fifteenth is exactly what turned iOS Safari white in
+       round 5 of the performance work. A flat wash does the same job. */
+    .mw{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+      padding:20px;background:rgba(5,5,16,.82)}
+    .mw[hidden]{display:none}
+    .mb{max-width:460px;width:100%;border:1px solid rgba(240,185,11,.35);border-radius:18px;
+      background:linear-gradient(180deg,rgba(240,185,11,.07),rgba(240,185,11,0) 55%),#0d0c14;
+      padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+    .mb h2{font-family:'Space Grotesk',sans-serif;font-size:1.08rem;font-weight:700;color:var(--gold)}
+    .mb p{font-size:.79rem;color:var(--muted);line-height:1.68;margin-top:11px}
+    .mb button{margin-top:20px;width:100%;background:linear-gradient(135deg,var(--gold),#e0a800);
+      color:#000;border:0;border-radius:999px;padding:13px 28px;font-weight:700;font-size:.78rem;
+      cursor:pointer;font-family:inherit;letter-spacing:.3px}
+    .mb button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    @media (prefers-reduced-motion:no-preference){
+      .mb{animation:mbin .22s ease-out}
+      @keyframes mbin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    }
+  </style>
+</head>
+<body>
+
+<!-- THE "STILL BEING BUILT" NOTICE IS A LINE, NOT A WALL (operator, 2026-10-12): the dialog stood over the whole page on a
+     first visit, in front of the most used tool; the same words now sit above the field, and the long version stays below. -->
+
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+
+  <!-- Same shape as every other sub-page (nft/, worldcup/, brainscreener/):
+       back to the dashboard, the page's own name, buy. The main dashboard's nav
+       was copied here at first, which put anchor links like #tokenomics on a
+       page that has no such sections — they simply jumped nowhere. -->
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/scanner">BOBAI Pool Scanner</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
+  </div></nav>
+
+  <section class="sec b-blue" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Tool &middot; Pool Scanner</span><span class="blk-line"></span></div>
+
+    <!-- The box first, the explanation second. Somebody who arrives with an
+         address in hand should not have to read past three paragraphs to
+         find where to paste it (2026-09-02). -->
+    <!-- THE START (2026-11-03): the shared .hx start of every tool page (styles.css): one sentence, the box, the taps,
+         one line of what is true. The two notes that stood above the box are that line now, under it. -->
+    <div class="sc-hero hx">
+      <h1>What would buying this token <em>really</em> cost?</h1>
+      <p class="hx-claim">Paste any BNB Chain token: the real cost at your size, the hidden tax, and who can pull the liquidity.</p>
+      <div class="sc-form">
+        <div class="sc-field">
+          <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="Token address, pool address, or a DexScreener link"
+                 aria-label="BSC token or pool address">
+          <button id="sc-clear" class="sc-x" type="button" aria-label="Clear the address" hidden>&times;</button>
+        </div>
+        <button id="sc-go" type="button">Scan</button>
+      </div>
+      <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
+      <div class="sc-try" id="sc-try"></div>
+      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span><b>Still being built.</b> Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span><span>Building a bot? <a href="/api/">The same scan as JSON, no key</a></span></p>
+      <!-- The launch curve, live. Read from four.meme's own contract on
+           demand: which tokens traded in the last few minutes, how far the
+           raise is, and what $100 costs to buy and to sell — before any pool
+           exists, which is exactly when nobody else can tell you. -->
+      <div class="sc-feed" id="sc-feed">
+        <div class="sc-feed-h"><b>On four.meme right now</b><span>The tokens traded on the launch curve in the last few minutes, and what $100 costs to buy and to sell there &mdash; before any pool exists. Read from four.meme&rsquo;s contract when you ask.</span><button id="sc-feed-go" type="button">Show me</button></div>
+        <div id="sc-feed-body"></div>
+      </div>
+    </div>
+
+    <!-- The empty state. Without it the page is a headline and a blank box, and
+         a first-time visitor has no idea what pressing Scan produces. These are
+         the four things it actually returns, named exactly as they appear in the
+         result — no promises the page does not keep. Hidden by JS the moment a
+         result exists, so it never competes with the real figures.
+         There used to be a second, three-item version of this list right above
+         it (2026-09-02); a visitor read the same promise twice, and this block
+         never actually hid because its display:grid beat the hidden attribute.
+         One list now, and a rule that lets hidden win. -->
+    <div class="sc-what" id="sc-what">
+      <p class="sc-what-h"><b>What you get.</b> Not the advertised price: the real one, including the part most sites do not show.</p>
+      <div class="sc-w">
+        <b>What a trade really costs</b>
+        <span>Price impact and true cost side by side at six sizes from $100 to $2,500, so you see where it stops being worth it.</span>
+      </div>
+      <div class="sc-w">
+        <b>The hidden tax, measured</b>
+        <span>Not read off a label. Taken from trades that actually executed, and flagged when it disagrees with what the security scanners report.</span>
+      </div>
+      <div class="sc-w">
+        <b>Who can pull the money out</b>
+        <span>LP burned for good, only locked, or sitting in a wallet that can empty it tonight — with the largest holder named and linked.</span>
+      </div>
+      <div class="sc-w">
+        <b>Can you sell it</b>
+        <span>A sell is simulated on the chain from a fresh address, at this block. A pass is a fact about now, not a promise about tomorrow.</span>
+      </div>
+      <p class="sc-what-f">A token still on four.meme’s launch curve has no pool yet; the curve is read instead. If a pool cannot be measured exactly, the page shows nothing rather than a wrong number. The figures are read from the chain; the contract labels and the holder list come from GoPlus, the list of other venues from DexScreener.</p>
+    </div>
+
+    <div class="warn" id="sc-err" hidden></div>
+    <div id="sc-out" hidden></div>
+
+    <!-- The way back to the top, shown only once a scan has run. -->
+    <div class="sc-again" id="sc-again" hidden>
+      <button type="button" id="sc-again-btn">Scan another token</button>
+    </div>
+
+    <!-- Never hidden, by anything. The line above the field says it briefly, before
+         anyone has seen a figure; this says it where the figures are. -->
+    <div class="sc-note" id="sc-note">
+      <h2>Please read this next to any number above</h2>
+      <p>We built this because reading a pool properly is genuinely interesting, and we are
+         still building it. Every figure here is <b>our own reading</b> of public chain data.
+         A price can be a block out of date, a token can trade in pools this page cannot see,
+         and a tax can behave differently in your trade than in the ones we measured. Assume a
+         number can be wrong, because sometimes it will be.</p>
+      <p>And none of it is a judgement. <b>We make no claim about any token</b> — we do not know
+         who is behind them, and we are not in the business of telling you which ones deserve
+         your money. A red figure says one thing only: at that size, that is what the trade
+         would cost right now. It says nothing about the project, and nothing about the people.</p>
+      <p>Anything that matters to you, check yourself. <a href="https://bscscan.com" target="_blank" rel="noopener">BscScan</a>
+         and the pool contract are two clicks away, and everything above is derived from what
+         they already say out loud.</p>
+    </div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Read live from BNB Chain in your own browser &mdash; the route comparison, the fee tiers and the range replay ask our server, which counts the call and keeps no address &middot; contract properties by <a href="https://gopluslabs.io" target="_blank" rel="noopener">GoPlus</a> &middot; venue index by <a href="https://dexscreener.com" target="_blank" rel="noopener">DexScreener</a></p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
+    <p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p>
+  </div>
+</div></footer>
+</div>
+<!-- Bump both ?v= when editing: the files are cached for a week. -->
+<script src="scanner.js?v=83" type="module"></script>
+</body>
+</html>

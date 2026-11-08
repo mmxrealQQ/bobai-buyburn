@@ -1,0 +1,17 @@
+# Applebot guessed ~98,000 /api/ paths a day from our app names (2026-10-04:
+# /api/brainscreener, /api/game, /api/worldcup, none of which exist). /api/ is
+# the data interface for agents and tools, not pages to index.
+User-agent: Applebot
+Disallow: /api/
+Allow: /
+
+# MJ12bot (Majestic) does the same with /api/game, ~800 a day (2026-11-05)
+User-agent: MJ12bot
+Disallow: /api/
+Allow: /
+
+User-agent: *
+Allow: /
+
+# LLM / AI-agent factual summary: https://brainonbnb.com/llms.txt
+Sitemap: https://brainonbnb.com/sitemap.xml

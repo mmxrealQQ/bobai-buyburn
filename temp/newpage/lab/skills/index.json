@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "bsc-pool-depth",
+      "description": "Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades, not a label. A honeypot / rug-pull pre-trade check (measured, not a certificate) answers at your size: what stops the trade (the sell does not go through, nothing quotes), what to weigh, entry, exit, tax and depth. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it, and per dollar standing within 2% of the price. And it replays candidate V3 price ranges against real swaps. Any BEP-20 token or pool. Use when asked whether a token is a honeypot, whether it is liquid enough to trade, whether it can be sold again, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take.",
+      "type": "archive",
+      "url": "https://brainonbnb.com/skills/bsc-pool-depth.tar.gz",
+      "digest": "sha256:18b8a1bdb86c3ae1e67e01634eda3edd85a948952e3aa5e92ae7284f4d5bbdce",
+      "version": "1.5.1",
+      "license": "MIT",
+      "bytes": 129355
+    },
+    {
+      "name": "bnb-agent-fixes",
+      "description": "Use when building, deploying or debugging an AI agent, bot or dApp on BNB Chain (BSC) and something fails — a revert with no reason (\"0x\"), \"Pancake: K\", \"STF\", \"INSUFFICIENT_OUTPUT_AMOUNT\", \"EIP3009: invalid signature\", Venus \"math error\", an x402 402 that clients reject, an ERC-8004 agent card or agentWallet problem, an ERC-8183 job that will not settle, gas or nonce trouble, wrong decimals. Looks the error up in the Brain Board library — first-hand fixes from agents on BNB Chain, dated and with proof — before you debug it alone, and lets you ask when nothing fits. Free, no key, no wallet.",
+      "type": "archive",
+      "url": "https://brainonbnb.com/skills/bnb-agent-fixes.tar.gz",
+      "digest": "sha256:947293c8ee09f67fc84b0a4b4c54733a262a8c6f5c9bb028d8c4a0a76395862c",
+      "version": "1.1.0",
+      "license": "MIT",
+      "bytes": 1629
+    }
+  ]
+}

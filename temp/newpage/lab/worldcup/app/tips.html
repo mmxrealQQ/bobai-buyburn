@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Auth gate — hide page + redirect anonymous visitors before first paint -->
+  <style>html.wc-gate{visibility:hidden!important}</style>
+  <script>
+    (function(){
+      document.documentElement.classList.add('wc-gate');
+      function hasSession(){
+        try {
+          return Object.keys(localStorage).some(function(k){
+            return k.indexOf('sb-')===0 && k.lastIndexOf('-auth-token')===k.length-11 && !!localStorage.getItem(k);
+          });
+        } catch(e){ return true; }
+      }
+      if (!hasSession()){ window.location.replace('/worldcup/'); return; }
+      document.documentElement.classList.remove('wc-gate');
+      window.addEventListener('pageshow', function(e){
+        if (e.persisted && !hasSession()) window.location.replace('/worldcup/');
+      });
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Worldcup '26 — Tips</title>
+  <meta property="og:title" content="Your Worldcup '26 Predictions">
+  <meta property="og:description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/tips">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Your Worldcup '26 Predictions">
+  <meta name="twitter:description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .container.wide{max-width:920px}
+    .tipbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
+    .tipbar button{flex:1;min-width:80px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit}
+    .tipbar button.active{background:var(--gold-glow);color:var(--gold)}
+
+    /* Subtle group A–L jump bar — shows only when Groups view is active */
+    .group-sub{display:flex;flex-wrap:wrap;gap:4px;margin:-8px 0 14px;padding:0 2px;align-items:center}
+    .group-sub .lbl{font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-right:4px}
+    .group-sub button{padding:4px 9px;font-size:10.5px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
+    .group-sub button:hover{border-color:rgba(240,185,11,.3);color:var(--text)}
+    .group-sub button.active{background:var(--gold-glow);color:var(--gold);border-color:rgba(240,185,11,.5)}
+    .group-sub.hidden{display:none}
+
+    .group-card{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+    .group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .group-title{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--gold);letter-spacing:.5px}
+    .group-meta{font-size:11px;color:var(--muted)}
+
+    .match-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:10px 4px;border-top:1px solid var(--border)}
+    .match-row.first{border-top:none}
+    .match-meta{grid-column:1/-1;font-size:10.5px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;padding-bottom:4px}
+    .match-meta .multi{padding:1px 6px;border-radius:4px;font-weight:700;font-size:9px;letter-spacing:.5px}
+    .match-meta .multi.x1{background:rgba(123,125,158,.2);color:var(--muted)}
+    .match-meta .multi.x125{background:rgba(140,160,200,.22);color:#b8c8e8}
+    .match-meta .multi.x15{background:rgba(120,180,220,.22);color:#a8d0e8}
+    .match-meta .multi.x2{background:rgba(64,64,255,.15);color:#9090ff}
+    .match-meta .multi.x3{background:rgba(160,64,255,.15);color:#c590ff}
+    .match-meta .multi.x4{background:rgba(240,185,11,.18);color:var(--gold)}
+    .match-meta .multi.x5{background:rgba(255,140,40,.18);color:#ffb070}
+    .match-meta .multi.x6{background:rgba(255,80,80,.20);color:#ff9080}
+    .match-meta .multi.x7{background:linear-gradient(90deg,var(--gold) 0%,#ff7040 100%);color:#000;font-weight:800}
+
+    .tab-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;background:var(--gold);color:#000;border-radius:99px;font-size:10px;font-weight:800;line-height:1.4;vertical-align:1px}
+    .tab-badge:empty{display:none}
+    #phase-bar button.active .tab-badge{background:#000;color:var(--gold)}
+    .match-meta .lockicon{color:#ff8580}
+    .match-meta .open{color:#5fffa0}
+    .match-meta .resolved{color:var(--gold)}
+    .match-meta .decider{color:var(--text);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:99px;font-weight:600;white-space:nowrap}
+
+    .team{display:flex;align-items:center;gap:8px;min-width:0}
+    .team.away{justify-content:flex-end}
+    .team .fl{font-size:22px;line-height:1;flex-shrink:0}
+    .team .nm-block{display:flex;flex-direction:column;min-width:0;overflow:hidden;line-height:1.1}
+    .team.away .nm-block{text-align:right}
+    .team .nm{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .team .gscore{font-size:11px;color:var(--gold);font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:.3px;margin-top:1px}
+
+    .score-cell{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .score-input{width:42px;padding:7px 6px;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center;font-family:'Space Grotesk'}
+    .score-input:focus{outline:none;border-color:var(--gold)}
+    .score-input:disabled{opacity:.45;cursor:not-allowed}
+    .score-dash{color:var(--muted);font-weight:700}
+
+    .save-tag{font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);min-width:40px;text-align:right}
+    .save-tag.dirty{color:#ffc066}
+    .save-tag.ok{color:#5fffa0}
+    .save-tag.err{color:#ff8580}
+    .save-tag.locked{color:#ff8580}
+
+    .points-pill{font-size:10px;font-weight:700;color:var(--gold);background:var(--gold-glow);padding:2px 7px;border-radius:99px;margin-left:6px}
+
+    @media (max-width: 560px){
+      .team .nm{font-size:11.5px}
+      .score-input{width:36px;padding:6px 4px;font-size:13px}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div data-hero="tips-hero"></div>
+        <div class="card">
+          <div data-card-accent="tips-ball"></div>
+          <h1><span class="accent">Match Tips</span></h1>
+          <p class="sub">2 pts winner · +1 goal diff · +2 exact (5 max) · ×1 → ×7 by matchday &amp; phase · locks 15 min before kickoff</p>
+
+          <div id="alert"></div>
+
+          <!-- View switcher -->
+          <div class="tipbar" id="phase-bar">
+            <button data-view="next48" class="active">⏰ Next 48h <span class="tab-badge" id="badge-next48"></span></button>
+            <button data-view="group">Groups</button>
+            <button data-view="r32">R32</button>
+            <button data-view="r16">R16</button>
+            <button data-view="qf">QF</button>
+            <button data-view="sf">SF</button>
+            <button data-view="3rd">3rd Place</button>
+            <button data-view="final">Final</button>
+          </div>
+
+          <!-- Quick-jump to a single group, shown only when Groups view is active -->
+          <div class="group-sub hidden" id="group-sub">
+            <span class="lbl">Jump to</span>
+            <button data-letter="all" class="active">All</button>
+          </div>
+
+          <div id="list">Loading matches…</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=12"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=13"></script>
+  <script src="./assets/profile.js?v=18"></script>
+  <script src="./assets/avatar.js?v=7"></script>
+  <script src="./assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    const LOCK_MIN = 15;
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    function countryLookup(code){
+      return window.WC_COUNTRIES.find(c => c.code === code);
+    }
+
+    function teamCell(code, alignRight, goals){
+      if (!code || code === 'TBD') {
+        return `<div class="team ${alignRight?'away':''}">
+          <span class="fl">⚪</span><div class="nm-block"><span class="nm" style="color:var(--muted)">TBD</span></div>
+        </div>`;
+      }
+      const c = countryLookup(code);
+      const flag = c ? c.flag : '🏳';
+      const name = c ? c.name : code;
+      const scoreLine = (goals !== null && goals !== undefined) ? `<span class="gscore">${goals}</span>` : '';
+      if (alignRight) {
+        return `<div class="team away"><div class="nm-block"><span class="nm">${name}</span>${scoreLine}</div><span class="fl">${flag}</span></div>`;
+      }
+      return `<div class="team"><span class="fl">${flag}</span><div class="nm-block"><span class="nm">${name}</span>${scoreLine}</div></div>`;
+    }
+
+    function fmtKickoff(iso){
+      const d = new Date(iso);
+      // Local TZ for display
+      const opts = { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' };
+      return d.toLocaleString(undefined, opts);
+    }
+
+    function isLocked(iso){
+      const kickoff = new Date(iso).getTime();
+      return Date.now() >= kickoff - LOCK_MIN * 60 * 1000;
+    }
+
+    function fmtPts(p){
+      if (p == null) return '0';
+      const n = Number(p);
+      if (!Number.isFinite(n)) return '0';
+      return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
+    }
+    function multiplierCls(m){
+      // Class-safe token: '1.25' → 'x125', '1.5' → 'x15', integer → 'x<n>'
+      const n = Number(m);
+      if (n === 1.25) return 'x125';
+      if (n === 1.5)  return 'x15';
+      return 'x' + n;
+    }
+    function multiplierLabel(m){
+      return `<span class="multi ${multiplierCls(m)}">×${fmtPts(m)}</span>`;
+    }
+
+    let allMatches = [];
+    let myTips = {};
+    let currentView = 'next48';
+    let currentGroupLetter = 'all';
+    const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+    function hasTip(m){
+      const t = myTips[m.id];
+      return !!(t && Number.isInteger(t.tip_home) && Number.isInteger(t.tip_away));
+    }
+
+    function isNext48(m){
+      if (m.team_home === 'TBD' || m.team_away === 'TBD') return false;
+      if (isLocked(m.kickoff_utc)) return false;
+      const t = new Date(m.kickoff_utc).getTime();
+      const now = Date.now();
+      return t > now - 60*1000 && t <= now + 48*60*60*1000; // ~now to +48h
+    }
+
+    function next48Untipped(){
+      return allMatches
+        .filter(m => isNext48(m) && !hasTip(m))
+        .sort((a,b)=> new Date(a.kickoff_utc) - new Date(b.kickoff_utc));
+    }
+
+    function refreshBadge(){
+      const b = $('#badge-next48');
+      const n = next48Untipped().length;
+      b.textContent = n ? String(n) : '';
+    }
+
+    function parseEmoji(){
+      if (!window.twemoji) return;
+      try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
+    function render(){
+      const list = $('#list');
+      list.innerHTML = '';
+      refreshBadge();
+      // Re-parse twemoji after DOM is built — covers every early-return path.
+      queueMicrotask(parseEmoji);
+
+      if (currentView === 'next48') {
+        const items = next48Untipped();
+        if (!items.length) {
+          // Differentiate: nothing scheduled vs. everything already tipped
+          const anyIn48 = allMatches.some(isNext48);
+          if (anyIn48) {
+            list.innerHTML = '<div class="alert ok" style="text-align:center;line-height:1.6">🎉 <b>You\'re up to date.</b><br><span style="opacity:.85">All matches in the next 48 hours are tipped. Switch to <b>Groups</b> / <b>R32</b> / … to plan further ahead.</span></div>';
+          } else {
+            list.innerHTML = '<div class="alert info" style="text-align:center;line-height:1.6">⏳ <b>No matches in the next 48 hours.</b><br><span style="opacity:.85">Check back closer to kickoff, or browse <b>Groups</b> / <b>R32</b> / … to place your tips early.</span></div>';
+          }
+          return;
+        }
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        card.innerHTML = `<div class="group-head"><div class="group-title">⏰ Next 48 hours</div><div class="group-meta">${items.length} ${items.length===1?'match':'matches'} to tip</div></div><div class="rows"></div>`;
+        const rows = card.querySelector('.rows');
+        items.forEach((m, idx) => rows.appendChild(buildMatchRow(m, idx===0)));
+        list.appendChild(card);
+        return;
+      }
+
+      let filtered;
+      if (currentView === 'group') {
+        filtered = allMatches.filter(m => m.phase === 'group');
+        // group by group_letter
+        const byG = {};
+        filtered.forEach(m => {
+          byG[m.group_letter] = byG[m.group_letter] || [];
+          byG[m.group_letter].push(m);
+        });
+        const allLetters = Object.keys(byG).sort();
+        if (!allLetters.length) {
+          list.innerHTML = '<div class="alert info">No matches loaded yet. Run the Phase D seed in Supabase.</div>';
+          return;
+        }
+        const letters = currentGroupLetter === 'all'
+          ? allLetters
+          : allLetters.filter(L => L === currentGroupLetter);
+        letters.forEach(letter => {
+          const card = document.createElement('div');
+          card.className = 'group-card';
+          card.innerHTML = `
+            <div class="group-head">
+              <div class="group-title">Group ${letter}</div>
+              <div class="group-meta">${byG[letter].length} matches</div>
+            </div>
+            <div class="rows"></div>`;
+          const rows = card.querySelector('.rows');
+          byG[letter].forEach((m, idx) => {
+            rows.appendChild(buildMatchRow(m, idx === 0));
+          });
+          list.appendChild(card);
+        });
+      } else {
+        filtered = allMatches.filter(m => m.phase === currentView);
+        if (!filtered.length) {
+          list.innerHTML = '<div class="alert info">No matches in this phase yet.</div>';
+          return;
+        }
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        const phaseName = ({ r32:'Round of 32', r16:'Round of 16', qf:'Quarter-Finals', sf:'Semi-Finals', '3rd':'Third Place', final:'Final' })[currentView] || currentView.toUpperCase();
+        card.innerHTML = `<div class="group-head"><div class="group-title">${phaseName}</div><div class="group-meta">${filtered.length} matches</div></div><div class="rows"></div>`;
+        const rows = card.querySelector('.rows');
+        filtered.forEach((m, idx) => rows.appendChild(buildMatchRow(m, idx === 0)));
+        list.appendChild(card);
+      }
+    }
+
+    // KO matches decided after 90 min: tips score on the 90-min goals, this chip
+    // just surfaces the decider (penalties / extra time) next to the result.
+    function deciderChip(m){
+      if (m.final_home == null || m.final_away == null) return '';
+      if (m.decided_by === 'pens') return `<span class="decider">🥅 ${m.final_home - m.goals_home}:${m.final_away - m.goals_away} pen</span>`;
+      if (m.decided_by === 'aet')  return `<span class="decider">⏱ ${m.final_home}:${m.final_away} a.e.t.</span>`;
+      return '';
+    }
+
+    function buildMatchRow(m, isFirst){
+      const wrap = document.createElement('div');
+      wrap.className = 'match-row' + (isFirst ? ' first' : '');
+      const tip = myTips[m.id];
+      const locked = isLocked(m.kickoff_utc);
+      const resolved = !!(tip && tip.resolved);
+      const played = m.played && m.goals_home != null && m.goals_away != null;
+
+      const status = resolved
+        ? `<span class="resolved">✓ resolved <span class="points-pill">+${fmtPts(tip.points_final)}</span></span>`
+        : locked
+          ? `<span class="lockicon">🔒 locked</span>`
+          : `<span class="open">⏱ open</span>`;
+
+      wrap.innerHTML = `
+        <div class="match-meta">
+          <span>${fmtKickoff(m.kickoff_utc)}</span>
+          ${multiplierLabel(m.multiplier)}
+          ${status}
+          ${played ? deciderChip(m) : ''}
+        </div>
+        ${teamCell(m.team_home, false, played ? m.goals_home : null)}
+        <div class="score-cell">
+          <input class="score-input s-home" type="number" min="0" max="30" inputmode="numeric"
+                 value="${tip ? tip.tip_home : ''}" ${locked ? 'disabled' : ''} placeholder="–">
+          <span class="score-dash">:</span>
+          <input class="score-input s-away" type="number" min="0" max="30" inputmode="numeric"
+                 value="${tip ? tip.tip_away : ''}" ${locked ? 'disabled' : ''} placeholder="–">
+        </div>
+        ${teamCell(m.team_away, true, played ? m.goals_away : null)}
+        <div class="match-meta" style="padding-top:2px"><span class="save-tag ${locked?'locked':''}" data-mid="${m.id}">${locked?'locked':''}</span></div>
+      `;
+
+      // disable inputs if either team is TBD
+      if (m.team_home === 'TBD' || m.team_away === 'TBD') {
+        wrap.querySelectorAll('.score-input').forEach(i => { i.disabled = true; i.placeholder = '–'; });
+        wrap.querySelector('.save-tag').textContent = 'awaiting draw';
+      }
+
+      const inH = wrap.querySelector('.s-home');
+      const inA = wrap.querySelector('.s-away');
+      const tag = wrap.querySelector('.save-tag');
+
+      const trySave = async () => {
+        const vH = inH.value.trim(), vA = inA.value.trim();
+        if (vH === '' || vA === '') return;
+        const nh = parseInt(vH, 10), na = parseInt(vA, 10);
+        if (!Number.isInteger(nh) || !Number.isInteger(na)) return;
+        tag.className = 'save-tag dirty';
+        tag.textContent = 'saving…';
+        const r = await window.WC_PROFILE.saveTip(m.id, nh, na);
+        if (r.error) {
+          tag.className = 'save-tag err';
+          tag.textContent = 'failed';
+          showAlert('error', `Match ${m.id}: ${r.error}`);
+          return;
+        }
+        myTips[m.id] = { match_id: m.id, tip_home: nh, tip_away: na, points_final: 0, resolved: false };
+        tag.className = 'save-tag ok';
+        tag.textContent = '✓ saved';
+        refreshBadge();
+        setTimeout(()=>{
+          if (tag.textContent === '✓ saved') tag.textContent = '';
+          tag.className = 'save-tag';
+          // On the Next-48h view, the just-tipped match should drop out of the list
+          if (currentView === 'next48') render();
+        }, 1800);
+      };
+
+      inH.addEventListener('change', trySave);
+      inA.addEventListener('change', trySave);
+      inH.addEventListener('blur', trySave);
+      inA.addEventListener('blur', trySave);
+
+      return wrap;
+    }
+
+    function updateGroupSubBarVisibility(){
+      $('#group-sub').classList.toggle('hidden', currentView !== 'group');
+    }
+
+    function buildGroupSubBar(){
+      const bar = $('#group-sub');
+      if (!bar.querySelector('[data-letter="A"]')) {
+        GROUP_LETTERS.forEach(L => {
+          const btn = document.createElement('button');
+          btn.dataset.letter = L;
+          btn.textContent = L;
+          bar.appendChild(btn);
+        });
+      }
+      bar.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.letter === currentGroupLetter);
+      });
+      bar.querySelectorAll('button').forEach(b => {
+        b.onclick = () => {
+          currentGroupLetter = b.dataset.letter;
+          buildGroupSubBar();
+          render();
+        };
+      });
+    }
+
+    $$('#phase-bar button').forEach(b => b.addEventListener('click', () => {
+      $$('#phase-bar button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentView = b.dataset.view;
+      updateGroupSubBarVisibility();
+      render();
+    }));
+
+    (async ()=>{
+      buildGroupSubBar();
+      updateGroupSubBarVisibility();
+      const me = await window.WC_AUTH.currentProfile();
+      if (!me) { window.location.href = '/worldcup/'; return; }
+      const [mr, tr] = await Promise.all([
+        window.WC_PROFILE.loadMatches(),
+        window.WC_PROFILE.loadMyTips(),
+      ]);
+      if (mr.error) { showAlert('error', mr.error); return; }
+      if (tr.error) { showAlert('error', tr.error); return; }
+      allMatches = mr.matches;
+      myTips = tr.tips;
+      render();
+    })();
+  </script>
+</body>
+</html>

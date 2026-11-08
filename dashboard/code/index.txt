@@ -257,7 +257,7 @@ txt: https://brainonbnb.com/code/browser-game.txt
 Brain Pop 6.9 — the daily game in the terminal
 ----------------------------------------------
 60 seconds, one engine file, every tap replayed by the server.
-6 files, 627 lines
+6 files, 636 lines
 needs:
   - A worker with a Durable Object (SQLite)
       ours: Cloudflare Workers, class PopBoard
@@ -285,7 +285,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 4098 lines
+5 files, 4189 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

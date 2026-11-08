@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- The DeFi agent's own page, behind its Ecosystem tile. One part, on
+       its own, nothing repeated from the other three tiles: where the money
+       comes from and goes, what the agent holds right now, what it decides
+       every day and why, and where the full daily record is. The live block
+       is filled by app.js (fillLpBlock) from agent.brainonbnb.com/lp/agent. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>The DeFi agent — tax at work on PancakeSwap, half of every AI payment goes to $BOBAI</title>
+  <meta name="description" content="An agent that puts a slice of every $BOBAI trade to work in a PancakeSwap V3 pool on BNB Chain; a third of what it earns keeps working, a third buys $BOBAI it holds, a third goes to the operator, and half of every payment other AIs make here goes to $BOBAI, bought and held or added to its pool. Every step is a transaction; the record is public.">
+  <link rel="canonical" href="https://brainonbnb.com/defi">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="The DeFi agent — tax at work on PancakeSwap, half of every AI payment goes to $BOBAI">
+  <meta property="og:description" content="An agent that puts a slice of every $BOBAI trade to work in a PancakeSwap V3 pool on BNB Chain; a third of what it earns keeps working, a third buys $BOBAI it holds, a third goes to the operator, and half of every payment other AIs make here goes to $BOBAI, bought and held or added to its pool. Every step is a transaction; the record is public.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/defi">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The DeFi agent — tax at work on PancakeSwap, half of every AI payment goes to $BOBAI">
+  <meta name="twitter:description" content="An agent that puts a slice of every $BOBAI trade to work in a PancakeSwap V3 pool on BNB Chain; a third of what it earns keeps working, a third buys $BOBAI it holds, a third goes to the operator, and half of every payment other AIs make here goes to $BOBAI, bought and held or added to its pool. Every step is a transaction; the record is public.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
+  <style>
+    /* One frame, the headline inside it — the same shape as /registry and
+       /scanner (one .sec from 86px down, the hero centred at its top). Until
+       2026-09-08 the headline stood outside four separate frames in the
+       homepage's style, and next to the other three tile pages it read as a
+       page from somewhere else. Hero copied from scanner.html's .sc-hero. */
+    .lp-hero{padding:8px 0 6px;text-align:center}
+    .lp-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+      font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
+    .lp-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lp-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+    /* The four parts of the page, inside the one frame. */
+    .lp-part{margin-top:44px}
+    /* The portfolio: three figures a visitor reads first, then the lists the
+       Telegram card carries, in the same order and from the same model. */
+    .pf-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+    /* four figures since 7.11. (the range standing now beside the total): one row of four on a wide screen, two by two
+       on a tablet, one column on a phone */
+    .pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:repeat(4,1fr)}
+    @media(max-width:1000px){.pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:700px){.pf-top,.pf-top:has(.pf-tile ~ .pf-tile ~ .pf-tile ~ .pf-tile){grid-template-columns:1fr}}
+    /* The card's date: the newest range check, the same the Telegram card carries. */
+    .pf-date{grid-column:1/-1;font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 -4px 2px}
+    .pf-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+    .pf-tile .k{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .pf-tile .v{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:-.3px;line-height:1.15}
+    .pf-tile .s{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.5}
+    .pf-tile.up .v{color:#3fe09a}.pf-tile.down .v{color:#ff8f6b}
+    /* Where the result comes from: one caption, three cells that add up to
+       the result tile above them (2026-09-12). */
+    .pf-eq{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 8px 2px}
+    .pf-src{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    /* four parts (market, range, fees, gas since 2026-10-09): two by two, not three and one left alone on a row; and air
+       before the comparison line under them (2026-10-13) */
+    .pf-src:has(> div:nth-child(4)){grid-template-columns:repeat(2,1fr)}
+    .pf-src + .pf-eq{margin-top:14px}
+    @media(max-width:700px){.pf-src,.pf-src:has(> div:nth-child(4)){grid-template-columns:1fr;gap:8px}}
+    .pf-src>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 14px;border:1px dashed var(--border);border-radius:10px;font-size:.84rem;min-width:0}
+    .pf-src .k{color:var(--muted);white-space:nowrap}
+    .pf-src .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .pf-src .up .v{color:#3fe09a}.pf-src .down .v{color:#ff8f6b}
+    /* a phone: the figure under its label when both do not fit on one line (2026-10-13: '≈−$8.86' ran into the border) */
+    @media(max-width:430px){.pf-src>div{flex-wrap:wrap;row-gap:2px}.pf-src .v{margin-left:auto}}
+    @media(max-width:400px){.pf-src>div{padding:9px 8px;gap:6px;font-size:.8rem}}
+    .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:900px){.pf-grid{grid-template-columns:1fr}}
+    .pf-list{list-style:none;margin:0;padding:0;font-size:.84rem;line-height:1.6}
+    .pf-list li{display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
+    .pf-list li:first-child{border-top:0;padding-top:0}
+    .pf-one{margin-top:14px}
+    .pf-list .ic{flex:0 0 1.4em;text-align:center}
+    .pf-list b{color:var(--text,#f3efe6)}
+    .pf-list .m{color:var(--muted)}
+    .pf-h{font-size:.98rem;margin:0 0 10px}
+    .pf-when{font-size:.76rem;color:var(--muted);margin:12px 0 0;line-height:1.55}
+    .lp-part .sh{margin-bottom:18px}
+    /* The series table. Numbers right-aligned so a column reads as one figure;
+       a wide table scrolls inside its own box, never the page. */
+    .lp-series{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0 12px;white-space:nowrap}
+    .lp-series-box{overflow:auto;max-height:min(62vh,460px);overscroll-behavior:contain}
+    .lp-series-box .lp-series{margin:0 0 2px}
+    .lp-series th{position:sticky;top:0;z-index:1;background:#191514;text-align:right;font-weight:600;color:var(--muted);font-size:.66rem;letter-spacing:.4px;text-transform:uppercase;padding:6px 8px;box-shadow:inset 0 -1px 0 var(--border)}
+    .lp-series th:first-child,.lp-series td:first-child,.lp-series th:nth-child(2),.lp-series td:nth-child(2),.lp-series th:last-child,.lp-series td:last-child{text-align:left}
+    .lp-series td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
+    .lp-series td:last-child{white-space:normal;min-width:240px}   /* "Did" was squeezed to 74 px on a tablet, a run 197 px tall (2026-10-26) */
+    .lp-series td.up{color:#3fe09a}.lp-series td.down{color:#ff8f6b}
+    #ag-lp-series-sum b{color:var(--text,#f3efe6)}
+    /* Ask it: one field, one button, the answer below in the same box. */
+    .lp-ask{display:flex;gap:8px;margin:10px 0 0;flex-wrap:wrap}
+    .lp-ask input{flex:1;min-width:200px;background:rgba(255,255,255,.04);color:var(--text,#f3efe6);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font:inherit;font-size:.85rem}
+    .lp-ask input:focus{outline:none;border-color:var(--gold)}
+    .lp-yours-out{margin-top:12px;font-size:.82rem;line-height:1.55}
+    .lp-yours-out .lp-terms{border:1px solid rgba(var(--accs,240,185,11),.28);border-radius:10px;padding:10px 12px;background:rgba(var(--accs,240,185,11),.05);display:flex;flex-direction:column;gap:8px}
+    .lp-yours-out code{font-size:.78rem;overflow-wrap:anywhere}
+    .lp-yours-out .lp-head{font-weight:700;font-size:.92rem}
+    .lp-yours-out dl{display:grid;grid-template-columns:max-content 1fr;gap:5px 12px;margin:6px 0 0}
+    .lp-yours-out dt{color:var(--muted)}.lp-yours-out dd{margin:0;overflow-wrap:anywhere}
+    .lp-yours-out .lp-err{color:#ff8f6b}
+  
+    /* the curve and the agents' box (2026-10-12) */
+    .lpc .lpc-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline;margin-bottom:8px}
+    .lpc .lpc-h span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+    .lpc .lpc-h i{display:inline-block;width:16px;height:3px;border-radius:2px}.lpc .lpc-v{background:#f0b90b}.lpc .lpc-c{background:repeating-linear-gradient(90deg,#a0a2c0 0 4px,transparent 4px 7px)}
+    .lpc svg{width:100%;height:auto;display:block}.lpc svg text{fill:var(--muted);font:11px ui-monospace,Consolas,monospace}
+    .lpa h3{margin:0 0 6px;font-family:'Space Grotesk',sans-serif}
+    .lpa-r{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+    .lpa-r span b{display:block;font-size:13.5px}.lpa-r span small{display:block;font-size:11.5px;color:var(--muted)}
+    .lpa-r code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;background:rgba(255,255,255,.05);border-radius:8px;padding:6px 8px}
+    .lpa-r button{border:1px solid rgba(240,185,11,.45);background:none;color:var(--gold);border-radius:999px;padding:6px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
+    .lpa-r button.ok{background:#35e07a;border-color:#35e07a;color:#0b090a}
+    .lpa-go{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0 0}.lpa-go a{color:var(--gold);font-weight:600;text-decoration:none}
+    @media (max-width:559px){.lpa-r{grid-template-columns:minmax(0,1fr) auto}.lpa-r code{grid-column:1/-1;grid-row:2}}
+    /* the range, drawn (2026-10-13) */
+    .op-row{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);font-size:.82rem;line-height:1.5}
+    .op-row:first-of-type{border-top:0}
+    .op-ok{color:#35e07a}.op-no{color:#ff4d6d}.op-mu{color:var(--muted)}
+    .lpr .lpr-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline;margin-bottom:14px}
+    .lpr .lpr-in{color:#35e07a;font-weight:600;font-size:13px}.lpr .lpr-out{color:#ff4d6d;font-weight:600;font-size:13px}
+    .lpr-bar{position:relative;height:14px;border-radius:99px;background:rgba(255,255,255,.06);margin:30px 0 10px}
+    .lpr-zone{position:absolute;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,rgba(240,185,11,.35),rgba(240,185,11,.75),rgba(240,185,11,.35));box-shadow:0 0 14px rgba(240,185,11,.25)}
+    .lpr-now{position:absolute;top:-8px;bottom:-8px;width:3px;margin-left:-1.5px;border-radius:2px}
+    .lpr-now.in{background:#35e07a;box-shadow:0 0 10px #35e07a}.lpr-now.out{background:#ff4d6d;box-shadow:0 0 10px #ff4d6d}
+    .lpr-now em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;font:600 10.5px ui-monospace,Consolas,monospace;font-style:normal;color:var(--muted);white-space:nowrap}
+    .lpr-ends{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;font-variant-numeric:tabular-nums}
+    .lpr-ends span:nth-child(2){text-align:center}.lpr-ends span:nth-child(3){text-align:right}
+    .lpr-ends small{display:block;font-size:11px;color:var(--muted)}
+    .lpr-ends .mid{font-weight:600}.agt-note .cv-usd{color:var(--muted);font-size:.92em;white-space:nowrap}
+    .lpr-mix{height:8px;border-radius:99px;background:#f0b90b;overflow:hidden;margin:16px 0 8px}
+    .lpr-mix i{display:block;height:100%;background:#2dd4bf}
+    .lpr-mix + .lpr-ends span:first-child small:first-child{color:#2dd4bf;font-weight:600}.lpr-mix + .lpr-ends span:last-child small:first-child{color:#f0b90b;font-weight:600}
+    @media (max-width:559px){.lpr-ends{font-size:12px}}
+/* FOLDS (2026-10-24, operator chose variant A like /services: /defi was 9,821 px on a phone): what went in, what it is
+   worth and the range stay open; the second opinion, "For agents", "How it works" and what a plan costs open on a tap;
+   the day-by-day table shows its five newest runs */
+.fold>:first-child{cursor:pointer}
+.fold>:first-child::after{content:' \25BE';color:var(--gold,#f0b90b);font-size:.85em}
+.fold.open>:first-child::after{content:' \25B4'}
+/* a section head (heading + lead) carries the mark on its heading, not alone on a line under the lead (2026-10-25: "How it works" showed a lone ▾) */
+.fold>.sh:first-child::after{content:none}
+.fold>.sh:first-child h2::after{content:' \25BE';color:var(--gold,#f0b90b);font-size:.6em;vertical-align:.2em}
+.fold.open>.sh:first-child h2::after{content:' \25B4'}
+.fold:not(.open)>:not(:first-child){display:none!important}
+#ag-lp-series-wrap:not(.open) .lp-series tr:nth-child(n+7){display:none}
+.lp-more{background:none;border:1px solid rgba(240,185,11,.45);color:var(--gold,#f0b90b);border-radius:999px;padding:7px 14px;font:600 .8rem Inter,sans-serif;cursor:pointer;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/defi">The DeFi Agent</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
+  </div></nav>
+  <section class="sec b-violet" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Agent &middot; DeFi</span><span class="blk-line"></span></div>
+
+    <!-- THE START (2026-11-03): the shared .hx start of every page (styles.css). The two paragraphs are one sentence and
+         one line now; every fact in them stayed. The portfolio right under it is the proof, losses included. -->
+    <div class="lp-hero hx">
+      <h1>The DeFi <em>agent</em></h1>
+      <div class="hx-claim">An agent puts a slice of every trade&rsquo;s tax to work in a PancakeSwap V3 pool. <em>Every step on chain</em>, the losses too.</div>
+      <div class="hx-trust"><span><span class="hx-dot"></span>Running since 3 Sep 2026</span><span>The tax slice runs until 20 Nov 2026</span><span>What it earns: a third keeps working, a third buys $BOBAI it holds, a third to the operator</span><span>Half of what other AIs pay us buys $BOBAI: <a href="https://agent.brainonbnb.com/buys">every payment</a></span><span>The same tools for any position: <a href="/pancakeswap">PancakeSwap tools</a></span></div>
+    </div>
+
+  <div class="lp-part" id="portfolio">
+    <div class="sh fi"><h2>The <em>portfolio</em></h2>
+      <p class="sh-sub">What went in, what it is worth now, and where the result came from. The Telegram bot posts the same card every morning and answers it to <code>/defi</code>; both read one model from the agent&rsquo;s own records.</p>
+    </div>
+    <div class="agt-flow fi" id="defi-card">
+      <p class="agt-note">Reading the portfolio&hellip; <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">agent.brainonbnb.com/lp/portfolio</a></p>
+    </div>
+    <!-- THE RANGE, DRAWN (2026-10-13): lower, upper, the price now, room, what it holds (app.js lpRange) -->
+    <div class="agt-flow fi lpr" id="ag-lp-range" hidden></div>
+    <div class="agt-flow fi lpr fold" id="ag-opinion" hidden></div>
+    <!-- THE CURVE (2026-10-12): worth against capital put in, every run of /lp/series (app.js lpCurve) -->
+    <div class="agt-flow fi lpc" id="ag-lp-curve" hidden></div>
+    <!-- FOR AGENTS (2026-10-12, operator: "AI and the blockchain must see us"): what another agent needs to find, call or
+         hire this one — its A2A card and endpoint, its ERC-8004 id, the escrow hire, its measured chart, the open record -->
+    <div class="agt-flow fi lpa fold" data-nousd>
+      <h3>For agents</h3>
+      <p class="agt-note">This agent is ERC-8004 <b>#363709</b> on BNB Chain. Another agent can read its card, ask it over A2A, or hire it through the ERC-8183 escrow; its chart on Brain Plaza is measured, not self-reported.</p>
+      <div class="lpa-r"><span><b>Agent card</b><small>A2A, what it can do</small></span><code>https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json</code><button type="button" data-copy="https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json">Copy</button></div>
+      <div class="lpa-r"><span><b>A2A endpoint</b><small>JSON-RPC message/send</small></span><code>https://agent.brainonbnb.com/defi-agent/a2a</code><button type="button" data-copy="https://agent.brainonbnb.com/defi-agent/a2a">Copy</button></div>
+      <div class="lpa-r"><span><b>The record</b><small>every run, read-only JSON</small></span><code>https://agent.brainonbnb.com/lp/agent</code><button type="button" data-copy="https://agent.brainonbnb.com/lp/agent">Copy</button></div>
+      <p class="lpa-go"><a href="/registry?hire=363709">Hire it through the escrow &rarr;</a> <a href="/agent/363709">Its measured chart &rarr;</a> <a href="https://8004scan.io/agents/bsc/363709" target="_blank" rel="noopener">On 8004scan &#x2197;</a> <a href="https://www.mandatemarkets.com/agents/363709" target="_blank" rel="noopener">On Mandate &#x2197;</a> <a href="https://marque.trade/agents/56/363709" target="_blank" rel="noopener">On Marque &#x2197;</a> <a href="https://pokter.xyz/agents/56/363709" target="_blank" rel="noopener">On Pokter &#x2197;</a></p>
+    </div>
+    <script>document.querySelectorAll('[data-until]').forEach((a) => { if (Date.now() >= Date.parse(a.dataset.until)) a.remove(); });</script>
+    <script>
+      document.querySelector('.lpa').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-copy]'); if (!b) return; var v = b.getAttribute('data-copy');
+        var done = function () { b.textContent = 'Copied ✓'; b.classList.add('ok'); setTimeout(function () { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1600); };
+        (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(done, function () { var t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (x) {} t.remove(); });
+      });
+    </script>
+  </div>
+
+  <div class="lp-part" id="series">
+    <div class="sh fi"><h2>Day by <em>day</em></h2>
+      <p class="sh-sub">One line per run of the agent, from its own record. A run between the daily ones — the hourly range check or the deposit watch — gets a line when it acted (a re-set, a top-up from a deposit) or found a position the series did not know yet.</p>
+    </div>
+    <div class="agt-flow fi" id="ag-lp-series-wrap">
+      <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
+      <div class="lp-series-box"><table class="lp-series" id="ag-lp-series"></table></div>
+      <button type="button" class="lp-more" id="lp-series-more" hidden>Show every run</button>
+      <p class="agt-note">Value is in BNB because the position is quoted in BNB. After a re-set the fees-owed column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital, and the portfolio counts them as fees all the same. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
+    </div>
+  </div>
+
+  <div class="lp-part fold" id="steps">
+    <div class="sh fi"><h2>How it <em>works</em></h2>
+      <p class="sh-sub">One PancakeSwap V3 range on BNB Chain, in the CAKE/BNB 0.05% pool &mdash; run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
+    </div>
+    <div class="agt-two">
+    <div class="agt-flow fi">
+      <h3>The money</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>In</b><span>Whatever other AIs pay this project &mdash; 0.10 USD1 per answer or delivered job, 0.50 per pool watch &mdash; lands in <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>. Once a day, when it is over 0.004 BNB (less waits: gas would eat it), it is split: half goes to the operator in the coin it was paid in; the other half goes to $BOBAI &mdash; half of it bought and kept in that wallet, never sold, and half added to the $BOBAI/WBNB pool with the LP tokens burned, whenever the gas of that is at most 5&nbsp;% of it (otherwise all of it is kept). <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">The DeFi wallet</a> runs on a slice of the trading tax (until Nov 20, 2026) and what the operator puts in by hand.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds one range in the PancakeSwap V3 CAKE/BNB 0.05% pool &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. That pool is the operator&rsquo;s decision (Sep 11, 2026); the agent does not move, it gets better where it is. The capital stays; it is never withdrawn.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Out</b><span>Of what the position earns, a third stays as capital so it grows out of its own fees, a third is paid out to the operator, and a third buys $BOBAI that stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Oct 14, 2026 (from Sep 9 to then: half kept, half into $BOBAI).</span></div></li>
+      </ol>
+    </div>
+    <div class="agt-flow fi">
+      <h3>The program, every day at 04:23 UTC</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Income split: half to the operator, half to $BOBAI &mdash; kept in the income wallet, and a share added to the $BOBAI pool for good (LP burned) when the gas is at most 5&nbsp;% of it.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Collect</b><span>The fees the position earned: a third kept, a third into $BOBAI it holds, a third paid out to the operator. Small amounts are left to grow.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set as a wide range centred on the price again, with one swap that balances the two tokens &mdash; wide, because in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> the fees of narrow ranges did not pay for what the price took from them and their re-sets, and a wide range is left far less often. The card says where the position stands against simply holding.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live. (A reserve range below the price, a buy ladder, existed for one-sided re-sets; it is off while re-sets are centred, since Oct 7, 2026.)</span></div></li>
+      </ol>
+      <p class="agt-note">The record, run by run and in the agent&rsquo;s own words: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>. The code: one core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="https://github.com/mmxrealQQ/bobai-buyburn/blob/main/shared/lp-agent.js" target="_blank" rel="noopener">the published source</a>. It never touches the buyback bot&rsquo;s own code.</p>
+    </div>
+    </div>
+  </div>
+
+  <div class="lp-part" id="yours">
+    <div class="sh fi"><h2>The agent, on <em>your</em> position</h2>
+      <p class="sh-sub">The same code that decides about our position every morning, pointed at yours: in range or not and how much room is left, what it is worth, what it is owed and whether collecting pays for its gas, whether a re-set is due and in which width, what your spare BNB would add. It reads and plans. It signs nothing on your position.</p>
+    </div>
+    <div class="agt-two">
+    <div class="agt-flow fi" id="lp-yours">
+      <h3>Ask it</h3>
+      <p class="agt-note">Paste a PancakeSwap V3 position id, or the address of a wallet that holds exactly one position. The look is free: in range or not, room left, value, fees owed. The plan costs a tenth of a dollar.</p>
+      <div class="lp-ask">
+        <input id="lp-yours-in" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="7309536  or  0x…" aria-label="Position id or wallet address">
+        <button id="lp-yours-go" type="button" class="mkt-go" style="border:0;background:none;font:inherit;cursor:pointer">Look &rarr;</button>
+      </div>
+      <div id="lp-yours-out" class="lp-yours-out" hidden></div>
+    </div>
+    <!-- closed it is one line: its own height, not an empty box as tall as "Ask it" beside it (26.10.) -->
+    <div class="agt-flow fi fold" style="align-self:start">
+      <h3>What it costs, and what comes next</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>One answer, one payment</b><span>0.10 USD1, or half that in $BOBAI at the quote you are shown. Send it to the income wallet, paste the transaction hash, get the plan. Agents do the same over x402 without a page (USD1 signed by EIP-3009 is accepted too), or hire the agent itself: it is ERC-8004 agent <a href="https://8004scan.io/agents/bsc/363709" target="_blank" rel="noopener">#363709</a> on BNB Chain, hired through the ERC-8183 escrow with a signed quote at <a href="https://agent.brainonbnb.com/defi-agent/.well-known/agent-card.json" rel="noopener">its own card</a>, and listed on <a href="https://brainonbnb.com/registry">Brain Plaza</a>, <a href="https://marque.trade/agents/56/363709" target="_blank" rel="noopener">Marque</a>, <a href="https://www.mandatemarkets.com/agents/363709" target="_blank" rel="noopener">Mandate</a>, <a href="https://pokter.xyz/agents/56/363709" target="_blank" rel="noopener">Pokter</a> and Dolphin.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Where the fee goes</b><span>Like every AI payment here, half of it goes to $BOBAI: USD1, USDC and $U are swept, half into $BOBAI &mdash; bought and held in the income wallet, never sold, and part added to the $BOBAI pool with the LP burned when that part is worth the gas &mdash; and half as the operator&rsquo;s revenue. A payment made in $BOBAI costs half and stays as it is.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Not yet: acting on your position</b><span>That needs a session key on your own account with an allowlist and a cap, the way this project already spends from its escrow. It is designed, not built, and the design is public: <a href="https://github.com/mmxrealQQ/bobai-buyburn/blob/main/docs/lp-service-stage2.md" target="_blank" rel="noopener">docs/lp-service-stage2.md</a> in the source. Nothing here holds a key to your liquidity.</span></div></li>
+      </ol>
+    </div>
+    </div>
+  </div>
+
+  </section>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script src="app.js?v=135" defer></script>
+<script>
+  // the folds (2026-10-24): a tap or Enter on a fold's first line opens it; links and buttons inside keep working.
+  // The second opinion is drawn later by app.js, so its first line is marked again whenever it is redrawn.
+  (function () {
+    var mark = function (f) { var h = f.firstElementChild; if (!h) return; h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', f.classList.contains('open') ? 'true' : 'false'); };
+    var toggle = function (f) { f.classList.toggle('open'); mark(f); };
+    document.querySelectorAll('.fold').forEach(function (f) { mark(f); new MutationObserver(function () { mark(f); }).observe(f, { childList: true }); });
+    document.addEventListener('click', function (e) { var h = e.target.closest('.fold > :first-child'); if (!h || e.target.closest('a, button, input, code')) return; toggle(h.parentElement); });
+    document.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var h = e.target.closest && e.target.closest('.fold > :first-child'); if (!h || h !== e.target) return; e.preventDefault(); toggle(h.parentElement); });
+    // the day-by-day table: its five newest runs, then a button for all of them
+    var wrap = document.getElementById('ag-lp-series-wrap'), more = document.getElementById('lp-series-more'), table = document.getElementById('ag-lp-series');
+    if (wrap && more && table) {
+      new MutationObserver(function () { var n = table.querySelectorAll('tr').length - 1; more.hidden = n <= 5; more.textContent = 'Show all ' + n + ' runs'; }).observe(table, { childList: true, subtree: true });
+      more.addEventListener('click', function () { var open = wrap.classList.toggle('open'); more.textContent = open ? 'Show the five newest' : 'Show all ' + (table.querySelectorAll('tr').length - 1) + ' runs'; });
+    }
+  })();
+</script>
+</body>
+</html>

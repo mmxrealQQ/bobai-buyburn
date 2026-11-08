@@ -1,0 +1,1625 @@
+// Moved out of index.html: the block was 28 KB and had to be sent and parsed
+// with the document on EVERY page view, although showing the page does not
+// need it. As its own file with defer it loads in parallel with parsing,
+// blocks nothing and sits in the cache on the next visit — which helps
+// refreshing on a phone most of all.
+// Versioned via ?v= in the <script> tag, see index.html.
+// A share printed at three decimals lies at both ends: 99.9996% shows as a flat
+// 100.000% and 0.0004% as 0.000%. Same rule as pc() in scanner.js, one decimal deeper.
+function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<100)?'>99.999%':v.toFixed(3)+'%'}
+// The nav's Buy button used to appear only once the hero's own CTA had
+// scrolled away; since 2026-09-05 it is simply there (styles.css .nb-group).
+
+/* Background is now the CSS aurora (.aur) — no canvas work needed.
+// === BACKGROUND: the brain, wired into the chain ===
+// Nodes fill an actual brain silhouette (top view — two hemispheres split by
+// the longitudinal fissure), edges wire neighbouring nodes together, and gold
+// pulses travel along those edges like transactions moving across the chain.
+!function(){
+  const c=document.getElementById('bg');if(!c)return;
+  const x=c.getContext('2d'),GOLD='240,185,11';
+  let w,h,N=[],E=[],P=[],rx,ry,reduce=false;
+  try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+
+  // Wobble on the radius gives the gyri; the excluded centre band is the fissure.
+  function inBrain(u,v){
+    const th=Math.atan2(v,u);
+    const wob=1+.06*Math.sin(7*th)+.035*Math.sin(13*th+.9)+.03*Math.sin(4*th+2.1);
+    if(Math.hypot(u,v/.84)>wob)return false;
+    if(Math.abs(u)<.05&&Math.abs(v)<.86*wob)return false;
+    return true;
+  }
+  function newPulse(){return{e:Math.floor(Math.random()*E.length),t:Math.random(),s:.005+Math.random()*.007}}
+
+  function build(){
+    w=c.width=innerWidth;h=c.height=innerHeight;
+    // Wider than the 1100px content column on purpose — otherwise the whole
+    // brain hides behind the cards and you only ever see stray dots.
+    rx=Math.max(Math.min(w*.5,860),w*.42);ry=rx*.72;
+    const cx=w/2,cy=h*.46,step=.105;
+    N=[];E=[];P=[];
+    for(let u=-1;u<=1;u+=step)for(let v=-1;v<=1;v+=step){
+      const ju=u+(Math.random()-.5)*step*.75,jv=v+(Math.random()-.5)*step*.75;
+      if(!inBrain(ju,jv))continue;
+      N.push({x:cx+ju*rx,y:cy+jv*ry,p:Math.random()*6.28});
+    }
+    const lim=rx*step*2.4;
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      const d=Math.hypot(N[i].x-N[j].x,N[i].y-N[j].y);
+      if(d<lim)E.push({a:i,b:j,d});
+    }
+    if(E.length)for(let i=0;i<18;i++)P.push(newPulse());
+  }
+
+  function draw(){
+    x.clearRect(0,0,w,h);
+    const now=performance.now()/1000,lim=rx*.115*2.4;
+    for(const e of E){
+      const a=N[e.a],b=N[e.b];
+      x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);
+      x.strokeStyle='rgba('+GOLD+','+(.2*(1-e.d/lim))+')';x.lineWidth=.7;x.stroke();
+    }
+    for(const n of N){
+      const r=reduce?1:1+Math.sin(now*1.3+n.p)*.45;
+      x.beginPath();x.arc(n.x,n.y,Math.max(r,.5),0,6.28);
+      x.fillStyle='rgba('+GOLD+',.55)';x.fill();
+    }
+    for(const p of P){
+      const e=E[p.e];if(!e)continue;
+      const a=N[e.a],b=N[e.b],px=a.x+(b.x-a.x)*p.t,py=a.y+(b.y-a.y)*p.t;
+      const g=x.createRadialGradient(px,py,0,px,py,8);
+      g.addColorStop(0,'rgba(255,214,90,.9)');g.addColorStop(1,'rgba('+GOLD+',0)');
+      x.beginPath();x.arc(px,py,8,0,6.28);x.fillStyle=g;x.fill();
+      if(!reduce){p.t+=p.s;if(p.t>=1)Object.assign(p,newPulse(),{t:0})}
+    }
+    requestAnimationFrame(draw);
+  }
+  addEventListener('resize',build);build();draw();
+}();
+*/
+
+// === WRAPNET: neural wiring that runs down both margins and embraces the page ===
+// Built from the real document height so it always spans the whole thing, and
+// coloured with the character's glitch speckles (cyan / magenta / gold).
+!function(){
+  const svg = document.querySelector('.wrapnet'); if(!svg) return;
+  const GLITCH = ['34,211,238', '232,121,249', '240,185,11'];
+  const NS = 'http://www.w3.org/2000/svg';
+  let raf, lastW = 0, lastH = 0;
+
+  function build(){
+    // Below 900px (and on short landscape phones) .wrapnet is display:none —
+    // building hundreds of SVG nodes for an invisible element is pure
+    // main-thread cost on exactly the devices that can least afford it.
+    // Read the computed value rather than repeating the breakpoint, so this
+    // can never drift out of sync with the media query.
+    if(getComputedStyle(svg).display === 'none'){
+      if(svg.firstChild){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+      lastW = lastH = 0;
+      return;
+    }
+    const page = document.querySelector('.page');
+    const W = page.clientWidth, H = page.scrollHeight;
+    if(!W || !H) return;
+    // The ResizeObserver also fires on mobile address-bar show/hide, which
+    // changes nothing about the page box. Rebuilding then is wasted work.
+    if(W === lastW && H === lastH) return;
+    lastW = W; lastH = H;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.height = H + 'px';
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // Content column edges — the wiring hugs just outside them.
+    const col = Math.min(1100, W - 34);
+    const pad = Math.max(18, (W - col) / 2 - 34);
+    const rows = Math.max(6, Math.round(H / 420));
+    const el = (t, a) => { const n = document.createElementNS(NS, t);
+      for(const k in a) n.setAttribute(k, a[k]); return n; };
+
+    for(const side of [0, 1]){
+      const base = side ? W - pad : pad, dir = side ? -1 : 1;
+      const pts = [];
+      for(let i = 0; i <= rows; i++){
+        const y = (H / rows) * i;
+        // meander in and out so the strand feels organic, not ruled
+        pts.push([base + dir * Math.sin(i * 1.15 + side * 2) * 26, y]);
+      }
+      let d = `M${pts[0][0].toFixed(0)} 0`;
+      for(let i = 1; i < pts.length; i++){
+        const [x0, y0] = pts[i-1], [x1, y1] = pts[i], my = (y0 + y1) / 2;
+        d += ` C${x0.toFixed(0)} ${my.toFixed(0)} ${x1.toFixed(0)} ${my.toFixed(0)} ${x1.toFixed(0)} ${y1.toFixed(0)}`;
+      }
+      svg.appendChild(el('path', {class:'wn-e', d, stroke:`rgba(${GLITCH[2]},.22)`}));
+
+      pts.forEach(([x, y], i) => {
+        if(i === 0 || i === pts.length - 1) return;
+        const c = GLITCH[i % GLITCH.length];
+        // a short branch reaching in toward the content
+        const bx = x + dir * (34 + (i % 3) * 16);
+        svg.appendChild(el('path', {class:'wn-e',
+          d:`M${x.toFixed(0)} ${y.toFixed(0)} C${(x + dir*22).toFixed(0)} ${(y-14).toFixed(0)} ${(bx-dir*10).toFixed(0)} ${(y-22).toFixed(0)} ${bx.toFixed(0)} ${(y-26).toFixed(0)}`,
+          stroke:`rgba(${c},.2)`}));
+        svg.appendChild(el('circle', {class:'wn-n', cx:bx.toFixed(0), cy:(y-26).toFixed(0), r:2,
+          fill:`rgba(${c},.6)`, style:`animation:wnpulse ${(3.4 + i%4*.5).toFixed(1)}s ease-in-out ${(-i*.7).toFixed(1)}s infinite`}));
+        // every third junction is a chain link
+        if(i % 3 === 0){
+          svg.appendChild(el('rect', {class:'wn-b', x:(x-5).toFixed(0), y:(y-5).toFixed(0),
+            width:10, height:10, rx:2.5, transform:`rotate(45 ${x.toFixed(0)} ${y.toFixed(0)})`,
+            stroke:`rgba(${c},.55)`, fill:`rgba(${c},.12)`}));
+        } else {
+          svg.appendChild(el('circle', {class:'wn-n', cx:x.toFixed(0), cy:y.toFixed(0), r:2.4,
+            fill:`rgba(${c},.5)`}));
+        }
+      });
+    }
+  }
+  const sched = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(build); };
+  addEventListener('resize', sched);
+  addEventListener('load', sched);
+  new ResizeObserver(sched).observe(document.querySelector('.page'));
+  sched();
+}();
+
+// Fade-in observer.
+// This block made the page look "broken" on a phone: all 45 .fi elements sit
+// at opacity:0 until the observer releases them — and it only ran once the
+// parser reached the end of this 130 KB document. Until then everything
+// below the hero was black. Three changes:
+//   - rootMargin: release BEFORE the element comes into view instead of at
+//     8% visibility. You never scroll into empty space any more.
+//   - unobserve after fading in: each element is needed only once.
+//   - Safety net: if the IntersectionObserver is missing or anything else
+//     goes wrong, everything is visible after 5 s at the latest. A page must
+//     never keep content invisible for good.
+!function(){
+  // No IntersectionObserver, or already scrolled? Then hide nothing at all —
+  // better no effect than empty space. Someone already scrolling would
+  // otherwise see content disappear.
+  if(!('IntersectionObserver'in window)||scrollY>0)return;
+  const vh=innerHeight;
+  // Only what is safely below the fold. Everything visible stays visible.
+  const hidden=[...document.querySelectorAll('.fi')]
+    .filter(el=>el.getBoundingClientRect().top>vh*1.1);
+  hidden.forEach(el=>el.classList.add('pre'));
+  const ob=new IntersectionObserver(e=>e.forEach(x=>{
+    if(x.isIntersecting){x.target.classList.remove('pre');ob.unobserve(x.target)}
+  }),{rootMargin:'400px 0px',threshold:0});
+  hidden.forEach(el=>ob.observe(el));
+  // Safety net: after 5 s nothing is hidden any more, guaranteed.
+  setTimeout(()=>hidden.forEach(el=>el.classList.remove('pre')),5000);
+}();
+
+// Shimmer only on what is visible right now. The effect animates
+// background-position and so has to run on the main thread — on 21 elements
+// at once that costs CPU all the time, including for the 19 nobody is looking
+// at. What you see of the effect stays the same.
+// Without IntersectionObserver (very old browsers) it runs everywhere, as before.
+!function(){
+  const els=document.querySelectorAll('.sh h2 em,.tc .b');
+  if(!('IntersectionObserver'in window)){els.forEach(e=>e.classList.add('shim-on'));return}
+  const so=new IntersectionObserver(es=>es.forEach(x=>x.target.classList.toggle('shim-on',x.isIntersecting)),
+    {rootMargin:'80px'});
+  els.forEach(e=>so.observe(e));
+}();
+
+// === ON-CHAIN DATA ===
+// BNB in USD as chain() last read it, and the Giggle pot in BNB as ggdata() last summed it: the
+// pot's dollar tile needs both, and the two arrive from different fetches in either order.
+let BNBP=0,GG_BNB=0;
+// The BOB tile's second line: dollars from chain(), the bot's own share from the burn log (bdata) — either may land first.
+let BOB_USD=0,BOB_DEAD=0,BOB_OURS=0;
+// The same second line for the $BOBAI tile (2026-10-13, operator: "the bot's number is missing"): it showed the total's
+// dollars a second time and never what the bot burned. Both tiles: the total's dollars stay beside the total (the page's
+// automatic dollars), the line under it is the bot's own share from the burn log.
+let BOBAI_USD=0,BOBAI_DEAD=0,BOBAI_OURS=0;
+// Every headline figure as this page computed it, for the Brain Terminal (2026-09-25): it shows
+// the same numbers from the same reads, never a second computation. 'bobai:nums' fires on each refresh.
+const NUMS=window.__bobaiNums={chain:null,lpLocked:null,burns:null,liq:null,gg:null,bb3:null};
+function numsOut(){try{dispatchEvent(new Event('bobai:nums'))}catch(e){}}
+function bobaiSub(){const e=document.getElementById('bobai-burned-usd');if(!e)return;if(!(BOBAI_OURS>0)){e.textContent='';return}const ou=BOBAI_DEAD>0&&BOBAI_USD>0?BOBAI_USD*BOBAI_OURS/BOBAI_DEAD:0;e.textContent=nf(BOBAI_OURS)+' by the bot'+(BOBAI_DEAD>0?' ('+(BOBAI_OURS/BOBAI_DEAD*100).toFixed(1)+'%'+(ou>0?', ≈$'+nf(ou,ou>=1000?0:2):'')+')':'')}
+function bobSub(){const e=document.getElementById('bob-burned-usd');if(!e)return;const p=[];if(BOB_OURS>0){const ou=BOB_DEAD>0&&BOB_USD>0?BOB_USD*BOB_OURS/BOB_DEAD:0;p.push(nf(BOB_OURS)+' by the bot'+(BOB_DEAD>0?' ('+(BOB_OURS/BOB_DEAD*100).toFixed(1)+'%'+(ou>0?', ≈$'+nf(ou,ou>=1000?0:2):'')+')':''))}e.textContent=p.join(' · ')}
+function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))return;e.textContent="$"+(GG_BNB*BNBP).toFixed(2)}
+// EVERY TOKEN AMOUNT WITH ITS DOLLARS (2026-10-10, operator: "when he talks about $BOBAI, $BNB, $BOB, the USD value —
+// in the windows too"): every "<amount> BOBAI / BNB / BOB" this page prints gets "≈$x" beside it at today's price (the
+// token figure may be history, the dollars follow the market, as everywhere on the site). Only what changed is read
+// again; never inside the Brain Terminal (it writes its own), links, buttons or fields; an amount with a $ figure close
+// by keeps it alone. PX is filled by chain().
+const PX={BNB:0,BOBAI:0,BOB:0};
+const AMT_RX=/(^|[^\w.$≈])([+\-−]?\d[\d,]*(?:\.\d+)?)(\s?[KMB])?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/g,AMT_HAS=/\d[\d,]*(?:\.\d+)?\s?[KMB]?\s*(\$?BOBAI|BNB|\$?BOB)(?![\w])/;
+// A LOSS STAYS A LOSS (2026-10-12: "−0.1159 BNB ≈$86" on /defi read like a gain): the amount's sign goes with its dollars
+const usdTx=(u,neg)=>u>0&&u<0.01?' ≈'+(neg?'−':'')+'<$0.01':' ≈'+(neg?'−':'')+'$'+nf(u,u<10?2:0);
+function usdOf(s){const k=s.dataset.k,p=PX[k];return p>0?usdTx(+s.dataset.v*p,s.dataset.neg==='1'):''}
+function usdIn(root){
+  if(!(PX.BNB>0)||!root)return;if(root.nodeType===3)root=root.parentNode;if(!root||root.nodeType!==1||root.closest('#bt'))return;
+  // a link is left alone, except a card link that holds a whole text block (the ecosystem cards)
+  const skip='#bt,button,input,textarea,select,option,script,style,code,pre,svg,.usdv,[data-nousd]',nodes=[];
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:t=>{const p=t.parentElement,a=p&&p.closest('a');return !p||p.closest(skip)||(a&&!a.querySelector('p,div'))||!AMT_HAS.test(t.data)?2:1}});
+  while(w.nextNode())nodes.push(w.currentNode);
+  for(const t of nodes){
+    const p=t.parentElement,row=(p.closest('tr,li')||p).textContent;let m,cut=null;AMT_RX.lastIndex=0;
+    while((m=AMT_RX.exec(t.data))){const s=m.index+m[1].length,e=m.index+m[0].length,txt=t.data.slice(s,e),at=row.indexOf(txt);
+      const near=at<0?'':row.slice(Math.max(0,at-30),at)+row.slice(at+txt.length,at+txt.length+45);
+      if(/\$\s?\d|≈\s?<?\$/.test(near))continue;
+      const k=m[4].replace('$',''),mul={K:1e3,M:1e6,B:1e9}[(m[3]||'').trim()]||1,v=Math.abs(parseFloat(m[2].replace(/[,−+-]/g,'')))*mul;
+      if(v>0&&PX[k]>0){cut=[e,k,v,/^[−-]/.test(m[2])];break}}
+    if(!cut)continue;
+    const after=t.splitText(cut[0]),s=document.createElement('span');s.className='usdv';s.dataset.k=cut[1];s.dataset.v=cut[2];if(cut[3])s.dataset.neg='1';s.style.opacity='.72';
+    s.textContent=usdOf(s);p.insertBefore(s,after);if(AMT_HAS.test(after.data))usdIn(p);
+  }
+}
+function usdAll(){if(!(PX.BNB>0))return;for(const s of document.querySelectorAll('.usdv'))s.textContent=usdOf(s);usdIn(document.body)}
+// WHEN THE CHAIN READ IS SLOW (2026-10-28: one /defi load showed no dollars at all, the public RPC had not answered):
+// after 8 s the site's own on-chain price (/api/price: pair reserves x Chainlink) stands in until chain() arrives
+setTimeout(()=>{if(PX.BNB>0)return;fetch('/api/price',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(PX.BNB>0||!j||!(+j.bnb_usd>0))return;PX.BNB=+j.bnb_usd;PX.BOBAI=+j.price_usd||0;usdAll()}).catch(()=>{})},8000);
+{let q=new Set(),tm=0;new MutationObserver(rs=>{for(const r of rs){if(r.target.closest&&r.target.closest('#bt'))continue;q.add(r.target)}
+  if(!tm)tm=setTimeout(()=>{tm=0;const a=[...q];q=new Set();for(const n of a)if(n.isConnected)usdIn(n)},300)}).observe(document.documentElement,{childList:true,subtree:true,characterData:true})}
+const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
+      DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
+// Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
+// No more '?t='+Date.now(). It made every URL unique and so ruled out any
+// caching — burns.json (~88 KB) came down in full on every visit and every
+// refresh. Freshness is now the server's job: /logs/* sends max-age=120
+// (the bot writes only every 10 minutes), the static fallback max-age=0 +
+// must-revalidate, so a 304 instead of 88 KB.
+async function gj(n){let r=null;
+  try{r=await fetch('/logs/'+n)}catch(e){}
+  if(!r||!r.ok){try{r=await fetch('https://logs.brainonbnb.com/logs/'+n)}catch(e){}}
+  if(!r||!r.ok){try{r=await fetch('/'+n)}catch(e){}}
+  return(r&&r.ok)?r.json():null}
+// All nine reads below are independent — none ever needed a previous result —
+// so issuing them one await at a time only ever bought round trips: ten of them,
+// which on a phone at ~200ms RTT meant two seconds before the stat tiles filled.
+// JSON-RPC batching puts the whole lot in a single POST.
+const WBNB='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',   // BOBAI/WBNB pair
+      BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',  // WBNB price pair — fallback only
+      // Chainlink BNB/USD (8 decimals). The single source of truth for the BNB
+      // price across the whole project: the buyback bot, the buy alerts and the
+      // bot's /liq command all read this feed. Deriving it from a DEX pool here
+      // instead put the page 0.055% away from the bot on the same block — two
+      // answers to one question, which is one answer too many. The pool stays as
+      // a fallback so a feed hiccup cannot blank the page.
+      BNBFEED='0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE',
+      // PancakeSwap's own protocol-fee address — the factory's feeTo(). The
+      // pair mints LP to it on every liquidity event, which is where the
+      // never-burned remainder comes from and why it grows as the pool trades.
+      // Hardcoded, but never trusted: the line below only names it when its
+      // balance actually accounts for the remainder, so if PancakeSwap ever
+      // moves the address the page falls back to saying less instead of
+      // saying something wrong.
+      FEETO='0x0ed943Ce24BaEBf257488771759F9BF482C39706',
+      DEAD_BAL='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',
+      balOf=a=>'0x70a08231000000000000000000000000'+a.slice(2),
+      call=(to,data)=>['eth_call',[{to,data},'latest']],
+      u18=h=>(h&&h!=='0x')?Number(BigInt(h))/1e18:0;
+// Two public endpoints, in turn: the hero figures hung on one dataseed alone,
+// and on 2026-09-12 a slow answer from it left the tiles at "--" for 17 s.
+const RPC_FALLBACK='https://bsc.publicnode.com';
+async function rpcBatch(calls){
+  const body=JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,method:c[0],params:c[1]})));
+  let j=null;
+  for(const url of [RPC,RPC_FALLBACK]){
+    try{
+      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),6000);
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:ctl.signal});
+      clearTimeout(t);
+      j=await r.json();
+      if(Array.isArray(j)&&j.length===calls.length&&j.every(x=>x&&x.result!==undefined))break;
+    }catch(e){j=null}
+  }
+  if(!Array.isArray(j))throw new Error('no RPC answered');
+  const out=[];
+  // Responses may come back in any order — index them by the id we sent.
+  for(const x of j)out[x.id]=x.result;
+  return out;
+}
+// Burn figures are written out in full — the exact number is the point on a
+// transparency dashboard. The stat tile's font size shrinks to fit instead.
+// Every figure on the page is formatted en-US, the same way BscScan prints token
+// amounts (75,927.92 — comma for thousands, dot for decimals). Leaving the locale
+// to the browser meant a German visitor read "1.069 LP" where 1,069 was meant,
+// which on an English page is not a cosmetic difference but a different number.
+const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
+// a log row's time (2026-10-10): the year and the seconds sit in their own spans, which a phone hides — the full
+// '2026-10-10 04:00:59 UTC' wrapped onto four lines there and left room for six rows
+const tcell=v=>{const s=new Date(v).toISOString();return '<span class="tc-y">'+s.slice(0,5)+'</span>'+s.slice(5,10)+' '+s.slice(11,16)+'<span class="tc-s">'+s.slice(16,19)+'</span><span class="tc-z"> UTC</span>'};
+function setBig(id,v,sym){put(id,nf(v)+' '+sym)}
+// Sets a value and takes the field out of its "loading" state at the same time.
+function put(id,txt){const e=document.getElementById(id);if(!e)return;
+  e.textContent=txt;e.classList.remove('ld')}
+async function chain(){
+  let q;
+  try{
+    q=await rpcBatch([
+      ['eth_getBalance',[BW,'latest']],   // 0 buyback wallet, native
+      call(WBNB,balOf(BW)),               // 1 buyback wallet, wrapped
+      call(BOB,DEAD_BAL),                 // 2 BOB burned
+      call(BOBAI,DEAD_BAL),               // 3 BOBAI burned
+      call(P,'0x0902f1ac'),               // 4 BOBAI/WBNB reserves
+      call(P,'0x0dfe1681'),               // 5 BOBAI/WBNB token0
+      call(BP,'0x0902f1ac'),              // 6 BNB price reserves
+      call(BP,'0x0dfe1681'),              // 7 BNB price token0
+      call(BOBAI,balOf(BOBAI)),           // 8 tax queued in the contract
+      call(P,'0x18160ddd'),               // 9 LP total supply
+      call(P,DEAD_BAL),                   // 10 LP held at the dead address
+      call(P,balOf(BW)),                  // 11 LP still held by the buyback bot
+      call(P,balOf(DEVW)),                // 12 LP still held by the dev wallet
+      call(P,balOf(FEETO)),               // 13 LP minted to PancakeSwap as protocol fee
+      call(BNBFEED,'0x50d25bcd'),         // 14 Chainlink BNB/USD, latestAnswer()
+      call(BOBP,'0x0902f1ac'),            // 15 BOB/WBNB reserves, to price the BOB burned
+      call(BOBAI,'0x110395bd'),           // 16 minDispatch(): queued tax at which the token sends it on
+    ]);
+  }catch(e){return false}
+  // Each tile decodes in its own try/catch so one bad word of calldata can't
+  // blank the rest of the bar.
+  try{put('wallet-bnb',(u18(q[0])+u18(q[1])).toFixed(4)+' BNB')}catch(e){}
+  let bobAmt=0;
+  try{const v=u18(q[2]);if(v>0){bobAmt=v;setBig('total-burned',v,'BOB')}}catch(e){}
+  let bAmt=0;
+  try{const v=u18(q[3]);if(v>0){bAmt=v;setBig('total-bobai-burned',v,'BOBAI');
+    const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(2)+'%'}}catch(e){}
+  try{
+    const rH=q[4],r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),
+      is0=('0x'+q[5].slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,
+      bH=q[6],b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),
+      w0=('0x'+q[7].slice(26).toLowerCase())===WBNB.toLowerCase(),
+      bnbFeed=(()=>{try{const v=Number(BigInt(q[14]))/1e8;return v>0?v:0}catch(e){return 0}})(),
+      // Feed first, pool second. A sane band around it, because a wrong BNB price
+      // would quietly move every dollar figure on the page.
+      bnbP=(bnbFeed>50&&bnbFeed<5000)?bnbFeed:Number(w0?b1:b0)/Number(w0?b0:b1),
+      pU=(Number(wR)/Number(bR))*bnbP,
+      circ=1e9-bAmt;
+    BNBP=bnbP;ggUsd();
+    put('mcap','$'+nf(pU*circ));
+    put('volume','$'+nf((Number(wR)/1e18)*bnbP*2));
+    const pend=u18(q[8]),tp=document.getElementById('tax-pending');
+    // Cents below a thousand dollars. Whole dollars turned $2.35 of queued tax
+    // into "≈$2", which reads as a rounding the page could not be bothered to do.
+    // ONE FIGURE ON BOTH PAGES (operator, 2026-09-28: Classic said $38, the Brain Terminal $41): what the next
+    // buyback works with is the tax queued in the token AND the BNB already in the buyback wallet. The tile shows
+    // that sum in dollars, the line below it the split — the same figure and split as the terminal's.
+    // THE GAS RESERVE IS NOT QUEUED (2026-09-28): the buyback wallet keeps 0.003 BNB for gas and splits only above
+    // 0.004 (worker/index.js GAS_RESERVE + MIN_BNB), so only the BNB above the reserve counts, as in the terminal.
+    const wBnb=u18(q[0])+u18(q[1]),sBnb=wBnb>0.004?wBnb-0.003:0,pendUsd=pend*pU+sBnb*bnbP;
+    if(pendUsd>0)put('wallet-bnb','$'+nf(pendUsd,pendUsd>=1000?0:2));
+    if(tp)tp.textContent=nf(pend)+' BOBAI tax'+(sBnb>0?' + '+sBnb.toFixed(4)+' BNB to split':'');
+    // HOW FULL THE QUEUE IS (operator, 2026-09-29): the token sends its tax on once it holds minDispatch()
+    // (400,000 BOBAI when this was written), read live so a changed threshold shows up by itself.
+    try{const md=u18(q[16]),fl=document.getElementById('tax-fill');
+      if(fl&&md>0){const p=Math.min(pend/md*100,100);
+        fl.querySelector('i').style.width=p.toFixed(1)+'%';
+        fl.querySelector('span').textContent=(p<10?p.toFixed(1):p.toFixed(0))+'% / 100%';
+        fl.title=nf(pend)+' of '+nf(md)+' BOBAI — at 100% the token sends the tax on to the buyback';
+        fl.hidden=false}}catch(e){}
+    // What the burned supply is worth today, under each tile in the small white of the queued tax
+    // (2026-09-19). BOB is token0 in its pair, verified on-chain; the same BNB price as everything else here.
+    try{const bobUsd=bAmt>0?bAmt*pU:0;BOBAI_USD=bobUsd;BOBAI_DEAD=bAmt;bobaiSub();
+      const hH=q[15],h0=BigInt('0x'+hH.slice(2,66)),h1=BigInt('0x'+hH.slice(66,130)),bobP=(Number(h1)/Number(h0))*bnbP;
+      BOB_USD=bobAmt>0&&bobP>0?bobAmt*bobP:0;BOB_DEAD=bobAmt;bobSub()}catch(e){}
+    PX.BNB=bnbP;PX.BOBAI=pU;try{const hH=q[15];PX.BOB=Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){}usdAll();
+    window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
+    // The Brain Terminal reads these instead of a chain read of its own: one source, one figure.
+    NUMS.chain={at:Date.now(),bobDead:bobAmt,bobaiDead:bAmt,priceUsd:pU,bnbUsd:bnbP,
+      bobUsdPrice:(()=>{try{const hH=q[15];return Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){return 0}})(),
+      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1]),minDispatch:u18(q[16]),
+      // the next buyback as the tile above shows it, gas reserve excluded (2026-10-05: the Brain strip used the full wallet)
+      splitBnb:sBnb,nextBuybackUsd:pendUsd};
+    depth(bR,wR,bnbP,pU*circ);
+  }catch(e){}
+  // LP lock lives in its own try: it reads two extra words of the same batch, and
+  // a hiccup there must not blank the depth figures decoded above.
+  try{
+    const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
+    // 99.9996% is not 100.000%: the same 0.31 LP is named below, so the share
+    // says '>99.999%' instead of rounding the remainder out of existence.
+    if(tot>0){put('lq-lp',pcEdge(dead/tot*100));NUMS.lpLocked=pcEdge(dead/tot*100);NUMS.lpPct=dead/tot*100}
+    window.__lpDead=dead/1e18;sources();
+    // THE OTHER SIDE OF THE BURN FIGURE.
+    // "99.998% burned" says what is locked; it says nothing about the rest, and
+    // the rest is the part worth checking — LP still held by a project wallet
+    // could be pulled. Both are read live, so this cannot go stale: if either
+    // wallet ever sits on LP, the line says so on the next refresh instead of
+    // staying silent.
+    const un=(tot-dead)/1e18,botLeft=u18(q[11]),devLeft=u18(q[12]),fee=u18(q[13]),
+      el=document.getElementById('lq-unb');
+    if(el&&tot>0){
+      const held=botLeft+devLeft,pct=pcEdge((tot-dead)/tot*100).replace('%','');
+      // Naming where it sits beats saying only where it does not. The whole
+      // remainder is PancakeSwap's protocol fee: the pair mints it to the
+      // exchange whenever liquidity moves, so the figure creeps up as the pool
+      // trades and "LP burned" drifts a thousandth away from 100% by itself.
+      // Only said when the balance really accounts for it — within a hundredth
+      // of an LP, which is the rounding on the printed figure.
+      const isFee=fee>0&&Math.abs(fee-un)<0.01;
+      el.textContent=held>0.000001
+        ? nf(un,2)+' LP ('+pct+'%) is not burned, and '+nf(held,4)+
+          ' LP of it sits in a project wallet right now.'
+        : isFee
+        ? 'The other '+nf(un,2)+' LP ('+pct+'%) was never burned: it is PancakeSwap’s own '+
+          'protocol fee, minted to the exchange every time liquidity moves, which is why it '+
+          'creeps up as the pool trades. None of it is ours — the buyback bot and the dev '+
+          'wallet both hold exactly 0 LP. Checked on every refresh, not claimed once.'
+        : 'The other '+nf(un,2)+' LP ('+pct+
+          '%) was never burned, and none of it is ours: the buyback bot and the dev wallet '+
+          'both hold exactly 0 LP. Checked on every refresh, not claimed once.';
+      el.classList.remove('ld');
+    }
+  }catch(e){}
+  return true;
+}
+// WHERE THE LOCKED LIQUIDITY COMES FROM.
+// A full scan of every LP transfer into the dead address (blocks 88990359 to
+// 115088761) found exactly three origins, and they sum to the on-chain balance to
+// the decimal: the launch mint, the dev wallet, and the buyback bot. Nobody else
+// has ever locked LP here.
+//
+// The launch mint is one event in the past and can never change, so it is the
+// fixed number, and the dev total is derived as the remainder. That inverts the
+// old arrangement for a reason: the dev figure used to come from a hand-kept file
+// and went stale between runs, whereas a remainder against the live dead balance
+// is right the moment the next run lands, with nothing to redeploy. The bot keeps
+// its own log — cross-checked against the scan, it agreed exactly.
+let botLp=null,srcMeta=null;
+function sources(){
+  const total=window.__lpDead;
+  if(!(total>0)||!srcMeta)return;
+  // Each source carries its share of all locked LP as well: the absolute figure
+  // alone means nothing until you know how big the locked pile is.
+  const card=(id,v)=>{
+    put(id,nf(v)+' LP');
+    const p=document.getElementById(id+'-pct');
+    if(p)p.textContent=(v/total*100).toFixed(1)+'%';
+  };
+  const launch=srcMeta.launch.lp;
+  card('lq-init',launch);
+  if(botLp){
+    card('lq-bot',botLp.lp);
+    put('lq-bot-sub',botLp.n+' adds across Liquidity Boost I, II and III. Runs on its own, every cycle.');
+    const dev=total-launch-botLp.lp;
+    if(dev>0){
+      card('lq-man',dev);
+      put('lq-man-sub',(srcMeta.dev.burns+(srcMeta.runs||[]).length)+
+        ' adds. Collected tax, swapped and added by hand.');
+    }
+  }
+}
+// The bot writes one entry per add — count them and sum the LP it burned.
+function bbsrc(b){try{
+  if(!Array.isArray(b)||!b.length)return;
+  const lpSum=b.reduce((s,x)=>s+parseFloat(x.lpBurned||0),0);
+  botLp={n:b.length,lp:lpSum};
+  sources();
+}catch(e){}}
+// Carries the scan result: the fixed launch mint plus the burn counts, which are
+// the only part a live read cannot supply.
+function mansrc(j){try{
+  if(!j||!j.launch||!j.dev)return;
+  srcMeta=j;sources();
+}catch(e){}}
+// LIQUIDITY DEPTH — the pool stated the way a buyer actually experiences it.
+// "Liquidity $28k" says little on its own: half of that figure is $BOBAI priced
+// at its own market price, so it shrinks exactly when it would be needed. The
+// BNB half is the part that holds, and it gets its own number rather than a
+// footnote. The impact rows answer the question the ratios don't: what does my
+// buy do to the price.
+//
+// Two questions that get confused with each other, so the panel answers both.
+//
+// IMPACT is how far the trade moves the price: the reserves after the swap
+// against the reserves before. The LP fee stays in the pool and counts; the token
+// tax never reaches the reserves, so it does not move the price at all.
+//
+// COST is what the trader gives up against the spot price — the fill is worse
+// than spot because the pool moves under it, and on top of that the fee and the
+// 3% tax are taken. It is always the larger of the two at small sizes (the toll
+// dominates) and the smaller at large ones (a fill averages the path, while the
+// price ends up where the path ended).
+//
+//   buy  cost = 1 − TAX·FEE·rBnb/(rBnb + FEE·dBnb)
+//   sell cost = 1 − TAX·FEE·rTok/(rTok + TAX·FEE·dTok)
+//
+// The opposite reserve cancels out of both. At vanishing size they tend to
+// 1 − TAX·FEE ≈ 3.24%, the fixed toll; everything above that is depth.
+const LP_FEE=0.9975,TAX=0.97;
+const DEPTH_BUYS=[100,150,250,500,1000,2500];
+function depth(bR,wR,bnbP,mcap){
+  const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
+  if(!(mcap>0)||!(wbnb>0))return;
+  put('lq-ratio',(tvl/mcap*100).toFixed(1)+'%');
+  put('lq-tvl','$'+nf(tvl));
+  put('lq-hard',(bnbSide/mcap*100).toFixed(1)+'%');
+  put('lq-bnb',wbnb.toFixed(2)+' BNB');
+  // The percentage answers "how big is the floor against the market cap"; the
+  // dollar figure answers "how much is actually there". Both, or neither is worth
+  // much on its own.
+  put('lq-bnb-usd','$'+nf(bnbSide));
+  const tok=Number(bR)/1e18,px=(wbnb/tok)*bnbP;
+  if(!(px>0))return;
+  // The same depth read from the other end. The bars answer "what does $500 do";
+  // this answers "what does one percent cost", which is the number a trader sizing
+  // a position actually starts from.
+  //
+  // Constant product: (r + x)(r + FEE*x) = k*r², so FEE*x² + r(1+FEE)x + r²(1−k) = 0
+  // and x is the positive root. k = 1.01 for a buy that lifts the price 1%,
+  // k = 1/0.99 for a sell that drops it 1%.
+  //
+  // The buy needs no tax adjustment — BNB going in is never taxed. The sell does:
+  // only 97% of the tokens sent ever reach the reserves, so the trader has to send
+  // more than the pool math asks for. That, plus the slightly larger k, is the
+  // whole reason the sell figure sits above the buy figure.
+  const q=1+LP_FEE,
+        onePct=(r,k)=>r*((-q+Math.sqrt(q*q+4*LP_FEE*(k-1)))/(2*LP_FEE)),
+        money=v=>'$'+nf(v,v>=1000?0:2);
+  // Hold the live reserves so the depth selector can re-run the same maths
+  // against a deeper pool without refetching anything.
+  LQ={wbnb,tok,bnbP,px,onePct,money,max:0};
+  LQ.max=Math.max(...tradeRows(wbnb,tok,bnbP,px).map(r=>Math.max(r.buyMove,Math.abs(r.sellMove))));
+  paintTrade();
+}
+
+function tradeRows(wbnb,tok,bnbP,px){
+  return DEPTH_BUYS.map(u=>{
+    // Buy: BNB in, tokens out. Only the fee-reduced input reaches the curve.
+    const dB=u/bnbP,effB=dB*LP_FEE,outB=(tok*effB)/(wbnb+effB);
+    // Sell: tokens in, already 3% lighter by the time the pair sees them.
+    const dT=u/px,effT=dT*TAX*LP_FEE,outS=(wbnb*effT)/(tok+effT);
+    return {
+      buyMove:(((wbnb+dB)/(tok-outB))/(wbnb/tok)-1)*100,
+      buyCost:(1-TAX*LP_FEE*wbnb/(wbnb+effB))*100,
+      sellMove:(((wbnb-outS)/(tok+dT*TAX))/(wbnb/tok)-1)*100,
+      sellCost:(1-TAX*LP_FEE*tok/(tok+effT))*100,
+    };
+  });
+}
+
+// "What if the pool were deeper" — the one question the panel could not answer.
+// A liquidity add grows BOTH sides in the same ratio, so the price is untouched
+// and the multiplier applies to each reserve. Only the trade figures move; the
+// tiles above (pool value, LP burned, ratios) describe the pool that actually
+// exists and must never follow the selector.
+let LQ=null,LQMUL=1;
+function paintTrade(){
+  if(!LQ)return;
+  const m=LQMUL,wbnb=LQ.wbnb*m,tok=LQ.tok*m,{bnbP,px,onePct,money}=LQ,sim=m>1;
+  put('lq-up1',money(onePct(wbnb,1.01)*bnbP));
+  put('lq-dn1',money(onePct(tok,1/0.99)/TAX*px));
+  // The sub-labels literally read "right now" — false the moment a multiplier is
+  // picked, so they get rewritten rather than left to contradict the figure.
+  put('lq-up1s',sim?'a buy this size, if the pool were '+m+'× deeper'
+                   :'a buy this size, right now');
+  put('lq-dn1s',sim?'a sell this size, if the pool were '+m+'× deeper — still above the buy figure, because 3% of the tokens never reach the pool'
+                   :'a sell this size, right now — above the buy figure, mostly because 3% of the tokens never reach the pool');
+  put('lq-simn',sim?'Hypothetical — the pool is not '+m+'× deeper. Only these trade figures are simulated; everything above stays the real pool. The bars keep the live scale, so deeper reads as shorter.':'');
+  const box=document.querySelector('.lqi');if(box)box.classList.toggle('sim',sim);
+  // One scale across both columns, otherwise the two sides cannot be compared by
+  // eye — which is the entire point of putting them next to each other. The scale
+  // stays pinned to the live pool, so a deeper pool visibly shortens every bar
+  // instead of silently rescaling back to full length.
+  const rows=tradeRows(wbnb,tok,bnbP,px),max=LQ.max;
+  rows.forEach((r,i)=>{
+    const n=i+1;
+    put('lq-bm'+n,'+'+r.buyMove.toFixed(2)+'%');
+    put('lq-sm'+n,r.sellMove.toFixed(2)+'%');
+    const bc=document.getElementById('lq-bc'+n);if(bc)bc.textContent='costs '+r.buyCost.toFixed(2)+'%';
+    const sc=document.getElementById('lq-sc'+n);if(sc)sc.textContent='costs '+r.sellCost.toFixed(2)+'%';
+    // A deep simulation squeezes the small rows toward zero — at 10x the $100 bar
+    // came out 1.07px on a phone, which reads as broken rather than as tiny. Floor
+    // it at 2px whenever the value isn't actually zero. The exact figure sits right
+    // next to the bar, so nothing is overstated by the floor; it only separates
+    // "almost nothing" from "nothing at all".
+    const set=(id,v)=>{const el=document.getElementById(id);if(!el)return;
+      let s=max>0?Math.abs(v)/max:0;
+      const track=el.parentElement?el.parentElement.clientWidth:0;
+      if(s>0&&track>0)s=Math.max(s,2/track);
+      el.style.transform='scaleX('+s.toFixed(4)+')'};
+    set('lq-bw'+n,r.buyMove);set('lq-sw'+n,r.sellMove);
+  });
+}
+// Delegated, so it cannot race the first paint or the fetch that feeds it.
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.lqsim-b');if(!b)return;
+  LQMUL=Number(b.dataset.mul)||1;
+  document.querySelectorAll('.lqsim-b').forEach(x=>{
+    x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b);
+  });
+  paintTrade();
+});
+// The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
+// them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and
+// append the next chunk as the reader scrolls toward the end. If the wrapper
+// isn't there for some reason we fall back to rendering everything, so this can
+// never silently swallow rows.
+const TX_CHUNK=60;
+function paintRows(id,rows){
+  const body=document.getElementById(id);if(!body)return;
+  const wrap=body.closest('.txw');
+  if(body.__more&&wrap)wrap.removeEventListener('scroll',body.__more);
+  body.__more=null;
+  if(!wrap||rows.length<=TX_CHUNK){body.innerHTML=rows.join('');return}
+  let n=TX_CHUNK;
+  body.innerHTML=rows.slice(0,n).join('');
+  const more=()=>{
+    if(wrap.scrollTop+wrap.clientHeight<wrap.scrollHeight-240)return;
+    body.insertAdjacentHTML('beforeend',rows.slice(n,n+TX_CHUNK).join(''));
+    n+=TX_CHUNK;
+    if(n>=rows.length){wrap.removeEventListener('scroll',more);body.__more=null}
+  };
+  body.__more=more;
+  wrap.addEventListener('scroll',more,{passive:true});
+}
+function bdata(b){try{if(b&&b.length>0){BOB_OURS=b.reduce((s,x)=>s+(parseFloat(x.bob||x.bobBurned)||0),0);bobSub();BOBAI_OURS=b.reduce((s,x)=>s+(parseFloat(x.bobaiBurned)||0),0);bobaiSub();const rows=[];for(const x of[...b].reverse()){const t=tcell(x.time),ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${nf(ba)} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank" rel="noopener">${bt2.slice(0,6)}…${bt2.slice(-4)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${nf(aa)} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank" rel="noopener">${at.slice(0,6)}…${at.slice(-4)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank" rel="noopener">${x.bobaiCreatorTx.slice(0,6)}…${x.bobaiCreatorTx.slice(-4)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank" rel="noopener">${x.creatorTx.slice(0,6)}…${x.creatorTx.slice(-4)}</a></td></tr>`);if(x.lpAgentTx)rows.push(`<tr><td>${t}</td><td><span class="tlp">DEFI AGENT</span></td><td>${parseFloat(x.lpAgentBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.lpAgentTx}" target="_blank" rel="noopener">${x.lpAgentTx.slice(0,6)}…${x.lpAgentTx.slice(-4)}</a></td></tr>`);if(x.giggleTx)rows.push(`<tr><td>${t}</td><td><span class="tgg">GIGGLE POT</span></td><td>${parseFloat(x.giggleBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.giggleTx}" target="_blank" rel="noopener">${x.giggleTx.slice(0,6)}…${x.giggleTx.slice(-4)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
+// The three log files used to be fetched in a serial then-chain — and
+// bobai-liq-log.json twice over, once for each campaign card. One parallel
+// round of fetches, each file read exactly once.
+// The logs used to be fetched only on every tenth tick, i.e. every five
+// minutes. Combined with the server cache (two minutes fresh, then up to ten
+// more minutes of "serve the old copy and refetch in the background") a fresh
+// burn could stay off the page for a quarter of an hour — which is exactly what
+// "the page doesn't update itself any more" looked like.
+// Now on every tick. That costs nothing: the server attaches a fingerprint to
+// each file and, as long as nothing changed, answers with an empty "not
+// modified" instead of the full 88 KB.
+// liq-boost-log.json is the finished $BOB archive from June and never changes
+// again — it is fetched exactly once, at load.
+async function logs(){
+  const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
+  if(burns)NUMS.burns=burns;if(bb)NUMS.liq=bb;
+  bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);lfgdata(bb);bbsrc(bb);ggdata(burns);
+  return !!(burns&&bb);
+}
+// Static file, appended once per manual run: read once at load, and fetched
+// directly rather than through gj() — that helper probes the log worker first,
+// which would cost two 404s per page load for a file the worker never serves.
+fetch('liq-runs.json').then(r=>r.ok?r.json():null).then(mansrc).catch(()=>{});
+gj('liq-boost-log.json').then(lbdata);
+let busy=false,lastOk='';
+async function go(){
+  if(busy)return;busy=true;
+  try{
+    const [okC,okL]=await Promise.all([chain(),logs()]);
+    numsOut();
+    // a failed read says so (2026-10-05): "Updated" used to be stamped even when no RPC answered
+    const el=document.getElementById('last-update'),now=new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+    if(okC&&okL)lastOk=now;
+    if(el)el.textContent=okC&&okL?'Updated '+now:(okC?'Log':'Chain')+' read failed — figures '+(lastOk?'from '+lastOk.slice(11):'not loaded yet')+', retrying';
+  }finally{busy=false}
+}
+go();setInterval(go,30000);
+// On a phone the page spends most of its life in the background: screen off,
+// app switched, another tab. Browsers freeze timers then — and since the HTML
+// is allowed into the back/forward cache, returning to the page can even bring
+// it back wholesale from memory, frozen on the numbers from before. From the
+// outside both look identical: "it stopped updating, I have to reload". So the
+// moment it becomes visible again, refetch. The guard keeps the two events
+// from firing the same round twice.
+let lastWake=0;
+function wake(){const n=Date.now();if(n-lastWake<5000)return;lastWake=n;go()}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wake()});
+addEventListener('pageshow',e=>{if(e.persisted)wake()});
+
+// === LIQ BOOST DATA ===
+function lbdata(entries){try{if(!entries||entries.length===0)return;const lbC=document.getElementById('lb-count');if(!lbC)return;lbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=nf(totalLp,2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
+
+// === BOBAI LIQ BOOST DATA ===
+// One log file, two campaigns: everything before BB2_START belongs to round one (the
+// archive card, frozen at its final numbers), everything after to the live boost II card.
+const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
+const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
+// Round three (2026-09-19): 0.3% out of the BOB-burn slice, to the same end as the Giggle pot. Same log, split by window.
+const BB3_START=new Date('2026-09-19T18:00:00Z').getTime();
+const BB3_END=new Date('2026-11-20T00:01:00Z').getTime();
+// 2026-09-20 06:00 UTC: the boost raised from 0.3% to 0.5% (the 0.2% out of the BOB burn). The schedule tells it as two windows; the card and its log are one.
+const BB3R_START=new Date('2026-09-20T06:00:00Z').getTime();
+// $BOBAI LIQUIDITY FOR GOOD (operator, 2026-10-28: "no boost any more but the standard"): from Dec 1, 00:01 UTC the 1% that
+// burned $BOB goes into the BOBAI/BNB pool, LP burned, with no end. Its own card replaces Boost III the moment the boost
+// ends (Nov 20, counting down to the start until Dec 1); Boost III moves to the archive. Same log, from LFG_START on.
+const LFG_START=new Date('2026-12-01T00:01:00Z').getTime();
+// DeFi Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
+const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
+const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
+const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
+// The Giggle card: sends and their sum from burns.json (giggleBnb/giggleTx per bot run).
+function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];
+// The pot grows in the order the sends happened; the table shows the newest first. Until 2026-09-19 the sum ran down the table as it is shown, so the newest send carried its own amount as "Pot" and the oldest carried the whole pot.
+const chrono=[...entries].sort((a,b)=>new Date(a.time)-new Date(b.time));for(const x of chrono){const t=tcell(x.time);const bnb=parseFloat(x.giggleBnb||0);total+=bnb;const tx=x.giggleTx;rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(5)+' BNB</td><td>'+total.toFixed(4)+' BNB</td><td><a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a></td></tr>')}document.getElementById('gg-bnb').textContent=total.toFixed(4)+' BNB';GG_BNB=total;NUMS.gg={bnb:total,count:entries.length,end:GG_END};ggUsd();rows.reverse();if(rows.length)paintRows('gg-tx-body',rows)}catch(e){console.error('ggdata error:',e)}}
+function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;const bbC=document.getElementById('bb-count');if(!bbC)return;bbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
+
+// === BOBAI LIQ BOOST II DATA (live campaign) ===
+function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
+
+// === BOBAI LIQ BOOST III DATA (live campaign, from BB3_START; the same log as I and II) ===
+function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const put=(k,v)=>{for(const p of['bb3-','bb3a-']){const e=document.getElementById(p+k);if(e)e.textContent=v}};put('count',entries.length);let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.bb3={count:entries.length,bnb:totalBnb,lp:totalLp,start:BB3_START,end:BB3_END};put('bnb',totalBnb.toFixed(4)+' BNB');put('lp',nf(totalLp,2));if(rows.length){paintRows('bb3-tx-body',rows);paintRows('bb3a-tx-body',rows)}}catch(e){console.error('bb3data error:',e)}}
+
+// === $BOBAI LIQUIDITY FOR GOOD DATA (from LFG_START, no end; the same log as the boosts) ===
+function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.time).getTime()>=LFG_START);let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=tcell(x.time);const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.lfg={count:entries.length,bnb:totalBnb,lp:totalLp,start:LFG_START,end:Infinity};const cEl=document.getElementById('lfg-count');if(!cEl)return;cEl.textContent=entries.length;document.getElementById('lfg-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lfg-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('lfg-tx-body',rows)}catch(e){console.error('lfgdata error:',e)}}
+
+// === THE LIBRARY: copy buttons and the in-page code viewer ===
+// Reading the code should not cost a download. The viewer fetches the bundle's
+// flattened .txt — the same file the curl line hands to an AI, so there is one
+// artifact to keep correct instead of two — splits it back into files and shows
+// them. Everything here is an enhancement: with the script dead, the download
+// and plain-text links in the document still work.
+!function(){
+  const lib=document.getElementById('library');if(!lib)return;
+
+  function flash(btn,text){const old=btn.textContent;btn.textContent=text;btn.classList.add('done');
+    setTimeout(()=>{btn.textContent=old;btn.classList.remove('done')},1400)}
+  // navigator.clipboard is https-only and absent in a few in-app browsers; the
+  // textarea fallback is what makes the button work inside Telegram and X.
+  function copy(text,btn){
+    const done=()=>flash(btn,'copied');
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done,()=>fallback(text,done));return}
+    fallback(text,done);
+  }
+  function fallback(text,done){
+    const ta=document.createElement('textarea');ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done()}catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  // --- the .txt bundle, back into files -------------------------------------
+  function parse(txt){
+    const parts=txt.split(/\n={70,}\n=== FILE: /);
+    return parts.slice(1).map(p=>{
+      const nl=p.indexOf('\n');
+      return {path:p.slice(0,nl).trim(), body:p.slice(nl+1).replace(/^={70,}\n\n?/,'').replace(/\n+$/,'')};
+    });
+  }
+
+  // --- highlighting ---------------------------------------------------------
+  // Escaping only &, < and > leaves quotes intact, which is what lets the string
+  // rule below match at all. Comment syntax is picked per extension: a single
+  // shared rule painted every CSS hex colour as a comment.
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const KW='const|let|var|function|return|if|else|for|while|await|async|new|class|extends|import|export|from|try|catch|finally|throw|typeof|instanceof|delete|void|null|true|false|undefined|require|module|this|break|continue|switch|case|default|yield|static|get|set|pragma|contract|interface|library|mapping|address|bool|string|memory|storage|calldata|payable|public|private|external|internal|pure|view|returns|emit|event|modifier|constructor|require|revert|select|insert|update|delete|create|table|policy|grant|alter|drop|where|from|join|on|as|values|primary|key|references|begin|end|declare|def|elif|import|not|and|or';
+  const COMMENT={js:'\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*', css:'\\/\\*[\\s\\S]*?\\*\\/',
+    sql:'--[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/', hash:'#[^\\n]*', html:'&lt;!--[\\s\\S]*?--&gt;'};
+  function rules(path){
+    const e=(path.split('.').pop()||'').toLowerCase();
+    if(e==='html')return COMMENT.html+'|'+COMMENT.js;
+    if(e==='css')return COMMENT.css;
+    if(e==='sql')return COMMENT.sql;
+    if(e==='toml'||e==='py'||e==='yml'||e==='yaml')return COMMENT.hash;
+    if(e==='md')return COMMENT.html;
+    return COMMENT.js;
+  }
+  function paint(path,body){
+    const src=esc(body);
+    const re=new RegExp('('+rules(path)+')|("(?:[^"\\\\\\n]|\\\\.)*"|\'(?:[^\'\\\\\\n]|\\\\.)*\'|`(?:[^`\\\\]|\\\\.)*`)'+
+      '|\\b('+KW+')\\b|(\\b0x[0-9a-fA-F]+\\b|\\b\\d[\\d_]*(?:\\.\\d+)?\\b)','g');
+    return src.replace(re,(m,c,s,k,n)=>
+      c?'<span class="c">'+c+'</span>':s?'<span class="s">'+s+'</span>':
+      k?'<span class="k">'+k+'</span>':'<span class="n">'+n+'</span>');
+  }
+
+  // --- the overlay ----------------------------------------------------------
+  let open=null;
+  function close(){
+    if(!open)return;
+    document.removeEventListener('keydown',open.key,true);
+    open.el.remove();document.body.style.overflow='';
+    open.from&&open.from.focus();open=null;
+  }
+  async function view(slug,title){
+    const el=document.createElement('div');
+    el.className='cv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');
+    el.setAttribute('aria-label',title+' — source code');
+    el.innerHTML='<div class="cv-w">'+
+      '<div class="cv-h"><div><div class="cv-ti"></div><div class="cv-su">loading…</div></div>'+
+      '<a class="cv-dl" href="/code/'+slug+'.zip" download>&#x2193; Download .zip</a>'+
+      '<button class="cv-x" type="button" aria-label="Close">&#x2715;</button></div>'+
+      '<div class="cv-ld">Fetching the bundle…</div></div>';
+    el.querySelector('.cv-ti').textContent=title;
+    document.body.appendChild(el);document.body.style.overflow='hidden';
+    const from=document.activeElement;
+    const key=e=>{
+      if(e.key==='Escape'){e.preventDefault();close();return}
+      if(e.key!=='Tab')return;
+      // Focus stays inside: tabbing out of a modal and clicking things behind it
+      // is how a dialog turns into a trap of a different kind.
+      const f=[...el.querySelectorAll('button,a[href],[tabindex]:not([tabindex="-1"])')]
+        .filter(x=>x.offsetParent!==null);
+      if(!f.length)return;
+      const first=f[0],last=f[f.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+    };
+    open={el,key,from};
+    document.addEventListener('keydown',key,true);
+    el.addEventListener('click',e=>{if(e.target===el)close()});
+    el.querySelector('.cv-x').addEventListener('click',close);
+    el.querySelector('.cv-x').focus();
+
+    let files=[];
+    try{
+      const r=await fetch('/code/'+slug+'.txt');
+      if(!r.ok)throw new Error(r.status);
+      files=parse(await r.text());
+    }catch(e){
+      const ld=el.querySelector('.cv-ld');
+      if(ld)ld.innerHTML='Could not load the code here. '+
+        '<a class="cv-dl" href="/code/'+slug+'.zip" download>Download the zip instead</a>';
+      return;
+    }
+    if(!open||open.el!==el)return;              // closed again while fetching
+    const lines=files.reduce((s,f)=>s+f.body.split('\n').length,0);
+    el.querySelector('.cv-su').textContent=files.length+' files · '+
+      lines.toLocaleString('en-US')+' lines · MIT · no secrets included';
+    const w=el.querySelector('.cv-w');
+    el.querySelector('.cv-ld').remove();
+    const m=document.createElement('div');
+    m.className='cv-m';
+    m.innerHTML='<div class="cv-l"></div><div class="cv-r">'+
+      '<div class="cv-b"><span class="cv-p"></span><button class="cv-cp" type="button">copy file</button></div>'+
+      '<pre class="cv-c"><code></code></pre></div>';
+    w.appendChild(m);
+    const list=m.querySelector('.cv-l'),code=m.querySelector('.cv-c code'),
+          pathEl=m.querySelector('.cv-p'),pre=m.querySelector('.cv-c');
+    let cur=0;
+    function show(i){
+      cur=i;const f=files[i];
+      pathEl.textContent=f.path;
+      code.innerHTML=paint(f.path,f.body);
+      pre.scrollTop=0;pre.scrollLeft=0;
+      [...list.children].forEach((b,n)=>b.classList.toggle('on',n===i));
+    }
+    files.forEach((f,i)=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='cv-f';
+      b.innerHTML='<i>'+f.body.split('\n').length+'</i>';
+      b.insertBefore(document.createTextNode(f.path),b.firstChild);
+      b.addEventListener('click',()=>show(i));
+      list.appendChild(b);
+    });
+    m.querySelector('.cv-cp').addEventListener('click',e=>copy(files[cur].body,e.currentTarget));
+    show(0);
+  }
+
+  lib.addEventListener('click',e=>{
+    const cp=e.target.closest('.lib-cp');
+    if(cp){copy(cp.dataset.copy,cp);return}
+    const v=e.target.closest('.lib-view');
+    if(v)view(v.dataset.slug,v.dataset.title);
+  });
+}();
+
+// === WORLDCUP TIPGAME — the settled prize pool (frozen since the final; no third-party read since 2026-11-04) ===
+!function(){
+  function fmtBobai(n){
+    if(n>=1e9)return(n/1e9).toFixed(2)+'B';
+    if(n>=1e6)return(n/1e6).toFixed(2)+'M';
+    if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+    return Math.round(n).toLocaleString('en-US');
+  }
+  function fmtUsd(n){
+    if(n>=1000)return'$'+Math.round(n).toLocaleString('en-US');
+    return'$'+n.toFixed(2);
+  }
+  // WC26 is settled — the BOBAI amount is a frozen archive snapshot (one read).
+  // Its dollar value comes from this page's own on-chain price (chain() sets
+  // window.__bobaiPx and calls render); the GeckoTerminal poll went 2026-10-05
+  // (on-chain only). Before the first chain read: the stored snapshot price.
+  let poolTotal=0,snapshotPrice=0;
+  function render(){
+    if(!poolTotal)return;
+    const live=window.__bobaiPx>0,px=live?window.__bobaiPx:snapshotPrice;
+    const tb=document.getElementById('tg-pool-bobai');
+    const tu=document.getElementById('tg-pool-usd');
+    if(tb)tb.textContent=fmtBobai(poolTotal)+' BOBAI';
+    if(tu)tu.textContent=px>0?fmtUsd(poolTotal*px)+(live?' at today\'s price':' at the snapshot price'):'';
+  }
+  window.__tgPoolRender=render;
+  // THE POOL AS IT ENDED (2026-11-04): WC26 is settled and the pool frozen, yet every visit asked Supabase for it —
+  // a third-party read on the front page for a figure that cannot change. Read once on 2026-11-04 (wc_pool id 1).
+  poolTotal=8944733.793281933; snapshotPrice=0.0000553231784899214;
+  render();
+}();
+
+// === GIGGLE ACADEMY POT COUNTDOWN — to the start before Sep 17, to the end during the window ===
+!function(){
+  function tick(){
+    const now=Date.now();
+    const dEl=document.getElementById('gg-days');if(!dEl)return;
+    let diff,label,phase;
+    if(now<GG_START){diff=GG_START-now;label='until collecting starts';phase='collecting starts Sep 17, 00:01 UTC'}
+    else if(now<GG_END){diff=GG_END-now;label='until collecting ends';phase='collecting now — until Nov 20, 00:01 UTC'}
+    else{diff=0;label='collecting ended — donation day';phase='collected — donated Nov 20'}
+    const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
+    dEl.textContent=d;
+    const hEl=document.getElementById('gg-hours'),mEl=document.getElementById('gg-mins'),lEl=document.getElementById('gg-cd-label'),pEl=document.getElementById('gg-phase');
+    if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
+  }
+  tick();setInterval(tick,60000);
+}();
+
+// === LIQ BOOST III COUNTDOWN — to the start before it, to the end during the window ===
+!function(){
+  function tick(){
+    const now=Date.now();
+    const dEl=document.getElementById('bb3-days');if(!dEl)return;
+    let diff,label,phase;
+    if(now<BB3_START){diff=BB3_START-now;label='until the boost starts';phase='starts Sep 19, 18:00 UTC'}
+    else if(now<BB3_END){diff=BB3_END-now;label='until the boost ends';phase='running now — until Nov 20, 00:01 UTC'}
+    else{diff=0;label='campaign complete';phase='ended Nov 20'}
+    const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
+    dEl.textContent=d;
+    const hEl=document.getElementById('bb3-hours'),mEl=document.getElementById('bb3-mins'),lEl=document.getElementById('bb3-cd-label'),pEl=document.getElementById('bb3-phase');
+    if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
+  }
+  tick();setInterval(tick,60000);
+}();
+
+// === WHICH LIQUIDITY CARD STANDS: Boost III until it ends, then LIQUIDITY FOR GOOD (counting down to Dec 1, then running);
+// the archived Boost III card (archive page) shows from the same instant. A ?at=<ISO> in the address shows the page at
+// that moment (for checks), the figures stay today's.
+!function(){
+  const at=Date.parse(new URLSearchParams(location.search).get('at')||'');
+  const now=()=>isFinite(at)?at:Date.now();
+  window.__bobaiNow=now;
+  function tick(){
+    const n=now(),lfg=n>=BB3_END;
+    const show=(id,on)=>{const e=document.getElementById(id);if(e)e.style.display=on?'':'none'};
+    show('liq-boost-bobai-3',!lfg);show('liq-for-good',lfg);show('liq-boost-bobai-3-arch',lfg);
+    document.querySelectorAll('a[data-liq-link]').forEach(a=>{a.setAttribute('href','#'+(lfg?'liq-for-good':'liq-boost-bobai-3'))});
+    document.querySelectorAll('a[data-b3-link]').forEach(a=>{a.setAttribute('href',lfg?a.dataset.b3Link:'#liq-boost-bobai-3')});
+    const dEl=document.getElementById('lfg-days');if(!dEl)return;
+    const before=n<LFG_START,diff=Math.max(0,LFG_START-n);
+    show('lfg-cd',before);show('lfg-cd-label',before);
+    dEl.textContent=Math.floor(diff/86400000);
+    document.getElementById('lfg-hours').textContent=Math.floor((diff%86400000)/3600000);
+    document.getElementById('lfg-mins').textContent=Math.floor((diff%3600000)/60000);
+    document.getElementById('lfg-phase').textContent=before?'starts Dec 1, 00:01 UTC':'running since Dec 1, 2026 — for good';
+  }
+  tick();setInterval(tick,60000);
+}();
+
+// A link into a folded archive card (the schedule points at the finished campaigns) opens the fold, then scrolls.
+!function(){function open(){try{const h=location.hash;if(!h||h.length<2)return;const t=document.getElementById(decodeURIComponent(h.slice(1)));if(!t)return;const d=t.tagName==='DETAILS'?t:t.closest('details');if(d&&!d.open){d.open=true;t.scrollIntoView()}}catch(e){}}addEventListener('hashchange',open);addEventListener('load',open)}();
+
+// === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
+!function(){
+  const phases=[
+    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(−0.5% → $BOB liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.5%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'1%', liqLabel:'liq add'},
+    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'0.5%'},
+    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool, −0.25% → $BOBAI liq)', bobNote:'(−0.26% → Prize Pool, −0.5% → $BOBAI liq)', creatorPct:'0.49%', bobPct:'0.24%', bobaiPct:'1%', liqPct:'1.27%', liqLabel:'Prize Pool + $BOBAI liq'},
+    {id:'standard-bb',   start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-08-01T23:59:59Z').getTime(), creatorNote:'(−0.25% → $BOBAI liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.75%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'0.75%'},
+    {id:'standard-post', start:new Date('2026-08-01T23:59:59Z').getTime(), end:new Date('2026-08-08T00:00:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
+    {id:'bobai-liq-2',   start:new Date('2026-08-08T00:00:00Z').getTime(), end:LP_SHARE_START, creatorNote:'', bobNote:'(−0.8% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.2%', bobaiPct:'1%', liqPct:'0.8%'},
+    // 2026-09-09: a tenth of each slice to the DeFi agent, cut from the slices as they stand
+    // (the BOB-burn slice is 0.2% during Liq Boost II and keeps 0.1%); from Sep 17 another tenth
+    // of each into the Giggle Academy pot. Both end Nov 20, 00:01 UTC. Same windows as the bot.
+    {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', liqPct:'0.8%', lpPct:'0.3%'},
+    {id:'sunshine',      start:GG_START, end:BB3_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-09-19: Liq Boost III — 0.5% out of the BOB-burn slice into the BOBAI/BNB pool, LP burned; ends with the pot (0.3% until 2026-09-20, one add).
+    {id:'bobai-liq-3',   start:BB3_START, end:BB3R_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.5%', bobaiPct:'0.8%', liqPct:'0.3%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-09-20 06:00 UTC: Liq Boost III raised to 0.5% — another 0.2% out of the BOB-burn slice (0.5 → 0.3%); creator and BOBAI burn do not move.
+    {id:'bobai-liq-3-raised', start:BB3R_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-10-28 (operator): Nov 20 -> Dec 1 the last days of the BOB burn; from Dec 1 its 1% is BOBAI liquidity + LP burn, for good. Same dates as the bots.
+    {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:new Date('2026-12-01T00:01:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
+    {id:'bobai-liq-forever',start:new Date('2026-12-01T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'(the whole 1% → $BOBAI liq add + LP burn, for good — no $BOB burn)', creatorPct:'1%', bobPct:'0%', bobaiPct:'1%', liqPct:'1%'}
+  ];
+  // The Brain Terminal draws its streams from this same table, so the popup and the schedule can never disagree.
+  window.__bobaiPhase=()=>{const n=window.__bobaiNow();return phases.find(p=>n>=p.start&&n<p.end)||null};
+  // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.
+  // Capped at MAX_VISIBLE so long schedules stay compact; older phases remain reachable by scrolling.
+  // Measured from live row heights so it also works on mobile, where rows wrap to multiple lines.
+  const MAX_VISIBLE=5, ROW_GAP=8;
+  let scrolledFor=null;
+  function fitSchedule(){
+    const cont=document.querySelector('.ts-rows');
+    if(!cont)return;
+    const rows=Array.from(cont.querySelectorAll('.ts-row'));
+    const idx=rows.findIndex(r=>r.classList.contains('active'));
+    if(idx<0)return;
+    const from=Math.max(0,idx-1);
+    const shown=rows.slice(from,from+MAX_VISIBLE);
+    if(!shown.length)return;
+    const h=shown.reduce((s,r)=>s+r.offsetHeight,0)+ROW_GAP*(shown.length-1);
+    // Hidden (the Brain page keeps this block in a closed window): nothing to measure yet, fit again on open.
+    if(!h)return;
+    cont.style.maxHeight=h+'px';
+    // Only jump on the first fit / when the phase actually rolls over — never yank a
+    // visitor who scrolled back to read earlier phases.
+    const id=rows[idx].getAttribute('data-phase');
+    if(scrolledFor!==id){cont.scrollTop=rows[from].offsetTop;scrolledFor=id}
+  }
+  let rzT;
+  addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(fitSchedule,150)});
+  addEventListener('load',fitSchedule);
+  // the Brain page opens this block in a window; a hidden window forgets its scroll, so each opening fits anew
+  window.__bobaiFitSchedule=()=>{scrolledFor=null;fitSchedule()};
+  function apply(){
+    const now=window.__bobaiNow();
+    let active=null;
+    phases.forEach(p=>{if(now>=p.start&&now<p.end)active=p});
+    document.querySelectorAll('.ts-row').forEach(r=>{
+      const id=r.getAttribute('data-phase');
+      const ph=phases.find(p=>p.id===id);
+      r.classList.remove('active','past');
+      if(active&&id===active.id)r.classList.add('active');
+      else if(ph&&now>=ph.end)r.classList.add('past');
+    });
+    if(active)fitSchedule();
+    const cN=document.getElementById('ts-inline-creator');
+    const bN=document.getElementById('ts-inline-bob');
+    if(cN){cN.textContent=active?active.creatorNote:'';cN.classList.toggle('active',!!(active&&active.creatorNote))}
+    if(bN){bN.textContent=active?active.bobNote:'';bN.classList.toggle('active',!!(active&&active.bobNote))}
+    // The $BOBAI-burn slice gives up the same tenth as the other two; the box said nothing about it until 2026-09-12.
+    const aN=document.getElementById('ts-inline-bobai');
+    if(aN){aN.textContent=active&&active.bobaiNote?active.bobaiNote:'';aN.classList.toggle('active',!!(active&&active.bobaiNote))}
+    const pC=document.getElementById('tax-pct-creator');
+    const pB=document.getElementById('tax-pct-bob');
+    const pA=document.getElementById('tax-pct-bobai');
+    if(pC)pC.textContent=active?active.creatorPct:'~1%';
+    if(pB)pB.textContent=active?active.bobPct:'~1%';
+    if(pA)pA.textContent=active?active.bobaiPct:'~1%';
+    // The extra boxes of the flow exist only while their program runs.
+    const showBox=(id,pct)=>{const box=document.getElementById(id),arrow=document.getElementById(id+'-arrow'),p=box&&box.querySelector('.p');const on=!!pct;if(box)box.style.display=on?'':'none';if(arrow)arrow.style.display=on?'':'none';if(p&&on)p.textContent=pct};
+    // the liquidity share got its own box (2026-10-05): five boxes summed to 2.5% of the 3%
+    showBox('tf-liq',active&&active.liqPct);showBox('tf-lp',active&&active.lpPct);showBox('tf-giggle',active&&active.gigglePct);
+    // The "How it works" card two rows up used to state a flat ~1/1/1 while the
+    // panel right below it showed the campaign split. One page cannot say two
+    // things about the same tax, so the card reads from the same schedule — and
+    // it names every part, liq add included, so the parts add up to the 3%
+    // (2026-09-12: "0.9/0.1/0.9 + 0.3" left 0.8% unexplained).
+    const st=document.getElementById('step-split');
+    // every part by name (2026-09-27): "0.8%/0.3%/0.8% + 0.5% …" left a reader to guess which number was which
+    if(st)st.textContent=active?[[active.bobaiPct,'$BOBAI burn'],[active.bobPct,'$BOB burn'],[active.liqPct,active.liqLabel||'liquidity'],[active.lpPct,'DeFi agent'],[active.gigglePct,'Giggle pot'],[active.creatorPct,'creator']].filter(p=>p[0]).map(p=>p[0]+' '+p[1]).join(' · '):'~1/1/1';
+  }
+  apply();setInterval(apply,60000);
+}();
+
+// ---- Block 05 · Agents -------------------------------------------------
+// Fills the agent block from the same endpoint anyone else can call, so the
+// page cannot show a figure that endpoint would not confirm. Everything here
+// degrades to a plain dash rather than to a zero: "0 requests" is a claim,
+// "–" is an unanswered question, and only one of those is honest when the
+// service is unreachable.
+!function(){
+  const el = id => document.getElementById(id);
+  if(!el('ag-asked')) return;
+
+  const nf = n => Number(n).toLocaleString('en-US');
+
+  // The footer already had this right: a named link, not a printed URL. The
+  // name of the thing IS the link, so there is nothing to read twice and
+  // nothing to wrap badly. Only commands stay verbatim — a command you cannot
+  // copy character for character is useless.
+  const li = (name, desc, w) => {
+    const isCmd = w && !/^(https?:\/\/|POST |GET )/i.test(w);
+    const url = w && /^(POST|GET)\s+/i.test(w) ? w.replace(/^\w+\s+/, '') : w;
+    const head = (url && !isCmd)
+      ? `<b><a class="agt-where" href="${url}" rel="noopener">${name}</a></b>`
+      : `<b>${name}</b>`;
+    return `<li>${head}<span>${desc}</span>${isCmd ? `<code class="agt-cmd">${w}</code>` : ''}</li>`;
+  };
+
+  fetch('https://agent.brainonbnb.com/stats', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      const asked = d.asked && d.asked.total || 0;
+      el('ag-asked').textContent = nf(asked);
+      // Counting started the day the block shipped; saying "since counting
+      // began" without saying when that was invites the reading that the
+      // project has only ever had this many requests.
+      const days = d.asked && d.asked.by_day ? Object.keys(d.asked.by_day).sort() : [];
+      if(days.length) el('ag-asked-sub').textContent = 'since ' + days[0];
+
+      // What strangers paid is the figure; what we paid ourselves to prove
+      // the path works is named underneath, never added to it (2026-09-08:
+      // every payment on record had been our own test purchase and the tile
+      // read 0.70 USD1 as earnings).
+      const fs = d.earned && d.earned.from_strangers, st = d.earned && d.earned.self_tests;
+      const earned = fs ? fs.totalUsd1 : (d.earned && d.earned.totalUsd1 || '0.00');
+      const own = st && st.totalUsd1 !== '0.00' ? st.totalUsd1 + ' USD1 in ' + st.count + ' test purchase' + (st.count===1?'':'s') + ' of our own, counted separately' : '';
+      el('ag-earned').textContent = earned === '0.00' ? 'none yet' : earned;
+      if(earned === '0.00'){
+        el('ag-earned').style.fontSize = '1.15rem';
+        el('ag-earned-sub').textContent = own ? 'no other agent has paid yet; ' + own : 'nobody has bought anything yet';
+      } else {
+        el('ag-earned-sub').textContent = (fs ? fs.count : d.earned.count||0) + ' payment' +
+          (((fs ? fs.count : d.earned.count)===1)?'':'s') + ' from other agents, in USD1' + (own ? '; ' + own : '');
+      }
+
+      el('ag-watch').textContent = nf(d.active_watches || 0);
+
+      // The capability lists and the machine-facing note left the homepage on
+      // 2026-09-02 (they live on /services); guarded, so a page without the
+      // elements does not throw here and lose the block below.
+      const cap = d.capabilities || {};
+      const free = (cap.free||[]).map(c => li(c.name, c.what, c.where)).join('');
+      const paid = (cap.paid||[]).map(c =>
+        li(c.name + ' — ' + (c.price||''), c.what + ' ' + (c.why_paid||''), c.where)).join('');
+      if(el('ag-surf')) el('ag-surf').textContent = (cap.free||[]).length || 4;
+      if(free && el('ag-free')) el('ag-free').innerHTML = free;
+      if(paid && el('ag-paid')) el('ag-paid').innerHTML = paid;
+
+      const note = d.money_flow && d.money_flow.note;
+      if(note && el('ag-flow-note')) el('ag-flow-note').textContent = note;
+    })
+    .then(() => fillLpPortfolio())
+    .then(() => Promise.all([
+      // Two sources on purpose, and the same two the Plaza page itself uses.
+      // The full scan is the only thing that knows how many endpoints answer
+      // and how many operators there are — but it is a photograph, taken by
+      // hand every few weeks. The daily tick knows nothing about operators and
+      // everything about how far the registry has grown since.
+      //
+      // Showing the scan's total here while /registry showed the live one made
+      // the same figure differ by five thousand between two pages of the same
+      // site. One number, one source: the headline is the live high-water mark
+      // in both places, and the sub-line says which half came from where.
+      fetch('https://agent.brainonbnb.com/census', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api-registry.json', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]))
+    .then(([live, reg]) => {
+      // The Brain Plaza tile that used to live here is gone: the marketplace
+      // card at the top of this block carries the same number and the same
+      // link, and two of each in one block reads as two destinations. The card
+      // fills itself from these same two sources, so the figures still agree.
+      void live; void reg;
+    })
+    .catch(() => {
+      ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });
+      el('ag-asked-sub').textContent = 'the counter did not answer just now';
+    });
+}();
+
+// The DeFi agent's block, on its own so /defi can carry it without
+// the rest of the agents block. Same rows, same source, same sums.
+// The record says what the agent saw at the daily run; the chain says what is true
+// now. Between the two a price can leave the range, and it did: on 2026-09-03
+// the page said "in range and earning" for nine hours after the position had
+// stopped earning. Three reads from the visitor's own browser — the position's
+// ticks, its pool, the pool's current tick — and the first line is corrected.
+function lpLiveRange(pos){
+  const rpc = (to, data) => fetch('https://bsc.publicnode.com', {method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0', id:1, method:'eth_call', params:[{to, data}, 'latest']})})
+    .then(r => r.json()).then(j => { if(!j || !j.result || j.result.length < 66) throw new Error('no answer'); return j.result; });
+  const NPM = '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364', FACTORY = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865';
+  const s24 = h => { let n = BigInt('0x' + h); if(n >= (1n << 255n)) n -= (1n << 256n); return Number(n); };
+  return rpc(NPM, '0x99fbab88' + BigInt(pos).toString(16).padStart(64, '0')).then(p => {
+    const w = i => p.slice(2 + 64 * i, 2 + 64 * (i + 1));
+    const lo = s24(w(5)), hi = s24(w(6));
+    return rpc(FACTORY, '0x1698ee82' + w(2) + w(3) + w(4))
+      .then(pool => rpc('0x' + pool.slice(26), '0x3850c7bd'))
+      .then(slot => { const tick = s24(slot.slice(66, 130)); return {lo, hi, tick, inRange: tick >= lo && tick < hi}; });
+  });
+}
+// The portfolio on /defi: one model from agent.brainonbnb.com/lp/portfolio,
+// the same the Telegram bot renders for /defi and at 05:00 UTC. This paints
+// it and computes nothing: a number here and a number there are one number.
+function fillLpPortfolio(){
+  const box = document.getElementById('defi-card');
+  if(!box) return Promise.resolve();
+  // Same shape as the Telegram card since 2026-09-12: three figures, the
+  // three lines they come from (result = price + fees − gas), the pool and
+  // the $BOBAI, then the last day and the next step. Four decimals, whole
+  // dollars, one figure per line; the position id and the rest of the detail
+  // are in the record the footer links to.
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const n = x => Number(x || 0);
+  const bnb = x => n(x).toFixed(4) + ' BNB';
+  const signed = x => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + Math.abs(n(x)).toFixed(4) + ' BNB';
+  const usd = x => (x == null ? null : (n(x) < 0 ? '−' : '') + '$' + (Math.abs(n(x)) >= 20 ? Math.round(Math.abs(n(x))).toLocaleString('en-US') : Math.abs(n(x)).toFixed(2)));
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = (iso, year) => { const s = String(iso || ''); const dd = Number(s.slice(8, 10)), mm = Number(s.slice(5, 7)); return dd && mm ? dd + ' ' + MON[mm - 1] + (year ? ' ' + s.slice(0, 4) : '') : s.slice(0, 10); };
+  const dir = x => n(x) > 0 ? 'up' : n(x) < 0 ? 'down' : '';
+  const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
+  const tile = (k, v, s, cls) => '<div class="pf-tile ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v" data-nousd>' + v + '</div><div class="s">' + s + '</div></div>';
+  const src = (k, v, cls) => '<div class="' + (cls || '') + '"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+  return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
+    if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
+    const h = m.holdings, p = m.pnl, d = m.day || {};
+    if (n(m.put_in.usd) > 0 && n(m.put_in.bnb) > 0) { window.__pfBnbUsd = n(m.put_in.usd) / n(m.put_in.bnb); setTimeout(lpCurveUsd, 0); }
+    const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
+    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : m.pool.at_edge ? '⏸ <b>waiting at the edge</b> <span class="m">(just re-set, earns from the first tick inside)</span>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
+    const width = m.pool.width_pct == null ? '' : m.pool.side ? esc(+(2 * m.pool.width_pct).toFixed(2)) + '% wide, ' + m.pool.side + ' the price' : '±' + esc(m.pool.width_pct) + '%';
+    const tiles =
+      '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
+      tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost (' + (Array.isArray(m.worth.beside_parts) && m.worth.beside_parts.length ? m.worth.beside_parts.map(function(p){return esc(String(p.label).replace(', at cost',''))}).join(', ') : '$BOBAI held, fees') + ')' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
+      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb))
+      // THE RANGE STANDING NOW, AS BIG AS THE TOTAL (7.11., operator: "show the figure since the range"): the result above
+      // carries every range since 3 Sep, the narrow September ones too; whether the agent works today is this one
+      + (p.since_range && p.since_range.vs_holding_pct != null ? (() => { const r = p.since_range, v = Number(r.vs_holding_pct);
+        return tile('This range vs holding', (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%', [signed(r.vs_holding_bnb) + ' against holding 50/50', (r.width_pct ? '±' + esc(r.width_pct) + '%' : 'this range') + ' since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days', 'fees ' + signed(r.fees_bnb) + ', price ' + signed(r.price_bnb)].join(' · '), dir(r.vs_holding_bnb)); })() : '');
+    const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
+    const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'
+      + (split ? src('📈 Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src('📈 Range, before fees', signed(p.from_range_bnb), dir(p.from_range_bnb))
+        : src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb)))
+      + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
+      + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
+      + '</div>'
+      // Not a term of the sum above (2026-09-24, D7): a comparison beside it.
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — after fees and gas, against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : p.vs_holding.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(p.vs_holding.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>' : '')
+      // the same line for the range standing now (2026-10-13): the total above carries every range since 3 Sep
+      + (p.since_range && p.since_range.vs_holding_bnb != null ? (() => { const r = p.since_range, mv = Number(r.price_move_pct);
+        return '<div class="pf-eq">This range alone' + (r.width_pct ? ' (±' + esc(r.width_pct) + '%' : ' (') + ', since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days, ' + esc(p.other_token || 'the other side') + ' ' + (mv > 0 ? '+' : mv < 0 ? '−' : '') + Math.abs(mv).toFixed(1) + '% against BNB): fees <b>' + signed(r.fees_bnb) + '</b>, price <b>' + signed(r.price_bnb) + '</b> — against holding <b>' + signed(r.vs_holding_bnb) + '</b>' + (r.vs_holding_pct != null ? ' (' + (r.vs_holding_pct > 0 ? '+' : r.vs_holding_pct < 0 ? '−' : '') + Math.abs(Number(r.vs_holding_pct)).toFixed(1) + '%)' : '') + '</div>'; })() : '');
+    const counts = [];
+    if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
+    if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));
+    if(d.collects) counts.push(d.collects + ' collect' + (d.collects === 1 ? '' : 's'));
+    if(d.sweeps) counts.push(d.sweeps + ' sweep' + (d.sweeps === 1 ? '' : 's'));
+    if(d.reserve_moves) counts.push(d.reserve_moves + ' reserve move' + (d.reserve_moves === 1 ? '' : 's'));
+    if(d.errors) counts.push('⚠️ ' + d.errors + ' run' + (d.errors === 1 ? '' : 's') + ' failed' + (d.errors_sent_nothing ? ', nothing was sent' : ''));
+    const list = [
+      li('🥞', [esc(m.pool.label || 'the pool'), width, range].filter(Boolean).join(' · ')),
+      (h.reserve && h.reserve.bnb > 0 ? li('🪜', (h.reserve.side === 'other' ? 'Reserve range, the price fell through it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· waits for the price to come back, then merges</span>' : h.reserve.side === 'both' ? 'Reserve range, the price inside it: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· earning beside the main range</span>' : 'Reserve below the price: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· buys on the way down, no trade</span>')) : ''),
+      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> bought' + (h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) + ' at today’s price' : '') + ' <span class="m">· from fees, never sold</span>' : 'No $BOBAI bought yet. A third of every fee buys some.'),
+      li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC' + (d.last.error ? ' ⚠️' : '') + '</span>' : '')),
+      li('🧭', 'Next: ' + esc(m.next || '—')),
+      (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run. The operator has been told.') : ''),
+    ].join('');
+    box.innerHTML = '<div class="pf-top">' + tiles + '</div>' + sources
+      + '<ul class="pf-list pf-one">' + list + '</ul>'
+      + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.pool.range_checked_at || m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC' + (m.pool.position ? ' · position #' + esc(m.pool.position) : '') + ' · dollars at today’s BNB price. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';
+  });
+}
+if(document.getElementById('defi-card')) fillLpPortfolio();
+
+// THE RANGE, DRAWN (2026-10-13, operator: "the range shown cleanly, visually"): the position read live from the chain
+// (/lp/look, the free look anybody has) — its lower and upper price, where the price is now, the room to each edge, and
+// what the position holds on each side. Prices are CAKE in BNB (1.0001^tick) and in dollars at the page's BNB price.
+function lpRange(){
+  const box = document.getElementById('ag-lp-range'); if(!box) return;
+  fetch('https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+    if(!j || !j.pool || !Array.isArray(j.pool.ticks)){ box.hidden = true; return; }
+    const [lo, hi] = j.pool.ticks, t = j.pool.tick, px = k => Math.pow(1.0001, k), bnbP = (window.__bobaiNums && window.__bobaiNums.chain && window.__bobaiNums.chain.bnbUsd) || 0;
+    const pLo = px(lo), pHi = px(hi), pNow = px(t), inR = t >= lo && t < hi;
+    box.dataset.usd = bnbP > 0 ? '1' : '';
+    // the bar spans the range with a margin either side, so a price outside it still shows where it is
+    const span = hi - lo, a = lo - span * 0.12, b = hi + span * 0.12, at = k => Math.max(0, Math.min(100, (k - a) / (b - a) * 100));
+    const fmt = p => p.toFixed(p < 0.01 ? 6 : 5) + ' BNB' + (bnbP > 0 ? ' <small>≈$' + (p * bnbP).toFixed(2) + '</small>' : '');
+    const h = j.holds || {}, c = +h.token0 || 0, w = +h.token1 || 0, cBnb = c * pNow, tot = cBnb + w, cPct = tot > 0 ? cBnb / tot * 100 : 50;
+    const room = j.room || {};
+    box.innerHTML = '<div class="lpr-h"><b>The range, read from the chain now</b><span class="' + (inR ? 'lpr-in' : 'lpr-out') + '">' + (inR ? 'in range — earning fees' : 'out of range — not earning') + '</span></div>'
+      + '<div class="lpr-bar" data-nousd><i class="lpr-zone" style="left:' + at(lo).toFixed(2) + '%;right:' + (100 - at(hi)).toFixed(2) + '%"></i>'
+      + '<i class="lpr-now ' + (inR ? 'in' : 'out') + '" style="left:' + at(t).toFixed(2) + '%"><em>now</em></i></div>'
+      + '<div class="lpr-ends" data-nousd><span><small>lower</small>' + fmt(pLo) + '</span><span class="mid"><small>CAKE now</small>' + fmt(pNow) + '</span><span><small>upper</small>' + fmt(pHi) + '</span></div>'
+      + (room.to_lower_pct != null ? '<p class="agt-note" data-nousd>Room: <b>' + Number(room.to_lower_pct).toFixed(1) + '%</b> before the price leaves it below, <b>' + Number(room.to_upper_pct).toFixed(1) + '%</b> above. The agent re-sets it centred on the price, ±' + (window.__lpWidth || 20) + '%, once it has stayed outside.</p>' : '')
+      + '<div class="lpr-mix" data-nousd><i style="width:' + cPct.toFixed(1) + '%"></i></div>'
+      + '<div class="lpr-ends" data-nousd><span><small>holds</small>' + c.toFixed(2) + ' CAKE <small>' + cPct.toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (cBnb * bnbP).toFixed(0) : '') + '</small></span><span></span><span><small>and</small>' + w.toFixed(4) + ' BNB <small>' + (100 - cPct).toFixed(0) + '%' + (bnbP > 0 ? ' ≈$' + (w * bnbP).toFixed(0) : '') + '</small></span></div>'
+      + '<p class="agt-note" id="lpr-flip" data-nousd hidden></p>';
+    box.hidden = false;
+    // THE FLIP ON THIS AGENT'S OWN RECORD (2026-10-14): the share its pool pays LPs today (read from the pool) and what
+    // PancakeSwap's proposal (88%) would have made of the fees it really earned since it started — its own series
+    const fl = j.the_flip, fe = document.getElementById('lpr-flip');
+    if(fl && fe && fl.lp_share_now_pct < 87.9) fetch('https://agent.brainonbnb.com/lp/series', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(s => {
+      const sm = s && s.summary, fees = sm && sm.profit && +sm.profit.from_fees_bnb; if(!(fees > 0)) return;
+      const more = fees * (fl.fees_factor - 1), u = bnbP > 0 ? b => ' <small>≈$' + Math.round(b * bnbP).toLocaleString('en-US') + '</small>' : () => '';
+      fe.innerHTML = '<b>The Flip.</b> This pool pays its LPs <b>' + fl.lp_share_now_pct + '%</b> of the swap fees today, read from the pool. PancakeSwap’s <a href="' + fl.proposal + '" target="_blank" rel="noopener">proposal</a> would make it <b>88%</b>: on this agent’s own record since ' + new Date(sm.since).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ', <b>' + (fees * fl.fees_factor).toFixed(4) + ' BNB</b>' + u(fees * fl.fees_factor) + ' of fees instead of ' + fees.toFixed(4) + ' BNB' + u(fees) + ' — ' + (more >= 0 ? (+(fees + more).toFixed(4) - +fees.toFixed(4)) : more).toFixed(4) + ' BNB more for the same work. A proposal in discussion, not live; this line follows the pool the day it changes.';
+      fe.hidden = false;
+    });
+  });
+}
+// THE CURVE (2026-10-12, operator: "how it runs at a glance, honest in the red too"): what had gone in by each run
+// (capital, a step at every deposit) and what the position was worth — the band between them green above, red below.
+// Every point is a run of /lp/series; nothing is smoothed.
+// THE CURVE'S DOLLARS AT THE LAST RUN'S BNB PRICE, the one the portfolio tiles above use (2026-10-13: the page showed
+// 2.2267 BNB as $1,653 in the tiles and as $1,660 under the curve, the second at the live price). Filled when both are in.
+function lpCurveUsd(){
+  const px = window.__pfBnbUsd; if (!(px > 0)) return;
+  document.querySelectorAll('.cv-usd[data-bnb]').forEach(el => { el.textContent = ' ≈$' + Math.round(+el.dataset.bnb * px).toLocaleString('en-US'); });
+}
+function lpCurve(pts){
+  const box = document.getElementById('ag-lp-curve'); if(!box) return;
+  const P = pts.filter(p => p.capital_bnb > 0 && p.value_bnb > 0).map(p => ({ t: Date.parse(p.at), c: +p.capital_bnb, v: +p.value_bnb }));
+  if(P.length < 2){ box.hidden = true; return; }
+  box.hidden = false; // shown first: a hidden box has no width to draw to
+  // drawn at the width it is shown (a 720-wide drawing shrunk onto a phone made its labels 5 px)
+  const W = Math.max(300, Math.min(1000, (box.clientWidth || 720) - 40)), H = W < 500 ? 170 : 200, L = 40, R = 10, T = 12, B = 26, t0 = P[0].t, t1 = P[P.length - 1].t, mx = Math.max(...P.map(p => Math.max(p.c, p.v))) * 1.06;
+  const x = t => L + (t - t0) / Math.max(1, t1 - t0) * (W - L - R), y = v => T + (1 - v / mx) * (H - T - B);
+  const line = k => P.map((p, i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p[k]).toFixed(1)).join(' ');
+  // the band, piece by piece, green where worth >= capital, red where below
+  let band = '';
+  for(let i = 1; i < P.length; i++){ const a = P[i - 1], b = P[i], up = (a.v + b.v) >= (a.c + b.c);
+    band += '<path d="M' + x(a.t).toFixed(1) + ' ' + y(a.v).toFixed(1) + ' L' + x(b.t).toFixed(1) + ' ' + y(b.v).toFixed(1) + ' L' + x(b.t).toFixed(1) + ' ' + y(b.c).toFixed(1) + ' L' + x(a.t).toFixed(1) + ' ' + y(a.c).toFixed(1) + 'Z" fill="' + (up ? 'rgba(53,224,122,.22)' : 'rgba(255,77,109,.22)') + '"/>'; }
+  const ticks = [0, .5, 1].map(f => { const v = mx * f; return '<text x="' + (L - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end">' + v.toFixed(1) + '</text><line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="rgba(255,255,255,.06)"/>'; }).join('');
+  const d = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const last = P[P.length - 1], pc = (last.v / last.c - 1) * 100;
+  box.innerHTML = '<div class="lpc-h"><b>Worth vs put in, every run since ' + d(t0) + '</b><span><i class="lpc-v"></i>worth <i class="lpc-c"></i>put in (steps at each deposit)</span></div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Position worth against capital put in, ' + P.length + ' runs; now ' + last.v.toFixed(3) + ' of ' + last.c.toFixed(3) + ' BNB">'
+    + ticks + band + '<path d="' + line('c') + '" fill="none" stroke="#a0a2c0" stroke-width="1.6" stroke-dasharray="4 3"/><path d="' + line('v') + '" fill="none" stroke="#f0b90b" stroke-width="2"/>'
+    + '<text x="' + L + '" y="' + (H - 6) + '">' + d(t0) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + d(t1) + '</text></svg>'
+    + '<p class="agt-note" data-nousd>At the last run (' + new Date(last.t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC) the position alone was worth <b>' + last.v.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.v + '"></span> of <b>' + last.c.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.c + '"></span> put in: <b style="color:' + (pc >= 0 ? '#35e07a' : '#ff4d6d') + '">' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%</b>. The portfolio above is the same money now, and it also counts the $BOBAI bought from fees and the fees owed, so its result differs.</p>';
+  box.hidden = false;
+}
+// The series: one row per run of the DeFi agent, from /lp/series. The
+// summary line answers the question first; the table is the evidence.
+function fillLpSeries(){
+  const el = id => document.getElementById(id);
+  const table = el('ag-lp-series'), sum = el('ag-lp-series-sum');
+  if(!table) return;
+  const f = (v, d) => (v == null || !isFinite(Number(v))) ? '—' : Number(v).toFixed(d);
+  const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  fetch('https://agent.brainonbnb.com/lp/series', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(d => {
+      const pts = d && Array.isArray(d.points) ? d.points : [];
+      const s = d && d.summary;
+      // a failed fetch is not an empty series (2026-10-05): only a real answer with no points says "no run yet"
+      if(!d){ sum.innerHTML = 'The series did not answer just now. The record: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.'; return; }
+      if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
+      lpCurve(pts); lpCurveUsd();
+      // One line, not the portfolio again: the portfolio above already says
+      // what went in and what came out. The table is the evidence.
+      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "position vs capital" is the position alone against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain. The Result above adds what the position produced beside itself (the $BOBAI bought from fees, fees still owed) and takes off the gas, so the two differ.';
+      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Position vs capital</th><th>Range</th><th>Fees owed (BNB)</th><th>Into $BOBAI (BNB)</th><th>Did</th></tr>';
+      // WHAT A RUN DID (2026-10-10): about thirty rows said only "moved money" — the change against the run before names it
+      const into = q => q == null ? null : (q.bobai_spent_total_bnb != null ? q.bobai_spent_total_bnb : q.forwarded_total_bnb);
+      const did = (p, q) => {
+        if (!q) return 'moved money';
+        const bits = [], dc = (p.capital_bnb ?? 0) - (q.capital_bnb ?? 0), di = (into(p) ?? 0) - (into(q) ?? 0);
+        if (p.capital_bnb != null && q.capital_bnb != null && dc > 0.0005 && !p.capital_added_here_bnb) bits.push('put ' + f(dc, 4) + ' BNB of new capital to work');
+        if (q.owed_bnb > 0.000001 && p.owed_bnb != null && p.owed_bnb < q.owed_bnb * 0.2) bits.push('collected ' + f(q.owed_bnb, 6) + ' BNB of fees');
+        if (di > 0.000001) bits.push('sent ' + f(di, 5) + ' BNB into $BOBAI');
+        return bits.length ? bits.join(', ') : 'moved money';
+      };
+      const rows = pts.slice().reverse().map((p, k) => { const q = pts[pts.length - 2 - k];
+        // The worker's own figure (series point capital_bnb / on_capital_pct); the page computes nothing.
+        const chg = p.on_capital_pct;
+        return '<tr><td>' + esc(String(p.at).replace('T',' ').slice(0,16)) + '</td>' +
+          '<td>' + (p.position ? '#' + esc(p.position) : '—') + '</td>' +
+          '<td>' + f(p.value_bnb,4) + (p.capital_bnb != null ? ' <span style="opacity:.55">of ' + f(p.capital_bnb,4) + '</span>' : '') + '</td>' +
+          '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
+          '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
+          '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.bobai_spent_total_bnb != null ? p.bobai_spent_total_bnb : p.forwarded_total_bnb,5) + '</td>' +
+          '<td>' + (p.capital_added_here_bnb ? 'operator added ' + f(p.capital_added_here_bnb, 4) + ' BNB by hand; ' : '') + (p.ok === false ? 'one step failed' : p.reset ? 're-set the range' : p.acted ? did(p, q) : p.seen ? 'hourly check found a new position' : 'nothing to do') + '</td></tr>';
+      });
+      table.innerHTML = head + rows.join('');
+    });
+}
+fillLpSeries();
+lpRange(); setInterval(() => { if(!document.hidden) lpRange(); }, 5 * 60e3);
+// drawn before the BNB price was in, the range showed BNB without dollars for five minutes (2026-10-24, defifold1024 at
+// 1440 px, live too): drawn again the moment the price arrives
+addEventListener('bobai:nums', () => { const b = document.getElementById('ag-lp-range'); if (b && !b.hidden && b.dataset.usd === '' && window.__bobaiNums?.chain?.bnbUsd > 0) lpRange(); });
+// AN AGENT THAT HIRES AN AGENT (2026-10-14): every second opinion the DeFi agent bought before it moves money — an
+// outside agent (Mandate Range-1) hired on the ERC-8183 kernel and paid from the agent's Altana wallet through a
+// session key anybody can read; its answer beside the agent's own reading. From the agent worker's public log.
+function lpOpinion(){
+  const box = document.getElementById('ag-opinion'); if(!box) return;
+  fetch('https://agent.brainonbnb.com/second-opinion', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+    const list = j && Array.isArray(j.opinions) ? j.opinions.filter(o => o.status === 'answered') : [];
+    if(!list.length){ box.hidden = true; return; }
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const when = t => new Date(t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    const agreed = list.filter(o => o.agrees === true).length, judged = list.filter(o => o.agrees != null).length, spent = list.reduce((a, o) => a + (+o.price_u || 0), 0);
+    const row = o => { const a = (o.answer || [])[0] || {};
+      return '<div class="op-row"><span class="op-mu">' + esc(when(o.at)) + '<br>' + esc(o.why) + '</span><span>' + esc(o.seller && o.seller.name || 'an outside agent') + ' read #' + esc(a.position || '?') + ': <b>' + (a.in_range ? 'in range' : 'out of range' + (a.ticks_out ? ' by ' + esc(a.ticks_out) + ' ticks' : '')) + '</b> · ' + (o.agrees === true ? '<span class="op-ok">agrees with the agent</span>' : o.agrees === false ? '<span class="op-no">disagrees with the agent</span>' : '<span class="op-mu">nothing to compare</span>')
+        + ' · paid ' + esc(o.price_u) + ' $U from its own wallet · <a href="https://bscscan.com/tx/' + esc(o.tx) + '" target="_blank" rel="noopener">job ' + esc(o.job) + ' ↗</a> · <a href="' + esc(o.deliverable) + '" target="_blank" rel="noopener">the answer ↗</a></span></div>'; };
+    box.innerHTML = '<div class="lpr-h"><b>A second opinion before money moves</b><span class="op-mu">' + agreed + ' of ' + judged + ' agreed · ' + spent.toFixed(2) + ' $U spent</span></div>'
+      + '<p class="agt-note">Every morning and right before every re-set the agent <b>hires another agent</b> — Mandate’s Range-1 (ERC-8004 #344119) — to read its position independently, on the ERC-8183 escrow, and pays it from its own Altana wallet through a session key whose limits anyone can read: four calls, 1 $U a day, an expiry, <a href="/session">revocable</a>. For now the opinion is only recorded beside the agent’s own reading: the agent still moves money on its own decision.</p>'
+      + list.slice(0, 5).map(row).join('')
+      + '<p class="agt-note">The whole log as JSON: <a href="https://agent.brainonbnb.com/second-opinion" rel="noopener">/second-opinion</a>.</p>';
+    box.hidden = false;
+  });
+}
+lpOpinion(); setInterval(() => { if(!document.hidden) lpOpinion(); }, 10 * 60e3);
+
+// The agent on somebody else's position: terms first, then the payment the
+// visitor makes from their own wallet, then the plan. The page never holds a
+// key and never sends a transaction; it reads a hash the visitor pastes.
+function fillLpYours(){
+  const el = id => document.getElementById(id);
+  const inp = el('lp-yours-in'), go = el('lp-yours-go'), out = el('lp-yours-out');
+  if(!inp || !go || !out) return;
+  out.addEventListener('click', e => { const b = e.target.closest('.lp-pick'); if(!b || go.disabled) return; inp.value = b.dataset.id; go.click(); });
+  const A = 'https://agent.brainonbnb.com';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const paramsFor = v => /^\d+$/.test(v) ? {position: v} : {address: v};
+  const taskFor = v => /^\d+$/.test(v) ? 'what would the DeFi agent do with PancakeSwap V3 position ' + v : 'what would the DeFi agent do with the PancakeSwap V3 position held by ' + v;
+  const render = ans => {
+    const s = ans.summary || {};
+    out.innerHTML = '<div class="lp-terms"><div class="lp-head">' + esc(s.headline || 'Delivered.') + '</div>' +
+      (s.facts && s.facts.length ? '<dl>' + s.facts.map(([k,v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' : '') +
+      (ans.result && ans.result.plan && ans.result.plan.verdict ? '<p style="margin:6px 0 0">' + esc(ans.result.plan.verdict) + '</p>' : '') +
+      '<span class="agt-note">Paid ' + esc(ans.paid || '') + ' · read from the position manager and the pool at ' + esc(String(ans.produced_at || '').replace('T',' ').slice(0,16)) + ' UTC · measurement, not advice, and nothing was signed on your position.</span></div>';
+  };
+  go.addEventListener('click', () => {
+    const v = inp.value.trim();
+    if(!/^\d+$/.test(v) && !/^0x[0-9a-fA-F]{40}$/.test(v)){ out.hidden = false; out.innerHTML = '<span class="lp-err">A position id (digits) or a wallet address (0x…), please.</span>'; return; }
+    go.disabled = true; out.hidden = false; out.innerHTML = '<span class="agt-note">Reading the position…</span>';
+    // The look is free and comes first: the facts of the position, read live.
+    // The terms for the plan follow underneath.
+    const lookQ = /^\d+$/.test(v) ? 'position=' + v : 'address=' + v;
+    let lookHtml = '', noPlan = false;
+    fetch(A + '/lp/look?' + lookQ, {cache:'no-store'})
+      .then(r => r.json())
+      .then(l => {
+        // No position to plan: say so and stop. Offering the terms for a plan
+        // on a position that does not exist sold nothing and confused the
+        // visitor (pressed 2026-09-04 with an id that was never minted).
+        if(l.error){ lookHtml = '<div class="lp-terms"><span class="lp-err">' + esc(l.error) + '</span></div>'; noPlan = true; return; }
+        // a wallet with several (2026-10-14): its ids as buttons, one press looks at that one — "name one" with nothing to press was a dead end
+        if(l.positions !== 1){ const ids = Array.isArray(l.position_ids) ? l.position_ids : [];
+          lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(ids.length ? 'This wallet holds ' + l.positions + ' PancakeSwap V3 positions. Which one?' : l.verdict) + '</div>' + (ids.length ? '<div class="lp-ask" style="flex-wrap:wrap;gap:6px">' + ids.map(i => '<button type="button" class="mkt-go lp-pick" data-id="' + esc(i) + '" style="border:0;cursor:pointer">#' + esc(i) + '</button>').join('') + '</div>' : '') + '</div>'; noPlan = true; return; }
+        if(!l.against_wbnb) noPlan = true;
+        const facts = [
+          ['Position', '#' + l.position + (l.pool ? ' · ' + l.pool.fee_tier_pct + '% pool' : '')],
+          // a full-range position's edges are the tick limits: '1.5e+62% above' (2026-10-14) — said as what it is
+          ['Range', l.in_range ? 'in range — ' + (l.room.to_lower_pct >= 99.99 ? 'no lower limit' : l.room.to_lower_pct + '% of room below the price') + ', ' + (l.room.to_upper_pct > 10000 ? 'no upper limit (full range)' : l.room.to_upper_pct + '% above') : 'out of range — earning nothing until the price returns or the range is re-set'],
+          ['Worth', l.value_bnb != null ? Number(l.value_bnb).toFixed(4) + ' BNB' : 'not priced (not against WBNB)'],
+          ['Fees owed', l.fees_owed && l.fees_owed.bnb_equivalent != null ? Number(l.fees_owed.bnb_equivalent).toFixed(6) + ' BNB' + (l.fees_owed.bnb_equivalent >= 0.002 ? ' — collecting pays for its gas' : ' — under the floor, collecting would cost more than it recovers') : 'not priced'],
+        ];
+        // The Flip (2026-10-14): what the pool hands its LPs today, read from the pool, and what PancakeSwap's proposal would make it
+        if(l.the_flip) facts.push(['The Flip', 'this pool pays its LPs ' + l.the_flip.lp_share_now_pct + '% of swap fees today; PancakeSwap’s proposal would make it 88% — ' + (l.the_flip.lp_share_now_pct >= 87.9 ? 'already there' : '×' + l.the_flip.fees_factor + ' the fees' + (l.the_flip.fees_owed_under_the_flip_bnb != null ? ' (owed now ' + Number(l.the_flip.fees_owed_now_bnb).toFixed(6) + ' BNB → ' + Number(l.the_flip.fees_owed_under_the_flip_bnb).toFixed(6) + ' BNB)' : '')) + '. A proposal in discussion, not live.']);
+        lookHtml = '<div class="lp-terms"><div class="lp-head">The look, free</div><dl>' + facts.map(([k,x]) => '<dt>' + esc(k) + '</dt><dd>' + esc(x) + '</dd>').join('') + '</dl>' +
+          '<span class="agt-note">Read from the position manager and the pool at ' + esc(String(l.measured_at || '').replace('T',' ').slice(0,16)) + ' UTC. ' + (l.against_wbnb ? 'The plan below adds what the agent would do about it: whether a re-set is due and in which width, and what your spare BNB would add.' : 'The agent plans only WBNB pairs, so there is no plan to buy for this one.') + '</span></div>';
+      })
+      .catch(() => { lookHtml = ''; })
+      .then(() => { if(noPlan){ out.innerHTML = lookHtml; go.disabled = false; return null; } return fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'}).then(r => r.json()); })
+      .then(t => {
+        if(!t) return;
+        const direct = (t.accepts || []).find(a => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && !(a.extra.symbol === 'BOBAI'));
+        const bobai = (t.accepts || []).find(a => a.extra && a.extra.symbol === 'BOBAI');
+        if(!direct) throw new Error(t.error || 'no terms');
+        // THE HIRE FIRST (2026-10-12): the plan bought as an ERC-8183 job of
+        // the DeFi agent (#363709) — escrowed, delivered on-chain, and counted
+        // as a hire of this agent by the marketplaces; a bare transfer below
+        // buys the same answer but hires nobody. The Plaza's panel opens with
+        // this position as the task.
+        const hireHref = '/registry?hire=363709&task=' + encodeURIComponent(taskFor(v)) + '#cat-rebalancing';
+        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">The plan: hire the DeFi agent, ' + (Date.now() < Date.UTC(2026, 10, 5, 12) ? '0.01 $U until 5 Nov 12:00 UTC' : '0.10 $U') + '</div>' +
+          '<div>Whether a re-set is due and in which width, what collecting pays, what your spare BNB would add — the agent that runs our own position, on yours. Paid into the on-chain ERC-8183 escrow from your wallet; the escrow pays the agent only once the plan is delivered.</div>' +
+          '<div class="lp-ask"><a class="mkt-go" href="' + hireHref + '" target="_top">Hire the DeFi agent &rarr;</a></div></div>' +
+          '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Or pay per answer: send the fee, then paste the transaction hash</div>' +
+          '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
+          '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> — <b>half price</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
+          '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +
+          '<span class="agt-note">From your own wallet, in one transfer. The hash is checked on-chain: the amount, the recipient, and that it has not been used before. ' + (bobai ? '$BOBAI paid stays $BOBAI in the income wallet, off the market. ' : '') + 'Free preview of the shape: <a href="' + A + '/example?service=lp_position_plan" rel="noopener">our own position, through the same door</a>.</span></div>' +
+          // HOLDERS: THE PLAN FOR FREE, HERE (2026-10-24, operator chose variant A: the holder pass lived on /pass alone)
+          '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">Hold 1,000,000 $BOBAI? Free with your wallet</div>' +
+          '<div>One signature from the wallet that holds it: no transaction, no gas, the tokens stay where they are. 20 answers a day.</div>' +
+          '<div class="lp-ask"><button id="lp-yours-holder" type="button" class="mkt-go" style="border:0;cursor:pointer">Sign the holder pass &rarr;</button></div></div>';
+        const hb = el('lp-yours-holder');
+        if(hb) hb.addEventListener('click', async () => {
+          const eth = window.ethereum || window.BinanceChain, box = hb.closest('.lp-terms');
+          const note = t2 => { let e = box.querySelector('.lp-err'); if(!e){ e = document.createElement('div'); e.className = 'lp-err'; box.appendChild(e); } e.innerHTML = t2; };
+          if(!eth || !eth.request){ note('No browser wallet here. Open this page in the browser of MetaMask, Binance Web3 Wallet or Trust Wallet, or see <a href="/pass">the holder pass</a>.'); return; }
+          hb.disabled = true; hb.textContent = 'Waiting for your wallet…';
+          try {
+            const acc = await eth.request({ method: 'eth_requestAccounts' }), wallet = String(acc && acc[0] || '').toLowerCase();
+            if(!/^0x[0-9a-f]{40}$/.test(wallet)) throw new Error('no account');
+            const issued = new Date().toISOString(), message = 'BOBAI holder pass\nwallet: ' + wallet + '\nissued: ' + issued;
+            const hexMsg = '0x' + Array.from(new TextEncoder().encode(message)).map(b => b.toString(16).padStart(2, '0')).join('');
+            const sig = await eth.request({ method: 'personal_sign', params: [hexMsg, wallet] });
+            hb.textContent = 'Signed. The agent is working…';
+            const r = await fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json', 'PAYMENT-SIGNATURE': 'bobai-holder ' + wallet + ' ' + issued + ' ' + sig}, body: JSON.stringify({task: taskFor(v), params: paramsFor(v)})});
+            const j = await r.json().catch(() => ({}));
+            if(r.status === 200 && j.ok) { render(j); return; }
+            note(esc(j.reason || j.error || ('HTTP ' + r.status)) + (r.status === 402 ? ' — <a href="/pass">check your wallet on /pass</a>' : ''));
+          } catch(e) { note('Not sent' + (e && e.message ? ': ' + esc(e.message) : '') + '.'); }
+          hb.disabled = false; hb.textContent = 'Sign the holder pass →';
+        });
+        const pay = el('lp-yours-pay'), txIn = el('lp-yours-tx');
+        pay.addEventListener('click', () => {
+          const tx = txIn.value.trim();
+          if(!/^0x[0-9a-fA-F]{64}$/.test(tx)){ txIn.focus(); return; }
+          pay.disabled = true; pay.textContent = 'Checking the payment…';
+          fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json', 'PAYMENT-SIGNATURE': tx}, body: JSON.stringify({task: taskFor(v), params: paramsFor(v)})})
+            .then(r => r.json().then(j => ({status: r.status, j})))
+            .then(({status, j}) => {
+              if(status === 200 && j.ok) render(j);
+              else { pay.disabled = false; pay.textContent = 'Get the plan →'; const e = document.createElement('div'); e.className = 'lp-err'; e.textContent = (j.error || 'not accepted') + (j.reason ? ' — ' + j.reason : '') + (j.payment ? ' (' + j.payment + ')' : ''); out.querySelector('.lp-terms').appendChild(e); }
+            })
+            .catch(() => { pay.disabled = false; pay.textContent = 'Get the plan →'; });
+        });
+      })
+      .catch(e => { out.innerHTML = lookHtml + '<span class="lp-err">The agent did not answer just now: ' + esc(e.message || e) + '</span>'; })
+      .then(() => { go.disabled = false; });
+  });
+  inp.addEventListener('keydown', e => { if(e.key === 'Enter') go.click(); });
+}
+fillLpYours();
+
+// The home menu is a table of contents: the entry whose section is open is
+// shaded gold (.nm a.on in styles.css). Open = the last section whose top has
+// passed a line 40% down the viewport; above the first section, the first
+// entry. Read from the scroll position, not an observer: two of the seven
+// anchors (the bands) have no height of their own, and an observer never
+// sees a zero-height box.
+(function () {
+  const nm = document.querySelector('.nm');
+  if (!nm) return;
+  const links = [...nm.querySelectorAll('a[href^="#"]')];
+  const secs = links.map(a => document.getElementById(a.getAttribute('href').slice(1)));
+  if (!secs.length || secs.some(s => !s)) return;
+  let cur = null, tick = false;
+  const light = () => {
+    tick = false;
+    const line = innerHeight * 0.4;
+    let open = 0;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) open = i; });
+    if (open === cur) return;
+    cur = open;
+    links.forEach((a, i) => a.classList.toggle('on', i === open));
+  };
+  addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(light); } }, { passive: true });
+  addEventListener('resize', light);
+  light();
+})();
+
+// 04's LIVE FIGURES (2026-10-19, operator: "viel einfacher, viel weniger, dafür das wichtigste"): one figure a card,
+// from the sources the front page's 04 tile reads. A figure that does not arrive leaves the card's own true line.
+(() => {
+  const set = (k, t) => { const e = document.querySelector('[data-eclive="' + k + '"]'); if (e && t) e.textContent = t; };
+  const nf = (n) => Number(n).toLocaleString('en-US');
+  const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  get('/api-registry.json').then((j) => { const n = j && j.reachability && j.reachability.reachable; if (n) set('plaza', nf(n) + ' agents answer'); });
+  // the Plaza Board (2026-10-23): its threads and how many are open, from the board itself
+  get('https://agent.brainonbnb.com/board?limit=1').then((j) => { if (j && j.total > 0) set('board', nf(j.total) + (j.total === 1 ? ' thread · ' : ' threads · ') + nf(j.open) + ' open'); });
+  get('https://agent.brainonbnb.com/stats').then((j) => { const f = j && j.earned && j.earned.from_strangers; if (f && f.count > 0) set('services', nf(f.count) + ' answers paid by agents'); });
+  get('https://agent.brainonbnb.com/lp/portfolio').then((j) => { const p = j && j.pool; if (p && typeof p.in_range === 'boolean') set('defi', String(p.label || 'CAKE/BNB').split(' ')[0] + (p.in_range ? ' in range' : ' out of range') + (p.width_pct ? ' · ±' + p.width_pct + '%' : '')); });
+  get('/api/nft-drop').then((j) => { const t = j && j.total; if (t && t.minted != null && t.cap) set('nft', nf(t.minted) + ' of ' + nf(t.cap) + ' minted'); });
+  // the PancakeSwap tools (2026-10-27): how many PancakeSwap fixes the library holds, from the board itself
+  get('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=1').then((j) => { if (j && !j.near && j.matched > 0) set('pancakeswap', nf(j.matched) + ' PancakeSwap fixes · any token'); });
+  // WORKS WITH US (2026-10-20): escrow jobs read from the kernel (/jobs/own keeps each job's client and provider) and
+  // x402 payments checked on chain (/buys). A job counts once it was paid into escrow; open or refunded ones do not.
+  const MANDATE = '0xd6d11aa5046dc5c7be8d63b9223b60d7ad94cbe9', POKTER = '0xdab12cf15f4385188be62bda9f00877af4c1b32f';
+  const CAMPAIGN = '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a'; // our Set and Earn wallet hired Marque's agents
+  const MARQUE = ['0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00', '0x253f7ad5d52099c4a2293418a661e9974dfb5e84', '0x5aaf7b5b2170986c59279682bd714c475ae8c718', '0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6'];
+  const w = (k, t) => { const e = document.querySelector('[data-ecwith="' + k + '"]'); if (e && t) e.textContent = '· ' + t; };
+  // each record read once: the cards and the latest line below share them (2026-10-22)
+  const pBuys = get('https://agent.brainonbnb.com/buys'), pSettle = get('https://agent.brainonbnb.com/settle/public'), pVenus = get('https://agent.brainonbnb.com/venus/work');
+  Promise.all([get('https://agent.brainonbnb.com/jobs/own'), pBuys]).then(([o, b]) => {
+    const paid = Object.values((o && o.jobs) || {}).filter((j) => j.client && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || ''));
+    const from = (a) => paid.filter((j) => j.client.toLowerCase() === a).length;
+    const x402 = ((b && b.payments) || []).filter((p) => !p.self_test && String(p.from).toLowerCase() === MANDATE).length;
+    const m = from(MANDATE) + x402, p = from(POKTER);
+    const q = paid.filter((j) => j.client.toLowerCase() === CAMPAIGN && MARQUE.includes(String(j.provider).toLowerCase())).length;
+    if (m) w('mandate', 'paid us ' + nf(m) + '×');
+    if (p) w('pokter', 'hired us ' + nf(p) + '×');
+    if (q) w('marque', 'we hired ' + nf(q) + ' of its agents');
+  });
+  // FOR EVERY AGENT ON BNB CHAIN (2026-10-21): what the job settler released to whom, what the Venus agents did, what
+  // the pool scan pass costs — each from the agent worker's own record, in USD. Without an answer the card keeps its line.
+  pSettle.then((j) => {
+    const t = j && j.totals;
+    if (t && t.jobs > 0) set('settle', '$' + Number(t.released_u).toFixed(2) + ' released to ' + nf(t.providers.length) + (t.providers.length === 1 ? ' agent' : ' agents'));
+    else if (j && j.waiting) set('settle', nf(j.waiting) + ' jobs watched · daily 21:15 UTC');
+  });
+  pVenus.then((j) => {
+    const acts = ((j && j.log) || []).filter((x) => x.tx).length;
+    if (acts > 0) set('venus', nf(acts) + (acts === 1 ? ' action' : ' actions') + ' on Venus so far');
+    else if (j && j.switched_on) set('venus', 'Switched on · daily 05:00 UTC');
+  });
+  get('https://agent.brainonbnb.com/scan-pass').then((j) => {
+    const p = j && String(j.price || '').match(/^(\d+(?:\.\d+)?) USD1/);
+    if (p) set('pass', '1,000 free a day, then $' + Number(p[1]).toFixed(2) + ' a day');
+  });
+  // THE LATEST, IN ONE LINE (operator, 2026-10-22, "in block 04"): the newest thing the ecosystem did for others — a
+  // settle run, a Venus agent's action, an agent's payment (our tests left out) — with its time and its transaction.
+  // The same three records as the cards and as the terminal's ecosystem moments; nothing to tell, no line.
+  const latest = document.querySelector('[data-eclatest]');
+  if (latest) Promise.all([pSettle, pVenus, pBuys, get('/api/price')]).then(([st, vw, b, pr]) => {
+    const bnbUsd = (pr && +pr.bnb_usd) || 0, bobUsd = (pr && +pr.price_usd) || 0, d2 = (n) => Number(n).toFixed(2);
+    const amt = (a) => { const m = String(a || '').match(/^([\d.]+) (\w+)$/); return !m ? '' : m[2] === 'BNB' ? Number(m[1]).toFixed(4) + ' BNB' + (bnbUsd ? ' ($' + d2(m[1] * bnbUsd) + ')' : '') : d2(m[1]) + ' ' + m[2]; };
+    const what = (f) => f === 'scanpass' ? 'a pool scan day pass' : /^watch/.test(f || '') ? 'a pool watch' : /^answer:/.test(f || '') ? 'a ' + f.slice(7).replace(/_/g, ' ') + ' answer' : 'a paid answer';
+    const pl = (n, one) => nf(n) + ' ' + one + (n === 1 ? '' : 's');
+    const all = [];
+    const runs = {}; ((st && st.log) || []).filter((d) => d.settled && d.tx).forEach((d) => (runs[d.at] = runs[d.at] || []).push(d));
+    Object.entries(runs).forEach(([at, L]) => all.push({ t: Date.parse(at), href: '/settle', tx: L[0].tx,
+      text: 'Job Settler settled ' + pl(L.length, 'finished job') + ' of other agents: $' + d2(L.reduce((a, d) => a + (+d.released_u || 0), 0)) + ' to ' + pl(new Set(L.map((d) => String(d.provider).toLowerCase())).size, 'provider') }));
+    const vr = {}; ((vw && vw.log) || []).forEach((x) => (vr[x.at + ':' + x.agent] = vr[x.at + ':' + x.agent] || []).push(x));
+    Object.values(vr).forEach((L) => { const acts = L.filter((x) => x.tx); if (!acts.length) return;
+      const hf = L.map((x) => String(x.note || '').match(/^health factor now ([\d.]+)/)).find(Boolean);
+      const did = acts.map((x) => ({ supply: 'supplied', enter: 'switched on as collateral', borrow: 'borrowed', repay: 'repaid', deposit: 'supplied' }[x.action] || x.action) + (x.amount ? ' ' + amt(x.amount) : '')).join(', ');
+      all.push({ t: Date.parse(L[0].at), href: '/venus', tx: acts[acts.length - 1].tx, text: 'Venus agent #' + L[0].agent + ' ' + did + (hf ? ', health factor ' + d2(hf[1]) : '') }); });
+    ((b && b.payments) || []).filter((p) => !p.self_test && p.tx && p.at).forEach((p) => all.push({ t: Date.parse(p.at), href: '/registry', tx: p.tx,
+      text: 'An agent paid ' + (/BOBAI/i.test(p.asset || '') ? nf(+p.amount) + ' $BOBAI' + (bobUsd ? ' ($' + d2(p.amount * bobUsd) + ')' : '') : '$' + d2(p.amount)) + ' for ' + what(p.for) }));
+    const x = all.filter((e) => Number.isFinite(e.t)).sort((a, z) => z.t - a.t)[0];
+    if (!x) return;
+    const when = new Date(x.t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }) + ' UTC';
+    latest.querySelector('.ec-lt-when').textContent = when;
+    const a = latest.querySelector('.ec-lt-what'); a.textContent = x.text; a.href = x.href;
+    const t = latest.querySelector('.ec-lt-tx'); t.href = 'https://bscscan.com/tx/' + x.tx;
+    latest.hidden = false;
+  });
+})();

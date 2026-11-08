@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- One of the pages the homepage was cut down to on 2026-09-02. The block
+       markup is the same the classic page carries (styles.css owns it);
+       home.css removes the block labels and the gradient text. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>$BOBAI — the token, its tax and its liquidity</title>
+  <meta name="description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <link rel="canonical" href="https://brainonbnb.com/token">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="$BOBAI — the token, its tax and its liquidity">
+  <meta property="og:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/token">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
+  <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=78" as="style">
+  <link rel="stylesheet" href="styles.css?v=78">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the Brain Terminal"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/token">The Token</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <!-- THE START (2026-11-03, the shared .hx start of every page, styles.css; operator: "der ehrlichste und transparenteste
+       token auf der BNB Chain"). Not a claim about honesty: the last split of the 3% tax, every slice with the
+       transaction that moved it, read live from the buyback bot's own log. A quiet day shows as a quiet day. -->
+  <div class="intro hx tk-start"><h1>The <em>token</em></h1>
+    <div class="hx-claim">Built by an AI agent. <em>Every slice of the 3% tax</em> is a transaction you can open.</div>
+    <div class="hx-proof" id="tk-proof" aria-live="polite">
+      <div class="hx-proof-h"><span id="tk-proof-when">Reading the buyback bot&rsquo;s log&hellip;</span><span>The bot looks every 10 minutes and splits whatever tax has collected.</span></div>
+      <div id="tk-proof-rows"></div>
+      <div class="hx-proof-f">One run of the public buyback wallet <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC&hellip;01ce</a> &middot; every run since March: <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">burns.json</a> &middot; dollars at today&rsquo;s price</div>
+    </div>
+    <div class="hx-trust"><span><span class="hx-dot"></span><span id="tk-live">Price &hellip;</span></span><span><button type="button" class="ca-copy" data-ca="0x245c386dcfed896f5c346107596141e5edcbffff" style="font:600 12px var(--mono,monospace);background:none;color:inherit;border:1px solid currentColor;border-radius:6px;padding:2px 8px;cursor:pointer">CA 0x245c…ffff · <span>Copy</span></button></span><span>Owner renounced &middot; 3% fixed in the contract</span><span>The code is public: <a href="/source">clone it</a></span></div>
+    <script>document.querySelectorAll('.ca-copy').forEach((b) => b.addEventListener('click', () => { const s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); }));</script></div>
+  <section class="sec" id="about">
+    <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
+    <div class="about-hero fi">
+      <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
+      <div class="about-text">
+        <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens and nothing hidden: the 3% rate is fixed in the contract, and every change of the split is announced and logged.</p>
+        <p style="margin-top:10px">Holding it does something: with <b>1,000,000 $BOBAI</b> in your wallet our six agents answer free, 20 a day, one signature each and no transaction &mdash; <a href="/pass">the holder pass</a>.</p>
+        <div class="about-tags">
+          <span>AI-Built</span>
+          <span>Deflationary</span>
+          <span>24/7 Autonomous</span>
+          <span>Verified Contract</span>
+          <span>Owner Renounced</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade feeds the burn and the liquidity. Automatically.</p></div>
+    <div class="fl">
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap with 6% slippage: the 3% tax counts against it.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax collects in the token contract, then goes out as BNB.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
+    </div>
+    <div class="tax fi">
+      <h3>3% Tax Split</h3>
+      <div class="tax-flow">
+        <div class="tf"><div class="p" id="tax-pct-creator" style="color:var(--blue)">~1%</div><div class="d">Creator<br><span class="ts-inline" id="ts-inline-creator"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI<br><span class="ts-inline" id="ts-inline-bobai"></span></div></div>
+        <div class="ta" id="tf-liq-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-liq" style="display:none"><div class="p" id="tax-pct-liq" style="color:var(--gold)">0.5%</div><div class="d"><a data-liq-link href="#liq-boost-bobai-3" style="color:inherit">Liquidity add, LP burned</a></div></div>
+        <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
+        <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="/#giggle" style="color:inherit">Giggle pot</a></div></div>
+      </div>
+      <div class="tax-schedule">
+        <div class="ts-head">
+          <span>Tax Allocation Schedule</span>
+          <span class="ts-right">3% rate hardcoded &middot; distribution transparent &amp; published</span>
+        </div>
+        <div class="ts-rows">
+          <div class="ts-row" data-phase="liq-boost">
+            <div class="ts-when">until Jun 4, 2026</div>
+            <div class="ts-name">$BOB Liq Boost + $BOBAI Liq Boost</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.5%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="/archive#liq-boost-bob">BOB liq add + LP burn</a> &middot; <b>0.5%</b> &rarr; <a href="/archive#liq-boost-bobai-1">BOBAI liq add + LP burn</a></div>
+          </div>
+          <div class="ts-row" data-phase="standard-pre">
+            <div class="ts-when">Jun 5 &rarr; Jun 10, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>1%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="/archive#liq-boost-bobai-1">BOBAI liq add + LP burn</a></div>
+          </div>
+          <div class="ts-row" data-phase="wc26">
+            <div class="ts-when">Jun 11 &rarr; Jul 19, 2026</div>
+            <div class="ts-name">WC26 Prize Pool + $BOBAI Liq Boost</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.24%</b> BOB burn &middot; <b>0.49%</b> Creator &middot; <b>0.75%</b> &rarr; <a href="/archive#liq-boost-bobai-1">BOBAI liq add + LP burn</a> &middot; <b>0.52%</b> &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></div>
+          </div>
+          <div class="ts-row" data-phase="standard-bb">
+            <div class="ts-when">Jul 20 &rarr; Aug 1, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.75%</b> Creator &middot; <b>0.75%</b> &rarr; <a href="/archive#liq-boost-bobai-1">BOBAI liq add + LP burn</a></div>
+          </div>
+          <div class="ts-row" data-phase="standard-post">
+            <div class="ts-when">Aug 2 &rarr; Aug 7, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> BOB burn &middot; <b>1%</b> Creator</div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-2">
+            <div class="ts-when">Aug 8 &rarr; Sep 9, 05:30 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.2%</b> BOB burn &middot; <b>1%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="/archive#liq-boost-bobai-2">BOBAI liq add + LP burn</a></div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-2-lp">
+            <div class="ts-when">Sep 9, 05:30 UTC &rarr; Sep 16, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II + DeFi Agent</div>
+            <div class="ts-split"><b>0.9%</b> BOBAI burn &middot; <b>0.1%</b> BOB burn &middot; <b>0.9%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="/archive#liq-boost-bobai-2">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a></div>
+          </div>
+          <div class="ts-row" data-phase="sunshine">
+            <div class="ts-when">Sep 17 &rarr; Sep 19, 18:00 UTC, 2026</div>
+            <div class="ts-name">☀️ Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-3">
+            <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-3-raised">
+            <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+          </div>
+          <div class="ts-row" data-phase="standard-final">
+            <div class="ts-when">Nov 20 &rarr; Dec 1, 00:01 UTC, 2026</div>
+            <div class="ts-name">Standard &mdash; the last days of the $BOB burn</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> BOB burn &middot; <b>1%</b> Creator</div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-forever">
+            <div class="ts-when">from Dec 1, 2026, 00:01 UTC &mdash; for good</div>
+            <div class="ts-name">$BOBAI liquidity for good</div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> Creator &middot; <b>1%</b> &rarr; <a href="#liq-for-good">BOBAI liq add + LP burn</a> &middot; no BOB burn</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="sec b-blue" id="tokenomics">
+    <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2><em>Token</em>omics</h2></div>
+    <div class="tg4">
+      <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
+      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>None ever: 100% fair launch on Four.Meme.</p></div>
+      <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
+      <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
+    </div>
+
+    <div class="lqd fi">
+      <div class="lqd-h">
+        <h3>How deep is the liquidity? <span class="live-badge"><span class="live-dot"></span>Live</span></h3>
+        <p>Read straight from the <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6" target="_blank" rel="noopener">BOBAI/BNB pool contract <span class="lqa-ad">0x6eaD&hellip;D9A6</span></a> on every refresh &mdash; not a snapshot, not a claim.</p>
+      </div>
+      <div class="lqd-g">
+        <div class="lqm">
+          <div class="lqv ld" id="lq-lp">--</div>
+          <div class="lql">LP Burned</div>
+          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.
+            <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">See the LP burns &#x2197;</a></div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-ratio">--</div>
+          <div class="lql">Liquidity vs Market Cap</div>
+          <div class="lqs"><span class="lqn ld" id="lq-tvl">--</span> in the pool, both sides. Half of that is $BOBAI valued at its own price, so read the next figure too.</div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-hard">--</div>
+          <div class="lql">Hard BNB Backing</div>
+          <div class="lqs" data-nousd>The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
+        </div>
+      </div>
+      <details class="lb-archive lb-inner">
+        <summary>
+          <div class="lb-arch-head"><div class="lb-arch-title">Where the locked liquidity comes from</div><div class="lb-arch-meta">three origins, read off the chain, adding up to the decimal</div></div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+      <div class="lqi" style="margin-top:0">
+        <div class="lqi-h">Where the locked liquidity comes from
+          <span>Every LP transfer into the dead address was read off the chain. Three origins account for it: the two bots' adds are summed from their own transactions, and the dev wallet&rsquo;s share is the rest of the locked total.</span></div>
+        <div class="lqsrc">
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
+              <a class="lqsr-a" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC…01ce</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-bot">--</span><span class="lqsr-p" id="lq-bot-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-bot-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-man">Manual</span> Dev runs
+              <a class="lqsr-a" href="https://bscscan.com/address/0x15Ba17075ef5E0736292b030e3715d9100fe3d38" target="_blank" rel="noopener">0x15Ba…3d38</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-man">--</span><span class="lqsr-p" id="lq-man-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-man-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
+            <div class="lqsr-v"><span class="ld" id="lq-init">--</span><span class="lqsr-p" id="lq-init-pct"></span></div>
+            <div class="lqsr-s">Minted straight into the dead address at block 88,990,359, when the pool was created. One event, never repeated.</div>
+          </div>
+        </div>
+        <div class="lqunb ld" id="lq-unb">--</div>
+      </div>
+      </details>
+
+      <div class="lqi">
+        <div class="lqi-h">What a trade does to the price &mdash; and what it costs
+          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size.</span></div>
+        <div class="lqsim" role="group" aria-label="Simulated pool depth">
+          <span class="lqsim-l">If the pool were</span>
+          <button class="lqsim-b on" type="button" data-mul="1" aria-pressed="true">as it is</button>
+          <button class="lqsim-b" type="button" data-mul="2" aria-pressed="false">2&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="5" aria-pressed="false">5&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="10" aria-pressed="false">10&times; deeper</button>
+          <span class="lqsim-n" id="lq-simn"></span>
+        </div>
+        <div class="lqone">
+          <div class="lqo">
+            <div class="lqo-v lqo-up ld" id="lq-up1">--</div>
+            <div class="lqo-l">Moves the price +1%</div>
+            <div class="lqo-s" id="lq-up1s">a buy this size, right now</div>
+          </div>
+          <div class="lqo">
+            <div class="lqo-v lqo-dn ld" id="lq-dn1">--</div>
+            <div class="lqo-l">Moves the price &minus;1%</div>
+            <div class="lqo-s" id="lq-dn1s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
+          </div>
+        </div>
+        <div class="lqbl">And what the sizes people actually trade do &mdash; bars show impact, drawn to one scale so both sides compare.</div>
+        <div class="lqbs">
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-buy">Buying &mdash; price up</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bm1">--</span><span class="lqb-c" id="lq-bc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bm2">--</span><span class="lqb-c" id="lq-bc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bm3">--</span><span class="lqb-c" id="lq-bc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bm4">--</span><span class="lqb-c" id="lq-bc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw5"></i></span><span class="lqb-p ld" id="lq-bm5">--</span><span class="lqb-c" id="lq-bc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-bw6"></i></span><span class="lqb-p ld" id="lq-bm6">--</span><span class="lqb-c" id="lq-bc6"></span></div>
+          </div>
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-sell">Selling &mdash; price down</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sm1">--</span><span class="lqb-c" id="lq-sc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sm2">--</span><span class="lqb-c" id="lq-sc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sm3">--</span><span class="lqb-c" id="lq-sc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sm4">--</span><span class="lqb-c" id="lq-sc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw5" class="sell"></i></span><span class="lqb-p ld" id="lq-sm5">--</span><span class="lqb-c" id="lq-sc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-sw6" class="sell"></i></span><span class="lqb-p ld" id="lq-sm6">--</span><span class="lqb-c" id="lq-sc6"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- $BOBAI Permalocked Liquidity Boost III (2026-09-19; 0.5% since 2026-09-20, one add ran at 0.3%): 0.5% of every trade out of the
+       BOB-burn slice into the BOBAI/BNB pool, LP burned — beside the Giggle pot and the DeFi
+       agent, ending with them Nov 20, 00:01 UTC. Own IDs (bb3-*); the adds come from the same
+       bobai-liq-log.json as rounds I and II, split by window, so the two archives stay frozen. -->
+  <section class="liq-boost fi" id="liq-boost-bobai-3">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
+      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% (0.5% from Sep 20, 06:00 UTC) of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="bb3-cd-label">until the boost ends</div>
+      <div class="lb-stats lb-bb3-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">--</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">--</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">--</div></div>
+      </div>
+      <div class="lb-table lb-bb3" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- $BOBAI LIQUIDITY FOR GOOD (operator, 2026-10-28: "no boost any more but the standard"): from Dec 1, 2026, 00:01 UTC
+       the tax splits 1% $BOBAI burn / 1% creator / 1% into the BOBAI/BNB pool, LP burned — with no end date. app.js shows
+       this card instead of Boost III from the moment the boost ends (Nov 20, 00:01 UTC; until Dec 1 it counts down to the
+       start) and moves Boost III to the archive. Own IDs (lfg-*); the adds come from the same bobai-liq-log.json. -->
+  <section class="liq-boost fi" id="liq-for-good" style="display:none">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Liquidity for good</em></div>
+      <div class="lb-sub">From Dec 1, 2026: 1% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; no end date &middot; <span style="color:var(--gold)" id="lfg-phase">&hellip;</span></div>
+      <div class="lb-countdown" id="lfg-cd">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lfg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="lfg-cd-label">until it starts</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lfg-count">--</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lfg-bnb">--</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lfg-lp">--</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="lfg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first add lands with the first bot run after Dec 1, 00:01 UTC&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+      <p class="lb-note">The split for good: 1% buys $BOBAI and burns it, 1% deepens this pool with its LP burned, 1% goes to the creator. Not a campaign: nothing here ends. Every add is a transaction of the buyback bot.</p>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script>fetch('/api/price').then((r) => r.json()).then((p) => { const e = document.getElementById('tk-live'); if (!(p.price_usd > 0)) return; e.textContent = 'Price $' + p.price_usd.toFixed(8) + ' · MC $' + Math.round(p.market_cap_usd).toLocaleString('en-US'); e.hidden = false; }).catch(() => {});</script>
+<script>
+// THE LAST SPLIT, SLICE BY SLICE (2026-11-03). burns.json: one row per run of the buyback bot, each slice with its own
+// transaction; bobai-liq-log.json: the liquidity slice of the same run (add + LP burn). The share of each slice is
+// computed from the run's own BNB, not typed in, so it follows whatever phase is running.
+(function () {
+  const box = document.getElementById('tk-rows') || document.getElementById('tk-proof-rows'), when = document.getElementById('tk-proof-when');
+  if (!box) return;
+  const get = (n) => fetch('/logs/' + n).then((r) => (r.ok ? r.json() : Promise.reject(r.status))).catch(() => fetch('https://logs.brainonbnb.com/logs/' + n).then((r) => r.json()));
+  const tx = (h, t) => h ? '<a class="tx" href="https://bscscan.com/tx/' + h + '" target="_blank" rel="noopener">' + (t || 'tx') + ' &#8599;</a>' : '';
+  const num = (x, d) => Number(x).toLocaleString('en-US', { maximumFractionDigits: d });
+  const usd = (x) => x >= 0.995 ? '$' + num(x, 2) : '$' + Number(x).toFixed(2);
+  const ago = (t) => { const m = Math.round((Date.now() - Date.parse(t)) / 60000); return m < 60 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; };
+  Promise.all([get('burns.json'), get('bobai-liq-log.json').catch(() => []), fetch('/api/price').then((r) => r.json()).catch(() => ({}))]).then(([b, l, p]) => {
+    const r = Array.isArray(b) && b.filter((x) => x.totalBnb).at(-1);
+    if (!r) throw 0;
+    const bu = p.bnb_usd || 0, pu = p.price_usd || 0, tot = +r.totalBnb;
+    const liq = (Array.isArray(l) ? l : []).filter((x) => Math.abs(Date.parse(x.time) - Date.parse(r.time)) < 10 * 60000).at(-1);
+    const share = (bnb) => tot > 0 ? (3 * bnb / tot).toFixed(1) + '%' : '';   // totalBnb holds all six slices, the liquidity one too
+    const rows = [
+      ['$BOBAI bought and burned', r.bobaiBurnBnb, num(r.bobaiBurned, 0) + ' $BOBAI' + (pu ? ' &middot; ' + usd(r.bobaiBurned * pu) : ''), tx(r.bobaiBurnTx, 'burn')],
+      ['$BOB bought and burned', r.bobBurnBnb, num(r.bobBurned, 0) + ' $BOB' + (bu ? ' &middot; ' + usd(r.bobBurnBnb * bu) : ''), tx(r.bobBurnTx, 'burn')],
+      ['$BOBAI liquidity added, LP burned', liq && liq.bnb, liq ? num(liq.bnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(liq.bnb * bu) : '') : 'none in this run', liq ? tx(liq.addLiqTx, 'add') + ' ' + tx(liq.lpBurnTx, 'LP burn') : ''],
+      ['DeFi agent', r.lpAgentBnb, r.lpAgentBnb ? num(r.lpAgentBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.lpAgentBnb * bu) : '') : 'none in this run', tx(r.lpAgentTx)],
+      ['Giggle Academy pot', r.giggleBnb, r.giggleBnb ? num(r.giggleBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.giggleBnb * bu) : '') : 'none in this run', tx(r.giggleTx)],
+      ['Creator', r.creatorBnb, num(r.creatorBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.creatorBnb * bu) : ''), tx(r.creatorTx)],
+    ];
+    box.innerHTML = rows.map(([k, bnb, v, t]) => '<div class="hx-row"><span class="k">' + k + (bnb ? ' <i>' + share(+bnb) + '</i>' : '') + '</span><span class="v">' + v + '</span><span class="t">' + t + '</span></div>').join('');
+    const all = tot, sum = [r.creatorBnb, r.bobBurnBnb, r.bobaiBurnBnb, r.lpAgentBnb, r.giggleBnb, liq && liq.bnb].reduce((a, x) => a + (+x || 0), 0);
+    when.innerHTML = '<b>Last split</b> ' + r.time.slice(8, 10).replace(/^0/, '') + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+r.time.slice(5, 7) - 1] + ' ' + r.time.slice(11, 16) + ' UTC &middot; ' + ago(r.time) + ' &middot; ' + num(all, 5) + ' BNB' + (bu ? ' (' + usd(all * bu) + ')' : '') + ' of tax' + (Math.abs(sum - tot) < 1e-9 ? ' &middot; the slices add up to it exactly' : '');
+  }).catch(() => { when.innerHTML = 'The log could not be read just now &mdash; <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">open it yourself</a>'; });
+})();
+</script>
+<script src="app.js?v=135" defer></script>
+</body>
+</html>

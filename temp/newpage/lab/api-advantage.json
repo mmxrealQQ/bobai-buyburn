@@ -1,0 +1,334 @@
+{
+  "what_this_is": "Three real tasks on BNB Smart Chain, each done twice: once by asking an agent, once by hand. Wall-clock and request counts, measured on one machine in one run.",
+  "how_to_read_it": "The manual path is a script making the same calls a person would have to make — no page loads, no reading, no typing. Every ratio here is therefore a floor, not an estimate of what a person costs. Where a path could not answer at all, that is recorded as an unanswered question and never as a fast one.",
+  "measured_at": "2026-11-02T13:57:48.837Z",
+  "chain": "BNB Smart Chain (eip155:56)",
+  "rpc": "https://bsc-dataseed.binance.org",
+  "tasks": [
+    {
+      "task": 1,
+      "category": "trading / liquidity provision",
+      "question": "I have $10,000 to provide as liquidity for CAKE/WBNB on PancakeSwap. Which of the five fee tiers should it go into?",
+      "why_it_is_hard": "The pair lives in up to five pools at once. Every public interface ranks them by the capital already parked in them, and that is not what an LP is paid on.",
+      "agent": {
+        "ms": 1065,
+        "requests": 1,
+        "answer": {
+          "answered": true,
+          "best_paying_tier": "V3 0.05%",
+          "most_capital_tier": "V2 0.25%",
+          "capital_is_in_the_best_paying_tier": false,
+          "window": {
+            "from_block": 131244817,
+            "to_block": 131252716,
+            "blocks": 7900,
+            "minutes": 59.3,
+            "note": "A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: an hour of flow says what happened in that hour."
+          },
+          "tiers": [
+            {
+              "tier": "V2 0.25%",
+              "capital_usd": 19828919.35,
+              "swaps": 116,
+              "fees_paid_usd": 32.85905,
+              "fees_per_1000_usd_parked": 0.001127
+            },
+            {
+              "tier": "V3 0.01%",
+              "capital_usd": 13441.9,
+              "swaps": 56,
+              "fees_paid_usd": 0.012947,
+              "fees_per_1000_usd_parked": 0.000645
+            },
+            {
+              "tier": "V3 0.05%",
+              "capital_usd": 886858.78,
+              "swaps": 178,
+              "fees_paid_usd": 28.617588,
+              "fees_per_1000_usd_parked": 0.021297
+            },
+            {
+              "tier": "V3 0.25%",
+              "capital_usd": 4402161.27,
+              "swaps": 18,
+              "fees_paid_usd": 21.49358,
+              "fees_per_1000_usd_parked": 0.00332
+            },
+            {
+              "tier": "V3 1.00%",
+              "capital_usd": 3108.73,
+              "swaps": 0,
+              "fees_paid_usd": 0,
+              "fees_per_1000_usd_parked": 0
+            }
+          ]
+        },
+        "error": null
+      },
+      "manual": {
+        "ms": 909,
+        "requests": 22,
+        "answer": {
+          "best_paying_tier": null,
+          "most_capital_tier": "V2 0.25%",
+          "answered": false,
+          "could_not_answer": "the public node refused the log range, so no tier could be priced — only the capital ranking survived, which is the number every public interface already shows",
+          "capital_is_in_the_best_paying_tier": null,
+          "pools_found": 5,
+          "tiers": [
+            {
+              "tier": "V2 0.25%",
+              "capital_usd": 19776381.264706,
+              "swaps": null,
+              "fees_paid_usd": null
+            },
+            {
+              "tier": "V3 0.01%",
+              "capital_usd": 22243.35985683999,
+              "swaps": null,
+              "fees_paid_usd": null
+            },
+            {
+              "tier": "V3 0.05%",
+              "capital_usd": 715131.8541513685,
+              "swaps": null,
+              "fees_paid_usd": null
+            },
+            {
+              "tier": "V3 0.25%",
+              "capital_usd": 2225681.979172195,
+              "swaps": null,
+              "fees_paid_usd": null
+            },
+            {
+              "tier": "V3 1%",
+              "capital_usd": 2191.2756725200115,
+              "swaps": null,
+              "fees_paid_usd": null
+            }
+          ]
+        },
+        "the_answer_a_public_interface_gives": "V2 0.25%",
+        "error": null
+      },
+      "marketplace": {
+        "agent_id": 310460,
+        "name": "Brain on BNB — PancakeSwap Fee Tier Placement",
+        "category": "yield-optimization",
+        "hire": "https://brainonbnb.com/registry#cat-yield-optimization",
+        "what_it_delivers": "the same fee-tier measurement, delivered on-chain through the ERC-8183 escrow",
+        "quote": {
+          "ms": 494,
+          "requests": 1,
+          "quoted": true,
+          "price": "0.01 $U",
+          "currency": "$U",
+          "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+          "service": "lp_tier_plan",
+          "escrow": "ERC-8183",
+          "reason": null
+        },
+        "completed_job": null
+      },
+      "ratio_lower_bound": null,
+      "both_paths_answered": false
+    },
+    {
+      "task": 2,
+      "category": "security / risk",
+      "question": "Before I take a $2,500 position: what does that trade actually cost, and can the liquidity behind it be withdrawn tomorrow?",
+      "why_it_is_hard": "The headline slippage a router shows is not the cost. Transfer tax, price impact and swap fee are three different numbers, and LP withdrawability is not on the token page at all.",
+      "agent": {
+        "ms": 5353,
+        "requests": 1,
+        "answer": {
+          "price_usd": 1.8930185765851826,
+          "pool": "PancakeSwap V2",
+          "hard_backing_usd": 9913277,
+          "liquidity_basis": "quote side only — the hard asset in the pool. Counting both sides, as an LP would, is roughly twice this; that is what pancakeswap_fee_tiers reports as capital_usd.",
+          "share_of_liquidity_readable": 0.3737,
+          "sell_cost_pct_at_size": {
+            "sizeUsd": 2500,
+            "sellCostPct": 0.275
+          },
+          "transfer_tax": {
+            "buyPct": 0,
+            "sellPct": 0,
+            "buySource": "measured",
+            "sellSource": "measured",
+            "measured": true,
+            "measured_on": {
+              "pool": "0x0ed7e52944161450477ee417de9cd3a859b14fd0",
+              "venue": "PancakeSwap V2"
+            },
+            "windowMinutes": 59,
+            "source": "measured from executed trades on-chain",
+            "simulated": {
+              "buyPct": 0,
+              "sellPct": 0,
+              "method": "simulated at this block: what the pair would pay for the whole amount against what arrived after the transfer, from a fresh address with no history"
+            },
+            "tradesMeasured": {
+              "buys": 3,
+              "sells": 3
+            },
+            "spreadPct": {
+              "buy": [
+                0,
+                0,
+                0
+              ],
+              "sell": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "lp_burned_pct": 0.0002,
+          "answered": true,
+          "could_not_answer": null
+        },
+        "error": null
+      },
+      "manual": {
+        "ms": 307,
+        "requests": 6,
+        "answer": {
+          "price_usd": 1.8882281162499752,
+          "pool": "PancakeSwap V2",
+          "hard_backing_usd": 9888190.632353,
+          "liquidity_basis": "quote side only — the WBNB reserve at the price feed",
+          "share_of_liquidity_readable": null,
+          "sell_cost_pct_at_size": {
+            "sizeUsd": 2500,
+            "sellCostPct": 0.27515008596814367
+          },
+          "transfer_tax": null,
+          "lp_burned_pct": 0.0001390012510332239,
+          "answered": false,
+          "could_not_answer": "the transfer tax and the share of liquidity this pool represents are both missing. Neither is a field to read: the tax only exists in the difference between what a swap sent and what arrived, and the share needs every other pool on every other venue found first."
+        },
+        "error": null
+      },
+      "marketplace": {
+        "agent_id": 49467,
+        "name": "Brain On BNB AI ($BOBAI)",
+        "category": "pool measurement",
+        "hire": "https://brainonbnb.com/services",
+        "what_it_delivers": "the one-off measurement is free by design; the continuous watch of the same pool is sold per x402 and over MCP as bsc_pool_watch",
+        "quote": {
+          "ms": 297,
+          "requests": 1,
+          "status": 402,
+          "quoted": true,
+          "price": "0.50 USD1",
+          "reason": null
+        },
+        "completed_job": null
+      },
+      "ratio_lower_bound": null,
+      "both_paths_answered": false
+    },
+    {
+      "task": 3,
+      "category": "agent discovery / hiring",
+      "question": "Find me an agent on BNB Smart Chain that monitors a Venus health factor, and tell me what it charges.",
+      "why_it_is_hard": "The identity registry holds hundreds of thousands of ids with no index and no search, and it grows every hour. Nothing about it is queryable by what an agent does.",
+      "agent": {
+        "ms": 1174,
+        "requests": 2,
+        "answer": {
+          "answered": true,
+          "could_not_answer": null,
+          "candidates": 5,
+          "top": [
+            {
+              "id": 266933,
+              "name": "BNB Lending Guardian"
+            },
+            {
+              "id": 338480,
+              "name": "Venus Liquidation Guard"
+            },
+            {
+              "id": 322885,
+              "name": "Venus Health Factor Monitor"
+            }
+          ],
+          "asked_for_a_price": [
+            {
+              "id": 266933,
+              "name": "BNB Lending Guardian",
+              "quoted": true,
+              "price": "5 $U",
+              "reason": null
+            }
+          ],
+          "charges": {
+            "id": 266933,
+            "name": "BNB Lending Guardian",
+            "price": "5 $U",
+            "currency": "$U",
+            "provider": "0xa09991fc5D8637bb4245737C3ebF26E24D653962",
+            "service": "Venus liquidation-risk report",
+            "how": "quoted over A2A through the marketplace hire path, escrow ERC-8183"
+          }
+        },
+        "error": null
+      },
+      "manual": {
+        "ms": 6599,
+        "requests": 187,
+        "answer": {
+          "answered": false,
+          "could_not_answer": "no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.04% of it.",
+          "registry_ids_at_measurement": 402333,
+          "sampled_ids": 150,
+          "ids_with_a_document": 150,
+          "ms_per_id_measured": 44,
+          "extrapolated_hours_to_read_the_registry": 4.9,
+          "note": "Reading every id is only step one: the documents then have to be fetched, parsed and probed before any of them can be called, and 1,060 of the endpoints that claim to exist do not answer."
+        },
+        "error": null
+      },
+      "marketplace": {
+        "agent_id": 302257,
+        "name": "Brain on BNB — Venus Health Factor Monitor",
+        "category": "health-factor",
+        "hire": "https://brainonbnb.com/registry#cat-health-factor",
+        "what_it_delivers": "the health factor of a Venus position, delivered on-chain through the ERC-8183 escrow",
+        "quote": {
+          "ms": 309,
+          "requests": 1,
+          "quoted": true,
+          "price": "0.01 $U",
+          "currency": "$U",
+          "provider": "0xEAC21928DE023677A25eb925D1cb1b0786FaF946",
+          "service": "health_factor",
+          "escrow": "ERC-8183",
+          "reason": null
+        },
+        "completed_job": {
+          "id": 56657,
+          "status": "COMPLETED",
+          "result": "https://agent.brainonbnb.com/job/56657/result",
+          "page": "https://agent.brainonbnb.com/job?id=56657",
+          "note": "hired through the marketplace, delivered on-chain, escrow released"
+        }
+      },
+      "ratio_lower_bound": null,
+      "both_paths_answered": false
+    }
+  ],
+  "cost": {
+    "agent_path": "No API key, no account, no subscription. Every endpoint used here is public and free to call.",
+    "manual_path": "Also free in fees — the cost is the person. The request counts above are what they would be issuing by hand."
+  },
+  "caveats": [
+    "Both paths read the same chain over the same RPC in the same run, so network conditions apply to both equally.",
+    "The manual path is a lower bound on human effort and is described that way everywhere it appears.",
+    "Task 3 extrapolates from a measured per-id rate over a 150-id sample. The extrapolation is labelled; the measurement is real.",
+    "Speed is the weakest of the three columns. Two of the three tasks produce a different answer by hand, not merely a later one."
+  ]
+}

@@ -1,0 +1,4 @@
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Robots-Tag: noindex
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://brainonbnb.com https://bobai-tg-bot.bobbuildonbnb.workers.dev https://bsc-dataseed.binance.org https://api.binance.com https://api.geckoterminal.com https://api.gopluslabs.io https://api.dexscreener.com https://bsc.publicnode.com https://bsc-rpc.publicnode.com https://bsc-dataseed1.defibit.io https://bsc-mainnet.public.blastapi.io https://1rpc.io https://logs.brainonbnb.com https://agent.brainonbnb.com https://aerffjhdsbxpvuulkryr.supabase.co; font-src 'self' data:; frame-ancestors 'self'

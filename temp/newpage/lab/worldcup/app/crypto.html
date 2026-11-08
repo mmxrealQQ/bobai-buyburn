@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Auth gate — hide page + redirect anonymous visitors before first paint -->
+  <style>html.wc-gate{visibility:hidden!important}</style>
+  <script>
+    (function(){
+      document.documentElement.classList.add('wc-gate');
+      function hasSession(){
+        try {
+          return Object.keys(localStorage).some(function(k){
+            return k.indexOf('sb-')===0 && k.lastIndexOf('-auth-token')===k.length-11 && !!localStorage.getItem(k);
+          });
+        } catch(e){ return true; }
+      }
+      if (!hasSession()){ window.location.replace('/worldcup/'); return; }
+      document.documentElement.classList.remove('wc-gate');
+      window.addEventListener('pageshow', function(e){
+        if (e.persisted && !hasSession()) window.location.replace('/worldcup/');
+      });
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Worldcup '26 — Crypto Predictions</title>
+  <meta property="og:title" content="Worldcup '26 — Getting Paid In $BOBAI">
+  <meta property="og:description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/crypto">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 — Getting Paid In $BOBAI">
+  <meta name="twitter:description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .container.wide{max-width:680px}
+    .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
+    .ck-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .ck-asset{display:flex;align-items:center;gap:10px}
+    .ck-asset .icon{width:34px;height:34px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);box-shadow:0 0 0 1px rgba(255,255,255,.06) inset}
+    .ck-asset .icon img{width:100%;height:100%;object-fit:cover;display:block}
+    .ck-asset .icon.bobai img{transform:scale(1.08)} /* BOBAI has ~4% internal padding around the brain — zoom to match BTC/BNB optical size */
+    .ck-asset .nm{font-family:'Space Grotesk';font-weight:700;font-size:16px;color:var(--text)}
+    .ck-asset .sym{font-size:11px;color:var(--muted);letter-spacing:.5px}
+
+    .ck-live{text-align:right}
+    .ck-live .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+    .ck-live .px{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);line-height:1.1}
+    .ck-live .px.pulse{animation:pulse 1s ease}
+    @keyframes pulse{0%{opacity:.5}100%{opacity:1}}
+
+    .ck-input-wrap{display:flex;align-items:center;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:10px;padding:0 14px;transition:border-color .15s}
+    .ck-input-wrap:focus-within{border-color:var(--gold)}
+    .ck-input-wrap .pfx{color:var(--muted);font-family:'Space Grotesk';font-weight:600;font-size:15px}
+    .ck-input-wrap input{flex:1;padding:14px 8px;background:transparent;border:none;color:var(--text);font-family:'Space Grotesk';font-weight:700;font-size:16px;outline:none}
+    .ck-input-wrap input::placeholder{color:var(--muted);font-weight:400}
+
+    .ck-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .ck-presets .preset-btn{padding:7px 11px;font-size:11px;font-weight:700;color:var(--gold);background:transparent;border:1px solid rgba(240,185,11,.3);border-radius:8px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;font-family:inherit;transition:all .12s}
+    .ck-presets .preset-btn:hover{background:rgba(240,185,11,.08);border-color:rgba(240,185,11,.55)}
+    .ck-presets .preset-btn.live{border-color:var(--gold);background:rgba(240,185,11,.08)}
+    .ck-presets .preset-btn.down{color:#ff8580;border-color:rgba(255,80,80,.3)}
+    .ck-presets .preset-btn.down:hover{background:rgba(255,80,80,.08);border-color:rgba(255,80,80,.55)}
+    .ck-presets .preset-btn.up{color:#5fffa0;border-color:rgba(0,230,118,.3)}
+    .ck-presets .preset-btn.up:hover{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.55)}
+    .ck-presets .preset-btn:disabled{opacity:.4;cursor:not-allowed}
+
+    .save-bar{position:sticky;bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(8px);margin-top:24px}
+    .save-bar .info{font-size:12px;color:var(--muted)}
+    .save-bar .info b{color:var(--text)}
+
+    .locked-banner{padding:16px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.3);border-radius:10px;color:#ffc066;font-size:13px;text-align:center;margin-bottom:20px}
+    .info-banner{padding:14px;background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.2);border-radius:10px;color:#9090ff;font-size:12px;line-height:1.6;margin-bottom:20px}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div data-hero="crypto-hero"></div>
+        <div class="card">
+          <div data-card-accent="bonus-crystal"></div>
+          <h1><span class="accent">Crypto Predictions</span></h1>
+          <p class="sub">BTC · BNB · BOBAI · prices at final kickoff</p>
+
+          <div id="locked" class="locked-banner hidden">
+            🔒 Locked — final lock has passed.
+          </div>
+
+          <div class="info-banner">
+            <b>How it works:</b> Predict the USD price of BTC, BNB and BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). <b>One-time extension:</b> submit or edit any time until <b>18 June 2026, 15:45 UTC</b> — 15 min before the first matchday-2 match. After that, predictions lock. The closest guess on each coin wins <b>3.3% of the total prize pool</b> (10% total — split BTC/BNB/BOBAI evenly).
+          </div>
+
+          <div id="alert"></div>
+
+          <!-- BTC -->
+          <div class="ck" data-coin="btc">
+            <div class="ck-head">
+              <div class="ck-asset"><div class="icon btc"><img src="./illus/coin-btc.webp" alt="BTC"></div><div><div class="nm">Bitcoin</div><div class="sym">BTC</div></div></div>
+              <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="btc">…</div></div>
+            </div>
+            <div class="ck-input-wrap">
+              <span class="pfx">$</span>
+              <input type="number" step="0.01" min="0" placeholder="your prediction" data-input="btc">
+            </div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="btc" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="btc" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="btc" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="200">+200%</button>
+            </div>
+          </div>
+
+          <!-- BNB -->
+          <div class="ck" data-coin="bnb">
+            <div class="ck-head">
+              <div class="ck-asset"><div class="icon bnb"><img src="./illus/coin-bnb.webp" alt="BNB"></div><div><div class="nm">BNB</div><div class="sym">BNB</div></div></div>
+              <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bnb">…</div></div>
+            </div>
+            <div class="ck-input-wrap">
+              <span class="pfx">$</span>
+              <input type="number" step="0.0001" min="0" placeholder="your prediction" data-input="bnb">
+            </div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="bnb" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="bnb" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="bnb" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="200">+200%</button>
+            </div>
+          </div>
+
+          <!-- BOBAI -->
+          <div class="ck" data-coin="bobai">
+            <div class="ck-head">
+              <div class="ck-asset"><div class="icon bobai"><img src="./illus/coin-bobai.webp" alt="BOBAI"></div><div><div class="nm">Brain On BNB AI</div><div class="sym">BOBAI</div></div></div>
+              <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bobai">…</div></div>
+            </div>
+            <div class="ck-input-wrap">
+              <span class="pfx">$</span>
+              <input type="number" step="0.0000000001" min="0" placeholder="your prediction" data-input="bobai">
+            </div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="bobai" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="bobai" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="bobai" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="200">+200%</button>
+            </div>
+          </div>
+
+          <div class="save-bar">
+            <div class="info">
+              <div><b id="answered-count">0/3</b> predictions set</div>
+              <div id="save-status">Pick at least one.</div>
+            </div>
+            <button id="btn-save" class="btn" style="width:auto;padding:12px 22px" disabled>Save predictions</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=12"></script>
+  <script src="./assets/auth.js?v=13"></script>
+  <script src="./assets/profile.js?v=18"></script>
+  <script src="./assets/avatar.js?v=7"></script>
+  <script src="./assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    function fmtPrice(coin, n){
+      if (n == null || !isFinite(n)) return '–';
+      if (coin === 'bobai') return '$' + n.toFixed(10).replace(/0+$/,'').replace(/\.$/,'');
+      if (coin === 'btc')   return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    }
+
+    let saved = { btc: null, bnb: null, bobai: null };
+    let pending = { btc: null, bnb: null, bobai: null };
+    let live = { btc: null, bnb: null, bobai: null };
+    let locked = false;
+
+    function isLocked(){
+      // One-time MD2 extension — picks editable until 15 min before the first
+      // matchday-2 match (CZ–ZA, 2026-06-18 16:00 UTC). DB-enforced via the
+      // hardcoded timestamp in wc_crypto policies. Picks reveal at that moment.
+      const lockMs = new Date(window.WC_CONFIG.BONUS_CRYPTO_LOCK_UTC).getTime();
+      return Date.now() >= lockMs;
+    }
+
+    function updateSaveBar(){
+      const filled = ['btc','bnb','bobai'].filter(k => pending[k] != null).length;
+      $('#answered-count').textContent = `${filled}/3`;
+      const dirty = ['btc','bnb','bobai'].some(k => (pending[k] || null) !== (saved[k] || null));
+      $('#btn-save').disabled = !dirty || locked;
+      $('#save-status').textContent =
+        locked ? '🔒 Locked — final lock has passed.'
+        : dirty ? 'Unsaved changes.'
+        : filled === 0 ? 'Pick at least one.'
+        : '✅ Up to date.';
+    }
+
+    function readInputs(){
+      ['btc','bnb','bobai'].forEach(k => {
+        const el = $(`[data-input="${k}"]`);
+        const v = el.value.trim();
+        if (v === '') { pending[k] = null; return; }
+        const n = parseFloat(v);
+        pending[k] = isFinite(n) && n >= 0 ? n : null;
+      });
+    }
+
+    async function refreshLive(){
+      const r = await window.WC_PROFILE.fetchLivePrices();
+      live = r;
+      ['btc','bnb','bobai'].forEach(k => {
+        const el = $(`[data-live="${k}"]`);
+        const next = fmtPrice(k, live[k]);
+        if (el.textContent !== next) {
+          el.textContent = next;
+          el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+        }
+      });
+    }
+
+    // Helper: format a numeric price for the input field at coin-appropriate precision
+    function formatForInput(coin, n){
+      if (coin === 'bobai') return n.toFixed(10).replace(/0+$/,'').replace(/\.$/,'');
+      return n.toFixed(coin === 'btc' ? 2 : 4);
+    }
+
+    // wire preset buttons (use live + ±% deltas)
+    $$('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+      const k = btn.dataset.preset;
+      const pct = parseFloat(btn.dataset.pct);
+      if (live[k] == null) return;
+      const target = live[k] * (1 + pct / 100);
+      if (!isFinite(target) || target < 0) return;
+      const inp = $(`[data-input="${k}"]`);
+      inp.value = formatForInput(k, target);
+      readInputs(); updateSaveBar();
+    }));
+
+    // input listeners
+    $$('[data-input]').forEach(inp => inp.addEventListener('input', () => { readInputs(); updateSaveBar(); }));
+
+    $('#btn-save').addEventListener('click', async () => {
+      const btn = $('#btn-save');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const r = await window.WC_PROFILE.saveCrypto(pending);
+      btn.textContent = 'Save predictions';
+      if (r.error) { showAlert('error', r.error); btn.disabled = false; return; }
+      saved = { ...pending };
+      showAlert('ok', 'Predictions saved.');
+      updateSaveBar();
+      setTimeout(() => showAlert(), 2500);
+    });
+
+    (async () => {
+      const me = await window.WC_AUTH.currentProfile();
+      if (!me) { window.location.href = '/worldcup/'; return; }
+
+      locked = isLocked();
+      if (locked) $('#locked').classList.remove('hidden');
+      if (locked) $$('[data-input], [data-preset]').forEach(el => el.disabled = true);
+
+      const r = await window.WC_PROFILE.getCrypto();
+      if (r.crypto) {
+        ['btc','bnb','bobai'].forEach(k => {
+          const dbKey = k + '_price';
+          if (r.crypto[dbKey] != null) {
+            saved[k] = parseFloat(r.crypto[dbKey]);
+            pending[k] = saved[k];
+            $(`[data-input="${k}"]`).value = saved[k];
+          }
+        });
+      }
+      updateSaveBar();
+      await refreshLive();
+      setInterval(refreshLive, 20000); // refresh live every 20s
+    })();
+  </script>
+</body>
+</html>

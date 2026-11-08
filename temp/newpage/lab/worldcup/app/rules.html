@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rules &amp; FAQ — BOBAI Worldcup '26 (FIFA 2026 Crypto Tipgame)</title>
+  <meta name="description" content="Full rules of the BOBAI Worldcup '26 — a free FIFA 2026 prediction game on BNB Chain. Scoring, prize pool split, payouts, holder cap, security and donation flow. Read before you play.">
+  <meta name="keywords" content="BOBAI Worldcup rules, FIFA World Cup 2026 prediction game rules, crypto tipgame rules, BNB Chain prize pool rules, on-chain payouts, BOBAI scoring, Brain On BNB AI">
+  <link rel="canonical" href="https://brainonbnb.com/worldcup/app/rules">
+  <meta property="og:title" content="Rules &amp; FAQ — BOBAI Worldcup '26">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:description" content="Full rules of the BOBAI Worldcup '26 — free FIFA 2026 crypto prediction game on BNB Chain. Scoring, prize pool, payouts.">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/rules">
+  <meta property="og:type" content="article">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=20">
+  <style>
+    .container.wide{max-width:760px}
+    /* Sticky TOC — clings to the top of the viewport just below the global nav (.nav 58px + .tabbar ~37px ≈ 96px).
+       z-index stays below the nav (which is 100) so the back-button remains clickable above the TOC. */
+    .toc{position:sticky;top:96px;z-index:50;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;padding:12px;background:rgba(5,5,16,.92);backdrop-filter:blur(20px) saturate(1.2);border:1px solid var(--border);border-radius:10px}
+    .toc a{font-size:12px;padding:6px 10px;background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.2);border-radius:6px;color:var(--gold);text-decoration:none;font-weight:600;letter-spacing:.3px}
+    .toc a:hover{background:rgba(240,185,11,.15)}
+    @media (max-width: 600px){
+      .toc{top:90px;padding:8px;gap:5px}
+      .toc a{font-size:10.5px;padding:5px 7px;letter-spacing:.2px}
+    }
+
+    h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em;scroll-margin-top:200px}
+    h2:first-of-type{margin-top:0}
+    h3{font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--text);margin:18px 0 8px}
+    p{color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:12px}
+    p b, li b{color:var(--text)}
+    ul, ol{color:var(--muted);font-size:14px;line-height:1.7;margin:0 0 12px 22px}
+    li{margin-bottom:4px}
+    code{background:rgba(0,0,0,.4);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--gold);font-family:'Space Grotesk'}
+    .callout{padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.6;margin:14px 0}
+    .callout.warn{background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);color:#ffc066}
+    .callout.danger{background:rgba(255,48,40,.06);border:1px solid rgba(255,48,40,.25);color:#ff8580}
+    .callout.info{background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.25);color:#9090ff}
+    .callout.ok{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.2);color:#5fffa0}
+    .scoring-table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:13px}
+    .scoring-table th, .scoring-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+    .scoring-table th{color:var(--gold);font-family:'Space Grotesk';font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    .scoring-table td{color:var(--text)}
+    .scoring-table td:last-child{text-align:right;color:var(--gold);font-family:'Space Grotesk';font-weight:600}
+
+    /* ─── Cap-overflow explainer ─── */
+    .cap-h3-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 8px}
+    .cap-h3-row h3{margin:0}
+    .cap-modal-btn{
+      display:inline-flex;align-items:center;gap:7px;
+      background:linear-gradient(135deg,rgba(240,185,11,.18),rgba(240,185,11,.08));
+      border:1px solid rgba(240,185,11,.45);color:var(--gold);
+      font-family:'Space Grotesk';font-weight:600;font-size:12px;letter-spacing:.3px;
+      padding:7px 13px;border-radius:999px;cursor:pointer;
+      transition:all .2s;text-decoration:none;
+    }
+    .cap-modal-btn:hover{background:linear-gradient(135deg,rgba(240,185,11,.32),rgba(240,185,11,.15));border-color:var(--gold);transform:translateY(-1px)}
+    .cap-modal-btn .ic{font-size:14px;line-height:1}
+
+    /* The "old" example block — now lives inside the modal */
+    .cap-example{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0 18px}
+    .cap-example .lead{font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.65}
+    .cap-example .lead b{color:var(--gold)}
+    .cap-case{margin-bottom:18px}
+    .cap-case:last-child{margin-bottom:0}
+    .cap-case-title{font-family:'Space Grotesk';font-weight:600;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:10px;display:inline-block}
+    .cap-case-title.ok{background:rgba(0,230,118,.07);color:#5fffa0;border:1px solid rgba(0,230,118,.25)}
+    .cap-case-title.bad{background:rgba(255,180,0,.07);color:#ffc066;border:1px solid rgba(255,180,0,.25)}
+    .cap-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    @media (max-width:600px){.cap-row{grid-template-columns:repeat(2,1fr);gap:6px}}
+    .cap-card{background:rgba(5,5,16,.6);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11.5px;line-height:1.45;color:var(--muted);position:relative}
+    .cap-card.capped{border-color:rgba(255,48,40,.3);background:rgba(255,48,40,.04)}
+    .cap-card.bonus{border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.04)}
+    .cap-card .h{font-family:'Space Grotesk';font-weight:600;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--text);margin-bottom:6px}
+    .cap-card .line{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+    .cap-card .line + .line{margin-top:2px}
+    .cap-card .line span{color:var(--muted);font-size:10.5px}
+    .cap-card .line b{color:var(--text);font-family:'Space Grotesk';font-weight:600;font-size:11.5px}
+    .cap-card .line.pay{margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+    .cap-card .line.pay b{color:var(--gold);font-size:13px}
+    .cap-card .line.strike b{color:#ff8580;text-decoration:line-through;font-size:10.5px}
+    .cap-card .stamp{position:absolute;top:-7px;right:-7px;background:rgba(255,48,40,.92);color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:4px;transform:rotate(8deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+    .cap-card .overflow-tag{margin-top:6px;padding:4px 6px;background:rgba(255,180,0,.08);border:1px dashed rgba(255,180,0,.3);border-radius:5px;font-size:10px;color:#ffc066;text-align:center;font-weight:600;letter-spacing:.2px}
+    .cap-card .bonus-tag{margin:5px 0;padding:4px 6px;background:rgba(0,230,118,.08);border:1px dashed rgba(0,230,118,.3);border-radius:5px;font-size:10px;color:#5fffa0;text-align:center;font-weight:600;letter-spacing:.2px}
+    .cap-foot{margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.55}
+    .cap-foot b{color:var(--text)}
+
+    /* ─── Cap-overflow MODAL (lightbox) ─── */
+    .cap-modal{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto}
+    .cap-modal[aria-hidden="false"]{display:flex;animation:capFade .2s ease-out}
+    @keyframes capFade{from{opacity:0}to{opacity:1}}
+    .cap-modal-backdrop{position:fixed;inset:0;background:rgba(2,2,8,.85);backdrop-filter:blur(8px) saturate(1.3);z-index:-1}
+    .cap-modal-box{
+      position:relative;max-width:920px;width:100%;
+      background:linear-gradient(180deg,rgba(15,15,30,.98),rgba(5,5,16,.98));
+      border:1px solid rgba(240,185,11,.35);border-radius:18px;
+      box-shadow:0 16px 60px rgba(0,0,0,.6),0 0 0 1px rgba(240,185,11,.08) inset;
+      padding:0;animation:capPop .25s cubic-bezier(.2,.9,.3,1.1);
+      margin:auto;
+    }
+    @keyframes capPop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+    .cap-modal-close{
+      position:absolute;top:14px;right:14px;z-index:5;
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(0,0,0,.55);border:1px solid var(--border);color:var(--text);
+      font-size:22px;line-height:1;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:all .15s;
+    }
+    .cap-modal-close:hover{background:rgba(255,48,40,.25);border-color:rgba(255,48,40,.5);color:#ff8580;transform:rotate(90deg)}
+    .cap-modal-header{
+      position:relative;
+      padding:28px 60px 18px;
+      display:grid;grid-template-columns:90px 1fr 90px;align-items:center;gap:14px;
+      border-bottom:1px solid var(--border);
+      background:
+        radial-gradient(ellipse at top, rgba(240,185,11,.10), transparent 60%),
+        linear-gradient(180deg,rgba(240,185,11,.04),transparent);
+      border-radius:18px 18px 0 0;
+    }
+    .cap-modal-header h2{
+      grid-column:2;text-align:center;
+      font-family:'Space Grotesk';font-weight:700;font-size:24px;letter-spacing:-.01em;
+      color:var(--gold);margin:0;line-height:1.15;
+    }
+    .cap-modal-header .sub{
+      grid-column:2;text-align:center;
+      font-size:12.5px;color:var(--muted);margin:6px 0 0;letter-spacing:.3px;
+    }
+    .cap-modal-header .sub b{color:var(--text)}
+    .cap-illus{
+      width:90px;height:90px;display:flex;align-items:center;justify-content:center;
+    }
+    .cap-illus img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
+    .cap-illus.left{grid-column:1}
+    .cap-illus.right{grid-column:3}
+    .cap-modal-body{padding:22px 28px 28px}
+    .cap-modal-body .cap-example{margin:0;background:transparent;border:none;padding:0}
+    .cap-modal-body .cap-row{grid-template-columns:repeat(4,1fr);gap:10px}
+    .cap-modal-body .cap-case{margin-bottom:24px}
+    .cap-modal-body .cap-case:last-child{margin-bottom:0}
+    .cap-modal-body .lead{font-size:14px;line-height:1.7;margin:0 0 18px;padding:14px 16px;background:rgba(240,185,11,.05);border:1px solid rgba(240,185,11,.18);border-radius:10px}
+    .cap-divider{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      margin:14px 0 18px;
+    }
+    .cap-divider img{
+      width:140px;height:140px;object-fit:contain;
+      filter:drop-shadow(0 8px 22px rgba(240,185,11,.18));
+    }
+    .cap-divider .lbl{
+      margin-top:4px;font-size:10px;color:rgba(240,185,11,.55);
+      font-family:'Space Grotesk';font-weight:600;letter-spacing:3px;text-transform:uppercase;
+    }
+    .cap-case-titlebar{
+      display:flex;align-items:center;gap:12px;margin-bottom:10px;
+    }
+    .cap-case-titlebar .ic{
+      flex-shrink:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+    }
+    .cap-case-titlebar .ic img{
+      max-width:100%;max-height:100%;object-fit:contain;
+      filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+    }
+    .cap-case-titlebar .cap-case-title{margin-bottom:0}
+    .cap-modal-footer{
+      padding:18px 28px 22px;border-top:1px solid var(--border);
+      font-size:12.5px;color:var(--muted);line-height:1.65;
+      display:grid;grid-template-columns:90px 1fr;align-items:center;gap:16px;text-align:left;
+    }
+    .cap-footer-illus{
+      width:90px;height:90px;object-fit:contain;
+      filter:drop-shadow(0 6px 14px rgba(0,0,0,.4));
+    }
+    .cap-modal-footer b{color:var(--gold)}
+
+    @media (max-width: 720px){
+      .cap-modal{padding:12px 6px}
+      .cap-modal-box{border-radius:14px}
+      .cap-modal-header{grid-template-columns:60px 1fr 60px;padding:22px 50px 14px;gap:8px}
+      .cap-modal-header h2{font-size:18px}
+      .cap-modal-header .sub{font-size:11.5px}
+      .cap-illus{width:60px;height:60px}
+      .cap-modal-body{padding:18px 14px 18px}
+      .cap-modal-body .cap-row{grid-template-columns:repeat(2,1fr);gap:8px}
+      .cap-modal-body .lead{font-size:13px;padding:12px}
+      .cap-modal-footer{padding:14px 18px 18px;grid-template-columns:1fr;text-align:center;gap:10px}
+      .cap-footer-illus{width:72px;height:72px;justify-self:center}
+      .cap-divider img{width:110px;height:110px}
+      .cap-case-titlebar .ic{width:48px;height:48px}
+    }
+
+    /* Lock background scroll while modal is open */
+    body.cap-modal-open{overflow:hidden}
+  </style>
+</head>
+<body data-public="true">
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to the front page"><span>&larr;</span> Home</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div data-hero="rules-hero"></div>
+        <div class="card">
+          <h1><span class="accent">Rules &amp; FAQ</span></h1>
+          <p class="sub">The rules as they were. The game ran 11 June – 19 July 2026 and is finished; final standings and every payout: <a href="/worldcup/" style="color:var(--gold)">the archive</a>.</p>
+
+          <nav class="toc">
+            <a href="#disclaimer">⚠ Disclaimer</a>
+            <a href="#register">Register</a>
+            <a href="#bonus">Bonus</a>
+            <a href="#tips">Tips</a>
+            <a href="#crypto">Crypto</a>
+            <a href="#scoring">Scoring</a>
+            <a href="#pool">Prize pool</a>
+            <a href="#payouts">Payouts</a>
+            <a href="#donations">Donations</a>
+            <a href="#security">Security</a>
+            <a href="#contact">Contact</a>
+          </nav>
+
+          <!-- DISCLAIMER -->
+          <h2 id="disclaimer">⚠ Disclaimer — read first</h2>
+          <div class="callout danger">
+            <b>BOBAI Worldcup '26 is a community fan project.</b> Not affiliated with FIFA, BNB Chain, Binance, or any of the listed teams or players. Names, flags and competition data are used for descriptive purposes only.
+          </div>
+          <div class="callout warn">
+            <b>No responsibility, no guarantees.</b> Participation is entirely at your own risk. We do not provide financial, investment, or legal advice. Predictions are entertainment, not a strategy.
+            <br><br>
+            • If you don't know what you're doing — <b>don't do it.</b><br>
+            • Never send funds you can't afford to lose.<br>
+            • Smart contracts and wallets can have bugs. Networks can be congested. Transactions can fail.<br>
+            • Prize-pool distribution depends on on-chain conditions (gas, slippage, network availability). Payout timing is a target, not a promise.<br>
+            • You are responsible for your own taxes wherever you live.<br>
+            • If gambling is restricted in your jurisdiction or you are under the local legal age — <b>do not participate.</b>
+          </div>
+          <p>By creating an account, sending donations or claiming payouts you accept these terms. If you don't agree — close this page and don't take part. The dev team reserves the right to fix bugs, correct match results, and adjust scoring rules transparently if data sources disagree.</p>
+
+          <!-- REGISTER -->
+          <h2 id="register">1. Register</h2>
+          <p>Create an account with a <b>username + email + password</b>. Pick a country — you'll get a BOBAI in that national jersey as your avatar. Email is used only for confirmation + password reset — never shown publicly, never spammed.</p>
+          <p>Before the account is created you'll see a short <b>security briefing</b> (anti-scam, anti-phishing, game disclaimer) that you have to acknowledge. After confirming, a confirmation link is sent to your inbox — click it once and you're in.</p>
+          <p>Optionally link a <b>BEP-20 wallet</b> (MetaMask, Trust Wallet, Binance Web3, hardware — any wallet works). You just paste the address — no signing, no app install, no gas. The wallet is only needed if you want to be <b>eligible for prize-pool payouts</b>. You can play purely for fun without one — your username will still appear on the leaderboard, just without the ⚽ icon.</p>
+          <div class="callout warn">
+            A linked wallet is <b>permanent</b> and <b>unique</b>: it cannot be changed or removed after linking, and the same wallet cannot be used on two different accounts. Double-check the address before confirming.
+          </div>
+
+          <!-- BONUS QUESTIONS -->
+          <h2 id="bonus">2. Bonus questions (one-time)</h2>
+          <p>Five long-shot predictions, each worth <b>20 points</b>:</p>
+          <ol>
+            <li>Who wins the World Cup? (single team)</li>
+            <li>Team with the most goals scored across the tournament</li>
+            <li>Team with the fewest goals scored</li>
+            <li>Top scorer's country (Golden Boot)</li>
+            <li>Total red cards bracket: &lt;5 / 5–9 / 10–14 / 15–19 / &gt;19</li>
+          </ol>
+          <p><b>Submission deadline:</b> <b>18 June 2026, 15:45 UTC</b> — 15 min before the first matchday-2 match. One-time extension to give late joiners a fair shot. After the deadline: locked — no changes (DB-enforced).</p>
+
+          <!-- TIPS -->
+          <h2 id="tips">3. Match tips</h2>
+          <p>For every match you tip the <b>exact score</b> (e.g. 2:1). All 72 group-stage matches plus 32 knockout matches.</p>
+          <p>Each match locks <b>15 minutes before kickoff</b>. After that: no edits possible (enforced at database level — you literally can't get around it).</p>
+          <p>Knockout matches start as <i>TBD vs TBD</i> in the UI and become tippable once the draw resolves them.</p>
+
+          <!-- CRYPTO -->
+          <h2 id="crypto">4. Crypto predictions</h2>
+          <p>Predict the USD price of <b>BTC, BNB and BOBAI</b> at the exact moment of the World Cup <b>Final kickoff</b> (19 July 2026, 19:00 UTC). Live current prices are shown for reference; you can edit anytime until <b>18 June 2026, 15:45 UTC</b> — 15 min before the first matchday-2 match. After that: locked.</p>
+          <p>Scoring is based on <b>absolute difference</b> to the actual price at the snapshot moment — the closest guess on each coin wins that coin's share of the crypto pot.</p>
+
+          <!-- SCORING -->
+          <h2 id="scoring">5. Scoring</h2>
+          <h3>Match scoring (per match)</h3>
+          <p>Raw points stack — first you get points for calling the <b>winner (1/X/2)</b>, then a bonus on top if you also got the <b>goal difference</b>, and another bonus on top if you nailed the <b>exact score</b>:</p>
+          <table class="scoring-table">
+            <tr><th>Outcome</th><th>Example (tipped 2:1)</th><th>Raw points</th></tr>
+            <tr><td>Correct winner only (1 / X / 2)</td><td>Actual 4:0 — right side, wrong margin</td><td>2</td></tr>
+            <tr><td>Correct winner <b>+ correct goal difference</b></td><td>Actual 3:2 — right side, 1-goal margin matches (+1)</td><td>3</td></tr>
+            <tr><td>Correct winner + GD <b>+ exact result</b></td><td>Actual 2:1 — nailed it (+2)</td><td>5</td></tr>
+            <tr><td>Wrong winner / wrong direction</td><td>Actual 0:1 or 1:1</td><td>0</td></tr>
+          </table>
+          <p style="font-size:12.5px">A correct draw tip (X) only counts if the actual result is also a draw — the score doesn't have to match exactly to get the 2 base points, but you need an actual draw for the <b>+1</b> GD bonus and an exact draw score for the <b>+2</b> exact bonus.</p>
+          <h3>Phase multiplier</h3>
+          <p>Later matches matter more. Raw points get multiplied by phase — and inside the group stage the multiplier climbs each matchday so totals spread out and fewer players land on the same number of points:</p>
+          <table class="scoring-table">
+            <tr><th>Phase</th><th>Multiplier</th></tr>
+            <tr><td>Group stage — Matchday 1</td><td>×1</td></tr>
+            <tr><td>Group stage — Matchday 2</td><td>×1.25</td></tr>
+            <tr><td>Group stage — Matchday 3</td><td>×1.5</td></tr>
+            <tr><td>Round of 32</td><td>×2</td></tr>
+            <tr><td>Round of 16</td><td>×3</td></tr>
+            <tr><td>Quarter-finals</td><td>×4</td></tr>
+            <tr><td>Semi-finals</td><td>×5</td></tr>
+            <tr><td>Third-place match</td><td>×6</td></tr>
+            <tr><td>Final</td><td>×7</td></tr>
+          </table>
+          <p style="font-size:12.5px">A perfect exact-score tip in the Final is worth <b>5 × 7 = 35 points</b> — enough to flip the leaderboard on a single match, which is exactly the point.</p>
+          <h3>Bonus &amp; Crypto</h3>
+          <p>Bonus questions: <b>20 pts each</b> if correct. Crypto: <b>not counted in points</b> — winners are determined by closest absolute price difference (own pot).</p>
+          <h3>Tie-breaker</h3>
+          <p>If two players have the exact same point total in a payout group, the player with <b>more BOBAI in their linked wallet at payout time</b> wins. Players without a linked wallet automatically rank below players with one in case of a tie.</p>
+
+          <!-- POOL -->
+          <h2 id="pool">6. Prize pool</h2>
+          <h3>Where the BOBAI comes from</h3>
+          <p>Two sources feed the prize-pool wallet (<code id="addr-hint">0x5E41…D105</code>):</p>
+          <ul>
+            <li><b>Token tax auto-flow</b>: from <b>11 Jun 2026, 00:01 UTC</b> until the Final (<b>19 Jul 2026, 23:59 UTC</b>), <b>0.52 % of every BOBAI buy/sell tax</b> flows into the prize-pool wallet automatically — <b>0.26 % redirected from the BOB-burn slice</b> + <b>0.26 % from the creator slice</b>. The 3 % on-chain tax rate stays fixed; only the off-chain distribution changes for the WC26 window. After the Final, the split reverts to the standard 1 % BOBAI burn · 1 % BOB burn · 1 % creator.</li>
+            <li><b>Donations</b>: anyone can send BNB or USDT (BEP-20) to the prize-pool wallet. Incoming funds are auto-swapped to BOBAI via PancakeSwap and added on-chain. Any amount welcome — see <a href="#donations" style="color:var(--gold)">below</a>.</li>
+          </ul>
+          <p>Everything is verifiable on BscScan. The pool figure displayed on the leaderboard reads the actual on-chain BOBAI balance — there's nothing in a back-office database we could fudge.</p>
+          <h3>Pool split</h3>
+          <p>How each incoming BOBAI gets allocated depends on the tournament phase at the moment it arrives:</p>
+          <ul>
+            <li><b>During group-stage matches</b>: 60 % → Group Pot · 30 % → End Pool · 10 % → Crypto Pot</li>
+            <li><b>From R32 onwards</b>: 90 % → End Pool · 10 % → Crypto Pot (Group Pot stops growing — it's paid out before KO starts)</li>
+          </ul>
+
+          <!-- PAYOUTS -->
+          <h2 id="payouts">7. Payouts</h2>
+          <h3>Group Pot (60 % of group-stage collection)</h3>
+          <p>Paid <b>one day after the last group-stage match</b>. Split across <b>32 winners</b> from three sub-brackets:</p>
+          <table class="scoring-table">
+            <tr><th>Sub-bracket</th><th>Who qualifies</th><th>Share of group pot</th></tr>
+            <tr><td>Group 1st</td><td>1st-placed player in each of the 12 groups</td><td>55 %</td></tr>
+            <tr><td>Group 2nd</td><td>2nd-placed player in each of the 12 groups</td><td>30 %</td></tr>
+            <tr><td>Best 3rds</td><td>8 best 3rd-placed players across all groups</td><td>15 %</td></tr>
+          </table>
+          <p>Within each sub-bracket, the share is <b>split equally</b> among its members — every group 1st gets the same slice of the 55 %, every group 2nd gets the same slice of the 30 %, and every best-3rd gets the same slice of the 15 %. The bracket weights still guarantee that being 1st always pays more than being 2nd, and being 2nd always pays more than just sneaking into best-3rd.</p>
+          <table class="scoring-table">
+            <tr><th>Position</th><th>Share per player</th></tr>
+            <tr><td>Group 1st (×12)</td><td>55 % ÷ 12 ≈ <b>4.58 %</b> of group pot each</td></tr>
+            <tr><td>Group 2nd (×12)</td><td>30 % ÷ 12 ≈ <b>2.50 %</b> of group pot each</td></tr>
+            <tr><td>Best 3rd (×8)</td><td>15 % ÷ 8 ≈ <b>1.88 %</b> of group pot each</td></tr>
+          </table>
+          <p style="font-size:12.5px">Flat split inside the bracket = no &ldquo;winner-take-most&rdquo; effect; finishing 1st of your group with 30 group_points pays the same as finishing 1st with 60. The only thing that matters is which position you finished.</p>
+          <h3>End Pool (KO-phase pot)</h3>
+          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases <b>including bonus questions</b>. Within the top 4 the split is <b>tiered by position</b>:</p>
+          <table class="scoring-table">
+            <tr><th>Overall finish</th><th>Share of end pool</th></tr>
+            <tr><td>🥇 1st</td><td><b>50 %</b></td></tr>
+            <tr><td>🥈 2nd</td><td><b>25 %</b></td></tr>
+            <tr><td>🥉 3rd</td><td><b>15 %</b></td></tr>
+            <tr><td>4th</td><td><b>10 %</b></td></tr>
+          </table>
+          <p style="font-size:12.5px">Fixed percentages — climbing one position is always worth a meaningful jump. Bonus questions count in the total points that determine your rank, so don't skip them.</p>
+          <h3>Crypto Pot (10 %)</h3>
+          <p>Paid <b>one day after the Final</b>, alongside the End Pool. Split into 3 equal slots:</p>
+          <ul>
+            <li>3.3 % of total pool to the closest BTC guess</li>
+            <li>3.3 % of total pool to the closest BNB guess</li>
+            <li>3.3 % of total pool to the closest BOBAI guess</li>
+          </ul>
+          <p>The same player can win multiple Crypto Pot slots if they have the best guess on more than one coin.</p>
+          <h3>Eligibility</h3>
+          <div class="callout warn">
+            Only players with a <b>linked wallet</b> at payout time are counted for payouts. Players without a linked wallet keep their leaderboard position for bragging rights, but are <b>skipped</b> when payout slots are filled — the next eligible player on the leaderboard takes the slot. Example: if leaderboard #1 has no wallet, leaderboard #2 (with wallet) becomes payout #1 and receives the 50 % End-Pool share; #3 (with wallet) becomes payout #2, and so on. On every leaderboard you can toggle <b>“💰 Wallet-linked only”</b> to view the exact payout ranking.
+          </div>
+
+          <h3>Holder-balance cap: max 26× your BOBAI</h3>
+          <p>Each individual payout to a winner is capped at <b>26× the BOBAI balance held in their linked wallet at the moment of payout</b>. Examples:</p>
+          <table class="scoring-table">
+            <tr><th>Your wallet holds</th><th>Maximum single payout</th></tr>
+            <tr><td>$1 in BOBAI</td><td>$26</td></tr>
+            <tr><td>$10 in BOBAI</td><td>$260</td></tr>
+            <tr><td>$100 in BOBAI</td><td>$2,600</td></tr>
+            <tr><td>$1,000 in BOBAI</td><td>$26,000</td></tr>
+            <tr><td>$10,000 in BOBAI</td><td>$260,000</td></tr>
+          </table>
+          <div class="callout info">
+            <b>Why this exists.</b> This is an <b>anti-abuse rule</b> that protects the people who actually believe in <b>BOBAI / Brain On BNB AI</b> — the holders, supporters, and long-term believers. Without a cap, anyone could spin up an empty wallet, place a random tip, and try to siphon a pool that was built by real supporters. The 26× rule ties payouts to actual skin in the game.
+          </div>
+          <p><b>Don't worry about being "capped out".</b> Nobody knows in advance how big the prize pool will be — but if the pool grows, your <b>BOBAI balance grows with it</b> (same token, same chart). So the cap scales with you. Holding more BOBAI literally raises your ceiling.</p>
+          <p>The balance is read <b>live from the blockchain</b> at payout time — there's no snapshot to game and no way to fake it.</p>
+
+          <div class="cap-h3-row">
+            <h3>Cap overflow — cascading redistribution</h3>
+            <button type="button" class="cap-modal-btn" onclick="openCapModal()" aria-haspopup="dialog" aria-controls="cap-modal">
+              <span class="ic">⚽</span> See a visual walk-through
+            </button>
+          </div>
+          <p>If a winner's computed share exceeds their personal 26× cap, the excess does <b>not</b> stay with that winner and is <b>not</b> kept by the team. It flows to the rest of the eligible winners <b>in the same pot</b>. Each pot (Group, End Pool, and the three Crypto pots) is evaluated <b>independently</b> — overflow never crosses pot boundaries.</p>
+          <ol>
+            <li>Compute every winner's raw share based on points / closest-guess logic.</li>
+            <li>Apply each winner's 26× cap. Sum up the overflow from anyone who got capped.</li>
+            <li>Redistribute that overflow <b>proportionally</b> to the remaining (uncapped) winners <b>within the same pot</b>.</li>
+            <li>If that redistribution pushes a new winner over their cap, repeat step 2 — the cascade continues until either every dollar is paid out within someone's cap, or no eligible uncapped winner remains.</li>
+            <li>If after the full cascade <b>residual still remains</b> (every winner in that pot is capped out), the leftover BOBAI is added as <b>permanent liquidity</b> to the BOBAI/BNB PancakeSwap pool, and the resulting LP tokens are <b>burned to the dead address</b>. It is never carried into another pot, never refunded, never kept by the team — the value flows back to every BOBAI holder through a deeper, tighter market.</li>
+          </ol>
+          <p style="font-size:12.5px">The cascading logic is implemented in the same payout-computation code that the admin runs before signing. The full split (raw share, cap applied, redistribution rounds) will be published on-chain alongside each payout batch so anyone can verify it.</p>
+
+          <h3>How the payouts run</h3>
+          <p>Payout transactions are <b>triggered manually</b> by the project admin (not fully autonomous) — the code computes the exact split (including cap and cascade), then the admin signs and broadcasts the batch. This is a deliberate safety design: an off-by-one bug should never auto-drain the pool.</p>
+
+          <!-- DONATIONS -->
+          <h2 id="donations">8. Donations</h2>
+          <p><b>Closed with the game (19 July 2026).</b> That wallet is now the Giggle Academy pot — do not send to it for this game. During the game, the prize-pool wallet accepted <b>BNB</b> and <b>USDT (BEP-20)</b> on BNB Smart Chain. The address was shown on the <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> page with a copy button.</p>
+          <div class="callout danger">
+            <b>BSC only.</b> If you send USDT on Ethereum, Tron, Solana or any other network — funds are <b>lost</b>. There's no human in the loop to recover them.
+          </div>
+          <p>How it works:</p>
+          <ol>
+            <li>You send X BNB or USDT to the prize wallet</li>
+            <li>The pool sync worker detects the new balance</li>
+            <li>BNB/USDT is auto-swapped to BOBAI via PancakeSwap</li>
+            <li>The new BOBAI is added to the pool (verifiable on BscScan)</li>
+            <li>Pool display updates within ~5 minutes</li>
+          </ol>
+          <p>Any amount welcome. For gas efficiency we suggest at least the equivalent of ~$5, but anything works.</p>
+
+          <!-- SECURITY -->
+          <h2 id="security">9. Security &amp; manipulation safety</h2>
+          <ul>
+            <li><b>Tip lock</b>: 15 minutes before kickoff, enforced at the database level — not just in the UI.</li>
+            <li><b>Bonus &amp; crypto lock</b>: enforced at the database level when the relevant match kicks off.</li>
+            <li><b>Match results</b>: only the sync worker (using a service-role key, never exposed to users) can write results. Players cannot edit goals.</li>
+            <li><b>Scoring</b>: runs in a database trigger after match results are written. The trigger overwrites any user-side `points` value, so nobody can self-award points.</li>
+            <li><b>Wallet linking</b>: you just paste your BEP-20 address — no signing, no seed phrase, no private key. We never ask for any of that, and the app would never need it.</li>
+            <li><b>Wallet privacy</b>: your linked wallet is <b>never shown to other players in-app</b>. The only public reveal is the on-chain payout transaction itself — and Group-Pot payouts are sent in <b>randomized order across the 12 groups</b> (e.g. group F may receive before group A), so observers cannot match a wallet to a specific group placement. Only the <b>End-Pool top 4</b> (🥇/🥈/🥉/4th overall) and the <b>three closest crypto guesses</b> (BTC/BNB/BOBAI) are matchable to a wallet, because those are unique single-winner positions that are already public on the leaderboard.</li>
+            <li><b>Tie-breaker by BOBAI balance</b>: read live from the blockchain at payout time, not from a database — un-fakeable.</li>
+            <li><b>Payouts</b>: manually triggered by admin, not autonomous. An admin error or bug can be caught before signing.</li>
+            <li><b>Prize wallet</b>: a fresh dedicated wallet. Private key is only stored in encrypted Cloudflare Worker secrets — never in code, never on a server you can SSH into.</li>
+          </ul>
+          <div class="callout danger">
+            <b>Admins NEVER DM you first.</b> Anyone offering you to "double your winnings", "verify your account", "claim your payout faster" via Telegram/X DM is a scammer. Block + report.
+          </div>
+
+          <!-- CONTACT -->
+          <h2 id="contact">10. Contact</h2>
+          <p>Questions, bug reports, suggestions:</p>
+          <ul>
+            <li>Telegram: <a href="https://t.me/bobai_official" style="color:var(--gold)">@bobai_official</a></li>
+            <li>X: <a href="https://x.com/BrainOnBNB" style="color:var(--gold)">@BrainOnBNB</a></li>
+            <li>Website: <a href="https://brainonbnb.com" style="color:var(--gold)">brainonbnb.com</a></li>
+          </ul>
+          <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+            Last updated: 22 May 2026 (prize-pool tax auto-flow clarified: 0.52 % = 0.26 % BOB-burn + 0.26 % creator). The game is finished (11 June – 19 July 2026); these rules are kept as they were played.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ─── Cap-overflow modal (opened via the "See a visual walk-through" button in §7) ─── -->
+  <div id="cap-modal" class="cap-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cap-modal-title">
+    <div class="cap-modal-backdrop" onclick="closeCapModal()"></div>
+    <div class="cap-modal-box">
+      <button type="button" class="cap-modal-close" aria-label="Close" onclick="closeCapModal()">×</button>
+
+      <div class="cap-modal-header">
+        <div class="cap-illus left">
+          <img alt="" src="./illus/pool-trophy.webp"
+               onerror="this.onerror=null;this.src='./illus/pool-trophy.png'">
+        </div>
+        <h2 id="cap-modal-title">The 26× Cap — Visual Walk-Through</h2>
+        <p class="sub">A <b>Group-Phase scenario</b> showing how overflow cascades within a single pot</p>
+        <div class="cap-illus right">
+          <img alt="" src="./illus/tips-ball.webp"
+               onerror="this.onerror=null;this.src='./illus/tips-ball.png'">
+        </div>
+      </div>
+
+      <div class="cap-modal-body">
+        <div class="cap-example">
+          <p class="lead">
+            Imagine the <b>Group Pot</b> has grown to <b>$24,000</b>. The top-1 sub-bracket holds <b>55% = $13,200</b>, split equally among the <b>12 group winners</b> → each one is entitled to <b>$1,100</b>. Below are <b>4 representative winners</b> with very different BOBAI balances.
+          </p>
+
+          <div class="cap-case">
+            <div class="cap-case-title ok">Case A — Everyone holds enough BOBAI</div>
+            <div class="cap-row">
+              <div class="cap-card">
+                <div class="h">Winner 1</div>
+                <div class="line"><span>Holds</span><b>$500</b></div>
+                <div class="line"><span>26× cap</span><b>$13,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 2</div>
+                <div class="line"><span>Holds</span><b>$1,000</b></div>
+                <div class="line"><span>26× cap</span><b>$26,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 3</div>
+                <div class="line"><span>Holds</span><b>$200</b></div>
+                <div class="line"><span>26× cap</span><b>$5,200</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 4</div>
+                <div class="line"><span>Holds</span><b>$1,500</b></div>
+                <div class="line"><span>26× cap</span><b>$39,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+            </div>
+            <div class="cap-foot">Every cap respected. All 12 group winners are paid in full — <b>$13,200 distributed, nothing held back</b>.</div>
+          </div>
+
+          <div class="cap-divider">
+            <img src="./illus/wallet-cascade.webp" alt="cascade flow">
+            <div class="lbl">↓ &nbsp; The overflow cascade &nbsp; ↓</div>
+          </div>
+
+          <div class="cap-case">
+            <div class="cap-case-titlebar">
+              <div class="ic"><img src="./illus/wallet-overflow.webp" alt=""></div>
+              <div class="cap-case-title bad">Case B — Two winners hit the 26× cap → cascade</div>
+            </div>
+            <div class="cap-row">
+              <div class="cap-card capped">
+                <span class="stamp">CAPPED</span>
+                <div class="h">Winner 1</div>
+                <div class="line"><span>Holds</span><b>$5</b></div>
+                <div class="line"><span>26× cap</span><b>$130</b></div>
+                <div class="line strike"><span>Share was</span><b>$1,100</b></div>
+                <div class="line pay"><span>Paid</span><b>$130</b></div>
+                <div class="overflow-tag">Overflow $970 ↓</div>
+              </div>
+              <div class="cap-card capped">
+                <span class="stamp">CAPPED</span>
+                <div class="h">Winner 2</div>
+                <div class="line"><span>Holds</span><b>$20</b></div>
+                <div class="line"><span>26× cap</span><b>$520</b></div>
+                <div class="line strike"><span>Share was</span><b>$1,100</b></div>
+                <div class="line pay"><span>Paid</span><b>$520</b></div>
+                <div class="overflow-tag">Overflow $580 ↓</div>
+              </div>
+              <div class="cap-card bonus">
+                <div class="h">Winner 3</div>
+                <div class="line"><span>Holds</span><b>$200</b></div>
+                <div class="line"><span>26× cap</span><b>$5,200</b></div>
+                <div class="line"><span>Base share</span><b>$1,100</b></div>
+                <div class="bonus-tag">+ Cascade bonus $155</div>
+                <div class="line pay"><span>Paid</span><b>$1,255 ✓</b></div>
+              </div>
+              <div class="cap-card bonus">
+                <div class="h">Winner 4</div>
+                <div class="line"><span>Holds</span><b>$1,500</b></div>
+                <div class="line"><span>26× cap</span><b>$39,000</b></div>
+                <div class="line"><span>Base share</span><b>$1,100</b></div>
+                <div class="bonus-tag">+ Cascade bonus $155</div>
+                <div class="line pay"><span>Paid</span><b>$1,255 ✓</b></div>
+              </div>
+            </div>
+            <div class="cap-foot">
+              Total overflow from the 2 capped winners = <b>$1,550</b>. That overflow cascades to the <b>10 uncapped winners</b>, +$155 each — all stay well under their personal caps. The full <b>$13,200</b> sub-bracket is paid out <b>within this same pot</b>, fully absorbed by the cascade.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cap-modal-footer">
+        <img class="cap-footer-illus" src="./illus/liquidity-lock.webp" alt="">
+        <div>
+          <b>Extreme edge case.</b> If every winner in a pot is capped out and a residual still remains, that leftover BOBAI is added as <b>permanent liquidity</b> to the BOBAI/BNB PancakeSwap pool, and the resulting LP tokens are <b>burned to the dead address</b>. It <b>never</b> crosses into another pot, <b>never</b> refunds, <b>never</b> stays with the team — value flows back to every BOBAI holder via a tighter market.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=12"></script>
+  <script src="./assets/auth.js?v=13"></script>
+  <script src="./assets/avatar.js?v=7"></script>
+  <script src="./assets/nav.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    // Replace the short address hint with the real configured one
+    const addrHint = document.getElementById('addr-hint');
+    const a = window.WC_CONFIG?.PRIZE_WALLET;
+    if (a && addrHint) addrHint.textContent = a.slice(0,6) + '…' + a.slice(-4);
+
+    // ─── Cap-overflow modal ───
+    function openCapModal(){
+      const m = document.getElementById('cap-modal');
+      if (!m) return;
+      m.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('cap-modal-open');
+      // Focus the close button for keyboard users
+      const close = m.querySelector('.cap-modal-close');
+      if (close) setTimeout(()=>close.focus(), 50);
+    }
+    function closeCapModal(){
+      const m = document.getElementById('cap-modal');
+      if (!m) return;
+      m.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('cap-modal-open');
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const m = document.getElementById('cap-modal');
+        if (m && m.getAttribute('aria-hidden') === 'false') closeCapModal();
+      }
+    });
+    window.openCapModal = openCapModal;
+    window.closeCapModal = closeCapModal;
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
+  "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "chain": "eip155:56",
+  "measured_at": "2026-11-01T10:57:02.237Z",
+  "registered_ids": 400225,
+  "ids_scanned": 400225,
+  "registrations": {
+    "parses": 172229,
+    "unparsable": 4608,
+    "empty": 12362,
+    "points_offchain": 211026,
+    "unread_after_retries": 0,
+    "active_flag": 169632,
+    "names_a_service": 2593,
+    "has_http_endpoint": 2073,
+    "endpoint_on_a_real_tld": 1618,
+    "speaks_mcp": 362,
+    "speaks_a2a": 449,
+    "supports_x402": 13838
+  },
+  "reachability": {
+    "claim_an_endpoint": 2073,
+    "probed": 2073,
+    "reachable": 1002,
+    "dead": 1071,
+    "answering_mcp": 323,
+    "serving_an_agent_card": 385,
+    "a2a_callable": 365,
+    "a2a_confirmed_by_probe": 10
+  },
+  "independent_operators": 131,
+  "method": {
+    "registrations": "Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.",
+    "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",
+    "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
+  },
+  "source": "https://brainonbnb.com/registry",
+  "hireable_here": 66,
+  "hire_buttons": 69,
+  "categories": [
+    "rebalancing",
+    "grid-trading",
+    "yield-optimization",
+    "health-factor"
+  ],
+  "quote_asks": 66,
+  "quote_agents_asked": 63,
+  "quoted_when_asked": 31,
+  "quoted_of_hireable": 30,
+  "quotes_measured_at": "2026-11-01T11:00:02.347Z"
+}

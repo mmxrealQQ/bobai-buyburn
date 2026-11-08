@@ -1,0 +1,193 @@
+// Generische Result-Engine fuer alle brainscreener-Tests (ausser ADHS/IQ-Legacy).
+// Erwartet:
+//  - window.TEST_DATA mit { id, meta:{title, sources, testPath, retestPath?}, renderResult(result,payload) }
+//  - sessionStorage[`brainscreener.<id>.result.v1`] mit { result, answers, probandCode, ts, testId }
+// Pflicht-DOM (siehe template result.html):
+//  #dateStr, #codeRow, #codeStr, #overallTitle, #overallSubtitle, #overallValue, #overallUnit,
+//  #interpretationText, #gaugeWrap, #subscaleList, #contextText, #nextSteps, #btnPrint,
+//  #verfahrensRef (optional), #resultTitle, #resultEyebrow
+
+(function () {
+  const D = window.TEST_DATA;
+  if (!D) { console.error("[result-engine] TEST_DATA fehlt"); return; }
+
+  // UI-Strings: deutsche Defaults, übersetzte Datendateien liefern D.ui mit.
+  const UI = Object.assign({
+    locale: document.documentElement.lang || "de-CH",
+    evalLabel: "Auswertung",
+    noResultTitle: "Kein Ergebnis gefunden",
+    noResultText: "Bitte starten Sie den Test, um eine Auswertung zu erhalten.",
+    toTest: "Zum Test",
+    gaugeLow: "niedrig",
+    gaugeHigh: "hoch",
+  }, D.ui || {});
+
+  const RESULT_KEY = `brainscreener.${D.id}.result.v1`;
+  let payload = window.BS_PRINT ? BS_PRINT.loadPayload(RESULT_KEY) : null;
+  if (!payload) { try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch {} }
+
+  const root = document.querySelector(".result-shell .container-narrow");
+  if (!root) { console.error("[result-engine] .result-shell .container-narrow fehlt"); return; }
+
+  const showNoResult = () => {
+    root.innerHTML = `
+      <div class="result-card">
+        <h2>${UI.noResultTitle}</h2>
+        <p>${UI.noResultText}</p>
+        <p><a class="btn btn-primary" href="${D.meta.testPath}">${UI.toTest}</a></p>
+      </div>`;
+  };
+  if (!payload || typeof payload !== "object") { showNoResult(); return; }
+
+  const { ts, probandCode } = payload;
+  // Ergebnis aus den (sprachneutralen) Antworten in der Sprache DIESER Seite neu
+  // berechnen — so kann ein Test z. B. auf Französisch ausgefüllt und auf Deutsch
+  // gedruckt werden. Fallback: gespeichertes Ergebnis (ältere Sessions).
+  // A payload that cannot be evaluated (an empty object, a damaged entry) used
+  // to leave a page full of dashes; it is the "no result" card now (2026-09-20).
+  let r = null;
+  try {
+    const hasAnswers = payload.answers && typeof payload.answers === "object" && !Array.isArray(payload.answers);
+    const result = (hasAnswers && typeof D.evaluate === "function") ? D.evaluate(payload.answers) : payload.result;
+    if (result) r = D.renderResult(result, payload);
+  } catch (e) { console.error("[result-engine]", e); }
+  if (!r) { showNoResult(); return; }
+
+  // --- Header / Datum / Code ---
+  const date = ts ? new Date(ts) : new Date();
+  const dateStr = date.toLocaleDateString(UI.locale, { day: "2-digit", month: "long", year: "numeric" }) +
+                  " · " + date.toLocaleTimeString(UI.locale, { hour: "2-digit", minute: "2-digit" });
+  setText("dateStr", dateStr);
+
+  const code = (probandCode || "").trim();
+  if (code) {
+    const row = document.getElementById("codeRow");
+    if (row) row.hidden = false;
+    setText("codeStr", code);
+  }
+
+  // --- Title / Eyebrow ---
+  if (D.meta.pageTitle) document.title = D.meta.pageTitle;
+  setText("resultTitle", D.meta.title);
+  setText("resultEyebrow", UI.evalLabel);
+  setText("verfahrensRef", D.meta.sources);
+
+  // --- Overall ---
+  setText("overallTitle", r.title);
+  setText("overallSubtitle", r.sub);
+  setText("overallValue", r.value);
+  // mehrteilige Werte (z. B. fuenf T-Werte) brauchen eine kleinere Schrift,
+  // sonst verdraengen sie die Grafik daneben aus dem Grid
+  const elValue = document.getElementById("overallValue");
+  if (elValue) elValue.classList.toggle("is-long", String(r.value ?? "").trim().length > 6);
+  setText("overallUnit", r.unit);
+  setHTML("interpretationText", r.interpretationHTML);
+
+  // --- Gauge (oder benutzerdefiniertes SVG) ---
+  const gaugeWrap = document.getElementById("gaugeWrap");
+  if (gaugeWrap) {
+    if (r.customGaugeHTML) {
+      gaugeWrap.innerHTML = r.customGaugeHTML;
+      gaugeWrap.classList.add("gauge-custom");
+    } else if (r.gauge != null) {
+      // The dial carries the score itself. It used to print the fill as "NN%",
+      // which read as a probability: "37%" beside "10 / 27", and for the MDQ a
+      // home-made composite as a percentage (2026-09-20).
+      gaugeWrap.innerHTML = gaugeSVG(r.gauge, r.flag, r.gaugeLabel != null ? r.gaugeLabel : r.value);
+    } else {
+      gaugeWrap.innerHTML = "";
+      gaugeWrap.hidden = true;
+    }
+  }
+  // Krisenbox optional ausblenden
+  if (r.hideCrisis) {
+    document.querySelectorAll(".crisis-box").forEach((el) => el.hidden = true);
+  }
+  // A result that reports thoughts of death or self-harm puts the crisis
+  // information directly under the score instead of at the end of the page.
+  if (r.crisisFirst) {
+    const box = document.querySelector(".crisis-box");
+    const anchor = document.getElementById("interpretation");
+    if (box && anchor && anchor.parentNode) { box.hidden = false; anchor.parentNode.insertBefore(box, anchor); }
+  }
+
+  // --- Subskalen ---
+  const subList = document.getElementById("subscaleList");
+  if (subList && r.subscales) {
+    subList.innerHTML = r.subscales.map((s) => {
+      const pct  = Math.min(100, Math.max(0, Math.round((s.raw / s.max) * 100)));
+      const tPct = s.threshold != null ? Math.min(100, Math.round((s.threshold / s.max) * 100)) : null;
+      return `
+        <div class="subscale">
+          <div class="subscale-head">
+            <strong>${s.label}</strong>
+            <span class="val">${s.valueLabel || (s.raw + " / " + s.max)}</span>
+          </div>
+          <div class="subscale-bar" style="position:relative;">
+            <div style="width:${pct}%;"></div>
+            ${tPct != null ? `<span style="position:absolute; left:${tPct}%; top:-3px; bottom:-3px; width:1.5px; background:var(--gold);" title="${s.thresholdLabel || "Cutoff"}"></span>` : ""}
+          </div>
+          <div class="note">${s.note}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  setHTML("contextText", r.contextHTML);
+
+  // --- Next steps ---
+  const ns = document.getElementById("nextSteps");
+  if (ns) ns.innerHTML = (r.nextSteps || []).map((s) => `<li style="margin-bottom:6px;">${s}</li>`).join("");
+
+  // --- Buttons ---
+  const btnPrint = document.getElementById("btnPrint");
+  if (btnPrint) {
+    if (window.BS_PRINT) BS_PRINT.attachPrint(btnPrint, RESULT_KEY);
+    else btnPrint.addEventListener("click", () => window.print());
+  }
+  const btnRetry = document.getElementById("btnRetry");
+  if (btnRetry && D.meta.retestPath) btnRetry.setAttribute("href", D.meta.retestPath);
+  // "Repeat test" starts a fresh test. It used to open the old form with every
+  // answer still ticked and "Show results" ready — the reset button lives in
+  // the intro, which is hidden exactly when answers exist.
+  if (btnRetry) btnRetry.addEventListener("click", () => {
+    try { ["answers", "code"].forEach((k) => sessionStorage.removeItem(`brainscreener.${D.id}.${k}.v1`)); } catch {}
+  });
+
+  // ---------- helpers ----------
+  function setText(id, v) {
+    const el = document.getElementById(id);
+    if (el && v != null) el.textContent = String(v);
+  }
+  function setHTML(id, v) {
+    const el = document.getElementById(id);
+    if (el && v != null) el.innerHTML = v;
+  }
+
+  function gaugeSVG(value, flag, label) {
+    const v = Math.max(0, Math.min(1, value));
+    // Only a short score fits the arc; five T-values do not, and then the arc stays empty.
+    const text = label != null && String(label).trim().length <= 6 ? String(label).trim() : "";
+    // Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde Strichkappe,
+    // 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
+    const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
+    // Winkel laeuft von 180° (links, v=0) auf 0° (rechts, v=1).
+    // In SVG zeigt +y nach unten, der Bogen liegt oben — daher cy MINUS sin.
+    const ang = Math.PI * (1 - v);
+    const px = cx + r * Math.cos(ang);
+    const py = cy - r * Math.sin(ang);
+    const color = flag === "high" ? "var(--danger)"
+                : flag === "moderate" ? "var(--gold)"
+                : flag === "low" ? "var(--sage)"
+                : "var(--sage)";
+    return `
+      <svg viewBox="0 0 ${w} ${h}" aria-hidden="true">
+        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+        <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
+        <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />
+        <text x="${cx}" y="${cy - 30}" text-anchor="middle" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="36" fill="var(--ink)" font-weight="500">${text.replace(/[<>&]/g, "")}</text>
+        <text x="${cx - r + 6}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">${UI.gaugeLow}</text>
+        <text x="${cx + r - 30}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">${UI.gaugeHigh}</text>
+      </svg>`;
+  }
+})();

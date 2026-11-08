@@ -1,0 +1,88 @@
+// BOBAI Worldcup '26 — Shared nav behavior
+// Activates the current tab, wires logout, and fills the "Hi <user>" slot.
+// Pages that include this script just need the <nav> markup with `.tabbar a[data-tab]`
+// items plus optional #me-name + #logout elements.
+
+(function(){
+  // Determine current tab from filename (dashboard.html → dashboard).
+  const file = (window.location.pathname.split('/').pop() || 'dashboard.html')
+    .replace('.html','') || 'dashboard';
+
+  // Mark active tab
+  document.querySelectorAll('.tabbar a').forEach(a => {
+    if (a.dataset.tab === file) a.classList.add('active');
+  });
+
+  // Inject an inline "← back" row between the sticky nav and main content.
+  // Skipped when the user has no in-app history (deep-link entry, refresh on
+  // first page), since history.back() would otherwise leave the app.
+  (function injectBackRow(){
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+    const ref = document.referrer || '';
+    const sameOrigin = ref && ref.indexOf(window.location.origin) === 0;
+    const hasInAppHistory = sameOrigin && ref !== window.location.href;
+    if (!hasInAppHistory) return;
+    const row = document.createElement('div');
+    row.className = 'back-row';
+    row.innerHTML = '<button type="button" id="nav-back"><span class="ic">←</span> back</button>';
+    nav.insertAdjacentElement('afterend', row);
+    row.querySelector('#nav-back').addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = './dashboard.html';
+    });
+  })();
+
+  // Wire logout (anywhere on the page)
+  const lo = document.getElementById('logout');
+  if (lo) {
+    lo.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (window.WC_AUTH) await window.WC_AUTH.logout();
+      window.location.href = '/worldcup/';
+    });
+  }
+
+  // Populate #me-name with the current username (and redirect to landing if not signed in).
+  // Pages that have their own auth-gate (e.g. dashboard.html) can ignore the redirect —
+  // we only redirect when the page actually carries a #me-name placeholder, i.e. it
+  // expects an authenticated user. Pages marked <body data-public="true"> (rules,
+  // prize-pool) stay viewable for anonymous visitors — the .user widget swaps to
+  // "Sign in · Register" links instead of bouncing.
+  const me = document.getElementById('me-name');
+  const isPublic = document.body && document.body.dataset.public === 'true';
+  if (me && window.WC_AUTH) {
+    (async () => {
+      try {
+        const p = await window.WC_AUTH.currentProfile();
+        if (!p) {
+          if (isPublic) {
+            const userEl = me.closest('.user');
+            if (userEl) {
+              // nowrap on both: at 360px the header strip is narrow enough that
+              // "Register" was breaking across two lines in the middle of the
+              // word. Written here rather than in ten archived pages, because
+              // this one line is what puts the links on all of them.
+              // the game ended 19 Jul 2026: no new accounts; players still sign in to read their own tips (2026-10-07)
+              userEl.innerHTML = '<a href="/worldcup/" style="white-space:nowrap">Sign in</a>';
+            }
+            // Anonymous visitor: gold-frame the tabs that are actually open to the
+            // public (archive pages) so it's obvious they're clickable.
+            const st = document.createElement('style');
+            st.textContent = '.tabbar a.pub-open{border:1px solid rgba(240,185,11,.55);border-radius:8px;box-shadow:0 0 6px rgba(240,185,11,.15)}';
+            document.head.appendChild(st);
+            ['leaderboard','prize-pool','rules'].forEach(t => {
+              document.querySelectorAll('.tabbar a[data-tab="' + t + '"]').forEach(a => a.classList.add('pub-open'));
+            });
+            return;
+          }
+          window.location.href = '/worldcup/';
+          return;
+        }
+        // Username doubles as the "my profile" link → personal dashboard
+        // (usernames are validated [a-zA-Z0-9_], safe to inline).
+        me.innerHTML = '<a href="/worldcup/app/dashboard.html" title="Your dashboard" style="color:inherit;text-decoration:none">' + p.username + '</a>';
+      } catch (e) { /* swallow — page-local auth code will handle errors */ }
+    })();
+  }
+})();

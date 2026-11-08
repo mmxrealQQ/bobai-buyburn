@@ -1,0 +1,2665 @@
+// SCANNER — the chain layer. Everything that produces a number lives here; the
+// page layer does nothing but display what this returns.
+//
+// The rule this file exists to enforce: a figure is either measured or it is
+// labelled. Nothing is inferred from a reputation service and then presented as
+// fact. That rule was not free — an earlier version took the transfer tax from
+// GoPlus, which reported 4.45% sell tax for $Max while four executed sells on
+// the chain charged exactly 3.000%. The label was wrong, our cost column was
+// wrong with it, and nothing on the page would have told you.
+//
+// Three endpoints, each chosen for one capability:
+//   RPC      eth_call. Binance's dataseed refuses eth_getLogs outright.
+//   LOGS_RPC eth_getLogs, ~7,900 blocks (an hour) near the head. That is enough to find
+//            real trades and measure what they were actually charged.
+//   GOPLUS   contract properties no call reveals (mintable, proxy, LP lockers).
+//            Optional, always attributed, never silently trusted.
+// A single public endpoint cannot carry this page. Measured across a dozen of
+// them: Binance's own dataseeds drop whole batches once an address has been
+// scanned a few times in a row, Ankr and ninicoin refused every batch outright,
+// and one endpoint dropping is indistinguishable — from inside the page — from
+// a token having no pools. So there is a pool of endpoints, ordered by measured
+// latency at 25 calls, and a failure moves to the next rather than becoming a
+// claim about somebody's token. All of them send CORS: * , which is what makes
+// running this from the visitor's own browser possible at all.
+export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com',
+  'https://bsc-dataseed1.defibit.io','https://bsc-mainnet.public.blastapi.io',
+  'https://bsc-dataseed.binance.org','https://1rpc.io/bnb'];
+// Endpoints measured on 2026-08-29 against a 5,000-block eth_getLogs on a busy
+// pair: only these two answered it at all. defibit and Binance's own dataseed
+// said "limit exceeded", blastapi and drpc rate-limited, 1rpc caps the range at
+// fifty blocks, llamarpc did not resolve. They share an operator, so they
+// probably share a budget — but two hostnames spread a burst of five tier
+// queries better than one does, and the caller cannot be asked to go slower.
+// 2026-11-02: publicnode refuses Cloudflare's egress about two calls in three (HTTP 429), so fee tiers read 0-2 of 5
+// for BTCB, ETH and USDT. Pocket served the same 7,900-block logs as publicnode (same count, same last tx), allows
+// this site's origin, and took a burst of ten in 0.7 s, one of them answering "block range exceeds", which
+// getLogsSplit handles by splitting. It is a different operator, so it does not share publicnode's budget.
+export const LOGS_RPCS=['https://bsc.api.pocket.network','https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// OLD STATE. Measured 2026-09-27: publicnode answers eth_getCode and eth_getLogs only for about the last 9,000
+// blocks ("Archive requests require a personal token"), defibit and Binance's dataseed say "missing trie node",
+// and blastapi — already in RPCS above — answers eth_getCode at any block, 147 calls in one batch in 0.5 s. That
+// is what dates a pool or a token (contractAges): when did its code first exist. A keyed endpoint, when the
+// Worker has one, goes in front (useKeyedRpcs); nothing else here needs history.
+export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
+// THE WINDOW. One eth_getLogs call of this many blocks at the head: an hour of
+// chain at BSC's 0.45 s blocks (7,900 blocks = 59 min, so hourly windows taken
+// at the same minute never overlap). Measured 2026-09-09: the free log
+// endpoint and the keyed one both answer 7,900 blocks in one call and refuse
+// only beyond ~12,000 as "archive". It was 4,999 (37.5 min) before, and the
+// pool and width records counted that as "hours" — a day of them took a day
+// and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
+export const WINDOW_BLOCKS=7900;
+// WHY THE HOUR WAS REFUSED (2026-11-01). The endpoints are several nodes behind one name and some stand back, measured 3 to 80 blocks;
+// a range up to the head just read is answered 'block range extends beyond current head block' by those, at random. That
+// read as a rate limit for weeks: unreadable fee tiers, a scan's 3-minute window beside its 59-minute one, tax flipping
+// between measured and simulated. A window ends this many blocks (~54 s) before the head and every node holds it; the
+// hour stays an hour, it only starts and ends a minute earlier.
+export const HEAD_BACK=120;
+// The tax read asks for the newest trades first (measureTax): about three
+// minutes of chain, and a quarter of the hour when the hour itself is refused
+// for the size of its answer.
+export const TAX_SHORT_BLOCKS=400,TAX_MID_BLOCKS=2000;
+// Live bindings: useKeyedRpcs() below moves a keyed endpoint to the front.
+export let RPC=RPCS[0],
+  LOGS_RPC=LOGS_RPCS[0];
+export const GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
+  GOPLUS_TOKEN='https://api.gopluslabs.io/api/v1/token',
+  V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',
+  V3FACTORY='0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+  QUOTER='0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
+  // UNISWAP V3 ON BNB CHAIN (2026-10-18): checked on chain, not taken from a page — three of a token's "uniswap" pools
+  // answered factory() with this address; its QuoterV2 and SwapRouter02 answer factory() with it too (the router's
+  // WETH9 is WBNB), and the quoter takes the same quoteExactInputSingle call as PancakeSwap's.
+  UNI_V3_FACTORY='0xdb1d10011ad0ff90774d0c6bb92e5c5c8b4461f7',
+  UNI_QUOTER='0x78d78e420da98ad378d7799be8f4af69033eb077',
+  WBNB='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+  BNB_PAIR='0x58f876857a02d6762e0101bb5c46a8c1ed44dc16',
+  DEAD='0x000000000000000000000000000000000000dead',
+  NULLA='0x0000000000000000000000000000000000000000';
+// All 18 decimals on BSC — checked, unlike on other chains where USDT/USDC are 6.
+export const QUOTES=[[WBNB,'BNB',0],
+  ['0x55d398326f99059ff775485246999027b3197955','USDT',1],
+  ['0xe9e7cea3dedca5984780bafc599bd69add087d56','BUSD',1],
+  ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d','USDC',1],
+  ['0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d','USD1',1]];
+export const V3_FEES=[100,500,2500,10000];
+export const UNI_V3_FEES=[100,500,3000,10000];   // Uniswap's tiers: 0.30%, where PancakeSwap has 0.25%
+// Constant-product venues, and the fee each one charges.
+//
+// Every fee here was DERIVED, not read off a docs page: for each router, its
+// factory() was confirmed on-chain, then getAmountsOut was solved against the
+// pool's live reserves — out*rIn / (in*(rOut-out)) — which returns the fee the
+// contract actually applies. PancakeSwap came back 0.2500% exactly, which is
+// what validates the method; Uniswap 0.3000%, Biswap 0.2000%.
+//
+// A factory that is not in this table is NOT scanned and NOT guessed at. That
+// matters more than it sounds: the previous build applied PancakeSwap's 0.25%
+// to any V2-shaped pair a visitor pasted, so a Uniswap pool's cost column came
+// out 0.05 points light with nothing on the page to say so.
+export const FACTORIES={
+  '0xca143ce32fe78f1f7019d7d551a6402fc5350c73':{name:'PancakeSwap V2',fee:0.0025},
+  '0x8909dc15e40173ff4699343b6eb8132c65e18ec6':{name:'Uniswap V2',fee:0.0030},
+  '0x858e3312ed3a876947ea49d572a7c42de08af7ee':{name:'Biswap',fee:0.0020},
+};
+export const V2_FEE=0.0025;
+export const STEPS=[100,150,250,500,1000,2500];
+// A batch of 40 eth_calls comes back "method eth_call in batch triggered rate
+// limit"; 26 goes through in 86ms. Everything below chunks to stay under it.
+const MAX_BATCH=25;
+
+const S={reserves:'0x0902f1ac',token0:'0x0dfe1681',token1:'0xd21220a7',fee:'0xddca3f43',
+  slot0:'0x3850c7bd',decimals:'0x313ce567',symbol:'0x95d89b41',name:'0x06fdde03',
+  totalSupply:'0x18160ddd',factory:'0xc45a0155',feeTo:'0x017e7e58'};
+const pad=a=>'0'.repeat(24)+a.slice(2).toLowerCase();
+const num=v=>BigInt(v).toString(16).padStart(64,'0');
+export const balOf=a=>'0x70a08231'+pad(a);
+// A token's decimals as it states them. `Number(x)||18` read a token with 0
+// decimals as 18 (2026-09-18): zero is an answer; only no answer is 18.
+export const decOf=h=>{if(!h||h==='0x')return 18;const n=Number(hx(h));return Number.isFinite(n)&&n>=0&&n<=36?n:18};
+export const getPair=(t,q)=>'0xe6a43905'+pad(t)+pad(q);
+export const getPool=(t,q,f)=>'0x1698ee82'+pad(t)+pad(q)+num(f);
+export const quoteCall=(tin,tout,amt,fee)=>'0xc6a5026a'+pad(tin)+pad(tout)+num(amt)+num(fee)+num(0);
+export const call=(to,data)=>({to,data});
+export const hx=h=>(h&&h!=='0x')?BigInt(h):0n;
+export const addrAt=h=>h&&h.length>=42?('0x'+h.slice(-40)).toLowerCase():null;
+export const res2=h=>h&&h.length>=130
+  ?[Number(BigInt('0x'+h.slice(2,66))),Number(BigInt('0x'+h.slice(66,130)))]:null;
+export const SEL=S;
+
+// A dynamic string arrives as offset/length/data, but a few older tokens answer
+// name()/symbol() with a raw bytes32. Both decode or the label is lost for
+// no good reason.
+export function decStr(h){
+  if(!h||h==='0x')return '';
+  const b=h.slice(2);
+  try{
+    if(b.length>=128){
+      const len=parseInt(b.slice(64,128),16);
+      if(len>0&&len<=128){
+        // ABI string: decode the bytes as UTF-8, not as one char per byte. The
+        // byte-per-char reading only accepted ASCII, so every token with a
+        // Chinese, Cyrillic or emoji symbol came back as '' and was shown by
+        // its address (seen on the four.meme feed, 2026-09-03). Control
+        // characters are dropped; everything printable is kept.
+        const bytes=new Uint8Array(len);for(let i=0;i<len;i++)bytes[i]=parseInt(b.substr(128+i*2,2),16);
+        const s=new TextDecoder('utf-8',{fatal:false}).decode(bytes).replace(/[\x00-\x1f\x7f\ufffd]/g,'').trim();
+        if(s)return s;
+      }
+    }
+    let s='';for(let i=0;i<b.length;i+=2){const c=parseInt(b.substr(i,2),16);if(c>=32&&c<127)s+=String.fromCharCode(c)}
+    return s.trim();
+  }catch(e){return ''}
+}
+// Chunked, and loud when it fails.
+//
+// The node answers an over-long batch with one error object PER ENTRY rather
+// than one error for the request. Reading those as empty results is how a rate
+// limit turned into "this token has no liquidity" — a network condition
+// silently rendered as a statement about somebody's token. It cost a real
+// scan of $TUT, whose $2.2M pool simply vanished from the page.
+//
+// So: small chunks, one patient retry, and if the node still will not answer,
+// an exception that surfaces as an error message. Never a quiet empty.
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// Sticky index: once an endpoint answers it keeps being used, so a healthy scan
+// costs no extra round trips. It only moves on when one actually fails.
+let epi=0;
+// A keyed endpoint first, when the caller has one. The browser page and the
+// installable skill never do — a key in a downloadable file is a published
+// key — but the Worker behind /api/* and /mcp shares its egress address with
+// the whole of Cloudflare, and the free publicnode budget it competes for
+// there gave one answer in ten a throttled read in September 2026: the tax
+// silently "labelled by GoPlus" instead of measured, the sell test "refused".
+// A personal token has its own budget. The free list stays behind it as the
+// fallback, and everything else — batching, throttle detection, the sticky
+// index — is unchanged. Idempotent, so a Worker may call it per request.
+export function useKeyedRpcs(urls){
+  const add=(urls||[]).map(u=>String(u||'').trim()).filter(u=>/^https:\/\//.test(u));
+  if(!add.length)return false;
+  // …and in front of the one public endpoint that serves old state (ARCHIVE_RPCS, 2026-09-27): a personal
+  // publicnode token answers the "archive" reads the free one refuses.
+  for(const list of [RPCS,LOGS_RPCS,ARCHIVE_RPCS]){
+    const rest=list.filter(u=>!add.includes(u));
+    list.splice(0,list.length,...add,...rest);
+  }
+  RPC=RPCS[0];LOGS_RPC=LOGS_RPCS[0];epi=0;
+  return true;
+}
+// "method eth_call in batch triggered rate limit", "capacity exceeded", 429s.
+// Anything mentioning a revert is a real answer and must never match here.
+const throttled=e=>{
+  const m=String(e&&e.message||'').toLowerCase();
+  if(m.includes('revert')||m.includes('execution'))return false;
+  return e&&e.code===-32005||/rate|limit|capacity|too many|quota|busy|exceed/.test(m);
+};
+let postRefusal='';
+async function tryPost(url,body){
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+    if(!r.ok){postRefusal='HTTP '+r.status;return null}
+    return await r.json();
+  }catch(e){postRefusal=String(e?.message||e).slice(0,100);return null}
+}
+export async function rpcBatch(calls,url,block='latest'){
+  const out=[];
+  for(let i=0;i<calls.length;i+=MAX_BATCH){
+    const part=calls.slice(i,i+MAX_BATCH);
+    const body=part.map((c,k)=>({jsonrpc:'2.0',id:k,method:'eth_call',params:[c,block]}));
+    let slot=null;
+    const pool=url?[url]:RPCS;
+    for(let n=0;n<pool.length&&!slot;n++){
+      const j=await tryPost(pool[url?0:(epi+n)%pool.length],body);
+      if(!Array.isArray(j))continue;
+      // Two kinds of error arrive in the same shape and mean opposite things.
+      // An EXECUTION REVERT is an answer: asking a plain token for getReserves()
+      // is exactly how this page decides it is not a pool, and every call in
+      // that batch reverting is the correct result, not a failure. A RATE LIMIT
+      // is not an answer at all, and reading one as empty results is how a
+      // throttled node once turned into "this token has no liquidity". Only the
+      // second kind may move us to another endpoint.
+      if(j.some(x=>x.error&&throttled(x.error)))continue;
+      const s=[];for(const x of j)s[x.id]=x.result;
+      slot=s;if(!url)epi=(epi+n)%pool.length;
+    }
+    if(!slot)throw new Error('every BSC endpoint refused this request');
+    for(let k=0;k<part.length;k++)out.push(slot[k]);
+    if(calls.length>MAX_BATCH)await sleep(40);
+  }
+  return out;
+}
+export async function rpc(method,params,url){
+  const pool=url?[url]:RPCS;
+  for(let n=0;n<pool.length;n++){
+    const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params});
+    if(j&&!j.error)return j.result;
+    if(j&&j.error&&url)throw new Error(j.error.message);
+  }
+  throw new Error('every BSC endpoint refused '+method+(postRefusal?': '+postRefusal:''));
+}
+
+// WHO CONTROLS THE CONTRACT, read on-chain (2026-10-09) instead of taken from a
+// label: owner() and getOwner() (BEP-20's name for it), the EIP-1967
+// implementation and admin slots, the code at each address found (none = a
+// plain wallet, one key), and whether the bytecode carries the selector of
+// mint(address,uint256). Two round trips of one batch each. A revert is an
+// answer here ("no owner() function"), so unlike rawBatch an entry's error
+// leaves that entry null; only a throttled or silent endpoint moves on.
+async function mixedBatch(reqs){
+  for(let n=0;n<RPCS.length;n++){
+    const j=await tryPost(RPCS[(epi+n)%RPCS.length],reqs.map((r,k)=>({jsonrpc:'2.0',id:k,...r})));
+    if(!Array.isArray(j)||j.length!==reqs.length||j.some(x=>x.error&&throttled(x.error)))continue;
+    const s=[];for(const x of j)s[x.id]=x.error?null:x.result;
+    return s;
+  }
+  return null;
+}
+export const EIP1967_IMPL='0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
+  EIP1967_ADMIN='0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
+  MINT_SEL='40c10f19',
+  // mint(uint256) too (2026-10-09): USDT's own mint takes the amount alone, and read as no mint at all
+  MINT_SEL_AMOUNT='a0712d68';
+const DEADS=new Set([NULLA,DEAD,'0xdead000000000000000042069420694206942069']);
+// The selector as a PUSH4 operand in the dispatcher: "63" then the four bytes.
+export const hasSelector=(code,sel)=>typeof code==='string'&&code.length>2&&code.toLowerCase().includes('63'+sel);
+const word2addr=h=>{if(!h||h==='0x'||h.length<66)return null;const a='0x'+h.slice(-40).toLowerCase();return /^0x0{40}$/.test(a)?null:a};
+export function controlFrom(r1,r2){
+  if(!r1)return {read:false,reason:'the node did not answer the control reads'};
+  const [blk,code,own,getOwn,implW,adminW]=r1;
+  const ownerAddr=(h)=>h&&h!=='0x'&&h.length>=66?('0x'+h.slice(2,66).slice(-40)).toLowerCase():null;
+  const o1=ownerAddr(own),o2=ownerAddr(getOwn);
+  const owner=o1??o2,source=o1!=null?'owner()':o2!=null?'getOwner()':null;
+  const impl=word2addr(implW),admin=word2addr(adminW);
+  const codeAt=a=>{if(!r2||!a)return undefined;const i=r2.addrs.indexOf(a);return i<0?undefined:r2.codes[i]};
+  const kindOf=a=>{if(a==null)return null;if(DEADS.has(a))return 'renounced';const c=codeAt(a);return c===undefined||c===null?'unread':c==='0x'?'eoa':'contract'};
+  const implCode=codeAt(impl);
+  const mintHere=hasSelector(code,MINT_SEL)||hasSelector(code,MINT_SEL_AMOUNT),mintImpl=hasSelector(implCode,MINT_SEL)||hasSelector(implCode,MINT_SEL_AMOUNT);
+  return {read:true,block:blk?parseInt(blk,16):null,
+    has_code:code==null?null:code!=='0x',
+    owner:owner?{address:owner,kind:kindOf(owner),source}:null,
+    owner_function:source!=null,
+    proxy:impl?{implementation:impl,admin,admin_kind:kindOf(admin),standard:'EIP-1967'}:null,
+    mint_selector:mintHere||mintImpl,
+    ...(impl&&(mintHere||mintImpl)?{mint_selector_in:mintHere&&mintImpl?'proxy and implementation':mintImpl?'implementation':mintHere?'proxy':null}:{}),
+  };
+}
+export async function readControl(token){
+  token=String(token||'').toLowerCase();
+  const r1=await mixedBatch([
+    {method:'eth_blockNumber',params:[]},
+    {method:'eth_getCode',params:[token,'latest']},
+    {method:'eth_call',params:[{to:token,data:'0x8da5cb5b'},'latest']},
+    {method:'eth_call',params:[{to:token,data:'0x893d20e8'},'latest']},
+    {method:'eth_getStorageAt',params:[token,EIP1967_IMPL,'latest']},
+    {method:'eth_getStorageAt',params:[token,EIP1967_ADMIN,'latest']},
+  ]).catch(()=>null);
+  if(!r1)return controlFrom(null);
+  const pre=controlFrom(r1,null);
+  const addrs=[...new Set([pre.owner?.address,pre.proxy?.implementation,pre.proxy?.admin].filter(a=>a&&!DEADS.has(a)))];
+  let r2=null;
+  if(addrs.length){const c=await mixedBatch(addrs.map(a=>({method:'eth_getCode',params:[a,'latest']}))).catch(()=>null);if(c)r2={addrs,codes:c}}
+  return controlFrom(r1,r2);
+}
+
+// === WHAT IS THIS ADDRESS? ===
+// People paste what they have, and what they have is usually a DexScreener link
+// — which carries the POOL address, not the token. Guessing wrong here sends the
+// whole scan down the wrong path, so the address is asked directly what it is.
+export async function classify(addr){
+  const q=await rpcBatch([call(addr,S.reserves),call(addr,S.fee),call(addr,S.slot0),
+    call(addr,S.token0),call(addr,S.token1),call(addr,S.factory)]);
+  if(q[0]&&q[0].length>=194&&res2(q[0])){
+    // Which venue built this pair decides the fee. Asked, never assumed.
+    const fac=addrAt(q[5]);
+    return {kind:'v2pair',token0:addrAt(q[3]),token1:addrAt(q[4]),reserves:res2(q[0]),
+      factory:fac,venue:fac?FACTORIES[fac]:null};
+  }
+  if(q[1]&&q[1]!=='0x'&&q[2]&&q[2].length>64)
+    // The factory, asked like the V2 pair's: a Uniswap V3 pool answers the same
+    // calls, and read as PancakeSwap's it was scanned under the wrong venue name
+    // with the wrong quoter — every cost row null, 1% depth printed as $0
+    // (2026-09-18).
+    return {kind:'v3pool',fee:Number(hx(q[1])),token0:addrAt(q[3]),token1:addrAt(q[4]),
+      sqrt:hx('0x'+q[2].slice(2,66)),factory:addrAt(q[5]),pancake:addrAt(q[5])===V3FACTORY,uniswap:addrAt(q[5])===UNI_V3_FACTORY};
+  return {kind:'token'};
+}
+
+// === PRICING THE QUOTE SIDE ===
+// A pool quoted in BNB or a stablecoin can be stated in dollars directly. A pool
+// quoted in another meme token cannot — $MatthewCoin trades against $SpaceX, and
+// no amount of reading that pair reveals what a dollar is. One hop to BNB fixes
+// it, but honestly: the derived figure inherits the thinness of the hop, so the
+// depth of that intermediate pool is carried out of here and shown.
+export async function priceToken(addr,bnbUsd){
+  const known=QUOTES.find(([a])=>a===addr);
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true,dec:18};
+  const p=await rpcBatch([call(V2FACTORY,getPair(addr,WBNB)),call(addr,S.symbol),call(addr,S.decimals)]);
+  const pair=addrAt(p[0]),sym=decStr(p[1]).slice(0,12)||'?',dec=decOf(p[2]);
+  if(!pair||pair===NULLA)return {usd:null,sym,direct:false,dec};
+  const r=await rpcBatch([call(pair,S.reserves),call(pair,S.token0)]);
+  const rr=res2(r[0]);if(!rr)return {usd:null,sym,direct:false};
+  const is0=addrAt(r[1])===addr,
+        tok=(is0?rr[0]:rr[1])/Math.pow(10,dec),wb=(is0?rr[1]:rr[0])/1e18;
+  if(!(tok>0)||!(wb>0))return {usd:null,sym,direct:false};
+  // `dec`: the quote side's own decimals. Every quote this tool knows by name
+  // has 18; a pool quoted in another token may not, and the depth maths
+  // downstream is written for 18 (see the scan's refusal).
+  return {usd:(wb/tok)*bnbUsd,sym,direct:false,hopBnb:wb,hopPair:pair,dec};
+}
+
+// === POOL DISCOVERY ===
+// Asked of the factories, not of an index. An index that has not caught up makes
+// a live token look dead — GoPlus does not list $CAKE's V2 pair at all, and does
+// not know $MatthewCoin's. The factory always answers.
+// `uniswap` (2026-10-18): Uniswap V3's pools too — asked for by the pool scan only; the fee-tier and range tools
+// that also call this are PancakeSwap's and must not be handed another venue's pool.
+export async function discover(token,tokDec,bnbUsd,{uniswap=false}={}){
+  const facs=Object.keys(FACTORIES);
+  const v2=[];facs.forEach(f=>QUOTES.forEach(([q])=>v2.push(call(f,getPair(token,q)))));
+  const v3=[];QUOTES.forEach(([q])=>V3_FEES.forEach(f=>v3.push(call(V3FACTORY,getPool(token,q,f)))));
+  const u3=[];if(uniswap)QUOTES.forEach(([q])=>UNI_V3_FEES.forEach(f=>u3.push(call(UNI_V3_FACTORY,getPool(token,q,f)))));
+  const found=await rpcBatch([...v2,...v3,...u3]);
+  const cands=[];
+  facs.forEach((f,fi)=>QUOTES.forEach(([qa,sym,stable],i)=>{
+    const p=addrAt(found[fi*QUOTES.length+i]);
+    if(p&&p!==NULLA)cands.push({kind:'v2',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:FACTORIES[f].fee,venue:FACTORIES[f].name,factory:f});
+  }));
+  QUOTES.forEach(([qa,sym,stable],i)=>V3_FEES.forEach((f,k)=>{
+    const p=addrAt(found[facs.length*QUOTES.length+i*V3_FEES.length+k]);
+    if(p&&p!==NULLA)cands.push({kind:'v3',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:f/1e6,feeRaw:f,venue:'PancakeSwap V3'});
+  }));
+  if(uniswap)QUOTES.forEach(([qa,sym,stable],i)=>UNI_V3_FEES.forEach((f,k)=>{
+    const p=addrAt(found[facs.length*QUOTES.length+v3.length+i*UNI_V3_FEES.length+k]);
+    if(p&&p!==NULLA)cands.push({kind:'v3',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:f/1e6,feeRaw:f,venue:'Uniswap V3',quoter:UNI_QUOTER});
+  }));
+  if(!cands.length)return [];
+  // Depth is measured, never assumed: V2 from reserves, V3 from what the pool
+  // contract actually holds. A pool that exists but is empty must sort last.
+  const calls=[];
+  cands.forEach(c=>{
+    if(c.kind==='v2')calls.push(call(c.pair,S.reserves),call(c.pair,S.token0));
+    else calls.push(call(c.quote,balOf(c.pair)),call(token,balOf(c.pair)));
+  });
+  const m=await rpcBatch(calls);
+  cands.forEach((c,i)=>{
+    if(c.kind==='v2'){
+      const rr=res2(m[i*2]);if(!rr)return;
+      const is0=addrAt(m[i*2+1])===token;
+      c.tok=(is0?rr[0]:rr[1])/Math.pow(10,tokDec);c.q=(is0?rr[1]:rr[0])/1e18;
+    }else{
+      c.q=Number(hx(m[i*2]))/1e18;c.tok=Number(hx(m[i*2+1]))/Math.pow(10,tokDec);
+    }
+    c.hard=(c.q||0)*c.usd;
+  });
+  const out=cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+  // The pools that exist and hold only the token (2026-09-27): a one-sided V3
+  // position above the price, like Muskonomy's 1% pool. Not candidates — there
+  // is nothing to sell into — but the refusal has to say they were found, not
+  // that no pool exists at a verified venue.
+  out.oneSided=cands.filter(c=>!(c.hard>0)&&c.tok>0);
+  return out;
+}
+
+// The quote of an index-named pool, priced through ITS deepest pool against BNB
+// or a stablecoin (V2 or V3), not through its V2 BNB pair alone: in the first
+// trial a token called "ETC" priced through a $27 pair put a meme at $720, and
+// real SOL's V2 pair is a side pocket. Under $1,000 on the hard side the dollar
+// figure would be invented, so there is none. 18 decimals only (see the scan).
+export const HOP_MIN_USD=1000;
+export async function priceQuote(addr,bnbUsd){
+  const known=QUOTES.find(([a])=>a===addr);
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true,dec:18};
+  const info=await rpcBatch([call(addr,S.symbol),call(addr,S.decimals)]);
+  const sym=decStr(info[0]).slice(0,12)||'?',dec=decOf(info[1]);
+  if(dec!==18)return null;
+  const best=(await discover(addr,dec,bnbUsd))[0];
+  if(!best||!(best.hard>=HOP_MIN_USD))return null;
+  let usd;
+  if(best.kind==='v2')usd=(best.q/best.tok)*best.usd;
+  else{
+    const s=await rpcBatch([call(best.pair,S.slot0),call(best.pair,S.token0)]);
+    const is0=addrAt(s[1])===addr,r=sqrtToPrice(hx('0x'+s[0].slice(2,66)),18,18);
+    usd=(is0?r:1/r)*best.usd;
+  }
+  if(!(usd>0)||!isFinite(usd))return null;
+  return {usd,sym,direct:false,dec,hopPair:best.pair,hopUsd:best.hard,hopBnb:best.hard/bnbUsd,
+    hopName:(best.venue||'PancakeSwap V3')+' · '+best.sym};
+}
+
+// === THE INDEX'S POOL, MEASURED (2026-10-18) ===
+// discover() asks the factories for pairs against BNB and the four stablecoins
+// only. A token whose market sits in a PancakeSwap pool against CAKE, BTCB or
+// SOL was answered "most of it sits at PancakeSwap V2 · Cake … not measured
+// here": on 17.10. 69 of ~114 outside scans (nearly all one trading bot) ended
+// there, and a sample of 44 listed BSC tokens put 15 there, most of them on a
+// PancakeSwap pool. The index names the pair; the chain is then asked what it
+// is, exactly as for a pasted pool: a verified venue's pair or PancakeSwap's V3
+// pool, holding this token, quoted in an 18-decimal token with a BNB pool of its
+// own. `list` is the index's pairs, deepest first; `beat` the hard side to beat.
+export async function indexedPool(token,tokDec,bnbUsd,list,beat=0){
+  token=String(token||'').toLowerCase();
+  for(const o of (list||[]).slice(0,3)){
+    if(!((o.liquidity||0)>=1000))break;
+    const pair=String(o.pair||'').toLowerCase();
+    // a 32-byte id is a PancakeSwap Infinity CL pool (2026-10-19)
+    if(/^0x[0-9a-f]{64}$/.test(pair)){
+      const f=await infinityPool(token,tokDec,bnbUsd,o).catch(()=>null);
+      if(f&&f.pool.hard>beat&&f.pool.tok>0)return f;
+      continue;
+    }
+    if(!/^0x[0-9a-f]{40}$/.test(pair))continue;
+    let w;try{w=await classify(pair)}catch(e){continue}
+    if(!(w.kind==='v2pair'&&w.venue)&&!(w.kind==='v3pool'&&(w.pancake||w.uniswap)))continue;
+    if(w.token0!==token&&w.token1!==token)continue;
+    const quote=w.token0===token?w.token1:w.token0;
+    const hop=await priceQuote(quote,bnbUsd).catch(()=>null);
+    if(!hop)continue;
+    const c=w.kind==='v2pair'
+      ?{kind:'v2',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.venue.fee,venue:w.venue.name,factory:w.factory,
+        tok:(w.token0===token?w.reserves[0]:w.reserves[1])/Math.pow(10,tokDec),
+        q:(w.token0===token?w.reserves[1]:w.reserves[0])/1e18}
+      :{kind:'v3',pair,quote,sym:hop.sym,usd:hop.usd,fee:w.fee/1e6,feeRaw:w.fee,venue:w.uniswap?'Uniswap V3':'PancakeSwap V3',
+        ...(w.uniswap?{quoter:UNI_QUOTER}:{}),sqrt:w.sqrt,tokenIs0:w.token0===token};
+    if(c.kind==='v3'){
+      const bal=await rpcBatch([call(quote,balOf(pair)),call(token,balOf(pair))]);
+      c.q=Number(hx(bal[0]))/1e18;c.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
+    }
+    c.hard=(c.q||0)*c.usd;
+    if(c.hard>beat&&c.tok>0)return {pool:c,hop};
+  }
+  return null;
+}
+
+// === V2 MATH ===
+// IMPACT is where the price ends up: reserves after against reserves before. The
+// pool fee stays in the pool and counts; a transfer tax never reaches the
+// reserves on a buy, so it cannot move the price at all.
+// COST is what the trader gives up against spot — a worse fill because the pool
+// moved underneath, plus the fee and the tax on top.
+export function ladderV2(tok,q,fee,taxB,taxS,px,quoteUsd){
+  const FEE=1-fee,TB=1-taxB,TS=1-taxS;
+  return STEPS.map(u=>{
+    const dQ=u/quoteUsd,effB=dQ*FEE,outB=(tok*effB)/(q+effB),
+          dT=u/px,effT=dT*TS*FEE,outS=(q*effT)/(tok+effT);
+    return{usd:u,
+      buyMove:(((q+dQ)/(tok-outB))/(q/tok)-1)*100,
+      buyCost:(1-TB*FEE*q/(q+effB))*100,
+      sellMove:(((q-outS)/(tok+dT*TS))/(q/tok)-1)*100,
+      sellCost:(1-TS*FEE*tok/(tok+effT))*100};
+  });
+}
+// (r + x)(r + FEE*x) = k*r^2  ->  FEE*x^2 + r(1+FEE)x + r^2(1-k) = 0
+export function onePctV2(r,fee,k){const FEE=1-fee,b=1+FEE;
+  return r*((-b+Math.sqrt(b*b+4*FEE*(k-1)))/(2*FEE))}
+
+// === V3 MATH ===
+// Concentrated liquidity has no closed form: impact depends on where the
+// liquidity is parked around the current price, not on two reserves. Rather than
+// approximate it, the pool's own quoter is asked — one eth_call per size,
+// returning the exact fill and the exact price afterwards, ticks crossed and
+// all. That is not an estimate of the trade; it is the trade, simulated.
+const Q96=2n**96n;
+export function sqrtToPrice(sqrt,decIn,decOut){
+  const s=Number(sqrt)/Number(Q96);
+  return s*s*Math.pow(10,decIn-decOut);
+}
+// The baseline comes from a DUST QUOTE in the same batch, never from a separate
+// slot0 read. On a deep, busy pool the price moves more between two round trips
+// than a $2,500 trade moves it: $BTCB's buy impact came out NEGATIVE across
+// every rung, because what was being measured was one second of real trading,
+// not the trade. Quoting a near-zero amount alongside the real ones gives a
+// "before" from the same block state, so the difference is the trade and
+// nothing else.
+// `quoter` (2026-10-18): the pool's own venue's quoter — PancakeSwap's unless the pool is Uniswap's
+export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,taxS,sqrtBefore,tokenIs0,quoter=QUOTER){
+  // The sell side is quoted with the amount that SURVIVES the transfer tax,
+  // because that is all the pool ever sees. Quoting the gross amount and
+  // scaling the answer afterwards would be an approximation where an exact
+  // figure was available for the same single call.
+  const amtsBuy=STEPS.map(u=>BigInt(Math.floor(u/quoteUsd*1e18))),
+        amtsSell=STEPS.map(u=>BigInt(Math.floor(u/px*(1-taxS)*Math.pow(10,tokDec))));
+  const dust=BigInt(Math.max(1,Math.floor(1/quoteUsd*1e18)));   // ~$1 of the quote token
+  const calls=[call(quoter,quoteCall(quote,token,dust,feeRaw)),
+               ...amtsBuy.map(a=>call(quoter,quoteCall(quote,token,a,feeRaw))),
+               ...amtsSell.map(a=>call(quoter,quoteCall(token,quote,a,feeRaw)))];
+  const all=await rpcBatch(calls);
+  const baseHex=all[0],r=all.slice(1);
+  const before=(baseHex&&baseHex.length>=130)
+    ? Number(BigInt('0x'+baseHex.slice(66,130)))   // same block state as the rungs
+    : Number(sqrtBefore);
+  // A rung the pool cannot fill. When a size takes more than the pool holds
+  // in range, the quoter walks to the end of the liquidity and reports the
+  // price at the limit — sqrtPriceX96After lands on MIN/MAX_SQRT_RATIO and
+  // squaring that printed "+5.33e+41%" for KII (1% tier, $750 in range),
+  // with "you pay 47.76%" for a fill that never happened. Such a rung says
+  // "the pool runs out at this size", not a number.
+  const MIN_SQRT=4295128739,MAX_SQRT=1.4614467034852101e48;
+  const dry=h=>{
+    if(!h||h.length<130)return false;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    return !(after>0)||after<=MIN_SQRT*1.0001||after>=MAX_SQRT*0.9999;
+  };
+  const move=h=>{
+    if(!h||h.length<130||dry(h))return null;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    if(!(after>0)||!(before>0))return null;
+    const ratio=Math.pow(after/before,2);      // price of token0 in token1
+    const m=((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+    return Math.abs(m)>1000?null:m;            // beyond ten-fold is the limit too
+  };
+  const out=h=>h&&h.length>=66?Number(BigInt('0x'+h.slice(2,66))):null;
+  // SPOT, from the same block state as the rungs — for the same reason the
+  // impact baseline is taken from the dust quote and not from slot0. Cost is a
+  // comparison against spot, and slot0 was read one round trip earlier: on a
+  // busy pool the price drifts more in that second than a $100 trade moves it,
+  // which produced a NEGATIVE cost ("you pay −0.06%", i.e. the pool pays you)
+  // on $BLUAI and $DOS. The dust quote already has the pool fee taken out of
+  // its input, so the fee is added back to recover the mid price — otherwise
+  // the fee would quietly vanish from the cost it is part of.
+  const dustOut=out(baseHex),feeFrac=feeRaw/1e6;
+  const pxLive=(dustOut>0)
+    ? (Number(dust)/1e18)*(1-feeFrac)/(dustOut/Math.pow(10,tokDec))*quoteUsd
+    : px;
+  const spot=pxLive>0?pxLive:px;
+  return STEPS.map((u,i)=>{
+    const b=r[i],s=r[STEPS.length+i];
+    const outTok=out(b),outQ=out(s);
+    // Buy: quote in, tokens out, then the transfer tax is taken off the top.
+    const gotTok=outTok!=null?outTok/Math.pow(10,tokDec)*(1-taxB):null;
+    const paidQ=u/quoteUsd;
+    // Sell: the pair only ever sees the taxed amount, so the tax is applied to
+    // the input before the quote, exactly as the chain does it. What the trader
+    // gives up is the GROSS amount, valued at spot.
+    const gotQ=outQ!=null?outQ/1e18:null;
+    const survS=(1-taxS)>0?(1-taxS):1;
+    const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/survS;
+    const RUNS_OUT='the pool runs out at this size';
+    const bDry=dry(b)||(b&&b.length>=130&&move(b)==null&&outTok!=null),
+          sDry=dry(s)||(s&&s.length>=130&&move(s)==null&&outQ!=null);
+    return {usd:u,
+      buyMove:bDry?null:move(b),
+      buyCost:(!bDry&&gotTok!=null)?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
+      buyNote:bDry?RUNS_OUT:null,
+      sellMove:(!sDry&&move(s)!=null)?-Math.abs(move(s)):null,
+      sellCost:(!sDry&&gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null,
+      sellNote:sDry?RUNS_OUT:null};
+  });
+}
+// The ladder's six fixed sizes cannot express depth for a pool that is far
+// deeper or far thinner than they assume, so the quoter is swept geometrically
+// and the crossing of 1% is read off the curve. Interpolated in log space
+// because impact against size is very close to a straight line there.
+export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBefore,tokenIs0,taxS=0,quoter=QUOTER){
+  // $20 to $976M. The old sweep stopped at $1.3M and simply gave up on anything
+  // deeper: USDC/USDT at the 0.01% tier does not move one percent for any figure
+  // in that range, so both fields printed "—" for a pool holding $27M — read as
+  // "could not measure" when the truth was "more than we asked". Twelve probes
+  // is also exactly the batch ceiling once the dust quote and both directions
+  // are counted (1 + 12 + 12 = 25).
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i));
+  const dust=BigInt(Math.max(1,Math.floor(1/quoteUsd*1e18)));
+  // The sell probes are quoted with what SURVIVES the transfer tax, because that
+  // is all the pool ever sees — the same correction the V2 path applies when it
+  // divides by (1-taxS). Without it a 5%-tax token's "moves the price −1%" was
+  // the size that reaches the pool, not the size the seller has to send.
+  const surv=1-(taxS||0);
+  const calls=[call(quoter,quoteCall(quote,token,dust,feeRaw)),
+               ...probes.map(u=>call(quoter,quoteCall(quote,token,BigInt(Math.floor(u/quoteUsd*1e18)),feeRaw))),
+               ...probes.map(u=>call(quoter,quoteCall(token,quote,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec))),feeRaw)))];
+  const all=await rpcBatch(calls);
+  const baseHex=all[0],r=all.slice(1);
+  const before=(baseHex&&baseHex.length>=130)?Number(BigInt('0x'+baseHex.slice(66,130))):Number(sqrtBefore);
+  const mv=h=>{if(!h||h.length<130)return null;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    if(!(after>0)||!(before>0))return null;
+    const ratio=Math.pow(after/before,2);
+    return Math.abs((tokenIs0?ratio:1/ratio)-1)*100};
+  // Three outcomes, and they must not be flattened into one. A crossing found is
+  // a figure. No crossing because every probe that the pool could quote stayed
+  // under 1% is a LOWER BOUND, not an unknown — "more than $1.6M" is a real
+  // answer and printing "—" for it understates a deep pool. Nothing quotable at
+  // all is the only genuine unknown.
+  const cross=off=>{
+    const pts=probes.map((u,i)=>({u,m:mv(r[off+i])})).filter(p=>p.m!=null&&p.m>0);
+    if(!pts.length)return {v:null,min:null};
+    for(let i=1;i<pts.length;i++){
+      if(pts[i].m>=1&&pts[i-1].m<1){
+        const a=pts[i-1],b=pts[i],t=(Math.log(1)-Math.log(a.m))/(Math.log(b.m)-Math.log(a.m));
+        return {v:Math.exp(Math.log(a.u)+t*(Math.log(b.u)-Math.log(a.u))),min:null};
+      }
+    }
+    const last=pts[pts.length-1];
+    // Below 1% at the largest size the pool would quote: a floor. Above 1% at
+    // the smallest: too thin for this ladder to bracket, so no claim.
+    return {v:null,min:last.m<1?last.u:null};
+  };
+  // Both figures are already GROSS: the probe list is denominated in what the
+  // trader sends, and the tax was taken off inside the quoted amount, so there
+  // is nothing left to scale here.
+  const u=cross(0),d=cross(probes.length);
+  return {up:u.v,down:d.v,upMin:u.min,downMin:d.min};
+}
+
+// === PANCAKESWAP INFINITY CL (2026-10-19) ===
+// The largest market the scan could not read: on 18.10. a sample of 45 active BSC tokens put four "elsewhere", their
+// money in Pancake Infinity CL pools (GWEI: $907k there against $28k in its Uniswap pool). Infinity is one singleton
+// CLPoolManager; a pool is a bytes32 id, its key (currency0, currency1, hooks, poolManager, fee, parameters) is read
+// with poolIdToPoolKey, and every pool's tokens sit together in one Vault — so a pool's own reserves cannot be read
+// with balanceOf, and its quote side is the index's figure, said as such. A pool may carry a HOOK contract that runs on
+// every swap and can change the fee or refuse a trade: every price below is therefore asked of PancakeSwap's own
+// CLQuoter, which runs the hook — never computed from the pool's maths alone. Addresses from PancakeSwap's developer
+// docs, each checked on chain (19.10.: GWEI/USDT's key read back with this manager as its poolManager, the quoter
+// answered 100 USDT -> 4,535.75 GWEI against 4,536.6 at spot). Currency 0x0 is native BNB.
+export const INF_CL_PM='0xa0ffb9c1ce1fe56963b0321b32e7a0302114058b',INF_CL_QUOTER='0xd0737c9762912dd34c3271197e362aa736df0926',
+  INF_VAULT='0x238a358808379702088667322f80ac48bad5e6c4';
+const INF={key:'0x0e2d484a',slot0:'0xc815641c',liq:'0xfa6793d5',quote:'0x9938b8ed'};
+// quoteExactInputSingle(((c0,c1,hooks,pm,fee,params),zeroForOne,exactAmount,hookData)), hookData empty — encoded by
+// hand (this file runs in the browser too) and checked equal to viem's encoding.
+const infQuote=(k,zf,amt)=>INF.quote+num(0x20)+pad(k.c0)+pad(k.c1)+pad(k.hooks)+pad(k.pm)+num(k.fee)+k.params.slice(2)
+  +num(zf?1:0)+num(amt)+num(0x120)+num(0);
+const signed24=h=>{let v=Number(BigInt('0x'+h)&0xffffffn);return v>=0x800000?v-0x1000000:v};
+// One index entry (a 32-byte pool id) -> a pool this scan can price, or null. Quoted in BNB, a stablecoin, or any
+// 18-decimal token with a BNB pool of its own (priceQuote), exactly as the V2/V3 index path.
+export async function infinityPool(token,tokDec,bnbUsd,o){
+  const id=String(o.pair||'').toLowerCase();
+  if(!/^0x[0-9a-f]{64}$/.test(id))return null;
+  const r=await rpcBatch([call(INF_CL_PM,INF.key+id.slice(2)),call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]);
+  const h=r[0];if(!h||h.length<2+64*6)return null;
+  const w=i=>h.slice(2+64*i,2+64*(i+1));
+  const k={c0:'0x'+w(0).slice(24),c1:'0x'+w(1).slice(24),hooks:'0x'+w(2).slice(24),pm:'0x'+w(3).slice(24),fee:Number(BigInt('0x'+w(4))),params:'0x'+w(5)};
+  if(k.pm!==INF_CL_PM)return null;                  // a Bin pool or another manager: not this maths
+  if(k.c0!==token&&k.c1!==token)return null;
+  const s=r[1];if(!s||s.length<2+64*4)return null;
+  const sqrt=BigInt('0x'+s.slice(2,66)),lpFee=Number(BigInt('0x'+s.slice(2+64*3,2+64*4)));
+  if(!(sqrt>0n))return null;
+  const tokenIs0=k.c0===token,quote=tokenIs0?k.c1:k.c0,quoteP=quote===NULLA?WBNB:quote;
+  const hop=await priceQuote(quoteP,bnbUsd).catch(()=>null);
+  if(!hop)return null;
+  const d0=tokenIs0?tokDec:18,d1=tokenIs0?18:tokDec,ratio=sqrtToPrice(sqrt,d0,d1);
+  const px=(tokenIs0?ratio:1/ratio)*hop.usd;
+  if(!(px>0)||!isFinite(px))return null;
+  if(o.probe)return {pool:{kind:'inf',pair:id,quote,sym:hop.sym,usd:hop.usd,fee:lpFee/1e6,feeRaw:lpFee,sqrt,tokenIs0,key:k},hop,px};
+  const half=(o.liquidity||0)/2;
+  const pool={kind:'inf',pair:id,quote,sym:hop.sym,usd:hop.usd,fee:lpFee/1e6,feeRaw:lpFee,sqrt,tokenIs0,key:k,
+    venue:'PancakeSwap Infinity CL',hooks:k.hooks===NULLA?null:k.hooks,tickSpacing:signed24(w(5).slice(-10,-4))||null,   // parameters: hook bitmap in the low 16 bits, tickSpacing in the 24 above
+    tick:signed24(s.slice(66,130)),liquidity:String(hx(r[2])),
+    q:half/hop.usd,tok:half/px,hard:half,indexLiquidityUsd:Math.round(o.liquidity||0),liqSource:o.source||'index'};
+  return {pool,hop};
+}
+// FINDING THEM WITHOUT AN INDEX. The indexes this scan reads list some Infinity pools and miss others (19.10.: DNA's
+// $1.7M pool, KII's and AEON's $1M ones were in neither, and the scan measured a side pool at Uniswap). There is no
+// factory to ask, but a pool's id is keccak256 of its key, and the keys in use cluster: the 80 largest Infinity CL
+// pools on 19.10. ($55M+) sat on a few (hooks, fee, parameters) combinations, read off each pool's own key. Every
+// combination below is tried against BNB and the four dollar tokens; the chain says which ids exist.
+// keccak256 is keccakHex, further down (the sell test uses it for storage slots).
+// [hooks, fee, parameters] — the combinations of the largest pools, 19.10. (pools, value): 0x72e0… 67 0a0055 (18,
+// $20.8M) · 0xb0ba…0d0f 67 0a0045 (13, $17.1M) · 0x9a9b…53fd 67 0a0055 (7, $8.0M) and 0f0055 · 0xb0bb…46af 67 with
+// tickSpacing 1, 2 and 10 (9, $9.0M) · no hook, 67, tickSpacing 1 and 10 (5, $2.6M).
+const INF_COMBOS=[['0x72e09ebd9b24f47730b651889a4ed984cba53d90',67,0x0a0055],['0xb0baa371b899950b4ef6a27c21baf5ef7c434d0f',67,0x0a0045],
+  ['0x9a9b5331ce8d74b2b721291d57de696e878353fd',67,0x0a0055],['0x9a9b5331ce8d74b2b721291d57de696e878353fd',67,0x0f0055],
+  ['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x010045],['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x020045],
+  ['0xb0bb171d333569cfd28a37f5c5dddaaa90ad46af',67,0x0a0045],[NULLA,67,0x010000],[NULLA,67,0x0a0000]];
+const INF_QUOTES=[NULLA,'0x55d398326f99059ff775485246999027b3197955','0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+  '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d','0xce24439f2d9c6a2289f741120fe202248b666666'];
+export const infPoolId=(c0,c1,hooks,fee,params)=>keccakHex('0x'+pad(c0)+pad(c1)+pad(hooks)+pad(INF_CL_PM)+num(fee)+num(params));
+// The ids of this token's Infinity CL pools that exist (a price set and liquidity in range), from the combinations above.
+export async function infinityFind(token){
+  token=String(token||'').toLowerCase();
+  const ids=[];
+  for(const q of INF_QUOTES)for(const [h,f,p] of INF_COMBOS){
+    if(q===token)continue;
+    const [c0,c1]=BigInt(q)<BigInt(token)?[q,token]:[token,q];   // currency0 is the lower address; native BNB (0x0) always
+    ids.push(infPoolId(c0,c1,h,f,p));
+  }
+  const r=await multicall(ids.flatMap(id=>[call(INF_CL_PM,INF.slot0+id.slice(2)),call(INF_CL_PM,INF.liq+id.slice(2))]));   // one request
+  return ids.filter((id,i)=>{const s=r[2*i],l=r[2*i+1];return s&&s.length>=66&&hx('0x'+s.slice(2,66))>0n&&hx(l)>0n});
+}
+// How much quote money a pool found this way holds, as far as a trade can reach it: what a sell pays out by the time
+// it has halved the price (the quoter, hook included; the largest probe's payout as a floor when none halves it).
+// Twice that stands in for the index's two-sided figure — said as measured, never as the index's.
+// IN STEPS (2026-10-27, X-Scan-Timing: 1-3.8 s a pool, CAKE's three made its scan 6-11 s). The walk below stops at the
+// first size the pool cannot quote or that halves its price, so the sizes are asked in steps: $20 first, then up to
+// $312k, then the five giants (after a lone $20 quote, below), each step only for a pool the one before did not stop. A quote that fails is the slow
+// kind (it runs the pool dry, ~1.5 s each, measured on two near-empty CAKE pools), and the giants cross the most ticks;
+// a near-empty pool now fails once instead of fourteen times. The answer is the same rung for rung (checked against the
+// one-call version on CAKE's and USDT's pools). All quotes of one step come from one block.
+export async function infReachUsd(pool,tokDec,px){
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i));
+  const dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const leg=u=>[pool.tokenIs0,BigInt(Math.floor(u/px*Math.pow(10,tokDec)))];
+  // the first size alone, without its marginal twin: a pool that cannot quote $20 holds nothing to reach, and says so
+  // with one failed quote instead of two (the walk's answer for it is 0 either way)
+  const [l0,amt0]=leg(probes[0]);
+  const one=await multicall([call(INF_CL_QUOTER,infQuote(pool.key,l0,amt0))]);
+  if(!(one[0]&&one[0].length>=66))return 0;
+  const q=await infQuotes(pool,[[pool.tokenIs0,dustT],leg(probes[0])]);
+  const [d,...r]=q.legs;let best=0;
+  const walk=list=>{for(const x of list){if(x.out==null)return true;best=x.out/1e18*pool.usd;if(x.marg&&d.marg&&x.marg/d.marg<=0.5)return true}return false};
+  if(walk(r))return best;
+  for(const [a,b] of [[1,7],[7,12]]){
+    const more=await infQuotes(pool,probes.slice(a,b).map(leg));
+    if(walk(more.legs))return best;
+  }
+  return best;
+}
+// The quoter answers only the amount out, not the price after. The price after a trade is read as the MARGINAL rate
+// there: a second quote 0.1% larger, the extra output over the extra input — the same thing the pool would quote for
+// the next unit, hook and fee included, ticks crossed or not. Before = the same at a ~$1 dust size. All quotes of one
+// call are pinned to one block, so a busy pool cannot move between the rungs and their baseline.
+const INF_EPS=1000n;   // the second quote is 1/1000 larger
+async function infQuotes(pool,legs){
+  // ONE eth_call through Multicall3 (multicall, below): every quote from one block state by construction, and one
+  // outgoing request where a batch of 26–50 calls cost two or three — a Worker may make 50 per scan, and the Infinity
+  // path's reads had pushed the tax read past that on COLLECT (19.10.: "the log endpoint did not answer").
+  const calls=legs.flatMap(([zf,a])=>[call(INF_CL_QUOTER,infQuote(pool.key,zf,a)),call(INF_CL_QUOTER,infQuote(pool.key,zf,a+a/INF_EPS))]);
+  const r=await multicall(calls);
+  const out=x=>x&&x.length>=66?Number(BigInt('0x'+x.slice(2,66))):null;
+  return {block:null,legs:legs.map(([,a],i)=>{const o1=out(r[2*i]),o2=out(r[2*i+1]),da=Number(a/INF_EPS);
+    return {out:o1,marg:o1!=null&&o2!=null&&da>0&&o2>o1?(o2-o1)/da:null}})};
+}
+export async function ladderInf(pool,tokDec,px,taxB,taxS){
+  const buyZ=!pool.tokenIs0,sellZ=pool.tokenIs0,qu=pool.usd;
+  const dust=BigInt(Math.max(1e6,Math.floor(1/qu*1e18)));
+  const amtsBuy=STEPS.map(u=>BigInt(Math.floor(u/qu*1e18))),amtsSell=STEPS.map(u=>BigInt(Math.floor(u/px*(1-taxS)*Math.pow(10,tokDec))));
+  const dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const q=await infQuotes(pool,[[buyZ,dust],[sellZ,dustT],...amtsBuy.map(a=>[buyZ,a]),...amtsSell.map(a=>[sellZ,a])]);
+  const [db,ds,...r]=q.legs;
+  // spot from the dust buy, the fee added back (as ladderV3): cost is a comparison against the mid price
+  const spot=db.out>0?(Number(dust)/1e18)*(1-pool.fee)/(db.out/Math.pow(10,tokDec))*qu:px;
+  const RUNS_OUT='the pool runs out at this size';
+  const rows=STEPS.map((u,i)=>{
+    const b=r[i],s=r[STEPS.length+i];
+    const gotTok=b.out!=null?b.out/Math.pow(10,tokDec)*(1-taxB):null,gotQ=s.out!=null?s.out/1e18:null;
+    const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/((1-taxS)>0?(1-taxS):1);
+    const bMove=b.marg&&db.marg?(db.marg/b.marg-1)*100:null,sMove=s.marg&&ds.marg?(s.marg/ds.marg-1)*100:null;
+    const bDry=b.out==null||(bMove!=null&&bMove>1000),sDry=s.out==null||(sMove!=null&&sMove< -99);
+    return {usd:u,
+      buyMove:bDry?null:bMove,buyCost:!bDry&&gotTok!=null?(1-(gotTok*spot)/u)*100:null,buyNote:bDry?RUNS_OUT:null,
+      sellMove:sDry?null:sMove,sellCost:!sDry&&gotQ!=null&&sentTok>0?(1-(gotQ*qu)/(sentTok*spot))*100:null,sellNote:sDry?RUNS_OUT:null};
+  });
+  rows.block=q.block;rows.spot=spot;
+  return rows;
+}
+// The size that moves the price 1%, each way: the same geometric sweep and log-space crossing as onePctV3, the move
+// read from the marginal rate. A floor ("more than …") when every quotable probe stayed under 1%.
+export async function onePctInf(pool,tokDec,px,taxS=0){
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i)),qu=pool.usd,surv=1-(taxS||0);
+  const buyZ=!pool.tokenIs0,sellZ=pool.tokenIs0;
+  const dust=BigInt(Math.max(1e6,Math.floor(1/qu*1e18))),dustT=BigInt(Math.max(1,Math.floor(1/px*Math.pow(10,tokDec))));
+  const q=await infQuotes(pool,[[buyZ,dust],[sellZ,dustT],
+    ...probes.map(u=>[buyZ,BigInt(Math.floor(u/qu*1e18))]),...probes.map(u=>[sellZ,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec)))])]);
+  const [db,ds,...r]=q.legs;
+  const cross=(off,base,buy)=>{
+    const pts=probes.map((u,i)=>{const m=r[off+i].marg;return {u,m:m&&base.marg?Math.abs((buy?base.marg/m:m/base.marg)-1)*100:null}}).filter(p=>p.m!=null&&p.m>0);
+    if(!pts.length)return {v:null,min:null};
+    for(let i=1;i<pts.length;i++)if(pts[i].m>=1&&pts[i-1].m<1){
+      const a=pts[i-1],b=pts[i],t=(Math.log(1)-Math.log(a.m))/(Math.log(b.m)-Math.log(a.m));
+      return {v:Math.exp(Math.log(a.u)+t*(Math.log(b.u)-Math.log(a.u))),min:null};
+    }
+    const last=pts[pts.length-1];return {v:null,min:last.m<1?last.u:null};
+  };
+  const u=cross(0,db,true),d=cross(probes.length,ds,false);
+  return {up:u.v,down:d.v,upMin:u.min,downMin:d.min};
+}
+
+// === WHERE ELSE DOES IT TRADE? ===
+// This decides whether the pool we can measure is worth measuring at all, so it
+// cannot depend on a source that only knows the venues it happens to index.
+// GoPlus used to fill this role and does not know fstswap: a token with $107k
+// there showed up here as a $15 PancakeSwap dust pool with "+20,456% impact"
+// and no warning, because from GoPlus's side there was nothing to compare
+// against. DexScreener indexes the small venues, returns one consistent USD
+// figure per pool, and sends CORS: * — so the comparison is like for like and
+// the guard no longer depends on somebody else's coverage.
+// DexScreener's internal ids, as people say them (2026-10-09 review: "0xC6B7ee49D386…6285 v2" stood next to our
+// "PancakeSwap V2"). An id that is an address stays an address, shortened and named as unknown; the version only
+// when DexScreener gives one — "v2" was a guess.
+const DEX_NAMES={pancakeswap:'PancakeSwap',uniswap:'Uniswap',biswap:'Biswap',thena:'Thena',apeswap:'ApeSwap',babyswap:'BabySwap',
+  mdex:'MDEX',sushiswap:'SushiSwap',squadswap:'SquadSwap',fourmeme:'four.meme',bakeryswap:'BakerySwap',dodo:'DODO',
+  traderjoe:'Trader Joe',kyberswap:'KyberSwap',nomiswap:'Nomiswap',fstswap:'FstSwap',babydogeswap:'BabyDogeSwap',woofi:'WOOFi',
+  pancakeswap_infinity:'PancakeSwap Infinity',uniswapv4:'Uniswap',lynex:'Lynex',swapx:'SwapX'};
+export function dexName(id,labels){
+  const v=(labels||[]).join(' ').toUpperCase().replace(/^V/,'V');
+  const raw=String(id||'');
+  const n=DEX_NAMES[raw.toLowerCase()]||(/^0x[0-9a-f]{40}$/i.test(raw)?'Unknown DEX ('+raw.slice(0,6)+'…'+raw.slice(-4)+')':raw?raw.charAt(0).toUpperCase()+raw.slice(1):'Unknown DEX');
+  return v?n+' '+v:n;
+}
+export async function venues(token){
+  try{
+    const r=await fetch('https://api.dexscreener.com/latest/dex/tokens/'+token,
+      {signal:AbortSignal.timeout(9000)});
+    if(!r.ok)return null;
+    const j=await r.json();
+    const list=(j.pairs||[]).filter(p=>p.chainId==='bsc'&&p.liquidity)
+      .map(p=>({pair:(p.pairAddress||'').toLowerCase(),
+        name:dexName(p.dexId,p.labels),
+        quote:p.quoteToken&&p.quoteToken.symbol||'',
+        liq:Math.round(p.liquidity.usd||0)}))
+      .sort((a,b)=>b.liq-a.liq);
+    return list.length?list:null;
+  }catch(e){return null}
+}
+
+// === THE TAX, MEASURED ===
+// Not read off a label — read off trades that actually happened. The pair says
+// how many tokens it moved; the token's own Transfer events in the same
+// transaction say how many arrived. The gap is what was charged, to the wallet
+// that paid it. On a taxed buy the pool emits two transfers, one to the tax sink
+// and one to the buyer; the buyer's is the larger, and the difference is the tax.
+export const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
+      // Concentrated liquidity emits a DIFFERENT Swap event, and asking for the
+      // V2 one over a V3 pool returns an empty list — which this page then
+      // printed as "this pool has not traded in the last two hours" for pools
+      // trading every block. Every V3 token silently fell back to the GoPlus
+      // label, which is the one thing the tax card exists not to do.
+      // And PancakeSwap's V3 Swap is NOT Uniswap's: it carries two extra
+      // protocol-fee words, so it hashes to a different topic. Taken off a live
+      // pool's own logs rather than from a docs page — asking for Uniswap's
+      // topic returned zero swaps on USDC/USDT, a pool that trades every block.
+      // Both are accepted; only the first is ever seen at this venue.
+      SWAP_V3_T='0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83',
+      SWAP_V3_UNI='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
+      // PancakeSwap Infinity CL's Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, …),
+      // emitted by the CLPoolManager with the pool id as topic 1 — its amounts are the SWAPPER's side, the reverse of
+      // V3: positive went to the trader, negative came from it (read off GWEI/USDT's own logs, 19.10.)
+      SWAP_INF_T='0x04206ad2b7c0f463bff3dd4f33c5735b0f2957a351e4f79763a4fa9e775dd237',
+      XFER_T='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+      // A V2 pair's Mint(sender, amount0, amount1): liquidity added. Taken off BOBAI's own add (0xcfa93c73…).
+      MINT_T='0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f';
+// V3 states the two amounts as SIGNED integers from the pool's point of view:
+// positive went in, negative came out. V2 states four unsigned ones instead.
+const TWO256=1n<<256n,TWO255=1n<<255n;
+export const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
+// How long the readable window actually is, in the reader's units. BSC's block
+// time is not a constant — it was 3s, then 1.5s, then 0.75s — so "5,000 blocks
+// is about two hours" was true when it was written and is wrong now. Asked of
+// the chain instead of assumed.
+async function windowSpan(from,to){
+  try{
+    const [a,b]=await Promise.all([
+      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false],LOGS_RPC),
+      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false],LOGS_RPC)]);
+    const s=parseInt(b.timestamp,16)-parseInt(a.timestamp,16);
+    if(!(s>0))return null;
+    return s<5400?Math.round(s/60)+' minutes':(s/3600).toFixed(1).replace(/\.0$/,'')+' hours';
+  }catch(e){return null}
+}
+export async function measureTax(token,pair,tokenIs0,kind){
+  try{
+    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16)-HEAD_BACK;
+    // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
+    // 59 min — the endpoint answers that in one call and refuses only beyond
+    // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
+    // while every other reading on the page said "the last hour", and a thin
+    // pool was simulated where an hour of trades would have measured it.
+    const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+    // AN INFINITY POOL (2026-10-19): `pair` is its id; its swaps are the manager's Swap logs with that id as topic 1,
+    // and its tokens move to and from the shared Vault — which stands where a pair's own address stands below. Only
+    // a transaction with ONE Infinity swap in it is read: the Vault is everybody's, so a second swap in the same
+    // transaction could move this token through it too.
+    const inf=kind==='inf',hold=inf?INF_VAULT:pair;
+    // THE NEWEST TRADES FIRST, THE HOUR ONLY WHEN THEY ARE NOT ENOUGH
+    // (2026-09-21). This read the whole hour and then used its newest sixteen
+    // receipts. On the pools traded most that hour is more than the endpoint
+    // returns at all — "query exceeds max results 20000", a fixed limit, not
+    // throttling — and the same filter was sent four times and the whole read
+    // repeated by the caller: AKE, 23,000 swaps an hour, came back after 16 s
+    // with a GoPlus label where the measurement belongs. The last few minutes
+    // of such a pool hold hundreds of swaps and answer in 60 ms. So: the short
+    // window first; the hour only when it did not yield three buys and three
+    // sells; and when the hour is refused for its size, a quarter of it.
+    // Both log hosts, and a second pass after a beat, as before: the two
+    // publicnode names throttle together, and a page that has just fired a
+    // thirty-call batch gets a 403 for a second or two (2026-09-03). A refusal
+    // for SIZE is not retried — the same range has the same size.
+    let tooLarge=false;
+    const fetchWindow=async blocks=>{
+      const filter={address:inf?INF_CL_PM:pair,topics:inf?[SWAP_INF_T,pair]:topic,fromBlock:'0x'+(head-(blocks-1)).toString(16),toBlock:'0x'+head.toString(16)};
+      for(let pass=0;pass<2;pass++){
+        if(pass)await new Promise(r=>setTimeout(r,900));
+        for(const url of LOGS_RPCS){
+          try{const l=await rpc('eth_getLogs',[filter],url);if(l)return l}
+          catch(e){if(/max results|exceeds|too (large|many)|limit/i.test(String(e&&e.message))){tooLarge=true;return null}}
+        }
+      }
+      return null;
+    };
+    const U=h=>BigInt('0x'+h);
+    const buys=[],sells=[];const seen=new Set();
+    // Receipts are one round trip each, and a busy pool can offer thousands of
+    // swaps. Sixteen is enough to find three of each on any pool with two-sided
+    // flow, and bounds the wait when a pool is all arb and nothing qualifies.
+    let tried=0;
+    const enough=()=>(buys.length>=3&&sells.length>=3)||tried>=16;
+    const take=async logs=>{
+    for(const L of logs.slice().reverse()){
+      if(buys.length>=3&&sells.length>=3)break;
+      if(tried>=16)break;
+      if(seen.has(L.transactionHash))continue;seen.add(L.transactionHash);
+      const d=L.data.slice(2);
+      let tokOut,tokIn;
+      if(kind==='v3'){
+        const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),mine=tokenIs0?a:b;
+        tokOut=mine<0n?-mine:0n;tokIn=mine>0n?mine:0n;
+      }else if(inf){   // the swapper's side: positive came out to the trader, negative went in
+        const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),mine=tokenIs0?a:b;
+        tokOut=mine>0n?mine:0n;tokIn=mine<0n?-mine:0n;
+      }else{
+        const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+        tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;
+      }
+      if(!(tokOut>0n)&&!(tokIn>0n))continue;
+      if(tokOut>0n&&buys.length>=3)continue;
+      if(tokIn>0n&&sells.length>=3)continue;
+      // Receipts come from the main node, not the log node: the log endpoint
+      // serves ranges but returns nothing useful for receipts, which cost an
+      // earlier build every single tax measurement while looking like success.
+      tried++;
+      let rec;try{rec=await rpc('eth_getTransactionReceipt',[L.transactionHash])}catch(e){continue}
+      if(!rec||!rec.logs)continue;
+      // Which contracts in this transaction are POOLS. It matters because the
+      // sell side works out the tax by comparing what the pair received against
+      // the other token transfers the seller made — exact for a plain sell, and
+      // nonsense for an arbitrage bot routing the same token through two pools,
+      // where the second leg gets counted as if it were a fee. That is where a
+      // 30.63% sell tax on $CAKE came from, a token with no tax at all. Anything
+      // sent to another pool is a leg, not a fee, and is excluded by name.
+      const isSwap=x=>x.topics[0]===SWAP_T||x.topics[0]===SWAP_V3_T||x.topics[0]===SWAP_V3_UNI;
+      const pools=new Set(rec.logs.filter(isSwap).map(x=>x.address.toLowerCase()));
+      // Our own pair swapped twice in one transaction cannot be matched to one
+      // Swap event, so that transaction is skipped rather than misread.
+      if(inf?rec.logs.filter(x=>x.topics[0]===SWAP_INF_T).length!==1||rec.logs.filter(x=>x.topics[0]===SWAP_INF_T&&x.topics[1]===pair).length!==1
+        :rec.logs.filter(x=>isSwap(x)&&x.address.toLowerCase()===pair).length!==1)continue;
+      const xf=rec.logs.filter(x=>x.address.toLowerCase()===token&&x.topics[0]===XFER_T&&x.topics.length>=3)
+        .map(x=>({from:'0x'+x.topics[1].slice(26),to:'0x'+x.topics[2].slice(26),v:U(x.data.slice(2)),
+          i:parseInt(x.logIndex,16)}));
+      if(!xf.length)continue;
+      // A ratio outside [0, 1) is not a tax reading, it is a transfer this code
+      // has mismatched — a rebasing token, a router that batches two swaps into
+      // one receipt, a fee taken in a different token. Dropping it is right;
+      // averaging it in would put a negative or a 300% tax on the page.
+      const keep=(a,v)=>{if(isFinite(v)&&v>=-0.0001&&v<0.99)a.push(Math.max(0,v))};
+      if(tokOut>0n){
+        const outs=xf.filter(x=>x.from===hold);
+        if(outs.length){const got=outs.reduce((m,x)=>x.v>m?x.v:m,0n);
+          keep(buys,1-Number(got)/Number(tokOut))}
+      }else{
+        const inn=xf.find(x=>x.to===hold);
+        // A taxed sell emits its fee leg RIGHT NEXT to the transfer that funds
+        // the swap — same call, adjacent log indices. Anything the same wallet
+        // sends elsewhere in a long routed transaction is a different trade, not
+        // a fee, and summing it in is what produced a 30% sell tax for $CAKE.
+        // Two filters, because either alone leaves a hole: not to another pool,
+        // and not four logs away from the transfer it is supposed to belong to.
+        if(inn){const total=xf.filter(x=>x.from===inn.from&&Math.abs(x.i-inn.i)<=3&&
+            (x.to===hold||!pools.has(x.to)))
+          .reduce((s,x)=>s+x.v,0n);
+          // Above 50% this is not a tax reading, it is a mismatch. Real taxes
+          // that high exist, but they cannot be told apart from a bad match, and
+          // guessing wrong here is worse than saying nothing.
+          if(total>0n){const t=1-Number(inn.v)/Number(total);if(t<0.5)keep(sells,t)}}
+      }
+    }
+    };
+    // swapLogs (2026-09-27): the swaps of the widest window that answered, handed on so the activity read
+    // (readActivity) counts buys, sells and volume off the same logs instead of fetching them again.
+    let windowBlocks=0,sawLogs=false,swapLogs=null;
+    const steps=[TAX_SHORT_BLOCKS,WINDOW_BLOCKS];
+    for(let si=0;si<steps.length&&!enough();si++){
+      const logs=await fetchWindow(steps[si]);
+      if(logs===null){
+        if(steps[si]===WINDOW_BLOCKS&&tooLarge)steps.push(TAX_MID_BLOCKS);
+        continue;
+      }
+      if(steps[si]>=windowBlocks)swapLogs=logs;
+      windowBlocks=Math.max(windowBlocks,steps[si]);
+      if(logs.length)sawLogs=true;
+      await take(logs);
+    }
+    // A refused range and a quiet pool arrive as the same emptiness and mean
+    // opposite things. Only one of them may be stated as a fact about somebody
+    // else's pool — and a quiet pool only for the window that really answered.
+    if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
+    if(!sawLogs){
+      const span=await windowSpan(head-(windowBlocks-1),head);
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks')+(windowBlocks<WINDOW_BLOCKS?'; the full hour could not be read':''),partial:windowBlocks<WINDOW_BLOCKS,block:head,windowBlocks,swapLogs};
+    }
+    // Exempt wallets exist — the deployer, the tax sink, routers on an allow
+    // list — and they trade at 0%. Taking the median rather than the mean keeps
+    // one exempt trade from dragging the figure below what a normal wallet pays.
+    const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
+      return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
+    const b=med(buys),s=med(sells);
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks,swapLogs};
+    return {ok:true,partial:windowBlocks<WINDOW_BLOCKS,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
+      spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
+  }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
+}
+
+
+// === MANY READS, ONE REQUEST ===
+//
+// Reading a V3 pool's tick book is hundreds of eth_calls, and a JSON-RPC batch
+// carries at most about 25 of them before this endpoint refuses the request. On
+// the Workers free plan a single incoming request may make 50 outgoing ones, so
+// the tick walk alone would spend a third of that budget and a busy pair with
+// one extra price hop would fall off the edge — as "too many subrequests",
+// which arrives as a failed scan rather than a slow one.
+//
+// Multicall3 is deployed on BNB Chain at the same address it uses everywhere,
+// and it turns any number of view calls into ONE. Measured 2026-09-01: 400
+// ticks() reads returned in 210 ms in a single call, byte for byte identical to
+// the same 400 asked one at a time.
+//
+// It is a fast path, not a dependency. If the aggregate call fails for any
+// reason the plain batch runs instead and the answer is the same, only slower —
+// a helper contract must never be the reason a measurement cannot be made.
+export const MULTICALL3='0xca11bde05977b3631167028862be2a173976ca11';
+const w256=v=>BigInt(v).toString(16).padStart(64,'0');
+const MC_CHUNK=500;
+
+const encodeAggregate3=(calls,allowFailure=false)=>{
+  const structs=calls.map(c=>{
+    const d=c.data.slice(2),pad=d+'0'.repeat((64-(d.length%64))%64);
+    // (address target, bool allowFailure, bytes callData). This comment said
+    // "allowFailure is on" for weeks over a word that encodes it OFF: for the
+    // reads below that never mattered — a reverting read fails the aggregate
+    // and the plain batch answers instead. The sell simulation is the first
+    // caller for which a failing call IS the answer, found by its own negative
+    // pin (2026-09-21): it passes true. The reads keep what they always had.
+    return '0'.repeat(24)+c.to.slice(2).toLowerCase()+w256(allowFailure?1:0)+w256(0x60)+w256(d.length/2)+pad;
+  });
+  let off=32*calls.length,offs='';
+  for(const s of structs){offs+=w256(off);off+=s.length/2}
+  return '0x82ad56cb'+w256(0x20)+w256(calls.length)+offs+structs.join('');
+};
+
+// Every offset below is a BYTE offset into the returned data, which is how the
+// ABI states them. Reading one of them as a word index instead is not a crash:
+// it lands on a different word that also parses as a number, and the decode
+// then fails somewhere further along. The first port of this did exactly that,
+// and the only symptom was that the fast path silently stopped being taken —
+// the answers stayed right and the request count went UP by one.
+const decodeAggregate3=(hex,n)=>{
+  const b=hex.slice(2),at=o=>b.slice(o*2,o*2+64);
+  const arr=Number(BigInt('0x'+at(0)));
+  const len=Number(BigInt('0x'+at(arr)));
+  if(len!==n)throw new Error('multicall returned '+len+' of '+n);
+  const head=arr+32,out=[];
+  for(let i=0;i<len;i++){
+    const o=head+Number(BigInt('0x'+at(head+i*32)));
+    const ok=BigInt('0x'+at(o))===1n;
+    // Offsets inside the tuple are relative to the tuple's own start, not to
+    // the word that carries them.
+    const dOff=o+Number(BigInt('0x'+at(o+32)));
+    const bytes=Number(BigInt('0x'+at(dOff)));
+    out.push(ok?'0x'+b.slice((dOff+32)*2,(dOff+32)*2+bytes*2):null);
+  }
+  return out;
+};
+
+// `block` pins every call to one block instead of to whatever "latest" means at
+// the moment each request lands. That is not a refinement, it is the difference
+// between a consistent reading and a stitched one: read as a plain batch, a
+// pool's tick book arrives over about two seconds of a chain that produces a
+// block every 0.45, so the far end of the book is a different pool state from
+// the near end. Measured on WBNB/USDT: stitched, the walk disagreed with the
+// pool's own quoter by 0.002%; from one block, by nothing at all.
+export async function multicall(calls,url,block='latest'){
+  if(!calls.length)return [];
+  try{
+    const out=[];
+    for(let i=0;i<calls.length;i+=MC_CHUNK){
+      const part=calls.slice(i,i+MC_CHUNK);
+      const r=await rpc('eth_call',[{to:MULTICALL3,data:encodeAggregate3(part)},block],url);
+      if(!r||r==='0x')throw new Error('empty aggregate');
+      out.push(...decodeAggregate3(r,part.length));
+    }
+    return out;
+  }catch(e){
+    // Same answer, more requests. Worth a line in the log rather than a silent
+    // difference in cost between two runs of the same scan.
+    return rpcBatch(calls,url,block);
+  }
+}
+
+// HOW LONG THE WINDOW REALLY WAS, in minutes, asked of the chain.
+//
+// BSC's block time is not a constant — it was 3s, then 1.5s, then 0.45 — so a
+// window derived from an assumed block time is wrong the moment the chain
+// changes and nothing says so. It is asked instead.
+//
+// Both endpoints, and a retry, because the first version used one and had no
+// second chance: on 2026-09-01 a single refused read made the whole answer come
+// back with `minutes: null`, and the rule this project actually cares about is
+// that the window travels with the figure. Losing the window to one flaky read
+// turns a good measurement into one that must not be quoted.
+export async function windowMinutes(from, to) {
+  // Two rounds over the endpoints: the block reads share the log endpoint's
+  // quota, and one refusal in a busy minute left the window "null min" on the
+  // health check while the tiers themselves had been read.
+  const tries = [...LOGS_RPCS, ...LOGS_RPCS];
+  for (let i = 0; i < tries.length; i++) {
+    const url = tries[i];
+    if (i === LOGS_RPCS.length) await new Promise((r) => setTimeout(r, 200));
+    try {
+      const [a, b] = await Promise.all([
+        rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], url),
+        rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], url),
+      ]);
+      const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
+      if (s > 0) return s / 60;
+    } catch { /* try the other one */ }
+  }
+  return null;
+}
+
+// eth_getLogs over a range, and when the endpoint refuses it, over its two
+// halves, then their halves (three levels: eight slices at most). The busiest
+// pools — CAKE/BNB at 0.05% and 0.25% — came back "refused" in 3 of 3 runs
+// over 5,000 blocks from the Worker's shared egress while the same range
+// answered from a laptop; smaller answers pass where the big one does not.
+// The sample stays the same window, just read in pieces. null = refused.
+// the last refusal of a log read, in the node's words: an answer that says 'unreadable' should also say why
+export let logsRefusal = null;
+export async function getLogsSplit(params, from, to, url, depth = 0) {
+  try {
+    return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
+  } catch (e) {
+    logsRefusal = String(e?.message || e).replace(/https?:\S+/g, '').slice(0, 140);
+    // a node that is behind, or a 429, says the same of every half: splitting spent up to 15 of the Worker's requests on it
+    if (depth >= 3 || to - from < 64 || /beyond current head|HTTP 429/i.test(String(e?.message || ''))) return null;
+    const mid = from + Math.floor((to - from) / 2);
+    const a = await getLogsSplit(params, from, mid, url, depth + 1);
+    if (a === null) return null;
+    const b = await getLogsSplit(params, mid + 1, to, url, depth + 1);
+    if (b === null) return null;
+    return a.concat(b);
+  }
+}
+
+// A POOL'S HOUR, KEPT FOUR MINUTES (2026-11-02). Cloudflare's shared address is refused about two reads in three, so what
+// one call won, the next need not win again: the fee tiers and the range replay read the same swaps of the same pool and
+// keep them under one key, with the blocks they cover, so whoever uses a kept hour can name it. Only in a Worker; the skill
+// and the laptop have no edge cache and read afresh.
+const logsEdge = () => (typeof caches !== 'undefined' && caches.default) || null;
+const logsKey = (pool) => new Request(`https://brainonbnb.com/__cache/pool-logs/${pool.toLowerCase()}`);
+export async function keptLogs(pool) {
+  const edge = logsEdge();
+  if (!edge) return null;
+  try {
+    const hit = await edge.match(logsKey(pool));
+    const kept = hit ? await hit.json() : null;
+    return Array.isArray(kept?.logs) ? kept : null;
+  } catch { return null; }
+}
+export async function keepLogs(pool, from, head, logs) {
+  const edge = logsEdge();
+  if (!edge || !logs) return;
+  await edge.put(logsKey(pool), new Response(JSON.stringify({ at: Date.now(), from, head, logs }), { headers: { 'Cache-Control': 'public, max-age=240' } })).catch(() => {});
+}
+
+// === WHERE THE CAPITAL ACTUALLY SITS ===
+//
+// Every figure this project publishes about a V3 pool has so far divided by
+// what the pool CONTRACT HOLDS, and said so in a caveat: "in V3 that includes
+// liquidity sitting outside the current price range, which earns nothing."
+// A caveat is a promise to measure something later. This is later.
+//
+// A liquidity provider is not paid for holding tokens. They are paid for the
+// liquidity standing where the price is when a swap goes through, in proportion
+// to their share of it. Capital parked two hundred percent away is on the
+// books, in the balance, in every chart of "TVL" — and earns nothing. So the
+// denominator an LP needs is not the pool's balance but the capital standing in
+// the band the price is actually in.
+//
+// This reconstructs that from the pool's own tick data: the active liquidity at
+// the current price, then every initialised tick inside the band with the net
+// liquidity it adds or removes, walked outward in both directions. Each
+// resulting segment is converted to token amounts with the standard
+// concentrated-liquidity identities, so what comes back is not an index or a
+// score. It is an amount of each token, in the band, and it can be checked — it
+// can never exceed what the contract holds.
+//
+// V2 is measured the same way rather than exempted. A constant-product pool is
+// a full-range position with L = sqrt(x*y), so the same band question has the
+// same kind of answer — and that is the comparison that matters, because a V2
+// pool holding forty million dollars may stand less capital at the price than a
+// V3 pool holding two.
+const TICK_BASE=1.0001;
+// sqrt(1.0001^t), the pool's sqrtPrice at a tick, in raw token units. Number
+// rather than the Q96 integer: every use below is a difference of two nearby
+// roots multiplied by a liquidity, and doubles carry that to about twelve
+// significant figures, which is nine more than any dollar figure here needs.
+const sqrtAtTick=t=>Math.pow(TICK_BASE,t/2);
+const fdiv=(a,b)=>Math.floor(a/b);
+// int24 and int16 arguments are two's complement, sign-extended to a full word.
+const iword=v=>{const b=BigInt(v);return ((b<0n?(1n<<256n)+b:b).toString(16)).padStart(64,'0')};
+const TICKS_SEL='0xf30dba93',BITMAP_SEL='0x5339c296',
+      LIQUIDITY_SEL='0x1a686502',SPACING_SEL='0xd0c93a7c';
+const int128At=w=>{const v=BigInt('0x'+w);return v>=TWO255?v-TWO256:v};
+// slot0 answers sqrtPriceX96 in word 0 and the current tick, signed, in word 1.
+const int24At=w=>{const v=BigInt('0x'+w);return Number(v>=TWO255?v-TWO256:v)};
+
+// The amounts one liquidity segment holds between two roots, given where the
+// price stands. Above the price a segment is entirely token0, below it entirely
+// token1, and the segment containing the price holds both — which is why both
+// walks below start at the price itself rather than at a tick boundary.
+export function segAmounts(L,sLo,sHi,sP){
+  if(!(L>0)||!(sHi>sLo))return [0,0];
+  if(sHi<=sP)return [0,L*(sHi-sLo)];
+  if(sLo>=sP)return [L*(1/sLo-1/sHi),0];
+  return [L*(1/sP-1/sHi),L*(sP-sLo)];
+}
+
+// A constant-product pool as the full-range position it is. No RPC: by the time
+// this is worth asking, the reserves are already known.
+export function bandDepthV2(r0,r1,bandPct){
+  if(!(r0>0)||!(r1>0))return null;
+  const L=Math.sqrt(r0*r1),sP=Math.sqrt(r1/r0),k=Math.sqrt(1+bandPct/100);
+  const [a0,a1]=segAmounts(L,sP/k,sP*k,sP);
+  return {amount0:a0,amount1:a1,complete:true,initialized_ticks:null};
+}
+
+// The same question asked of concentrated liquidity, which has to be walked.
+//
+// Three rounds for ALL pools at once rather than three rounds per pool: state,
+// then bitmap words, then the initialised ticks those words point at. These
+// endpoints rate-limit per request, and five tiers asked one after another is
+// exactly the pattern that came back half-unreadable before.
+// The cap is 400 because that is enough to never bite at the band this is used
+// with: two percent is 198 ticks either side, and the finest spacing PancakeSwap
+// runs is one, so 397 is the most a complete answer can ever need. It was 192
+// first, and WBNB/USDT at the 0.01% tier came back truncated — understated by a
+// quarter, flagged, but still a smaller number that looked like a real one.
+// WHAT REACHES LIQUIDITY. slot0's sixth word is the protocol's cut of every
+// swap fee: PancakeSwap packs two 16-bit shares in 1/10000 (token0 low, token1
+// high — 3400 on CAKE/BNB 0.05%, i.e. 34% to the protocol); a Uniswap-style
+// pool packs two 4-bit divisors (fee/x) in one byte. Told apart by size.
+// Returns the share of a swap fee that liquidity providers receive, the mean
+// of the two directions (they are equal on every pool read so far). Pure.
+export const V2_LP_SHARE=0.17/0.25;   // PancakeSwap V2: 0.17 of the 0.25% goes to the pair
+export function lpShareFromSlot0(slot0){
+  if(!slot0||slot0.length<2+64*6)return null;
+  const fp=Number(BigInt('0x'+slot0.slice(2+64*5,2+64*6)));
+  const cut=fp>255?[(fp&0xffff)/1e4,(fp>>>16)/1e4]:[(fp&0xf)?1/(fp&0xf):0,(fp>>>4)?1/(fp>>>4):0];
+  const lp=cut.map(x=>(x>=0&&x<1?1-x:1));
+  return (lp[0]+lp[1])/2;
+}
+export async function bandDepthV3(pools,bandPct,maxTicks=400){
+  if(!pools.length)return [];
+  // ONE BLOCK FOR ALL THREE ROUNDS.
+  //
+  // The price, the active liquidity and every tick have to come from the same
+  // state or they describe a pool that never existed: the price from one block
+  // and the book from the next is a book with a hole in it. Multicall3 answers
+  // its own block number in the same call that reads the state, so pinning the
+  // two later rounds to it costs nothing — no extra request, no guess about
+  // which block "latest" meant a moment ago.
+  const stCalls=[call(MULTICALL3,'0x42cbb15c'),   // getBlockNumber()
+    ...pools.flatMap(p=>[call(p,S.slot0),call(p,LIQUIDITY_SEL),call(p,SPACING_SEL)])];
+  const st0=await multicall(stCalls);
+  const blk=st0[0]&&st0[0]!=='0x'?'0x'+BigInt(st0[0]).toString(16):'latest';
+  const st=st0.slice(1);
+  const base=pools.map((p,i)=>{
+    const s=st[i*3];
+    if(!s||s.length<130)return null;
+    const sqrtP=Number(BigInt('0x'+s.slice(2,66)))/Number(Q96);
+    const tick=int24At(s.slice(66,130));
+    const L=Number(hx(st[i*3+1]));
+    const spacing=Number(hx(st[i*3+2]))||1;
+    if(!(sqrtP>0))return null;
+    // The band is set in price, not in ticks, so its edges are exact instead of
+    // rounded to a spacing that differs per tier. The tick bounds only decide
+    // which ticks have to be read.
+    const k=Math.sqrt(1+bandPct/100);
+    const span=Math.ceil(Math.log(1+bandPct/100)/Math.log(TICK_BASE));
+    return {pool:p,sqrtP,tick,L,spacing,lpShare:lpShareFromSlot0(s),
+      sLo:sqrtP/k,sHi:sqrtP*k,tLo:tick-span,tHi:tick+span};
+  });
+
+  // Which bitmap words cover the band. Ticks are stored compressed by spacing
+  // and packed 256 to a word, so a wide-spacing tier is one word and a
+  // spacing-of-one tier at two percent is two or three.
+  const wordCalls=[],wordOwner=[];
+  base.forEach((b,i)=>{
+    if(!b)return;
+    const cLo=fdiv(b.tLo,b.spacing),cHi=fdiv(b.tHi,b.spacing);
+    for(let w=fdiv(cLo,256);w<=fdiv(cHi,256);w++){
+      wordCalls.push(call(b.pool,BITMAP_SEL+iword(w)));wordOwner.push([i,w]);
+    }
+  });
+  const words=wordCalls.length?await multicall(wordCalls,undefined,blk):[];
+
+  const want=base.map(()=>[]);
+  words.forEach((w,n)=>{
+    const [i,word]=wordOwner[n],b=base[i];
+    if(!w||w==='0x')return;
+    const bits=BigInt(w);
+    for(let bit=0;bit<256;bit++){
+      if((bits>>BigInt(bit))&1n){
+        const t=(word*256+bit)*b.spacing;
+        if(t>=b.tLo&&t<=b.tHi)want[i].push(t);
+      }
+    }
+  });
+
+  // A cap, and it is reported rather than silently applied. A spacing-of-one
+  // tier on a busy pair can carry several hundred initialised ticks inside two
+  // percent, and reading all of them costs more round trips than the answer is
+  // worth — but a figure computed over a truncated tick set is a smaller number
+  // that looks like a real one, so it says which one it is.
+  const truncated=base.map(()=>false);
+  want.forEach((list,i)=>{
+    if(!base[i])return;
+    list.sort((a,b)=>a-b);
+    if(list.length>maxTicks){
+      // Keep the ticks NEAREST the price: they carry the liquidity a swap meets
+      // first, so dropping the far edge understates the band by the least.
+      const c=base[i].tick;
+      want[i]=list.slice().sort((a,b)=>Math.abs(a-c)-Math.abs(b-c))
+        .slice(0,maxTicks).sort((a,b)=>a-b);
+      truncated[i]=true;
+    }
+  });
+
+  const tickCalls=[],tickOwner=[];
+  want.forEach((list,i)=>list.forEach(t=>{
+    tickCalls.push(call(base[i].pool,TICKS_SEL+iword(t)));tickOwner.push([i,t]);
+  }));
+  // The one round that is worth aggregating. State and bitmap words are a
+  // dozen calls between them and fit in a single batch already; the ticks are
+  // hundreds, and asked as a plain batch they cost sixteen of the fifty
+  // outgoing requests a Worker gets. Through Multicall3 they cost one.
+  const tickRes=tickCalls.length?await multicall(tickCalls,undefined,blk):[];
+  const nets=base.map(()=>new Map());
+  tickRes.forEach((r,n)=>{
+    const [i,t]=tickOwner[n];
+    if(r&&r.length>=130)nets[i].set(t,int128At(r.slice(66,130)));
+  });
+
+  return base.map((b,i)=>{
+    if(!b)return null;
+    const net=nets[i],inBand=want[i];
+    let a0=0,a1=0,inUp=0,inDown=0;
+    // Upward from the price. Crossing an initialised tick from below adds its
+    // net liquidity; the first segment starts at the price, because the tick
+    // the price sits in is only partly above it.
+    //
+    // The same walk answers a second question for free, and it is the one that
+    // makes this checkable: the token1 a buyer would have to put in to drag the
+    // price to the upper edge is the y-side of exactly these segments. That
+    // number can be handed to the pool's own quoter, and the quoter's answer
+    // has to come back as the token0 counted here. Nothing else in this file
+    // has an independent oracle; this does.
+    let L=b.L,cur=b.sqrtP;
+    for(const t of inBand.filter(t=>t>b.tick)){
+      const s=Math.min(sqrtAtTick(t),b.sHi);
+      const [x,y]=segAmounts(L,cur,s,b.sqrtP);a0+=x;a1+=y;
+      inUp+=L*(s-cur);
+      cur=s;
+      if(cur>=b.sHi)break;
+      L+=Number(net.get(t)||0n);
+    }
+    if(cur<b.sHi){
+      const [x,y]=segAmounts(L,cur,b.sHi,b.sqrtP);a0+=x;a1+=y;
+      inUp+=L*(b.sHi-cur);
+    }
+    // And downward. Crossing an initialised tick from above removes it — the
+    // same net, the other way round, which is the identity the pool itself uses
+    // when a swap walks the book.
+    L=b.L;cur=b.sqrtP;
+    for(const t of inBand.filter(t=>t<=b.tick).sort((x,y)=>y-x)){
+      const s=Math.max(sqrtAtTick(t),b.sLo);
+      const [x,y]=segAmounts(L,s,cur,b.sqrtP);a0+=x;a1+=y;
+      inDown+=L*(1/s-1/cur);
+      cur=s;
+      if(cur<=b.sLo)break;
+      L-=Number(net.get(t)||0n);
+    }
+    if(cur>b.sLo){
+      const [x,y]=segAmounts(L,b.sLo,cur,b.sqrtP);a0+=x;a1+=y;
+      inDown+=L*(1/b.sLo-1/cur);
+    }
+    return {amount0:a0,amount1:a1,tick:b.tick,spacing:b.spacing,lpShare:b.lpShare,
+      complete:!truncated[i],initialized_ticks:inBand.length,
+      band_ticks:[b.tLo,b.tHi],
+      // What it would take to walk the price to either edge, before the pool
+      // fee is added on top of the input. Amount out is the holding on that
+      // side, which is why it is not repeated here.
+      to_upper_in1:inUp,to_lower_in0:inDown};
+  });
+}
+
+// === CAN THIS TOKEN BE SOLD? ===
+// The question every buyer has and no label answers. GoPlus does not analyse a
+// fresh token at all (measured 2026-09-02: none of 370 tokens tried came back
+// analysed), so the page answered "sellability not checked" exactly where it
+// mattered most. This asks the chain directly.
+//
+// HOW, WITHOUT SPENDING ANYTHING
+// eth_call accepts a state override: for the length of one call, a probe
+// address is given a token balance, an allowance to the PancakeSwap V2 router
+// and some BNB, and the router is asked to sell. The public BSC nodes honour
+// the override (all three tested on 2026-09-02). The balance and allowance
+// live in mappings whose storage slot differs per contract, so the slot is
+// found first by writing a value into candidate slots and reading balanceOf
+// and allowance back, one batched request each. A contract that stores
+// balances somewhere no candidate reaches (a proxy with a detached store, a
+// packed struct) reports "could not place a test balance", which is an honest
+// "not checked", never a "safe".
+//
+// WHAT A REVERT MEANS AND DOES NOT MEAN
+// A sell that reverts for a fresh address with a normal balance is what a
+// honeypot looks like from the outside. It is also what a token with a
+// max-wallet rule or a trading pause looks like, so the revert reason is
+// passed through and the chip says "reverted", not "scam". A sell that
+// succeeds is proof for THIS size at THIS block from an address with no
+// history; an owner can still flip a switch tomorrow, and the page says so.
+const V2_ROUTER='0x10ed43c718714eb63d5aa57b78b54704e256024e';
+const SEL_SELL_FOT='0x791ac947', SEL_BUY_FOT='0xb6f9de95', SEL_BAL='0x70a08231', SEL_ALLOW='0xdd62ed3e';
+const PROBE='0x0000000000000000000000000000000000c0ffee';
+// A contract as the seller. The router's fee-on-transfer swap returns nothing,
+// so a plain address can only learn that a sell went through; a contract placed
+// at PROBE by the same state override reads back what arrived, and the tax is
+// arithmetic on that. Source: scripts/probe/SellProbe.sol; the bytes are
+// reproduced by scripts/probe/build-probe.mjs (--check compares them).
+// solc 0.8.36 · optimizer 200 · evm paris · 2121 bytes
+const SELL_PROBE_CODE='0x60806040526004361061002d5760003560e01c80634279a6a8146100395780637b213b6c1461007257600080fd5b3661003457005b600080fd5b34801561004557600080fd5b506100596100543660046104ee565b610085565b6040805192835260208301919091520160405180910390f35b610059610080366004610548565b610250565b6000808383600081811061009b5761009b61059b565b90506020020160208101906100b091906105b1565b60405163095ea7b360e01b81526001600160a01b03888116600483015260248201889052919091169063095ea7b3906044016020604051808303816000875af1158015610101573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061012591906105d3565b5060405163d06ca61f60e01b81526001600160a01b0387169063d06ca61f906101569088908890889060040161063d565b600060405180830381865afa158015610173573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f1916820160405261019b9190810190610676565b6101a6600185610759565b815181106101b6576101b661059b565b60209081029190910101519150476001600160a01b03871663791ac9478760008888306101e542610258610772565b6040518763ffffffff1660e01b815260040161020696959493929190610785565b600060405180830381600087803b15801561022057600080fd5b505af1158015610234573d6000803e3d6000fd5b5050505080476102449190610759565b91505094509492505050565b600080808484610261600182610759565b8181106102705761027061059b565b905060200201602081019061028591906105b1565b60405163d06ca61f60e01b81529091506001600160a01b0387169063d06ca61f906102b89034908990899060040161063d565b600060405180830381865afa1580156102d5573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f191682016040526102fd9190810190610676565b610308600186610759565b815181106103185761031861059b565b60209081029190910101516040516370a0823160e01b81523060048201529093506000906001600160a01b038316906370a0823190602401602060405180830381865afa15801561036d573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061039191906107c3565b90506001600160a01b03871663b6f9de953460008989306103b442610258610772565b6040518763ffffffff1660e01b81526004016103d49594939291906107dc565b6000604051808303818588803b1580156103ed57600080fd5b505af1158015610401573d6000803e3d6000fd5b50506040516370a0823160e01b81523060048201528493506001600160a01b03861692506370a082319150602401602060405180830381865afa15801561044c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061047091906107c3565b61047a9190610759565b92505050935093915050565b80356001600160a01b038116811461049d57600080fd5b919050565b60008083601f8401126104b457600080fd5b50813567ffffffffffffffff8111156104cc57600080fd5b6020830191508360208260051b85010111156104e757600080fd5b9250929050565b6000806000806060858703121561050457600080fd5b61050d85610486565b935060208501359250604085013567ffffffffffffffff81111561053057600080fd5b61053c878288016104a2565b95989497509550505050565b60008060006040848603121561055d57600080fd5b61056684610486565b9250602084013567ffffffffffffffff81111561058257600080fd5b61058e868287016104a2565b9497909650939450505050565b634e487b7160e01b600052603260045260246000fd5b6000602082840312156105c357600080fd5b6105cc82610486565b9392505050565b6000602082840312156105e557600080fd5b815180151581146105cc57600080fd5b81835260208301925060008160005b84811015610633576001600160a01b0361061d83610486565b1686526020958601959190910190600101610604565b5093949350505050565b8381526040602082015260006106576040830184866105f5565b95945050505050565b634e487b7160e01b600052604160045260246000fd5b60006020828403121561068857600080fd5b815167ffffffffffffffff81111561069f57600080fd5b8201601f810184136106b057600080fd5b805167ffffffffffffffff8111156106ca576106ca610660565b8060051b604051601f19603f830116810181811067ffffffffffffffff821117156106f7576106f7610660565b60405291825260208184018101929081018784111561071557600080fd5b6020850194505b838510156107385784518082526020958601959093500161071c565b509695505050505050565b634e487b7160e01b600052601160045260246000fd5b8181038181111561076c5761076c610743565b92915050565b8082018082111561076c5761076c610743565b86815285602082015260a0604082015260006107a560a0830186886105f5565b6001600160a01b039490941660608301525060800152949350505050565b6000602082840312156107d557600080fd5b5051919050565b8581526080602082015260006107f66080830186886105f5565b6001600160a01b039490941660408301525060600152939250505056fea26469706673582212207c8527339b57accc0677cb1e32c5eb3cebcdfa73637ae8a8847fd653e60ac77a64736f6c63430008240033';
+const SEL_PROBE_SELL='0x4279a6a8', SEL_PROBE_BUY='0x7b213b6c';
+const CALLER='0x000000000000000000000000000000000000beef';
+// The token amount that must have reached a PancakeSwap V2 pair for it to pay
+// `received` of the quote side, from the constant product with the 0.25% fee
+// (getAmountIn without its +1). What was sent minus what arrived is the tax.
+// Exported so the checker can pin the arithmetic without a node in the loop.
+export function sellTaxFromReceived(reserveTok,reserveQ,amount,received){
+  if(!(reserveQ>received)||!(amount>0n)||!(received>0n))return null;
+  const arrived=(reserveTok*received*10000n)/((reserveQ-received)*9975n);
+  const t=1-Number(arrived)/Number(amount);
+  return t<0?0:Math.min(t,1);
+}
+const pad32=v=>(typeof v==='bigint'?v.toString(16):String(v).replace(/^0x/,'')).padStart(64,'0');
+const hexToBytes=h=>{const s=h.replace(/^0x/,'');const a=new Uint8Array(s.length/2);for(let i=0;i<a.length;i++)a[i]=parseInt(s.substr(i*2,2),16);return a};
+// keccak256 over raw bytes. The page and the worker both have crypto.subtle
+// for SHA and nothing for keccak, so a compact Keccak-f[1600] lives here.
+function keccak256(bytes){
+  const RC=[0x1n,0x8082n,0x800000000000808an,0x8000000080008000n,0x808bn,0x80000001n,0x8000000080008081n,0x8000000000008009n,0x8an,0x88n,0x80008009n,0x8000000an,0x8000808bn,0x800000000000008bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,0x800an,0x800000008000000an,0x8000000080008081n,0x8000000000008080n,0x80000001n,0x8000000080008008n];
+  const ROT=[[0,36,3,41,18],[1,44,10,45,2],[62,6,43,15,61],[28,55,25,21,56],[27,20,39,8,14]];
+  const M=(1n<<64n)-1n, rot=(x,n)=>n?(((x<<BigInt(n))|(x>>BigInt(64-n)))&M):x;
+  const st=new Array(25).fill(0n); const rate=136;
+  const msg=new Uint8Array(Math.ceil((bytes.length+1)/rate)*rate); msg.set(bytes); msg[bytes.length]^=0x01; msg[msg.length-1]^=0x80;
+  for(let off=0;off<msg.length;off+=rate){
+    for(let i=0;i<rate/8;i++){let w=0n;for(let b=7;b>=0;b--)w=(w<<8n)|BigInt(msg[off+i*8+b]);st[i]^=w}
+    for(let r=0;r<24;r++){
+      const C=[0,1,2,3,4].map(x=>st[x]^st[x+5]^st[x+10]^st[x+15]^st[x+20]);
+      const D=[0,1,2,3,4].map(x=>C[(x+4)%5]^rot(C[(x+1)%5],1));
+      for(let i=0;i<25;i++)st[i]^=D[i%5];
+      const B=new Array(25);
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)B[y+5*((2*x+3*y)%5)]=rot(st[x+5*y],ROT[x][y]);
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)st[x+5*y]=B[x+5*y]^((~B[(x+1)%5+5*y])&B[(x+2)%5+5*y]);
+      st[0]^=RC[r];
+    }
+  }
+  let out='';for(let i=0;i<4;i++){let w=st[i];for(let b=0;b<8;b++){out+=Number(w&0xffn).toString(16).padStart(2,'0');w>>=8n}}
+  return out;
+}
+export const keccakHex=hex=>'0x'+keccak256(hexToBytes(hex));
+async function postRaw(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+  if(!r.ok)throw new Error('http '+r.status);return r.json();
+}
+// The batched slot search is forty calls in one request, and a public node
+// under load answers that with 429 (seen from the worker on the first live
+// run). Every endpoint in the pool is tried before the simulation gives up,
+// and a node that answered once is kept for the rest of this simulation.
+async function postAny(body,pref){
+  const order=[pref,...RPCS.filter(u=>u!==pref)].filter(Boolean);
+  let last=null;
+  for(const u of order){try{const j=await postRaw(u,body);if(Array.isArray(j)||(j&&!j.error))return {url:u,j}}catch(e){last=e}}
+  throw last||new Error('no endpoint answered');
+}
+// A slot search is only conclusive when the node answered EVERY candidate
+// without an error. A throttled node answers a batch with some entries as
+// "rate limit" — and a search that read that as "no slot matched" reported
+// a perfectly ordinary token as "non-standard storage" on the second call
+// of the first live run. Errors inside the batch mean: ask the next node.
+async function searchSlot(calls,amount,pref){
+  const order=[pref,...RPCS.filter(u=>u!==pref)].filter(Boolean);
+  let last=null;
+  for(const u of order){
+    let j=null;try{j=await postRaw(u,calls)}catch(e){last=e;continue}
+    if(!Array.isArray(j)){last=new Error('not a batch');continue}
+    const hit=j.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount);
+    if(hit)return {url:u,hit};
+    if(j.some(x=>x.error)||j.length<calls.length){last=new Error('throttled batch');continue}
+    return {url:u,hit:null};
+  }
+  throw last||new Error('no endpoint answered');
+}
+// Only a REVERT is a verdict about the token. A node that answers "rate
+// limit", "timeout" or "method not supported" has said nothing about the
+// sell, and on the first live run four answers in a row read such a refusal
+// as "the sell reverted" — a false honeypot on our own token. Exported so the
+// checker can pin both directions without a node in the loop.
+export function isRevert(err){
+  if(!err)return false;
+  const m=String(err.message||'').toLowerCase();
+  const d=typeof err.data==='string'?err.data:'';
+  return /revert|invalid opcode|out of gas/.test(m)||d.startsWith('0x08c379a0')||d.startsWith('0x4e487b71')||err.code===3;
+}
+function revertText(err){
+  const m=String(err&&(err.message||err)).slice(0,120);
+  const d=err&&err.data&&typeof err.data==='string'?err.data:null;
+  if(d&&d.startsWith('0x08c379a0')){try{const len=parseInt(d.slice(74,138),16);const hex=d.slice(138,138+len*2);let s='';for(let i=0;i<hex.length;i+=2)s+=String.fromCharCode(parseInt(hex.substr(i,2),16));return s}catch(e){}}
+  return m;
+}
+// ---- the same test for a PancakeSwap V3 pool (2026-09-21) -------------------
+// "This token trades on V3 — not simulated" was the answer for five of the six
+// tokens trending that day: the question the preflight exists for, "can I get
+// out again", unanswered for most of what is actually being traded.
+//
+// No new contract is needed. Multicall3 already sits at a known address and
+// calls whatever it is handed, IN ONE eth_call and therefore in one state: it
+// is given a test balance by storage override, and then (1) reads its balance
+// of the quote token, (2) approves PancakeSwap's V3 SwapRouter, (3) sells
+// through exactInputSingle on the pool's own fee tier, (4) reads its balance
+// again. The router was asked on-chain what it is bound to before it was
+// written down here: factory() answers PancakeSwap's V3 factory and WETH9()
+// WBNB. A revert of step 3 with the router's reason is "not sellable"; the
+// difference of 4 and 1 is what really arrived. There is no buy leg: that
+// would need a balance of the QUOTE token placed by override too, a second
+// slot search, and the outbound calls a scan has left do not pay for it — the
+// buy side stays with the executed trades.
+//
+// As in the V2 test the seller is a contract, and a "no contracts may trade"
+// rule refuses a contract where a wallet sails through. A V3 revert is
+// therefore reported with that caveat in the sentence, not as a bare verdict.
+const V3_SWAP_ROUTER='0x1b81d678ffb9c0263b24a97847620c99d213eb14';
+// Uniswap's SwapRouter02 (2026-10-18; factory() and WETH9() checked on chain): exactInputSingle without a deadline
+const UNI_SWAP_ROUTER='0xb971ef87ede563556b2ed4b1c0b0019111dd85d2', SEL_EXACT_INPUT_SINGLE_02='0x04e45aaf';
+const SEL_APPROVE='0x095ea7b3', SEL_EXACT_INPUT_SINGLE='0x414bf389';
+const decodeAggregate3Raw=(hex,n)=>{
+  const b=hex.slice(2),at=o=>b.slice(o*2,o*2+64);
+  const arr=Number(BigInt('0x'+at(0)));
+  if(Number(BigInt('0x'+at(arr)))!==n)throw new Error('multicall returned a different count');
+  const head=arr+32,out=[];
+  for(let i=0;i<n;i++){
+    const o=head+Number(BigInt('0x'+at(head+i*32)));
+    const dOff=o+Number(BigInt('0x'+at(o+32)));
+    const bytes=Number(BigInt('0x'+at(dOff)));
+    out.push({ok:BigInt('0x'+at(o))===1n,data:'0x'+b.slice((dOff+32)*2,(dOff+32)*2+bytes*2)});
+  }
+  return out;
+};
+// `withoutBalance` is the checker's negative: the same calls with no test
+// balance placed, which the router must refuse — or a pass proves nothing.
+export async function simulateV3Sell(token,pool,withoutBalance=false){
+  const url=RPCS[0];
+  token=token.toLowerCase();pool=String(pool).toLowerCase();
+  const head=await rpcBatch([call(pool,S.token0),call(pool,S.token1),call(pool,S.fee),call(pool,S.factory),call(token,SEL_BAL+pad32(pool))],url);
+  const t0=addrAt(head[0]),t1=addrAt(head[1]),fac=addrAt(head[3]);
+  const quote=t0===token?t1:t1===token?t0:null;
+  if(!quote)return {ok:false,reason:'the pool that was read does not hold this token'};
+  const uni=fac===UNI_V3_FACTORY, ROUTER=uni?UNI_SWAP_ROUTER:V3_SWAP_ROUTER, VENUE=uni?'Uniswap V3':'PancakeSwap V3';
+  if(fac!==V3FACTORY&&!uni)return {ok:false,reason:'the sell test trades through PancakeSwap\'s or Uniswap\'s V3 router, and this pool belongs to another venue — not run, not cleared'};
+  const fee=BigInt(head[2]),held=BigInt(head[4]||'0x0');
+  const amount=held/1000n>0n?held/1000n:1n;
+  const amtHex='0x'+pad32(amount);
+  // The test balance goes to Multicall3, found the way the V2 test finds it:
+  // the slot whose override makes balanceOf() answer the amount.
+  const holderKey=pad32(MULTICALL3);
+  const balCalls=[],balKeys=[];
+  for(let slot=0;slot<40;slot++){const k=keccakHex(holderKey+pad32(BigInt(slot)));balKeys.push(k);
+    balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+holderKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+  let b1=await searchSlot(balCalls.slice(0,12),amount,url);
+  if(!b1.hit)b1=await searchSlot(balCalls.slice(12),amount,b1.url);
+  if(!b1.hit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
+  const balKey=balKeys[b1.hit.id];
+  const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
+  const swap=uni
+    ?SEL_EXACT_INPUT_SINGLE_02+pad32(token)+pad32(quote)+pad32(fee)+holderKey+pad32(amount)+pad32(0n)+pad32(0n)
+    :SEL_EXACT_INPUT_SINGLE+pad32(token)+pad32(quote)+pad32(fee)+holderKey+deadline+pad32(amount)+pad32(0n)+pad32(0n);
+  const calls=[
+    {to:quote,data:SEL_BAL+holderKey},
+    {to:token,data:SEL_APPROVE+pad32(ROUTER)+pad32(amount)},
+    {to:ROUTER,data:swap},
+    {to:quote,data:SEL_BAL+holderKey},
+  ];
+  const body={jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:MULTICALL3,data:encodeAggregate3(calls,true),gas:'0x2dc6c0'},'latest',...(withoutBalance?[]:[{[token]:{stateDiff:{[balKey]:amtHex}}}])]};
+  let res=null;
+  for(const u of [b1.url,...RPCS.filter(x=>x!==b1.url)]){
+    let j=null;try{j=await postRaw(u,body)}catch(e){continue}
+    if(j&&j.result&&j.result!=='0x'){res=j.result;break}
+  }
+  if(!res)return {ok:false,reason:'every node refused the simulation call (rate limit or unsupported) — not checked, not cleared'};
+  const out=decodeAggregate3Raw(res,4);
+  const named={pair:pool,path:[token,quote],through_scanned_pool:true,venue:VENUE};
+  const size_note='one part in a thousand of what the pool holds of this token, sold from a contract at a fresh address';
+  const source='eth_call with a state override: Multicall3 holds a test balance, approves '+(uni?'Uniswap\'s SwapRouter02':'PancakeSwap\'s V3 SwapRouter')+' and sells through exactInputSingle on this pool\'s fee tier, at this block';
+  if(!out[1].ok)return {ok:false,reason:'the token refused the approve() the test needs — not checked, not cleared'};
+  if(!out[2].ok){
+    const why=revertText({data:out[2].data,message:'the swap reverted'});
+    return {ok:true,sellable:false,buyable:null,sell_error:why,buy_error:null,amount:amount.toString(),size_note,...named,tax:null,source,
+      note:'The seller in this test is a contract. A token that lets only plain wallets trade refuses it and still sells for a person — and a V3 pool refuses ANY token that takes a cut on the way in, which is also what this looks like.'};
+  }
+  const before=BigInt(out[0].data||'0x0'),after=BigInt(out[3].data||'0x0');
+  const received=after-before;
+  const paid=out[2].data&&out[2].data.length>=66?BigInt(out[2].data.slice(0,66)):null;
+  if(!(received>0n))return {ok:true,sellable:false,buyable:null,sell_error:'the swap went through and nothing arrived',buy_error:null,amount:amount.toString(),size_note,...named,tax:null,source};
+  // What the pool says it paid against what arrived: a quote token that takes
+  // a cut on the way out would show here. The token's own sell tax cannot — a
+  // V3 pool does not accept a transfer that arrives short, so a sell that went
+  // through paid none on the way in.
+  const sellTax=paid&&paid>0n?Math.max(0,Math.min(1,1-Number(received)/Number(paid))):0;
+  return {ok:true,sellable:true,buyable:null,sell_error:null,buy_error:null,amount:amount.toString(),size_note,...named,
+    tax:{sell_pct:+(sellTax*100).toFixed(2),buy_pct:null,method:'simulated at this block: what the V3 pool paid for the whole amount against what arrived; a V3 pool accepts no transfer that arrives short, so a sell that goes through paid no tax on the way in. The buy side is not simulated on V3.'},
+    source};
+}
+export async function simulateRoundTrip(token,pair,tokenIs0,kind){
+  try{
+    if(kind==='v3')return await simulateV3Sell(token,pair);
+    if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs and V3 pools; this pool is neither'};
+    token=token.toLowerCase();
+    // WBNB ITSELF (2026-10-10). The probe sells into WBNB, so for WBNB the path
+    // became [WBNB, USDT, WBNB], the second hop got nothing in, and the
+    // preflight stopped WBNB as not sellable and not buyable. WBNB is BNB
+    // wrapped one to one by its own contract, with no transfer tax: there is
+    // no trip to test, and the answer says so instead of running one.
+    if(token===WBNB)return wbnbItself(pair);
+    const url=RPCS[0];
+    // THE PAIR THE PROBE REALLY TRADES THROUGH (2026-09-18). The probe sells
+    // token -> WBNB through PancakeSwap's V2 router, whatever pair was scanned.
+    // The tax was then solved against the SCANNED pair's reserves: for the
+    // CAKE/USDT pair that read a 99.87% sell tax on a token with none, and a
+    // token with no BNB pair on PancakeSwap V2 read "sell REVERTED" — a false
+    // honeypot. The reserves are now those of the pair the router will use;
+    // without one the test says it was not run, which is what happened.
+    //
+    // THROUGH THE POOL THAT WAS SCANNED, WHEN THE ROUTER CAN (2026-09-21). That
+    // fix sent every token whose market is NOT against BNB to its token/BNB
+    // pair, whatever that pair holds. ARK: a $28M ARK/USDT pool charging 2.5%
+    // on a sell (three executed sells), and the test sold 0.0006 ARK into an
+    // ARK/BNB pair holding four dollars — "sellable: true, tax 0/0", about a
+    // market nobody trades in. A tax or a sell block tied to the main pair
+    // (`to == pair`, the usual pattern) is invisible from a side pair, and a
+    // broken side pair reads as a false "not sellable". The router routes
+    // through two pairs as readily as one: when the scanned pool is a
+    // PancakeSwap V2 pair against a quote that has its own BNB pair there, the
+    // test sells token -> quote -> BNB and buys back the same way. Whatever it
+    // traded through is NAMED in the answer (`pair`, `through_scanned_pool`),
+    // so a caller never has to guess which market "sellable" is about.
+    pair=String(pair).toLowerCase();
+    const head=await rpcBatch([call(V2FACTORY,getPair(token,WBNB)),call(pair,S.token0),call(pair,S.token1),call(pair,S.factory)],url);
+    const wp=addrAt(head[0]),t0=addrAt(head[1]),t1=addrAt(head[2]),fac=addrAt(head[3]);
+    const quote=t0===token?t1:t1===token?t0:null;
+    let path=[token,WBNB],through=wp===pair;
+    if(!through&&fac===V2FACTORY&&quote&&quote!==WBNB){
+      const qp=addrAt((await rpcBatch([call(V2FACTORY,getPair(quote,WBNB))],url))[0]);
+      if(qp&&qp!==NULLA){path=[token,quote,WBNB];through=true}
+    }
+    // A path that ends on the token it starts from is a trip to nowhere: the
+    // last hop gets nothing in and reads as a refusal.
+    if(path[0]===path[path.length-1])return wbnbItself(pair);
+    if(!through){
+      if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and neither this token nor the pool that was read has a route there — not run, not cleared'};
+      pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);
+    }
+    const named={pair,path,through_scanned_pool:through,
+      ...(through?{}:{pair_note:'NOT the pool that was read: this token\'s PancakeSwap V2 pair against BNB, the only one this router could trade. A tax or a sell block tied to the main pool does not show here.'})};
+    // A realistic size: one part in a thousand of what the pair holds.
+    const res=await rpcBatch([call(pair,SEL.reserves)],url);
+    const rr=res2(res[0]);if(!rr)return {ok:false,reason:'the pair reserves could not be read'};
+    const reserveTok=BigInt(Math.floor(tokenIs0?rr[0]:rr[1]));
+    const reserveQ=BigInt(Math.floor(tokenIs0?rr[1]:rr[0]));
+    const amount=reserveTok/1000n>0n?reserveTok/1000n:1n;
+    const amtHex='0x'+pad32(amount);
+    const probeKey=pad32(PROBE);
+    const balCalls=[],balKeys=[];
+    for(let slot=0;slot<40;slot++){const k=keccakHex(probeKey+pad32(BigInt(slot)));balKeys.push(k);
+      balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+probeKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+    // Twelve candidates first: nearly every ERC-20 keeps balances in one of
+    // the first slots, and a batch a third the size is a batch a public node
+    // answers under load. The long tail is only asked when the short one misses.
+    let b1=await searchSlot(balCalls.slice(0,12),amount,url);
+    if(!b1.hit)b1=await searchSlot(balCalls.slice(12),amount,b1.url);
+    const node=b1.url;const balHit=b1.hit;
+    if(!balHit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
+    const balKey=balKeys[balHit.id];
+    const size_note='one part in a thousand of the pair\'s token reserve, sold from a fresh address with no history';
+
+    // 1. The probe: a contract at PROBE sells and buys, and reports what
+    // arrived. That is the sell test AND the tax, in one call each.
+    const pr=await probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path);
+    if(pr.supported&&pr.sell.ok&&pr.buy.ok){
+      return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:amount.toString(),size_note,...named,
+        tax:{sell_pct:pr.sellTax==null?null:+(pr.sellTax*100).toFixed(2),buy_pct:pr.buyTax==null?null:+(pr.buyTax*100).toFixed(2),
+          method:'simulated at this block: what the pair would pay for the whole amount against what arrived after the transfer, from a fresh address with no history'},
+        source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller is a contract placed at a fresh address so what came back could be read'};
+    }
+    // 2. A revert with a contract as the seller is not yet a verdict: a
+    // "no contracts may trade" rule refuses it and a plain wallet sails
+    // through. So the same sell is asked from a plain address before anything
+    // is called refused — and when the node does not support code overrides at
+    // all, the plain address is simply the only path.
+    const plain=await plainRoundTrip(token,amount,amtHex,balKey,node,path);
+    if(!plain.ok)return pr.supported
+      ? {ok:true,sellable:pr.sell.ok,buyable:pr.buy.ok,sell_error:pr.sell.error,buy_error:pr.buy.error,amount:amount.toString(),size_note,...named,tax:null,
+         source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller was a contract at a fresh address'}
+      : plain;
+    if(pr.supported&&plain.sellable&&!pr.sell.ok){
+      return {...plain,...named,tax:null,contract_refused:pr.sell.error,
+        note:'A plain wallet sells; a contract as the seller was refused ('+pr.sell.error+'). That is what an anti-bot rule looks like, and it means the tax could not be measured by simulation.'};
+    }
+    return {...plain,...named,tax:null};
+  }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}
+function wbnbItself(pair){
+  return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:null,
+    size_note:'no test balance: WBNB is the coin the test sells into',pair:String(pair||'').toLowerCase(),path:[WBNB],through_scanned_pool:true,
+    tax:{sell_pct:0,buy_pct:0,method:'not simulated: WBNB unwraps to BNB 1:1 through its own contract (withdraw) and charges no transfer tax'},
+    note:'WBNB is BNB wrapped one to one; it unwraps 1:1 through its own contract at any time, so there is no sell to test.',
+    source:'the WBNB contract itself, not a simulation'};
+}
+async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path=[token,WBNB]){
+  const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');
+  const override={[token]:{stateDiff:{[balKey]:amtHex}},[PROBE]:{code:SELL_PROBE_CODE,balance:'0x'+pad32(10n**18n)},[CALLER]:{balance:'0x'+pad32(10n**18n)}};
+  const sellData=SEL_PROBE_SELL+pad32(V2_ROUTER)+pad32(amount)+pad32(0x60n)+words(path);
+  const buyData=SEL_PROBE_BUY+pad32(V2_ROUTER)+pad32(0x40n)+words(path.slice().reverse());
+  const calls=[
+    {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:PROBE,data:sellData,gas:'0x1e8480'},'latest',override]},
+    {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:CALLER,to:PROBE,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
+  ];
+  let sell=null,buy=null;
+  for(const u of [node,...RPCS.filter(x=>x!==node)]){
+    let out=null;try{out=await postRaw(u,calls)}catch(e){continue}
+    if(!Array.isArray(out))continue;
+    const s1=out.find(x=>x.id===1),b1=out.find(x=>x.id===2);
+    const settled=x=>x&&(!x.error||isRevert(x.error));
+    if(settled(s1)&&settled(b1)){sell=s1;buy=b1;break}
+  }
+  if(!sell||!buy)return {supported:false};
+  const two=h=>{const x=String(h||'').replace(/^0x/,'');return x.length>=128?[BigInt('0x'+x.slice(0,64)),BigInt('0x'+x.slice(64,128))]:null};
+  const sv=sell.error?null:two(sell.result),bv=buy.error?null:two(buy.result);
+  // A result that decodes to nothing is a node that ran the call without the
+  // code override and returned empty — that is "unsupported", not "sold".
+  if((!sell.error&&!sv)||(!buy.error&&!bv))return {supported:false};
+  // One hop: solved exactly against the pair's reserves. Two hops: the probe's
+  // own quote for the whole amount against what arrived — at one part in a
+  // thousand of the reserve the curve bends that by under 0.01 points.
+  const sellTax=!sv?null:path.length===2?sellTaxFromReceived(reserveTok,reserveQ,amount,sv[1])
+    :sv[0]>0n?Math.max(0,Math.min(1,1-Number(sv[1])/Number(sv[0]))):null;
+  const buyTax=bv&&bv[0]>0n?Math.max(0,Math.min(1,1-Number(bv[1])/Number(bv[0]))):null;
+  return {supported:true,
+    sell:{ok:!sell.error,error:sell.error?revertText(sell.error):null,quoted:sv?sv[0].toString():null,received:sv?sv[1].toString():null},
+    buy:{ok:!buy.error,error:buy.error?revertText(buy.error):null,quoted:bv?bv[0].toString():null,received:bv?bv[1].toString():null},
+    sellTax,buyTax};
+}
+// The plain-address path: the original simulation. It needs the allowance
+// placed by storage override too, since a wallet cannot approve inside an
+// eth_call, and it learns only whether the router accepted the sell.
+async function plainRoundTrip(token,amount,amtHex,balKey,node,path=[token,WBNB]){
+  const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');
+  try{
+    const probeKey=pad32(PROBE), routerKey=pad32(V2_ROUTER);
+    const alCalls=[],alKeys=[];
+    for(let slot=0;slot<40;slot++){const inner=keccakHex(probeKey+pad32(BigInt(slot)));const k=keccakHex(routerKey+inner.slice(2));alKeys.push(k);
+      alCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_ALLOW+probeKey+routerKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+    let a1=await searchSlot(alCalls.slice(0,12),amount,node);
+    if(!a1.hit)a1=await searchSlot(alCalls.slice(12),amount,a1.url);
+    node=a1.url;const alHit=a1.hit;
+    if(!alHit)return {ok:false,reason:'could not place a test allowance in this contract — not checked, not cleared'};
+    const alKey=alKeys[alHit.id];
+    const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
+    const override={[token]:{stateDiff:{[balKey]:amtHex,[alKey]:amtHex}},[PROBE]:{balance:'0x'+pad32(10n**18n)}};
+    const sellData=SEL_SELL_FOT+pad32(amount)+pad32(0n)+pad32(0xa0n)+probeKey+deadline+words(path);
+    const buyData=SEL_BUY_FOT+pad32(0n)+pad32(0x80n)+probeKey+deadline+words(path.slice().reverse());
+    const calls=[
+      {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:sellData,gas:'0x1e8480'},'latest',override]},
+      {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
+    ];
+    // Every node in turn until both answers are either a result or a revert.
+    let sell=null,buy=null;
+    for(const u of [node,...RPCS.filter(x=>x!==node)]){
+      let out=null;try{out=await postRaw(u,calls)}catch(e){continue}
+      if(!Array.isArray(out))continue;
+      const s1=out.find(x=>x.id===1),b1=out.find(x=>x.id===2);
+      const settled=x=>x&&(!x.error||isRevert(x.error));
+      if(settled(s1)&&settled(b1)){sell=s1;buy=b1;break}
+    }
+    if(!sell||!buy)return {ok:false,reason:'every node refused the simulation call (rate limit or unsupported) — not checked, not cleared'};
+    const sellOk=!sell.error,buyOk=!buy.error;
+    return {ok:true,sellable:sellOk,buyable:buyOk,
+      sell_error:sellOk?null:revertText(sell&&sell.error),buy_error:buyOk?null:revertText(buy&&buy.error),
+      amount:amount.toString(),
+      size_note:'one part in a thousand of the pair\'s token reserve, sold from a fresh address with no history',
+      source:'eth_call with a state override on the PancakeSwap V2 router, at this block'};
+  }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}
+
+// ---- four.meme: a token still on its launch curve ---------------------------
+// A four.meme token has no PancakeSwap pool until its raise completes; until
+// then every trade goes through four.meme's TokenManager, and a scanner that
+// only knows pools said "no pool" about a token that trades all day. The
+// platform's own helper contract answers the three questions this page asks of
+// a pool — what is it worth, what does a trade cost, can you sell it — with one
+// view call each: getTokenInfo(address), tryBuy(address,uint256,uint256),
+// trySell(address,uint256). Prices come back as quote-wei per whole token; the
+// fee rate is in basis points of 1e4 (100 = 1 %). tryBuy's estimatedCost plus
+// estimatedFee is the money in; trySell's funds is the money out AFTER its fee
+// (checked on a live curve: fee was 1 % of funds+fee, not of funds).
+export const FOURMEME_HELPER='0xf251f83e40a78868fcfa3fa4599dad6494e46034';
+export const FOURMEME_MANAGER='0x5c952063c7fc8610ffdb798152d69f0b9550762b';
+const CURVE_SEL={info:'0x1f69565f',tryBuy:'0xe21b103a',trySell:'0xc6f43e8c'};
+const wordAt=(h,i)=>h&&h.length>=66+64*i?hx('0x'+h.slice(2+64*i,66+64*i)):null;
+const addrWord=(h,i)=>h&&h.length>=66+64*i?addrAt('0x'+h.slice(2+64*i,66+64*i)):null;
+
+// null when the address is not a four.meme token at all (the helper returns a
+// zero version), an object otherwise — including for tokens that have long
+// since graduated, where `liquidityAdded` is true and the pool path applies.
+export async function curveInfo(token,url){
+  let r;
+  try{r=(await rpcBatch([call(FOURMEME_HELPER,CURVE_SEL.info+pad(token))],url))[0]}
+  catch(e){return null}
+  const version=Number(wordAt(r,0)||0n);
+  if(!version)return null;
+  const quoteAddr=addrWord(r,2);
+  const known=QUOTES.find(([a])=>a===quoteAddr);
+  const isBnb=!quoteAddr||quoteAddr===NULLA||quoteAddr===WBNB;
+  const offers=Number(wordAt(r,7))/1e18, maxOffers=Number(wordAt(r,8))/1e18;
+  const funds=Number(wordAt(r,9))/1e18, maxRaising=Number(wordAt(r,10))/1e18;
+  const launch=Number(wordAt(r,6)||0n);
+  return {
+    version, manager:addrWord(r,1),
+    quoteAddr:isBnb?null:quoteAddr,
+    quoteSym:isBnb?'BNB':known?known[1]:null,
+    quoteIsStable:!isBnb&&!!known&&known[2]===1,
+    // quote per whole token, as a plain number
+    price:Number(wordAt(r,3))/1e18,
+    feePct:Number(wordAt(r,4)||0n)/100,
+    launchTime:launch>0?launch:null,
+    offersLeft:offers, maxOffers,
+    raised:funds, maxRaising,
+    progressPct:maxRaising>0?Math.min(100,funds/maxRaising*100):null,
+    liquidityAdded:(wordAt(r,11)||0n)!==0n,
+  };
+}
+
+// What a buy and a sell of each USD size would cost on the curve right now,
+// against the curve's own last price, fee included — the same definition the
+// pool ladder uses, so the two are comparable. A size the curve cannot fill
+// (more than is left to raise) comes back with null costs rather than a
+// number that describes a trade nobody could place.
+export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
+  if(!(quoteUsd>0)||!(info.price>0))return [];
+  const sizes=sizesUsd.filter(s=>s>0);
+  const calls=[];
+  for(const usd of sizes){
+    const fundsWei=BigInt(Math.floor(usd/quoteUsd*1e18));
+    const tokensWei=BigInt(Math.floor(usd/quoteUsd/info.price*1e18));
+    calls.push(call(FOURMEME_HELPER,CURVE_SEL.tryBuy+pad(token)+num(0)+num(fundsWei)));
+    calls.push(call(FOURMEME_HELPER,CURVE_SEL.trySell+pad(token)+num(tokensWei)));
+  }
+  let res;
+  try{res=await rpcBatch(calls,url)}catch(e){return []}
+  const rows=[];
+  sizes.forEach((usd,i)=>{
+    const b=res[2*i],s=res[2*i+1];
+    const row={usd,buyCost:null,sellCost:null,buyNote:null,sellNote:null};
+    const paid=usd/quoteUsd;
+    const got=b?Number(wordAt(b,2))/1e18:0;
+    const cost=b?Number(wordAt(b,3))/1e18:0, fee=b?Number(wordAt(b,4))/1e18:0;
+    // The helper fills what it can: a buy that would overshoot the raise is
+    // capped at what is left, and the money it would actually take (cost plus
+    // fee) is then less than the money offered. Checked live: a $2,500 buy
+    // against $1,300 left came back "cheaper" than a $1,000 one, because the
+    // cost was measured on the capped part only. Such a row says so instead.
+    // ... but "less than offered" alone does not mean capped (2026-09-18): some
+    // curves take a per-token deduction, and cost+fee then comes back at 0.97
+    // of the funds at EVERY size — a curve with 17.85 of 18 BNB still to raise
+    // had all six rows marked "more than the curve has left". Capped is said
+    // only when the buy really reaches what is left: the raise's remainder in
+    // money, or the tokens still on offer. Otherwise the cost is measured from
+    // what the helper says the buy takes (amountMsgValue for a BNB raise,
+    // amountApproval for a token raise), against the tokens it returns.
+    const inPaid=cost+fee;
+    const needs=b?Math.max(Number(wordAt(b,5)),Number(wordAt(b,6)))/1e18:0;
+    const leftMoney=(info.maxRaising>0&&info.raised!=null)?info.maxRaising-info.raised:null;
+    const hitsCap=(leftMoney!=null&&inPaid>=leftMoney*0.999)||(info.offersLeft>0&&got>=info.offersLeft*0.999);
+    if(b&&got>0&&inPaid>=paid*0.999){
+      row.buyCost=(inPaid/(got*info.price)-1)*100;
+    }else if(b&&got>0&&hitsCap){
+      row.buyNote='more than the curve has left to sell';
+    }else if(b&&got>0){
+      // The helper's figure is taken only where it is plausibly that — the money
+      // offered, give or take; anything else and the money offered stands in.
+      const took=needs>=paid*0.5&&needs<=paid*1.05?needs:paid;
+      row.buyCost=(took/(got*info.price)-1)*100;
+    }else row.buyNote='the curve did not quote this size';
+    const tokens=paid/info.price;
+    const out=s?Number(wordAt(s,2))/1e18:0;
+    if(s&&out>0)row.sellCost=(1-out/(tokens*info.price))*100;
+    else row.sellNote='the curve did not quote this size';
+    rows.push(row);
+  });
+  return rows;
+}
+
+// ---- flap.sh: a token still on its bonding curve (2026-10-18) ---------------
+// flap.sh is the other launchpad on BNB Chain. Its tokens trade inside its
+// Portal contract until a share of the supply is sold, then move to a DEX. The
+// index lists that curve as a "flapsh" pair with a liquidity figure, and this
+// scanner said "most of it sits at Flapsh … not measured here": on 18.10. a
+// trading bot's scans ended there, and one such token showed $8,915 of index
+// liquidity while the Portal held 0.071 BNB (~$51) to pay any sell out of.
+// The Portal answers like four.meme's helper: getTokenV5(token) — status (1
+// tradable, 2 in duel, 3 killed, 4 on a DEX; 0 = not a flap.sh token), the money
+// in the curve (reserve, in the quote token), the supply sold, the price
+// (quote per token) and the supply at which it moves to a DEX — and
+// quoteExactInput((input, output, amount)), the trade itself quoted with fee
+// and tax. Selectors and the BSC address were taken from the flap.sh SDK
+// (four-flap-meme-sdk 4.3.4, read as data) and checked live: version v5.25.0,
+// getFeeRate 100/100 (1 % each way). previewBuy/previewSell revert in this
+// version, so they are not used.
+export const FLAP_PORTAL='0xe2ce6ab80874fa9fa2aae65d277dd6b8e65c9de0';
+const FLAP_SEL={v5:'0x5c4bc504',quote:'0xfc847c2b',fee:'0x84e5eed0'};
+const FLAP_STATUS={1:'tradable',2:'in a duel',3:'killed',4:'moved to a DEX'};
+
+// null when the address is not a flap.sh token (status 0 or a revert)
+export async function flapInfo(token,url){
+  let r;
+  try{r=await rpcBatch([call(FLAP_PORTAL,FLAP_SEL.v5+pad(token)),call(FLAP_PORTAL,FLAP_SEL.fee)],url)}
+  catch(e){return null}
+  const s=r[0];
+  const status=Number(wordAt(s,0)||0n);
+  if(!status)return null;
+  const quoteAddr=addrWord(s,9);
+  const isBnb=!quoteAddr||quoteAddr===NULLA||quoteAddr===WBNB;
+  const known=QUOTES.find(([a])=>a===quoteAddr);
+  const circ=Number(wordAt(s,2))/1e18, thresh=Number(wordAt(s,8))/1e18;
+  return {
+    platform:'flap.sh', status, stage:FLAP_STATUS[status]||'unknown',
+    quoteAddr:isBnb?null:quoteAddr,
+    quoteSym:isBnb?'BNB':known?known[1]:null,
+    quoteIsStable:!isBnb&&!!known&&known[2]===1,
+    price:Number(wordAt(s,3))/1e18,
+    reserve:Number(wordAt(s,1))/1e18,
+    sold:circ, dexAtSupply:thresh,
+    progressPct:thresh>0?Math.min(100,circ/thresh*100):null,
+    feeBuyPct:r[1]?Number(wordAt(r[1],0))/100:null,
+    feeSellPct:r[1]?Number(wordAt(r[1],1))/100:null,
+    graduated:status===4,
+  };
+}
+
+// A buy and a sell of each USD size, quoted by the Portal itself, against the
+// curve's own price — the definition curveLadder and the pool ladder use. A
+// sell bigger than the money in the curve cannot be paid and says so.
+export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
+  if(!(quoteUsd>0)||!(info.price>0))return [];
+  const q=info.quoteAddr||NULLA, sizes=sizesUsd.filter(s=>s>0), calls=[];
+  for(const usd of sizes){
+    calls.push(call(FLAP_PORTAL,FLAP_SEL.quote+pad(q)+pad(token)+num(BigInt(Math.floor(usd/quoteUsd*1e18)))));
+    calls.push(call(FLAP_PORTAL,FLAP_SEL.quote+pad(token)+pad(q)+num(BigInt(Math.floor(usd/quoteUsd/info.price*1e18)))));
+  }
+  let res;
+  try{res=await rpcBatch(calls,url)}catch(e){return []}
+  return sizes.map((usd,i)=>{
+    const b=res[2*i],s=res[2*i+1];
+    const row={usd,buyCost:null,sellCost:null,buyNote:null,sellNote:null};
+    const paid=usd/quoteUsd, got=b?Number(wordAt(b,0))/1e18:0, out=s?Number(wordAt(s,0))/1e18:0;
+    if(got>0)row.buyCost=(paid/(got*info.price)-1)*100; else row.buyNote='the curve did not quote this size';
+    if(paid>info.reserve)row.sellNote='more than the curve holds to pay out';
+    else if(out>0)row.sellCost=(1-out/paid)*100;
+    else row.sellNote='the curve did not quote this size';
+    return row;
+  });
+}
+
+// What is trading on four.meme's curve right now, straight from the manager's
+// own logs: the most recently traded tokens that have not graduated, each with
+// its raise, price and what a $100 buy and sell would cost. Nobody shows the
+// cost of a curve trade before there is a pool; this is the list a person
+// wants before pressing buy on a launch. Runs in the browser, on demand — a
+// few dozen small reads against the public log nodes, which cap eth_getLogs
+// at a handful of blocks per call, hence the windows. No event signature is
+// assumed: every log the manager writes about a token carries that token's
+// address in its first data word, and that is all this reads.
+export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
+  const url=LOGS_RPCS[0];
+  const head=Number(await rpc('eth_blockNumber',[],url))-HEAD_BACK;
+  const windows=[];
+  for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
+  const logs=(await Promise.all(windows.map(([from,to])=>
+    rpc('eth_getLogs',[{address:FOURMEME_MANAGER,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],url).catch(()=>[])
+  ))).flat().filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
+  // Newest first; one entry per token, the block it was last seen in.
+  logs.sort((a,b)=>Number(b.blockNumber)-Number(a.blockNumber)||Number(b.logIndex)-Number(a.logIndex));
+  const seen=new Map();
+  for(const l of logs){
+    const t=addrAt('0x'+l.data.slice(2,66));
+    if(!t||t===NULLA||seen.has(t))continue;
+    seen.set(t,{token:t,lastBlock:Number(l.blockNumber),trades:1});
+    if(seen.size>=max*3)break;
+  }
+  for(const l of logs){const t=addrAt('0x'+l.data.slice(2,66));const e=t&&seen.get(t);if(e&&e.lastBlock!==Number(l.blockNumber))e.trades++;}
+  const out=[];
+  for(const e of seen.values()){
+    if(out.length>=max)break;
+    const cv=await curveInfo(e.token);
+    if(!cv||cv.liquidityAdded)continue;
+    const q=cv.quoteSym==='BNB'?quoteUsd.bnb:cv.quoteIsStable?1:0;
+    let symbol=null;
+    try{const s=await rpcBatch([call(e.token,S.symbol)]);symbol=decStr(s[0])||null}catch(err){}
+    const rows=q>0?await curveLadder(e.token,cv,q,[sizeUsd]).catch(()=>[]):[];
+    const r=rows[0]||{};
+    out.push({token:e.token,symbol,lastBlock:e.lastBlock,blocksAgo:head-e.lastBlock,quoteSym:cv.quoteSym,
+      raised:cv.raised,maxRaising:cv.maxRaising,progressPct:cv.progressPct,priceUsd:q>0?cv.price*q:null,
+      buyCost:r.buyCost??null,sellCost:r.sellCost??null,buyNote:r.buyNote||null,feePct:cv.feePct});
+  }
+  return {head,blocks,tokensSeen:seen.size,list:out};
+}
+
+// === WHO HOLDS WHAT, SINCE WHEN, AND WHO TRADES IT (2026-09-27) ===
+//
+// A live review of three tokens minutes old (GOL, AIMU, SUPE) found the scan
+// silent on what a trader asks right after "can I get out": who else holds the
+// token, who holds the LIQUIDITY, how old is this, and is anybody trading it.
+// Everything below answers from the chain. GoPlus's lists are used as
+// candidates at most; every balance is read at this block.
+
+// Addresses whose balance is not one seller's float. CAKE's largest "wallet"
+// was Binance 8 with 23% of the float, and the concentration line read that as
+// one holder who could dump it (review 2026-09-27). Checked on-chain the same
+// day: every exchange address has no code (hot wallets are plain accounts,
+// which is exactly why they have to be named — no call tells them apart), every
+// lock, staking and locker address has code. The names are the public labels
+// these addresses go by, not something the chain states. Kinds: burn (can never
+// move), exchange (customers' coins, not one holder's), lock (staked or
+// time-locked tokens), staking (a farm holding many stakers' LP), locker (an LP
+// timelock).
+export const KNOWN_HOLDERS={
+  '0x000000000000000000000000000000000000dead':['burn','dead address'],
+  '0x0000000000000000000000000000000000000000':['burn','zero address'],
+  '0xdead000000000000000042069420694206942069':['burn','dead address'],
+  '0xf977814e90da44bfa03b6295a0616a897441acec':['exchange','Binance 8'],
+  '0x8894e0a0c962cb723c1976a4421c95949be2d4e3':['exchange','Binance hot wallet 6'],
+  '0xe2fc31f816a9b94326492132018c3aecc4a93ae1':['exchange','Binance hot wallet 7'],
+  '0x3c783c21a0383057d128bae431894a5c19f9cf06':['exchange','Binance hot wallet 8'],
+  '0xdccf3b77da55107280bd850ea519df3705d1a75a':['exchange','Binance hot wallet 11'],
+  '0x5a52e96bacdabb82fd05763e25335261b270efcb':['exchange','Binance hot wallet 20'],
+  '0x28c6c06298d514db089934071355e5743bf21d60':['exchange','Binance 14'],
+  '0x45c54210128a065de780c4b0df3d16664f7f859e':['lock','PancakeSwap CAKE pool (veCAKE)'],
+  '0x5692db8177a81a6c6afc8084c2976c9933ec1bab':['lock','PancakeSwap veCAKE'],
+  '0x73feaa1ee314f8c655e354234017be2193c9e24e':['staking','PancakeSwap MasterChef v1'],
+  '0xa5f8c5dbd5f286960b9d90548680ae5ebff07652':['staking','PancakeSwap MasterChef v2'],
+  '0x556b9306565093c855aea9ae92a594704c2cd59e':['staking','PancakeSwap MasterChef v3'],
+  '0x009cf7bc57584b7998236eff51b98a168dcea9b0':['staking','PancakeSwap SyrupBar'],
+  '0x407993575c91ce7643a4d4ccacc9a98c36ee1bbe':['locker','PinkLock v2'],
+  '0x7ee058420e5937496f5a2096f04caa7721cf70cc':['locker','PinkLock v1'],
+  '0xc765bddb93b0d1c1a88282ba0fa6b2d00e3e0c83':['locker','Unicrypt'],
+};
+export const knownHolder=a=>{const k=KNOWN_HOLDERS[String(a||'').toLowerCase()];return k?{kind:k[0],name:k[1]}:null};
+
+// A batch of mixed methods, one endpoint after another until one answers EVERY
+// entry — an archive refusal arrives per entry, so a partial answer moves on
+// like a refused one. null when none does; never a quiet half.
+async function rawBatch(reqs,urls,chunk=25){
+  if(!reqs.length)return [];
+  for(const url of urls){
+    const out=[];let ok=true;
+    for(let i=0;i<reqs.length;i+=chunk){
+      const part=reqs.slice(i,i+chunk);
+      const j=await tryPost(url,part.map((r,k)=>({jsonrpc:'2.0',id:k,...r})));
+      if(!Array.isArray(j)||j.length!==part.length||j.some(x=>x.error)){ok=false;break}
+      const s=[];for(const x of j)s[x.id]=x.result;out.push(...s);
+    }
+    if(ok)return out;
+  }
+  return null;
+}
+
+// WHO HOLDS THE TOKEN — one implementation for the page and the API (the page
+// kept its own copy until 2026-09-27). GoPlus's list, already in hand, is the
+// candidate list and every balance on it is read here. Two things changed with
+// the review. The known exchange, lock and burn addresses above are taken out
+// of the concentration figure and named apart, with their own share. And a
+// list GoPlus has not really built is said to be unknown instead of being read:
+// for a token minutes old it answers holder_count "0", or "3" with the pool,
+// the dead address and the deployer as the whole list — the old code then said
+// nothing at all, a silence a reader hears as "spread out". `skip` are the
+// pools; `lpOwners` the wallets that hold the LP (a list that is only them is
+// the pool's own plumbing, not holders); `poolTok` the pool's token reserve on
+// a constant-product pair (0 elsewhere: a V3 pool's depth depends on its ticks).
+export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok=0,share=1,lpOwners=[]}){
+  const hc=gp&&gp.holder_count;
+  // A count of 0 is GoPlus having no count, not a token held by nobody (2026-10-09): USDT, millions of holders,
+  // answers holder_count "0" with a full list, and was told "0 holders — too few to be the market".
+  const count0=hc!=null&&String(hc).trim()!==''&&isFinite(Number(hc))?Number(hc):null;
+  const count=count0===0?null:count0;
+  const unknown=reason=>({unknown:true,count,reason});
+  const gpOk=!!(gp&&(gp.token_name||gp.dex||gp.is_open_source!=null));
+  if(!(supply>0))return unknown('the total supply could not be read');
+  if(!gpOk)return unknown('GoPlus, which supplies the holder list, did not answer');
+  const list=(Array.isArray(gp.holders)?gp.holders:[]).filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||''));
+  if(!list.length)return unknown('GoPlus lists no holders for this token yet — its index lags new tokens');
+  if(count0===0)return unknown('GoPlus, the holder source, gives no holder count for this token, so its list cannot be checked against the market — the source is unavailable here, which says nothing about how many hold it');
+  if(count!=null&&count<10)return unknown('GoPlus counts '+count+' holder'+(count===1?'':'s')+' — too few to be the market; its index has not caught up');
+  const skipS=new Set(skip.map(x=>String(x||'').toLowerCase())),own=new Set(lpOwners.map(x=>String(x||'').toLowerCase()));
+  const named=[],cand=[];
+  for(const h of list){
+    const a=h.address.toLowerCase();
+    if(skipS.has(a))continue;
+    const k=knownHolder(a);
+    if(k){if(k.kind!=='burn')named.push({address:a,kind:k.kind,name:k.name});continue}
+    if(String(h.is_locked)==='1'){named.push({address:a,kind:'lock',name:'locked, per GoPlus'});continue}
+    cand.push(h);
+  }
+  if(!cand.length||cand.every(h=>own.has(h.address.toLowerCase())))
+    return unknown('the only holders GoPlus lists are pools, burn or lock addresses and the wallet holding the LP — that is the pool’s plumbing, not a holder list');
+  const pick=cand.slice(0,10),exc=named.slice(0,6);
+  const bals=await rpcBatch([...pick,...exc].map(h=>call(token,balOf(h.address.toLowerCase()))));
+  const circ=supply-(burned||0);
+  if(!(circ>0))return unknown('nothing circulates: the burned balance reads as the whole supply');
+  const pctAt=i=>+(Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100).toFixed(2);
+  const rows=pick.map((h,i)=>({address:h.address.toLowerCase(),pct:pctAt(i),contract:String(h.is_contract)==='1',...(h.tag?{tag:String(h.tag).slice(0,40)}:{})}))
+    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const excluded=exc.map((x,i)=>({...x,pct:pctAt(pick.length+i)})).filter(x=>x.pct>0).sort((a,b)=>b.pct-a.pct);
+  if(!rows.length)return unknown('every wallet GoPlus lists reads a zero balance at this block');
+  // All ten rows, not enumerable (2026-09-27): readFlow needs the whole top ten to tell a top holder's sell from
+  // anyone's, and the answer's JSON keeps showing five.
+  return Object.defineProperty({
+    count,
+    top10PctOfCirculating:+rows.reduce((a,r)=>a+r.pct,0).toFixed(2),
+    wallets:rows.length, // up to ten: what is left of GoPlus's list once pools, burn, lock and exchange addresses are out
+    largestPct:rows[0].pct,
+    // What the largest wallet would take out of the market's hard side by selling everything at once, on a
+    // constant-product pool (fee and tax ignored, so the upper end) scaled to all the liquidity found (this
+    // pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
+    ...(poolTok>0&&share>0?{largestSellTakesPctOfPool:+((rows[0].pct/100*circ)/(poolTok/share+rows[0].pct/100*circ)*100).toFixed(1)}:{}),
+    top:rows.slice(0,5),
+    ...(excluded.length?{excluded}:{}),
+    note:'Shares of the circulating supply, each balance read on-chain at this block. Pools, burn addresses, locked balances and the known exchange and staking wallets (named under excluded, with their share) are left out: none of them is one holder who can sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here.',
+  },'all',{value:rows,enumerable:false});
+}
+
+// WHO HOLDS THE LP (constant-product pairs). The burned share was always read;
+// who holds the REST was GoPlus's lp_holders, which for GOL, minutes old,
+// listed only the zero address while one wallet held every LP token there was
+// (review 2026-09-27). A pair's own Transfer log IS its LP ledger, and the
+// public log node serves the last hour of it (ARCHIVE_RPCS says why not more).
+// The pair's very first mint sends 1000 wei of LP to the zero address
+// (MINIMUM_LIQUIDITY): when that transfer is inside the hour, the hour is the
+// whole ledger and the list is complete and on-chain — exactly the new pools
+// GoPlus has not indexed. Older pairs: the candidates are GoPlus's lp_holders,
+// the token's creator and owner, the known lockers and farms, and whoever moved
+// LP in the hour; each balance is read at this block and the share nobody on
+// that list holds is returned as unread, never as fine. One log read, one
+// balance batch, one code batch (a wallet and a contract are told apart by
+// eth_getCode, not by a label).
+export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
+  if(!(lpTot>0)||!pair)return null;
+  pair=pair.toLowerCase();
+  let logs=null;
+  if(head>0){
+    // The pair's Mint events ride in the same read (a topic OR, one address — 2026-09-27): readFlow nets a
+    // wallet's sells against the liquidity it put back (BOBAI's own creator sells a third, then adds the BNB and
+    // the rest as liquidity and burns the LP). The ledger below reads Transfers only.
+    const f={address:pair,topics:[[XFER_T,MINT_T]],fromBlock:'0x'+(head-(WINDOW_BLOCKS-1)).toString(16),toBlock:'0x'+head.toString(16)};
+    for(const url of LOGS_RPCS){try{logs=await rpc('eth_getLogs',[f],url);if(logs)break}catch(e){}}
+  }
+  const rawLogs=logs;
+  logs=(logs||[]).filter(l=>l.topics&&l.topics[0]===XFER_T);
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase();
+  // withdrawn: LP sent back to the pair, which is how removeLiquidity burns it — GOL's first liquidity was
+  // gone half an hour after it went in, and "who holds the LP" alone answered that with the venue's fee share.
+  const ledger=new Map(),withdrawn=new Map();let firstLp=null,created=null,minted=0n;
+  for(const l of logs||[]){
+    if(!l.topics||l.topics.length<3)continue;
+    const fr=at(l.topics[1]),to=at(l.topics[2]),v=hx(l.data);
+    if(fr===NULLA&&to!==NULLA)minted+=v;
+    if(to===pair&&fr!==NULLA)withdrawn.set(fr,(withdrawn.get(fr)||0n)+v);
+    if(fr===NULLA&&to===NULLA&&!created)created={block:parseInt(l.blockNumber,16),ts:l.blockTimestamp?parseInt(l.blockTimestamp,16):null};
+    if(fr===NULLA&&to!==NULLA&&!firstLp)firstLp=to;
+    if(fr!==NULLA)ledger.set(fr,(ledger.get(fr)||0n)-v);
+    ledger.set(to,(ledger.get(to)||0n)+v);
+  }
+  const complete=!!created;
+  const addr=v=>/^0x[0-9a-fA-F]{40}$/.test(v||'')?v.toLowerCase():null;
+  const creator=addr(gp&&gp.creator_address),owner=addr(gp&&gp.owner_address);
+  const cands=new Set();
+  if(complete)[...ledger].filter(([,v])=>v>0n).sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).forEach(([a])=>cands.add(a));
+  else{
+    [DEAD,NULLA,feeTo,creator,owner,firstLp].forEach(a=>{if(a)cands.add(a)});
+    for(const h of (gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]))if(addr(h&&h.address))cands.add(h.address.toLowerCase());
+    for(const [a,k] of Object.entries(KNOWN_HOLDERS))if(k[0]==='locker'||k[0]==='staking')cands.add(a);
+    for(const a of ledger.keys())cands.add(a);
+  }
+  cands.delete(pair);
+  const list=[...cands].filter(Boolean).slice(0,24);
+  const [bals,codes]=await Promise.all([
+    rpcBatch(list.map(a=>call(pair,balOf(a)))),
+    rawBatch(list.map(a=>({method:'eth_getCode',params:[a,'latest']})),RPCS).catch(()=>null),
+  ]);
+  const gpLocked=new Set((gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]).filter(h=>String(h&&h.is_locked)==='1'&&addr(h.address)).map(h=>h.address.toLowerCase()));
+  const rows=list.map((a,i)=>{
+    const k=knownHolder(a),code=codes?!!(codes[i]&&codes[i]!=='0x'):null;
+    const kind=k&&k.kind==='burn'?'burned':a===feeTo?'exchange_fee':k&&k.kind==='locker'?'locked'
+      :gpLocked.has(a)&&code?'locked':k&&k.kind==='staking'?'farm':code===null?'unclassified':code?'contract':'wallet';
+    return {address:a,pct:Math.floor(Number(hx(bals[i]))/1e18/lpTot*1e6)/1e4,kind,
+      ...(k&&k.kind!=='burn'?{name:k.name}:{}),...(a===creator?{tokenCreator:true}:{}),
+      ...(a===firstLp?{addedFirstLiquidity:true}:{}),...(a===owner&&owner!==NULLA?{tokenOwner:true}:{})};
+  }).filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const sum=k=>+rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0).toFixed(4);
+  const read=rows.reduce((s,r)=>s+r.pct,0);
+  const lw=rows.find(r=>r.kind==='wallet'||r.kind==='unclassified')||null;
+  // The pair's logs of the hour (LP Transfers and Mints) ride along for readFlow, not enumerable.
+  return Object.defineProperty({
+    read:complete?'complete':'partial',
+    burnedPct:sum('burned'),lockedPct:sum('locked'),farmPct:sum('farm'),exchangeFeePct:sum('exchange_fee'),
+    walletPct:+(sum('wallet')+sum('unclassified')).toFixed(4),contractPct:sum('contract'),
+    unreadPct:complete?0:Math.max(0,+(100-read).toFixed(2)),
+    largestWallet:lw?{address:lw.address,pct:+lw.pct.toFixed(2),deployer:!!(lw.tokenCreator||lw.addedFirstLiquidity),
+      ...(lw.tokenCreator?{tokenCreator:true}:{}),...(lw.addedFirstLiquidity?{addedFirstLiquidity:true}:{})}:null,
+    holders:rows.filter(r=>r.pct>=0.01).slice(0,8).map(r=>({...r,pct:+r.pct.toFixed(2)})),
+    ...(firstLp?{firstLiquidityFrom:firstLp}:{}),
+    ...(complete&&withdrawn.size&&minted>0n?{withdrawnSinceCreation:[...withdrawn].sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).slice(0,3)
+      .map(([a,v])=>({address:a,pctOfLpEverMinted:+(Number(v)/Number(minted)*100).toFixed(2),...(a===creator?{tokenCreator:true}:{}),...(a===firstLp?{addedFirstLiquidity:true}:{})}))}:{}),
+    ...(created?{pairCreatedBlock:created.block,...(created.ts?{pairCreatedAt:new Date(created.ts*1000).toISOString()}:{})}:{}),
+    source:complete
+      ?'every LP transfer since the pair was created (it is younger than the hour of logs a public node serves), each balance read at this block'
+      :'candidates only — GoPlus’s LP holder list, the token’s creator and owner, the known lockers and farms, and whoever moved LP in the last hour — each balance read at this block; unreadPct is the LP nobody on that list holds',
+    note:'A wallet (no contract code) can withdraw its share of the pool whenever it likes. burned can never move; locked sits in a known LP locker until it expires; farm is a staking contract holding many stakers’ LP; exchange_fee is the venue’s own protocol cut; contract is code this list does not know.',
+  },'raw',{value:rawLogs||null,enumerable:false});
+}
+
+// WHEN DID IT COME INTO BEING. No public log node answers that beyond the last
+// ~9,000 blocks, but whether an address had code at a block the archive
+// endpoint does (ARCHIVE_RPCS), and creation is the first block with code.
+// Searched, not scanned: round one asks at 2^6 … 2^27 blocks back (the bracket
+// is then within a factor of two), round two splits that bracket thirty ways
+// (within ~3% of the age), a third splits it again (~0.1%) while it is still
+// wider than 20 blocks. The block headers ride in the same batch,
+// so the answer is a time and not a block count read through an assumed block
+// time (BSC's has changed three times). All addresses share one request per
+// round: two, sometimes three requests, run beside the tax read. null for an
+// address when no archive endpoint answered — "not read", never "new".
+export async function contractAges(addrs){
+  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)-HEAD_BACK}catch(e){return null}
+  const now=Math.floor(Date.now()/1000);
+  const st=addrs.map(a=>({a:String(a||'').toLowerCase(),lo:0,hi:head,ok:false}));
+  const ts=new Map();
+  for(let round=0;round<3;round++){
+    // Always the third round while the bracket is wider than 20 blocks: a tolerance counted in blocks is not
+    // one in time (CAKE's 1.8M-block bracket from 2020, at 3 s a block, was two months wide).
+    const open=st.filter(s=>!s.none&&s.hi-s.lo>(round===0?1:20));
+    if(!open.length)break;
+    const reqs=[],who=[],blocks=new Set();
+    for(const s of open){
+      let bs=[];
+      // Round one also asks near the head whether there is code at all: an address without any would otherwise
+      // be "dated" to the head — a wallet read as a contract born this minute. Five blocks back, because the
+      // archive endpoint can trail the node that named the head by a block or two, and a block it does not have
+      // yet fails the whole batch.
+      if(round===0){bs.push(head-5);for(let k=6;k<=27;k++)bs.push(head-2**k)}
+      else{const n=Math.min(30,s.hi-s.lo-1);for(let i=1;i<=n;i++)bs.push(s.lo+Math.round((s.hi-s.lo)*i/(n+1)))}
+      for(const b of new Set(bs.filter(b=>b>s.lo&&b<s.hi))){reqs.push({method:'eth_getCode',params:[s.a,'0x'+b.toString(16)]});who.push([s,b]);blocks.add(b)}
+    }
+    const hdr=[...blocks].filter(b=>!ts.has(b));
+    const out=await rawBatch([...reqs,...hdr.map(b=>({method:'eth_getBlockByNumber',params:['0x'+b.toString(16),false]}))],ARCHIVE_RPCS,200);
+    if(!out)break;
+    hdr.forEach((b,i)=>{const h=out[reqs.length+i];if(h&&h.timestamp)ts.set(b,parseInt(h.timestamp,16))});
+    for(const s of open){
+      const seen=who.map((w,i)=>[w,out[i]]).filter(([w])=>w[0]===s).map(([w,c])=>[w[1],!!(c&&c!=='0x')]);
+      const firstWith=Math.min(s.hi,...seen.filter(([,has])=>has).map(([b])=>b));
+      s.hi=firstWith;
+      s.lo=Math.max(s.lo,...seen.filter(([b,has])=>!has&&b<firstWith).map(([b])=>b));
+      if(round===0&&!seen.some(([b,has])=>b===head-5&&has))s.none=true;
+      s.ok=true;
+    }
+  }
+  const res={};
+  for(const s of st){
+    if(!s.ok||s.none){res[s.a]=null;continue}
+    const t=s.hi===head?now:ts.get(s.hi);
+    res[s.a]=t?{createdBlock:s.hi,createdAfterBlock:s.lo,createdAt:new Date(t*1000).toISOString(),
+      ageHours:+(Math.max(0,now-t)/3600).toFixed(2),exact:s.hi-s.lo<=1}:null;
+  }
+  return res;
+}
+
+// WHO TRADES IT. The tax read already fetched the pool's swaps (measureTax,
+// swapLogs); counted, they say whether anybody trades this and which way —
+// swaps, buys against sells, how many addresses, the volume and the largest
+// single sell, over the window that was read, which is returned with them. When
+// the tax read stopped at its three-minute window on a pool that is not busy,
+// the hour is fetched once more for this: three quiet minutes say nothing about
+// a market. The sellers take one more small read — the token's transfers INTO
+// the pool, the pool as a topic — because a sell's Swap names the router, not
+// the wallet. A buy's Swap names its recipient. A router or aggregator that
+// receives for many wallets counts as one address.
+export function activityFromSwaps(logs,{kind,tokenIs0,sellers=null,quoteUsd=0}={}){
+  const U=h=>BigInt('0x'+(h||'0'));
+  let buys=0,sells=0,qBuy=0,qSell=0,maxSell=0,maxSellTx=null;
+  const buyers=new Set(),sellersSeen=new Set();
+  for(const L of logs||[]){
+    const d=String(L&&L.data||'').slice(2);
+    let tokOut,tokIn,qIn,qOut;
+    if(kind==='v3'){
+      if(d.length<128)continue;
+      const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),t=tokenIs0?a:b,q=tokenIs0?b:a;
+      tokOut=t<0n?-t:0n;tokIn=t>0n?t:0n;qIn=q>0n?q:0n;qOut=q<0n?-q:0n;
+    }else{
+      if(d.length<256)continue;
+      const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+      tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;qIn=tokenIs0?a1i:a0i;qOut=tokenIs0?a1o:a0o;
+    }
+    const to=L.topics&&L.topics[2]?('0x'+L.topics[2].slice(26)).toLowerCase():null;
+    if(tokOut>0n&&tokIn===0n){buys++;qBuy+=Number(qIn)/1e18;if(to)buyers.add(to)}
+    else if(tokIn>0n&&tokOut===0n){
+      sells++;const q=Number(qOut)/1e18;qSell+=q;
+      if(q>maxSell){maxSell=q;maxSellTx=L.transactionHash||null}
+      const w=sellers&&sellers.get(L.transactionHash);if(w)sellersSeen.add(w);
+    }
+  }
+  const usd=v=>quoteUsd>0?Math.round(v*quoteUsd):null;
+  return {swaps:(logs||[]).length,buys,sells,
+    uniqueBuyers:buyers.size,uniqueSellers:sellers?sellersSeen.size:null,
+    uniqueTraders:sellers?new Set([...buyers,...sellersSeen]).size:null,
+    volumeQuote:+(qBuy+qSell).toFixed(6),volumeUsd:usd(qBuy+qSell),buyVolumeUsd:usd(qBuy),sellVolumeUsd:usd(qSell),
+    largestSellQuote:+maxSell.toFixed(6),largestSellUsd:usd(maxSell),largestSellTx:maxSellTx};
+}
+export async function readActivity(token,pair,tokenIs0,kind,tax,quoteUsd){
+  if(!tax||!Array.isArray(tax.swapLogs)||!(tax.block>0))return null;
+  const head=tax.block;
+  let logs=tax.swapLogs,blocks=tax.windowBlocks||0;
+  const range=b=>({fromBlock:'0x'+(head-(b-1)).toString(16),toBlock:'0x'+head.toString(16)});
+  const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+  if(blocks<WINDOW_BLOCKS&&logs.length<300){
+    for(const url of LOGS_RPCS){
+      try{const l=await rpc('eth_getLogs',[{address:pair,topics:topic,...range(WINDOW_BLOCKS)}],url);if(l){logs=l;blocks=WINDOW_BLOCKS;break}}
+      catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
+    }
+  }
+  let sellers=null,toPair=null;
+  for(const url of LOGS_RPCS){
+    try{
+      const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(blocks)}],url);
+      if(l){toPair=l;sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
+    }catch(e){}
+  }
+  const out={...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
+    window:{blocks,minutes:Math.round(blocks*0.45/60),toBlock:head}};
+  // The raw logs ride along for readFlow (2026-09-27), NOT enumerable: the answer's JSON stays what it was, and
+  // the flow read attributes each sell to its wallet off these instead of fetching them a second time.
+  Object.defineProperty(out,'raw',{value:{swaps:logs,toPair},enumerable:false});
+  return out;
+}
+
+// WHO IS SELLING: THE DEPLOYER, THE TOP HOLDERS, THE LAUNCH SNIPERS (2026-09-27).
+// Activity said how many sold; not WHO. The three sellers a buyer fears are the
+// wallet that made the token, the wallets holding most of it, and the bots that
+// bought in the launch block — and all three are visible in logs already read:
+// readActivity's swaps plus the token's transfers into the pool name every
+// seller, and a pool under an hour old has its launch block inside the swaps.
+// Two reads more, no more: ONE log read (the token's transfers FROM the creator,
+// plus its mints from 0x0 when the token is young enough for its first mint to
+// be in the window; one address, a topic OR — publicnode serves that, it refuses
+// only address-less filters) and ONE mixed batch (balanceOf + eth_getCode, 24
+// entries, under the 25 a public batch takes). What is not covered is said as
+// not read, never as "nobody sold".
+//
+// Matching a sell to a wallet: a Swap names the router, not the seller. The
+// transfer that funds it sits in the same transaction just BEFORE it (V2: the
+// router moves the token in, then calls swap; V3: the pool calls back for it and
+// emits Swap after) — so each sell takes the latest unused transfer-to-pool
+// before its own log index. First-per-transaction (readActivity's cheap map) gave
+// a four.meme tax token's own tax swap-back, which runs inside the user's sell,
+// the user's sell as well.
+// The launch window is counted in blocks but meant in seconds: "the launch block and the next two" was nine
+// seconds at 3 s blocks and is 1.35 s at 0.45 s — measured the same day on six pools under ten minutes old, not
+// one swap landed that early (CURECANCER's first buy came ten blocks, 4.5 s, after the liquidity). Ten blocks is
+// the same few seconds a human cannot click in and a bot does.
+const FLOW_TOP_SELL_PCT=25,FLOW_SNIPE_BLOCKS=10,FLOW_BIG_PCT=2;
+export function swapAmounts(L,kind,tokenIs0){
+  const d=String(L&&L.data||'').slice(2),U=h=>BigInt('0x'+(h||'0'));
+  if(kind==='v3'){
+    if(d.length<128)return null;
+    const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),t=tokenIs0?a:b,q=tokenIs0?b:a;
+    return {tokOut:t<0n?-t:0n,tokIn:t>0n?t:0n,qIn:q>0n?q:0n,qOut:q<0n?-q:0n};
+  }
+  if(d.length<256)return null;
+  const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+  return {tokOut:tokenIs0?a0o:a1o,tokIn:tokenIs0?a0i:a1i,qIn:tokenIs0?a1i:a0i,qOut:tokenIs0?a1o:a0o};
+}
+// Pure: per-wallet sells over the window, and the buys of the launch blocks. Exported for the offline pins.
+export function flowFromLogs({swaps,toPair,kind,tokenIs0,launchBlock=null,lpLogs=null,pair=null}){
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase(),li=x=>parseInt(x&&x.logIndex,16)||0;
+  const byTx=new Map();
+  for(const x of toPair||[]){
+    if(!x.topics||x.topics.length<3)continue;
+    if(!byTx.has(x.transactionHash))byTx.set(x.transactionHash,[]);
+    byTx.get(x.transactionHash).push({from:at(x.topics[1]),v:hx(x.data),i:li(x),used:false});
+  }
+  const sellers=new Map(),early=new Map(),bought=new Map();let unattributed=0,sells=0;
+  for(const L of (swaps||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(li(a)-li(b)))){
+    const s=swapAmounts(L,kind,tokenIs0);if(!s)continue;
+    if(s.tokIn>0n&&s.tokOut===0n){
+      sells++;
+      const t=(byTx.get(L.transactionHash)||[]).filter(x=>!x.used&&x.i<li(L)).sort((a,b)=>b.i-a.i)[0];
+      if(!t){unattributed++;continue}
+      t.used=true;
+      const r=sellers.get(t.from)||{address:t.from,sells:0,tok:0n,quote:0,txs:[]};
+      r.sells++;r.tok+=t.v;r.quote+=Number(s.qOut)/1e18;if(r.txs.length<3)r.txs.push(L.transactionHash);
+      sellers.set(t.from,r);
+    }else if(s.tokOut>0n&&s.tokIn===0n&&L.topics&&L.topics[2]){
+      // What each wallet BOUGHT in the window too: a wallet that bought and sold inside the hour is a flipper, not
+      // a holder leaving — without this every busy new pool read as "five top holders dumping" (2026-09-27).
+      const to=at(L.topics[2]),b=parseInt(L.blockNumber,16);
+      bought.set(to,(bought.get(to)||0n)+s.tokOut);
+      if(launchBlock!=null&&b>=launchBlock&&b<launchBlock+FLOW_SNIPE_BLOCKS){
+        const r=early.get(to)||{address:to,tok:0n,block:b};
+        r.tok+=s.tokOut;early.set(to,r);
+      }
+    }
+  }
+  // LIQUIDITY PUT BACK (2026-09-27). BOBAI's own creator wallet sells a third of its tokens in three chunks, adds
+  // the BNB and the rest as liquidity, and burns the LP — two minutes, and "the deployer sold $X" was true and
+  // misleading for the hour after. From the pair's own logs (lpLogs: its LP Transfers and Mints, lpCustody's
+  // read): each Mint is put to the wallet whose token transfer into the pair funded it (the unused transfer before
+  // it in the same transaction — a sell has taken its own already), else to the LP's recipient; its quote side is
+  // what went back. The LP's fate is read from the same log: minted straight to a burn address, or sent there by
+  // its holder later in the window (from the pair itself to 0x0 is a withdrawal, not a burn).
+  const adds=new Map(),lpBurnedBy=new Map();const pairA=pair?pair.toLowerCase():null;
+  const burnA=a=>a===NULLA||a===DEAD||a==='0xdead000000000000000042069420694206942069';
+  const lpl=(lpLogs||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(li(a)-li(b)));
+  for(const M of lpl){
+    if(!M.topics)continue;
+    if(M.topics[0]===XFER_T&&M.topics.length>=3){
+      const fr=at(M.topics[1]),to=at(M.topics[2]);
+      if(fr!==NULLA&&fr!==pairA&&burnA(to))lpBurnedBy.set(fr,(lpBurnedBy.get(fr)||0n)+hx(M.data));
+      continue;
+    }
+    if(M.topics[0]!==MINT_T)continue;
+    const d=String(M.data||'').slice(2);if(d.length<128)continue;
+    const a0=BigInt('0x'+d.slice(0,64)),a1=BigInt('0x'+d.slice(64,128));
+    const lpMint=lpl.filter(x=>x.transactionHash===M.transactionHash&&x.topics[0]===XFER_T&&x.topics.length>=3&&at(x.topics[1])===NULLA&&at(x.topics[2])!==NULLA&&li(x)<li(M)).pop();
+    const lpTo=lpMint?at(lpMint.topics[2]):null,lp=lpMint?hx(lpMint.data):0n;
+    const t=(byTx.get(M.transactionHash)||[]).filter(x=>!x.used&&x.i<li(M)).sort((a,b)=>(b.v>a.v?1:b.v<a.v?-1:0))[0];
+    if(t)t.used=true;
+    const who=t?t.from:lpTo;if(!who)continue;
+    const r=adds.get(who)||{address:who,adds:0,tok:0n,quote:0,lpToBurn:0n,lpKept:0n,lpTo:new Set(),txs:[]};
+    r.adds++;r.tok+=tokenIs0?a0:a1;r.quote+=Number(tokenIs0?a1:a0)/1e18;if(r.txs.length<3)r.txs.push(M.transactionHash);
+    if(lpTo){r.lpTo.add(lpTo);if(burnA(lpTo))r.lpToBurn+=lp;else r.lpKept+=lp}
+    adds.set(who,r);
+  }
+  return {sellers,early,bought,sells,unattributed,adds,lpBurnedBy};
+}
+export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custody,gp,ageToken,agePool,supply,burned,tokDec=18,quoteUsd=0,pools=[]}){
+  const raw=activity&&activity.raw;
+  if(!raw||!activity.window||!(activity.window.toBlock>0))return null;
+  token=token.toLowerCase();pair=pair.toLowerCase();
+  const head=activity.window.toBlock,blocks=activity.window.blocks,from=head-(blocks-1);
+  const circ=(supply||0)-(burned||0);
+  const addr=v=>/^0x[0-9a-fA-F]{40}$/.test(v||'')?v.toLowerCase():null;
+  const poolSet=new Set([pair,...pools.map(p=>String(p||'').toLowerCase())]);
+  // Not a person: the pool, the token itself (its own tax swap-back), the burn and zero addresses, four.meme's
+  // manager (it mints every four.meme token), and the named exchanges, lockers and farms.
+  const notPerson=a=>!a||poolSet.has(a)||a===token||a===FOURMEME_MANAGER||!!knownHolder(a);
+  // The launch block: the pair's first LP mint when its whole ledger was read (lpCustody); a V3 pool's creation
+  // block when that was dated exactly. Only for a pool under an hour old, and only when the swaps reach back to it.
+  const young=agePool&&agePool.ageHours!=null&&agePool.ageHours<1;
+  const launch=young?(custody&&custody.pairCreatedBlock)||(agePool.exact?agePool.createdBlock:null):null;
+  const launchCovered=launch!=null&&launch>=from;
+  const f=flowFromLogs({swaps:raw.swaps,toPair:raw.toPair,kind,tokenIs0,launchBlock:launchCovered?launch:null,lpLogs:custody&&custody.raw,pair});
+
+  // ONE log read. A token born inside the hour: ALL its transfers since its birth — its first mint names the
+  // deployer and whatever the deployer handed out before the pool opened is in it (a fresh token's "holders" that
+  // sell straight away are often the deployer's own wallets). A few hundred logs for a token minutes old; a launch
+  // too busy for one answer is refused for size and read as not covered, never retried. An older token: only what
+  // left the creator's wallet over the hour.
+  const creator=addr(gp&&gp.creator_address);
+  const creatorUse=creator&&!notPerson(creator)&&creator!==NULLA?creator:null;
+  const hourFrom=head-(WINDOW_BLOCKS-1);
+  const tokenYoung=!!(ageToken&&ageToken.createdBlock>=hourFrom);
+  let xlogs=null,flt=null;
+  if(tokenYoung)flt={address:token,topics:[XFER_T],fromBlock:'0x'+Math.max(hourFrom,ageToken.createdAfterBlock||ageToken.createdBlock).toString(16),toBlock:'0x'+head.toString(16)};
+  else if(creatorUse)flt={address:token,topics:[XFER_T,'0x'+pad(creatorUse)],fromBlock:'0x'+hourFrom.toString(16),toBlock:'0x'+head.toString(16)};
+  if(flt)for(const url of LOGS_RPCS){
+    try{const l=await rpc('eth_getLogs',[flt],url);if(l){xlogs=l;break}}
+    catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
+  }
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase(),lpFirst=addr(custody&&custody.firstLiquidityFrom);
+  // hops: sender -> (recipient -> txs), kept for the two senders that can be the deployer.
+  let mintTo=null;const hops=new Map();
+  for(const l of (xlogs||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(parseInt(a.logIndex,16)-parseInt(b.logIndex,16)))){
+    if(!l.topics||l.topics.length<3)continue;
+    const fr=at(l.topics[1]),to=at(l.topics[2]);
+    // The first mint is the deployer's only when it lands at the token's birth (a mintable token mints later too).
+    if(fr===NULLA&&!mintTo&&tokenYoung&&parseInt(l.blockNumber,16)<=ageToken.createdBlock+20)mintTo=to;
+    if((fr===creatorUse||fr===lpFirst||(fr===mintTo&&fr!==NULLA))&&!notPerson(to)&&to!==fr&&to!==NULLA&&to!==DEAD){
+      if(!hops.has(fr))hops.set(fr,new Map());
+      const m=hops.get(fr);if(!m.has(to))m.set(to,new Set());m.get(to).add(l.transactionHash);
+    }
+  }
+  const hd=await Promise.resolve(holders).catch(()=>null);
+  const top10=new Set(hd&&!hd.unknown&&Array.isArray(hd.all)?hd.all.map(r=>r.address):[]);
+
+  // ONE batch: balances of the deployer candidates, the launch buyers and the largest sellers; code of the
+  // candidates, of wallets the creator paid that then sold, and of top-holder sellers (a contract that sells its
+  // whole balance on a schedule — a tax or reward dispenser — is not a holder dumping).
+  const cands=[...new Set([mintTo,creatorUse,lpFirst].filter(a=>a&&!notPerson(a)&&a!==NULLA&&a!==DEAD))];
+  const sellerRows=[...f.sellers.values()].filter(r=>!notPerson(r.address)).sort((a,b)=>b.quote-a.quote);
+  const early=[...f.early.values()].filter(r=>!notPerson(r.address)).sort((a,b)=>(b.tok>a.tok?1:b.tok<a.tok?-1:0));
+  const funded=new Set([...hops.values()].flatMap(m=>[...m.keys()]));
+  const hopSellers=sellerRows.filter(r=>funded.has(r.address));
+  const topSellers=sellerRows.filter(r=>top10.has(r.address));
+  const balList=[...new Set([...cands,...early.slice(0,6).map(r=>r.address),...topSellers.slice(0,4).map(r=>r.address),...sellerRows.map(r=>r.address)])].slice(0,16);
+  const codeList=[...new Set([...cands,...hopSellers.slice(0,4).map(r=>r.address),...topSellers.map(r=>r.address),...sellerRows.slice(0,3).map(r=>r.address)])].slice(0,24-balList.length);
+  const got=await rawBatch([
+    ...balList.map(a=>({method:'eth_call',params:[{to:token,data:balOf(a)},'latest']})),
+    ...codeList.map(a=>({method:'eth_getCode',params:[a,'latest']})),
+  ],RPCS,25).catch(()=>null);
+  const bal=new Map(),code=new Map();
+  if(got){balList.forEach((a,i)=>bal.set(a,hx(got[i])));codeList.forEach((a,i)=>code.set(a,!!(got[balList.length+i]&&got[balList.length+i]!=='0x')))}
+  const tokN=v=>Number(v)/Math.pow(10,tokDec);
+  // A balance above the whole supply is not a holding, it is a contract that answers what it likes: RAYCAT's
+  // deployer read 2^256 minus a little (an underflowed balance — it can sell without limit), and printed as a
+  // percentage it became 1e59%. Null there, and the wallet is named under balanceAboveSupply.
+  const above=new Set();
+  const pctC=(v,a)=>{const x=tokN(v);if(supply>0&&x>supply*1.0001){if(a)above.add(a);return null}return circ>0?+(x/circ*100).toFixed(2):null};
+  const usd=q=>quoteUsd>0?Math.round(q*quoteUsd):null;
+
+  // The deployer: the first mint's recipient when that is a wallet, else the creator GoPlus names, else whoever
+  // added the first liquidity. A contract (a launchpad, a factory) is not the person, and is passed over.
+  const isContract=a=>code.has(a)?code.get(a):null;
+  const dep=[[mintTo,'first mint'],[creatorUse,'contract creator (GoPlus)'],[lpFirst,'added the first liquidity']]
+    .find(([a])=>a&&cands.includes(a)&&isContract(a)!==true)||null;
+  let deployer=null;
+  if(dep){
+    const a=dep[0],s=f.sellers.get(a);
+    const lpRow=custody&&Array.isArray(custody.holders)?custody.holders.find(h=>h.address===a):null;
+    const hop=hops.get(a)||new Map();
+    const hopSold=hopSellers.filter(r=>{
+      // One hop counts when the sell is the same transaction as the deployer's transfer (a routed sell through an
+      // aggregator's executor) or the recipient is a plain wallet — never a shared router selling for others.
+      const txs=hop.get(r.address);return !!txs&&(r.txs.some(t=>txs.has(t))||isContract(r.address)===false);
+    });
+    const soldQ=(s?s.quote:0)+hopSold.reduce((x,r)=>x+r.quote,0);
+    // What the deployer (or a wallet it paid) put back as liquidity in the window, and where that LP went. Sells
+    // are netted against the quote side added: dev_selling is about what LEFT the pool (preflight).
+    const addRows=[a,...hop.keys()].map(w=>f.adds.get(w)).filter(Boolean);
+    const addQ=addRows.reduce((x,r)=>x+r.quote,0);
+    let lpBurn=0n,lpKept=0n;
+    for(const r of addRows){
+      lpBurn+=r.lpToBurn;
+      let kept=r.lpKept;
+      for(const w of r.lpTo){const b=f.lpBurnedBy.get(w)||0n;const take=b<kept?b:kept;lpBurn+=take;kept-=take}
+      lpKept+=kept;
+    }
+    const lpTotal=lpBurn+lpKept,netQ=Math.max(0,soldQ-addQ);
+    const addedBack=addRows.length?{adds:addRows.reduce((x,r)=>x+r.adds,0),quote:+addQ.toFixed(6),usd:usd(addQ),
+      lp:lpTotal===0n?'not read':lpKept===0n?'burned':lpBurn===0n?'kept':'partly burned',
+      ...(lpTotal>0n?{lpBurnedPct:+(Number(lpBurn)/Number(lpTotal)*100).toFixed(1)}:{}),
+      txs:addRows.flatMap(r=>r.txs).slice(0,3)}:null;
+    deployer={address:a,source:dep[1],contract:isContract(a),
+      balancePctOfCirculating:bal.has(a)?pctC(bal.get(a),a):null,
+      lpPct:lpRow?lpRow.pct:custody&&custody.read==='complete'?0:null,
+      sold:!raw.toPair?null:{sells:(s?s.sells:0)+hopSold.reduce((x,r)=>x+r.sells,0),quote:+soldQ.toFixed(6),usd:usd(soldQ),
+        ...(s?{byDeployer:{sells:s.sells,usd:usd(s.quote),pctOfCirculating:pctC(s.tok)}}:{}),
+        ...(hopSold.length?{viaWalletsItFunded:hopSold.slice(0,3).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote)}))}:{}),
+        ...(addedBack?{addedBack,netQuote:+netQ.toFixed(6),netUsd:usd(netQ)}:{})},
+      ...(custody&&custody.raw?{}:{addsNotRead:true}),
+      ...(xlogs&&(tokenYoung||a===creatorUse)?{}:{oneHopNotRead:true}),
+    };
+  }
+  // Top holders who sold a real part of what they held: sold / (held now + sold) over the window. The holder list
+  // is GoPlus's top ten (readHolders); without one, a seller that held at least FLOW_BIG_PCT% of the float before
+  // the window counts, and the basis says so.
+  // A token born inside the window has no holder from BEFORE it: every wallet got its tokens in the hour, most of
+  // them through an aggregator whose Swap names the aggregator, not the wallet (妈妈属兔, 8 minutes old: a wallet
+  // "held 4.26% and sold all of it" — bought through 0x3537… minutes earlier). The deployer's own hand-outs are
+  // what matters there, and dev_selling reads them from the full transfer log. So no top-holder line for it.
+  // The size fallback (no holder list) also needs the pool to be older than the window: under an hour, with the
+  // token's age not read, a wallet's "balance before" is its aggregator buys and nothing else.
+  const basis=tokenYoung?'none':top10.size?'holder list':young?'none':'size';
+  const topSelling=[];
+  if(basis!=='none')for(const r of sellerRows){
+    if(!bal.has(r.address)||isContract(r.address)===true)continue;
+    // Net of what it bought in the same window: held before = now + sold − bought.
+    const now=bal.get(r.address),net=r.tok-(f.bought.get(r.address)||0n);
+    if(!(net>0n))continue;
+    const before=now+net,soldPct=+(Number(net)/Number(before)*100).toFixed(1);
+    const isTop=top10.size?top10.has(r.address):pctC(before)>=FLOW_BIG_PCT;
+    const counted=deployer&&(r.address===deployer.address||(deployer.sold&&(deployer.sold.viaWalletsItFunded||[]).some(v=>v.address===r.address)));
+    if(isTop&&soldPct>FLOW_TOP_SELL_PCT&&!counted)
+      topSelling.push({address:r.address,sells:r.sells,usd:usd(r.quote),soldPctOfBalance:soldPct,heldPctBefore:pctC(before),holdsPctNow:pctC(now)});
+  }
+  // Launch buyers still holding.
+  let snipers=null;
+  if(young)snipers=!launchCovered?{read:false,reason:launch==null?'the launch block could not be dated exactly':'the swaps read do not reach back to the launch block'}
+    :(()=>{const rows=early.filter(r=>bal.has(r.address)).map(r=>({address:r.address,block:r.block,boughtPctOfCirculating:pctC(r.tok),holdsPctNow:pctC(bal.get(r.address),r.address),
+        ...(deployer&&r.address===deployer.address?{deployer:true}:{})}));
+      const held=rows.reduce((s,r)=>s+(r.holdsPctNow||0),0);
+      return {read:true,launchBlock:launch,blocks:FLOW_SNIPE_BLOCKS,wallets:early.length,holdPctOfCirculating:+held.toFixed(2),
+        top:rows.sort((a,b)=>(b.holdsPctNow||0)-(a.holdsPctNow||0)).slice(0,5),...(early.length>rows.length?{walletsNotRead:early.length-rows.length}:{})}})();
+  const sellersUnknown=!raw.toPair;
+  return {
+    window:{blocks,minutes:activity.window.minutes,toBlock:head},
+    deployer,
+    ...(dep?{}:{deployerUnknown:creator&&!creatorUse?'the creator GoPlus names is a launchpad, pool or known address, not a wallet':cands.length?'every candidate (first mint, creator, first liquidity) is a contract':'no creator known and no first mint inside the hour'}),
+    sellers:sellersUnknown?null:{sells:f.sells,wallets:f.sellers.size,unattributed:f.unattributed,
+      top:sellerRows.slice(0,5).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote),
+        ...(deployer&&r.address===deployer.address?{deployer:true}:{}),...(deployer&&(hops.get(deployer.address)||new Map()).has(r.address)?{fundedByDeployer:true}:{}),
+        ...(top10.has(r.address)?{topHolder:true}:{}),...(bal.has(r.address)?{holdsPctNow:pctC(bal.get(r.address),r.address)}:{})}))},
+    ...(sellersUnknown?{sellersUnknown:'the token’s transfers into the pool could not be read'}:{}),
+    topHolderSelling:topSelling.slice(0,5),topHolderBasis:basis,
+    snipers,
+    ...(got?{}:{balancesUnread:'the balance and code batch was refused by every endpoint: holdings and wallet-or-contract are not known'}),
+    ...(above.size?{balanceAboveSupply:[...above].slice(0,3)}:{}),
+    note:'Sells are the swaps in the window read, each attributed to the wallet whose transfer funded it; a router or aggregator selling for a wallet shows as itself. The deployer is the first mint’s recipient, else the creator GoPlus names, else whoever added the first liquidity; one hop = wallets the deployer sent tokens to (since its birth for a token under an hour old, else in the last hour). Balances read at this block.',
+  };
+}

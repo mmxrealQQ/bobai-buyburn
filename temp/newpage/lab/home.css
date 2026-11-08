@@ -1,0 +1,118 @@
+    /* The same tokens and images as the site; what changes is how much sits
+   on the page and how loudly. Solid gold instead of gradient text, no
+   block labels, no glass cards where a rule will do. */
+.hero-h em,.band-tx h2 em,.nh em{background:none;-webkit-background-clip:initial;background-clip:initial;-webkit-text-fill-color:var(--gold);color:var(--gold)}
+.ns{width:min(1060px,calc(100% - 40px));margin:0 auto;padding:64px 0 8px}
+.ns + .ns{border-top:1px solid var(--border)}
+.nh{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.5rem,2.6vw,2rem);font-weight:700;letter-spacing:-.4px;margin:0 0 8px}
+.nsub{color:var(--muted);font-size:.92rem;line-height:1.7;max-width:60ch;margin:0 0 30px}
+.nsub b{color:var(--text);font-weight:600}
+
+/* figures as a row, not six cards */
+.nstats{width:min(1060px,calc(100% - 40px));margin:34px auto 0;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.nstat{padding:18px 6px 20px;text-align:center}
+.nstat + .nstat{border-left:1px solid var(--border)}
+.nstat .l{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.nstat .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(1rem,1.6vw,1.35rem);font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.nstat .s{font-size:.66rem;color:var(--muted);margin-top:4px}
+@media(max-width:700px){.nstats{grid-template-columns:1fr 1fr}.nstat:nth-child(3){border-left:0}.nstat:nth-child(n+3){border-top:1px solid var(--border)}}
+
+/* the token, in one row */
+.tok{display:grid;grid-template-columns:120px 1fr;gap:28px;align-items:center;margin-bottom:34px}
+.tok img{width:120px;height:120px;border-radius:26px}
+.tok p{margin:0;color:var(--muted);font-size:.95rem;line-height:1.75}
+.tok p b{color:var(--text);font-weight:600}
+@media(max-width:600px){.tok{grid-template-columns:1fr;text-align:center}.tok img{margin:0 auto}}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.step{text-align:center}
+.step .fs-wrap{border-radius:18px;overflow:hidden;aspect-ratio:1/1;margin-bottom:10px}
+.step img{width:100%;height:100%;object-fit:cover;display:block}
+.step h4{margin:0 0 4px;font-size:.92rem}
+.step p{margin:0;color:var(--muted);font-size:.78rem;line-height:1.5}
+@media(max-width:700px){.steps{grid-template-columns:1fr 1fr}}
+
+/* three things, thin rules instead of boxes */
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--border)}
+.three > a{display:block;padding:24px 22px 26px 0;text-decoration:none;color:inherit;border-right:1px solid var(--border)}
+.three > a + a{padding-left:22px}
+.three > a:last-child{border-right:0}
+.three h3{margin:0 0 8px;font-size:1.05rem;font-family:'Space Grotesk',sans-serif}
+.three p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.65}
+.three .go{display:inline-block;margin-top:14px;font-family:'Space Grotesk',sans-serif;font-size:.7rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase}
+.three > a:hover h3{color:var(--gold)}
+.forai{margin:22px 0 0;font-size:.84rem;color:var(--muted)}
+.forai code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--gold)}
+@media(max-width:760px){.three{grid-template-columns:1fr}.three > a{border-right:0;border-bottom:1px solid var(--border);padding:20px 0}.three > a + a{padding-left:0}}
+
+/* burns */
+.burns-wrap-n{width:min(1060px,calc(100% - 40px));margin:-40px auto 0;position:relative;z-index:4}
+.btab{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:22px 24px}
+.btab .txw{max-height:340px}
+.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:16px}
+.links a{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;text-decoration:none;color:var(--text);font-size:.8rem}
+.links a span{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.links a:hover{border-color:rgba(240,185,11,.5)}
+
+/* the contract, to copy — the one thing a buyer must not get wrong */
+.ca{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 30px;font-size:.8rem;color:var(--muted)}
+.ca code{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--text);background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:8px 12px;word-break:break-all}
+.ca button{font:inherit;font-size:.72rem;font-weight:600;color:var(--gold);background:transparent;border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:7px 14px;cursor:pointer}
+.ca button:hover{background:rgba(240,185,11,.1)}
+.ca button.done{color:var(--green);border-color:rgba(75,227,138,.4)}
+/* one line for a running campaign, one for the agent that runs itself */
+.line{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:26px 0 0;padding:14px 0 0;border-top:1px solid var(--border);font-size:.86rem;color:var(--muted);line-height:1.6}
+.line b{color:var(--text);font-weight:600;white-space:nowrap}
+.line .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;box-shadow:0 0 8px var(--green);vertical-align:1px}
+.line a{color:var(--gold);text-decoration:none}
+/* live: what is moving, and what a buy does — two columns, one rhythm */
+.live{display:grid;grid-template-columns:1.15fr 1fr;gap:40px}
+@media(max-width:860px){.live{grid-template-columns:1fr;gap:30px}}
+.feed{list-style:none;margin:0;padding:0;border-top:1px solid var(--border)}
+.feed li{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--border);font-size:.86rem;line-height:1.5}
+.feed i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted);transform:translateY(-1px)}
+.feed i.burn{background:var(--green);box-shadow:0 0 8px rgba(0,230,118,.5)}
+.feed i.add{background:var(--gold);box-shadow:0 0 8px rgba(240,185,11,.5)}
+.feed i.agent{background:#7d92ff;box-shadow:0 0 8px rgba(125,146,255,.5)}
+.feed i.lp{background:#b98cff;box-shadow:0 0 8px rgba(185,140,255,.5)}
+.feed b{color:var(--text);font-weight:600}
+.feed span{color:var(--muted)}
+.feed time{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);white-space:nowrap}
+.feed a{color:var(--gold);text-decoration:none}
+.nextcycle{margin:14px 0 0;font-size:.82rem;color:var(--muted)}
+.nextcycle b{color:var(--text)}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .6s ease}
+.sizes{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.sizes button{font:inherit;font-size:.8rem;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer}
+.sizes button.on{border-color:var(--gold);background:rgba(240,185,11,.12);color:var(--gold)}
+.sizes button:hover{border-color:var(--gold)}
+.impact{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.imp{border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.imp .k{font-size:.62rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:600}
+.imp .v{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.imp .v.up{color:var(--green)} .imp .v.dn{color:#ff6a60}
+.imp .s{font-size:.78rem;color:var(--muted);line-height:1.5}
+.one{margin:16px 0 0;font-size:.84rem;color:var(--muted);line-height:1.6}
+.one b{color:var(--text)}
+@media(max-width:480px){.impact{grid-template-columns:1fr}}
+/* browse: everything, one line each */
+.dir{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 28px;border-top:1px solid var(--border)}
+.dir a{display:block;padding:14px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit}
+.dir a b{display:block;font-size:.92rem;font-weight:600;color:var(--text)}
+.dir a span{font-size:.8rem;color:var(--muted);line-height:1.5}
+.dir a:hover b{color:var(--gold)}
+/* moved off the page */
+.more{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 34px;font-size:.82rem}
+.more a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border)}
+.more a:hover{color:var(--gold);border-color:var(--gold)}
+footer{margin-top:40px}
+
+/* Sub-pages built from the classic blocks: no block labels, solid gold. */
+.np .blk-head{display:none}
+.np .sh h2 em,.np .bw-title em,.np .lb-title em,.np .lb-arch-title em{background:none;-webkit-background-clip:initial;background-clip:initial;-webkit-text-fill-color:var(--gold);color:var(--gold)}
+.np main{padding-top:86px}
+.np .sec{margin-top:26px}
+.np .intro{width:min(1060px,calc(100% - 40px));margin:0 auto 6px}
+.np .intro h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.7rem,3vw,2.3rem);font-weight:700;letter-spacing:-.5px;margin:0 0 8px}
+.np .intro h1 em{font-style:normal;color:var(--gold)}
+.np .intro p{color:var(--muted);font-size:.95rem;line-height:1.7;max-width:62ch;margin:0}

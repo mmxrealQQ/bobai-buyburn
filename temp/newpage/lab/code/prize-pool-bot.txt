@@ -1,0 +1,1435 @@
+# Prize Pool & Payout Bot — Brain On BNB AI
+# Filled a prize pool from trading tax, then paid 39 wallets out.
+#
+# This is the complete prize-pool-bot bundle as a single file, so it can be read in
+# one fetch. 5 files, 1399 lines.
+# Download as a zip: https://brainonbnb.com/code/prize-pool-bot.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: scripts/worldcup/wc-final-kickoff-prices.json
+==============================================================================
+
+[
+  {
+    "label": "final-kickoff-OFFICIAL",
+    "sampled_at": "2026-07-19T19:00:00.000Z",
+    "method": "Reconstructed from historical candles on 2026-07-20: both capture runs failed (GH Action cron fired 19:35 UTC — 35 min late, script aborted; local Task Scheduler never ran, PC off). BTC/BNB = Binance 1s-kline OPEN at exactly 2026-07-19T19:00:00.000Z (same primary source as the app live display). BOBAI = GeckoTerminal pool 0x6eadd4cb786898b34929444988380ed0cc6fd9a6 minute-OHLCV close of last trade candle 10:33 UTC — no trades between 10:33 UTC and kickoff, pool price unchanged through 19:00 UTC (verified: live display still showed the same value on 2026-07-20).",
+    "primary": {
+      "btc_usd": 64420.00,
+      "bnb_usd": 567.47,
+      "bobai_usd": 0.0000553231784899214,
+      "sources": "binance 1s klines (btc/bnb) + geckoterminal pool ohlcv (bobai)"
+    },
+    "verification": {
+      "btc_binance_1m_open": 64420.00,
+      "bnb_binance_1m_open": 567.47,
+      "bobai_last_trade_before_kickoff": "2026-07-19T10:33:00Z close 0.0000553231784899214",
+      "kickoff_epoch_ms": 1784487600000
+    },
+    "used_for": "wc_crypto resolution (btc_diff/bnb_diff/bobai_diff written 2026-07-20, resolved=true) + leaderboard.html FINAL_KICKOFF_PRICES"
+  },
+  {
+    "label": "test-now (pre-final dry-run, kept for audit)",
+    "sampled_at": "2026-07-19T04:36:34.165Z",
+    "primary": {
+      "btc_usd": 64738.43,
+      "bnb_usd": 568.9,
+      "bobai_usd": 0.0000553017257448635,
+      "sources": "binance (btc/bnb) + geckoterminal pool (bobai) — same as app live display"
+    }
+  }
+]
+
+==============================================================================
+=== FILE: scripts/worldcup/wc-final-price-capture.js
+==============================================================================
+
+// WC26 Final — freeze BTC/BNB/BOBAI prices at the exact Final kickoff
+// (2026-07-19 19:00:00 UTC). These are the reference prices for resolving
+// the wc_crypto predictions (rules: "prices at the exact moment of the
+// World Cup Final kickoff").
+//
+// Primary sources = exactly what the app's live display uses (profile.js):
+//   BTC/BNB  → Binance  api.binance.com/api/v3/ticker/price
+//   BOBAI    → GeckoTerminal pool 0x6eadd…d9a6 base_token_price_usd
+// Redundancy: CoinGecko (BTC/BNB) + DexScreener (BOBAI).
+//
+// Run modes:
+//   node capture-final-kickoff-prices.js          → wait until 19:00:00 UTC,
+//     sample at T-3min (warmup), T0 (PRIMARY), T+30s, T+60s
+//   node capture-final-kickoff-prices.js --now    → one immediate sample (test)
+//
+// Output: appends JSON samples to <repo>\wc-final-kickoff-prices.json
+
+const fs = require('fs');
+// Local Task-Scheduler run writes the absolute path; the GitHub-Actions
+// backup run overrides via WC_PRICE_OUT (repo-relative, gets committed).
+const OUT = process.env.WC_PRICE_OUT || 'd:\\ai\\fourmeme\\wc-final-kickoff-prices.json';
+const KICKOFF_UTC = '2026-07-19T19:00:00.000Z';
+const BOBAI_POOL = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
+
+async function j(url, timeoutMs = 8000) {
+  const t0 = Date.now();
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    const body = await r.json();
+    return { ok: r.ok, ms: Date.now() - t0, body };
+  } catch (e) {
+    return { ok: false, ms: Date.now() - t0, error: String(e) };
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+async function sample(label) {
+  const at = new Date().toISOString();
+  const [btc, bnb, gecko, cg, ds] = await Promise.all([
+    j('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+    j('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT'),
+    j(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_POOL}`),
+    j('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,binancecoin&vs_currencies=usd'),
+    j(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`),
+  ]);
+  const out = {
+    label,
+    sampled_at: at,
+    primary: {
+      btc_usd: btc.ok ? parseFloat(btc.body.price) : null,
+      bnb_usd: bnb.ok ? parseFloat(bnb.body.price) : null,
+      bobai_usd: gecko.ok ? parseFloat(gecko.body?.data?.attributes?.base_token_price_usd) : null,
+      sources: 'binance (btc/bnb) + geckoterminal pool (bobai) — same as app live display',
+    },
+    redundancy: {
+      btc_usd_coingecko: cg.ok ? cg.body?.bitcoin?.usd ?? null : null,
+      bnb_usd_coingecko: cg.ok ? cg.body?.binancecoin?.usd ?? null : null,
+      bobai_usd_dexscreener: ds.ok ? parseFloat(ds.body?.pairs?.[0]?.priceUsd) || null : null,
+    },
+    latency_ms: { btc: btc.ms, bnb: bnb.ms, gecko: gecko.ms, coingecko: cg.ms, dexscreener: ds.ms },
+    errors: [btc, bnb, gecko, cg, ds].filter(r => !r.ok).map(r => r.error || 'http error'),
+  };
+  let all = [];
+  try { all = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) { /* first run */ }
+  all.push(out);
+  fs.writeFileSync(OUT, JSON.stringify(all, null, 2));
+  console.log(`[${label}] ${at} BTC=${out.primary.btc_usd} BNB=${out.primary.bnb_usd} BOBAI=${out.primary.bobai_usd}`);
+  return out;
+}
+
+function sleepUntil(tsMs) {
+  return new Promise(res => {
+    const wait = tsMs - Date.now();
+    if (wait <= 0) return res();
+    setTimeout(res, wait);
+  });
+}
+
+(async () => {
+  if (process.argv.includes('--now')) {
+    await sample('test-now');
+    return;
+  }
+  const t0 = new Date(KICKOFF_UTC).getTime();
+  if (Date.now() > t0 + 10 * 60 * 1000) {
+    console.error('Kickoff is more than 10 min in the past — refusing to overwrite history. Use --now for a test sample.');
+    process.exit(1);
+  }
+  console.log('Waiting for Final kickoff', KICKOFF_UTC, '— now:', new Date().toISOString());
+  await sleepUntil(t0 - 3 * 60 * 1000); await sample('warmup-T-3min');
+  await sleepUntil(t0);                 await sample('KICKOFF-T0-PRIMARY');
+  await sleepUntil(t0 + 30 * 1000);     await sample('T+30s');
+  await sleepUntil(t0 + 60 * 1000);     await sample('T+60s');
+  console.log('Done. Frozen prices in', OUT);
+})();
+
+==============================================================================
+=== FILE: scripts/worldcup/wc-payout-final.js
+==============================================================================
+
+// $BOBAI Worldcup '26 — End-Pool + Crypto-Pot Payout Script (after the Final)
+//
+// End-Pool: top-4 wallet-linked players by total_points (match + bonus),
+//   tiered 50/25/15/10, 26x holder-cap cascade within the pot
+//   (cap 0 → forfeit, share redistributes proportionally — group-pot precedent,
+//   user-confirmed 2026-07-20 for Dgn).
+// Crypto: 3 sub-pots (crypto_pot / 3), winner-take-all per coin. Winner = closest
+//   guess vs. frozen Final-kickoff price among wallet-linked players WITH BOBAI
+//   holdings (cap 0 → next closest wins — user-confirmed 2026-07-20: Havy → Beso2025).
+//
+// Usage:
+//   node -r dotenv/config wc-payout-final.js                  # DRY-RUN (default)
+//   node -r dotenv/config wc-payout-final.js --write-rows     # insert wc_payouts rows (tx=null)
+//   node -r dotenv/config wc-payout-final.js --sign           # broadcast TXs (resume-safe)
+//
+// Env: SUPABASE_SERVICE_ROLE_KEY, PRIZE_PRIVATE_KEY (--sign only)
+
+const fs = require('fs');
+const path = require('path');
+const {
+  createPublicClient, createWalletClient, http, parseAbi, parseUnits,
+} = require('viem');
+const { bsc } = require('viem/chains');
+const { privateKeyToAccount } = require('viem/accounts');
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+const PRIZE_WALLET = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+const BOBAI        = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const END_TIERS    = [0.50, 0.25, 0.15, 0.10];
+const HOLDER_CAP_MULTIPLE = 26;
+// Frozen Final-kickoff prices (2026-07-19T19:00:00.000Z) — see wc-final-kickoff-prices.json
+const KICKOFF = { btc: 64420.00, bnb: 567.47, bobai: 0.0000553231784899214 };
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://aerffjhdsbxpvuulkryr.supabase.co';
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const ERC20_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+]);
+
+// ─── Args ───────────────────────────────────────────────────────────────────
+const args = process.argv.slice(2);
+const SIGN       = args.includes('--sign');
+const WRITE_ROWS = args.includes('--write-rows');
+const FORCE      = args.includes('--force');
+const JSON_OUT   = 'wc-payout-final-snapshot.json';
+
+// ─── Supabase REST helpers ──────────────────────────────────────────────────
+async function sbReq(method, urlPath, body){
+  if (!SB_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${urlPath}`, {
+    method,
+    headers: {
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json', Prefer: 'return=representation',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Supabase ${method} ${urlPath} → ${res.status}: ${text.slice(0, 200)}`);
+  try { return JSON.parse(text); } catch { return text; }
+}
+async function sbRpc(name, params){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params || {}),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`RPC ${name} → ${res.status}: ${text.slice(0,200)}`);
+  return JSON.parse(text);
+}
+
+// ─── On-chain ───────────────────────────────────────────────────────────────
+const BSC_RPC = process.env.BSC_RPC || 'https://bsc-dataseed.binance.org/';
+const transport = http(BSC_RPC, { batch: false, retryCount: 3, retryDelay: 600 });
+const publicClient = createPublicClient({ chain: bsc, transport });
+
+async function readBobaiBalance(addr){
+  try {
+    const wei = await publicClient.readContract({
+      address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [addr],
+    });
+    return Number(wei) / 1e18;
+  } catch (e) {
+    console.warn(`  [balance] ${addr.slice(0,8)}… failed: ${e.message}`);
+    return 0;
+  }
+}
+
+// ─── 26x cap cascade (same as group payout) ─────────────────────────────────
+function applyCapCascade(winners){
+  winners.forEach(w => { w.final = 0; w.locked = w.cap <= 0; });
+  let remaining = winners.reduce((s, w) => s + w._raw, 0);
+  let rounds = 0;
+  while (remaining > 1e-6 && rounds++ < 100) {
+    const unlocked = winners.filter(w => !w.locked);
+    if (!unlocked.length) break;
+    const totalRaw = unlocked.reduce((s, w) => s + w._raw, 0);
+    if (totalRaw <= 0) break;
+    let distributed = 0, newCap = false;
+    for (const w of unlocked) {
+      const slice = remaining * w._raw / totalRaw;
+      const room = w.cap - w.final;
+      if (slice >= room) { w.final = w.cap; w.locked = true; distributed += room; newCap = true; }
+      else { w.final += slice; distributed += slice; }
+    }
+    remaining -= distributed;
+    if (!newCap) break;
+  }
+  return { rounds, residualBobai: Math.max(0, remaining) };
+}
+
+const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const pad = (s, n) => String(s ?? '').padEnd(n);
+
+// ─── Build snapshot ─────────────────────────────────────────────────────────
+async function buildSnapshot(){
+  const pool = (await sbReq('GET', 'wc_pool?select=*'))[0];
+  const endPot    = Number(pool.endpool);
+  const cryptoPot = Number(pool.crypto_pot);
+  const coinPot   = cryptoPot / 3;
+  const priceUsd  = Number(pool.bobai_price_usd) || null;
+
+  // END-POOL: top-4 wallet-linked by total_points
+  const lb = await sbRpc('wc_overall_leaderboard_ranked', {});
+  const eligible = lb.filter(r => r.has_wallet);
+  const top4 = eligible.slice(0, 4);
+  if (top4.length !== 4) throw new Error(`Expected 4 end-pool winners, got ${top4.length}`);
+
+  // CRYPTO: ranked by |tip - kickoff| per coin, wallet-linked only
+  const crypto = await sbReq('GET', 'wc_crypto?select=user_id,btc_price,bnb_price,bobai_price');
+  const users  = await sbReq('GET', 'wc_users?select=id,username,avatar_country,wallet');
+  const userById = new Map(users.map(u => [u.id, u]));
+
+  // Collect every wallet we might need a balance for
+  const winners = [];
+  for (let i = 0; i < top4.length; i++) {
+    const u = userById.get(top4[i].user_id);
+    winners.push({
+      pot: 'end', position: `end_${i+1}`, user_id: top4[i].user_id,
+      username: u.username, country_code: u.avatar_country, wallet: u.wallet,
+      points: Number(top4[i].total_points), _raw: endPot * END_TIERS[i],
+    });
+  }
+
+  const coinRankings = {};
+  for (const coin of ['btc', 'bnb', 'bobai']) {
+    coinRankings[coin] = crypto
+      .filter(r => r[coin + '_price'] != null)
+      .map(r => ({ ...r, _diff: Math.abs(Number(r[coin + '_price']) - KICKOFF[coin]), _u: userById.get(r.user_id) }))
+      .filter(r => r._u && r._u.wallet)
+      .sort((a, b) => a._diff - b._diff);
+  }
+
+  // Balances for everyone potentially involved (top4 + top-5 per coin ranking)
+  const addrs = new Set(winners.map(w => w.wallet.toLowerCase()));
+  Object.values(coinRankings).forEach(rk => rk.slice(0, 5).forEach(r => addrs.add(r._u.wallet.toLowerCase())));
+  console.log(`Reading on-chain BOBAI balance for ${addrs.size} unique wallets…`);
+  const balMap = new Map();
+  for (const a of addrs) balMap.set(a, await readBobaiBalance(a));
+
+  // END-POOL cascade
+  for (const w of winners) {
+    w.balance = balMap.get(w.wallet.toLowerCase()) || 0;
+    w.cap = w.balance * HOLDER_CAP_MULTIPLE;
+  }
+  const endCascade = applyCapCascade(winners);
+  winners.forEach(w => { w.capHit = w.locked && w._raw > w.cap; });
+
+  // CRYPTO: winner-take-all per coin — first ranked player with cap > pot-share… no:
+  // cap 0 → skip to next; cap between 0 and pot → they win but payout is capped,
+  // residual per-pot → LP+burn (per published per-pot overflow rule).
+  const skipped = [];
+  for (const coin of ['btc', 'bnb', 'bobai']) {
+    let winner = null;
+    for (const cand of coinRankings[coin]) {
+      const bal = balMap.get(cand._u.wallet.toLowerCase());
+      if (bal === undefined) { balMap.set(cand._u.wallet.toLowerCase(), await readBobaiBalance(cand._u.wallet)); }
+      const balance = balMap.get(cand._u.wallet.toLowerCase()) || 0;
+      if (balance * HOLDER_CAP_MULTIPLE <= 0) {
+        skipped.push({ coin, username: cand._u.username, reason: 'holds 0 BOBAI → cap 0 → next closest' });
+        continue;
+      }
+      winner = { cand, balance };
+      break;
+    }
+    if (!winner) throw new Error(`No eligible ${coin} winner with holdings found`);
+    const cap = winner.balance * HOLDER_CAP_MULTIPLE;
+    const final = Math.min(coinPot, cap);
+    winners.push({
+      pot: 'crypto', position: `crypto_${coin}`, user_id: winner.cand.user_id,
+      username: winner.cand._u.username, country_code: winner.cand._u.avatar_country,
+      wallet: winner.cand._u.wallet, tip: Number(winner.cand[coin + '_price']),
+      diff: winner.cand._diff, balance: winner.balance, cap,
+      _raw: coinPot, final, capHit: final < coinPot,
+    });
+  }
+
+  const totals = {
+    rawTotal: winners.reduce((s, w) => s + w._raw, 0),
+    toSend:   winners.reduce((s, w) => s + w.final, 0),
+  };
+  const residual = totals.rawTotal - totals.toSend;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    pots: { endPot, cryptoPot, coinPot },
+    kickoffPrices: KICKOFF,
+    bobaiPriceUsd: priceUsd,
+    endCascade, totals, residual, skipped,
+    winners: winners.map(w => ({
+      pot: w.pot, position: w.position, user_id: w.user_id, username: w.username,
+      country_code: w.country_code, wallet: w.wallet,
+      points: w.points ?? null, tip: w.tip ?? null, diff: w.diff ?? null,
+      balance: w.balance, cap: w.cap, raw: w._raw, _raw: w._raw,
+      final: w.final, capHit: !!w.capHit, tx_hash: null, paid_at: null,
+    })),
+  };
+}
+
+function printSummary(s){
+  console.log('\n===========================================================');
+  console.log(`  $BOBAI WORLDCUP '26 — END-POOL + CRYPTO PAYOUT SNAPSHOT`);
+  console.log('===========================================================');
+  console.log(`  generated:   ${s.generatedAt}`);
+  console.log(`  end-pool:    ${fmt(s.pots.endPot)} BOBAI  (tiers 50/25/15/10)`);
+  console.log(`  crypto-pot:  ${fmt(s.pots.cryptoPot)} BOBAI  (${fmt(s.pots.coinPot)} per coin)`);
+  console.log(`  to send:     ${fmt(s.totals.toSend)} BOBAI`);
+  console.log(`  residual:    ${fmt(s.residual)} BOBAI  (→ LP add + burn)`);
+  if (s.skipped.length) s.skipped.forEach(x => console.log(`  skipped:     [${x.coin}] ${x.username} — ${x.reason}`));
+  console.log('');
+  console.log('  ' + pad('slot', 14) + pad('user', 16) + pad('wallet', 14) + pad('balance', 14) + pad('raw', 13) + pad('final', 13) + 'note');
+  for (const w of s.winners) {
+    console.log('  '
+      + pad(w.position, 14) + pad(w.username, 16)
+      + pad(w.wallet.slice(0, 6) + '…' + w.wallet.slice(-4), 14)
+      + pad(fmt(w.balance), 14) + pad(fmt(w.raw), 13) + pad(fmt(w.final), 13)
+      + (w.capHit ? '26x CAP' : (w.final > w.raw + 1 ? 'cascade +' + fmt(w.final - w.raw) : '')));
+  }
+  const usd = s.bobaiPriceUsd;
+  if (usd) {
+    console.log('');
+    for (const w of s.winners) if (w.final > 0) console.log(`  ${pad(w.position, 14)}${pad(w.username, 16)}≈ $${(w.final * usd).toFixed(2)}`);
+  }
+  console.log('');
+}
+
+// ─── Sign loop (resume-safe, mirrors wc-payout-group.js) ────────────────────
+async function runSignLoop(snapshot){
+  if (!process.env.PRIZE_PRIVATE_KEY) throw new Error('PRIZE_PRIVATE_KEY missing for --sign');
+  const account = privateKeyToAccount(process.env.PRIZE_PRIVATE_KEY);
+  if (account.address.toLowerCase() !== PRIZE_WALLET.toLowerCase()) {
+    throw new Error(`Key does not match PRIZE_WALLET (key=${account.address})`);
+  }
+
+  console.log('\n[pre-flight] cross-checking snapshot tx_hashes with wc_payouts…');
+  const dbRows = await sbReq('GET', 'wc_payouts?pot=in.(end,crypto)&select=id,position,tx_hash');
+  if (dbRows.length !== snapshot.winners.length) {
+    throw new Error(`[pre-flight] DB has ${dbRows.length} end/crypto rows, snapshot has ${snapshot.winners.length}. Run --write-rows first.`);
+  }
+  const dbBySlot = new Map(dbRows.map(r => [r.position, r]));
+  const mismatches = [];
+  for (const w of snapshot.winners) {
+    const r = dbBySlot.get(w.position);
+    if (!r) { mismatches.push(`${w.position}: missing in DB`); continue; }
+    if ((w.tx_hash || null) !== (r.tx_hash || null)) mismatches.push(`${w.position}: snapshot/db tx mismatch`);
+    if (!w.payout_row_id) w.payout_row_id = r.id;
+  }
+  if (mismatches.length) {
+    mismatches.forEach(m => console.error(`  ${m}`));
+    throw new Error('Pre-flight failed. Sync snapshot and DB before signing.');
+  }
+  const toSend = snapshot.winners.filter(w => w.final > 0 && !w.tx_hash);
+  console.log(`[pre-flight] OK · ${toSend.length} to send:`);
+  toSend.forEach(w => console.log(`    ${w.position}  ${w.username}  ${fmt(w.final)} BOBAI`));
+  const wallet = createWalletClient({ chain: bsc, transport, account });
+  console.log(`\nSign mode armed. Account: ${account.address}`);
+  console.log('Press Ctrl+C now to abort. Sending in 5 seconds…');
+  await new Promise(r => setTimeout(r, 5000));
+
+  // Randomized TX order (payout privacy, same as group run)
+  const order = snapshot.winners.slice();
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+
+  for (const w of order) {
+    if (w.final <= 0) { console.log(`  [skip] ${w.position} ${w.username} — zero final (26x cap)`); continue; }
+    if (w.tx_hash)    { console.log(`  [skip] ${w.position} ${w.username} — already sent`); continue; }
+    const amountWei = parseUnits(w.final.toFixed(8), 18);
+    try {
+      const txHash = await wallet.writeContract({
+        address: BOBAI, abi: ERC20_ABI, functionName: 'transfer', args: [w.wallet, amountWei],
+      });
+      console.log(`  [send] ${w.position} ${w.username} → ${w.wallet}  ${fmt(w.final)} BOBAI  tx=${txHash}`);
+      const rcpt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (rcpt.status !== 'success') throw new Error(`reverted in block ${rcpt.blockNumber}`);
+      w.tx_hash = txHash;
+      w.paid_at = new Date().toISOString();
+      fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+      await sbReq('PATCH', `wc_payouts?id=eq.${w.payout_row_id}`, { tx_hash: txHash, paid_at: w.paid_at });
+      console.log(`         ↳ wc_payouts row #${w.payout_row_id} updated`);
+    } catch (e) {
+      console.error(`  [FAIL] ${w.position} ${w.username}: ${e.message}`);
+    }
+  }
+  console.log('\nAll transfers attempted. Re-run --sign to retry FAILs.');
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+(async () => {
+  console.log(`Mode: ${SIGN ? 'LIVE SIGN' : (WRITE_ROWS ? 'WRITE-ROWS' : 'DRY-RUN')}  |  json-out=${JSON_OUT}`);
+
+  // RESUME for --sign: reuse existing snapshot (keeps row ids + tx hashes)
+  if (SIGN && fs.existsSync(JSON_OUT)) {
+    console.log(`\n[resume] reusing existing snapshot at ${JSON_OUT}`);
+    const snapshot = JSON.parse(fs.readFileSync(JSON_OUT, 'utf8'));
+    printSummary(snapshot);
+    await runSignLoop(snapshot);
+    return;
+  }
+  if (SIGN) throw new Error('No snapshot found — run dry-run + --write-rows first.');
+
+  const snapshot = await buildSnapshot();
+  fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+  console.log(`Snapshot saved → ${path.resolve(JSON_OUT)}`);
+  printSummary(snapshot);
+
+  if (WRITE_ROWS) {
+    const existing = await sbReq('GET', 'wc_payouts?pot=in.(end,crypto)&select=id');
+    if (existing.length && !FORCE) {
+      console.error(`[write-rows] aborted: ${existing.length} end/crypto rows already exist. Pass --force to delete + re-insert.`);
+      process.exit(2);
+    }
+    if (existing.length && FORCE) {
+      console.log(`[write-rows] --force: deleting ${existing.length} existing rows…`);
+      await sbReq('DELETE', 'wc_payouts?pot=in.(end,crypto)');
+    }
+    console.log(`[write-rows] inserting ${snapshot.winners.length} rows (tx_hash=null)…`);
+    const inserted = await sbReq('POST', 'wc_payouts', snapshot.winners.map(w => ({
+      pot: w.pot, group_letter: null, position: w.position,
+      user_id: w.user_id, username: w.username, country_code: w.country_code,
+      wallet: w.wallet.toLowerCase(), bobai_amount: w.final,
+      usd_at_payout: snapshot.bobaiPriceUsd ? +(w.final * snapshot.bobaiPriceUsd).toFixed(2) : null,
+      tx_hash: null,
+      notes: w.capHit ? '26x cap applied — forfeit'
+           : (w.final > w.raw + 1 ? 'received redistributed share (26x cap cascade)'
+           : (w.position === 'crypto_bobai' ? 'closest holder — closer guess forfeited (0 BOBAI, cap 0)' : null)),
+    })));
+    inserted.forEach(row => {
+      const w = snapshot.winners.find(x => x.position === row.position);
+      if (w) w.payout_row_id = row.id;
+    });
+    fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+    console.log(`  inserted ${inserted.length} rows. Snapshot re-saved with row IDs.`);
+  }
+
+  if (!SIGN) console.log('\n--- DRY-RUN complete. No on-chain transfers were sent. ---');
+})().catch(err => {
+  console.error('FATAL:', err.message);
+  process.exit(1);
+});
+
+==============================================================================
+=== FILE: scripts/worldcup/wc-payout-group.js
+==============================================================================
+
+// $BOBAI Worldcup '26 — Group-Pot Payout Script
+//
+// Reads the final group standings from Supabase, applies the 26x holder cap
+// cascade per pot, and (in --sign mode) sends one BOBAI ERC-20 transfer per
+// rank from PRIZE_WALLET to each winner. Logs each successful TX to wc_payouts.
+//
+// Usage:
+//   node -r dotenv/config wc-payout-group.js                 # DRY-RUN (default)
+//   node -r dotenv/config wc-payout-group.js --sign          # broadcast TXs
+//   node -r dotenv/config wc-payout-group.js --json snapshot.json
+//
+// Env:
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  — Supabase admin reads/writes
+//   ADMIN_TOKEN                              — worker /admin/* token (for log-payout)
+//   PRIZE_PRIVATE_KEY                        — required only with --sign
+//   WC_ADMIN_URL                             — defaults to bobai-worldcup-sync.bobbuildonbnb.workers.dev
+
+const fs = require('fs');
+const path = require('path');
+const {
+  createPublicClient, createWalletClient, http, parseAbi,
+  formatUnits, parseUnits,
+} = require('viem');
+const { bsc } = require('viem/chains');
+const { privateKeyToAccount } = require('viem/accounts');
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+const PRIZE_WALLET     = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+const BOBAI            = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const GROUP_LETTERS    = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+const GROUP_POT_FROZEN = 3472587.05;
+const POOL_SPLIT       = { groupTop1: 0.55, groupTop2: 0.30, groupBest3: 0.15 };
+const SLOTS            = { top1: 12, top2: 12, best3: 8 };
+const RAW = {
+  top1:  (GROUP_POT_FROZEN * POOL_SPLIT.groupTop1)  / SLOTS.top1,   // ≈ 159 202
+  top2:  (GROUP_POT_FROZEN * POOL_SPLIT.groupTop2)  / SLOTS.top2,   // ≈  86 815
+  best3: (GROUP_POT_FROZEN * POOL_SPLIT.groupBest3) / SLOTS.best3,  // ≈  65 111
+};
+const HOLDER_CAP_MULTIPLE = 26;
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://aerffjhdsbxpvuulkryr.supabase.co';
+const SB_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ADMIN_TOKEN  = process.env.ADMIN_TOKEN;
+const WC_ADMIN_URL = process.env.WC_ADMIN_URL || 'https://bobai-worldcup-sync.bobbuildonbnb.workers.dev';
+
+const ERC20_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+]);
+
+// ─── Args ───────────────────────────────────────────────────────────────────
+const args = process.argv.slice(2);
+const SIGN        = args.includes('--sign');
+const WRITE_ROWS  = args.includes('--write-rows');
+const RESET_ROWS  = args.includes('--reset-rows');
+const FORCE       = args.includes('--force');
+const JSON_OUT = (args.find(a => a.startsWith('--json='))?.split('=')[1])
+              || (args.includes('--json') ? args[args.indexOf('--json')+1] : null)
+              || 'wc-payout-snapshot.json';
+const SKIP_LOG = args.includes('--skip-log');
+
+// ─── Supabase REST helpers ──────────────────────────────────────────────────
+async function sbReq(method, urlPath, body){
+  if (!SB_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${urlPath}`, {
+    method,
+    headers: {
+      apikey:        SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer:        'return=representation',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Supabase ${method} ${urlPath} → ${res.status}: ${text.slice(0, 200)}`);
+  try { return JSON.parse(text); } catch { return text; }
+}
+async function sbRpc(name, params){
+  if (!SB_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey:        SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params || {}),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`RPC ${name} → ${res.status}: ${text.slice(0,200)}`);
+  return JSON.parse(text);
+}
+
+// ─── On-chain helpers ───────────────────────────────────────────────────────
+// Use explicit BSC RPC list — viem's default falls back to a rate-limited
+// public-good gateway (thirdweb) that 429s on bursts of 32 TXs.
+const BSC_RPCS = [
+  process.env.BSC_RPC || 'https://bsc-dataseed.binance.org/',
+  'https://bsc-dataseed1.binance.org/',
+  'https://bsc-dataseed2.binance.org/',
+  'https://bsc-dataseed3.binance.org/',
+];
+function makeTransport(){
+  // Round-robin across the dataseed URLs to spread load.
+  return http(BSC_RPCS[0], { batch: false, retryCount: 3, retryDelay: 600 });
+}
+const publicClient = createPublicClient({ chain: bsc, transport: makeTransport() });
+
+async function readBobaiBalance(addr){
+  try {
+    const wei = await publicClient.readContract({
+      address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [addr],
+    });
+    return Number(wei) / 1e18;
+  } catch (e) {
+    console.warn(`  [balance] ${addr.slice(0,8)}… failed: ${e.message}`);
+    return 0;
+  }
+}
+
+// ─── Snapshot ───────────────────────────────────────────────────────────────
+async function loadAllGroupStandings(){
+  const groups = [];
+  for (const letter of GROUP_LETTERS) {
+    const rows = await sbRpc('wc_group_leaderboard_ranked', { p_letter: letter });
+    groups.push({ letter, rows: rows || [] });
+  }
+  return groups;
+}
+
+async function loadWalletsForUsers(userIds){
+  if (!userIds.length) return new Map();
+  const inList = '(' + userIds.map(id => `"${id}"`).join(',') + ')';
+  const rows = await sbReq('GET', `wc_users?select=id,username,avatar_country,wallet&id=in.${inList}`);
+  const m = new Map();
+  rows.forEach(r => m.set(r.id, r));
+  return m;
+}
+
+// Pick the 32 group winners following the leaderboard's skip+promote rule:
+// eligible = wallet-linked players. Within each group, top 3 eligible.
+// Across all 12 groups, the top 8 by group_points among the 3rd-eligible qualify.
+function pickWinners(groups){
+  const top1 = [], top2 = [], best3candidates = [];
+  for (const g of groups) {
+    const eligible = (g.rows || []).filter(r => r.has_wallet);
+    if (eligible[0]) top1.push({ ...eligible[0], _letter: g.letter, _position: '1st',  _raw: RAW.top1  });
+    if (eligible[1]) top2.push({ ...eligible[1], _letter: g.letter, _position: '2nd',  _raw: RAW.top2  });
+    if (eligible[2]) best3candidates.push({ ...eligible[2], _letter: g.letter });
+  }
+  const best3 = best3candidates
+    .slice()
+    .sort((a, b) => (b.group_points || 0) - (a.group_points || 0))
+    .slice(0, SLOTS.best3)
+    .map(r => ({ ...r, _position: 'best_3rd', _raw: RAW.best3 }));
+  return [...top1, ...top2, ...best3];
+}
+
+// ─── 26x holder-cap cascade ─────────────────────────────────────────────────
+function applyCapCascade(winners){
+  winners.forEach(w => { w.final = 0; w.locked = w.cap <= 0; });
+  let remaining = winners.reduce((s, w) => s + w._raw, 0);
+  const HARD_STOP = 100;
+  let rounds = 0;
+  while (remaining > 1e-6 && rounds++ < HARD_STOP) {
+    const unlocked = winners.filter(w => !w.locked);
+    if (!unlocked.length) break;
+    const totalRaw = unlocked.reduce((s, w) => s + w._raw, 0);
+    if (totalRaw <= 0) break;
+    let distributed = 0;
+    let newCap = false;
+    for (const w of unlocked) {
+      const slice = remaining * w._raw / totalRaw;
+      const room  = w.cap - w.final;
+      if (slice >= room) {
+        w.final = w.cap;
+        w.locked = true;
+        distributed += room;
+        newCap = true;
+      } else {
+        w.final += slice;
+        distributed += slice;
+      }
+    }
+    remaining -= distributed;
+    if (!newCap) break;  // any remaining is float roundoff; safe to stop
+  }
+  return { rounds, residualBobai: Math.max(0, remaining) };
+}
+
+// ─── Logging payouts back to Supabase ───────────────────────────────────────
+async function logPayoutRow(row){
+  if (SKIP_LOG) return { ok: true, skipped: true };
+  if (!ADMIN_TOKEN) throw new Error('ADMIN_TOKEN missing (or pass --skip-log)');
+  const res = await fetch(`${WC_ADMIN_URL}/admin/log-payout?token=${ADMIN_TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(row),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`log-payout ${res.status}: ${text.slice(0, 200)}`);
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+// ─── Console formatters ─────────────────────────────────────────────────────
+const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const pad = (s, n) => String(s ?? '').padEnd(n);
+
+function printSummary(snapshot){
+  const { winners, totals, residual, generatedAt } = snapshot;
+  console.log('');
+  console.log('===========================================================');
+  console.log(`  $BOBAI WORLDCUP '26 — GROUP POT PAYOUT SNAPSHOT`);
+  console.log('===========================================================');
+  console.log(`  generated:  ${generatedAt}`);
+  console.log(`  pot frozen: ${fmt(GROUP_POT_FROZEN)} BOBAI`);
+  console.log(`  winners:    ${winners.length} of 32 expected`);
+  console.log(`  to send:    ${fmt(totals.toSend)} BOBAI`);
+  console.log(`  residual:   ${fmt(residual)} BOBAI  (→ LP add + burn)`);
+  console.log(`  pre-cap:    ${fmt(totals.rawTotal)} BOBAI`);
+  console.log('');
+  const byPos = { '1st': [], '2nd': [], 'best_3rd': [] };
+  for (const w of winners) byPos[w.position]?.push(w);
+  for (const pos of ['1st', '2nd', 'best_3rd']) {
+    console.log(`-- ${pos.toUpperCase()} (${byPos[pos].length}) ----------------------------`);
+    console.log('  '
+      + pad('grp', 4)
+      + pad('user', 22)
+      + pad('country', 8)
+      + pad('wallet', 14)
+      + pad('balance', 14)
+      + pad('raw', 12)
+      + pad('final', 12)
+      + 'cap-hit');
+    for (const w of byPos[pos]) {
+      console.log('  '
+        + pad(w.group_letter, 4)
+        + pad((w.username || '').slice(0, 20), 22)
+        + pad(w.country_code || '—', 8)
+        + pad(w.wallet ? (w.wallet.slice(0, 6) + '…' + w.wallet.slice(-4)) : '—', 14)
+        + pad(fmt(w.balance), 14)
+        + pad(fmt(w._raw), 12)
+        + pad(fmt(w.final), 12)
+        + (w.capHit ? 'YES' : '')
+      );
+    }
+  }
+  console.log('');
+}
+
+// ─── Sign loop (called from both fresh-build and resume-from-snapshot paths)
+async function runSignLoop(snapshot){
+  if (!process.env.PRIZE_PRIVATE_KEY) throw new Error('PRIZE_PRIVATE_KEY missing for --sign');
+  const account = privateKeyToAccount(process.env.PRIZE_PRIVATE_KEY);
+  if (account.address.toLowerCase() !== PRIZE_WALLET.toLowerCase()) {
+    throw new Error(`Key does not match PRIZE_WALLET (key=${account.address})`);
+  }
+
+  // ─── PRE-FLIGHT: snapshot vs DB tx_hash invariant ─────────────────────────
+  // Abort if the snapshot's tx_hash set doesn't match wc_payouts exactly.
+  // Prevents double-paying if the snapshot file ever drifts from the DB.
+  console.log('\n[pre-flight] cross-checking snapshot tx_hashes with wc_payouts…');
+  const dbRows = await sbReq('GET', 'wc_payouts?pot=eq.group&select=id,group_letter,position,tx_hash');
+  if (dbRows.length !== snapshot.winners.length) {
+    throw new Error(`[pre-flight] DB has ${dbRows.length} group rows, snapshot has ${snapshot.winners.length}. Aborting.`);
+  }
+  const dbBySlot = new Map(dbRows.map(r => [`${r.group_letter}|${r.position}`, r]));
+  const mismatches = [];
+  for (const w of snapshot.winners) {
+    const key = `${w.group_letter}|${w.position}`;
+    const r = dbBySlot.get(key);
+    if (!r) { mismatches.push(`${key}: missing in DB`); continue; }
+    const snapTx = w.tx_hash || null;
+    const dbTx   = r.tx_hash || null;
+    if (snapTx !== dbTx) {
+      mismatches.push(`${key}: snapshot=${snapTx ? snapTx.slice(0,12)+'…' : 'null'}  db=${dbTx ? dbTx.slice(0,12)+'…' : 'null'}`);
+    }
+    // Attach row id from DB so we PATCH the correct row
+    if (!w.payout_row_id) w.payout_row_id = r.id;
+  }
+  if (mismatches.length) {
+    console.error('[pre-flight] tx_hash MISMATCH between snapshot and DB:');
+    mismatches.forEach(m => console.error(`  ${m}`));
+    throw new Error('Pre-flight failed. Sync snapshot and DB before signing.');
+  }
+  const already = snapshot.winners.filter(w => w.tx_hash).length;
+  const zero    = snapshot.winners.filter(w => w.final === 0).length;
+  const toSend  = snapshot.winners.filter(w => w.final > 0 && !w.tx_hash);
+  console.log(`[pre-flight] OK · ${already} already paid · ${zero} cap-zero · ${toSend.length} to send`);
+  console.log('[pre-flight] About to send:');
+  toSend.forEach(w => console.log(`    ${w.group_letter}/${w.position}  ${w.username}  ${fmt(w.final)} BOBAI`));
+  const wallet = createWalletClient({ chain: bsc, transport: makeTransport(), account });
+  console.log(`\nSign mode armed. Account: ${account.address}`);
+  console.log('Press Ctrl+C now to abort. Sending in 5 seconds…');
+  await new Promise(r => setTimeout(r, 5000));
+
+  // Randomize TX order (privacy: on-chain timeline can't reveal slot order).
+  const order = snapshot.winners.slice();
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+
+  for (const w of order) {
+    if (w.final <= 0) {
+      console.log(`  [skip] ${w.group_letter}/${w.position} ${w.username} — zero final (26x cap)`);
+      continue;
+    }
+    if (w.tx_hash) {
+      console.log(`  [skip] ${w.group_letter}/${w.position} ${w.username} — already sent tx=${w.tx_hash.slice(0,10)}…`);
+      continue;
+    }
+    const amountWei = parseUnits(w.final.toFixed(8), 18);
+    try {
+      const txHash = await wallet.writeContract({
+        address: BOBAI, abi: ERC20_ABI, functionName: 'transfer',
+        args: [w.wallet, amountWei],
+      });
+      console.log(`  [send] ${w.group_letter}/${w.position} ${w.username} → ${w.wallet}  ${fmt(w.final)} BOBAI  tx=${txHash}`);
+      const rcpt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (rcpt.status !== 'success') throw new Error(`reverted in block ${rcpt.blockNumber}`);
+      w.tx_hash = txHash;
+      w.paid_at = new Date().toISOString();
+      fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+      if (w.payout_row_id) {
+        await sbReq('PATCH', `wc_payouts?id=eq.${w.payout_row_id}`, {
+          tx_hash: txHash, paid_at: w.paid_at,
+        });
+        console.log(`         ↳ wc_payouts row #${w.payout_row_id} updated`);
+      } else {
+        await logPayoutRow({
+          pot: 'group', group_letter: w.group_letter, position: w.position,
+          user_id: w.user_id, username: w.username, country_code: w.country_code,
+          wallet: w.wallet, bobai_amount: w.final, usd_at_payout: null,
+          tx_hash: txHash, notes: w.capHit ? '26x cap applied' : null,
+        });
+        console.log(`         ↳ wc_payouts row inserted (no pre-stage id)`);
+      }
+    } catch (e) {
+      console.error(`  [FAIL] ${w.group_letter}/${w.position} ${w.username}: ${e.message}`);
+    }
+  }
+  console.log('\nAll transfers attempted. Re-run --sign on the same snapshot to retry FAILs.');
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+(async () => {
+  console.log(`Mode: ${SIGN ? 'LIVE SIGN' : 'DRY-RUN'}  |  json-out=${JSON_OUT}`);
+
+  // RESUME MODE: if --sign without --write-rows and snapshot exists, reuse it
+  // as the source of truth. Critical because regenerating the snapshot loses
+  // payout_row_id and tx_hash already committed on-chain — re-running would
+  // either double-pay or detach the DB row.
+  if (SIGN && !WRITE_ROWS && !RESET_ROWS && fs.existsSync(JSON_OUT)) {
+    console.log(`\n[resume] reusing existing snapshot at ${JSON_OUT}`);
+    const snapshot = JSON.parse(fs.readFileSync(JSON_OUT, 'utf8'));
+    const already  = snapshot.winners.filter(w => w.tx_hash).length;
+    const zero     = snapshot.winners.filter(w => w.final === 0).length;
+    const todo     = snapshot.winners.filter(w => w.final > 0 && !w.tx_hash).length;
+    console.log(`  with tx_hash: ${already}  cap-zero: ${zero}  still-to-send: ${todo}`);
+    printSummary(snapshot);
+    await runSignLoop(snapshot);
+    return;
+  }
+
+  const groups   = await loadAllGroupStandings();
+  const winners  = pickWinners(groups);
+  console.log(`Picked ${winners.length} winners across 12 groups.`);
+
+  // Resolve wallets
+  const ids = [...new Set(winners.map(w => w.user_id))];
+  const userMap = await loadWalletsForUsers(ids);
+  for (const w of winners) {
+    const u = userMap.get(w.user_id) || {};
+    w.wallet       = u.wallet || null;
+    w.username     = u.username || w.username || null;
+    w.country_code = u.avatar_country || null;
+  }
+
+  // Drop any winner that somehow lost their wallet between RPC + here
+  const dropped = winners.filter(w => !w.wallet);
+  if (dropped.length) {
+    console.warn(`⚠  Dropping ${dropped.length} winners without wallet (post-resolve):`);
+    dropped.forEach(d => console.warn(`     ${d._letter}/${d._position} ${d.username}`));
+  }
+  const live = winners.filter(w => w.wallet);
+
+  // On-chain balance (for cap). One read per unique wallet.
+  const uniq = [...new Set(live.map(w => w.wallet.toLowerCase()))];
+  console.log(`Reading on-chain BOBAI balance for ${uniq.length} unique wallets…`);
+  const balMap = new Map();
+  for (const addr of uniq) {
+    balMap.set(addr, await readBobaiBalance(addr));
+  }
+  for (const w of live) {
+    w.balance = balMap.get(w.wallet.toLowerCase()) || 0;
+    w.cap = w.balance * HOLDER_CAP_MULTIPLE;
+  }
+
+  // Per-pot cap cascade — group pot is a single pot. End-pool / Crypto pot use
+  // separate runs after the final.
+  const cascade = applyCapCascade(live);
+  live.forEach(w => { w.capHit = (w.locked && w.final >= w.cap - 1e-3 && w._raw > w.cap); });
+
+  // Build snapshot
+  const snapshot = {
+    generatedAt: new Date().toISOString(),
+    pot: 'group',
+    potFrozenBobai: GROUP_POT_FROZEN,
+    cascade,
+    totals: {
+      rawTotal: live.reduce((s, w) => s + w._raw, 0),
+      toSend:   live.reduce((s, w) => s + w.final, 0),
+    },
+    residual: cascade.residualBobai,
+    winners: live.map(w => ({
+      group_letter: w._letter,
+      position:     w._position,
+      user_id:      w.user_id,
+      username:     w.username,
+      country_code: w.country_code,
+      wallet:       w.wallet,
+      group_points: w.group_points,
+      balance:      w.balance,
+      cap:          w.cap,
+      raw:          w._raw,
+      _raw:         w._raw,
+      final:        w.final,
+      capHit:       w.capHit,
+      tx_hash:      null,
+      paid_at:      null,
+    })),
+    droppedNoWallet: dropped.map(d => ({
+      group_letter: d._letter, position: d._position, user_id: d.user_id, username: d.username,
+    })),
+  };
+
+  fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+  console.log(`\nSnapshot saved → ${path.resolve(JSON_OUT)}`);
+  printSummary(snapshot);
+
+  // ─── Optional: write/reset wc_payouts rows ──────────────────────────────
+  if (RESET_ROWS) {
+    console.log('\n[reset-rows] deleting existing pot=group rows from wc_payouts…');
+    await sbReq('DELETE', 'wc_payouts?pot=eq.group');
+    console.log('  done.');
+  }
+  if (WRITE_ROWS) {
+    // Check for existing group rows to avoid duplicates (unless --force).
+    const existing = await sbReq('GET', 'wc_payouts?pot=eq.group&select=id,position,group_letter,user_id');
+    if (existing.length && !FORCE) {
+      console.error(`\n[write-rows] aborted: ${existing.length} pot=group rows already exist. Pass --force to overwrite (it will DELETE all and re-insert), or use --reset-rows first.`);
+      process.exit(2);
+    }
+    if (existing.length && FORCE) {
+      console.log(`[write-rows] --force on: deleting ${existing.length} existing rows…`);
+      await sbReq('DELETE', 'wc_payouts?pot=eq.group');
+    }
+    console.log(`[write-rows] inserting ${snapshot.winners.length} rows (tx_hash=null) so the UI reflects cascade results…`);
+    const inserted = await sbReq('POST', 'wc_payouts', snapshot.winners.map(w => ({
+      pot:           'group',
+      group_letter:  w.group_letter,
+      position:      w.position,
+      user_id:       w.user_id,
+      username:      w.username,
+      country_code:  w.country_code,
+      wallet:        w.wallet.toLowerCase(),
+      bobai_amount:  w.final,
+      usd_at_payout: null,
+      tx_hash:       null,
+      notes:         w.capHit ? '26x cap applied — forfeit' : (w.final > w.raw ? 'received redistributed share' : null),
+    })));
+    // Re-key snapshot.winners with the freshly inserted row id so --sign can UPDATE by id later
+    inserted.forEach(row => {
+      const w = snapshot.winners.find(x =>
+        x.group_letter === row.group_letter
+        && x.position === row.position
+        && x.user_id === row.user_id);
+      if (w) w.payout_row_id = row.id;
+    });
+    fs.writeFileSync(JSON_OUT, JSON.stringify(snapshot, null, 2));
+    console.log(`  inserted ${inserted.length} rows. snapshot re-saved with row IDs.`);
+  }
+
+  if (!SIGN) {
+    console.log('\n--- No --sign flag set. No on-chain transfers were sent. ---');
+    console.log('Next: re-run with --sign (and --write-rows if not yet done).');
+    return;
+  }
+  await runSignLoop(snapshot);
+})().catch(err => {
+  console.error('FATAL:', err.message);
+  process.exit(1);
+});
+
+==============================================================================
+=== FILE: worldcup-bot.js
+==============================================================================
+
+// BOBAI Worldcup '26 — Prize-Pool Donation Bot
+//
+// Runs every 10 min via GitHub Actions (triggered by worker-wc Cron Worker):
+// 1. Reads BNB + USDT balance of PRIZE_WALLET (0x5E41…D105)
+// 2. If BNB > MIN_SWAP_BNB + GAS_RESERVE: swap (balance - GAS_RESERVE) → BOBAI
+// 3. If USDT > MIN_SWAP_USDT and BNB ≥ GAS_RESERVE: approve + swap USDT → BNB → BOBAI
+// 4. Logs each swap to Supabase `wc_donations` (one row per swap)
+//
+// Donations + tax adds (incoming txs) are NOT tracked by this bot — the UI shows
+// them live by querying BscScan for the prize wallet. wc_donations only logs the
+// bot's swap actions (what BNB/USDT got converted to how much BOBAI).
+//
+// 100% transparent — every swap tx is on-chain and linked from the prize-pool UI.
+
+const { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther, parseUnits, formatUnits } = require('viem');
+const { bsc } = require('viem/chains');
+const { privateKeyToAccount } = require('viem/accounts');
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+const PRIZE_WALLET    = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+const BOBAI           = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const WBNB            = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const USDT            = '0x55d398326f99059fF775485246999027B3197955';
+const PANCAKE_ROUTER  = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+
+const GAS_RESERVE      = parseEther('0.003');       // keep 0.003 BNB after a BNB swap
+const MIN_SWAP_GAS     = parseEther('0.0015');      // approve+swap can hit ~0.0009 BNB on busy blocks — 0.0015 gives buffer
+const MIN_SWAP_BNB     = parseEther('0.002');       // swap if balance > GAS_RESERVE + this (i.e. > 0.005 BNB)
+const MIN_SWAP_USDT    = parseUnits('2', 18);       // swap only if ≥2 USDT (BSC USDT = 18 dec)
+const SLIPPAGE_BPS     = 1500n;                     // 15 % (BOBAI 3 % tax leaves ~12 % market buffer — 10 % was too tight, first-run reverts seen)
+const TX_DEADLINE_SEC  = 600;                       // 10 min
+
+const ROUTER_ABI = parseAbi([
+  'function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)',
+  'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',
+  'function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline)',
+]);
+const ERC20_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function approve(address spender, uint amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint)',
+]);
+const PAIR_ABI = parseAbi([
+  'function getReserves() view returns (uint112 r0, uint112 r1, uint32 ts)',
+]);
+const CHAINLINK_ABI = parseAbi([
+  'function latestAnswer() view returns (int256)',
+]);
+
+// Chainlink BNB/USD feed on BSC (8 decimals). Used as last-resort price fallback.
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
+
+// Sanity bounds for BOBAI/USD (refuse to write absurd values during edge cases)
+const PRICE_MIN_USD = 1e-7;
+const PRICE_MAX_USD = 1e-2;
+function isSanePrice(p){ return Number.isFinite(p) && p >= PRICE_MIN_USD && p <= PRICE_MAX_USD; }
+
+// ─── Supabase REST helpers ──────────────────────────────────────────────────
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SB_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function sbInsert(table, row){
+  if (!SUPABASE_URL || !SB_KEY) { console.log('[sb] missing credentials — skipping insert'); return; }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal,resolution=ignore-duplicates',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) console.log(`[sb] insert ${table} failed: ${res.status} ${await res.text()}`);
+  } catch (e) { console.log(`[sb] insert error: ${e.message}`); }
+}
+
+async function sbPatch(table, query, row){
+  if (!SUPABASE_URL || !SB_KEY) { console.log('[sb] missing credentials — skipping patch'); return; }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) console.log(`[sb] patch ${table} failed: ${res.status} ${await res.text()}`);
+  } catch (e) { console.log(`[sb] patch error: ${e.message}`); }
+}
+
+async function sbSelect(table, query){
+  if (!SUPABASE_URL || !SB_KEY) return [];
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    });
+    if (!res.ok) { console.log(`[sb] select ${table} failed: ${res.status}`); return []; }
+    return await res.json();
+  } catch (e) { console.log(`[sb] select error: ${e.message}`); return []; }
+}
+
+// ─── Prize-pool sync (mirrors worker-wc syncPool — keep in lockstep!) ───────
+// Why inline: worker-wc cron runs */10 independently of this script. Without
+// this, dashboards & TG alerts would show stale total_bobai for up to 10 min
+// after a swap. Patching wc_pool here BEFORE the wc_donations insert means
+// any reader who notices the new donation row also sees the fresh pool total.
+const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const KICKOFF_UTC   = new Date('2026-06-11T19:00:00Z').getTime();
+const GROUP_END_UTC = new Date('2026-06-27T00:00:00Z').getTime();
+const FINAL_END_UTC = new Date('2026-07-20T00:00:00Z').getTime();
+// Group pot freezes at group-end and stays visible until the group winners are
+// actually paid out. Value = 0.60 × prize-wallet balance at GROUP_END. Keep in
+// lockstep with worker-wc/index.js computePots().
+const GROUP_POT_FROZEN = 3472587.05;
+
+function computePots(total, now){
+  if (now < GROUP_END_UTC) return { group: total*0.60, end: total*0.30, crypto: total*0.10 };
+  // Group phase over: keep the frozen group pot + live 30/10 of the rest until the
+  // group BOBAI actually leaves the wallet (balance < frozen). After payout → 90/10.
+  if (total >= GROUP_POT_FROZEN) return { group: GROUP_POT_FROZEN, end: total*0.30, crypto: total*0.10 };
+  return { group: 0, end: total*0.90, crypto: total*0.10 };
+}
+
+async function fetchBobaiPriceOnchain(publicClient){
+  try {
+    const [r0, r1] = await publicClient.readContract({ address: BOBAI_PAIR, abi: PAIR_ABI, functionName: 'getReserves' });
+    // BOBAI is token0 in this pair (BOBAI hex < WBNB hex, verified on-chain 2026-05-21)
+    if (r0 === 0n || r1 === 0n) { console.log('[price] onchain: zero reserves'); return null; }
+    const bnbUsdRaw = await publicClient.readContract({ address: CHAINLINK_BNB_USD, abi: CHAINLINK_ABI, functionName: 'latestAnswer' });
+    const bnbUsd = Number(bnbUsdRaw) / 1e8;
+    if (!(bnbUsd > 0)) { console.log('[price] onchain: bad BNB/USD'); return null; }
+    const bobaiPerBnb = Number(r0) / Number(r1);
+    const price = bnbUsd / bobaiPerBnb;
+    if (!isSanePrice(price)) { console.log(`[price] onchain: sanity check failed (${price})`); return null; }
+    return price;
+  } catch (e) { console.log(`[price] onchain: ${e.message}`); return null; }
+}
+
+async function fetchBobaiPriceUsd(publicClient){
+  try {
+    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}?_=${Date.now()}`,
+      { headers: { Accept: 'application/json' } });
+    if (r.ok) {
+      const d = await r.json();
+      const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
+      if (isSanePrice(p)) return p;
+    }
+  } catch (e) { console.log(`[price] gecko: ${e.message}`); }
+  try {
+    const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI}`);
+    if (r.ok) {
+      const d = await r.json();
+      const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (d?.pairs || [])[0];
+      const p = parseFloat(pair?.priceUsd);
+      if (isSanePrice(p)) return p;
+    }
+  } catch (e) { console.log(`[price] dexscreener: ${e.message}`); }
+  // On-chain last-resort fallback (pair reserves × Chainlink BNB/USD)
+  if (publicClient) {
+    const onchain = await fetchBobaiPriceOnchain(publicClient);
+    if (onchain) { console.log('[price] using on-chain fallback'); return onchain; }
+  }
+  return null;
+}
+
+async function syncPool(publicClient){
+  try {
+    const balWei = await publicClient.readContract({ address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [PRIZE_WALLET] });
+    const wallet = Number(balWei) / 1e18;
+    const price  = await fetchBobaiPriceUsd(publicClient);
+
+    // Once admin marks the group pot paid (wc_pool.group_paid_at), override the
+    // date/balance logic so a tax/donation swap never zeroes the frozen group pot:
+    // group stays at the snapshot for display, the live wallet balance splits 90/10
+    // between end + crypto, and total_bobai = paid group + remaining. Keep this in
+    // LOCKSTEP with worker-wc/index.js syncPool().
+    const poolRows  = await sbSelect('wc_pool', 'id=eq.1&select=group_paid_at');
+    const groupPaid = Array.isArray(poolRows) && poolRows[0]?.group_paid_at != null;
+
+    let pots, displayTotal;
+    if (groupPaid) {
+      // Group payout is on-chain COMPLETE (2026-06-28) — the frozen 3.47M has
+      // left the wallet, so the live balance is end/crypto money only. Do NOT
+      // subtract the frozen amount even if donations regrow the balance past it.
+      const remaining = wallet;
+      pots = { group: GROUP_POT_FROZEN, end: remaining * 0.90, crypto: remaining * 0.10 };
+      displayTotal = GROUP_POT_FROZEN + remaining;
+    } else {
+      pots = computePots(wallet, Date.now());
+      displayTotal = wallet;
+    }
+
+    await sbPatch('wc_pool', 'id=eq.1', {
+      total_bobai:     displayTotal,
+      group_pot:       pots.group,
+      endpool:         pots.end,
+      crypto_pot:      pots.crypto,
+      bobai_price_usd: price,
+      updated_at:      new Date().toISOString(),
+    });
+    console.log(`[pool] synced: wallet ${wallet.toFixed(0)} → total ${displayTotal.toFixed(0)} BOBAI @ $${price ?? '?'}${groupPaid ? ' (group-paid)' : ''}`);
+  } catch (e) { console.log(`[pool] sync failed: ${e.message}`); }
+}
+
+// ─── Receipt parsing — extract BOBAI received from Transfer logs ────────────
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+function parseBobaiReceived(receipt, recipient){
+  let total = 0n;
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== BOBAI.toLowerCase()) continue;
+    if (log.topics[0] !== TRANSFER_TOPIC) continue;
+    if (log.topics.length < 3) continue;
+    const to = '0x' + log.topics[2].slice(26);
+    if (to.toLowerCase() !== recipient.toLowerCase()) continue;
+    total += BigInt(log.data);
+  }
+  return total;
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+async function main(){
+  const pk = process.env.PRIZE_PRIVATE_KEY;
+  if (!pk) { console.log('[ERROR] PRIZE_PRIVATE_KEY not set'); process.exit(1); }
+
+  const rpcUrl  = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
+  const account = privateKeyToAccount(pk.startsWith('0x') ? pk : '0x' + pk);
+  if (account.address.toLowerCase() !== PRIZE_WALLET.toLowerCase()) {
+    console.log(`[ERROR] Wallet mismatch — key derives ${account.address}, expected ${PRIZE_WALLET}`);
+    process.exit(1);
+  }
+
+  const publicClient = createPublicClient({ chain: bsc, transport: http(rpcUrl) });
+  const walletClient = createWalletClient({ account, chain: bsc, transport: http(rpcUrl) });
+
+  console.log('============================================');
+  console.log(`[${new Date().toISOString()}] Worldcup Donation Bot`);
+  console.log(`Wallet: ${account.address}`);
+  console.log('============================================');
+
+  const bnbBalance  = await publicClient.getBalance({ address: account.address });
+  const usdtBalance = await publicClient.readContract({ address: USDT, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] });
+  console.log(`BNB balance:  ${formatEther(bnbBalance)}`);
+  console.log(`USDT balance: ${formatUnits(usdtBalance, 18)}`);
+
+  let didAnything = false;
+
+  // ─── BNB → BOBAI ──────────────────────────────────────────────────────────
+  if (bnbBalance > GAS_RESERVE + MIN_SWAP_BNB) {
+    const amountIn = bnbBalance - GAS_RESERVE;
+    console.log(`\n--- Swapping ${formatEther(amountIn)} BNB → BOBAI ---`);
+
+    // Snapshot pending TAX rows BEFORE the swap. Buyback bot inserts these whenever
+    // it sends WC26 tax BNB to the prize wallet (amount_bobai stays null until we
+    // attribute the swap result back to them).
+    const pendingTax  = await sbSelect('wc_donations', 'token=eq.TAX&amount_bobai=is.null&select=id,amount_in&order=created_at.asc');
+    const totalTaxIn  = pendingTax.reduce((s, r) => s + parseFloat(r.amount_in || 0), 0);
+
+    const path = [WBNB, BOBAI];
+    try {
+      const amounts = await publicClient.readContract({
+        address: PANCAKE_ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsOut',
+        args: [amountIn, path],
+      });
+      const expected   = amounts[1];
+      const amountMin  = (expected * (10000n - SLIPPAGE_BPS)) / 10000n;
+      console.log(`Expected: ${formatEther(expected)} BOBAI`);
+      console.log(`Min out:  ${formatEther(amountMin)} BOBAI (10 % slippage)`);
+
+      const hash = await walletClient.writeContract({
+        address: PANCAKE_ROUTER, abi: ROUTER_ABI,
+        functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
+        args: [amountMin, path, account.address, BigInt(Math.floor(Date.now()/1000) + TX_DEADLINE_SEC)],
+        value: amountIn,
+      });
+      console.log(`Swap TX: https://bscscan.com/tx/${hash}`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const got = parseBobaiReceived(receipt, account.address);
+      console.log(`Received: ${formatEther(got)} BOBAI`);
+
+      // Attribute swap result: TAX rows get their proportional BOBAI; any
+      // remainder becomes the donation BNB row. When pending TAX nominally
+      // exceeds the swap (gas-reserve dust shaves a few wei off amountIn), we
+      // still attribute everything to TAX proportionally — the wallet just
+      // swapped slightly less than the sum of TAX rows, no donation residual.
+      const totalIn  = parseFloat(formatEther(amountIn));
+      const totalOut = parseFloat(formatEther(got));
+      const ratio    = totalIn > 0 ? totalOut / totalIn : 0;
+
+      // Bump created_at to the swap time so the TAX row's timestamp matches
+      // its swap_tx_hash (otherwise the dashboard shows the send time but the
+      // TX link goes to a swap a few minutes later — confusing).
+      const swapTime = new Date().toISOString();
+      let taxIn = 0, taxOut = 0;
+      if (pendingTax.length) {
+        const scale = totalTaxIn > totalIn && totalTaxIn > 0 ? totalIn / totalTaxIn : 1;
+        for (const row of pendingTax) {
+          const a = parseFloat(row.amount_in || 0);
+          if (a <= 0) continue;
+          const attributed = a * scale;
+          await sbPatch('wc_donations', `id=eq.${row.id}`, {
+            amount_bobai: (attributed * ratio).toString(),
+            swap_tx_hash: hash,
+            created_at: swapTime,
+          });
+        }
+        taxIn  = Math.min(totalTaxIn, totalIn);
+        taxOut = taxIn * ratio;
+        const note = scale < 1 ? ` (scaled ${(scale*100).toFixed(3)}% — gas-reserve dust)` : '';
+        console.log(`Attributed ${pendingTax.length} pending TAX row(s): ${taxIn.toFixed(6)} BNB → ${taxOut.toFixed(2)} BOBAI${note}`);
+      }
+
+      // Sync wc_pool BEFORE inserting the donation row so any reader who sees
+      // the new wc_donations entry also sees the matching total_bobai.
+      await syncPool(publicClient);
+
+      const donationIn  = Math.max(0, totalIn  - taxIn);
+      const donationOut = Math.max(0, totalOut - taxOut);
+      if (donationIn > 0.000001) {
+        await sbInsert('wc_donations', {
+          from_address: account.address,
+          token: 'BNB',
+          amount_in: donationIn.toString(),
+          amount_bobai: donationOut.toString(),
+          tx_hash: hash,
+          swap_tx_hash: hash,
+        });
+      } else {
+        console.log('No donation residual to log (full swap was tax-attributed).');
+      }
+      didAnything = true;
+    } catch (e) {
+      console.log(`BNB swap failed: ${e.message}`);
+    }
+  } else {
+    console.log(`BNB below threshold (need ${formatEther(GAS_RESERVE + MIN_SWAP_BNB)} BNB) — skipping.`);
+  }
+
+  // ─── USDT → BNB → BOBAI (multi-hop) ───────────────────────────────────────
+  // Only need ~0.0007 BNB gas for the swap, not the full GAS_RESERVE — checking
+  // against MIN_SWAP_GAS lets us swap even if a prior BNB-swap tx nibbled the reserve.
+  const bnbAfter = await publicClient.getBalance({ address: account.address });
+  if (usdtBalance >= MIN_SWAP_USDT && bnbAfter >= MIN_SWAP_GAS) {
+    console.log(`\n--- Swapping ${formatUnits(usdtBalance, 18)} USDT → BNB → BOBAI ---`);
+    try {
+      // Approve USDT to router if needed
+      const allowance = await publicClient.readContract({
+        address: USDT, abi: ERC20_ABI, functionName: 'allowance',
+        args: [account.address, PANCAKE_ROUTER],
+      });
+      if (allowance < usdtBalance) {
+        console.log('Approving USDT to PancakeRouter…');
+        const approveHash = await walletClient.writeContract({
+          address: USDT, abi: ERC20_ABI, functionName: 'approve',
+          args: [PANCAKE_ROUTER, parseUnits('1000000000000', 18)],  // ~max
+        });
+        console.log(`Approve TX: https://bscscan.com/tx/${approveHash}`);
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
+      const path = [USDT, WBNB, BOBAI];
+      const amounts = await publicClient.readContract({
+        address: PANCAKE_ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsOut',
+        args: [usdtBalance, path],
+      });
+      const expected  = amounts[2];
+      const amountMin = (expected * (10000n - SLIPPAGE_BPS)) / 10000n;
+      console.log(`Expected: ${formatEther(expected)} BOBAI`);
+      console.log(`Min out:  ${formatEther(amountMin)} BOBAI`);
+
+      const hash = await walletClient.writeContract({
+        address: PANCAKE_ROUTER, abi: ROUTER_ABI,
+        functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
+        args: [usdtBalance, amountMin, path, account.address, BigInt(Math.floor(Date.now()/1000) + TX_DEADLINE_SEC)],
+      });
+      console.log(`Swap TX: https://bscscan.com/tx/${hash}`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const got = parseBobaiReceived(receipt, account.address);
+      console.log(`Received: ${formatEther(got)} BOBAI`);
+
+      // Sync wc_pool BEFORE inserting the donation row (see BNB branch).
+      await syncPool(publicClient);
+
+      await sbInsert('wc_donations', {
+        from_address: account.address,
+        token: 'USDT',
+        amount_in: formatUnits(usdtBalance, 18),
+        amount_bobai: formatEther(got),
+        tx_hash: hash,
+        swap_tx_hash: hash,
+      });
+      didAnything = true;
+    } catch (e) {
+      console.log(`USDT swap failed: ${e.message}`);
+    }
+  } else if (usdtBalance >= MIN_SWAP_USDT) {
+    console.log(`USDT swap skipped — not enough BNB for gas (${formatEther(bnbAfter)} < ${formatEther(MIN_SWAP_GAS)}).`);
+  } else {
+    console.log(`USDT below threshold (need ${formatUnits(MIN_SWAP_USDT, 18)} USDT) — skipping.`);
+  }
+
+  console.log('\n============================================');
+  console.log(`Done. ${didAnything ? 'Swap(s) executed.' : 'Nothing to swap.'}`);
+  console.log('============================================');
+}
+
+main().catch(e => { console.error(e); process.exit(1); });

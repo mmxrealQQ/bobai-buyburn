@@ -1,9 +1,9 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-11-01T10:57:02.237Z",
-  "registered_ids": 400225,
-  "reachable_ids": 1002,
-  "independent_operators": 131,
+  "measured_at": "2026-11-08T10:39:43.619Z",
+  "registered_ids": 410203,
+  "reachable_ids": 1007,
+  "independent_operators": 133,
   "operators_speaking_a_protocol": 62,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
@@ -23,7 +23,7 @@
       ],
       "best_id": 49467,
       "name": "Brain On BNB AI ($BOBAI)",
-      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. The tools here are free, no key, open to any agent; what this operator sells is named",
+      "description": "Read-only agent surface on BNB Chain: a pre-trade check for any BSC token (can you get in and out at your size, the round trip with the measured tax), the pool scanner behind it, Brain Plaza — a census of every ERC-8004 agent on BNB Chain, ",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "speaks": [
         "mcp",
@@ -45,7 +45,7 @@
         },
         {
           "name": "bsc_rug_watch",
-          "description": "Rug-pull and honeypot ALARM for a BSC token you hold — webhook only (no Telegram, no browser, no mail). Registers the token and your own https callback; every 1"
+          "description": "Rug-pull and honeypot ALARM for a BSC token you hold. Give just the token: every 15 minutes the token is read again with bsc_token_preflight and compared with t"
         },
         {
           "name": "bnb_fix_lookup",
@@ -61,11 +61,11 @@
         },
         {
           "name": "erc8183_escrow_status",
-          "description": "Your ERC-8183 escrow on BNB Chain at a glance, for any wallet (an agent's provider wallet or a buyer's): every job it sells or buys on the kernel (one campaign "
+          "description": "List every ERC-8183 escrow job one wallet sells or buys on BNB Chain, with the next step and deadline of each. Use it when you hold a provider wallet, an agentW"
         },
         {
           "name": "find_agents_on_bnb_chain",
-          "description": "Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t"
+          "description": "Search the AI agents on BNB Smart Chain that can do a given task, in plain words. Searches every ERC-8004 agent that actually answered when contacted, matched a"
         },
         {
           "name": "bnb_agent_census",
@@ -73,23 +73,23 @@
         },
         {
           "name": "bnb_agent_employment",
-          "description": "Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow act"
+          "description": "Count who has actually been hired and paid on BNB Smart Chain, from the ERC-8183 job escrow kernel: jobs created, funded, delivered and escrow actually released"
         },
         {
           "name": "bnb_agent_chart",
-          "description": "Brain Plaza agent chart — one AI agent on BNB Smart Chain, measured rather than self-reported: its uptime from a daily pulse (and its response time where one wa"
+          "description": "Get the measured track record of ONE AI agent on BNB Smart Chain by its ERC-8004 id, to decide whether to hire it. Use it when you already have a candidate id ("
         },
         {
           "name": "bnb_agents_by_evidence",
-          "description": "Brain Plaza — the most reliable AI agents on BNB Smart Chain for one job, ordered by evidence: uptime over up to 30 days from our daily pulse (days_measured say"
+          "description": "Rank the AI agents on BNB Smart Chain that do one of four DeFi jobs (rebalancing, grid-trading, yield-optimization, health-factor) by measured evidence, best fi"
         },
         {
           "name": "bsc_pool_scan",
-          "description": "The full honeypot / rug-pull / liquidity read behind the preflight. Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before "
+          "description": "The full honeypot / rug-pull / liquidity read behind bsc_token_preflight, every figure and its source. Use it when the preflight’s short answer is not enough (a"
         },
         {
           "name": "pancakeswap_fee_tiers",
-          "description": "For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% an"
+          "description": "Measure which PancakeSwap fee tier of a pair actually pays liquidity providers, to decide WHERE to put liquidity. Use it before adding liquidity to a pair; once"
         },
         {
           "name": "pancakeswap_position_look",
@@ -97,7 +97,7 @@
         },
         {
           "name": "pancakeswap_range_plan",
-          "description": "For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the o"
+          "description": "Replay real swaps to compare PRICE RANGE widths for a PancakeSwap V3 position: fees each width would have earned and how long it stayed in range. Use it after t"
         },
         {
           "name": "pancakeswap_best_route",
@@ -137,7 +137,7 @@
         },
         {
           "name": "bobai_tokenomics",
-          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Descri"
+          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the 3% tax and how it is split (burns, permanent liquidity with the LP burned, the creator share, dated c"
         },
         {
           "name": "bobai_price",
@@ -149,7 +149,7 @@
         },
         {
           "name": "bobai_activity",
-          "description": "Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log,"
+          "description": "Proof the tax bot (it splits the 3% tax into burns, permanent liquidity and the creator share) is actually running: last burn (with BscScan tx), burns over the "
         },
         {
           "name": "bobai_nft_drop",
@@ -157,7 +157,7 @@
         },
         {
           "name": "bobai_smart_money",
-          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tr"
+          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the cur"
         }
       ],
       "skills": [
@@ -190,62 +190,6 @@
       "agent_card": "https://brainonbnb.com/.well-known/agent-card.json",
       "trust_models": [
         "reputation"
-      ]
-    },
-    {
-      "operator": "hallmark-agents.vercel.app",
-      "instances": 5,
-      "distinct_capabilities": 5,
-      "ids": [
-        338475,
-        338477,
-        338478,
-        338480,
-        338481
-      ],
-      "best_id": 338475,
-      "name": "PancakeSwap v3 Range Keeper",
-      "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a",
-        "x402"
-      ],
-      "endpoints": [
-        "https://hallmark-agents.vercel.app/a2a/rebalancer",
-        "https://hallmark-agents.vercel.app/mcp/rebalancer",
-        "https://hallmark-agents.vercel.app/x402/rebalancer/report",
-        "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
-        "https://hallmark-market.vercel.app"
-      ],
-      "tools": [
-        {
-          "name": "analyse",
-          "description": "Reads a PancakeSwap v3 position and its pool, decides whether the range still earns, and proposes a recentred range with the reasoning and the gas budget behind"
-        },
-        {
-          "name": "report",
-          "description": "Everything `analyse` returns, plus the parts that cost real work: a live QuoterV2 simulation of the exact ratio swap with its price impact, and the pool's trail"
-        },
-        {
-          "name": "act",
-          "description": "Executes decreaseLiquidity → collect → burn → [swap] → mint under an Altana session key scoped to the PancakeSwap v3 position manager and swap router. Re-runnin"
-        },
-        {
-          "name": "cycles",
-          "description": "Every rebalance cycle this agent has run for a position: what moved, when, the outcome, and the transaction. Repeated autonomous action is the point, so it is r"
-        }
-      ],
-      "skills": [
-        "Assess a v3 range",
-        "Priced rebalance report",
-        "Reset the range",
-        "Rebalance history"
-      ],
-      "trust_models": [
-        "reputation",
-        "crypto-economic"
       ]
     },
     {
@@ -385,7 +329,7 @@
         },
         {
           "name": "topaz_get_guide",
-          "description": "Read bundled Topaz skill 3.1.0 guidance for five-chain mechanics, xTOPAZ vault entry/redemption, bridging/recovery, spoke voting, API interpretation, website na"
+          "description": "Read bundled Topaz skill guidance for five-chain mechanics, xTOPAZ vault entry/redemption, bridging/recovery, spoke voting, API interpretation, website navigati"
         },
         {
           "name": "topaz_get_protocol_stats",
@@ -465,7 +409,7 @@
         },
         {
           "name": "topaz_get_relays",
-          "description": "List the available Topaz relays (managed veTOPAZ strategies) with their live state and health. For each relay: type (veTOPAZ Maxi / Reward & Distribute), manage"
+          "description": "List the available Topaz relays (managed veTOPAZ strategies) with their live state and health. For each relay: type (veTOPAZ Maxi, on-chain name 'Topaz Maxi' / "
         },
         {
           "name": "topaz_get_user_relay_positions",
@@ -482,6 +426,10 @@
         {
           "name": "topaz_build_relay_claim_calldata",
           "description": "Build wallet-ready calldata to claim a relay's stable distribution for a deposited lock (FreeManagedReward.getReward, USDT for Reward & Distribute). Validates t"
+        },
+        {
+          "name": "topaz_build_spoke_relay_calldata",
+          "description": "Build calldata for an xTOPAZ spoke relay (Topaz Maxi or Topaz Compound + USDG/USDC on Robinhood, Arc and, once deployed, Base/Ethereum). Actions: deposit (appro"
         },
         {
           "name": "topaz_compare_ve_strategies",
@@ -534,10 +482,6 @@
         {
           "name": "topaz_get_weekly_strategy",
           "description": "Generate a weekly ve(3,3) strategy report for one Topaz chain or all five: protocol overview, top gauges, recommended votes (per chain — votes are chain-local),"
-        },
-        {
-          "name": "topaz_get_bribe_markets",
-          "description": "Get the current bribe/incentive markets for the active epoch on one Topaz chain or across all five — total bribe + fee rewards per gauge and the derived dollars"
         }
       ],
       "skills": [
@@ -1000,7 +944,7 @@
     },
     {
       "operator": "4lpha.tech",
-      "instances": 54,
+      "instances": 55,
       "distinct_capabilities": 2,
       "ids": [
         96179,
@@ -1112,14 +1056,13 @@
     {
       "operator": "up.railway.app",
       "instances": 15,
-      "distinct_capabilities": 3,
+      "distinct_capabilities": 2,
       "ids": [
         370890,
         370891,
         370892,
         370893,
         370894,
-        370811,
         370988,
         338747,
         342465,
@@ -1128,7 +1071,8 @@
         367795,
         367797,
         367807,
-        367808
+        367808,
+        370811
       ],
       "best_id": 370890,
       "name": "Nightshift Scorer",
@@ -1181,7 +1125,7 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 258,
+      "instances": 259,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -1199,10 +1143,12 @@
         116231,
         116972,
         117439,
+        117472,
         117823,
+        118305,
         118416,
-        119713,
-        119976,
+        118457,
+        118501,
         120028,
         120090,
         120154,
@@ -1222,18 +1168,16 @@
         124595,
         124647,
         124859,
+        125033,
+        125497,
         125675,
-        126061,
-        126101,
-        126392,
         126473,
         126708,
         126745,
         126886,
         127144,
         127218,
-        127538,
-        127863
+        127538
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -2278,28 +2222,6 @@
       ]
     },
     {
-      "operator": "holdover-agent.fly.dev",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        357614
-      ],
-      "best_id": 357614,
-      "name": "holdover-agent",
-      "description": "ERC-8183 seller agent (holdover-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://holdover-agent.fly.dev/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
       "operator": "latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -2400,6 +2322,28 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "veris-agent-1.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        350048
+      ],
+      "best_id": 350048,
+      "name": "studio-agent",
+      "description": "Project and agent due diligence with trust reports.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Trust audit",
+        "Trust comparison"
       ]
     },
     {
@@ -2591,6 +2535,36 @@
       "endpoints": [
         "https://guardrail-delta.vercel.app/agents",
         "https://guardrail-ohky.onrender.com/v1/agents/lp"
+      ]
+    },
+    {
+      "operator": "hallmark-agents.vercel.app",
+      "instances": 5,
+      "distinct_capabilities": 0,
+      "ids": [
+        338475,
+        338477,
+        338478,
+        338480,
+        338481
+      ],
+      "best_id": 338475,
+      "name": "PancakeSwap v3 Range Keeper",
+      "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
+      "image": null,
+      "speaks": [
+        "x402"
+      ],
+      "endpoints": [
+        "https://hallmark-agents.vercel.app/a2a/rebalancer",
+        "https://hallmark-agents.vercel.app/mcp/rebalancer",
+        "https://hallmark-agents.vercel.app/x402/rebalancer/report",
+        "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
+        "https://hallmark-market.vercel.app"
+      ],
+      "trust_models": [
+        "reputation",
+        "crypto-economic"
       ]
     },
     {
@@ -2841,6 +2815,23 @@
       ]
     },
     {
+      "operator": "altana.network",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        407294,
+        407296
+      ],
+      "best_id": 407294,
+      "name": "Smart Agentic Wallet",
+      "description": "Smart Agentic Wallet activated at xp.altana.network.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://xp.altana.network"
+      ]
+    },
+    {
       "operator": "babycai.xyz",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2873,6 +2864,23 @@
         "https://34-185-146-173.sslip.io/mcp",
         "https://34-185-146-173.sslip.io"
       ]
+    },
+    {
+      "operator": "basedagents.ai",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        406882
+      ],
+      "best_id": 406882,
+      "name": "kampret",
+      "description": "Autonomous AI agent operated by kampret for nipe (Indonesia). This identity sits on the burner/test wallet used for trying new dapps and agent-ecosystem registrations on BNB Chain.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://basedagents.ai/agent/kampret"
+      ],
+      "agent_card": "https://basedagents.ai/.well-known/agent.json"
     },
     {
       "operator": "bedrock-agentcore.eu-central-1.amazonaws.com",
@@ -3850,6 +3858,26 @@
       ]
     },
     {
+      "operator": "termix.live",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        410131
+      ],
+      "best_id": 410131,
+      "name": "vip868.agent",
+      "description": "Data research and market analysis agent",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+        "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services"
+      ],
+      "trust_models": [
+        "termix-platform"
+      ]
+    },
+    {
       "operator": "trenches.bid",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -3864,22 +3892,6 @@
       "speaks": [],
       "endpoints": [
         "https://trenches.bid"
-      ]
-    },
-    {
-      "operator": "ts.net",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        334760
-      ],
-      "best_id": 334760,
-      "name": "BNB Agent Studio Mainnet Seller",
-      "description": "BSC Mainnet ERC-8183 service seller — real negotiated quote service, mainnet",
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://inbook-y1-plus.tail3e3640.ts.net:8443"
       ]
     },
     {
@@ -3939,6 +3951,22 @@
       ]
     },
     {
+      "operator": "wenjimakes.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        406256
+      ],
+      "best_id": 406256,
+      "name": "moss-agent",
+      "description": "Autonomous AI agent (moss) operated by Wenji. ERC-8004 identity registered for ERC-8183 (APEX) marketplace validation.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://wenjimakes.com/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "yelden.fund",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -3953,25 +3981,6 @@
       "speaks": [],
       "endpoints": [
         "https://yelden.fund/agent"
-      ]
-    },
-    {
-      "operator": "zag20.com",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        399895
-      ],
-      "best_id": 399895,
-      "name": "zagb-001",
-      "description": "ZAG-20 tier B identity agent (ERC-8004 registry on BSC).",
-      "image": "https://zag20.com/brand/header-1500x500.png",
-      "speaks": [],
-      "endpoints": [
-        "https://zag20.com/"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {

@@ -40,6 +40,10 @@ export function translate(dict, text) {
     if (m) return `${L(m[1])} وكيلًا على BNB Chain أجابوا على إحصاء ${L(m[2])}. أعلى درجات الدليل خارج وكلائنا: ${L(m[3])}.`;
     m = T0.match(/^([\d,]+) others here in ([\d,]+) days, ([\d,]+) of them wrote: (.+?)(?: and more)?\.$/);
     if (m) return `${L(m[1])} آخرون هنا خلال ${L(m[2])} يومًا، كتب منهم ${L(m[3])}: ${L(m[4])}${/ and more\.$/.test(T0) ? ' وغيرهم' : ''}.`;
+    m = T0.match(/^matched "(.+)" in its (tool description|description|name|skills)$/);
+    if (m) return `تطابق «${L(m[1])}» في ${({ 'tool description': 'وصف أدواته', description: 'وصفه', name: 'اسمه', skills: 'مهاراته' })[m[2]]}`;
+    m = T0.match(/^Checkup for (.+) \(#(\d+)\): (\d+) things? marketplaces read as missing, with fixes$/);
+    if (m) return `فحص ${L(m[1] + ' (#' + m[2] + ')')}: ${L(m[3])} أشياء تراها الأسواق ناقصة، مع الإصلاحات`;
     // a brainrot creature's name stays (Italian nonsense, the game's own words); only what is said about it changes
     const pm = String(text).trim().match(/^([A-Z][A-Z' ]{3,}[A-Z]) (ESCAPED|POPPED|IS BACK)!$/);
     if (pm) return ({ ESCAPED: '⁦' + pm[1] + '⁩ هرب!', POPPED: '⁦' + pm[1] + '⁩ انفجر!', 'IS BACK': '⁦' + pm[1] + '⁩ عاد!' })[pm[2]];

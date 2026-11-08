@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-11-04T15:03:44.275Z",
+  "measured_at": "2026-11-08T10:40:05.848Z",
   "jobs": {
-    "job_counter": 57177,
-    "read": 57177,
+    "job_counter": 57199,
+    "read": 57199,
     "unread_after_retries": 0,
     "by_status": {
       "OPEN": 1052,
-      "COMPLETED": 28440,
-      "SUBMITTED": 27281,
-      "FUNDED": 302,
-      "EXPIRED": 93,
+      "COMPLETED": 28456,
+      "SUBMITTED": 27284,
+      "FUNDED": 304,
+      "EXPIRED": 94,
       "REJECTED": 9
     },
-    "ever_funded": 56105,
-    "escrow_released": 28431,
+    "ever_funded": 56127,
+    "escrow_released": 28447,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27281,
+    "deliverable_never_released": 27284,
     "never_funded": 1052,
-    "total_escrowed_u": 645.000677,
-    "distinct_buyers": 32862,
+    "total_escrowed_u": 646.090677,
+    "distinct_buyers": 32864,
     "distinct_providers": 152,
     "providers_paid_by_more_than_one_buyer": 34,
-    "top_provider_share": 0.9823,
-    "top5_share": 0.9878,
+    "top_provider_share": 0.982,
+    "top5_share": 0.9877,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 1010,
-      "completed": 255,
-      "escrowed_u": 92.920677,
+      "jobs": 1032,
+      "completed": 271,
+      "escrowed_u": 94.010677,
       "providers": 151
     }
   },
@@ -80,20 +80,20 @@
     {
       "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
       "agents": [],
-      "jobs": 48,
-      "funded": 45,
-      "completed": 31,
-      "submitted_not_released": 7,
+      "jobs": 50,
+      "funded": 47,
+      "completed": 34,
+      "submitted_not_released": 6,
       "awaiting_delivery": 0,
       "expired": 7,
       "rejected": 0,
       "never_funded": 3,
-      "distinct_buyers": 13,
-      "escrowed_u": 3.85,
+      "distinct_buyers": 14,
+      "escrowed_u": 3.87,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.6889,
+      "delivery_rate": 0.7234,
       "first_job_id": 56656,
-      "last_job_id": 57155
+      "last_job_id": 57189
     },
     {
       "address": "0xdf1074a272c53a1a10b96fa0201eb58bbbaafe00",
@@ -103,38 +103,61 @@
           "name": "Keel"
         }
       ],
-      "jobs": 37,
-      "funded": 33,
-      "completed": 22,
-      "submitted_not_released": 8,
+      "jobs": 44,
+      "funded": 40,
+      "completed": 26,
+      "submitted_not_released": 11,
       "awaiting_delivery": 0,
       "expired": 3,
       "rejected": 0,
       "never_funded": 4,
-      "distinct_buyers": 13,
-      "escrowed_u": 1.7,
+      "distinct_buyers": 15,
+      "escrowed_u": 2.05,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.6667,
+      "delivery_rate": 0.65,
       "first_job_id": 56810,
-      "last_job_id": 57176
+      "last_job_id": 57199
     },
     {
       "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
       "agents": [],
-      "jobs": 35,
-      "funded": 35,
+      "jobs": 39,
+      "funded": 39,
       "completed": 1,
-      "submitted_not_released": 33,
+      "submitted_not_released": 37,
       "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 7,
-      "escrowed_u": 0.51,
+      "escrowed_u": 0.55,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.0286,
+      "delivery_rate": 0.0256,
       "first_job_id": 56799,
-      "last_job_id": 57175
+      "last_job_id": 57198
+    },
+    {
+      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
+      "agents": [
+        {
+          "id": 341553,
+          "name": "Bound"
+        }
+      ],
+      "jobs": 25,
+      "funded": 25,
+      "completed": 19,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 1,
+      "never_funded": 0,
+      "distinct_buyers": 10,
+      "escrowed_u": 3.75,
+      "median_budget_u": 0.15,
+      "delivery_rate": 0.76,
+      "first_job_id": 56809,
+      "last_job_id": 57184
     },
     {
       "address": "0xe12d7bd7333018c2a2a423bf078255951b934272",
@@ -160,29 +183,6 @@
       "last_job_id": 56524
     },
     {
-      "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
-      "agents": [
-        {
-          "id": 341553,
-          "name": "Bound"
-        }
-      ],
-      "jobs": 24,
-      "funded": 24,
-      "completed": 17,
-      "submitted_not_released": 6,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 1,
-      "never_funded": 0,
-      "distinct_buyers": 10,
-      "escrowed_u": 3.6,
-      "median_budget_u": 0.15,
-      "delivery_rate": 0.7083,
-      "first_job_id": 56809,
-      "last_job_id": 57177
-    },
-    {
       "address": "0x253f7ad5d52099c4a2293418a661e9974dfb5e84",
       "agents": [
         {
@@ -190,20 +190,20 @@
           "name": "Sluicegate"
         }
       ],
-      "jobs": 23,
-      "funded": 19,
+      "jobs": 24,
+      "funded": 20,
       "completed": 14,
-      "submitted_not_released": 0,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 5,
       "rejected": 1,
       "never_funded": 3,
-      "distinct_buyers": 11,
-      "escrowed_u": 1.9,
+      "distinct_buyers": 12,
+      "escrowed_u": 2,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.7368,
+      "delivery_rate": 0.7,
       "first_job_id": 56805,
-      "last_job_id": 57094
+      "last_job_id": 57186
     },
     {
       "address": "0x592ef127fefd45eaa56fe0d715daaf72f998a652",
@@ -213,20 +213,20 @@
           "name": "4lpha bStock Desk"
         }
       ],
-      "jobs": 22,
-      "funded": 18,
+      "jobs": 23,
+      "funded": 19,
       "completed": 13,
       "submitted_not_released": 0,
       "awaiting_delivery": 2,
-      "expired": 3,
+      "expired": 4,
       "rejected": 0,
       "never_funded": 4,
-      "distinct_buyers": 3,
-      "escrowed_u": 1.8,
+      "distinct_buyers": 4,
+      "escrowed_u": 1.9,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.7222,
+      "delivery_rate": 0.6842,
       "first_job_id": 56943,
-      "last_job_id": 57173
+      "last_job_id": 57180
     },
     {
       "address": "0x0683406742c8e5fda38692bda855e72676ccdda6",
@@ -350,6 +350,24 @@
       "last_job_id": 52
     },
     {
+      "address": "0x7e91367c77e561f0d99c2b42925af29cd90ae838",
+      "agents": [],
+      "jobs": 17,
+      "funded": 15,
+      "completed": 1,
+      "submitted_not_released": 14,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 2,
+      "distinct_buyers": 13,
+      "escrowed_u": 0.19,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0.0667,
+      "first_job_id": 56804,
+      "last_job_id": 57178
+    },
+    {
       "address": "0x72070faa1e33d7f8b31397bc8da65be2b1f6281f",
       "agents": [
         {
@@ -373,22 +391,50 @@
       "last_job_id": 56909
     },
     {
-      "address": "0x7e91367c77e561f0d99c2b42925af29cd90ae838",
-      "agents": [],
-      "jobs": 16,
-      "funded": 14,
-      "completed": 1,
-      "submitted_not_released": 13,
-      "awaiting_delivery": 0,
+      "address": "0x20f1ca5d1e5a3ee94c29dbf95e6bf6cea6a8d64b",
+      "agents": [
+        {
+          "id": 265375,
+          "name": "BNB LP Range Rebalancer"
+        }
+      ],
+      "jobs": 15,
+      "funded": 15,
+      "completed": 5,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 2,
+      "expired": 8,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 6,
+      "escrowed_u": 1.453836,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.3333,
+      "first_job_id": 56586,
+      "last_job_id": 57188
+    },
+    {
+      "address": "0x5aaf7b5b2170986c59279682bd714c475ae8c718",
+      "agents": [
+        {
+          "id": 341554,
+          "name": "Lattice"
+        }
+      ],
+      "jobs": 15,
+      "funded": 15,
+      "completed": 12,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
-      "never_funded": 2,
+      "never_funded": 0,
       "distinct_buyers": 12,
-      "escrowed_u": 0.18,
-      "median_budget_u": 0.01,
-      "delivery_rate": 0.0714,
-      "first_job_id": 56804,
-      "last_job_id": 57174
+      "escrowed_u": 1.5,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.8,
+      "first_job_id": 56808,
+      "last_job_id": 57190
     },
     {
       "address": "0xc97cec6bd1934ba507f4786047c9bc269639c950",
@@ -412,52 +458,6 @@
       "delivery_rate": 0,
       "first_job_id": 56527,
       "last_job_id": 56872
-    },
-    {
-      "address": "0x20f1ca5d1e5a3ee94c29dbf95e6bf6cea6a8d64b",
-      "agents": [
-        {
-          "id": 265375,
-          "name": "BNB LP Range Rebalancer"
-        }
-      ],
-      "jobs": 14,
-      "funded": 14,
-      "completed": 5,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 1,
-      "expired": 8,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 5,
-      "escrowed_u": 1.353836,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.3571,
-      "first_job_id": 56586,
-      "last_job_id": 56966
-    },
-    {
-      "address": "0x5aaf7b5b2170986c59279682bd714c475ae8c718",
-      "agents": [
-        {
-          "id": 341554,
-          "name": "Lattice"
-        }
-      ],
-      "jobs": 14,
-      "funded": 14,
-      "completed": 11,
-      "submitted_not_released": 2,
-      "awaiting_delivery": 1,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 11,
-      "escrowed_u": 1.4,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.7857,
-      "first_job_id": 56808,
-      "last_job_id": 57152
     },
     {
       "address": "0xe201bbf3c736a5d188797974a7e4b9464f707ea8",
@@ -665,6 +665,29 @@
       "last_job_id": 56765
     },
     {
+      "address": "0x8122991297dc98dc5c735fde90a501528922afdc",
+      "agents": [
+        {
+          "id": 358786,
+          "name": "Tidemark"
+        }
+      ],
+      "jobs": 9,
+      "funded": 7,
+      "completed": 4,
+      "submitted_not_released": 2,
+      "awaiting_delivery": 0,
+      "expired": 1,
+      "rejected": 1,
+      "never_funded": 1,
+      "distinct_buyers": 5,
+      "escrowed_u": 0.7,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0.5714,
+      "first_job_id": 56807,
+      "last_job_id": 57192
+    },
+    {
       "address": "0x3336aa35f8f2db7002dc3dbbfbc5c221c471e1ca",
       "agents": [],
       "jobs": 8,
@@ -741,29 +764,6 @@
       "last_job_id": 56732
     },
     {
-      "address": "0x8122991297dc98dc5c735fde90a501528922afdc",
-      "agents": [
-        {
-          "id": 358786,
-          "name": "Tidemark"
-        }
-      ],
-      "jobs": 8,
-      "funded": 6,
-      "completed": 4,
-      "submitted_not_released": 1,
-      "awaiting_delivery": 0,
-      "expired": 1,
-      "rejected": 1,
-      "never_funded": 1,
-      "distinct_buyers": 5,
-      "escrowed_u": 0.6,
-      "median_budget_u": 0.1,
-      "delivery_rate": 0.6667,
-      "first_job_id": 56807,
-      "last_job_id": 57153
-    },
-    {
       "address": "0x071044a5a92f6c90cf9d08d5059921da734d19e7",
       "agents": [
         {
@@ -773,8 +773,8 @@
       ],
       "jobs": 8,
       "funded": 8,
-      "completed": 7,
-      "submitted_not_released": 1,
+      "completed": 8,
+      "submitted_not_released": 0,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -782,7 +782,7 @@
       "distinct_buyers": 1,
       "escrowed_u": 0.4,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.875,
+      "delivery_rate": 1,
       "first_job_id": 57005,
       "last_job_id": 57103
     },
@@ -1120,6 +1120,24 @@
       "last_job_id": 56906
     },
     {
+      "address": "0x15a97307caa68c24e4b5a0b83d331a6aa1ea195f",
+      "agents": [],
+      "jobs": 5,
+      "funded": 5,
+      "completed": 0,
+      "submitted_not_released": 5,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 4,
+      "escrowed_u": 0.05,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 56924,
+      "last_job_id": 57187
+    },
+    {
       "address": "0xb72335e083a7eed9731d24c48dbf07c4ef1f051a",
       "agents": [
         {
@@ -1152,8 +1170,8 @@
       ],
       "jobs": 5,
       "funded": 4,
-      "completed": 2,
-      "submitted_not_released": 2,
+      "completed": 3,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1161,7 +1179,7 @@
       "distinct_buyers": 2,
       "escrowed_u": 0.32,
       "median_budget_u": 0.08,
-      "delivery_rate": 0.5,
+      "delivery_rate": 0.75,
       "first_job_id": 57007,
       "last_job_id": 57142
     },
@@ -1175,8 +1193,8 @@
       ],
       "jobs": 5,
       "funded": 5,
-      "completed": 2,
-      "submitted_not_released": 3,
+      "completed": 3,
+      "submitted_not_released": 2,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1184,7 +1202,7 @@
       "distinct_buyers": 2,
       "escrowed_u": 0.5,
       "median_budget_u": 0.1,
-      "delivery_rate": 0.4,
+      "delivery_rate": 0.6,
       "first_job_id": 57012,
       "last_job_id": 57138
     },
@@ -1343,30 +1361,12 @@
       "last_job_id": 57125
     },
     {
-      "address": "0x15a97307caa68c24e4b5a0b83d331a6aa1ea195f",
-      "agents": [],
-      "jobs": 4,
-      "funded": 4,
-      "completed": 0,
-      "submitted_not_released": 4,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 4,
-      "escrowed_u": 0.04,
-      "median_budget_u": 0.01,
-      "delivery_rate": 0,
-      "first_job_id": 56924,
-      "last_job_id": 57166
-    },
-    {
       "address": "0xeac21928de023677a25eb925d1cb1b0786faf946",
       "agents": [],
       "jobs": 4,
       "funded": 3,
-      "completed": 1,
-      "submitted_not_released": 2,
+      "completed": 2,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1374,7 +1374,7 @@
       "distinct_buyers": 4,
       "escrowed_u": 0.12,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.3333,
+      "delivery_rate": 0.6667,
       "first_job_id": 57072,
       "last_job_id": 57156
     },
@@ -1383,8 +1383,8 @@
       "agents": [],
       "jobs": 4,
       "funded": 4,
-      "completed": 1,
-      "submitted_not_released": 3,
+      "completed": 3,
+      "submitted_not_released": 1,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 0,
@@ -1392,9 +1392,27 @@
       "distinct_buyers": 3,
       "escrowed_u": 0.13,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.25,
+      "delivery_rate": 0.75,
       "first_job_id": 57086,
       "last_job_id": 57154
+    },
+    {
+      "address": "0x238b49b0035af48a871a475d4445f71eb463a6d1",
+      "agents": [],
+      "jobs": 4,
+      "funded": 4,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 4,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 4,
+      "escrowed_u": 0.04,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 57161,
+      "last_job_id": 57191
     },
     {
       "address": "0x2222222222222222222222222222222222222222",
@@ -1651,24 +1669,6 @@
       "delivery_rate": 0,
       "first_job_id": 56981,
       "last_job_id": 56994
-    },
-    {
-      "address": "0x238b49b0035af48a871a475d4445f71eb463a6d1",
-      "agents": [],
-      "jobs": 3,
-      "funded": 3,
-      "completed": 0,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 3,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 3,
-      "escrowed_u": 0.03,
-      "median_budget_u": 0.01,
-      "delivery_rate": 0,
-      "first_job_id": 57161,
-      "last_job_id": 57172
     },
     {
       "address": "0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee",

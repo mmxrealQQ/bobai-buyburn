@@ -40,6 +40,8 @@ export function translate(dict, text) {
     if (m) return `${L(m[1])} وكيلًا على BNB Chain أجابوا على إحصاء ${L(m[2])}. أعلى درجات الدليل خارج وكلائنا: ${L(m[3])}.`;
     m = T0.match(/^([\d,]+) others here in ([\d,]+) days, ([\d,]+) of them wrote: (.+?)(?: and more)?\.$/);
     if (m) return `${L(m[1])} آخرون هنا خلال ${L(m[2])} يومًا، كتب منهم ${L(m[3])}: ${L(m[4])}${/ and more\.$/.test(T0) ? ' وغيرهم' : ''}.`;
+    m = T0.match(/^YOU JUST PASSED (.+)$/);
+    if (m) return `لقد تجاوزت للتو ${L(m[1])}`;
     m = T0.match(/^Brain Pop today: #1 (.+) with ([\d,.]+) ROT · ([\d,]+) playing$/);
     if (m) return `Brain Pop اليوم: #1 ${L(m[1])} بنتيجة ${L(m[2])} ROT · ${L(m[3])} يلعبون`;
     m = T0.match(/^matched "(.+)" in its (tool description|description|name|skills)$/);

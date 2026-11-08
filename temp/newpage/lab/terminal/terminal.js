@@ -7929,6 +7929,12 @@ window.__btBrSeason = brSeason;
       act.innerHTML = A2.join(''); act.hidden = !A2.length; const hr = hud.getBoundingClientRect(), wr2 = win.getBoundingClientRect(); act.style.top = (portrait ? hr.top - wr2.top - (act.offsetHeight || 30) - 6 : hr.bottom - wr2.top + 6) + 'px'; }
     hud.innerHTML = '<s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + E.fmt(S.score) + '</b><i>x' + E.multOf(S.combo) + '</i><s>' + S.combo + ' in a row</s>' + (S.misses ? '<s class="br-pm">' + S.misses + ' miss' + (S.misses === 1 ? '' : 'es') + '</s>' : '') + (g != null ? '<s class="br-pg">' + (CH ? 'GHOST ' : '#1 ') + E.fmt(g) + '</s>' : (lsGet('bt-pop-pb') ? '<s class="br-pg">PB ' + Number(lsGet('bt-pop-pb')).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '</s>' : ''));
     hud.classList.add('on'); clearTimeout(hudT);
+    // NEW #1 (operator, 2026-11-08): the moment the run passes today's first place, once per run — not when the first is
+    // the player already, not in a rematch of another day. Display only: the board decides at the end, as always.
+    const T1 = DAY && DAY.top && DAY.top[0];
+    if (RUN && !RUN.passed1 && T1 && DAY.day === DAY.today && T1.name !== myName() && S.score / E.UNIT > Number(T1.score)) {
+      RUN.passed1 = true; SFX.power(); combo3('NEW #1!', 'YOU JUST PASSED ' + String(T1.name).toUpperCase(), 'god'); stationParty();
+    }
   }
   // THE NEXT PLACE (operator, 2026-11-08: "max fun, highscore chasing, addictive — without changing the core"): the result
   // says how close the next place is, from the day's own board (the player's best counts): the gap to the place above,

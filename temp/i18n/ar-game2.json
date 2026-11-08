@@ -11,5 +11,6 @@
  "{0} IN A ROW": "{0} متتالية",
  "{0} AWAY FROM SUPER": "على بُعد {0} من SUPER",
  "{0} AWAY FROM MEGA": "على بُعد {0} من MEGA",
- "{0} AWAY FROM GOD": "على بُعد {0} من GOD"
+ "{0} AWAY FROM GOD": "على بُعد {0} من GOD",
+ "NEW #{0}!": "#{0} جديد!"
 }

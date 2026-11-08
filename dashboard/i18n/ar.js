@@ -2,7 +2,7 @@
 // figures, the windows, the game, a title, a placeholder — is put through the one dictionary (core.js, the same the
 // site worker uses for the HTML). The layout is not touched: no mirroring, no new boxes; only words change. Links to
 // this site's pages stay inside /ar/. A text with no entry stays English and lands in window.__arMiss for the checker.
-import { translate, toAr, ltr, NOAR } from '/i18n/core.js?v=10';
+import { translate, toAr, ltr, NOAR } from '/i18n/core.js?v=11';
 
 const SKIP = NOAR;
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];

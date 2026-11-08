@@ -24,6 +24,10 @@ const go = await ev(`(() => { const b = document.querySelector('#bt .br-pp-go');
 // a few taps in the middle of the arena while the round runs
 for (let k = 0; k < 25; k++) { await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 500 + (k * 37) % 400, y: 300 + (k * 53) % 300, button: 'left', clickCount: 1 }); await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 500 + (k * 37) % 400, y: 300 + (k * 53) % 300, button: 'left', clickCount: 1 }); await sleep(400); }
 await sleep(3000);
+// the round runs 60 s: wait for its result window, then read the next-place line (2026-11-08, brainpop "chase")
+let gap = null; for (let i = 0; i < 70 && !gap; i++) { await sleep(1000); gap = await ev(`(() => { const g = document.querySelector('#bt .br-pp-gap'); return g ? g.textContent : null; })()`); }
+console.log(`${gap && /\d/.test(gap) ? 'PASS' : 'FAIL'}  next-place line in the result window: ${JSON.stringify(gap)}`);
+if (!gap) console.log('result window:', await ev(`(() => { const c = document.querySelector('#bt .br-pp-c'); return c ? c.innerText.replace(/\\s+/g, ' ').slice(0, 400) : 'none'; })()`), '| LAST:', await ev(`JSON.stringify(window.__popLast || null)`));
 const miss = (await ev('[...(window.__arMiss || [])]')) || [];
 fs.writeFileSync('D:/ai/fourmeme/temp/i18n/pop-miss.json', JSON.stringify(miss, null, 1));
 console.log(`tabs: ${t1} / ${t2}; name ${nameSet}; play ${go}; ${miss.length} texts without Arabic`);

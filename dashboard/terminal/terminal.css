@@ -1178,6 +1178,9 @@
 #bt .br-pp-re{margin-left:6px;padding:3px 8px;border:1px solid #2ef2ff;border-radius:8px;background:transparent;color:#2ef2ff;font:600 .75rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
 #bt .br-pp-ch{padding:8px 10px;border-radius:10px;background:rgba(46,242,255,.12);border:1px solid rgba(46,242,255,.5)}
 #bt .br-pp-ch b{color:#ffe600}
+/* the next place (8.11.): the gap to the place above, the lead, the way into the top 10 */
+#bt .br-pp-gap{margin:6px 0 2px;padding:7px 10px;border-radius:10px;background:rgba(255,63,216,.12);border:1px solid rgba(255,63,216,.45);font-size:.82rem}
+#bt .br-pp-gap b{color:#7dff3a}
 #bt .br-pp-prize{font-size:.8rem;color:#cfc7dc}
 #bt .br-pp-prize b{display:inline-block;font:400 1.05rem/1 Impact,'Arial Black',sans-serif;letter-spacing:.02em;color:#7dff3a;-webkit-text-stroke:.5px #000;text-shadow:2px 2px 0 #ff3fd8;transform:rotate(-2deg);word-break:break-all}
 #bt .br-pp-prize small{color:#a8a2b4}

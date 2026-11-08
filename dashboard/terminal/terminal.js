@@ -7918,6 +7918,18 @@ window.__btBrSeason = brSeason;
     hud.innerHTML = '<s class="br-pt">0:' + String(left).padStart(2, '0') + '</s><b>' + E.fmt(S.score) + '</b><i>x' + E.multOf(S.combo) + '</i><s>' + S.combo + ' in a row</s>' + (S.misses ? '<s class="br-pm">' + S.misses + ' miss' + (S.misses === 1 ? '' : 'es') + '</s>' : '') + (g != null ? '<s class="br-pg">' + (CH ? 'GHOST ' : '#1 ') + E.fmt(g) + '</s>' : (lsGet('bt-pop-pb') ? '<s class="br-pg">PB ' + Number(lsGet('bt-pop-pb')).toLocaleString('en-US', { maximumFractionDigits: 0 }) + '</s>' : ''));
     hud.classList.add('on'); clearTimeout(hudT);
   }
+  // THE NEXT PLACE (operator, 2026-11-08: "max fun, highscore chasing, addictive — without changing the core"): the result
+  // says how close the next place is, from the day's own board (the player's best counts): the gap to the place above,
+  // the lead when first, the way into the top 10 from below. A rematch of an older day is not on the board: no line.
+  function chase(res) {
+    if (!res || !res.ranked || !res.rank || !Array.isArray(res.top) || !res.top.length) return '';
+    const best = Number(res.best || res.score), top = res.top.map((r) => Number(r.score));
+    if (res.rank === 1) return top.length > 1 ? '<p class="br-pp-gap">👑 You lead today by <b>' + sc7(best - top[1]) + ' ROT</b>. Keep the crown.</p>' : '<p class="br-pp-gap">👑 You lead today. Keep the crown.</p>';
+    const above = res.rank <= top.length + 1 ? top[res.rank - 2] : top[top.length - 1], to = res.rank <= top.length + 1 ? res.rank - 1 : top.length;
+    const gap = above - best; if (!(gap > 0)) return '';
+    return '<p class="br-pp-gap">🎯 <b>' + sc7(gap) + ' ROT</b> more and you take <b>#' + to + '</b>' + (to === 10 && res.rank > 10 ? ', into the top 10' : '') + '. One more round?</p>';
+  }
+  window.__btChase = chase; // for checks: the line from a result, without a ranked run on the real board
   async function endRun() {
     if (!RUN) return; const R0 = RUN; win.classList.remove('br-run'); clearInterval(R0.tick); R0.timers.forEach(clearTimeout); R0.live = false;
     arena.hidden = true; arena.replaceChildren(); banner.hidden = true; ctl.hidden = true; act.hidden = true; R0.run.advance(R0.run.endAt()); FIN = R0.run.S.score;
@@ -7931,7 +7943,7 @@ window.__btBrSeason = brSeason;
     pp.hidden = false;
     pp.innerHTML = '<div class="br-pp-c"><b>' + (res ? sc7(res.score) + ' ROT' : 'NOT COUNTED') + '</b>'
       + (res ? '<p class="br-pp-me">' + (res.ranked ? '<i>#' + res.rank + '</i> of ' + nf0(res.players) + ' today' + (res.best > res.score ? ' · your best today ' + nf0(res.best) : '') : 'Daily #' + res.no + ' rematch (not on the board)') + ' · ' + res.maxc + ' in a row · ' + res.pops + ' popped · ' + res.misses + ' missed · aim ' + (res.taps ? Math.round(res.pops / res.taps * 100) : 0) + '%' + (res.rugs ? ' · ' + res.rugs + ' rug' + (res.rugs === 1 ? '' : 's') : '') + '</p>' + (res._newpb ? '<p class="br-pp-pb new">🏆 NEW PERSONAL BEST!</p>' : res._pb ? '<p class="br-pp-pb">Your best: ' + sc7(res._pb) + ' · ' + sc7(res._pb - res.score) + ' to beat it. One more?</p>' : '') : '<p>' + esc(err || '') + '</p>')
-      + beat + '<div class="br-pp-bd"></div>' + codeLine()
+      + chase(res) + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
       + '<p class="br-pp-bob">The game is free. The brain behind it is <b>$BOBAI</b>: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI, and holding 100,000+ puts 🧠 next to your name on the board. <a href="/buy?from=pop" target="_blank" rel="noopener">BUY $BOBAI ↗</a></p>'

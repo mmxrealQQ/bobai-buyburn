@@ -1232,6 +1232,9 @@
 #bt .br-combo.mega{background:linear-gradient(90deg,transparent,rgba(125,255,58,.6) 20%,rgba(255,230,0,.6) 80%,transparent)}
 #bt .br-combo.god{background:linear-gradient(90deg,transparent,rgba(255,215,0,.75) 20%,rgba(255,63,216,.7) 80%,transparent)}
 #bt .br-combo.god b{color:#fff;text-shadow:4px 4px 0 #ffb300,0 0 30px #ffe600}
+/* so close (8.11.): the streak broke one or two short of SUPER / MEGA / GOD */
+#bt .br-combo.near{background:linear-gradient(90deg,transparent,rgba(255,77,109,.55) 20%,rgba(46,242,255,.45) 80%,transparent)}
+#bt .br-combo.near b{color:#fff;text-shadow:4px 4px 0 #ff4d6d}
 @keyframes bt-br-combo{0%{opacity:0;transform:scaleY(.2)}12%{opacity:1;transform:scaleY(1.1)}20%{transform:scaleY(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
 /* in the game: the look's own creatures rest (they looked like foes), the log steps back, on a phone the title row too */
 #bt .br-run .br > .br-r:not(.bit){display:none}

@@ -7859,12 +7859,24 @@ window.__btBrSeason = brSeason;
     if (RUN && RUN.live && e.pointerType !== 'mouse') { const r = arena.getBoundingClientRect(); if (!xh.isConnected) arena.appendChild(xh); xh.hidden = false; xh.style.left = (e.clientX - r.left) + 'px'; xh.style.top = (e.clientY - r.top) + 'px'; xh.classList.remove('shot'); void xh.offsetWidth; xh.classList.add('shot'); clearTimeout(xh._t); xh._t = setTimeout(() => { xh.hidden = true; }, 300); }
     if (!RUN || !RUN.live) return; e.preventDefault(); e.stopPropagation();
     const r = arena.getBoundingClientRect(), x = Math.round((e.clientX - r.left) / r.width * 1000), y = Math.round((e.clientY - r.top) / r.height * 1000), t = tNow();
-    if (RUN.run.tap(t, x, y)) { RUN.inputs.push([t, x, y]); drain(x, y); runHud(); }
+    const c0 = RUN.run.S.combo; // the streak before this tap (for "so close" when it breaks)
+    if (RUN.run.tap(t, x, y)) { RUN.inputs.push([t, x, y]); drain(x, y, c0); runHud(); }
   });
   arena.addEventListener('click', e => e.stopPropagation());
   // what the shot did, as the engine says it: pops, misses, rugs, the boss's hits, the powers
-  function drain(x, y) {
+  // SO CLOSE (operator, 2026-11-08: "highscore chasing, addictive, without changing the core"): a miss or a rug that
+  // breaks a streak one or two short of SUPER (8), MEGA (16) or GOD (24, then every 8) says so — the rules are the
+  // engine's, this only shows how near it was
+  function near(c) {
+    if (!(c >= 5)) return;
+    const th = c < 8 ? 8 : c < 16 ? 16 : c < 24 ? 24 : (Math.floor(c / 8) + 1) * 8, gap = th - c;
+    if (gap > 2) return;
+    const name = th === 8 ? 'SUPER' : th === 16 ? 'MEGA' : 'GOD';
+    setTimeout(() => { if (RUN && RUN.live) combo3('SO CLOSE!', c + ' IN A ROW · ' + gap + ' AWAY FROM ' + name, 'near'); }, 350);
+  }
+  function drain(x, y, c0) {
     const S = RUN.run.S;
+    if (c0 >= 5 && S.combo === 0 && S.ev.slice(RUN.ev).some((e) => e[0] === 'miss' || e[0] === 'rug')) near(c0);
     for (; RUN.ev < S.ev.length; RUN.ev++) {
       const [kind, i, , v, ex, ey] = S.ev[RUN.ev], s = i >= 0 && kind !== 'fire' && kind !== 'cash' ? RUN.plan[i] : null, n = s && RUN.nodes.get(i);
       const at = n ? (() => { const b = n.getBoundingClientRect(), er = el.getBoundingClientRect(); return [b.left - er.left + b.width / 2, b.top - er.top + b.height / 2]; })() : toEl(ex ?? x, ey ?? y);

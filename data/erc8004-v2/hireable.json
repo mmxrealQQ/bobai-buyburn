@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-11-01T10:57:02.237Z",
+  "measured_at": "2026-11-08T10:39:43.619Z",
   "agents": [
     {
       "id": 304494,
@@ -94,10 +94,10 @@
       "ours": false
     },
     {
-      "id": 338475,
-      "label": "PancakeSwap v3 Range Keeper",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "rebalancing",
-      "ours": false
+      "ours": true
     },
     {
       "id": 324818,
@@ -191,10 +191,10 @@
       "ours": false
     },
     {
-      "id": 338477,
-      "label": "PancakeSwap Grid Trader",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "grid-trading",
-      "ours": false
+      "ours": true
     },
     {
       "id": 342380,
@@ -221,14 +221,14 @@
       "ours": false
     },
     {
-      "id": 358786,
-      "label": "Tidemark",
+      "id": 374112,
+      "label": "Cresthold by Pokter",
       "category": "yield-optimization",
       "ours": false
     },
     {
-      "id": 374112,
-      "label": "Cresthold by Pokter",
+      "id": 358786,
+      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -295,10 +295,10 @@
       "ours": false
     },
     {
-      "id": 338478,
-      "label": "BNB Chain Yield Router",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "yield-optimization",
-      "ours": false
+      "ours": true
     },
     {
       "id": 342378,
@@ -404,10 +404,10 @@
       "ours": false
     },
     {
-      "id": 338480,
-      "label": "Venus Liquidation Guard",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "health-factor",
-      "ours": false
+      "ours": true
     },
     {
       "id": 342377,

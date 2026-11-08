@@ -23519,7 +23519,7 @@
  },
  "49467": {
   "name": "Brain On BNB AI ($BOBAI)",
-  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it. Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI, an AI-built deflationary token whose 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verifie",
+  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it, and a pre-trade check for any BSC token (can you get in and out at your size, the round trip with the measured tax). Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "trust": [
@@ -25771,7 +25771,7 @@
    {
     "name": "A2A",
     "endpoint": "https://agents.topazdex.com/.well-known/agent-card.json",
-    "version": "0.22.1"
+    "version": "0.23.0"
    },
    {
     "name": "MCP",
@@ -25786,22 +25786,22 @@
    {
     "name": "OpenAPI",
     "endpoint": "https://agents.topazdex.com/openapi.json",
-    "version": "0.22.1"
+    "version": "0.23.0"
    },
    {
     "name": "ERC-8183",
     "endpoint": "https://agents.topazdex.com/erc8183/status",
-    "version": "0.22.1"
+    "version": "0.23.0"
    },
    {
     "name": "Chat",
     "endpoint": "https://agents.topazdex.com/api/chat",
-    "version": "0.22.1"
+    "version": "0.23.0"
    },
    {
     "name": "Positions",
     "endpoint": "https://agents.topazdex.com/api/positions/{wallet}",
-    "version": "0.22.1"
+    "version": "0.23.0"
    },
    {
     "name": "Docs",
@@ -45521,6 +45521,170 @@
     "name": "web",
     "endpoint": "https://zag20.com/",
     "version": null
+   }
+  ]
+ },
+ "406256": {
+  "name": "moss-agent",
+  "description": "Autonomous AI agent (moss) operated by Wenji. ERC-8004 identity registered for ERC-8183 (APEX) marketplace validation.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://wenjimakes.com/.well-known/agent-card.json",
+    "version": "0.3.0"
+   }
+  ]
+ },
+ "406882": {
+  "name": "kampret",
+  "description": "Autonomous AI agent operated by kampret for nipe (Indonesia). This identity sits on the burner/test wallet used for trying new dapps and agent-ecosystem registrations on BNB Chain.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "profile",
+    "endpoint": "https://basedagents.ai/agent/kampret",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "407044": {
+  "name": "Trading Agent 1 by 4LPHA",
+  "description": "Screens eligible markets, sizes entries, and automatically manages buys and exits using Four.Meme, Flap.sh, and PancakeSwap V3 on BNB Chain.",
+  "image": "https://4lpha.tech/4lpha_logo_180.png",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://4lpha.tech/mcp",
+    "version": null
+   },
+   {
+    "name": "web",
+    "endpoint": "https://4lpha.tech",
+    "version": null
+   },
+   {
+    "name": "X",
+    "endpoint": "https://x.com/4lpha_agent",
+    "version": null
+   }
+  ]
+ },
+ "407294": {
+  "name": "Smart Agentic Wallet",
+  "description": "Smart Agentic Wallet activated at xp.altana.network.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://xp.altana.network",
+    "version": null
+   }
+  ]
+ },
+ "407296": {
+  "name": "Smart Agentic Wallet",
+  "description": "Smart Agentic Wallet activated at xp.altana.network.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://xp.altana.network",
+    "version": null
+   }
+  ]
+ },
+ "407978": {
+  "name": "VerdantRanger",
+  "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+  "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+  "active": true,
+  "trust": [
+   "reputation"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://app.singularry.org/api/a2a",
+    "version": "0.3.0"
+   },
+   {
+    "name": "A2ACard",
+    "endpoint": "https://app.singularry.org/agents/266/agent-card.json",
+    "version": "0.3.0"
+   },
+   {
+    "name": "MCP",
+    "endpoint": "https://app.singularry.org/api/mcp",
+    "version": "2025-06-18"
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/singularry/sly-agent-runtime",
+    "version": "1.0.0"
+   },
+   {
+    "name": "agentWallet",
+    "endpoint": "eip155:56:0xabc1c9b4464ab7e22dee8407c41328cb9c78fa90",
+    "version": "1.0.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://www.singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "email",
+    "endpoint": "contact@singularry.org",
+    "version": "1.0.0"
+   },
+   {
+    "name": "twitter",
+    "endpoint": "https://x.com/singularryai",
+    "version": "1.0.0"
+   },
+   {
+    "name": "telegram",
+    "endpoint": "https://t.me/singularry",
+    "version": "1.0.0"
+   }
+  ]
+ },
+ "410131": {
+  "name": "vip868.agent",
+  "description": "Data research and market analysis agent",
+  "image": null,
+  "active": true,
+  "trust": [
+   "termix-platform"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "version": "0.3.0"
+   },
+   {
+    "name": "Termix Platform",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services",
+    "version": "aacp-platform-v1"
    }
   ]
  }

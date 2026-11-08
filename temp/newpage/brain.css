@@ -374,7 +374,10 @@ body.bp-big{overflow:hidden}
 body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
 
 /* 07 MORE (2026-10-05): the Classic footer's links as a small card and a window; the cards above it give a little */
-.bp-side button.bw-card.bw-mini{flex:.36;justify-content:center}
+.bp-side button.bw-card.bw-mini{flex:.36;justify-content:center;min-height:min-content}
+/* 8.11. (operator: "on the iPad, 07 More never shows rebuilt 12h ago"): on its side (1133x744, 1024x768) the card got
+   79 px for 85 px of content and only the line (overflow hidden) gave way, to 3 px; the card never goes below its content */
+.bw-mini .bw-l{flex-shrink:0}
 .bw-mini .bw-viz,.bw-mini .bw-v{display:none}
 .bw-mini .bw-l{margin-top:2px}
 #w08 .bw-frame{width:min(760px,100%)}
@@ -484,7 +487,7 @@ button.bw-card.just-burned .bw-l{color:#ffb46b}
 .faq-n{font-size:12.5px;color:var(--muted,#a0a2c0)}
 details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(240,185,11,.25);transition:box-shadow .4s}
 /* 07 (2026-10-12): the code lives, and what an agent needs, each with a copy button */
-[data-open="w08"] .bw-l.code-live{color:#9cf5c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-open="w08"] .bw-l.code-live{color:#9cf5c0;white-space:normal;line-height:1.3} /* 8.11.: wraps instead of '…' (iPad Pro on its side cut '· source Nov 7'); the card grows with it (min-content) */
 .cx07 code{font:500 12px ui-monospace,Consolas,monospace;color:#f3efe6}
 .cx07-r{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid rgba(255,255,255,.06)}
 .cx07-r span b{display:block;font-size:13px}.cx07-r span small{display:block;font-size:11px;color:var(--muted,#a0a2c0)}

@@ -2778,17 +2778,23 @@ export function renderPopNow(today, d, all, pool, priceUsd) {
     over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/pop',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
 }
-export function renderPopChampion(day, no, rows, players, leader) {
+// 8.11. (operator): "17 players" says how many played THAT day, plus the season's players overall; the joke prize is
+// named the DAILY prize; the season leader (only the #1) comes with the prize pool he is on course for
+export function renderPopChampion(day, no, rows, players, leader, allPlayers, pool, priceUsd) {
   const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const n = (v) => Number(v || 0).toLocaleString('en-US'), p7 = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 }), medal = ['🥇', '🥈', '🥉']; // 6.9: scores with seven decimals
   const last = day === POP_LAST;
+  const bobai = pool && pool.bobai != null ? Number(pool.bobai) : null, usd = bobai != null && priceUsd ? bobai * priceUsd : null;
   return [
     `🧠 <b>BRAIN POP · DAY ${no} CHAMPION</b>`,
     '',
     ...rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`),
     '',
-    `${n(players)} player${players === 1 ? '' : 's'} · prize: <b>NOOOOOOOTHING</b> 🏆`,
-    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT · wins the prize pool` : `👑 Season leader (wins the whole prize pool on 30 Nov): <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
+    `👥 ${n(players)} player${players === 1 ? '' : 's'} played on day ${no}${allPlayers ? ` · ${n(allPlayers)} overall` : ''}`,
+    `🎁 Daily prize: <b>NOOOOOOOTHING</b>`,
+    '',
+    leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : `👑 Season leader: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
+    bobai != null ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · ${last ? 'goes to the champion' : 'the season leader on 30 Nov takes it all'}` : '',
     '',
     last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
@@ -2798,7 +2804,9 @@ async function popChampionText(day) {
   const [d, all] = await Promise.all([get('scope=day&d=' + day), get('scope=all')]);
   if (!d || !Array.isArray(d.rows)) return undefined; // the board did not answer: try again at the next tick
   if (!d.rows.length) return null;
-  return renderPopChampion(day, d.no, d.rows, d.players, all && all.rows && all.rows[0]);
+  const side = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null); // pool + price: a line less if they fail
+  const [pool, px] = await Promise.all([side('https://brainonbnb.com/api/pop/pool'), side('https://brainonbnb.com/api/price')]);
+  return renderPopChampion(day, d.no, d.rows, d.players, all && all.rows && all.rows[0], all && all.players, pool, px && px.price_usd);
 }
 async function postPopChampion(env, tick) {
   const day = new Date(Date.UTC(tick.getUTCFullYear(), tick.getUTCMonth(), tick.getUTCDate()) - 86400e3).toISOString().slice(0, 10);

@@ -374,7 +374,10 @@ body.bp-big{overflow:hidden}
 body.bp-big .bp-center{position:fixed;inset:10px;z-index:30;background:#0b090a}
 
 /* 07 MORE (2026-10-05): the Classic footer's links as a small card and a window; the cards above it give a little */
-.bp-side button.bw-card.bw-mini{flex:.36;justify-content:center}
+.bp-side button.bw-card.bw-mini{flex:.36;justify-content:center;min-height:min-content}
+/* 8.11. (operator: "on the iPad, 07 More never shows rebuilt 12h ago"): on its side (1133x744, 1024x768) the card got
+   79 px for 85 px of content and only the line (overflow hidden) gave way, to 3 px; the card never goes below its content */
+.bw-mini .bw-l{flex-shrink:0}
 .bw-mini .bw-viz,.bw-mini .bw-v{display:none}
 .bw-mini .bw-l{margin-top:2px}
 #w08 .bw-frame{width:min(760px,100%)}

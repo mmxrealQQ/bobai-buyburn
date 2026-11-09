@@ -590,7 +590,7 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 }
 @media (min-width:1180px){.bp-soc{margin-left:auto}}
 @media (max-width:1279px){.bp-hire-l{display:none}}
-@media (max-width:429px){.bp-sw,.bp-buy,.bp-hire{padding:8px 9px}.bp-soc a:nth-child(3){display:none}}
+@media (max-width:429px){.bp-sw,.bp-buy,.bp-hire{padding:8px 9px}}
 @media (max-width:359px){.bp-soc{display:none}}
 /* what goes first when the header narrows: the burns, the volume, the LP line, the market cap, liquidity, "owner
    renounced", "buys back & burns" — the tax, the slippage and the price stay. The line measures itself (build.mjs, fit) and sets this class. */

@@ -115,10 +115,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that pays out the creator share.",
    "files": 3,
-   "lines": 455,
-   "zipBytes": 9387,
-   "txtBytes": 19670,
-   "sha256": "40153f7e5cd3dce1",
+   "lines": 463,
+   "zipBytes": 9530,
+   "txtBytes": 20162,
+   "sha256": "707a64807fe22d0d",
    "reqs": [
     {
      "what": "A wallet that receives the tax",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5887,
-   "zipBytes": 103469,
-   "txtBytes": 310153,
-   "sha256": "2cd9517acf59024d",
+   "lines": 5891,
+   "zipBytes": 103669,
+   "txtBytes": 310783,
+   "sha256": "0be91e45d10a6fbd",
    "reqs": [
     {
      "what": "A bot token",
@@ -629,10 +629,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4189,
-   "zipBytes": 148816,
-   "txtBytes": 447216,
-   "sha256": "ce43e3d8ce313472",
+   "lines": 4195,
+   "zipBytes": 149142,
+   "txtBytes": 447985,
+   "sha256": "de6fe7b87a1541f0",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -664,10 +664,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 74,
-   "lines": 24351,
-   "zipBytes": 618472,
-   "txtBytes": 1753396,
-   "sha256": "65e3ab8355e33773",
+   "lines": 24416,
+   "zipBytes": 620102,
+   "txtBytes": 1759570,
+   "sha256": "1830dc82eeb91621",
    "reqs": [
     {
      "what": "A wallet to be paid into",

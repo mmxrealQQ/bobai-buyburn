@@ -677,9 +677,9 @@ function info(k) {
         : 'Collecting ended on Nov 20, World Children’s Day. The pot goes to Giggle Academy in one donation; tap the pot wallet to see on BscScan when it left.',
       links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     // each figure carries its own time: next to "dev bot runs · last <today>" an untimed payout read as today's (operator, 2026-10-11)
-    case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1], oldSp = !!(dv?.builder5Bnb && dv?.builder6Bnb); return { t: 'Creator share → d38', c: D.creator.c, rows: [
+    case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1], oldSp = !!dv && !(dv.builder5Bnb && dv.builder6Bnb); return { t: 'Creator share → d38', c: D.creator.c, rows: [
       ['Share of each trade', pctOf('creator')], ['Last in from 1ce', lastRun ? bnbF(lastRun.creatorBnb) + ' · ' + agoL(lastRun.time) : '…'], ['Last payout from d38', dv ? bnbF(dv.availableBnb) + ' · ' + agoL(dv.time) + (oldSp ? ' · old split 80% · 6 builders' : '') : '…'],
-      ['Payout split', '82% creator · 18% to 5 builders' + (oldSp ? ' · from the next payout' : '')] /* builder #6 from 1.10. (worker-dev-buyback 32bc2ff); builder #5 out, its 2% to the creator, from 10.10. */, ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
+      ['Payout split', '80% creator · 20% to 6 builders' + (oldSp ? ' · from the next payout' : '')] /* builder #6 from 1.10. (worker-dev-buyback 32bc2ff); builder #5 out 10.10.-9.11., back since 9.11. (operator) */, ['Dev bot runs', 'hourly · last ' + agoL(W.dev.last)]],
       note: 'The 1ce bot sends the creator share to d38; the dev bot pays it out every hour. Both wallets are public.',
       links: [['d38 wallet', bsc('0x15Ba17075ef5E0736292b030e3715d9100fe3d38')]] }; }
     case 'core': case 'buyback': return { t: 'The buyback bot · 1ce', c: '#F0B90B', rows: [
@@ -855,7 +855,7 @@ function circleLine(k) {
     giggle: () => { const p = bnb4(ggBnb()); return GIGGLE_OPEN() ? vary('v10', [`The Giggle pot holds ${p} for Giggle Academy. Every trade adds to it until November 20.`, `${p} in the Giggle pot so far. It goes to Giggle Academy on November 20.`,
       `Every trade adds a coin for Giggle Academy. The pot: ${p}.`, `The Giggle pot: ${p}, growing with every trade until November 20.`, `For the kids of Giggle Academy: ${p} in the pot, and counting.`])
       : vary('v11', [`Collecting is over: ${p} for Giggle Academy, from every trade.`, `${p} from every trade, for Giggle Academy.`, `The Giggle pot is closed: ${p} for Giggle Academy.`, `Giggle Academy's pot: ${p}, one donation from every trade.`, `${p} for Giggle Academy, made by every trade.`]); },
-    creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders, the old split; from the next payout 82% creator, 18% to 5 builders' : '82% creator, 18% to 5 builders'; return vary('v12', [
+    creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders, the old split; from the next payout 80% creator, 20% to 6 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,
       `The creator slice pays the builders too: ${sp}. Last payout ${b}, ${t}.`, `Last creator payout: ${b}, ${t}. ${sp}.`]); },
     src: () => { const own = (f.ob || 0) + (f.os || 0), ownT = own ? ` My own bots traded too: ${f.ob ? `${nf(f.ob)} buy${f.ob === 1 ? '' : 's'}` : ''}${f.ob && f.os ? ' and ' : ''}${f.os ? `${nf(f.os)} sell${f.os === 1 ? '' : 's'}` : ''}.` : '';
@@ -5737,7 +5737,7 @@ function near(e) {
   return best;
 }
 function describe(x) {
-  if (x.kind === 'dev') return `the dev wallet paid out ${bnbAmt(x.d.availableBnb, x.t)} of the creator share (${x.d.builder5Bnb && x.d.builder6Bnb ? '80% creator, 20% to 6 builders' /* only 1.10.-10.10. paid six; before and since, five (#6 in, then #5 out) */ : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
+  if (x.kind === 'dev') return `the dev wallet paid out ${bnbAmt(x.d.availableBnb, x.t)} of the creator share (${x.d.builder5Bnb && x.d.builder6Bnb ? '80% creator, 20% to 6 builders' /* six paid 1.10.-10.10. and again since 9.11. (#5 back, operator); five in between */ : '82% creator, 18% to 5 builders'})`; // the run's own split: builder #6 from 1.10.
   if (x.kind === 'trade' && x.taxSwap) return `the token contract swapped ${bobaiAmt(x.bobai)} of collected tax to ${bnbAmt(x.bnb, x.t)} for the buyback bot`;
   if (x.kind === 'trade') return x.ours ? `${whoTraded(x)}${x.buy ? 'bought' : 'sold'} ${tradeAmt(x)}` : `${x.buy ? '▲ buy' : '▼ sell'} ${tradeAmt(x)} · $${nf(x.usd * 0.03, 2)} tax to the brain`;
   if (x.kind === 'run') { const fed = [x.e.lpAgentTx && 'the DeFi agent', x.e.giggleTx && 'the Giggle pot'].filter(Boolean);

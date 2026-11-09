@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5887 lines.
+# one fetch. 12 files, 5891 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3534,7 +3534,9 @@ const GG_DONATE_URL = 'https://giggleacademy.com/support-us';
 // One card, /price-shaped: what it is, where the clock stands, what has been
 // collected (from burns.json — giggleBnb/giggleTx per bot run, the same log
 // the page reads), the last send, and where the donation goes. Pure.
-export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
+// the donation itself (2026-11-09): read from brainonbnb.com/giggle-donation.json; only a transaction there makes the card say donated
+export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null, donation = null) {
+  const done = donation && /^0x[0-9a-fA-F]{64}$/.test(donation.tx || '') && +donation.bnb > 0 ? donation : null;
   const sends = (Array.isArray(burns) ? burns : []).filter((x) => x && x.giggleTx);
   const total = sends.reduce((a, x) => a + (parseFloat(x.giggleBnb) || 0), 0);
   const last = sends.length ? sends[sends.length - 1] : null;
@@ -3542,7 +3544,7 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
   let clock;
   if (nowMs < GG_START) clock = `⏳ Collecting starts in <b>${span(GG_START - nowMs)}</b>  ·  Sep 17, 00:01 UTC`;
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
-  else clock = `✅ Collecting ended Nov 20  ·  donation day`;
+  else clock = done ? `✅ Donated to Giggle Academy  ·  <b>${done.bnb} BNB</b>  ·  <a href="https://bscscan.com/tx/${done.tx}">tx</a>` : `✅ Collecting ended Nov 20  ·  the donation is on its way`;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
   // the window over (2026-11-04, the A-Z pass): the card stops saying "fills" and "so far" once nothing is sent any more
   const over = nowMs >= GG_END;
@@ -4033,7 +4035,9 @@ async function handleCommand(msg, env) {
         const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
         if (r.ok) burns = await r.json();
       } catch { /* said on the card below */ }
-      reply = formatGiggleCard(burns || [], Date.now(), await getBnbUsd());
+      let donation = null;
+      try { const d = await fetch('https://brainonbnb.com/giggle-donation.json', { cf: { cacheTtl: 60 } }); if (d.ok) donation = await d.json(); } catch { /* the card says on its way */ }
+      reply = formatGiggleCard(burns || [], Date.now(), await getBnbUsd(), donation);
       if (!Array.isArray(burns)) reply += '\n\n<i>The bot log did not answer just now, so the sends are not counted. Try again in a minute.</i>';
       break;
     }

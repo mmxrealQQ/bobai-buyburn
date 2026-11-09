@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4189 lines.
+# one fetch. 5 files, 4195 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1095,7 +1095,7 @@ async function runTool(rawName, args, caller = {}) {
     case 'pancakeswap_position_look': {
       // 2026-10-14: the DeFi agent's free look, for any V3 position, with The Flip read from the pool (agent worker /lp/look)
       const pos = String(args?.position ?? '').trim(), addr = String(args?.address ?? '').trim();
-      if (!/^\d+$/.test(pos) && !/^0x[0-9a-fA-F]{40}$/.test(addr)) throw new Error('Give a PancakeSwap V3 position id (digits) or a wallet address (0x…).');
+      if (!/^\d+$/.test(pos) && !/^0x[0-9a-fA-F]{40}$/.test(addr)) throw new Error('Give a PancakeSwap V3 position id (digits) as "position" or a wallet that holds one as "address", e.g. {"address":"0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A"} (the DeFi Agent\'s wallet; it always holds its current CAKE/BNB position).');
       const r = await fetch(`https://agent.brainonbnb.com/lp/look?${/^\d+$/.test(pos) ? `position=${pos}` : `address=${addr}`}`, { signal: AbortSignal.timeout(30000) });
       const j = await r.json().catch(() => null);
       if (!j) throw new Error(`The position look did not answer (http ${r.status}); it is also at GET https://agent.brainonbnb.com/lp/look`);
@@ -1317,7 +1317,13 @@ async function runTool(rawName, args, caller = {}) {
     case 'bobai_token_info': return await getTokenInfo();
     case 'bobai_burned': { const t = await getTokenInfo(); return { symbol: t.symbol, burned: t.burned, note: 'Permanently sent to dead/zero address — irreversible' }; }
     case 'bobai_circulating_supply': return { symbol: 'BOBAI', circulatingSupply: (await getCirculating()).toString() };
-    case 'bobai_wallet_balance': return await getWalletBalance(String(args?.address || ''));
+    case 'bobai_wallet_balance': {
+      // 2026-11-09: called empty or with the wallet under another name (brickbluebot 5x in 14 days) it said only "Invalid BSC
+      // address"; a wallet given as wallet/account/holder, or inside a link, is read, and an empty call names the argument
+      const w = pickAddress(String(args?.address ?? args?.wallet ?? args?.account ?? args?.holder ?? '').trim());
+      if (!w) throw new Error('Give the wallet as the argument "address" (0x + 40 hex), e.g. {"address":"0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c"} - it returns that wallet\'s BNB and $BOBAI and how far it is from the 1,000,000 $BOBAI holder line.');
+      return await getWalletBalance(w);
+    }
     case 'bobai_links': return OFFICIAL_LINKS;
     case 'bobai_dex_info': return TRADE_INFO;
     case 'bobai_guide': return AGENT_GUIDE;

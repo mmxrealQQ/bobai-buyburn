@@ -541,6 +541,21 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const page = (p, ua) => fetch(`${SITE}${p}`, { redirect: 'manual', headers: ua ? { 'user-agent': ua } : {} }).then(async (r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '', text: r.status === 200 && /text|json/.test(r.headers.get('content-type') || '') ? await r.text() : '' })).catch(() => null);
   const con = await page('/connect'); ok('Ecosystem', '/connect offers the one-click installs', con?.status === 200 && /cursor-deeplink/.test(con.text) && /vscode:mcp\/install/.test(con.text), con ? `HTTP ${con.status}` : 'no answer');
   const pp = await page('/pop'); ok('Ecosystem', '/pop, Brain Pop\'s own page, answers', pp?.status === 200 && /Play now/.test(pp.text), pp ? `HTTP ${pp.status}` : 'no answer');
+  // THE HOLDER INDEX EQUALS THE CHAIN (2026-11-09): empty log answers for old ranges had left 3 of the top 25 under the
+  // chain. Every morning the top 25 the index keeps are read again with balanceOf; one off by more than 0.5% is red
+  // (a transfer in the minutes since the last tick moves a balance a little, not by that much, and is rare at this volume).
+  {
+    const h = (await getJson('https://agent.brainonbnb.com/holders').catch(() => null))?.json;
+    const top = h?.top || [];
+    const offs = [];
+    for (const x of top) {
+      const r = (await getJson(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x245c386dcfed896f5c346107596141e5edcbffff', data: '0x70a08231' + x.address.slice(2).padStart(64, '0') }, 'latest'] }) }).catch(() => null))?.json;
+      const chain = r?.result ? Number(BigInt(r.result) / 10n ** 14n) / 1e4 : null;
+      if (chain == null) { offs.push(`${x.address.slice(0, 8)} unread`); continue; }
+      if (Math.abs(chain - x.bobai) > Math.max(1, chain * 0.005)) offs.push(`${x.address.slice(0, 8)} kept ${Math.round(x.bobai).toLocaleString('en-US')} / chain ${Math.round(chain).toLocaleString('en-US')}`);
+    }
+    ok('Ecosystem', 'the holder index equals the chain (top 25 read again with balanceOf)', top.length === 25 && offs.length === 0, top.length !== 25 ? `${top.length} in the top list` : offs.length ? offs.slice(0, 3).join(' · ') + (offs.length > 3 ? ` · +${offs.length - 3}` : '') : 'all 25 equal');
+  }
   const wl = await getJson(`${SITE}/api/pop/wallet?pid=0000000000000000`); ok('Ecosystem', 'the holder badge endpoint answers', wl.json?.linked === false && Array.isArray(wl.json?.tiers), wl.error || '');
   const top = await getJson(`${SITE}/api/pop/top?scope=all`), run = top.json?.rows?.[0]?.run;
   const card = run ? await page(`/og/pop/${run}.png`) : null;

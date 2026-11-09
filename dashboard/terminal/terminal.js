@@ -2126,6 +2126,11 @@ function chartWords() {
 }
 // the Giggle Academy slice runs until 20 Nov 2026 00:01 UTC (phase table); after that no line may say trades still feed it
 const GIGGLE_OPEN = () => Date.now() < Date.parse('2026-11-20T00:01:00Z');
+// THE DONATION, WITH ITS PROOF (2026-11-09): no line says "donated" until /giggle-donation.json carries the transaction;
+// between the end of the window and that moment the pot is "on its way" (the operator donates by hand on Nov 20)
+let GG_DONE = null;
+fetch('/giggle-donation.json', { cache: 'no-store' }).then(r => r.json()).then(j => { if (j && /^0x[0-9a-fA-F]{64}$/.test(j.tx || '') && +j.bnb > 0) GG_DONE = j; }).catch(() => {});
+const ggNote = () => GG_DONE || GIGGLE_OPEN() ? 'donated on Nov 20' : 'donation on its way';
 // each work line with the move that shows what it says (2026-09-28: 'This week I burned…' came with a coffee)
 // HE REMEMBERS (operator, 2026-10-01: "make him smarter"): the last real moment of the hour, in his own words — a burn run,
 // or a buy from outside worth $50 or more, with how long ago and what it did for him. Null when the hour was quiet.
@@ -3412,7 +3417,7 @@ function motifOf(k, now) {
       cards: [['$BOB BURNED', bobAmt(bobOf(e)), 'the same run', D.burnB.c],
         ['TO LIQUIDITY', l ? bnb4(l.bnb) : '—', l ? nf(l.lpBurned, 2) + ' LP burned' : 'no add in this run', D.liq.c],
         ['TO THE DEFI AGENT', bnb4(e.lpAgentBnb), 'it works the capital', D.defi.c],
-        ['TO THE GIGGLE POT', bnb4(e.giggleBnb), 'donated on Nov 20', D.giggle.c]],
+        ['TO THE GIGGLE POT', bnb4(e.giggleBnb), ggNote(), D.giggle.c]],
       text: `$BOBAI just burned ${nf(e.bobaiBurned)} BOBAI${usdS(e.bobaiBurned, S.price)} and ${cmp(bobOf(e))} $BOB${usdS(bobOf(e), S.bobP)} from its 3% tax. Check it on-chain: https://bscscan.com/tx/${e.bobaiBurnTx} 🔥`,
     };
   }
@@ -3442,7 +3447,7 @@ function motifOf(k, now) {
       cards: [['$BOB BURNED', bobAmt(bob), 'Build On BNB, gone', D.burnB.c],
         ['LIQUIDITY ADDED', bnb4(sumB(adds, x => x.bnb)), adds.length + ' add' + (adds.length === 1 ? '' : 's') + ' · LP burned', D.liq.c],
         ['TO THE DEFI AGENT', bnb4(sumB(runs, e => e.lpAgentBnb)), 'it works the capital', D.defi.c],
-        ['TO THE GIGGLE POT', bnb4(sumB(runs, e => e.giggleTx ? e.giggleBnb : 0)), 'donated on Nov 20', D.giggle.c]],
+        ['TO THE GIGGLE POT', bnb4(sumB(runs, e => e.giggleTx ? e.giggleBnb : 0)), ggNote(), D.giggle.c]],
       text: `$BOBAI, ${word}: ${nf(burned)} BOBAI${usdS(burned, S.price)} and ${cmp(bob)} $BOB${usdS(bob, S.bobP)} burned in ${runs.length} runs, ${bnb4(sumB(adds, x => x.bnb))} added to liquidity with the LP burned. All on-chain 🧠`,
     };
   }
@@ -3453,7 +3458,7 @@ function motifOf(k, now) {
     cards: [['BURNED THIS WEEK', bobaiAmt(sumB(wk, e => e.bobaiBurned)), '+ ' + bobAmt(sumB(wk, bobOf)) + ' burned', D.burnA.c],
       ['NEXT BUYBACK', '$' + nf(qUsd, 2), 'tax charging the next burn', '#F0B90B'],
       ['LIQUIDITY LOCKED', lpText(), 'of the pool LP burned', D.liq.c],
-      ['GIGGLE ACADEMY POT', bnb4(ggBnb()), 'donated on Nov 20', D.giggle.c]],
+      ['GIGGLE ACADEMY POT', bnb4(ggBnb()), ggNote(), D.giggle.c]],
     text: `$BOBAI's brain right now: ${nf(S.deadA || 0)} BOBAI burned (${supplyPct(S.deadA || 0)}% of supply), $${nf(qUsd, 2)} charging for the next buyback. Watch it live 🧠`,
   };
 }
@@ -3784,7 +3789,7 @@ function paintLogs() {
   if (S.liq.length) setDest('liq', `${boost.n} adds · ${bnb4(boost.bnb)}`, `${nf(boost.lp, 2)} LP burned · pool ${lpText()} locked`);
   if (S.burns.length) {
     const gg = ggBnb(), days = Math.max(0, Math.floor((ggEnd() - Date.now()) / 86400e3)); // floored as the page counts (28.10.: 23 here, 22 beside it)
-    setDest('giggle', bnb4R(gg), GIGGLE_OPEN() ? `≈$${nf(gg * S.bnbP, 2)} · for Giggle Academy in ${days} days` : 'donated to Giggle Academy on Nov 20');
+    setDest('giggle', bnb4R(gg), GIGGLE_OPEN() ? `≈$${nf(gg * S.bnbP, 2)} · for Giggle Academy in ${days} days` : GG_DONE ? 'donated to Giggle Academy on Nov 20' : 'collected · the donation to Giggle Academy is on its way');
     const cr = S.burns.slice(-1)[0];
     const dv = S.dev[S.dev.length - 1];
     setDest('creator', pctOf('creator') + ' of each trade', (cr ? `last in: ${bnbF(cr.creatorBnb)}, ${hAgo(Date.parse(cr.time))}` : '') + (dv ? ` · the dev wallet paid out ${bnbF(dv.availableBnb)}, ${hAgo(Date.parse(dv.time))}` : ''));

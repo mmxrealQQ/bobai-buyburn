@@ -718,6 +718,9 @@ const LFG_START=new Date('2026-12-01T00:01:00Z').getTime();
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
 const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
+// THE DONATION, WITH ITS PROOF (2026-11-09): set from /giggle-donation.json once it carries the transaction; until then no
+// line on Classic or the Brain page says "donated" (the countdown below and brain/cards.js read it)
+let GG_DONE=null;
 // The Giggle card: sends and their sum from burns.json (giggleBnb/giggleTx per bot run).
 function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];
 // The pot grows in the order the sends happened; the table shows the newest first. Until 2026-09-19 the sum ran down the table as it is shown, so the newest send carried its own amount as "Pot" and the oldest carried the whole pot.
@@ -925,12 +928,16 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
     let diff,label,phase;
     if(now<GG_START){diff=GG_START-now;label='until collecting starts';phase='collecting starts Sep 17, 00:01 UTC'}
     else if(now<GG_END){diff=GG_END-now;label='until collecting ends';phase='collecting now — until Nov 20, 00:01 UTC'}
-    else{diff=0;label='collecting ended — donation day';phase='collected — donated Nov 20'}
+    // after the window (2026-11-09): "donated" only once giggle-donation.json carries the transaction, with it as the proof
+    else if(GG_DONE){diff=0;label='donated to Giggle Academy';phase='donated Nov 20 · '+GG_DONE.bnb+' BNB · tx '+GG_DONE.tx.slice(0,6)+'…'+GG_DONE.tx.slice(-4)}
+    else{diff=0;label='collecting ended';phase='collected — the donation to Giggle Academy is on its way'}
     const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
     dEl.textContent=d;
     const hEl=document.getElementById('gg-hours'),mEl=document.getElementById('gg-mins'),lEl=document.getElementById('gg-cd-label'),pEl=document.getElementById('gg-phase');
     if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
+    if(pEl&&GG_DONE&&now>=GG_END){const a=document.createElement('a');a.className='txl';a.href='https://bscscan.com/tx/'+GG_DONE.tx;a.target='_blank';a.rel='noopener';a.textContent=phase;pEl.textContent='';pEl.appendChild(a)}
   }
+  fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(j&&/^0x[0-9a-fA-F]{64}$/.test(j.tx||'')&&+j.bnb>0){GG_DONE=j;tick()}}).catch(()=>{});
   tick();setInterval(tick,60000);
 }();
 

@@ -374,7 +374,10 @@
       out.agents = short ? `${cmp(n)} calls in 7 days` + (buys05 != null ? ` · ${buys05} paid` : '')
         : `${cmp(n)} requests to our agent server in 7 days` + (buys05 != null ? `, ${buys05} answer${buys05 === 1 ? '' : 's'} paid for by other agents` : ''); }
     // whole days, as the pot's own countdown counts them (2026-10-19: this said 32 d beside 02's "31 days left")
-    if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = short ? `Giggle pot ${bnbP ? `≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : `${N.gg.bnb.toFixed(3)} BNB`} · ${d} d left`
+    // after the window (2026-11-09): "0 d left" said nothing; the pot is on its way, then donated once app.js has the tx
+    const ggDone = typeof GG_DONE !== 'undefined' && GG_DONE;
+    if (N.gg?.bnb != null && N.gg?.end && Date.now() >= N.gg.end) out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${ggDone ? 'donated to Giggle Academy' : 'on its way to Giggle Academy'}`;
+    else if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = short ? `Giggle pot ${bnbP ? `≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : `${N.gg.bnb.toFixed(3)} BNB`} · ${d} d left`
       : `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${d} d to the kids`; }
     return out;
   };

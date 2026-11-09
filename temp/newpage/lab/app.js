@@ -925,12 +925,17 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
     let diff,label,phase;
     if(now<GG_START){diff=GG_START-now;label='until collecting starts';phase='collecting starts Sep 17, 00:01 UTC'}
     else if(now<GG_END){diff=GG_END-now;label='until collecting ends';phase='collecting now — until Nov 20, 00:01 UTC'}
-    else{diff=0;label='collecting ended — donation day';phase='collected — donated Nov 20'}
+    // after the window (2026-11-09): "donated" only once giggle-donation.json carries the transaction, with it as the proof
+    else if(GG_DONE){diff=0;label='donated to Giggle Academy';phase='donated Nov 20 · '+GG_DONE.bnb+' BNB · tx '+GG_DONE.tx.slice(0,6)+'…'+GG_DONE.tx.slice(-4)}
+    else{diff=0;label='collecting ended';phase='collected — the donation to Giggle Academy is on its way'}
     const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
     dEl.textContent=d;
     const hEl=document.getElementById('gg-hours'),mEl=document.getElementById('gg-mins'),lEl=document.getElementById('gg-cd-label'),pEl=document.getElementById('gg-phase');
     if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
+    if(pEl&&GG_DONE&&now>=GG_END){const a=document.createElement('a');a.className='txl';a.href='https://bscscan.com/tx/'+GG_DONE.tx;a.target='_blank';a.rel='noopener';a.textContent=phase;pEl.textContent='';pEl.appendChild(a)}
   }
+  let GG_DONE=null;
+  fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(j&&/^0x[0-9a-fA-F]{64}$/.test(j.tx||'')&&+j.bnb>0){GG_DONE=j;tick()}}).catch(()=>{});
   tick();setInterval(tick,60000);
 }();
 

@@ -19,6 +19,8 @@ const src = fs.readFileSync(path.join(ROOT, 'dashboard', 'app.js'), 'utf8');
 const start = src.indexOf('function ggdata(b){');
 const end = src.indexOf('\nfunction ', start + 10);
 const fnText = src.slice(start, end);
+// ggdata paints its time cells with tcell (since the time-cell styling): lifted from app.js as it stands, like ggdata
+const tcellText = (src.match(/^const tcell=.*$/m) || [''])[0];
 
 let n = 0, bad = 0;
 const ok = (what, cond, detail = '') => { n++; if (!cond) bad++; console.log(`${cond ? 'ok  ' : 'FAIL'}  ${what}${detail ? ` — ${detail}` : ''}`); };
@@ -27,10 +29,11 @@ function run(text, log) {
   const els = {}; let painted = null;
   const document = { getElementById: (id) => (els[id] ||= { textContent: '' }) };
   const paintRows = (id, rows) => { painted = { id, rows }; };
-  const f = new Function('document', 'paintRows', 'ggUsd', `let GG_BNB=0;const NUMS={},GG_END=Date.parse('2026-11-20T00:01:00Z');${text};ggdata(arguments[3]);return GG_BNB;`);
+  const f = new Function('document', 'paintRows', 'ggUsd', `let GG_BNB=0;const NUMS={},GG_END=Date.parse('2026-11-20T00:01:00Z');${tcellText}
+${text};ggdata(arguments[3]);return GG_BNB;`);
   const total = f(document, paintRows, () => {}, log);
   const cells = (painted ? painted.rows : []).map((r) => [...r.matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]));
-  return { total, count: els['gg-count']?.textContent, head: els['gg-bnb']?.textContent, rows: cells.map((c) => ({ time: c[0], bnb: parseFloat(c[1]), pot: parseFloat(c[2]) })), body: painted?.id };
+  return { total, count: els['gg-count']?.textContent, head: els['gg-bnb']?.textContent, rows: cells.map((c) => ({ time: c[0].replace(/<[^>]+>/g, ''), bnb: parseFloat(c[1]), pot: parseFloat(c[2]) })), body: painted?.id };
 }
 
 // The two sends that were on the page the day the fault was seen, a run without a send between them, and a third.

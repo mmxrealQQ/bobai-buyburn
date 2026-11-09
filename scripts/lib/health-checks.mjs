@@ -267,6 +267,14 @@ export const KEEP_808_WALLETS = {
 // THE GIGGLE POT IS BRAIN POP'S PRIZE POOL TOO (operator, 2026-11-06: "people can donate $BOBAI to the prize pool, use the
 // giggle/prize-pool wallet"): donations raise it, so it holds AT LEAST 808.41; what lies above is the pool (worker-pop /pool)
 export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C', '0x5E4102520A71B2AA18a1208330d4848dea4BD105']);
+// THE PRIZE IS PAID OUT (2026-11-09): Brain Pop's season ends Nov 30 (worker-pop LAST_DAY) and the overall #1 gets ALL of
+// the pool, the 808.41 start included — from then the pot's $BOBAI is not judged (it may be anything down to 0); the
+// line still shows what it holds. Pure; pinned below.
+export const PRIZE_PAID_FROM = Date.parse('2026-11-30T00:00:00Z');
+export function prizeVerdict(v, addr, now = Date.now()) {
+  if (now < PRIZE_PAID_FROM || addr !== '0x5E4102520A71B2AA18a1208330d4848dea4BD105' || v.good || /could not be read/.test(v.detail)) return v;
+  return { ...v, name: v.name.replace(/holds at least [d,.]+ BOBAI/, 'holds the Brain Pop pool until it is paid out'), good: true, detail: `${v.detail.split(' — ')[0]} — the season ended Nov 30, the pool goes to the overall #1; not judged` };
+}
 // THREE WALLETS KEEP 80,841 BOBAI (operator, 2026-10-20: "these three at 80841, fixed"): topped up once by the NFT relayer
 // (temp/topup-80841.mjs, buy 0x945dbd97…). x402 income is paid in $BOBAI too and keeps all of it, so it holds AT LEAST.
 export const KEEP_80841_WALLETS = {
@@ -299,7 +307,7 @@ export async function readKeepBalances(rpc = 'https://bsc-dataseed.binance.org')
     ...Object.entries(KEEP_80841_WALLETS).map(([l, a]) => [l, a, KEEP_80841_AT_LEAST.has(a), KEEP_BIG_WEI])];
   return Promise.all(all.map(async ([label, a, least, keep]) => {
     try {
-      const v = keepVerdict(label, await bal(a), least, keep);
+      const v = prizeVerdict(keepVerdict(label, await bal(a), least, keep), a);
       if (v.good) return v;
       // MID-RUN IS NOT BROKEN (2026-10-09 review): a liquidity run of d38 lasts minutes, longer than the minute the
       // morning run waits, and its wallet holds more than 808.41 between its steps. Off by more than a cent: look
@@ -375,6 +383,10 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
 ok('Health', 'the told-buys / burn-alert rules pass their own pins (an untold buy, a stuck queue, a burn stuck an hour read red)', tgEvidenceHolds());
 ok('Health', 'the refused-payment rule passes its own pins (a payer\'s empty wallet is theirs, a failed RPC or an unknown reason is ours)', refusedHolds());
 ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is not, an unread wallet is red)', keepHolds());
+{ const GG = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', low = keepVerdict('Giggle pot', 0n, true), before = PRIZE_PAID_FROM - 1, after = PRIZE_PAID_FROM;
+  ok('Health', 'the prize pot: below 808.41 is red until Nov 30, then paid out and not judged; an unread pot stays red, other wallets keep the rule',
+    prizeVerdict(low, GG, before).good === false && prizeVerdict(low, GG, after).good === true && /not judged/.test(prizeVerdict(low, GG, after).detail)
+    && prizeVerdict(keepVerdict('x', null, true), GG, after).good === false && prizeVerdict(low, '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C', after).good === false); }
 
 // ---- the bots -------------------------------------------------------------
 {

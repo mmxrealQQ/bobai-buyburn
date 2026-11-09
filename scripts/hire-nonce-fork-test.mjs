@@ -24,6 +24,11 @@ const src = fs.readFileSync(path.join(ROOT, 'worker-agent', 'agent-hires.js'), '
 const body = src.slice(src.indexOf('export async function hireOnce'), src.indexOf('export async function hireOnce') + 6000);
 ok('hireOnce reads the pending nonce once, of every node, the highest taken, before its first send', /RPCS\.map\(\(u\) => fetch\(u, [^\n]*eth_getTransactionCount[^\n]*'pending'/.test(body) && /let nonce = Math\.max\(\.\.\.known\)/.test(body) && body.indexOf('let nonce') < body.indexOf('const send = async'));
 ok('… and every send takes the next number', /sendTransaction\(\{ to, data, gasPrice: GAS_PRICE, nonce: nonce\+\+ \}\)/.test(body));
+// the public settle run (operator's go, 9.11.): the same count, and a failed send must never leave a gap
+const ps = fs.readFileSync(path.join(ROOT, 'worker-agent', 'public-settle.js'), 'utf8');
+ok('the settle run asks every node for the pending count and takes the highest', /eth_getTransactionCount', params: \[account\.address, 'pending'\]/.test(ps) && /return known\.length \? Math\.max\(\.\.\.known\) : null/.test(ps));
+ok('… sends with that number and counts on only after a hash came back', /sendTransaction\(\{ to: ERC8183\.router, data, gasPrice: GAS_PRICE, gas: 250000n, nonce \}\);\s*nonce\+\+;/.test(ps));
+ok('… and after a send that threw without a hash asks the count again (no gap, no number twice)', /if \(!hash\) nonce = null;/.test(ps) && /if \(nonce == null\) nonce = await pendingNonce\(\);/.test(ps));
 if (!fs.existsSync(ANVIL)) { console.error(`anvil not found at ${ANVIL}`); process.exit(2); }
 const FORK_URL = env.BSC_RPC_KEYED_URL_2 || 'https://bsc-rpc.publicnode.com';
 const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--port', String(PORT), '--chain-id', '56', '--silent', '--block-time', '1'], { stdio: 'ignore' });

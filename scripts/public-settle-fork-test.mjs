@@ -126,10 +126,17 @@ const grew = await Promise.all(provs.map(async (p) => (await pub.readContract({ 
 ok('and each provider it settled for holds more $U than before', provs.filter((p) => settled.some((id) => cand[id].provider === p)).every((p) => grew[provs.indexOf(p)]));
 ok('the self-hire and the farm job got no transaction and left the list', !run.done.some((d) => [String(selfId), String(farmId)].includes(String(d.id))) && !JSON.parse(kv.get(S.CANDIDATES_KEY))[selfId] && !JSON.parse(kv.get(S.CANDIDATES_KEY))[farmId], `self ${selfId}, farm ${farmId}`);
 const busyDone = settled.filter((id) => busy[1].includes(id)).length;
-// at most ten a provider, three a client->provider pair: what it may settle today, the rest stays on the list
-const pairs = {}; for (const id of busy[1]) { const c = realNow.find((x) => x.id === id).job.client.toLowerCase(); pairs[c] = (pairs[c] || 0) + 1; }
+// at most ten a provider, three a client->provider pair: what it may settle today, the rest stays on the list.
+// Counted over the busiest provider's jobs that are SETTLEABLE at this block (2026-11-09: submitted ones still inside
+// the 7-day dispute window are not due; the check counted them and read '6 today' for 1, on the old code and the new)
+const { classify, NOT_SETTLED } = await import('../shared/own-jobs.js');
+const { readDisputeWindow } = await import('../worker-agent/hire.js');
+const windowSec = await readDisputeWindow(async (to, data) => (await pub.call({ to, data })).data);
+const blockNow = Number((await pub.getBlock()).timestamp);
+const busyDue = busy[1].filter((id) => classify(realNow.find((x) => x.id === id).job, { now: blockNow, windowSec }).state === 'settleable' && !NOT_SETTLED[id]);
+const pairs = {}; for (const id of busyDue) { const c = realNow.find((x) => x.id === id).job.client.toLowerCase(); pairs[c] = (pairs[c] || 0) + 1; }
 const allowed = Math.min(10, Object.values(pairs).reduce((s, k) => s + Math.min(3, k), 0));
-ok(`the busiest provider (${busy[1].length} due, ${Object.keys(pairs).length} client(s)): ${allowed} today, the rest waits`, busyDone === allowed && Object.keys(JSON.parse(kv.get(S.CANDIDATES_KEY))).filter((id) => busy[1].includes(id)).length === busy[1].length - busyDone, `${busyDone} settled`);
+ok(`the busiest provider (${busy[1].length} submitted, ${busyDue.length} past the dispute window, ${Object.keys(pairs).length} client(s)): ${allowed} today, the rest waits`, busyDone === allowed && Object.keys(JSON.parse(kv.get(S.CANDIDATES_KEY))).filter((id) => busy[1].includes(id)).length === busy[1].length - busyDone, `${busyDone} settled`);
 ok('no simulation refused a due job', run.refused === 0, JSON.stringify(run.done.filter((d) => !d.settled)).slice(0, 160));
 const second = await S.runPublicSettle(env, { rpcUrl: LOCAL });
 ok('a second run the same day does nothing', second.skipped === 'ran today');

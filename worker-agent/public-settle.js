@@ -160,18 +160,37 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
   const byId = Object.fromEntries(jobs.map((x) => [x.id, x.job]));
   const done = [];
   let stopped = null;
+  // ONE NONCE, COUNTED HERE (2026-11-09, operator's go; as agent-hires.js): viem asked the fallback transport for the
+  // nonce before every send, and a node a block behind can answer the old number ("nonce lower than the current
+  // nonce", job 57111's hire on 27.10.). The pending count is asked of every node, the highest taken (a node behind can
+  // only answer too low); it moves on only when a send returned its hash. A send that threw without one may or may not
+  // have reached a node, so the count is asked again before the next send: never a gap, never a number twice.
+  const pendingNonce = async () => {
+    const urls = rpcUrl ? [rpcUrl] : RPCS;
+    const got = await Promise.all(urls.map((u) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionCount', params: [account.address, 'pending'] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).then((j) => (j?.result ? Number(BigInt(j.result)) : null)).catch(() => null)));
+    const known = got.filter((c) => c != null);
+    return known.length ? Math.max(...known) : null;
+  };
+  let nonce = null;
   for (const id of due) {
     const bal = await pub.getBalance({ address: account.address });
     if (bal < RESERVE_BNB + GAS_PER_SETTLE * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
     const data = settleData(id);
     try { await pub.call({ account, to: ERC8183.router, data }); }
     catch (e) { done.push({ id, settled: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
+    if (nonce == null) nonce = await pendingNonce();
+    if (nonce == null) { stopped = 'no node answered the nonce; the rest waits for the next run'; break; }
+    let hash = null;
     try {
-      const hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: GAS_PRICE, gas: 250000n });
+      hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: GAS_PRICE, gas: 250000n, nonce });
+      nonce++;
       const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
       const j = byId[id];
       done.push({ id, settled: rc.status === 'success', tx: hash, provider: j.provider, client: j.client, released_u: j.budget_u, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
-    } catch (e) { done.push({ id, settled: false, why: String(e.shortMessage || e.message).slice(0, 140) }); }
+    } catch (e) {
+      if (!hash) nonce = null; // not known whether it reached a node: asked again before the next send
+      done.push({ id, settled: false, ...(hash ? { tx: hash } : {}), why: String(e.shortMessage || e.message).slice(0, 140) });
+    }
   }
   // the list: settled and finished jobs leave it
   const left = { ...cand };

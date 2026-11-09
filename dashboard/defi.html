@@ -170,7 +170,7 @@
     <div class="lp-hero hx">
       <h1>The DeFi <em>agent</em></h1>
       <div class="hx-claim">An agent puts a slice of every trade&rsquo;s tax to work in a PancakeSwap V3 pool. <em>Every step on chain</em>, the losses too.</div>
-      <div class="hx-trust"><span><span class="hx-dot"></span>Running since 3 Sep 2026</span><span>The tax slice runs until 20 Nov 2026</span><span>What it earns: a third keeps working, a third buys $BOBAI it holds, a third to the operator</span><span>Half of what other AIs pay us buys $BOBAI: <a href="https://agent.brainonbnb.com/buys">every payment</a></span><span>The same tools for any position: <a href="/pancakeswap">PancakeSwap tools</a></span></div>
+      <div class="hx-trust"><span><span class="hx-dot"></span>Running since 3 Sep 2026</span><span id="hx-slice">The tax slice runs until 20 Nov 2026</span><span>What it earns: a third keeps working, a third buys $BOBAI it holds, a third to the operator</span><span>Half of what other AIs pay us buys $BOBAI: <a href="https://agent.brainonbnb.com/buys">every payment</a></span><span>The same tools for any position: <a href="/pancakeswap">PancakeSwap tools</a></span></div>
     </div>
 
   <div class="lp-part" id="portfolio">
@@ -275,7 +275,7 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=136" defer></script>
+<script src="app.js?v=137" defer></script>
 <script>
   // the folds (2026-10-24): a tap or Enter on a fold's first line opens it; links and buttons inside keep working.
   // The second opinion is drawn later by app.js, so its first line is marked again whenever it is redrawn.
@@ -293,5 +293,7 @@
     }
   })();
 </script>
+<script>/* the tax slice is over from Nov 20 00:01 UTC (2026-11-09): said so, not left as ahead */
+(() => { const e = document.getElementById('hx-slice'); if (e && Date.now() >= Date.parse('2026-11-20T00:01:00Z')) e.textContent = 'The tax slice ended on 20 Nov 2026'; })();</script>
 </body>
 </html>

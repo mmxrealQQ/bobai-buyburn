@@ -718,6 +718,11 @@ const LFG_START=new Date('2026-12-01T00:01:00Z').getTime();
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
 const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
+// THE DONATION, WITH ITS PROOF (2026-11-09): set from /giggle-donation.json once it carries the transaction; until then no
+// line on Classic or the Brain page says "donated" (the countdown below and brain/cards.js read it)
+let GG_DONE=null;
+// A SEASON OVER (2026-11-09): an app card with data-until (Brain Pop) leaves Classic when its time is over, as on the Brain page
+document.querySelectorAll('.ec[data-until]').forEach(c=>{if(Date.now()>=Date.parse(c.dataset.until))c.remove()});
 // The Giggle card: sends and their sum from burns.json (giggleBnb/giggleTx per bot run).
 function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];
 // The pot grows in the order the sends happened; the table shows the newest first. Until 2026-09-19 the sum ran down the table as it is shown, so the newest send carried its own amount as "Pot" and the oldest carried the whole pot.
@@ -934,7 +939,6 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
     if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
     if(pEl&&GG_DONE&&now>=GG_END){const a=document.createElement('a');a.className='txl';a.href='https://bscscan.com/tx/'+GG_DONE.tx;a.target='_blank';a.rel='noopener';a.textContent=phase;pEl.textContent='';pEl.appendChild(a)}
   }
-  let GG_DONE=null;
   fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(j&&/^0x[0-9a-fA-F]{64}$/.test(j.tx||'')&&+j.bnb>0){GG_DONE=j;tick()}}).catch(()=>{});
   tick();setInterval(tick,60000);
 }();

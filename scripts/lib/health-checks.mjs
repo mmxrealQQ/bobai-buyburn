@@ -562,6 +562,22 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   }).then((x) => x.json()).catch(() => null);
   const tools = r?.result?.tools || [];
   ok('Agents', 'MCP server lists tools', tools.length >= 17, `${tools.length} tools`);
+  // MARQUE WARRANTS LAPSE (2026-11-09, Marque changelog 2.11.: "Warranted: it passed its category's published test, in the
+  // test's exact format, in the last 14 days"): all six were re-tested 7.11. Red at 11 days old, three days before one
+  // lapses, so the test is run again in time (scripts/bnb-sdk/list-marque.mjs, one signature, no transaction).
+  // Marque's catalog is often slow: unread after three tries is reported, not judged.
+  {
+    let ours = null;
+    for (let t = 0; t < 3 && !ours; t++) {
+      const j = await fetch('https://marque.trade/api/v1/marketplace?limit=40&offset=0', { signal: AbortSignal.timeout(60000) }).then((x) => x.json()).catch(() => null);
+      if (j && Array.isArray(j.agents)) ours = j.agents.filter((a) => /^Brain on BNB/.test(a.name || ''));
+      else await new Promise((res) => setTimeout(res, 8000));
+    }
+    const ages = (ours || []).map((a) => ({ name: (a.name || '').replace(/^Brain on BNB — /, ''), st: a.warrant?.status, d: Date.parse(String(a.warrant?.date || '').replace(' ', 'T').replace(/\.\d+/, '').replace(/([+-]\d\d)$/, '$1:00')) }));
+    const worst = ages.reduce((m, x) => Math.max(m, x.st === 'warranted' && x.d ? (Date.now() - x.d) / 864e5 : 99), 0);
+    ok('Agents', 'our Marque warrants are fresh (all six under 11 days old)', !ours || (ages.length === 6 && worst < 11),
+      !ours ? 'Marque catalog unread after 3 tries — not judged' : `${ages.length} listed, oldest ${worst >= 99 ? 'not warranted' : worst.toFixed(1) + ' days'}${worst >= 11 ? ' — re-run the test: node scripts/bnb-sdk/list-marque.mjs' : ''}`);
+  }
   ok('Agents', 'Brain Plaza tools are exposed',
     tools.some((t) => t.name === 'find_agents_on_bnb_chain') && tools.some((t) => t.name === 'bnb_agent_census'));
 

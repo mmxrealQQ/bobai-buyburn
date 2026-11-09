@@ -83,6 +83,37 @@ pin('balances move both ways', BigInt(bal['0xb']) === 1000001n * E && BigInt(bal
   const st = JSON.parse(kv.get('holders:state')), BB = '0x' + '0'.repeat(38) + 'bb';
   pin('with NodeReal set, a chunk publicnode refused is read in 300-block pieces: the tick reaches block 21000, all four transfers counted once', r.ok === true && st.block === 21000 && !r.partial && BigInt(st.bal[BB] || 0) === 4n * E && pieces === 17, st.block === 11000);
 }
+// 9.11.: publicnode answers a range older than its ~10-20 h of logs with an EMPTY list, no error. A tick far behind
+// (head 200,003, state at 1,000) must not apply those empty answers: with NodeReal set it reads the old ranges there and
+// counts the transfer; without NodeReal it applies nothing and says the logs are unread. The old code took the empty
+// list from publicnode, moved the state to 21,000 and lost the transfer.
+for (const withNr of [true, false]) {
+  const { holdersTick } = await import('../worker-agent/holders.js');
+  const kv = new Map([['holders:state', JSON.stringify({ block: 1000, bal: { '0xaa': w(5) }, code: {} })]]);
+  const env = { ...(withNr ? { BSC_RPC_KEYED_URL: 'https://nodereal.test/v1/key' } : {}), AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body), nr = String(url).startsWith('https://nodereal.test');
+    const one = (x) => {
+      if (x.method === 'eth_blockNumber') return { jsonrpc: '2.0', id: x.id, result: '0x' + (200003).toString(16) };
+      if (x.method === 'eth_getCode') return { jsonrpc: '2.0', id: x.id, result: '0x' };
+      if (x.method === 'eth_getLogs') {
+        const from = parseInt(x.params[0].fromBlock, 16), to = parseInt(x.params[0].toBlock, 16);
+        if (!nr) return { jsonrpc: '2.0', id: x.id, result: [] }; // pruned: empty, no error
+        if (to - from + 1 > 300) return { jsonrpc: '2.0', id: x.id, error: { message: 'exceed maximum block range: 300' } };
+        const pad = (a) => '0x' + '0'.repeat(24) + a.slice(2).padStart(40, '0');
+        return { jsonrpc: '2.0', id: x.id, result: [1001].filter((blk) => blk >= from && blk <= to).map((blk) => ({ topics: ['0x', pad('0x00000000000000000000000000000000000000aa'), pad('0x00000000000000000000000000000000000000bb')], data: '0x' + (10n ** 18n).toString(16), blockNumber: '0x' + blk.toString(16), transactionHash: '0x' + 'ab'.repeat(32) })) };
+      }
+      return { jsonrpc: '2.0', id: x.id, error: { message: 'unexpected' } };
+    };
+    return { json: async () => (Array.isArray(body) ? body.map(one) : one(body)) };
+  };
+  const r = await holdersTick(env, { now: new Date('2026-11-09T12:00:00Z') });
+  globalThis.fetch = realFetch;
+  const st = JSON.parse(kv.get('holders:state')), BB = '0x' + '0'.repeat(38) + 'bb';
+  if (withNr) pin('a range older than its logs is read at NodeReal, not taken empty from publicnode: the old transfer is counted', r.ok === true && BigInt(st.bal[BB] || 0) === E, false);
+  else pin('without NodeReal an old range stays unread: nothing applied, the state stays at block 1000', r.ok === false && st.block === 1000 && !st.bal[BB], false);
+}
 if (process.argv.includes('--live')) {
   const j = await fetch('https://agent.brainonbnb.com/holders?address=0x1afa57').then((r) => r.json()).catch(() => ({}));
   const h = await fetch('https://agent.brainonbnb.com/holders').then((r) => r.json());

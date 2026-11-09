@@ -100,7 +100,7 @@ import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refu
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
 import { runPublicRefund, readPublicRefund } from './public-refund.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
-import { holdersTick, seedHolders, readHolders } from './holders.js';
+import { holdersTick, seedHolders, readHolders, holdersBackfill, readBackfill } from './holders.js';
 // A card names the agentWallet the registry holds for that agent (2026-10-21: the two Venus agents get wallets of
 // their own); the provider while the registry cannot be read, which is every agent's wallet until it moves.
 const cardProvider = async (slug) => 'eip155:56:' + getAddress((await agentWalletOf(AGENT_ID_OF[slug])) || '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963');
@@ -3686,6 +3686,7 @@ ${pageTail}`;
       const h = await readHolders(env, a);
       return json({ what: 'Every wallet that holds $BOBAI, from the chain: Transfer logs since the deployment (2026-03-27), balances read with balanceOf, kept up to date every 15 minutes. Holders are people: the pool, the burn address and every contract are left out. 1M+ = the holder pass (1,000,000 $BOBAI).', ...(h || { note: 'not seeded yet' }) }, 200, { 'Cache-Control': 'public, max-age=120' });
     }
+    if (path === '/holders/repair' && request.method === 'GET') return json({ what: 'The holder index repair of 2026-11-09: transfers lost to empty log answers read again at NodeReal, then every balance read again', status: await readBackfill(env) });
     if (path === '/holders/seed' && request.method === 'POST') {
       if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
       return json(await seedHolders(env, await request.json().catch(() => null)));
@@ -4045,7 +4046,8 @@ ${pageTail}`;
     // a delivery first, then what was not delivered: said after a day, refunded after the expiry (2026-10-23)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(collectDeliveries(env).then(() => refundUndelivered(env)).catch(() => {}));
     // every $BOBAI holder, kept from the Transfer logs (holders.js, 2026-10-22)
-    if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).catch(() => {}));
+    // the repair after the tick, in the same quarter hour (holders.js holdersBackfill, 2026-11-09): it stops by itself when done
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(holdersTick(env).then(() => holdersBackfill(env)).catch(() => {}));
     // our agents answer what is addressed to them on the Plaza Board, with the chain's word on every job named (2026-10-23)
     if (event.cron === '*/15 * * * *') ctx.waitUntil(import('./board.js').then((m) => m.answerPending(env)).catch(() => {}));
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)

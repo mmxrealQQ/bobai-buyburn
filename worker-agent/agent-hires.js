@@ -162,7 +162,22 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
 // THE ANSWER, FROM THE CHAIN (BNB Agent SDK convention): a submitted job's policy emits JobInitialised(jobId,
 // deliverable, submittedAt, optParams) and optParams is JSON naming the deliverable_url. The answer is fetched there,
 // its keccak256 compared with the deliverable hash the kernel holds, and its figure put beside our own reading.
-const KEYED = { url: null };
+const KEYED = { url: null, nodereal: null };
+// OLD WINDOWS AT NODEREAL ONLY (2026-11-09, as holders.js): the keyed node and publicnode keep ~10-20 h of logs and answer
+// an older window with an empty list, no error, which read here as 'no JobInitialised in the window yet' for a
+// delivery that was there. A window older than FRESH_BLOCKS is read at NodeReal in 300-block pieces, or stays unread.
+const FRESH_BLOCKS = 40000, NODEREAL_SPAN = 300;
+async function oldLogs(filter, from, to) {
+  if (!KEYED.nodereal) return null;
+  const out = [];
+  for (let a = from; a <= to; a += NODEREAL_SPAN) {
+    const b = Math.min(to, a + NODEREAL_SPAN - 1);
+    const j = await fetch(KEYED.nodereal, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ ...filter, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).catch(() => null);
+    if (!Array.isArray(j?.result)) return null;
+    out.push(...j.result);
+  }
+  return out;
+}
 const IPFS_GATEWAYS = ['https://ipfs.io/ipfs/', 'https://gateway.pinata.cloud/ipfs/', 'https://w3s.link/ipfs/', 'https://dweb.link/ipfs/', 'https://nftstorage.link/ipfs/', 'https://4everland.io/ipfs/'];
 // computed from the signature (a literal 64-hex word reads as a key to the library's secret guard, and this way it cannot be mistyped)
 export const POLICY_TOPIC = keccak256(toHex('JobInitialised(uint256,bytes32,uint64,bytes)'));
@@ -181,9 +196,11 @@ async function deliveryOf(job) {
   const guess = head - Math.round((Date.now() / 1000 - job.submitted_at) / 0.45);
   const hex = (n) => '0x' + Math.max(0, n).toString(16);
   // publicnode first: defibit and binance's dataseed refuse eth_getLogs ("limit exceeded", 22.10.)
-  const logs = await rpc('eth_getLogs', [{ address: ERC8183.policy, fromBlock: hex(guess - 900), toBlock: hex(Math.min(head, guess + 900)), topics: [POLICY_TOPIC, '0x' + BigInt(job.id).toString(16).padStart(64, '0')] }]);
+  const filter = { address: ERC8183.policy, topics: [POLICY_TOPIC, '0x' + BigInt(job.id).toString(16).padStart(64, '0')] };
+  const lo = Math.max(0, guess - 900), hi = Math.min(head, guess + 900);
+  const logs = head - hi > FRESH_BLOCKS ? await oldLogs(filter, lo, hi) : await rpc('eth_getLogs', [{ ...filter, fromBlock: hex(lo), toBlock: hex(hi) }]);
   const l = Array.isArray(logs) ? logs[0] : null;
-  if (!l) return { why: logs == null ? 'no RPC answered eth_getLogs' : 'no JobInitialised in the window yet' };
+  if (!l) return { why: logs == null ? (head - hi > FRESH_BLOCKS ? 'the window is older than the free nodes keep and NodeReal did not answer; read again next run' : 'no RPC answered eth_getLogs') : 'no JobInitialised in the window yet' };
   // data: deliverable (32) | submittedAt (32) | offset (32) | length (32) | bytes
   const d = l.data.slice(2), len = parseInt(d.slice(192, 256), 16), raw = d.slice(256, 256 + len * 2);
   let params = null; try { params = JSON.parse(new TextDecoder().decode(Uint8Array.from(raw.match(/../g) || [], (h) => parseInt(h, 16)))); } catch { params = null; }
@@ -196,7 +213,7 @@ async function deliveryOf(job) {
   return { url, tx: l.transactionHash, body, hash_matches: body != null ? keccak256(toHex(body)) === job.deliverable : null };
 }
 export async function collectDeliveries(env, { now = Date.now() } = {}) {
-  KEYED.url = env.BSC_RPC_KEYED_URL_2 || null;
+  KEYED.url = env.BSC_RPC_KEYED_URL_2 || null; KEYED.nodereal = env.BSC_RPC_KEYED_URL || null;
   const list = await readHires(env);
   // (the first three rows, 22.10. ~07:5x UTC, were written 'answered' at funding: an answer without a url is still open)
   // open until the job's expiry (8+ days): a seller that delivers late is still read (2026-10-23, was 3 days)

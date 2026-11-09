@@ -20,7 +20,11 @@ say(jobIdFromReceipt({ logs: [{ address: '0x1', topics: ['0xa', '0x' + '9'.repea
 const j = await fetch(`${origin}/hires?r=${Date.now()}`).then((r) => r.json()).catch(() => null);
 say(j?.switched_on === true && (j.hires || []).length === 3 && j.hires.every((h) => [302257, 304493, 363709].includes(h.by)), `GET /hires: switched on, ${(j?.hires || []).length} hires (${(j?.hires || []).map((h) => `#${h.by} -> ${h.seller_name}`).join(', ')})`);
 const rows = (j?.log || []).filter((r) => r.job);
-say(rows.length > 0 && rows.every((r) => (r.txs || []).length === 5 && r.txs.every((t) => t.ok && /^0x[0-9a-f]{64}$/i.test(t.tx))), `every hire logged has its five transactions on chain (${rows.length} hires)`);
+// a hire that stopped before funding (27.10., job 57111: a nonce clash after 'Set the budget', the job still OPEN, no
+// money escrowed) is logged as failed with its reason and the steps it did take; every other row carries all five
+const done = rows.filter((r) => r.status !== 'failed'), failed = rows.filter((r) => r.status === 'failed');
+say(done.length > 0 && done.every((r) => (r.txs || []).length === 5 && r.txs.every((t) => t.ok && /^0x[0-9a-f]{64}$/i.test(t.tx))), `every hire that went through has its five transactions on chain (${done.length} hires)`);
+say(failed.every((r) => r.reason && (r.txs || []).length < 5 && r.txs.every((t) => t.ok && /^0x[0-9a-f]{64}$/i.test(t.tx))), `a failed hire names its reason and the steps it took (${failed.length}: ${failed.map((r) => r.job).join(', ') || 'none'})`);
 const answered = rows.filter((r) => r.status === 'answered');
 say(answered.every((r) => r.answer?.url && (r.by !== 302257 || r.answer.health_factor != null) && (r.by !== 363709 || r.answer.in_range != null)), `every "answered" names where its answer was read and its figure (${answered.map((r) => `${r.seller_name}${r.answer?.health_factor != null ? ' HF ' + r.answer.health_factor : ''}${r.agrees != null ? (r.agrees ? ' agrees' : ' DISAGREES') : ''}`).join('; ') || 'none yet'})`);
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');

@@ -134,9 +134,18 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
   await env.AGENT.put(dayKey, '1', { expirationTtl: 2 * 86400 }); // counted before sending: a failed try is still today's try
   await log(env, { ...plan, status: 'hiring' });
   const txs = [];
+  // ONE NONCE, COUNTED HERE (2026-11-09, operator's go): viem asked the fallback transport for the nonce before every
+  // send, and a node a block behind answered the old one — job 57111 (27.10.) stopped after 'Set the budget' with
+  // "nonce lower than the current nonce". The pending count is read once, before the first send, and each send takes
+  // the next number; a send that fails ends the hire, so a number is never reused.
+  // asked of every node and the highest taken: a node behind can only answer too low, never too high
+  const counts = await Promise.all(RPCS.map((u) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionCount', params: [me.address, 'pending'] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).then((j) => (j?.result ? Number(BigInt(j.result)) : null)).catch(() => null)));
+  const known = counts.filter((c) => c != null);
+  if (!known.length) return log(env, { ...plan, status: 'failed', reason: 'no node answered the nonce; nothing sent, tried again tomorrow' });
+  let nonce = Math.max(...known);
   const send = async (label, to, data) => {
     await pub.call({ account: me, to, data }); // simulated first: a call that would revert costs nothing
-    const hash = await wal.sendTransaction({ to, data, gasPrice: GAS_PRICE });
+    const hash = await wal.sendTransaction({ to, data, gasPrice: GAS_PRICE, nonce: nonce++ });
     const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
     txs.push({ what: label, tx: hash, ok: rc.status === 'success' });
     if (rc.status !== 'success') throw new Error(`${label} reverted (${hash})`);

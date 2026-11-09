@@ -270,6 +270,34 @@ export const KEEP_808_AT_LEAST = new Set(['0x5c82D2F12EE6AC09297784f94ebF9331277
 // THE PRIZE IS PAID OUT (2026-11-09): Brain Pop's season ends Nov 30 (worker-pop LAST_DAY) and the overall #1 gets ALL of
 // the pool, the 808.41 start included — from then the pot's $BOBAI is not judged (it may be anything down to 0); the
 // line still shows what it holds. Pure; pinned below.
+// A DATE GONE BY, STILL SPOKEN OF AS AHEAD (2026-11-09, operator: "the ecosystem that runs 24/7 and for ever"): the
+// static texts agents read (llms.txt, skill.md, the whitepaper) cannot switch by themselves when a season or a phase
+// ends. This names every "until 30 Nov" / "ends Nov 20" / "on 30 November" whose day has passed, so the morning run
+// turns red the day after and the line gets rewritten. The pages' own clock is checked by temp/newpage/qa/timetravel.mjs.
+const MON3 = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+export function staleAhead(text, now = Date.now()) {
+  const out = [];
+  const plain = String(text || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&middot;/g, ' ');
+  for (const sent of plain.split(/(?<=[.;!?])\s+|\n+/)) {
+    const l = sent.replace(/\s+/g, ' ').trim(); if (!l || /for good/.test(l)) continue;
+    if (/\b(was|were|ran|ended|closed|took|got|archive|paid|donated|collected|history)\b/i.test(l)) continue;
+    for (const m of l.matchAll(/\b(until|till|ends?|ending|runs until|on|by|before)\s+(?:(\d{1,2})\s+([A-Z][a-z]{2,8})|([A-Z][a-z]{2,8})\s+(\d{1,2}))(?:,?\s+(20\d\d))?\b/g)) {
+      const mon = MON3[(m[3] || m[4] || '').slice(0, 3).toLowerCase()], day = +(m[2] || m[5]), yr = +(m[6] || 2026);
+      if (mon == null || !(day >= 1 && day <= 31)) continue;
+      // a window of the schedule ("Sep 19 → Nov 20") and an aside in brackets ("(0.3% until Sep 20)") are its history
+      const before = l.slice(0, m.index);
+      const aside = (before.split('(').length - before.split(')').length) > 0 ? before.slice(before.lastIndexOf('(')) : '';
+      if (/→/.test(l) || /%|\bfrom\b/.test(aside)) continue;
+      if (Date.UTC(yr, mon, day, 23, 59) < now - 86400e3) out.push(`"${m[0]}": ${l.slice(0, 120)}`);
+    }
+  }
+  return [...new Set(out)];
+}
+const staleHolds = () => staleAhead('The season runs until 30 November 2026; the #1 wins.', Date.parse('2026-12-02T09:10:00Z')).length === 1
+  && staleAhead('The season runs until 30 November 2026; the #1 wins.', Date.parse('2026-11-30T09:10:00Z')).length === 0
+  && staleAhead('<p>The season ended on 30 November.</p>', Date.parse('2027-01-01T00:00:00Z')).length === 0
+  && staleAhead('from Dec 1, 2026, 00:01 UTC, for good, 1% creator', Date.parse('2027-01-01T00:00:00Z')).length === 0
+  && staleAhead('the slice runs until 20 Nov 2026', Date.parse('2026-11-22T00:00:00Z')).length === 1;
 export const PRIZE_PAID_FROM = Date.parse('2026-11-30T00:00:00Z');
 export function prizeVerdict(v, addr, now = Date.now()) {
   if (now < PRIZE_PAID_FROM || addr !== '0x5E4102520A71B2AA18a1208330d4848dea4BD105' || v.good || /could not be read/.test(v.detail)) return v;
@@ -981,6 +1009,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // the agent card (2026-09-18): info/refs must name main, or a clone fails.
   const refs = await fetch(SITE + '/source.git/info/refs?service=git-upload-pack').then((r) => (r.ok ? r.text() : null)).catch(() => null);
   ok('Site', 'the source mirror can still be cloned', /^[0-9a-f]{40}\s+refs\/heads\/main/m.test(refs || ''), refs ? refs.trim().split('\n')[0].slice(0, 60) : 'info/refs did not answer');
+  ok('Health', 'the stale-date rule passes its own pins (a passed "until" is named, "ended" and "for good" are not)', staleHolds());
+  for (const [name, path] of [['llms.txt', '/llms.txt'], ['skill.md', '/skill.md'], ['the whitepaper', '/whitepaper']]) {
+    const body = await fetch(SITE + path).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+    const st = body ? staleAhead(body) : null;
+    ok('Site', `${name} speaks of no passed date as ahead`, !!st && st.length === 0, !body ? 'did not answer' : st.length ? st.slice(0, 3).join(' | ') : 'none');
+  }
   const csp = (await fetch(SITE).catch(() => null))?.headers.get('content-security-policy') || '';
   ok('Site', 'CSP allows the agent subdomain', csp.includes('agent.brainonbnb.com'));
   // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is what X, Telegram and WhatsApp draw as the big preview of a

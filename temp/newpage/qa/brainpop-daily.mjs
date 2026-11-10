@@ -109,9 +109,12 @@ for (const sz of SIZES) {
   await waitFor(`!!document.querySelector('#bt .br-pp-days span') && !/…/.test(document.querySelector('#bt .br-pp-board').textContent)`, 15000);
   const B1 = JSON.parse(await ev(`(()=>{const q=s=>document.querySelector('#bt '+s);return JSON.stringify({tabs:[...document.querySelectorAll('#bt .br-pp-tabs button')].map(b=>b.textContent).join('|'),day:q('.br-pp-days span')?.textContent,back:q('[data-dd="-1"]')?.disabled,code:q('.br-pp-code')?.textContent||'',next:q('.br-pp-next')?.textContent||''})})()`));
   // 13 (6.11., the ecosystem): the result names the brain behind the game, with the counted buy link (buy:pop)
-  const buyHref = await ev(`document.querySelector('#bt .br-pp-bob a')?.getAttribute('href')||''`);
+  // 10.11.: the holder step — BUY (buy:pop-run) beside LINK WALLET under every result
+  const buyHref = await ev(`document.querySelector('#bt .br-pp-hold .br-pp-hb > a')?.getAttribute('href')||''`);
+  const linkBtn = await waitFor(`!!document.querySelector('#bt .br-pp-hold .br-pp-link')`, 8000);
+  say(linkBtn, `${sz} rule 13b: the result's holder step offers LINK WALLET beside BUY`);
   const buyRes = buyHref ? await fetch(BASE + buyHref, { redirect: 'manual', headers: { 'sec-purpose': 'prefetch' } }) : null; /* a prefetch is never counted as a click */
-  say(buyHref === '/buy?from=pop' && buyRes && buyRes.status === 302 && /pancakeswap\.finance\/swap\?outputCurrency=0x245c/.test(buyRes.headers.get('location') || ''), `${sz} rule 13: the result shows $BOBAI with the counted buy link`, JSON.stringify({ buyHref, status: buyRes && buyRes.status, to: buyRes && (buyRes.headers.get('location') || '').slice(0, 60) }));
+  say(buyHref === '/buy?from=pop-run' && buyRes && buyRes.status === 302 && /pancakeswap\.finance\/swap\?outputCurrency=0x245c/.test(buyRes.headers.get('location') || ''), `${sz} rule 13: the result shows $BOBAI with the counted buy link`, JSON.stringify({ buyHref, status: buyRes && buyRes.status, to: buyRes && (buyRes.headers.get('location') || '').slice(0, 60) }));
   // 8 (6.11. later): a reason to come back — the next daily counted down
   say(/^(Next daily in \d+ h \d+ min\.|Last day of the season\.) New creatures/.test(B1.next), `${sz} rule 8: the result counts down to the next daily`, B1.next);
   await click('#bt [data-sc="all"]', mob); await waitFor(`/SEASON/.test(document.querySelector('#bt .br-pp-days')?.textContent||'') && !/…/.test(document.querySelector('#bt .br-pp-board')?.textContent||'…')`, 15000);

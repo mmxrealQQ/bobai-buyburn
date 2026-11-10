@@ -7714,6 +7714,10 @@ window.__btBrSeason = brSeason;
     let w = known || null; if (!w) try { w = await api('wallet?pid=' + pid + '&t=' + Date.now()); } catch {}
     if (!pp.contains(wl)) return;
     const amt = w && w.bobai != null ? nf0(w.bobai) + ' $BOBAI' : '';
+    /* in a result's holder step (10.11.) the line sits beside BUY: the button alone, its state in a few words */
+    if (wl.closest('.br-pp-hold')) { wl.innerHTML = (!w || !w.linked ? '<button type="button" class="br-pp-link">🔗 LINK WALLET</button><i>one signature · no gas</i>'
+      : w.badge ? '<b>' + BADGE[w.badge][0] + ' ' + (w.badge === 'pass' ? 'HOLDER PASS' : 'HOLDER') + '</b><i>' + amt + '</i>'
+      : '<i>linked · ' + amt + ' · 🧠 from 100,000</i>') + (note ? '<small class="br-pp-wn">' + esc(note) + '</small>' : ''); return; }
     wl.innerHTML = (!w || !w.linked
       ? '🧠 Hold $BOBAI? Show it on the board: <button type="button" class="br-pp-link">🔗 LINK WALLET</button> <small>one signature, no transaction, no gas · 🧠 from 100,000 · 💎 from 1,000,000</small>'
       : w.badge ? '<b>' + BADGE[w.badge][0] + ' ' + (w.badge === 'pass' ? 'HOLDER PASS' : 'HOLDER') + '</b> next to your name on the board · ' + amt + ' <button type="button" class="br-pp-unlink">unlink</button>'
@@ -7985,9 +7989,14 @@ window.__btBrSeason = brSeason;
       + chase(res) + (res && res.ranked ? streakHtml(DAY.today) : '') + beat + '<div class="br-pp-bd"></div>' + codeLine()
       // THE BRAIN BEHIND THE GAME (6.11., operator: "then the $BOBAI ecosystem, number one"): the game is free; the result
       // shows what keeps it running, with the counted buy link (buy:pop in /stats/detail)
-      + '<p class="br-pp-bob">The game is free. The brain behind it is <b>$BOBAI</b>: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI, and holding 100,000+ puts 🧠 next to your name on the board. <a href="/buy?from=pop" target="_blank" rel="noopener">BUY $BOBAI ↗</a></p>'
+      // THE STEP FROM PLAYER TO HOLDER (10.11., operator: option 1 "make players holders"): since 6.11. ~30 players and not
+      // one linked wallet — the badge and the buy sat inside a sentence. Now one clear step under every result: the badge
+      // as the goal, BUY (counted as buy:pop-run) and LINK WALLET (the same signature flow as the start window) side by side
+      + '<div class="br-pp-hold"><b>🧠 NEXT TO YOUR NAME</b><span>Hold 100,000 $BOBAI and the board shows 🧠 beside you · 💎 from 1,000,000</span>'
+      + '<div class="br-pp-hb"><a href="/buy?from=pop-run" target="_blank" rel="noopener">BUY $BOBAI ↗</a><span class="br-pp-wl"></span></div>'
+      + '<small>The game is free. $BOBAI is the brain behind it: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI.</small></div>'
       + '<div class="br-pp-b">' + (res ? '<button type="button" class="br-pp-share">SHARE</button><button type="button" class="br-pp-dare">CHALLENGE A FRIEND</button>' : '') + '<button type="button" class="br-pp-again">PLAY AGAIN</button><button type="button" class="br-pp-x">Close</button></div></div>';
-    scope = 'day'; bday = res ? res.day : null; loadBoard();
+    scope = 'day'; bday = res ? res.day : null; loadBoard(); fillWallet();
     // a reason to come back: the next day's plan, counted down (until the season's last day)
     const nx = pp.querySelector('.br-pp-c'), tick = () => { if (!pp.contains(nx) || pp.hidden) return clearInterval(nx._t); const t = new Date(), ms = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1) - t, el2 = nx.querySelector('.br-pp-next'); if (el2) el2.textContent = (t.toISOString().slice(0, 10) >= LASTD ? 'Last day of the season. ' : 'Next daily in ' + Math.floor(ms / 3600e3) + ' h ' + Math.floor(ms / 60e3) % 60 + ' min. ') + 'New creatures, new board.'; };
     nx.querySelector('.br-pp-b')?.insertAdjacentHTML('beforebegin', '<p class="br-pp-next br-pp-n"></p>'); tick(); nx._t = setInterval(tick, 30000);

@@ -98,6 +98,7 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refundUndelivered } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runPopChain, readPopChain, popChainDue } from './pop-chain.js';
 import { runPublicRefund, readPublicRefund } from './public-refund.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 import { holdersTick, seedHolders, readHolders, holdersBackfill, readBackfill } from './holders.js';
@@ -3619,6 +3620,15 @@ ${pageTail}`;
       const { readEscrowFor } = await import('./escrow-for.js');
       return json(await readEscrowFor(env, escrowFor[1]));
     }
+    // Brain Pop's daily results on BNB Chain (pop-chain.js, 10.11.): every day written, or ?day= with its board to hash again
+    if (path === '/pop/chain' && request.method === 'GET') {
+      note('pop:chain');
+      const day = url.searchParams.get('day');
+      if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'day as YYYY-MM-DD' }, 400);
+      const r = await readPopChain(env, day);
+      if (day && !r) return json({ error: 'not written (yet)', day }, 404);
+      return json(day ? r : { what: 'BRAIN POP 6.9 on BNB Chain: once a day is closed, one transaction from the agent wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 to the prize wallet 0x5E4102520A71B2AA18a1208330d4848dea4BD105, 0 BNB, its input data the champion, the score, the run and the sha256 of the whole day board. ?day=YYYY-MM-DD gives that board in the form that is hashed.', ...r });
+    }
     if (path === '/settle/public' && request.method === 'GET') {
       note('settle:public');
       const [s, refunds] = await Promise.all([readPublicSettle(env), readPublicRefund(env)]);
@@ -4053,6 +4063,9 @@ ${pageTail}`;
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     // then the budgets of jobs nobody delivered returned to their clients (public-refund.js, 2026-10-23) — after the
     // settle, never beside it: both send from the provider wallet, and two runs at once would race for its nonce
+    // Brain Pop's closed day written on BNB Chain, from 00:15 UTC (pop-chain.js, 10.11.); the agent wallet's only other
+    // sends are the settle (21:15) and the hires (05:30), so no two runs share its nonce
+    if (event.cron === '*/15 * * * *' && popChainDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPopChain(env).catch(() => {}));
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}).then(() => runPublicRefund(env)).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
     if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));

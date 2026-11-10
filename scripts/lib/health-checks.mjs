@@ -565,6 +565,13 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // the preview is the JPEG since 10.11.: the PNG (~1.5 MB) was too large for WhatsApp to show; it must stay small
   const jp = run ? await fetch(`${SITE}/og/pop/${run}.jpg`).then(async (r) => ({ status: r.status, ct: r.headers.get('content-type') || '', kb: Math.round((await r.arrayBuffer()).byteLength / 1024) })).catch(() => null) : null;
   ok('Ecosystem', 'the challenge preview is a JPEG small enough for WhatsApp (under 600 KB)', !!jp && jp.status === 200 && /image\/jpeg/.test(jp.ct) && jp.kb > 20 && jp.kb < 600, jp ? `HTTP ${jp.status} ${jp.ct} ${jp.kb} KB` : 'no run');
+  // BRAIN POP ON CHAIN (10.11.): each closed day of the season is written on BNB Chain from 00:15 UTC (worker-agent/
+  // pop-chain.js); at the morning check yesterday must be there, as a transaction or as "nobody played"
+  {
+    const y = new Date(Date.now() - 86400e3).toISOString().slice(0, 10), inSeason = y >= '2026-11-10' && y <= '2026-11-30';
+    const pc = inSeason ? await getJson(`${AGENT}/pop/chain?day=${y}`) : null, rec = pc?.json;
+    ok('Ecosystem', 'yesterday\'s Brain Pop result is written on BNB Chain', !inSeason || (!!rec && (/^0x[0-9a-f]{64}$/.test(rec.tx || '') || rec.players === 0)), !inSeason ? 'outside the season' : rec ? (rec.tx ? `${y}: ${rec.champion} · tx ${rec.tx.slice(0, 10)}…` : `${y}: nobody played`) : `${y}: not written — ${pc?.error || 'see /pop/chain last_run'}`);
+  }
   // HEAD, not GET: /buy counts every GET as a buy click, and a morning check must not add to that figure
   const head = (ua) => fetch(`${SITE}/buy?from=health`, { method: 'HEAD', redirect: 'manual', headers: { 'user-agent': ua } }).then((r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '' })).catch(() => null);
   const buyB = await head('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'), buyBot = await head('brainonbnb-health');

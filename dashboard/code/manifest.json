@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5891,
-   "zipBytes": 103669,
-   "txtBytes": 310783,
-   "sha256": "0be91e45d10a6fbd",
+   "lines": 5902,
+   "zipBytes": 104029,
+   "txtBytes": 311925,
+   "sha256": "44bc96d49677c5a9",
    "reqs": [
     {
      "what": "A bot token",
@@ -521,11 +521,11 @@
    "group": "apps",
    "title": "Brain Pop 6.9 — the daily game in the terminal",
    "tagline": "60 seconds, one engine file, every tap replayed by the server.",
-   "files": 6,
-   "lines": 647,
-   "zipBytes": 28459,
-   "txtBytes": 66271,
-   "sha256": "e87d50094b848924",
+   "files": 8,
+   "lines": 820,
+   "zipBytes": 34910,
+   "txtBytes": 80831,
+   "sha256": "7e04c47995f41993",
    "reqs": [
     {
      "what": "A worker with a Durable Object (SQLite)",
@@ -539,7 +539,9 @@
     }
    ],
    "paths": [
+    "scripts/pop-chain-fork-test.mjs",
     "temp/terminal-site/terminal/pop-engine.mjs",
+    "worker-agent/pop-chain.js",
     "worker-pop/game.js",
     "worker-pop/index.js",
     "worker-pop/test.mjs",
@@ -629,10 +631,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4195,
-   "zipBytes": 149142,
-   "txtBytes": 447985,
-   "sha256": "de6fe7b87a1541f0",
+   "lines": 4197,
+   "zipBytes": 149305,
+   "txtBytes": 448381,
+   "sha256": "aee60b572b144e1a",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -663,11 +665,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 74,
-   "lines": 24416,
-   "zipBytes": 620102,
-   "txtBytes": 1759570,
-   "sha256": "1830dc82eeb91621",
+   "files": 75,
+   "lines": 24585,
+   "zipBytes": 625702,
+   "txtBytes": 1773787,
+   "sha256": "3a52f8fb6230dc5c",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -751,6 +753,7 @@
     "worker-agent/own-wallets.js",
     "worker-agent/package.json",
     "worker-agent/plain-tasks.js",
+    "worker-agent/pop-chain.js",
     "worker-agent/public-refund.js",
     "worker-agent/public-settle.js",
     "worker-agent/pulse.js",

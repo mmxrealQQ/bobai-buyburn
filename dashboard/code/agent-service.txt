@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 74 files, 24416 lines.
+# one fetch. 75 files, 24585 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4168,9 +4168,18 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
   await env.AGENT.put(dayKey, '1', { expirationTtl: 2 * 86400 }); // counted before sending: a failed try is still today's try
   await log(env, { ...plan, status: 'hiring' });
   const txs = [];
+  // ONE NONCE, COUNTED HERE (2026-11-09, operator's go): viem asked the fallback transport for the nonce before every
+  // send, and a node a block behind answered the old one — job 57111 (27.10.) stopped after 'Set the budget' with
+  // "nonce lower than the current nonce". The pending count is read once, before the first send, and each send takes
+  // the next number; a send that fails ends the hire, so a number is never reused.
+  // asked of every node and the highest taken: a node behind can only answer too low, never too high
+  const counts = await Promise.all(RPCS.map((u) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionCount', params: [me.address, 'pending'] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).then((j) => (j?.result ? Number(BigInt(j.result)) : null)).catch(() => null)));
+  const known = counts.filter((c) => c != null);
+  if (!known.length) return log(env, { ...plan, status: 'failed', reason: 'no node answered the nonce; nothing sent, tried again tomorrow' });
+  let nonce = Math.max(...known);
   const send = async (label, to, data) => {
     await pub.call({ account: me, to, data }); // simulated first: a call that would revert costs nothing
-    const hash = await wal.sendTransaction({ to, data, gasPrice: GAS_PRICE });
+    const hash = await wal.sendTransaction({ to, data, gasPrice: GAS_PRICE, nonce: nonce++ });
     const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
     txs.push({ what: label, tx: hash, ok: rc.status === 'success' });
     if (rc.status !== 'success') throw new Error(`${label} reverted (${hash})`);
@@ -4196,7 +4205,22 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
 // THE ANSWER, FROM THE CHAIN (BNB Agent SDK convention): a submitted job's policy emits JobInitialised(jobId,
 // deliverable, submittedAt, optParams) and optParams is JSON naming the deliverable_url. The answer is fetched there,
 // its keccak256 compared with the deliverable hash the kernel holds, and its figure put beside our own reading.
-const KEYED = { url: null };
+const KEYED = { url: null, nodereal: null };
+// OLD WINDOWS AT NODEREAL ONLY (2026-11-09, as holders.js): the keyed node and publicnode keep ~10-20 h of logs and answer
+// an older window with an empty list, no error, which read here as 'no JobInitialised in the window yet' for a
+// delivery that was there. A window older than FRESH_BLOCKS is read at NodeReal in 300-block pieces, or stays unread.
+const FRESH_BLOCKS = 40000, NODEREAL_SPAN = 300;
+async function oldLogs(filter, from, to) {
+  if (!KEYED.nodereal) return null;
+  const out = [];
+  for (let a = from; a <= to; a += NODEREAL_SPAN) {
+    const b = Math.min(to, a + NODEREAL_SPAN - 1);
+    const j = await fetch(KEYED.nodereal, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ ...filter, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).catch(() => null);
+    if (!Array.isArray(j?.result)) return null;
+    out.push(...j.result);
+  }
+  return out;
+}
 const IPFS_GATEWAYS = ['https://ipfs.io/ipfs/', 'https://gateway.pinata.cloud/ipfs/', 'https://w3s.link/ipfs/', 'https://dweb.link/ipfs/', 'https://nftstorage.link/ipfs/', 'https://4everland.io/ipfs/'];
 // computed from the signature (a literal 64-hex word reads as a key to the library's secret guard, and this way it cannot be mistyped)
 export const POLICY_TOPIC = keccak256(toHex('JobInitialised(uint256,bytes32,uint64,bytes)'));
@@ -4215,9 +4239,11 @@ async function deliveryOf(job) {
   const guess = head - Math.round((Date.now() / 1000 - job.submitted_at) / 0.45);
   const hex = (n) => '0x' + Math.max(0, n).toString(16);
   // publicnode first: defibit and binance's dataseed refuse eth_getLogs ("limit exceeded", 22.10.)
-  const logs = await rpc('eth_getLogs', [{ address: ERC8183.policy, fromBlock: hex(guess - 900), toBlock: hex(Math.min(head, guess + 900)), topics: [POLICY_TOPIC, '0x' + BigInt(job.id).toString(16).padStart(64, '0')] }]);
+  const filter = { address: ERC8183.policy, topics: [POLICY_TOPIC, '0x' + BigInt(job.id).toString(16).padStart(64, '0')] };
+  const lo = Math.max(0, guess - 900), hi = Math.min(head, guess + 900);
+  const logs = head - hi > FRESH_BLOCKS ? await oldLogs(filter, lo, hi) : await rpc('eth_getLogs', [{ ...filter, fromBlock: hex(lo), toBlock: hex(hi) }]);
   const l = Array.isArray(logs) ? logs[0] : null;
-  if (!l) return { why: logs == null ? 'no RPC answered eth_getLogs' : 'no JobInitialised in the window yet' };
+  if (!l) return { why: logs == null ? (head - hi > FRESH_BLOCKS ? 'the window is older than the free nodes keep and NodeReal did not answer; read again next run' : 'no RPC answered eth_getLogs') : 'no JobInitialised in the window yet' };
   // data: deliverable (32) | submittedAt (32) | offset (32) | length (32) | bytes
   const d = l.data.slice(2), len = parseInt(d.slice(192, 256), 16), raw = d.slice(256, 256 + len * 2);
   let params = null; try { params = JSON.parse(new TextDecoder().decode(Uint8Array.from(raw.match(/../g) || [], (h) => parseInt(h, 16)))); } catch { params = null; }
@@ -4230,7 +4256,7 @@ async function deliveryOf(job) {
   return { url, tx: l.transactionHash, body, hash_matches: body != null ? keccak256(toHex(body)) === job.deliverable : null };
 }
 export async function collectDeliveries(env, { now = Date.now() } = {}) {
-  KEYED.url = env.BSC_RPC_KEYED_URL_2 || null;
+  KEYED.url = env.BSC_RPC_KEYED_URL_2 || null; KEYED.nodereal = env.BSC_RPC_KEYED_URL || null;
   const list = await readHires(env);
   // (the first three rows, 22.10. ~07:5x UTC, were written 'answered' at funding: an answer without a url is still open)
   // open until the job's expiry (8+ days): a seller that delivers late is still read (2026-10-23, was 3 days)
@@ -10496,7 +10522,9 @@ export async function holdersBackfill(env, { pieces = PIECES } = {}) {
   for (let i = 0; i < pieces && bf.cursor <= bf.to; i++) {
     const b = Math.min(bf.to, bf.cursor + NODEREAL_SPAN - 1);
     const p = await post(env.BSC_RPC_KEYED_URL, ask(bf.cursor, b)).catch(() => null);
-    if (!Array.isArray(p?.result)) break; // unread: the same piece next quarter hour
+    // unread: the same piece next quarter hour — what NodeReal said is kept (10.11.: the repair stood at 132,560,000 for
+    // hours with nothing to show why)
+    if (!Array.isArray(p?.result)) { bf.last_error = { at: new Date().toISOString(), piece: [bf.cursor, b], said: p ? JSON.stringify(p.error || p).slice(0, 300) : 'no answer' }; break; }
     for (const l of p.result) for (const t of [l.topics[1], l.topics[2]]) { const a = '0x' + t.slice(26); if (!(a in state.bal) && !(a in (state.code || {})) && !DEAD.test(a)) bf.found[a] = 1; }
     bf.cursor = b + 1;
   }
@@ -10657,6 +10685,7 @@ import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
 import { runAgentHires, readHires, agentHiresDue, HIRES, collectDeliveries, refundUndelivered } from './agent-hires.js';
 import { runPublicSettle, readPublicSettle, publicSettleDue, CANDIDATES_KEY, FARMS_KEY } from './public-settle.js';
+import { runPopChain, readPopChain, popChainDue } from './pop-chain.js';
 import { runPublicRefund, readPublicRefund } from './public-refund.js';
 import { runJobBoard, readJobBoard, seedJobBoard, jobBoardDue } from './job-board.js';
 import { holdersTick, seedHolders, readHolders, holdersBackfill, readBackfill } from './holders.js';
@@ -14178,6 +14207,15 @@ ${pageTail}`;
       const { readEscrowFor } = await import('./escrow-for.js');
       return json(await readEscrowFor(env, escrowFor[1]));
     }
+    // Brain Pop's daily results on BNB Chain (pop-chain.js, 10.11.): every day written, or ?day= with its board to hash again
+    if (path === '/pop/chain' && request.method === 'GET') {
+      note('pop:chain');
+      const day = url.searchParams.get('day');
+      if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'day as YYYY-MM-DD' }, 400);
+      const r = await readPopChain(env, day);
+      if (day && !r) return json({ error: 'not written (yet)', day }, 404);
+      return json(day ? r : { what: 'BRAIN POP 6.9 on BNB Chain: once a day is closed, one transaction from the agent wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 to the prize wallet 0x5E4102520A71B2AA18a1208330d4848dea4BD105, 0 BNB, its input data the champion, the score, the run and the sha256 of the whole day board. ?day=YYYY-MM-DD gives that board in the form that is hashed.', ...r });
+    }
     if (path === '/settle/public' && request.method === 'GET') {
       note('settle:public');
       const [s, refunds] = await Promise.all([readPublicSettle(env), readPublicRefund(env)]);
@@ -14612,6 +14650,9 @@ ${pageTail}`;
     // Every agent's finished jobs settled, once a day at 21:15 UTC after our own (public-settle.js, 2026-10-21)
     // then the budgets of jobs nobody delivered returned to their clients (public-refund.js, 2026-10-23) — after the
     // settle, never beside it: both send from the provider wallet, and two runs at once would race for its nonce
+    // Brain Pop's closed day written on BNB Chain, from 00:15 UTC (pop-chain.js, 10.11.); the agent wallet's only other
+    // sends are the settle (21:15) and the hires (05:30), so no two runs share its nonce
+    if (event.cron === '*/15 * * * *' && popChainDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPopChain(env).catch(() => {}));
     if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}).then(() => runPublicRefund(env)).catch(() => {}));
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
     if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
@@ -17838,6 +17879,120 @@ export async function answerTask(task, rpcs) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/pop-chain.js
+==============================================================================
+
+// worker-agent/pop-chain.js — Brain Pop's daily result written on BNB Chain (2026-11-10)
+//
+// Operator, 10.11.: "the ecosystem on the blockchain" — option 1: the game provable on chain. Every night, once the
+// day is closed, one transaction from our agent wallet 0x7380 to the prize wallet 0x5E41…D105, 0 BNB, its input data
+// plain text: the day, the champion, the score, the run, the players, and the sha256 of the day's whole board in a
+// canonical form (GET /pop/chain gives that form back, so anyone can hash it again and compare). The prize wallet's
+// page on BscScan then lists every daily champion of the season, and on 30 Nov the prize goes to a #1 everyone could
+// follow day by day.
+//
+//   when      the quarter hour from 00:15 UTC (the day closed at 00:00, a run lasts a minute); missed days of the
+//             season are written in the next run, oldest first, at most MAX_PER_RUN at a time
+//   the money 0 BNB; gas ~25,000 at 0.1 gwei (about 0.0000025 BNB); simulated before it is sent; never below
+//             RESERVE_BNB in the wallet; one nonce, counted here (as public-settle.js and agent-hires.js)
+//   a day nobody played is recorded as such in KV, nothing is sent
+
+import { createWalletClient, createPublicClient, http, fallback, toHex, formatEther } from 'viem';
+import { bsc } from 'viem/chains';
+import { providerAccount } from './submit.js';
+import { RESERVE_BNB } from './public-settle.js';
+
+export const PRIZE_WALLET = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+export const SEASON_FIRST = '2026-11-06', SEASON_LAST = '2026-11-30';
+const POP = 'https://brainonbnb.com/api/pop/';
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+const GAS_PRICE = 100000000n, GAS = 60000n, MAX_PER_RUN = 6;
+const DAY_KEY = (day) => `pop:chain:${day}`, LOG_KEY = 'pop:chain:log';
+
+export const popChainDue = (d) => d.getUTCHours() === 0 && d.getUTCMinutes() >= 15;
+
+const nextDay = (d) => new Date(Date.parse(d + 'T00:00:00Z') + 86400e3).toISOString().slice(0, 10);
+export const sc7 = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
+
+// the board in its canonical form: one line per place, "rank|name|score|run", the score with 7 decimals, then the
+// players line — the text that is hashed, and that GET /pop/chain hands back for anyone to hash again
+export function canonical(day, board) {
+  const rows = (board.rows || []).map((r, i) => `${i + 1}|${r.name}|${Number(r.score).toFixed(7)}|${r.run}`);
+  return [`BRAIN POP 6.9 daily board ${day}`, ...rows, `players|${board.players}`].join('\n');
+}
+async function sha256(text) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+// what the transaction carries, readable as UTF-8 on BscScan ("Input Data", view as UTF-8)
+export function recordText(day, no, board, hash) {
+  const top = board.rows[0];
+  return `BRAIN POP 6.9 · DAILY #${no} · ${day} · CHAMPION ${top.name} · ${sc7(top.score)} ROT · run ${top.run} · ${board.players} player${board.players === 1 ? '' : 's'} · board sha256 ${hash} · brainonbnb.com/m/pop/${top.run}`;
+}
+
+export async function runPopChain(env, { rpcUrl = null, now = new Date(), fetchBoard = null } = {}) {
+  const today = now.toISOString().slice(0, 10);
+  const last = today > SEASON_LAST ? SEASON_LAST : new Date(Date.parse(today + 'T00:00:00Z') - 86400e3).toISOString().slice(0, 10);
+  // the days still to write: the season so far, without the ones done
+  const todo = [];
+  for (let d = SEASON_FIRST; d <= last && todo.length < MAX_PER_RUN; d = nextDay(d)) if (!(await env.AGENT.get(DAY_KEY(d)))) todo.push(d);
+  if (!todo.length) return { ok: true, nothing: true };
+  const account = providerAccount(env);
+  if (!account) return { ok: false, error: 'no provider key' };
+  const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+  const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+  const getBoard = fetchBoard || ((d) => fetch(POP + 'top?scope=day&d=' + d, { signal: AbortSignal.timeout(15000), cf: { cacheTtl: 0 } }).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  const pendingNonce = async () => {
+    const urls = rpcUrl ? [rpcUrl] : RPCS;
+    const got = await Promise.all(urls.map((u) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionCount', params: [account.address, 'pending'] }), signal: AbortSignal.timeout(8000) }).then((r) => r.json()).then((j) => (j && j.result ? Number(j.result) : null)).catch(() => null)));
+    const known = got.filter((c) => c != null);
+    return known.length ? Math.max(...known) : null;
+  };
+  const log = JSON.parse((await env.AGENT.get(LOG_KEY)) || '[]');
+  const done = [];
+  let nonce = null, stopped = null;
+  for (const day of todo) {
+    const board = await getBoard(day);
+    if (!board || board.day !== day || !Array.isArray(board.rows)) { stopped = `the board of ${day} did not answer; the next run tries again`; break; }
+    if (!board.rows.length) { const rec = { day, no: board.no, players: 0, note: 'nobody played; nothing written', at: now.toISOString() }; await env.AGENT.put(DAY_KEY(day), JSON.stringify(rec)); done.push(rec); continue; }
+    const text = canonical(day, board), hash = await sha256(text), memo = recordText(day, board.no, board, hash), data = toHex(new TextEncoder().encode(memo));
+    const bal = await pub.getBalance({ address: account.address });
+    if (bal < RESERVE_BNB + GAS * GAS_PRICE) { stopped = `the agent wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for its deliveries`; break; }
+    try { await pub.call({ account, to: PRIZE_WALLET, data, value: 0n }); }
+    catch (e) { stopped = `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 120)}`; break; }
+    if (nonce == null) nonce = await pendingNonce();
+    if (nonce == null) { stopped = 'no node answered the nonce; the next run tries again'; break; }
+    let tx = null;
+    try {
+      tx = await wal.sendTransaction({ to: PRIZE_WALLET, value: 0n, data, gas: GAS, gasPrice: GAS_PRICE, nonce });
+      nonce++;
+      const rc = await pub.waitForTransactionReceipt({ hash: tx, timeout: 60000 });
+      if (rc.status !== 'success') { stopped = `${day}: the transaction ${tx} failed`; break; }
+      const rec = { day, no: board.no, champion: board.rows[0].name, score: board.rows[0].score, run: board.rows[0].run, players: board.players, sha256: hash, board: text, memo, tx, block: Number(rc.blockNumber), at: new Date().toISOString() };
+      await env.AGENT.put(DAY_KEY(day), JSON.stringify(rec));
+      log.unshift({ day, no: rec.no, champion: rec.champion, score: rec.score, run: rec.run, players: rec.players, sha256: hash, tx });
+      done.push({ day, tx });
+    } catch (e) {
+      // not known whether it reached a node: the day stays open and the count is asked again next run (a second
+      // record of the same day is the worst case, and it says the same thing)
+      stopped = `${day}: ${tx ? 'sent ' + tx + ', no receipt' : 'not sent'}: ${String(e.shortMessage || e.message).slice(0, 120)}`;
+      break;
+    }
+  }
+  await env.AGENT.put(LOG_KEY, JSON.stringify(log.slice(0, 60)));
+  const run = { at: now.toISOString(), written: done.filter((d) => d.tx).length, skipped: done.filter((d) => !d.tx).length, stopped };
+  await env.AGENT.put('pop:chain:last', JSON.stringify(run));
+  return { ok: !stopped, ...run, done };
+}
+
+// GET /pop/chain[?day=YYYY-MM-DD]: every day written, or one day with its canonical board to hash again
+export async function readPopChain(env, day = null) {
+  if (day) { const r = JSON.parse((await env.AGENT.get(DAY_KEY(day))) || 'null'); return r ? { ...r, check: 'sha256 of "board" (UTF-8, lines joined with \\n) equals "sha256"; the transaction input data is "memo" as UTF-8' } : null; }
+  const [log, last] = await Promise.all([LOG_KEY, 'pop:chain:last'].map(async (k) => JSON.parse((await env.AGENT.get(k)) || 'null')));
+  return { days: (log || []).map((x) => ({ ...x, bscscan: 'https://bscscan.com/tx/' + x.tx })), last_run: last };
+}
+
+==============================================================================
 === FILE: worker-agent/public-refund.js
 ==============================================================================
 
@@ -18183,18 +18338,37 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
   const byId = Object.fromEntries(jobs.map((x) => [x.id, x.job]));
   const done = [];
   let stopped = null;
+  // ONE NONCE, COUNTED HERE (2026-11-09, operator's go; as agent-hires.js): viem asked the fallback transport for the
+  // nonce before every send, and a node a block behind can answer the old number ("nonce lower than the current
+  // nonce", job 57111's hire on 27.10.). The pending count is asked of every node, the highest taken (a node behind can
+  // only answer too low); it moves on only when a send returned its hash. A send that threw without one may or may not
+  // have reached a node, so the count is asked again before the next send: never a gap, never a number twice.
+  const pendingNonce = async () => {
+    const urls = rpcUrl ? [rpcUrl] : RPCS;
+    const got = await Promise.all(urls.map((u) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionCount', params: [account.address, 'pending'] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).then((j) => (j?.result ? Number(BigInt(j.result)) : null)).catch(() => null)));
+    const known = got.filter((c) => c != null);
+    return known.length ? Math.max(...known) : null;
+  };
+  let nonce = null;
   for (const id of due) {
     const bal = await pub.getBalance({ address: account.address });
     if (bal < RESERVE_BNB + GAS_PER_SETTLE * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
     const data = settleData(id);
     try { await pub.call({ account, to: ERC8183.router, data }); }
     catch (e) { done.push({ id, settled: false, why: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 100)}` }); continue; }
+    if (nonce == null) nonce = await pendingNonce();
+    if (nonce == null) { stopped = 'no node answered the nonce; the rest waits for the next run'; break; }
+    let hash = null;
     try {
-      const hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: GAS_PRICE, gas: 250000n });
+      hash = await wal.sendTransaction({ to: ERC8183.router, data, gasPrice: GAS_PRICE, gas: 250000n, nonce });
+      nonce++;
       const rc = await pub.waitForTransactionReceipt({ hash, timeout: 60000 });
       const j = byId[id];
       done.push({ id, settled: rc.status === 'success', tx: hash, provider: j.provider, client: j.client, released_u: j.budget_u, gas_wei: String(rc.gasUsed * (rc.effectiveGasPrice ?? GAS_PRICE)) });
-    } catch (e) { done.push({ id, settled: false, why: String(e.shortMessage || e.message).slice(0, 140) }); }
+    } catch (e) {
+      if (!hash) nonce = null; // not known whether it reached a node: asked again before the next send
+      done.push({ id, settled: false, ...(hash ? { tx: hash } : {}), why: String(e.shortMessage || e.message).slice(0, 140) });
+    }
   }
   // the list: settled and finished jobs leave it
   const left = { ...cand };

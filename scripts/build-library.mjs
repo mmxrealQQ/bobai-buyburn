@@ -332,7 +332,7 @@ powers by themselves; combos at 8, 16 and 24; a daily top 10 and an overall boar
        alt: 'keep one file; a copy that drifts makes the replay disagree with the screen'},
     ],
     run: ['node worker-pop/test.mjs', 'node worker-pop/test2.mjs', 'cd worker-pop && npx wrangler deploy'],
-    entries: ['temp/terminal-site/terminal/pop-engine.mjs', 'worker-pop/index.js', 'worker-pop/game.js', 'worker-pop/wrangler.toml', 'worker-pop/test.mjs', 'worker-pop/test2.mjs'],
+    entries: ['temp/terminal-site/terminal/pop-engine.mjs', 'worker-pop/index.js', 'worker-pop/game.js', 'worker-pop/wrangler.toml', 'worker-pop/test.mjs', 'worker-pop/test2.mjs', 'worker-agent/pop-chain.js' /* each closed day on BNB Chain (10.11.) */, 'scripts/pop-chain-fork-test.mjs'],
   },
   {
     group: 'apps',

@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5891 lines
+12 files, 5902 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -257,7 +257,7 @@ txt: https://brainonbnb.com/code/browser-game.txt
 Brain Pop 6.9 — the daily game in the terminal
 ----------------------------------------------
 60 seconds, one engine file, every tap replayed by the server.
-6 files, 647 lines
+8 files, 820 lines
 needs:
   - A worker with a Durable Object (SQLite)
       ours: Cloudflare Workers, class PopBoard
@@ -285,7 +285,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 4195 lines
+5 files, 4197 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -302,7 +302,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-74 files, 24416 lines
+75 files, 24585 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

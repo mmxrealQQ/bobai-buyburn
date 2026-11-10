@@ -113,6 +113,14 @@ for (const sz of SIZES) {
   const buyHref = await ev(`document.querySelector('#bt .br-pp-hold .br-pp-hb > a')?.getAttribute('href')||''`);
   const linkBtn = await waitFor(`!!document.querySelector('#bt .br-pp-hold .br-pp-link')`, 8000);
   say(linkBtn, `${sz} rule 13b: the result's holder step offers LINK WALLET beside BUY`);
+  // 17 (10.11., on chain): today's board says it goes on BNB Chain after midnight; a closed day written on chain links
+  // its transaction (one day back from the result board)
+  const tdy = new Date().toISOString().slice(0, 10), rowsToday = ((await (await fetch(BASE + '/api/pop/top?scope=day&d=' + tdy, { cache: 'no-store' })).json().catch(() => ({}))).rows || []).length;
+  const soon = rowsToday ? await waitFor(`!!document.querySelector('#bt .br-pp-oc.soon')`, 8000) : !(await waitFor(`!!document.querySelector('#bt .br-pp-oc.soon')`, 3000)); /* an empty day has nothing to write */
+  const chain = await (await fetch('https://agent.brainonbnb.com/pop/chain', { cache: 'no-store' })).json().catch(() => null), yday = new Date(Date.now() - 86400e3).toISOString().slice(0, 10), yrec = chain?.days?.find((x) => x.day === yday);
+  let ylink = null;
+  if (yrec) { await ev(`document.querySelector('#bt [data-dd="-1"]')?.click(); 1`); await waitFor(`/${yday.slice(8).replace(/^0/, '')} NOV/.test(document.querySelector('#bt .br-pp-days')?.textContent||'') && !!document.querySelector('#bt .br-pp-board .br-pp-none, #bt .br-pp-board ol, #bt .br-pp-board li, #bt .br-pp-oc')`, 10000); await waitFor(`!!document.querySelector('#bt .br-pp-oc a')`, 8000); ylink = await ev(`document.querySelector('#bt .br-pp-oc a')?.getAttribute('href')||''`); await ev(`document.querySelector('#bt [data-dd="1"]')?.click(); 1`); await sleep(800); }
+  say(soon && (!yrec || ylink === 'https://bscscan.com/tx/' + yrec.tx), `${sz} rule 17: today goes on chain after midnight; yesterday links its transaction`, JSON.stringify({ soon, yesterday: yrec ? { tx: yrec.tx.slice(0, 12), link: (ylink || '').slice(0, 40) } : 'not written yet' }));
   const buyRes = buyHref ? await fetch(BASE + buyHref, { redirect: 'manual', headers: { 'sec-purpose': 'prefetch' } }) : null; /* a prefetch is never counted as a click */
   say(buyHref === '/buy?from=pop-run' && buyRes && buyRes.status === 302 && /pancakeswap\.finance\/swap\?outputCurrency=0x245c/.test(buyRes.headers.get('location') || ''), `${sz} rule 13: the result shows $BOBAI with the counted buy link`, JSON.stringify({ buyHref, status: buyRes && buyRes.status, to: buyRes && (buyRes.headers.get('location') || '').slice(0, 60) }));
   // 8 (6.11. later): a reason to come back — the next daily counted down

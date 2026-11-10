@@ -1370,6 +1370,11 @@
 #bt .br-pp-hb .br-pp-wl i{font-style:normal;color:#a8a2b4;font-size:.72rem}
 #bt .br-pp-hb .br-pp-wl b{color:#ffe28a}
 #bt .br-pp-hb .br-pp-wl small{flex-basis:100%}
+/* a closed day's board on BNB Chain (10.11.): the transaction under the board, and how to check it */
+#bt .br-pp-oc{margin:3px 0 0;font-size:.74rem;color:#a8a2b4}
+#bt .br-pp-oc a{color:#7dff3a;font-weight:700;text-decoration:none}
+#bt .br-pp-oc a.br-pp-och{margin-left:6px;color:#a8a2b4;font-weight:400;text-decoration:underline}
+#bt .br-pp-oc.soon{color:#8f8a9c}
 #bt .br-pp-own{margin-left:4px;padding:3px 8px;border:1px solid #ff3fd8;border-radius:8px;background:transparent;color:#ff3fd8;font:600 .75rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
 #bt .br-pp-nm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-2px 0 8px}
 #bt .br-pp-nm[hidden]{display:none}

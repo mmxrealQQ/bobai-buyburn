@@ -7614,12 +7614,21 @@ window.__btBrSeason = brSeason;
   const tabs = () => '<div class="br-pp-tabs">' + [['day', 'DAILY'], ['all', 'OVERALL']].map(([k, t]) => '<button type="button" data-sc="' + k + '"' + (k === scope ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div>'
     + (scope === 'day' ? '<div class="br-pp-days"><button type="button" data-dd="-1" aria-label="Day before"' + (bday <= FIRST ? ' disabled' : '') + '>‹</button><span>DAY ' + (Math.round((Date.parse(bday + 'T00:00:00Z') - Date.parse(FIRST + 'T00:00:00Z')) / 86400e3) + 1) + ' · ' + fmtDay(bday) + (bday === lastDay() && bday === ((DAY && DAY.today) || '') ? ' · TODAY' : '') + '</span><button type="button" data-dd="1" aria-label="Day after"' + (bday >= lastDay() ? ' disabled' : '') + '>›</button></div>' : '<div class="br-pp-days"><span>BEST RUN OF THE SEASON · 6 TO 30 NOV</span></div>');
   let boardSeq = 0;
+  // the days written on chain, read once a few minutes (GET agent.brainonbnb.com/pop/chain)
+  let chainAt = 0, chainP = null;
+  const chainOf = async d => { if (!chainP || Date.now() - chainAt > 300e3) { chainAt = Date.now(); chainP = fetch('https://agent.brainonbnb.com/pop/chain', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null); } const j = await chainP; return j && Array.isArray(j.days) ? j.days.find(x => x.day === d) || null : null; };
   async function loadBoard() {
     const box = pp.querySelector('.br-pp-bd'); if (!box) return; bday ||= lastDay(); box.innerHTML = tabs() + '<div class="br-pp-board"><p class="br-pp-none">…</p></div>';
     /* only the latest ask may fill the board (7.11.: a slow answer to an earlier tab overwrote the board just picked) */
     const seq = ++boardSeq;
     try { const j = await api('top?scope=' + scope + (scope === 'day' ? '&d=' + bday : '')); if (!pp.contains(box) || seq !== boardSeq) return;
-      box.innerHTML = tabs() + '<div class="br-pp-board">' + board(j.rows) + '</div><p class="br-pp-n">' + nf0(j.players) + ' player' + (j.players === 1 ? '' : 's') + (scope === 'day' ? ' that day' : ' this season') + ' · top 10 · your best run counts · the server checks every hit</p>'; }
+      box.innerHTML = tabs() + '<div class="br-pp-board">' + board(j.rows) + '</div><p class="br-pp-n">' + nf0(j.players) + ' player' + (j.players === 1 ? '' : 's') + (scope === 'day' ? ' that day' : ' this season') + ' · top 10 · your best run counts · the server checks every hit</p>';
+      /* ON CHAIN (10.11., operator): a closed day's champion and board hash are a transaction on BNB Chain (worker-agent/
+         pop-chain.js, from 00:15 UTC); its link under that day's board. Today's board has none yet: it says when */
+      if (scope === 'day') { const d = bday, rec = await chainOf(d); if (!pp.contains(box) || seq !== boardSeq) return;
+        const n = box.querySelector('.br-pp-n');
+        if (rec && rec.tx) n.insertAdjacentHTML('afterend', '<p class="br-pp-oc">⛓ On BNB Chain: <a href="https://bscscan.com/tx/' + esc(rec.tx) + '" target="_blank" rel="noopener">champion + board fingerprint ✓</a> <a class="br-pp-och" href="https://agent.brainonbnb.com/pop/chain?day=' + d + '" target="_blank" rel="noopener">check it</a></p>');
+        else if (j.rows.length && d === DAY?.today && d <= LASTD) n.insertAdjacentHTML('afterend', '<p class="br-pp-oc soon">⛓ This day goes on BNB Chain after midnight UTC: champion + board fingerprint.</p>'); } }
     catch { if (seq !== boardSeq || !pp.contains(box)) return; box.querySelector('.br-pp-board').innerHTML = '<p class="br-pp-none">The board did not answer. Try again in a moment.</p>'; }
   }
   // the player's private code: only this browser shows it; the overall winner shows it to claim the prize

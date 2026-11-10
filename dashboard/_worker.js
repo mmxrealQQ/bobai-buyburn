@@ -1983,11 +1983,13 @@ const SITE = {
     // The same for an agent chart (2026-10-13): /og/agent/<id>.png, that agent's measured figures.
     // and the Brain Board's (2026-10-24): /og/board.png, its live figures
     // and a Brain Pop run's (2026-11-07): /og/pop/<run>.png, who scored what, the place of the day
-    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9}|board|pop\/[a-z0-9]{1,12})\.png$/);
+    // (10.11.) a run's card also as /og/pop/<run>.jpg, ~250 KB instead of ~1.5 MB: WhatsApp shows no preview that large
+    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9}|board|pop\/[a-z0-9]{1,12})\.png$/) || url.pathname.match(/^\/og\/(pop\/[a-z0-9]{1,12})\.(jpg)$/);
     if (ogCard) {
-      const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/${ogCard[1].toLowerCase()}.png`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
-      if (!r || !r.ok || !(r.headers.get('content-type') || '').startsWith('image/png')) return Response.redirect(url.origin + (ogCard[1].startsWith('pop/') ? '/og-brainpop.jpg' : '/og-banner.png'), 302);
-      return new Response(r.body, { status: 200, headers: { 'Content-Type': 'image/png', 'Cache-Control': r.headers.get('cache-control') || 'public, max-age=3600', 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' } });
+      const ext = ogCard[2] || 'png', ct = ext === 'jpg' ? 'image/jpeg' : 'image/png';
+      const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/${ogCard[1].toLowerCase()}.${ext}`, { signal: AbortSignal.timeout(25000) }).catch(() => null);
+      if (!r || !r.ok || !(r.headers.get('content-type') || '').startsWith(ct)) return Response.redirect(url.origin + (ogCard[1].startsWith('pop/') ? '/og-brainpop.jpg' : '/og-banner.png'), 302);
+      return new Response(r.body, { status: 200, headers: { 'Content-Type': ct, 'Cache-Control': r.headers.get('cache-control') || 'public, max-age=3600', 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' } });
     }
 
     // THE BUILDER SHEET (2026-10-07, operator: "on brainonbnb, just not public"): /builder/* only with the
@@ -2552,7 +2554,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         title = nm + ' scored ' + sc + ' ROT in BRAIN POP 6.9 · can you beat it? 🧠'; desc = 'A challenge: same day, your own round. 60 seconds, tap the brainrot. Their score runs along as a ghost.'; found = true; } } catch {} }
       // THE RUN'S OWN CARD (7.11., operator: "sharing"): a found run is previewed with its own picture — name, score, place
       // of the day (bobai-og /pop/<run>.png); the game's poster stays for /m/pop and for a run that is not there
-      const img = found && url.hostname.endsWith('brainonbnb.com') ? 'https://brainonbnb.com/og/pop/' + run + '.png' : 'https://brainonbnb.com/og-brainpop.jpg', page = 'https://brainonbnb.com' + url.pathname;
+      const img = found && url.hostname.endsWith('brainonbnb.com') ? 'https://brainonbnb.com/og/pop/' + run + '.jpg' /* JPEG since 10.11.: WhatsApp drops a preview of ~1.5 MB */ : 'https://brainonbnb.com/og-brainpop.jpg', page = 'https://brainonbnb.com' + url.pathname;
       const html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + title + '</title><meta name="viewport" content="width=device-width,initial-scale=1">'
         + '<meta property="og:type" content="website"><meta property="og:site_name" content="Brain On BNB AI"><meta property="og:url" content="' + page + '"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + desc + '">'
         + '<meta property="og:image" content="' + img + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BRAIN POP 6.9: BOBAI aims, the brainrot creatures pop">'

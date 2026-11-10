@@ -3467,7 +3467,7 @@ let lastMoment = null;
 async function shareCard(want) {
   if (typeof want !== 'string') want = null; /* a click passes its event */
   // never post a card with zeros on it: wait until the chain and the logs have answered (the rank card needs no chain)
-  if (want !== 'rot' && !S.deadA || !S.burns.length || !S.price) return logLine('SHARE', '#F0B90B', ['still reading the chain — try again in a few seconds']);
+  if (want !== 'rot' && (!S.deadA || !S.burns.length || !S.price)) return logLine('SHARE', '#F0B90B', ['still reading the chain — try again in a few seconds']);
   const btn = $('shr'); btn.disabled = true;
   try {
     // 1) the scene this instant, copied off (the drawing buffer is only valid right after a render)
@@ -3604,7 +3604,7 @@ const rotLink = (u, app) => { openApp(u); return app + ' opened — the card of 
 const SHARE_TO = {
   // files + text only: handed a url as well, Telegram and others on iOS keep the link and drop the image (reported by
   // the operator 2026-09-26) — the link rides inside the text instead
-  sheet: async () => { await navigator.share({ files: [card.file], text: card.text + ' ' + SITE_URL }); },
+  sheet: async () => { await navigator.share({ files: [card.file], text: card.cur?.rot ? card.text /* a run's text carries its own link */ : card.text + ' ' + SITE_URL }); },
   // THE CARD RIDES ON THE LINK (2026-09-27): brainonbnb.com/m/<moment> is drawn by the server as the post's big
   // preview card, so X, Telegram and WhatsApp show it on every device with nothing to attach or paste. The text keeps
   // no link of its own: with two links in a post, X picks either one for the card (the bscscan one, too).
@@ -8268,7 +8268,7 @@ window.__btBrSeason = brSeason;
       text: D1 ? 'I scored ' + sc + ' ROT as ' + (D1.name || myName()) + ' in Daily Brain Pop #' + D1.no + (D1.ranked ? ', #' + D1.rank + ' of ' + D1.players + ' today' : '') + ' on the $BOBAI Brain Terminal 🧠 Beat me: ' + SITE_URL + '/m/pop/' + D1.run
         : 'I reached ' + rank + ' with ' + sc + ' ROT in BRAIN POP on the $BOBAI Brain Terminal 🧠 Can you out-rot me? ' + SITE_URL };
   }
-  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => on && G.score > 0, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, fin: FIN, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
+  window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => !!LAST || (on && G.score > 0) /* 10.11.: a daily run counts in LAST, not in G (the old tap game): SHARE after a run had handed out the chain card instead */, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, fin: FIN, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
     /* for the checks: the arena's box on the page and what is in it now (the plan is public anyway) */ aim: () => RUN && RUN.live && AR ? { box: arena.getBoundingClientRect().toJSON(), alive: RUN.run.alive(tNow()).map(([x, q]) => [x.i, x.rug && !RUN.run.golden(x, tNow()), Math.round(q.x), Math.round(q.y), x.r, x.p]) } : null, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
 })();
 // ALWAYS THE NEWEST VERSION (6.11.): a phone restores a page from memory or wakes an old tab; then the page asks which

@@ -10,6 +10,7 @@ import inter400 from './fonts/inter-400.ttf';
 import inter600 from './fonts/inter-600.ttf';
 import logo from './logo.png';
 import { card, agentCard, boardCard, popCard } from './card.js';
+import jpeg from 'jpeg-js';
 
 let ready = null;
 // the Brain Pop poster under the run card, fetched once per isolate
@@ -24,6 +25,14 @@ export async function render(svg) {
   await ready;
   const r = new Resvg(svg.replace('LOGO_DATA_URI', LOGO), { font: { fontBuffers: fonts, loadSystemFonts: false, defaultFontFamily: 'Inter' }, fitTo: { mode: 'width', value: 1200 } });
   return r.render().asPng();
+}
+// the same picture as a JPEG (10.11.): a run card with the poster under it is ~1.5 MB as PNG, and WhatsApp shows no
+// preview for an og:image that large; quality 80 keeps it ~250 KB and looks the same
+async function renderJpeg(svg) {
+  if (!ready) ready = initWasm(wasm);
+  await ready;
+  const r = new Resvg(svg.replace('LOGO_DATA_URI', LOGO), { font: { fontBuffers: fonts, loadSystemFonts: false, defaultFontFamily: 'Inter' }, fitTo: { mode: 'width', value: 1200 } }).render();
+  return jpeg.encode({ data: r.pixels, width: r.width, height: r.height }, 80).data;
 }
 
 export default {
@@ -54,9 +63,10 @@ export default {
     }
     // THE BRAIN POP CARD (2026-11-07): /pop/<run>.png — one run: who, the score, the place of its day; the preview of the
     // challenge link brainonbnb.com/m/pop/<run>. A run is final once counted; its place can still move that day: one hour.
-    const pm = url.pathname.match(/^\/(?:og\/)?pop\/([a-z0-9]{1,12})\.png$/);
+    // .jpg (10.11.) is what the link's og:image names now (WhatsApp); .png stays for the Telegram champion post
+    const pm = url.pathname.match(/^\/(?:og\/)?pop\/([a-z0-9]{1,12})\.(png|jpg)$/);
     if (pm) {
-      const key = new Request('https://og.brainonbnb.com/pop/' + pm[1] + '.png');
+      const jpg = pm[2] === 'jpg', key = new Request('https://og.brainonbnb.com/pop/' + pm[1] + '.' + pm[2]);
       const hit = await caches.default.match(key);
       if (hit) return hit;
       // through the site, not bobai-pop.*.workers.dev: a worker may not call a workers.dev worker of the same account (1042)
@@ -66,8 +76,8 @@ export default {
       if (!run) return Response.redirect('https://brainonbnb.com/og-brainpop.jpg', 302);
       let place = null;
       if (run.ranked) { const t = await get(POP + 'top?scope=day&d=' + run.day); const i = t && Array.isArray(t.rows) ? t.rows.findIndex((x) => x.run === run.run) : -1; if (i >= 0) { place = { rank: i + 1, players: t.players, today: run.day === new Date().toISOString().slice(0, 10) }; run.name = t.rows[i].name || run.name; /* the name the player plays as now, as the board and the Telegram post show it */ } }
-      const png = await render(popCard(run, place, await posterUri()));
-      const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
+      const svg = popCard(run, place, await posterUri()), png = jpg ? await renderJpeg(svg) : await render(svg);
+      const res = new Response(png, { headers: { 'content-type': jpg ? 'image/jpeg' : 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
       ctx.waitUntil(caches.default.put(key, res.clone()));
       return res;
     }

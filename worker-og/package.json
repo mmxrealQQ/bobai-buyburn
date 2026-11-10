@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "scripts": { "deploy": "wrangler deploy" },
-  "dependencies": { "@resvg/resvg-wasm": "2.6.2" }
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2",
+    "jpeg-js": "0.4.4"
+  }
 }

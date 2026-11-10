@@ -1,6 +1,8 @@
 name = "bobai-og"
 main = "index.js"
 compatibility_date = "2025-01-01"
+# jpeg-js (the Brain Pop run card as JPEG, 10.11.) hands back a Node Buffer
+compatibility_flags = ["nodejs_compat"]
 
 # THE SHARE CARD (operator, 2026-10-13: "the share card"). A scan link posted on X or Telegram showed the site's
 # generic picture; this worker draws one per token from our own pre-trade check (/api/preflight), as a 1200x630 PNG.

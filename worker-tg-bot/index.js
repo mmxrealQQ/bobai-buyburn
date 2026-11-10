@@ -2808,12 +2808,17 @@ async function popChampionText(day) {
   const [pool, px] = await Promise.all([side('https://brainonbnb.com/api/pop/pool'), side('https://brainonbnb.com/api/price')]);
   return renderPopChampion(day, d.no, d.rows, d.players, all && all.rows && all.rows[0], all && all.players, pool, px && px.price_usd);
 }
-async function postPopChampion(env, tick) {
+export async function postPopChampion(env, tick) {
   const day = new Date(Date.UTC(tick.getUTCFullYear(), tick.getUTCMonth(), tick.getUTCDate()) - 86400e3).toISOString().slice(0, 10);
   if (day < POP_FIRST || day > POP_LAST) return;
   const flag = 'pop_champ:' + day;
   if (await env.KV.get(flag)) return;
-  const text = await popChampionText(day);
+  // ON CHAIN FIRST (10.11., operator): the closed day is written on BNB Chain from 00:15 UTC (worker-agent pop-chain.js);
+  // the post waits for that transaction and links it. Until 00:45 it waits; after that it goes out without the line.
+  const chainTx = await popChainTx(day);
+  if (!chainTx && tick.getUTCMinutes() < 45) return;
+  let text = await popChampionText(day);
+  if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`);
   if (text === undefined) return;
   await env.KV.put(flag, text ? 'sent' : 'nobody', { expirationTtl: 3 * 86400 }); // once, also when nobody played
   if (!text) return;
@@ -2828,6 +2833,10 @@ async function postPopChampion(env, tick) {
   }
   const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
   if (!sent?.ok) console.error('[POP CHAMPION] Telegram refused ' + day, JSON.stringify(sent));
+}
+// the day's record on BNB Chain (agent.brainonbnb.com/pop/chain?day=): its transaction, or null while not written
+async function popChainTx(day) {
+  try { const r = await fetch('https://agent.brainonbnb.com/pop/chain?day=' + day, { signal: AbortSignal.timeout(10000) }); if (!r.ok) return null; const j = await r.json(); return /^0x[0-9a-f]{64}$/.test(j && j.tx || '') ? j.tx : null; } catch { return null; }
 }
 // the day's #1 run id (its card and its challenge link)
 async function popChampionRun(day) {
@@ -4108,7 +4117,9 @@ export default {
     if (url.pathname === '/pop-champion' && request.method === 'GET') {
       const d = url.searchParams.get('d') || '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Response('d=YYYY-MM-DD', { status: 400 });
-      const text = await popChampionText(d), champ = await popChampionRun(d);
+      const chainTx = await popChainTx(d), champ = await popChampionRun(d);
+      let text = await popChampionText(d);
+      if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`); /* the line the night post carries (10.11.) */
       /* the post as it would go out (7.11.): the champion's card as the photo, the text as its caption with the challenge line */
       return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text, photo: champ ? 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + d : null, caption: champ && text ? text.replace('▶️ Play today: https://brainonbnb.com/m/pop', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ) : null }), { headers: { 'content-type': 'application/json' } });
     }

@@ -187,7 +187,9 @@ export async function holdersBackfill(env, { pieces = PIECES } = {}) {
   for (let i = 0; i < pieces && bf.cursor <= bf.to; i++) {
     const b = Math.min(bf.to, bf.cursor + NODEREAL_SPAN - 1);
     const p = await post(env.BSC_RPC_KEYED_URL, ask(bf.cursor, b)).catch(() => null);
-    if (!Array.isArray(p?.result)) break; // unread: the same piece next quarter hour
+    // unread: the same piece next quarter hour — what NodeReal said is kept (10.11.: the repair stood at 132,560,000 for
+    // hours with nothing to show why)
+    if (!Array.isArray(p?.result)) { bf.last_error = { at: new Date().toISOString(), piece: [bf.cursor, b], said: p ? JSON.stringify(p.error || p).slice(0, 300) : 'no answer' }; break; }
     for (const l of p.result) for (const t of [l.topics[1], l.topics[2]]) { const a = '0x' + t.slice(26); if (!(a in state.bal) && !(a in (state.code || {})) && !DEAD.test(a)) bf.found[a] = 1; }
     bf.cursor = b + 1;
   }

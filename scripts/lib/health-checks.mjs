@@ -561,7 +561,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const card = run ? await page(`/og/pop/${run}.png`) : null;
   ok('Ecosystem', 'a run\'s share card is a picture', !!card && card.status === 200 && /image\/png/.test(card.ct), run ? `${run}: HTTP ${card?.status} ${card?.ct}` : 'no run on the board');
   const share = run ? await page(`/m/pop/${run}`, 'Twitterbot/1.0') : null;
-  ok('Ecosystem', 'a challenge link shows that run\'s card as its preview', !!share && share.text.includes(`/og/pop/${run}.png`), share ? `HTTP ${share.status}` : 'no run');
+  ok('Ecosystem', 'a challenge link shows that run\'s card as its preview', !!share && share.text.includes(`/og/pop/${run}.jpg`), share ? `HTTP ${share.status}` : 'no run');
+  // the preview is the JPEG since 10.11.: the PNG (~1.5 MB) was too large for WhatsApp to show; it must stay small
+  const jp = run ? await fetch(`${SITE}/og/pop/${run}.jpg`).then(async (r) => ({ status: r.status, ct: r.headers.get('content-type') || '', kb: Math.round((await r.arrayBuffer()).byteLength / 1024) })).catch(() => null) : null;
+  ok('Ecosystem', 'the challenge preview is a JPEG small enough for WhatsApp (under 600 KB)', !!jp && jp.status === 200 && /image\/jpeg/.test(jp.ct) && jp.kb > 20 && jp.kb < 600, jp ? `HTTP ${jp.status} ${jp.ct} ${jp.kb} KB` : 'no run');
   // HEAD, not GET: /buy counts every GET as a buy click, and a morning check must not add to that figure
   const head = (ua) => fetch(`${SITE}/buy?from=health`, { method: 'HEAD', redirect: 'manual', headers: { 'user-agent': ua } }).then((r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '' })).catch(() => null);
   const buyB = await head('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'), buyBot = await head('brainonbnb-health');

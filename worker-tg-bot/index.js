@@ -2775,7 +2775,7 @@ export function renderPopNow(today, d, all, pool, priceUsd) {
     leader ? `👑 ${over ? 'Champion' : 'Season leader'}: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : '',
     bobai != null ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · goal $10 · the overall #1 on 30 Nov takes it all` : '',
     '',
-    over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/pop',
+    over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/m/pop?from=tg',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
 }
 // 8.11. (operator): "17 players" says how many played THAT day, plus the season's players overall; the joke prize is
@@ -2796,7 +2796,7 @@ export function renderPopChampion(day, no, rows, players, leader, allPlayers, po
     leader ? (last ? `👑 Season over. Overall champion: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : `👑 Season leader: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT`) : '',
     bobai != null ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · ${last ? 'goes to the champion' : 'the season leader on 30 Nov takes it all'}` : '',
     '',
-    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop',
+    last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop?from=tg',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
 }
 async function popChampionText(day) {
@@ -2826,7 +2826,7 @@ export async function postPopChampion(env, tick) {
   // place — bobai-og /pop/<run>.png) with the text as its caption and a line into the challenge; text alone if it fails
   const champ = await popChampionRun(day);
   if (champ) {
-    const caption = text.replace('▶️ Play today: https://brainonbnb.com/m/pop', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ);
+    const caption = text.replace('▶️ Play today: https://brainonbnb.com/m/pop?from=tg', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ + '?from=tg');
     const ph = await tg('sendPhoto', { chat_id: TG_CHAT_ID, photo: 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + day, caption, parse_mode: 'HTML' }).catch(() => null);
     if (ph?.ok) return;
     console.error('[POP CHAMPION] photo refused, text instead ' + day, JSON.stringify(ph));
@@ -3348,7 +3348,7 @@ async function handleCommand(msg, env) {
     case 'pop': {
       const get = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const [d, all, pool, px] = await Promise.all([get('https://brainonbnb.com/api/pop/top?scope=day'), get('https://brainonbnb.com/api/pop/top?scope=all'), get('https://brainonbnb.com/api/pop/pool'), get('https://brainonbnb.com/api/price')]);
-      reply = d || all ? renderPopNow(new Date().toISOString().slice(0, 10), d, all, pool, px && px.price_usd) : 'The Brain Pop board did not answer just now. Try again in a minute, or play: https://brainonbnb.com/pop';
+      reply = d || all ? renderPopNow(new Date().toISOString().slice(0, 10), d, all, pool, px && px.price_usd) : 'The Brain Pop board did not answer just now. Try again in a minute, or play: https://brainonbnb.com/m/pop?from=tg';
       break;
     }
     case '/giggle':
@@ -4121,7 +4121,7 @@ export default {
       let text = await popChampionText(d);
       if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`); /* the line the night post carries (10.11.) */
       /* the post as it would go out (7.11.): the champion's card as the photo, the text as its caption with the challenge line */
-      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text, photo: champ ? 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + d : null, caption: champ && text ? text.replace('▶️ Play today: https://brainonbnb.com/m/pop', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ) : null }), { headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text, photo: champ ? 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + d : null, caption: champ && text ? text.replace('▶️ Play today: https://brainonbnb.com/m/pop?from=tg', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ + '?from=tg') : null }), { headers: { 'content-type': 'application/json' } });
     }
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {

@@ -3601,6 +3601,8 @@ const rotTo = async (u, app) => { let cp = false; try { await copyImg(); cp = tr
 // picture (name, score, place), so X and Telegram need no pasted image — only the link. Telegram had dropped the link.
 const runLink = () => (String(card.text || '').match(/https?:\/\/\S+\/m\/pop\/[a-z0-9]+/) || [null])[0];
 const rotLink = (u, app) => { openApp(u); return app + ' opened — the card of your run shows with the link'; };
+/* the run's link names the app it was shared to (11.11., /api/pop/stats came_share-x …); /m/pop passes it on */
+const runLinkTo = to => runLink() + '?from=share-' + to;
 const SHARE_TO = {
   // files + text only: handed a url as well, Telegram and others on iOS keep the link and drop the image (reported by
   // the operator 2026-09-26) — the link rides inside the text instead
@@ -3608,9 +3610,9 @@ const SHARE_TO = {
   // THE CARD RIDES ON THE LINK (2026-09-27): brainonbnb.com/m/<moment> is drawn by the server as the post's big
   // preview card, so X, Telegram and WhatsApp show it on every device with nothing to attach or paste. The text keeps
   // no link of its own: with two links in a post, X picks either one for the card (the bscscan one, too).
-  x: () => card.cur?.rot ? (runLink() ? rotLink('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(runLink()), 'X') : rotTo('https://x.com/intent/post?text=' + encodeURIComponent(card.text), 'X')): (openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())), 'X opened — the post shows the card'),
-  telegram: () => card.cur?.rot ? (runLink() ? rotLink('https://t.me/share/url?url=' + encodeURIComponent(runLink()) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram') : rotTo('https://t.me/share/url?url=' + encodeURIComponent(SITE_URL) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram')): (openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))), 'Telegram opened — the message shows the card'),
-  whatsapp: () => card.cur?.rot ? (runLink() ? rotLink('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp') : rotTo('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp')) : (openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())), 'WhatsApp opened — the message shows the card'),
+  x: () => card.cur?.rot ? (runLink() ? rotLink('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(runLinkTo('x')), 'X') : rotTo('https://x.com/intent/post?text=' + encodeURIComponent(card.text), 'X')): (openApp('https://x.com/intent/post?text=' + encodeURIComponent(bare(card.text)) + '&url=' + encodeURIComponent(cardUrl())), 'X opened — the post shows the card'),
+  telegram: () => card.cur?.rot ? (runLink() ? rotLink('https://t.me/share/url?url=' + encodeURIComponent(runLinkTo('tg')) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram') : rotTo('https://t.me/share/url?url=' + encodeURIComponent(SITE_URL) + '&text=' + encodeURIComponent(bare(card.text)), 'Telegram')): (openApp('https://t.me/share/url?url=' + encodeURIComponent(cardUrl()) + '&text=' + encodeURIComponent(bare(card.text))), 'Telegram opened — the message shows the card'),
+  whatsapp: () => card.cur?.rot ? (runLink() ? rotLink('https://wa.me/?text=' + encodeURIComponent(card.text.replace(runLink(), runLinkTo('wa'))), 'WhatsApp') : rotTo('https://wa.me/?text=' + encodeURIComponent(card.text), 'WhatsApp')) : (openApp('https://wa.me/?text=' + encodeURIComponent(bare(card.text) + ' ' + cardUrl())), 'WhatsApp opened — the message shows the card'),
   discord: async () => { await copyImg(); return 'image copied — paste it into any Discord channel with Ctrl+V'; },
   copy: async () => { await copyImg(); return 'image copied to the clipboard'; },
   save: () => { saveImg(); return 'image saved'; },
@@ -7549,6 +7551,26 @@ window.__btBrSeason = brSeason;
   // the terminal plays the plan as it is. While a run goes, the look's own random creatures rest; the terminal itself
   // (burns, liquidity, moments, BOBAI) goes on as always (operator: "the burn and liq game must keep running as it does").
   const API = '/api/pop/', CHQ = new URLSearchParams(location.search).get('pop');
+  // WHERE A PLAYER CAME FROM (11.11., operator: measure first, then strengthen the channel that brings players): a
+  // link may name it (?from=tg, /m/pop passes it on), else the page that sent the visitor; kept for the visit, so a
+  // reload or a second round still counts where the visit began. /api/pop/stats counts came_<from> and played_<from>.
+  const FROM = (() => {
+    try { const k = sessionStorage.getItem('bt-pop-from'); if (k) return k; } catch {}
+    const q = String(new URLSearchParams(location.search).get('from') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16);
+    let f = q;
+    if (!f) {
+      let r = null; try { r = document.referrer ? new URL(document.referrer) : null; } catch {}
+      const h = r ? r.hostname.replace(/^www\./, '') : '';
+      if (!r) f = CHQ && CHQ !== 'play' ? 'challenge' : 'direct';
+      else if (/(^|\.)brainonbnb\.com$/.test(h) || h === location.hostname.replace(/^www\./, '')) f = 'site-' + (r.pathname.split('/').filter(Boolean)[0] || 'home').replace(/[^a-z0-9-]/gi, '').slice(0, 10).toLowerCase();
+      else if (/(^|\.)(t\.me|telegram\.org|telegram\.me)$/.test(h)) f = 'tg';
+      else if (/(^|\.)(x\.com|t\.co|twitter\.com)$/.test(h)) f = 'x';
+      else if (/(^|\.)(google|bing|duckduckgo|yandex|baidu|brave)\./.test(h)) f = 'search';
+      else f = 'ext';
+    }
+    try { sessionStorage.setItem('bt-pop-from', f); } catch {}
+    return f;
+  })();
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
   let pid = lsGet('bt-pop-pid'); if (!/^[0-9a-f]{16}$/.test(pid || '')) { pid = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join(''); lsSet('bt-pop-pid', pid); }
   const ri = n => Math.floor(Math.random() * n);
@@ -7650,7 +7672,7 @@ window.__btBrSeason = brSeason;
     try {
       if (CHQ && CHQ !== 'play' && !CH && !chOff) CH = await api('run/' + encodeURIComponent(CHQ)).catch(() => null);
       if (!CH && !chOff) { LEAD = null; } /* the #1's ghost is read below */
-      DAY = await api('day?p=' + pid + (CH ? '&d=' + CH.day : '') + (pid.startsWith('f00d') ? '&own=1' : '')); /* ?pop=play (a post's link) opens the game; our checks do not count as visitors */ NAMES2 = DAY.names; /* a challenge plays its own day's plan */
+      DAY = await api('day?p=' + pid + (CH ? '&d=' + CH.day : '') + '&from=' + FROM + (pid.startsWith('f00d') ? '&own=1' : '')); /* ?pop=play (a post's link) opens the game; our checks do not count as visitors */ NAMES2 = DAY.names; /* a challenge plays its own day's plan */
     } catch (e) { pp.innerHTML = '<div class="br-pp-c"><b>DAILY BRAIN POP</b><p>The game server did not answer (' + esc(e.message) + '). Try again in a moment.</p><div class="br-pp-b"><button type="button" class="br-pp-x">Close</button></div></div>'; return; }
     if (!CH && DAY.top && DAY.top[0] && DAY.day === DAY.today) LEAD = await api('run/' + DAY.top[0].run).catch(() => null);
     intro();
@@ -7823,7 +7845,7 @@ window.__btBrSeason = brSeason;
   const toEl = (x, y) => [AR.l - AR.el0 + x / 1000 * AR.w, AR.t - AR.et0 + y / 1000 * AR.h]; // arena units -> the scene layer (bursts, labels)
   async function begin() {
     try { await engine(); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'The game did not load: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
-    let st; try { st = await api('start', { v: E.V, pid, name: pname, d: DAY.day !== DAY.today ? DAY.day : undefined }); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'Could not start: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
+    let st; try { st = await api('start', { v: E.V, pid, name: pname, from: FROM, d: DAY.day !== DAY.today ? DAY.day : undefined }); } catch (e) { const p = document.createElement('p'); p.className = 'br-pp-ch'; p.textContent = 'Could not start: ' + e.message; pp.querySelector('.br-pp-b')?.before(p); return; }
     pp.hidden = true; pbtn.hidden = true; pinnedK = null; setFocus(null); hoverMove(null); /* an open station window closes when the game starts */
     win.classList.add('br-run'); if (win.contains(document.activeElement)) document.activeElement.blur(); /* the log keeps its size, the labels open nothing */
     const PL = E.plan(DAY.day, st.seed >>> 0); /* the round's own look, the day's difficulty */

@@ -35,6 +35,9 @@ const claimOf = async pid => [...new Uint8Array(await crypto.subtle.digest('SHA-
 const J = (o, s = 200, cache = 'no-store') => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache } });
 const STARTS_PER_IP_DAY = 120;
 const test0 = pid => String(pid).startsWith('f00d'); // our own checks: never on the board, never in the counts
+// where a player came from (11.11.): the game sends ?from= / {from}; a short known shape or 'other', so nobody can
+// invent count keys. came_<from> = a new visitor of the day, played_<from> = their first round of the day.
+const fromOf = v => { const s = String(v || ''); return /^[a-z0-9-]{1,16}$/.test(s) ? s : 'other'; };
 // THE PRIZE POOL (operator, 6.11.): the Giggle/prize wallet's $BOBAI — the 808.41 it holds are the start, every $BOBAI
 // donated to it adds; on 30 Nov the overall #1 gets ALL of it. Anything else sent there (BNB, stables) stays there and is
 // NOT part of the pool — the page says it plainly: send only $BOBAI.
@@ -107,7 +110,7 @@ export class PopBoard {
     try {
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
-        { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); } }
+        { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); if (u.searchParams.has('from')) this.bump(today, 'came_' + fromOf(u.searchParams.get('from'))); } }
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
       }
@@ -182,6 +185,7 @@ export class PopBoard {
         if (ip && this.rows(`SELECT COUNT(*) c FROM runs3 WHERE day = ? AND ip = ?`, today, ip)[0].c >= STARTS_PER_IP_DAY) return J({ error: 'enough runs from here today, come back tomorrow (UTC)' }, 429);
         const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12), test = test0(pid); /* our own checks play for real but never reach the board */
         const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 1; // the round's die
+        if (!test && b.from && !this.rows('SELECT 1 FROM runs3 WHERE day = ? AND pid = ? LIMIT 1', today, pid).length) this.bump(today, 'played_' + fromOf(b.from));
         this.sql.exec(`INSERT INTO runs3 (id, day, pid, name, ranked, ip, started, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, d, pid, name, d === today && !test ? 1 : 0, ip, now, seed);
         // a player is the browser, the name is its latest: every board row of this player takes it at once
         if (!test) this.sql.exec('UPDATE best3 SET name = ? WHERE pid = ?', name, pid);

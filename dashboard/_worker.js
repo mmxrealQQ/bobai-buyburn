@@ -2545,7 +2545,9 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // and gets people to play"): brainonbnb.com/m/pop (the game) and /m/pop/<run> (a challenge) answer with the poster as the
     // preview card and send a person straight into the game. Under /m/ because the routes list is full (100).
     if (url.pathname === '/m/pop' || url.pathname.startsWith('/m/pop/')) {
-      const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play');
+      /* where the link was posted (11.11.): ?from=tg / share-x … passes on to the game's count; without one a run link is a 'share', the game link a 'link' */
+      const from = String(url.searchParams.get('from') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16);
+      const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play') + '&from=' + (from || (run ? 'share' : 'link'));
       let found = false, title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 on 30 Nov wins the whole $BOBAI prize pool.';
       if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json();
         /* the name the player plays as now, from the day's board, as the run's card shows it (7.11.: the title kept the name of the run's time) */

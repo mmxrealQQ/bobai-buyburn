@@ -35,6 +35,16 @@ export const MIN_SWEEP_GAS_BNB = 0.0005;
 // balance is swept in daily slices. A bug that produced a huge balance would
 // then move a bounded amount a day rather than everything at once.
 export const MAX_SWEEP_USD = 50;
+
+// A RESERVE THE SWEEP LEAVES (2026-11-11, operator go): the provider wallet 0x7380 is an income wallet (escrow
+// releases) AND the wallet the DeFi agent's daily Bound hire pays from (0.15 $U). On 11.11. at 04:2x the sweep took
+// the 3.30 $U topped up the day before for those hires as income, and Bound was refused at 05:30 ("holds 0 $U") — it
+// had been refused since 6.11. for the same reason. A source may name `keep` (in its token's units): the sweep only
+// takes what lies above it, and never more than the per-run cap. Pure; raw bigint units. Pinned in lp-agent.mjs.
+export function sweepable(balance, keepRaw, capRaw) {
+  const spare = balance > keepRaw ? balance - keepRaw : 0n;
+  return spare > capRaw ? capRaw : spare;
+}
 // Capital under this stays as BNB in the wallet: growing the position is
 // three to four transactions (wrap, swap, increase, unwrap; approvals only
 // when the allowance is short). Was 0.01 while the gas was assumed at 1 gwei;
@@ -190,7 +200,9 @@ export const refuse = refuseCollect;
 // routes far from a dollar is a thin or manipulated pool, not a bargain.
 export function refuseSweep(state) {
   const sym = state.symbol || 'the token';
-  if (!(state.balance > 0)) return `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
+  if (!(state.balance > 0)) return state.kept > 0
+    ? `nothing above the ${state.kept} ${sym} the wallet keeps for its own hires`
+    : `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
   if (state.gasBnb < MIN_SWEEP_GAS_BNB) return `the wallet holds ${Number(state.gasBnb).toFixed(6)} BNB, not enough gas for approve + swap`;
   if (state.feedAgeS > 3600) return `Chainlink BNB/USD is ${Math.round(state.feedAgeS / 60)} min old — not a live price, so the route cannot be checked`;
   if (!(state.bnbUsd >= 100 && state.bnbUsd <= 5000)) return `Chainlink reports BNB at $${state.bnbUsd} — outside the plausible range, not trusting it`;

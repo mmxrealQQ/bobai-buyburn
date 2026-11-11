@@ -31,9 +31,9 @@
 // the plan it was given rather than reading again, so what was printed is
 // what gets sent. A chain read that fails throws — an RPC that did not answer
 // must never look like a wallet that holds nothing.
-import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
+import { parseAbi, formatEther, formatUnits, parseEther, parseUnits, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, reserveCollect, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
+  refuseCollect, refuseSweep, sweepable, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, reserveCollect, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
   MIN_GAS_BNB,
 } from './lp-guards.js';
@@ -105,6 +105,9 @@ export const INCOME_SOURCES = [
     wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
     token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
     earns: '$U released from ERC-8183 job escrows',
+    // 2026-11-11 (operator go): the DeFi agent's daily Bound hire (0.15 $U) pays from this wallet; the sweep leaves
+    // 4 $U (~26 days of hires, topped up from the NFT relayer) and takes only what lies above (sweepable, lp-guards.js).
+    keep: 4,
   },
   // The same wallet, USDC (2026-10-14, the wallet map): 0.208 USDC lay on the provider and no sweep knew it
   {
@@ -668,9 +671,10 @@ export async function planSweep(pub, source, feed = null) {
   const balance = await read(pub, source.token, ABI.ERC20, 'balanceOf', [source.wallet]);
   const gasBal = await pub.getBalance({ address: source.wallet });
   const { bnbUsd, feedAgeS } = feed || (await readBnbUsd(pub));
-  // Bounded per run: a balance above the cap is swept in daily slices.
+  // Bounded per run: a balance above the cap is swept in daily slices. A source's `keep` stays (sweepable).
   const capRaw = parseEther(String(MAX_SWEEP_USD));
-  const amount = balance > capRaw ? capRaw : balance;
+  const keepRaw = parseUnits(String(source.keep || 0), source.decimals);
+  const amount = sweepable(balance, keepRaw, capRaw);
   let bnbOut = 0n, impliedUsd = null, bobaiOut = 0n;
   if (amount > 0n) {
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB]]);
@@ -679,14 +683,14 @@ export async function planSweep(pub, source, feed = null) {
     bobaiOut = (await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB, ADDR.BOBAI]]))[2];
     impliedUsd = (bn(bnbOut) * bnbUsd) / Number(formatUnits(amount, source.decimals));
   }
-  const state = { symbol: source.symbol, balance: Number(formatUnits(balance, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
+  const state = { symbol: source.symbol, balance: Number(formatUnits(amount, source.decimals)), kept: Number(formatUnits(balance < keepRaw ? balance : keepRaw, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
   return {
     step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut, bobaiOut,
     summary: {
       source: source.key, wallet: source.wallet, token: source.symbol,
-      balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
+      balance: Number(formatUnits(balance, source.decimals)), kept: state.kept, sweeping: Number(formatUnits(amount, source.decimals)),
       bnb_equivalent: state.bnbEquivalent, implied_usd: impliedUsd == null ? null : Number(impliedUsd.toFixed(4)),
-      capped: balance > capRaw, wallet_bnb: state.gasBnb,
+      capped: balance > keepRaw + capRaw, wallet_bnb: state.gasBnb,
     },
   };
 }

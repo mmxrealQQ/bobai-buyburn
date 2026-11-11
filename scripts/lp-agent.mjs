@@ -36,7 +36,7 @@ import {
   planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale, gasPriceNow, GAS_BUMP_PLAIN, GAS_BUMP_RESET,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
+  refuseCollect, refuseSweep, sweepable, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_FLOOR_PCT, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderActive, ladderHeal, resumeSide, ladderActsInWatch,
@@ -384,6 +384,15 @@ if (SELF) {
   check('five dollars of USD1 on a wallet with gas', refuseSweep(healthySweep), false);
   check('the same in $U', refuseSweep({ ...healthySweep, symbol: '$U' }), false);
   check('a plan stage with no quote yet', refuseSweep({ ...healthySweep, impliedUsd: null }), false);
+  // the reserve a source keeps for its own hires (11.11.: the sweep took 0x7380's hire money, Bound refused)
+  const e18 = 10n ** 18n;
+  is('a balance under the reserve sweeps nothing', sweepable(33n * e18 / 10n, 4n * e18, 50n * e18) === 0n);
+  is('a balance above the reserve sweeps only the rest', sweepable(10n * e18, 4n * e18, 50n * e18) === 6n * e18);
+  is('the rest above the reserve still stops at the cap', sweepable(100n * e18, 4n * e18, 50n * e18) === 50n * e18);
+  is('a source without a reserve sweeps all of it', sweepable(33n * e18 / 10n, 0n, 50n * e18) === 33n * e18 / 10n);
+  check('nothing above the reserve', refuseSweep({ ...healthySweep, balance: 0, bnbEquivalent: 0, kept: 3.3 }), true);
+  is('the refusal names the reserve', /keeps for its own hires/.test(refuseSweep({ ...healthySweep, balance: 0, kept: 3.3 })));
+  is('the provider source keeps 4 $U', INCOME_SOURCES.find((s) => s.key === 'provider')?.keep === 4);
 
   console.log('increase');
   const healthyIncrease = { positions: 1, spendableBnb: 0.02, inRange: true };

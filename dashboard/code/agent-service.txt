@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24585 lines.
+# one fetch. 75 files, 24601 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -667,9 +667,9 @@ export function summarize(service, result) {
 // the plan it was given rather than reading again, so what was printed is
 // what gets sent. A chain read that fails throws — an RPC that did not answer
 // must never look like a wallet that holds nothing.
-import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
+import { parseAbi, formatEther, formatUnits, parseEther, parseUnits, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, reserveCollect, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
+  refuseCollect, refuseSweep, sweepable, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, reserveCollect, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
   MIN_GAS_BNB,
 } from './lp-guards.js';
@@ -741,6 +741,9 @@ export const INCOME_SOURCES = [
     wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
     token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
     earns: '$U released from ERC-8183 job escrows',
+    // 2026-11-11 (operator go): the DeFi agent's daily Bound hire (0.15 $U) pays from this wallet; the sweep leaves
+    // 4 $U (~26 days of hires, topped up from the NFT relayer) and takes only what lies above (sweepable, lp-guards.js).
+    keep: 4,
   },
   // The same wallet, USDC (2026-10-14, the wallet map): 0.208 USDC lay on the provider and no sweep knew it
   {
@@ -1304,9 +1307,10 @@ export async function planSweep(pub, source, feed = null) {
   const balance = await read(pub, source.token, ABI.ERC20, 'balanceOf', [source.wallet]);
   const gasBal = await pub.getBalance({ address: source.wallet });
   const { bnbUsd, feedAgeS } = feed || (await readBnbUsd(pub));
-  // Bounded per run: a balance above the cap is swept in daily slices.
+  // Bounded per run: a balance above the cap is swept in daily slices. A source's `keep` stays (sweepable).
   const capRaw = parseEther(String(MAX_SWEEP_USD));
-  const amount = balance > capRaw ? capRaw : balance;
+  const keepRaw = parseUnits(String(source.keep || 0), source.decimals);
+  const amount = sweepable(balance, keepRaw, capRaw);
   let bnbOut = 0n, impliedUsd = null, bobaiOut = 0n;
   if (amount > 0n) {
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB]]);
@@ -1315,14 +1319,14 @@ export async function planSweep(pub, source, feed = null) {
     bobaiOut = (await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB, ADDR.BOBAI]]))[2];
     impliedUsd = (bn(bnbOut) * bnbUsd) / Number(formatUnits(amount, source.decimals));
   }
-  const state = { symbol: source.symbol, balance: Number(formatUnits(balance, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
+  const state = { symbol: source.symbol, balance: Number(formatUnits(amount, source.decimals)), kept: Number(formatUnits(balance < keepRaw ? balance : keepRaw, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
   return {
     step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut, bobaiOut,
     summary: {
       source: source.key, wallet: source.wallet, token: source.symbol,
-      balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
+      balance: Number(formatUnits(balance, source.decimals)), kept: state.kept, sweeping: Number(formatUnits(amount, source.decimals)),
       bnb_equivalent: state.bnbEquivalent, implied_usd: impliedUsd == null ? null : Number(impliedUsd.toFixed(4)),
-      capped: balance > capRaw, wallet_bnb: state.gasBnb,
+      capped: balance > keepRaw + capRaw, wallet_bnb: state.gasBnb,
     },
   };
 }
@@ -2777,6 +2781,16 @@ export const MIN_SWEEP_GAS_BNB = 0.0005;
 // balance is swept in daily slices. A bug that produced a huge balance would
 // then move a bounded amount a day rather than everything at once.
 export const MAX_SWEEP_USD = 50;
+
+// A RESERVE THE SWEEP LEAVES (2026-11-11, operator go): the provider wallet 0x7380 is an income wallet (escrow
+// releases) AND the wallet the DeFi agent's daily Bound hire pays from (0.15 $U). On 11.11. at 04:2x the sweep took
+// the 3.30 $U topped up the day before for those hires as income, and Bound was refused at 05:30 ("holds 0 $U") — it
+// had been refused since 6.11. for the same reason. A source may name `keep` (in its token's units): the sweep only
+// takes what lies above it, and never more than the per-run cap. Pure; raw bigint units. Pinned in lp-agent.mjs.
+export function sweepable(balance, keepRaw, capRaw) {
+  const spare = balance > keepRaw ? balance - keepRaw : 0n;
+  return spare > capRaw ? capRaw : spare;
+}
 // Capital under this stays as BNB in the wallet: growing the position is
 // three to four transactions (wrap, swap, increase, unwrap; approvals only
 // when the allowance is short). Was 0.01 while the gas was assumed at 1 gwei;
@@ -2932,7 +2946,9 @@ export const refuse = refuseCollect;
 // routes far from a dollar is a thin or manipulated pool, not a bargain.
 export function refuseSweep(state) {
   const sym = state.symbol || 'the token';
-  if (!(state.balance > 0)) return `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
+  if (!(state.balance > 0)) return state.kept > 0
+    ? `nothing above the ${state.kept} ${sym} the wallet keeps for its own hires`
+    : `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
   if (state.gasBnb < MIN_SWEEP_GAS_BNB) return `the wallet holds ${Number(state.gasBnb).toFixed(6)} BNB, not enough gas for approve + swap`;
   if (state.feedAgeS > 3600) return `Chainlink BNB/USD is ${Math.round(state.feedAgeS / 60)} min old — not a live price, so the route cannot be checked`;
   if (!(state.bnbUsd >= 100 && state.bnbUsd <= 5000)) return `Chainlink reports BNB at $${state.bnbUsd} — outside the plausible range, not trusting it`;

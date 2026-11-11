@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7493,
-   "zipBytes": 196401,
-   "txtBytes": 610705,
-   "sha256": "50d6c0cec4dacdca",
+   "lines": 7518,
+   "zipBytes": 197254,
+   "txtBytes": 613025,
+   "sha256": "8942b0c0ddef0946",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -191,9 +191,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 5902,
-   "zipBytes": 104029,
-   "txtBytes": 311925,
-   "sha256": "44bc96d49677c5a9",
+   "zipBytes": 104048,
+   "txtBytes": 311995,
+   "sha256": "f92346da901c5ad6",
    "reqs": [
     {
      "what": "A bot token",
@@ -522,10 +522,10 @@
    "title": "Brain Pop 6.9 — the daily game in the terminal",
    "tagline": "60 seconds, one engine file, every tap replayed by the server.",
    "files": 8,
-   "lines": 820,
-   "zipBytes": 34910,
-   "txtBytes": 80831,
-   "sha256": "7e04c47995f41993",
+   "lines": 824,
+   "zipBytes": 35116,
+   "txtBytes": 81418,
+   "sha256": "b506acd14bffa624",
    "reqs": [
     {
      "what": "A worker with a Durable Object (SQLite)",
@@ -631,10 +631,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4197,
-   "zipBytes": 149305,
-   "txtBytes": 448381,
-   "sha256": "aee60b572b144e1a",
+   "lines": 4199,
+   "zipBytes": 149406,
+   "txtBytes": 448708,
+   "sha256": "bbbcb361205770b4",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -666,10 +666,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 75,
-   "lines": 24585,
-   "zipBytes": 625702,
-   "txtBytes": 1773787,
-   "sha256": "3a52f8fb6230dc5c",
+   "lines": 24601,
+   "zipBytes": 626280,
+   "txtBytes": 1775156,
+   "sha256": "5ed7c90fdb87ac34",
    "reqs": [
     {
      "what": "A wallet to be paid into",

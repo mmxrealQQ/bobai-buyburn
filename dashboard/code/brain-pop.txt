@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 8 files, 824 lines.
+# one fetch. 8 files, 842 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -594,6 +594,8 @@ export class PopBoard {
     // THE HOLDER BADGE (7.11.): a player's linked wallet and its $BOBAI as last read; only the badge reaches a board
     // who opened the game window, once per player and day (7.11.: 'opened' counts every opening, not people)
     this.sql.exec(`CREATE TABLE IF NOT EXISTS seen (day TEXT, pid TEXT, PRIMARY KEY (day, pid))`);
+    // a visitor of the terminal (11.11.): once a day per browser, by source — the step before the game (/api/pop/visit)
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS visits (day TEXT, pid TEXT, PRIMARY KEY (day, pid))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS wallets (pid TEXT PRIMARY KEY, wallet TEXT, bobai REAL, read_at INT, linked_at INT)`);
   }
   rows(q, ...a) { return [...this.sql.exec(q, ...a)]; }
@@ -635,6 +637,22 @@ export class PopBoard {
         { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); if (u.searchParams.has('from')) this.bump(today, 'came_' + fromOf(u.searchParams.get('from'))); } }
         const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
         return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
+      }
+      // THE STEP BEFORE THE GAME (11.11., operator: "measure first"): the terminal says once per load who arrived and from
+      // where (visit_<from>, once a day per browser), and what they chose at the brainrot notice (ask_stay / ask_std);
+      // our checks (f00d…, &own) are not counted. Nothing is stored beyond the day's list of browsers already counted.
+      if (req.method === 'GET' && p === 'visit') {
+        const vp = String(u.searchParams.get('p') || '');
+        if (/^[0-9a-f]{16}$/.test(vp) && !test0(vp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM visits WHERE day = ? AND pid = ?', today, vp).length) {
+          this.sql.exec('INSERT INTO visits (day, pid) VALUES (?, ?)', today, vp); this.bump(today, 'visit_' + fromOf(u.searchParams.get('from')));
+          if (Math.random() < 0.02) this.sql.exec('DELETE FROM visits WHERE day < ?', dayOf(now - 3 * 86400e3));
+        }
+        return J({ ok: true });
+      }
+      if (req.method === 'GET' && p === 'ask') {
+        const c = String(u.searchParams.get('c') || ''); if (!/^(stay|std)$/.test(c)) return J({ error: 'unknown choice' }, 400);
+        if (!u.searchParams.has('own')) this.bump(today, 'ask_' + c);
+        return J({ ok: true });
       }
       // a share, counted by where it went (7.11.: nobody knew whether runs are shared); only known targets, nothing stored
       if (req.method === 'GET' && p === 'share') {

@@ -233,6 +233,47 @@ export function refusedVerdict(list, now = Date.now()) {
     ? `${ours.length} refused on our side: ${ours.slice(0, 2).map((r) => `${r.product} ${String(r.at).slice(11, 16)} — ${String(r.why || 'no reason').slice(0, 90)}`).join(' | ')}`
     : `${day.length} refused in 24 h, each for the payer's own reason${day.length ? ' (' + [...new Set(day.map((r) => (String(r.why).match(PAYER_SIDE) || ['?'])[0]))].slice(0, 2).join('; ') + ')' : ''}` };
 }
+// OUR AGENTS' DAILY HIRES (2026-11-11): Bound was refused every morning from 6.11. ("the wallet holds 0 $U") and no
+// check said so — the sweep had taken the hire money. Every hire that is not paused must have its newest attempt in
+// the last 26 h answered (one still under way for less than 3 h counts as on its way); a refusal or failure is red
+// with its reason. Runway: the hiring wallet's $U divided by the price must last at least 5 more days.
+export const HIRE_RUNWAY_DAYS = 5;
+export function hiresVerdict(j, now = Date.now()) {
+  if (!j || !Array.isArray(j.log) || !Array.isArray(j.hires)) return { good: false, detail: 'the agent server did not report /hires' };
+  if (j.switched_on !== true) return { good: false, detail: 'agent hires are switched off (AGENT_HIRES)' };
+  const bad = [], fine = [];
+  for (const h of j.hires.filter((x) => !x.paused)) {
+    const e = j.log.find((x) => x.seller === h.seller), age = e ? (now - Date.parse(e.at)) / 3600e3 : null;
+    if (!e || !(age < 26)) { bad.push(`${h.seller_name}: no attempt in 26 h${e ? ` (last ${e.at.slice(5, 16)})` : ''}`); continue; }
+    if (e.status === 'answered') { fine.push(`${h.seller_name} answered${e.job ? ` job ${e.job}` : ''}`); continue; }
+    if (age < 3 && !/refused|failed|not delivered|not readable/.test(String(e.status))) { fine.push(`${h.seller_name} ${e.status}`); continue; }
+    bad.push(`${h.seller_name} ${e.status}${e.reason ? ': ' + String(e.reason).slice(0, 90) : ''}`);
+  }
+  return { good: !bad.length, detail: bad.length ? bad.join(' | ') : fine.join(', ') || 'no active hire' };
+}
+export function runwayVerdict(rows) {
+  const short = rows.filter((r) => !(r.u != null && r.price > 0 && r.u / r.price >= HIRE_RUNWAY_DAYS));
+  const say = (r) => `${r.name} ${r.u == null ? '? (unreadable)' : `${r.u.toFixed(2)} $U = ${Math.floor(r.u / r.price)} days`}`;
+  return { good: rows.length > 0 && !short.length, detail: rows.length ? (short.length ? `short: ${short.map(say).join(', ')} — top up 0x7380 from the NFT relayer (fund-provider-wallet.mjs, then the $U swap)` : rows.map(say).join(', ')) : 'no hiring wallet found' };
+}
+const hiresHolds = () => {
+  const now = Date.parse('2026-11-11T06:00:00Z');
+  const hires = [{ seller: 1, seller_name: 'Keel' }, { seller: 2, seller_name: 'Sluicegate', paused: 'x' }, { seller: 3, seller_name: 'Bound' }];
+  const g = (log, on = true) => hiresVerdict({ switched_on: on, hires, log }, now).good;
+  const ans = (seller, at = '2026-11-11T05:30:00Z') => ({ seller, at, status: 'answered', job: '1' });
+  return g([ans(3), ans(1)]) === true
+    && g([{ seller: 3, at: '2026-11-11T05:31:00Z', status: 'refused', reason: 'the wallet holds 0 $U, the price is 0.15' }, ans(1)]) === false // 11.11.
+    && g([ans(3, '2026-11-10T03:00:00Z'), ans(1)]) === false // stale
+    && g([ans(1)]) === false // never tried
+    && g([{ seller: 3, at: '2026-11-11T05:31:00Z', status: 'hiring' }, ans(1)]) === true // under way
+    && g([{ seller: 3, at: '2026-11-11T01:00:00Z', status: 'hiring' }, ans(1)]) === false // stuck
+    && g([ans(3), ans(1)], false) === false // switched off
+    && runwayVerdict([{ name: 'Bound', u: 3.27, price: 0.15 }]).good === true
+    && runwayVerdict([{ name: 'Bound', u: 0, price: 0.15 }]).good === false
+    && runwayVerdict([{ name: 'Bound', u: 0.6, price: 0.15 }]).good === false
+    && runwayVerdict([{ name: 'Bound', u: null, price: 0.15 }]).good === false
+    && runwayVerdict([]).good === false;
+};
 const refusedHolds = () => {
   const now = Date.parse('2026-10-25T16:00:00Z'), at = '2026-10-25T15:45:00Z';
   const g = (list) => refusedVerdict(list, now).good;
@@ -310,7 +351,9 @@ export const KEEP_80841_WALLETS = {
   'agent provider 0x7380…5963': '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
   'x402 income 0x690E…4dE4': '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
 };
-export const KEEP_80841_AT_LEAST = new Set(['0x690E950214980BC329823A2DB2fD90C06Bd54dE4']);
+// The provider 0x7380 too (2026-11-11): it is a sweep source ($U from escrows), and the sweep buys $BOBAI with half of
+// it and leaves it in the income wallet (shared/lp-agent.js) — on 11.11. +3,623 BOBAI read as "above the 80,841 it keeps".
+export const KEEP_80841_AT_LEAST = new Set(['0x690E950214980BC329823A2DB2fD90C06Bd54dE4', '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963']);
 const KEEP_WEI = 80841n * 10n ** 16n, KEEP_TOL_WEI = 10n ** 16n, KEEP_BIG_WEI = 80841n * 10n ** 18n;
 export function keepVerdict(label, wei, atLeast = false, keep = KEEP_WEI) {
   const amt = (Number(keep / 10n ** 14n) / 1e4).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -409,6 +452,7 @@ ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
 ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a run reads red, tax that just arrived does not)', buybackVerdictHolds());
 ok('Health', 'the told-buys / burn-alert rules pass their own pins (an untold buy, a stuck queue, a burn stuck an hour read red)', tgEvidenceHolds());
+ok('Health', 'the agent-hire rules pass their own pins (a refusal, a stale or stuck hire and a short wallet are red)', hiresHolds());
 ok('Health', 'the refused-payment rule passes its own pins (a payer\'s empty wallet is theirs, a failed RPC or an unknown reason is ours)', refusedHolds());
 ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is not, an unread wallet is red)', keepHolds());
 { const GG = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', low = keepVerdict('Giggle pot', 0n, true), before = PRIZE_PAID_FROM - 1, after = PRIZE_PAID_FROM;
@@ -808,6 +852,20 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const ask = op?.last_ask, askNote = ask ? ` · last ask ${ask.at.slice(5, 16).replace('T', ' ')} UTC: ${ask.status}${ask.job ? ` job ${ask.job}` : ''}${ask.reason ? ` (${ask.reason})` : ''}` : '';
   const fresh = lastAge != null && lastAge < 26;
   ok('Agents', 'the DeFi agent bought its second opinion in the last 26 h', fresh, (lastOk ? `${lastAge.toFixed(1)} h ago, job ${lastOk.job}` : `none answered — newest: ${ops[0] ? `${ops[0].status}: ${ops[0].reason || ''}` : 'no attempt yet'}`) + (fresh ? '' : askNote));
+  // 3d. Our agents' daily hires on Marque (2026-11-11: Bound refused from 6.11. unseen) and each hiring wallet's runway
+  const hj = (await getJ(`${AGENT}/hires`)).body, hv = hiresVerdict(hj);
+  ok('Agents', "every active daily hire of our agents was answered in the last 26 h (Keel, Bound)", hv.good, hv.detail);
+  const rows = [];
+  for (const h of (hj?.hires || []).filter((x) => !x.paused)) {
+    const mine = (hj.log || []).filter((x) => x.seller === h.seller), w = mine.find((x) => x.wallet)?.wallet;
+    const price = mine.find((x) => x.price_u)?.price_u ?? Number((String(mine.find((x) => /the price is/.test(x.reason || ''))?.reason || '').match(/the price is ([\d.]+)/) || [])[1]);
+    if (!w || !(price > 0)) { rows.push({ name: h.seller_name, u: null, price: 1 }); continue; }
+    const u = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xcE24439F2D9C6a2289F741120FE202248B666666', data: '0x70a08231' + w.slice(2).toLowerCase().padStart(64, '0') }, 'latest'] }), signal: AbortSignal.timeout(15000) })
+      .then((r) => r.json()).then((x) => (x.result ? Number(BigInt(x.result)) / 1e18 : null)).catch(() => null);
+    rows.push({ name: h.seller_name, u, price });
+  }
+  const rv = runwayVerdict(rows);
+  ok('Agents', `every hiring wallet holds $U for at least ${HIRE_RUNWAY_DAYS} more days of its hire`, rv.good, rv.detail);
   ok('Agents', 'the newest second opinion does not contradict the agent', !lastOk || lastOk.agrees !== false, lastOk ? `agrees ${lastOk.agrees} on #${(lastOk.answer || [])[0]?.position || '?'}` : 'none yet');
   const leashU = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xcE24439F2D9C6a2289F741120FE202248B666666', data: '0x70a08231000000000000000000000000c5a17b5295fc50badb1f9f9c09b412fe5e84f7d3' }, 'latest'] }) }).then((r) => r.json()).then((j) => (j.result ? Number(BigInt(j.result)) / 1e18 : null)).catch(() => null);
   ok('Agents', 'the Altana leash holds $U for at least five more second opinions', leashU != null && leashU >= 0.05, leashU == null ? 'unreadable' : `${leashU.toFixed(2)} $U (top up: node scripts/fund-leash.mjs --send)`);

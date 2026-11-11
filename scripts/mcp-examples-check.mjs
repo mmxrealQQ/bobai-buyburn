@@ -25,5 +25,18 @@ for (const name of TOOLS) {
   const r = await rpc('/mcp', 'tools/call', { name, arguments: { address: ex } }).catch((e) => ({ isError: true, content: [{ text: String(e) }] }));
   ok(`${name}: a call with its example answers`, r && !r.isError, (r?.content?.[0]?.text || '').slice(0, 90).replace(/\s+/g, ' '));
 }
+// THE READ-ONLY TOOLS TOO (11.11., second step): position_look, wallet_balance, agent_chart and find_agents were refused
+// to the same probes every day. Each names an example for the argument it needs, and a call with it answers. Tools that
+// write (plaza_board_post, bsc_rug_watch) name none on purpose: a probe should not create a post or a watch.
+const MORE = { bnb_fix_lookup: 'error', erc8183_escrow_status: 'address', find_agents_on_bnb_chain: 'query', bnb_agent_chart: 'agent_id', bobai_wallet_balance: 'address', pancakeswap_position_look: 'address' };
+for (const [name, prop] of Object.entries(MORE)) {
+  const t = tools.find((x) => x.name === name), ex = t?.inputSchema?.properties?.[prop]?.examples?.[0];
+  if (ex == null) { ok(`${name}: ${prop} names an example, a call with it answers`, false, 'no example'); continue; }
+  const r = await rpc('/mcp', 'tools/call', { name, arguments: { [prop]: ex } }).catch((e) => ({ isError: true, content: [{ text: String(e) }] }));
+  const text = r?.content?.[0]?.text || '';
+  ok(`${name}: ${prop} names an example, a call with it answers`, r && !r.isError && !/"found":\s*0\b/.test(text), `${JSON.stringify(ex)} → ${text.slice(0, 70).replace(/\s+/g, ' ')}`);
+}
+const WRITE = ['plaza_board_post', 'bsc_rug_watch'];
+ok('the tools that write name no example (a probe must not post or open a watch)', WRITE.every((n) => !Object.values(tools.find((x) => x.name === n)?.inputSchema?.properties || {}).some((p) => p.examples)));
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

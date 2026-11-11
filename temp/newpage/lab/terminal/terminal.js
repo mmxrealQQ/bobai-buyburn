@@ -7573,6 +7573,11 @@ window.__btBrSeason = brSeason;
   })();
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
   let pid = lsGet('bt-pop-pid'); if (!/^[0-9a-f]{16}$/.test(pid || '')) { pid = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join(''); lsSet('bt-pop-pid', pid); }
+  // the step before the game (11.11.): who loaded the terminal and from where, once a day per browser on the server;
+  // not from a window embedded in another page of ours (those are not arrivals), not from our checks (f00d…)
+  const OWN = pid.startsWith('f00d') ? '&own=1' : '';
+  let topWin = true; try { topWin = window.top === window && !new URLSearchParams(location.search).has('embed'); } catch { topWin = false; }
+  if (topWin) fetch(API + 'visit?p=' + pid + '&from=' + FROM + OWN, { cache: 'no-store' }).catch(() => {});
   const ri = n => Math.floor(Math.random() * n);
   let pname = null; try { pname = JSON.parse(lsGet('bt-pop-name') || 'null'); } catch {}
   const okName = v => (Array.isArray(v) && v.length === 3) || (v && typeof v === 'object' && typeof v.own === 'string' && Number.isInteger(v.v));
@@ -8238,7 +8243,7 @@ window.__btBrSeason = brSeason;
       + '<div class="br-ask-b"><button type="button" class="br-ask-yes">' + (calmPop ? 'Play anyway' : 'Stay in brainrot') + '</button><button type="button" class="br-ask-no">' + (calmPop ? 'No thanks, the standard terminal' : 'Switch to the standard terminal') + '</button></div>'
       + '<small>You can change it any time with the ROT button next to LIVE.' + (calmDevice && !calmPop ? ' Your device asks for reduced motion: switching is recommended.' : '') + '</small></div>';
     win.appendChild(nb);
-    const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} nb.remove(); set(v, false); if (v && CHQ) setTimeout(openPanel, 900); /* a challenge link: straight to the game */ };
+    const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} if (topWin) fetch(API + 'ask?c=' + (v ? 'stay' : 'std') + OWN, { cache: 'no-store' }).catch(() => {}); /* 11.11.: the choice at the notice, counted */ nb.remove(); set(v, false); if (v && CHQ) setTimeout(openPanel, 900); /* a challenge link: straight to the game */ };
     nb.querySelector('.br-ask-no').addEventListener('click', e => { e.stopPropagation(); choose(false); });
     nb.querySelector('.br-ask-yes').addEventListener('click', e => { e.stopPropagation(); choose(true); });
     setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight

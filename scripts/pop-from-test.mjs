@@ -35,5 +35,12 @@ const loc = async (p) => { const t = await (await fetch(SITE + p, { redirect: 'm
 const g = await loc('/m/pop?from=tg'), h = await loc('/m/pop/b444499e01be');
 ok('5 /m/pop?from=tg passes the source on', g === '/?pop=play&from=tg', g);
 ok('5 a run link without a source says share', h === '/?pop=b444499e01be&from=share', h);
-console.log(`\npop-from test: ${7 - fails}/7`);
+// 6 the step before the game: a visit counts once a day per browser by source, the notice's choice by its answer
+const v0 = await counts(), e = pid();
+await J(`visit?p=${e}&from=site-home`); await J(`visit?p=${e}&from=site-home`); await J('visit?p=f00d000000000099&from=site-home');
+await J('ask?c=stay'); await J('ask?c=std'); await J('ask?c=stay&own=1'); const bad = await J('ask?c=maybe');
+const v1 = await counts();
+ok('6 a visit counts once a day per browser, a check never', d(v0, v1, 'visit_site-home') === 1, `visit_site-home +${d(v0, v1, 'visit_site-home')}`);
+ok('6 the notice counts stay and standard, not our checks, not an invented answer', d(v0, v1, 'ask_stay') === 1 && d(v0, v1, 'ask_std') === 1 && !!bad.error, `stay +${d(v0, v1, 'ask_stay')} std +${d(v0, v1, 'ask_std')}`);
+console.log(`\npop-from test: ${9 - fails}/9`);
 process.exit(fails ? 1 : 0);

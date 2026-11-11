@@ -19,7 +19,7 @@ async function tabOpen() {
   let id = 0; const pend = {}, reqs = [];
   const send = (method, params = {}) => new Promise(r => { const i = ++id; pend[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
   ws.onmessage = m => { const d = JSON.parse(m.data); if (d.id && pend[d.id]) { pend[d.id](d); delete pend[d.id]; }
-    if (d.method === 'Network.requestWillBeSent' && /\/api\/pop\/(day|start)/.test(d.params.request.url)) reqs.push({ url: d.params.request.url, body: d.params.request.postData || '' }); };
+    if (d.method === 'Network.requestWillBeSent' && /\/api\/pop\/(day|start|visit|ask)/.test(d.params.request.url)) reqs.push({ url: d.params.request.url, body: d.params.request.postData || '' }); };
   await send('Page.enable'); await send('Network.enable'); await send('Runtime.enable'); await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('bt-pop-pid','f00d' + '000000000011');localStorage.setItem('bt-br','1');localStorage.setItem('bt-pop-named','1');localStorage.setItem('bt-br-tut','1')}catch(e){}` });
   const ev = async src => (await send('Runtime.evaluate', { expression: src, returnByValue: true, awaitPromise: true })).result?.result?.value;
@@ -45,5 +45,11 @@ const waitDay = async (t, n = 1, ms = 30000) => { for (let i = 0; i < ms; i += 3
 // 3 a challenge link opened without a referrer
 { const t = await tabOpen(); await t.send('Page.navigate', { url: BASE + '/?pop=b444499e01be' }); const d = await waitDay(t);
   say(fromOf(d) === 'challenge', '3 /?pop=<run> without a referrer sends from=challenge', d ? 'from=' + fromOf(d) : 'no /day request');
+  t.ws.close(); }
+// 5 the step before the game (11.11.): the front page says once who arrived and from where, the notice's choice too
+{ const t = await tabOpen(); await t.send('Page.navigate', { url: BASE + '/?from=x' });
+  let v = null, a = null; for (let i = 0; i < 100 && !(v && a); i++) { await sleep(300); v = t.reqs.find(r => /\/visit\?/.test(r.url)); a = t.reqs.find(r => /\/ask\?/.test(r.url)); if (!a) await t.ev(`(document.querySelector('.br-ask-yes')||{click(){}}).click(), 1`).catch(() => {}); }
+  say(fromOf(v) === 'x' && t.reqs.filter(r => /\/visit\?/.test(r.url)).length === 1, '5 the front page sends one visit with from=x', v ? v.url.replace(/^.*\/api/, '/api') : 'no /visit request');
+  say(!!a && /c=stay/.test(a.url), '5 "Stay in brainrot" is counted as ask=stay', a ? a.url.replace(/^.*\/api/, '/api') : 'no /ask request');
   t.ws.close(); }
 console.log(`\n${pass} PASS · ${fail} FAIL`); ch.kill(); process.exit(fail ? 1 : 0);

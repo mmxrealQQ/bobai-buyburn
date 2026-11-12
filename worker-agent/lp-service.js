@@ -118,7 +118,9 @@ export async function lpPositionFacts(params = {}) {
     pool: { address: poolInfo.pool, token0: p.pos[2], token1: p.pos[3], fee_tier_pct: Number(p.pos[4]) / 10000, tick: poolInfo.tick, ticks: [Number(p.pos[5]), Number(p.pos[6])] },
     in_range: poolInfo.inRange,
     // Distance to each edge in percent of price: how much room is left.
-    room: { to_lower_pct: +((1 - Math.pow(1.0001, Number(p.pos[5]) - poolInfo.tick)) * 100).toFixed(2), to_upper_pct: +((Math.pow(1.0001, Number(p.pos[6]) - poolInfo.tick) - 1) * 100).toFixed(2) },
+    // a full-range edge has no room to measure (2026-11-12: "to_upper_pct": 1.2e+46): null, and full_range says why
+    room: (() => { const lo = Number(p.pos[5]), hi = Number(p.pos[6]), FULL = 887000, full = lo <= -FULL || hi >= FULL;
+      return { to_lower_pct: lo <= -FULL ? null : +((1 - Math.pow(1.0001, lo - poolInfo.tick)) * 100).toFixed(2), to_upper_pct: hi >= FULL ? null : +((Math.pow(1.0001, hi - poolInfo.tick) - 1) * 100).toFixed(2), ...(full ? { full_range: true } : {}) }; })(),
     liquidity: p.pos[7].toString(),
     holds: { token0: in0, token1: in1 },
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
@@ -162,7 +164,7 @@ export async function lpDefaultTarget(payer) {
   return { address: OWN_LP_WALLET, target: `no position was named and the paying wallet holds none: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET}) — name yours with position: <id> or address: 0x…` };
 }
 // A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
-const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
+const roomSaid = (r) => `${r.to_lower_pct == null || r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct == null || r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
 // the fees owed as a sentence, BNB with its dollars (2026-10-28: every amount carries its USD)
 const owedSaid = (owed, usd) => { const u = usd > 0 ? ` (≈$${(owed * usd).toFixed(2)})` : ''; return owed >= 0.002 ? `Fees owed: ${owed.toFixed(6)} BNB${u} — collecting pays for its gas.` : `Fees owed: ${owed.toFixed(6)} BNB${u} — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`; };
 export async function lpPositionLook(params = {}, env = null) {

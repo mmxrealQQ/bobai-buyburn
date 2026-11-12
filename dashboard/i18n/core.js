@@ -97,5 +97,5 @@ export const NOAR = 'script,style,noscript,code,pre,textarea,svg,[translate="no"
   + '.pb-title,.pb-body,.bb-topic li > a,#pb-list .rc-what';
 
 // this site's own pages, which have an Arabic twin under /ar/ (assets, APIs and the apps keep their one address)
-export const AR_PAGES = /^\/(?:$|classic$|token|faq|pop|scanner|registry|list|services|defi|library|whitepaper|advantage|session|source|roadmap|archive|screener|board|connect|jobs|pass|pancakeswap|venus|settle|set-and-earn|agent|nft|buy)(?:\.html)?(?:[/?#]|$)/;
+export const AR_PAGES = /^\/(?:$|(?=[?#])|classic$|token|faq|pop|scanner|registry|list|services|defi|library|whitepaper|advantage|session|source|roadmap|archive|screener|board|connect|jobs|pass|pancakeswap|venus|settle|set-and-earn|agent|nft|buy)(?:\.html)?(?:[/?#]|$)/;
 export const toAr = (href) => (AR_PAGES.test(href) ? '/ar' + (href === '/' ? '/' : href) : href);

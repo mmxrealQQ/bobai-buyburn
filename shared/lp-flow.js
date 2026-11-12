@@ -142,7 +142,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const last = rec?.last || {}, ls = last.steps || {};
   const lastSweeps = Array.isArray(ls.sweep) ? ls.sweep : [];
   const waiting = {
-    income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
+    // what moves at the next sweep; a source's hire reserve (`kept`, 2026-11-11) never does, so it stands apart
+    income: lastSweeps.filter((s) => n(s.sweeping ?? s.balance) > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.sweeping ?? s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
+    kept: lastSweeps.filter((s) => n(s.kept) > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.kept) })),
     // The newest figure: the hourly check's rebalance step reads what the
     // position owes now; the daily collect's figure is up to a day old.
     fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : null,   // not read is not zero (2026-09-24, D7)
@@ -202,7 +204,7 @@ export function flowLines(flow) {
   if (!flow) return null;
   const f = (v) => n(v).toFixed(5);
   const income = flow.in.income.length
-    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : '', s.to_operator > 0 ? `${s.to_operator} ${s.token || ''} to the operator`.replace(/ +$/, '') : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${s.sold + (s.to_operator || 0)} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
+    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : '', s.to_operator > 0 ? `${n(s.to_operator).toFixed(2)} ${s.token || ''} to the operator`.replace(/ +$/, '') : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${(n(s.sold) + n(s.to_operator)).toFixed(2)} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
   // The basis in the sentence: the re-sets that had fees to take, of all there were.

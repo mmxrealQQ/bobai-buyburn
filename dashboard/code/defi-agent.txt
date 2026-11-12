@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7520 lines.
+# one fetch. 17 files, 7535 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -227,7 +227,7 @@ if (SELF) {
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
   // 2026-10-14: the income buys $BOBAI held in its wallet — the flow counts it per source and the sentence names it
-  is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1.6 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
+  is('a sweep that bought $BOBAI is counted as $BOBAI held, not as BNB', (() => { const f2 = moneyFlow({ history: [{ at: '2026-10-15T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '1.6', bobai_bought: '6200', txs: [] }] } }] }); const s = f2.in.income.find((x) => x.source === 'x402'); return s && s.bobai === 6200 && s.bnb === 0 && /6,200 \$BOBAI held from 1\.60 USD1/.test(flowLines(f2).income || JSON.stringify(flowLines(f2))); })());
   is('the sweep buys $BOBAI into the income wallet, never BNB into the DeFi wallet (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); const body = src.slice(src.indexOf('export async function executeSweep'), src.indexOf('export async function executeSweep') + 2600); return /swapExactTokensForTokensSupportingFeeOnTransferTokens/.test(body) && /ADDR\.WBNB, ADDR\.BOBAI\], holder/.test(body) && !/ADDR\.LP_WALLET/.test(body); })());
   // 2026-10-14 (operator: the fees "an alle drei gleichmässig"): what a collect or a re-set paid the operator is counted
   // as paid out, and a re-set's payout is never counted as capital folded in
@@ -236,7 +236,11 @@ if (SELF) {
     { at: '2026-10-17T08:50:00Z', steps: { rebalance: { acted: true, fees_folded_bnb: 0.003, bobai_bnb: 0.001, to_operator_bnb: 0.001, txs: [] } } }] });
     return f4.out.operator_bnb === 0.002 && f4.in.fees.folded_kept_bnb === 0.001 && f4.out.kept_as_capital_bnb === 0.002; })());
   // 2026-10-14 (operator: "50 % $BOBAI, the rest in stables to c3c"): half of every sweep goes to the operator as paid
-  is('a sweep counts the operator\'s half beside the $BOBAI half, and the sentence names both', (() => { const f3 = moneyFlow({ history: [{ at: '2026-10-16T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '0.8', to_operator: '0.8', bobai_bought: '3100', txs: [] }] } }] }); const s = f3.in.income.find((x) => x.source === 'x402'); return s && s.to_operator === 0.8 && s.bobai === 3100 && /3,100 \$BOBAI held and 0.8 USD1 to the operator from 1.6 USD1/.test(flowLines(f3).income || JSON.stringify(flowLines(f3))); })());
+  is('a sweep counts the operator\'s half beside the $BOBAI half, and the sentence names both', (() => { const f3 = moneyFlow({ history: [{ at: '2026-10-16T04:23:00Z', steps: { sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '0.8', to_operator: '0.8', bobai_bought: '3100', txs: [] }] } }] }); const s = f3.in.income.find((x) => x.source === 'x402'); return s && s.to_operator === 0.8 && s.bobai === 3100 && /3,100 \$BOBAI held and 0\.80 USD1 to the operator from 1\.60 USD1/.test(flowLines(f3).income || JSON.stringify(flowLines(f3))); })());
+  // 12.11.: /lp/agent read "1.6985007791757145 $U to the operator from 3.3970017791757146 $U"
+  is('a sweep\'s operator half and its total are said in cents', (() => { const f5 = moneyFlow({ history: [{ at: '2026-11-11T04:23:00Z', steps: { sweep: [{ source: 'provider', token: '$U', acted: true, sold: '1.6985010000000001', to_operator: '1.6985007791757145', bobai_bought: '3623', txs: [] }] } }] }); const t = JSON.stringify(flowLines(f5)); return /1\.70 \$U to the operator from 3\.40 \$U/.test(t) && !/\d\.\d{5,} \$U/.test(t); })());
+  // 12.11.: the hire reserve (kept) stood under "waiting" as income that "moves once it is worth more than the gas"
+  is('a source\'s hire reserve is not income waiting; it stands apart as kept', (() => { const f6 = moneyFlow({ history: [], last: { at: '2026-11-12T04:23:00Z', steps: { sweep: [{ source: 'provider', token: '$U', acted: false, balance: 3.2798673873069237, kept: 3.2798673873069237, sweeping: 0 }, { source: 'x402', token: 'USD1', acted: false, balance: 0.3, kept: 0, sweeping: 0.3 }] } } }); return f6.waiting.income.length === 1 && f6.waiting.income[0].source === 'x402' && f6.waiting.kept.length === 1 && Math.abs(f6.waiting.kept[0].amount - 3.28) < 0.01; })());
   is('half of every sweep goes to the operator wallet 0x5c82…dC3C in the coin it was paid in (source pin)', (() => { const src = fs.readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8'); return /OPERATOR_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C'/.test(src) && /OPERATOR_SHARE_BPS = 5000n/.test(src) && /functionName: 'transfer', args: \[OPERATOR_WALLET, toOperator\]/.test(src); })());
   is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.008) && fl.in.fees.collects === 3);
   is('the fees three re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.0012) && fl.in.fees.resets_with_fees === 3 && near(fl.in.fees.bnb, 0.0092));
@@ -1554,6 +1558,11 @@ if (process.argv.includes('--self-test')) {
   is('the pool is the record\'s own, labelled from the pool list', m.pool.address === CANDIDATES[0].pool && m.pool.label === 'CAKE/BNB 0.05%' && m.pool.position === '7397034');
   is('P&L carries the split and the fee parts', m.pnl.profit_bnb === 0.00376 && m.pnl.from_price_bnb === -0.00042 && m.pnl.fee_parts.length === 3 && m.pnl.gas_bnb === 0.00065);
   is('the other token is read off the pool label', m.pnl.other_token === 'CAKE');
+  // 12.11.: bnb_usd was the run's price while every tile used today's, and profit_usd kept the run's own dollars
+  const mNow = lpPortfolio(rec, series, { now: NOW, bnbUsdNow: 700 });
+  is('one BNB price for every dollar: bnb_usd names it, profit_usd uses it, the run\'s price stays beside', mNow.bnb_usd === 700 && mNow.bnb_usd_at_run === 722 && mNow.pnl.profit_usd === Math.round(0.003762 * 700 * 100) / 100 && m.bnb_usd === 722);
+  const mTape = lpPortfolio({ ...rec, series_summary: undefined }, { ...series, summary: { ...series.summary, time_in_range: { in_range_pct: 100, samples: 4320, from: '2026-10-13T00:00:00Z' } } }, { now: NOW });
+  is('the share of time in range names the day its tape began', mTape.pnl.time_in_range_pct === 100 && mTape.pnl.time_in_range_from === '2026-10-13' && mTape.pnl.time_in_range_samples === 4320);
   is('the held $BOBAI is priced when the route has a price, and not otherwise', m.holdings.bobai_usd === 0.78 && lpPortfolio(rec, series, { now: NOW }).holdings.bobai_usd === null);
   is('the two halves of the profit are named: kept working, into $BOBAI', m.pnl.kept_working_bnb === 0.00287 && m.pnl.into_bobai_bnb === 0.00109 && m.pnl.bobai_units === 3895);
   is('the model carries no pool record: the agent stays in CAKE/BNB (2026-09-11)', !('pool_record' in m) && !m.links.pools);
@@ -4132,7 +4141,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const last = rec?.last || {}, ls = last.steps || {};
   const lastSweeps = Array.isArray(ls.sweep) ? ls.sweep : [];
   const waiting = {
-    income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
+    // what moves at the next sweep; a source's hire reserve (`kept`, 2026-11-11) never does, so it stands apart
+    income: lastSweeps.filter((s) => n(s.sweeping ?? s.balance) > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.sweeping ?? s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
+    kept: lastSweeps.filter((s) => n(s.kept) > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.kept) })),
     // The newest figure: the hourly check's rebalance step reads what the
     // position owes now; the daily collect's figure is up to a day old.
     fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : null,   // not read is not zero (2026-09-24, D7)
@@ -4192,7 +4203,7 @@ export function flowLines(flow) {
   if (!flow) return null;
   const f = (v) => n(v).toFixed(5);
   const income = flow.in.income.length
-    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : '', s.to_operator > 0 ? `${s.to_operator} ${s.token || ''} to the operator`.replace(/ +$/, '') : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${s.sold + (s.to_operator || 0)} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
+    ? flow.in.income.map((s) => `${[s.bnb > 0 ? `${f(s.bnb)} BNB` : '', s.bobai > 0 ? `${Math.round(s.bobai).toLocaleString('en-US')} $BOBAI held` : '', s.to_operator > 0 ? `${n(s.to_operator).toFixed(2)} ${s.token || ''} to the operator`.replace(/ +$/, '') : ''].filter(Boolean).join(' and ') || '0 BNB'} from ${(n(s.sold) + n(s.to_operator)).toFixed(2)} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
   // The basis in the sentence: the re-sets that had fees to take, of all there were.
@@ -5527,7 +5538,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
   return {
-    at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
+    at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsdNow > 0 ? bnbUsdNow : bnbUsd, bnb_usd_at_run: bnbUsd,
     pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10, at_edge: !inRange && atEdge, side },
     next,
     day: daySummary,
@@ -5555,7 +5566,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
       kept_working_bnb: r5(sum.fees_kept_as_capital_bnb),
       into_bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)),
-      profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
+      profit_bnb: r5(p.bnb), profit_usd: usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
       change_text: changeText(value.change_pct, sum.since),
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       // The price part in its two causes (2026-10-09): the market (a wallet that held each arrival 50/50) and the
@@ -5573,6 +5584,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       // The share of time, from the ten-minute tape; the run counts beside it lean high (D3).
       time_in_range_pct: sum.time_in_range ? sum.time_in_range.in_range_pct : null,
+      // the tape began after `since` (2026-11-12: 100 % read as "in range since 3 Sep"), so the share names its own start
+      time_in_range_from: sum.time_in_range && sum.time_in_range.from ? String(sum.time_in_range.from).slice(0, 10) : null, time_in_range_samples: sum.time_in_range ? sum.time_in_range.samples ?? null : null,
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },
     last_24h: day,
@@ -5705,7 +5718,9 @@ export async function lpPositionFacts(params = {}) {
     pool: { address: poolInfo.pool, token0: p.pos[2], token1: p.pos[3], fee_tier_pct: Number(p.pos[4]) / 10000, tick: poolInfo.tick, ticks: [Number(p.pos[5]), Number(p.pos[6])] },
     in_range: poolInfo.inRange,
     // Distance to each edge in percent of price: how much room is left.
-    room: { to_lower_pct: +((1 - Math.pow(1.0001, Number(p.pos[5]) - poolInfo.tick)) * 100).toFixed(2), to_upper_pct: +((Math.pow(1.0001, Number(p.pos[6]) - poolInfo.tick) - 1) * 100).toFixed(2) },
+    // a full-range edge has no room to measure (2026-11-12: "to_upper_pct": 1.2e+46): null, and full_range says why
+    room: (() => { const lo = Number(p.pos[5]), hi = Number(p.pos[6]), FULL = 887000, full = lo <= -FULL || hi >= FULL;
+      return { to_lower_pct: lo <= -FULL ? null : +((1 - Math.pow(1.0001, lo - poolInfo.tick)) * 100).toFixed(2), to_upper_pct: hi >= FULL ? null : +((Math.pow(1.0001, hi - poolInfo.tick) - 1) * 100).toFixed(2), ...(full ? { full_range: true } : {}) }; })(),
     liquidity: p.pos[7].toString(),
     holds: { token0: in0, token1: in1 },
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
@@ -5749,7 +5764,7 @@ export async function lpDefaultTarget(payer) {
   return { address: OWN_LP_WALLET, target: `no position was named and the paying wallet holds none: this is the plan for the position this agent runs itself (wallet ${OWN_LP_WALLET}) — name yours with position: <id> or address: 0x…` };
 }
 // A full-range position's edges are the tick limits: its room read '1.5e+62% above' (2026-10-14)
-const roomSaid = (r) => `${r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
+const roomSaid = (r) => `${r.to_lower_pct == null || r.to_lower_pct >= 99.99 ? 'no lower limit' : `${r.to_lower_pct}% of room below the price`}, ${r.to_upper_pct == null || r.to_upper_pct > 10000 ? 'no upper limit (full range)' : `${r.to_upper_pct}% above`}`;
 // the fees owed as a sentence, BNB with its dollars (2026-10-28: every amount carries its USD)
 const owedSaid = (owed, usd) => { const u = usd > 0 ? ` (≈$${(owed * usd).toFixed(2)})` : ''; return owed >= 0.002 ? `Fees owed: ${owed.toFixed(6)} BNB${u} — collecting pays for its gas.` : `Fees owed: ${owed.toFixed(6)} BNB${u} — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`; };
 export async function lpPositionLook(params = {}, env = null) {

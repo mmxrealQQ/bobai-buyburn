@@ -41,6 +41,11 @@ if (process.argv.includes('--self-test')) {
   is('the pool is the record\'s own, labelled from the pool list', m.pool.address === CANDIDATES[0].pool && m.pool.label === 'CAKE/BNB 0.05%' && m.pool.position === '7397034');
   is('P&L carries the split and the fee parts', m.pnl.profit_bnb === 0.00376 && m.pnl.from_price_bnb === -0.00042 && m.pnl.fee_parts.length === 3 && m.pnl.gas_bnb === 0.00065);
   is('the other token is read off the pool label', m.pnl.other_token === 'CAKE');
+  // 12.11.: bnb_usd was the run's price while every tile used today's, and profit_usd kept the run's own dollars
+  const mNow = lpPortfolio(rec, series, { now: NOW, bnbUsdNow: 700 });
+  is('one BNB price for every dollar: bnb_usd names it, profit_usd uses it, the run\'s price stays beside', mNow.bnb_usd === 700 && mNow.bnb_usd_at_run === 722 && mNow.pnl.profit_usd === Math.round(0.003762 * 700 * 100) / 100 && m.bnb_usd === 722);
+  const mTape = lpPortfolio({ ...rec, series_summary: undefined }, { ...series, summary: { ...series.summary, time_in_range: { in_range_pct: 100, samples: 4320, from: '2026-10-13T00:00:00Z' } } }, { now: NOW });
+  is('the share of time in range names the day its tape began', mTape.pnl.time_in_range_pct === 100 && mTape.pnl.time_in_range_from === '2026-10-13' && mTape.pnl.time_in_range_samples === 4320);
   is('the held $BOBAI is priced when the route has a price, and not otherwise', m.holdings.bobai_usd === 0.78 && lpPortfolio(rec, series, { now: NOW }).holdings.bobai_usd === null);
   is('the two halves of the profit are named: kept working, into $BOBAI', m.pnl.kept_working_bnb === 0.00287 && m.pnl.into_bobai_bnb === 0.00109 && m.pnl.bobai_units === 3895);
   is('the model carries no pool record: the agent stays in CAKE/BNB (2026-09-11)', !('pool_record' in m) && !m.links.pools);

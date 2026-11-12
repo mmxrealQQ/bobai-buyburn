@@ -2,7 +2,7 @@
   "name": "com.brainonbnb/bobai",
   "title": "Brain On BNB AI ($BOBAI)",
   "description": "Read-only measurement for any token on BNB Smart Chain: honeypot and rug-pull preflight, pool scans, agent census, fixes between agents.",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "transport": { "type": "streamable-http", "url": "https://brainonbnb.com/mcp" },
   "documentation": "https://brainonbnb.com/skill.md"
 }

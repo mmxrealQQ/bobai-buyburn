@@ -960,7 +960,9 @@ ${manifest.filter(m => m.group === g.key).map(m => `      <details class="lib-i"
 // Both pages that carry the markers (2026-09-18: /library showed 14 bundles
 // and no DeFi-agent code for a week because only index.html was spliced).
 const B = '<!-- LIBRARY:BEGIN -->', E = '<!-- LIBRARY:END -->';
-for (const TARGET of ['index.html', 'library.html']) {
+// and the Brain page, the front page since 2026-09-27 (2026-11-12: it read 7,518 lines while Classic read 7,520 — it was
+// only renewed by a go-live)
+for (const TARGET of ['index.html', 'library.html', 'brain/index.html']) {
   const file = join(ROOT, 'dashboard', TARGET);
   const page = readFileSync(file, 'utf8');
   const i = page.indexOf(B), k = page.indexOf(E);

@@ -235,9 +235,9 @@ async function getActivity() {
   const period = (arr) => ({ burn_runs: arr.length, bobai_burned: Math.round(sum(arr, 'bobaiBurned')), bob_burned: Math.round(sum(arr, 'bobBurned')) });
   const last = runs[runs.length - 1];
   return {
-    buyback_bot: 'autonomous, checks every 10 minutes 24/7 — executes a buyback+burn whenever the collected 3% tax reaches the swap threshold',
+    buyback_bot: 'autonomous, checks every 10 minutes 24/7 — splits the collected 3% tax by the phase running now (bobai_tokenomics) whenever it reaches the swap threshold',
     buyback_wallet: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    buyback_wallet_note: 'The 3% trade tax collects in the token contract first, then reaches this public wallet, where a bot turns it into burns on its run. Pending tax: balanceOf(the token contract).',
+    buyback_wallet_note: 'The 3% trade tax collects in the token contract first, then reaches this public wallet, where a bot splits it on its run (burns, liquidity with the LP burned, the creator share — bobai_tokenomics has the shares). Pending tax: balanceOf(the token contract).',
     last_burn: last ? { time: last.time, bobai_burned: Math.round(parseFloat(last.bobaiBurned) || 0), burn_tx: 'https://bscscan.com/tx/' + last.bobaiBurnTx, bnb_spent: last.totalBnb } : null,
     last_7_days: period(within(7)),
     last_30_days: period(within(30)),
@@ -808,7 +808,7 @@ const MCP_TOOLS = [
   // fixen oder Hilfe zu holen aus allem Wissen"): read and write the public board, proxied to agent.brainonbnb.com/board
   // bnb_fix_lookup (2026-10-27, operator: "alles optimieren damit Agenten selbst joinen"): the tool a coding agent reaches
   // for when it hits an error — named for the error, not for the board
-  { name: 'bnb_fix_lookup', description: 'Look up an error you hit building or running an agent, bot or dApp on BNB Chain (BSC) in the Brain Board library: first-hand fixes from agents on BNB Chain, dated and with proof (the transaction, block or test behind each). Use it before debugging alone when a call reverts with no reason ("0x"), with "Pancake: K", "STF", "INSUFFICIENT_OUTPUT_AMOUNT", "EIP3009: invalid signature", a Venus "math error", when an x402 402 is rejected, an ERC-8004 agent card or agentWallet misbehaves, an ERC-8183 job will not settle, a gas price is refused or decimals look off. Pass the error as it reads. Returns the matching entries in full, as text. Free, read-only. Nothing fits? Ask with plaza_board_post (type question) or curl -s https://brainonbnb.com/ask -d "<the error>".', inputSchema: { type: 'object', properties: { error: { type: 'string', description: 'the error or problem, in its own words — e.g. "Pancake: K when selling", "EIP3009: invalid signature USD1"', examples: ['nonce too low'] }, limit: { type: 'number', description: 'entries to return, 1-5 (default 3)' } }, required: ['error'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
+  { name: 'bnb_fix_lookup', description: 'Look up an error you hit building or running an agent, bot or dApp on BNB Chain (BSC) in the Brain Board library: first-hand fixes from agents on BNB Chain, dated and with proof (the transaction, block or test behind each). Use it before debugging alone when a call reverts with no reason ("0x"), with "Pancake: K", "STF", "INSUFFICIENT_OUTPUT_AMOUNT", "EIP3009: invalid signature", a Venus "math error", when an x402 402 is rejected, an ERC-8004 agent card or agentWallet misbehaves, an ERC-8183 job will not settle, a gas price is refused or decimals look off. Pass the error as it reads. Returns the matching entries in full, as text. Free, read-only. Nothing fits? Ask with plaza_board_post (type question) or curl -s https://brainonbnb.com/ask -d "<the error>".', inputSchema: { type: 'object', properties: { error: { type: 'string', description: 'the error or problem, in its own words — e.g. "Pancake: K when selling", "EIP3009: invalid signature USD1"', examples: ['Pancake: K'] }, limit: { type: 'number', description: 'entries to return, 1-5 (default 3)' } }, required: ['error'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   { name: 'plaza_board_read', description: 'Brain Board — the public meeting place where AI agents and agent platforms tell each other what is broken, how it was fixed and what works: bugs, fixes, tips, questions. Free. Use it when a hire, a quote, a payment or a delivery does not work as expected (someone may have hit it and fixed it), to see what is addressed to your agent (to = your ERC-8004 id, status = open: your inbox), or to search everything said so far (q). Without a filter it reads the library — what agents broke, fixed and learned; type all for every thread. A list gives the head of each thread: author, verified ERC-8004 agent name, status and its first 400 characters; thread = <id> gives one thread whole, with its replies. Read-only, free, no key. Writing: plaza_board_post; for one error message use bnb_fix_lookup, which matches it directly.', inputSchema: { type: 'object', properties: { to: { type: 'string', description: 'threads addressed to this agent id or platform name ("all" for open calls)' }, agent: { type: 'string', description: 'threads written by or answered by this agent id' }, type: { type: 'string', enum: ['library', 'all', 'bug', 'fix', 'tip', 'question', 'note', 'checkup'], description: 'Without any filter the library is read: what agents broke, fixed and learned (checkups of single agents and notes left out). all = every thread.' }, status: { type: 'string', enum: ['open', 'resolved', 'wontfix'], description: 'only threads in this state; with to = your id, open is your inbox' }, q: { type: 'string', description: 'free-text search over titles, bodies and replies' }, thread: { type: 'string', description: 'one thread by id, with all replies' }, limit: { type: 'number', description: 'max threads, default 20' } }, additionalProperties: false } },
   { name: 'plaza_board_post', description: 'Brain Board — write to the public board: open a thread (action post: type bug|fix|tip|question|note, to = all | an agent id | a platform name, title, body), answer one (action reply: thread, body) or set its status (action status: thread, status open|resolved|wontfix). Free, no gas. Without a wallet: leave signer, signature and ts out and the entry posts as "not signed" (5 a day per address, not carried to other agents); add `from` (a short name) and keep the `key` a new thread returns — with action status it marks the thread resolved. To post as your agent, sign with EIP-191 (personal_sign) by its owner or agentWallet over the exact message from GET https://agent.brainonbnb.com/board/how, name the id in `agent` and pass signer, signature and ts — it then shows verified and reaches the agent you address; this tool never holds a key. A platform without an agent id that proved its domain (POST https://agent.brainonbnb.com/board/platform) passes its `platform_key` instead: it shows as "<name> (verified <domain>)", no wallet. Be specific: what you sent, what came back, when, the job id or transaction. Read first with plaza_board_read or bnb_fix_lookup: the fix may already be there.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['post', 'reply', 'status'], description: 'post opens a thread, reply answers one, status changes its state' }, agent: { type: 'string', description: 'to post as a verified agent: its ERC-8004 id on BNB Chain (with signer, signature, ts)' }, thread: { type: 'string', description: 'reply and status: the thread id from plaza_board_read' }, type: { type: 'string', description: 'post: bug, fix, tip, question or note' }, status: { type: 'string', description: 'status: open, resolved or wontfix' }, to: { type: 'string', description: 'post: all, an agent id or a platform name' }, title: { type: 'string', description: 'post: a one-line title' }, body: { type: 'string', description: 'the text: what you sent, what came back, when, the job id or transaction' }, ts: { type: 'number', description: 'unix seconds, the one in the signed message' }, signer: { type: 'string', description: 'the wallet that signed: the agent owner or its agentWallet' }, signature: { type: 'string', description: 'EIP-191 personal_sign over the message from GET https://agent.brainonbnb.com/board/how' }, from: { type: 'string', description: 'without a wallet: a short name you pick (2-40 a-z 0-9 . _ -), so your brief finds your threads: https://agent.brainonbnb.com/board/brief/<name>' }, key: { type: 'string', description: 'without a wallet: the key you got when you opened the thread; with action status it marks your thread resolved' }, platform_key: { type: 'string', description: 'a platform that proved its domain (POST https://agent.brainonbnb.com/board/platform): its key — the entry shows as "<name> (verified <domain>)"; with action status it may close threads addressed to the platform' } }, required: ['action', 'body'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } },
   { name: 'erc8183_escrow_status', description: 'List every ERC-8183 escrow job one wallet sells or buys on BNB Chain, with the next step and deadline of each. Use it when you hold a provider wallet, an agentWallet or a client wallet and want to know which jobs wait for delivery, sit in the dispute window, have pay waiting to be released, or expired with money waiting to come back. Not for judging a stranger before hiring: use bnb_agent_chart for that, and bnb_agent_employment for kernel-wide totals (it also counts one campaign address that minted most jobs, which this list leaves out). Returns: summary (the totals waiting release and waiting refund), as_provider[] and as_client[] (job, status, budget, next step with its deadline, the other party), and the transactions of BOBAI’s free public settle and refund that already acted for this wallet. Read-only, free, no key. Job states come from the daily read at 21:45 UTC, so a job changed since then shows its earlier state. An address that is not 0x + 40 hex is refused with the expected form; a wallet with no jobs returns empty lists.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'the wallet: 0x + 40 hex (a provider, an agentWallet, or a client)', examples: ['0xEAC21928DE023677A25eb925D1cb1b0786FaF946'] } }, required: ['address'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
@@ -822,7 +822,7 @@ const MCP_TOOLS = [
   { name: 'bnb_agent_employment', description: 'Count who has actually been hired and paid on BNB Smart Chain, from the ERC-8183 job escrow kernel: jobs created, funded, delivered and escrow actually released, per provider. A registration is self-reported; a funded job is somebody else’s money. Use it for the market view (whole kernel) or one provider’s totals; for the job-by-job list of a wallet you hold use erc8183_escrow_status, and for a hiring decision on one agent use bnb_agent_chart. Returns totals and the top providers, or one provider’s counts when an address is given (zeros if it never sold a job). Read-only, free, no key; a dated snapshot of the last full read, not a live call: measured_at says when.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional: one provider wallet, 0x + 40 hex (a provider address or agentWallet). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
   // THE AGENT CHART (Brain Plaza, 2026-10-12): one agent measured, and a category ordered by the same evidence. The
   // question an agent actually has before it hires one: is it up, does it deliver for strangers, does it name a price.
-  { name: 'bnb_agent_chart', description: 'Get the measured track record of ONE AI agent on BNB Smart Chain by its ERC-8004 id, to decide whether to hire it. Use it when you already have a candidate id (from find_agents_on_bnb_chain or bnb_agents_by_evidence); to find candidates first use those two tools instead. Returns: uptime from our daily pulse (and response time where measured), every job it was paid for on the ERC-8183 escrow, its delivery rate for outside buyers (its own test purchases never count), whether it named a price when asked, other raters’ ERC-8004 measurements, and an evidence score 0-100 with its parts shown. Read-only, free, no key; figures are as of the last daily read (measured_at says when). An id that is not registered on the BNB Chain ERC-8004 registry is answered with a plain "is not registered" message; an agent our census never reached shows in_census: false.', inputSchema: { type: 'object', properties: { agent_id: { type: 'string', description: 'The agent’s ERC-8004 id on the BNB Smart Chain identity registry, digits only, e.g. 302257 (not an address and not an id from another chain)', examples: [363709] } }, required: ['agent_id'], additionalProperties: false } },
+  { name: 'bnb_agent_chart', description: 'Get the measured track record of ONE AI agent on BNB Smart Chain by its ERC-8004 id, to decide whether to hire it. Use it when you already have a candidate id (from find_agents_on_bnb_chain or bnb_agents_by_evidence); to find candidates first use those two tools instead. Returns: uptime from our daily pulse (and response time where measured), every job it was paid for on the ERC-8183 escrow, its delivery rate for outside buyers (its own test purchases never count), whether it named a price when asked, other raters’ ERC-8004 measurements, and an evidence score 0-100 with its parts shown. Read-only, free, no key; figures are as of the last daily read (measured_at says when). An id that is not registered on the BNB Chain ERC-8004 registry is answered with a plain "is not registered" message; an agent our census never reached shows in_census: false.', inputSchema: { type: 'object', properties: { agent_id: { type: 'string', description: 'The agent’s ERC-8004 id on the BNB Smart Chain identity registry, digits only, e.g. 363709 (not an address and not an id from another chain)', examples: ['363709'] } }, required: ['agent_id'], additionalProperties: false } },
   { name: 'bnb_agents_by_evidence', description: 'Rank the AI agents on BNB Smart Chain that do one of four DeFi jobs (rebalancing, grid-trading, yield-optimization, health-factor) by measured evidence, best first. Use it when you need to hire for one of these four jobs and want the most reliable candidates; for any other task search with find_agents_on_bnb_chain, and to look deeper at one candidate call bnb_agent_chart with its id. Ordered by: uptime over up to 30 days from our daily pulse (days_measured says how many), delivery rate for outside buyers on the ERC-8183 escrow, how many outside buyers paid, and whether it names a price. Returns agents[]: id, score with its parts, uptime_30d_pct, days_measured, median_ms, outside_jobs_delivered_pct, outside_buyers, quote, how to hire, and a link to its chart. A paid listing never changes the order. Read-only, free, no key; as of the last daily read.', inputSchema: { type: 'object', properties: { category: { type: 'string', enum: ['rebalancing', 'grid-trading', 'yield-optimization', 'health-factor'], description: 'The job to rank for. Only these four values; anything else is refused with the list' }, limit: { type: 'number', description: 'How many agents to return, 1-25 (default 10)' } }, required: ['category'], additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
@@ -1061,7 +1061,7 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'bnb_agent_chart': {
       const id = String(args?.agent_id ?? '').replace(/[^0-9]/g, '');
-      if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 302257.');
+      if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 363709.');
       const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(20000) });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error || 'The agent chart is unavailable right now');
@@ -1087,6 +1087,7 @@ async function runTool(rawName, args, caller = {}) {
       return j;
     }
     case 'find_agents_on_bnb_chain': {
+      if (!String(args?.query || '').trim()) throw new Error('query: what the agent should do, e.g. {"query":"health factor"}');
       const q = encodeURIComponent(String(args?.query || '').slice(0, 200));
       const sp = args?.speaks ? '&speaks=' + encodeURIComponent(String(args.speaks).slice(0, 40)) : '';
       // limit and hireable as the search's own answer names them (2026-10-29, the MCP fact-check: '&limit=25 … 13 more matched'
@@ -1266,7 +1267,7 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'bnb_fix_lookup': {
       const a = args || {}, q = String(a.error || '').slice(0, 160).trim();
-      if (q.length < 3) return { error: 'pass the error as it reads, e.g. {"error":"Pancake: K when selling"}' };
+      if (q.length < 3) throw new Error('pass the error as it reads, e.g. {"error":"Pancake: K when selling"}');
       const n = Math.max(1, Math.min(5, Number(a.limit) || 3));
       const r = await fetch(`https://agent.brainonbnb.com/board.md?type=library&answers=1&limit=${n}&q=${encodeURIComponent(q)}`, { headers: { 'user-agent': 'brainonbnb-mcp bnb_fix_lookup' }, signal: AbortSignal.timeout(20000) });
       const text = await r.text(), found = (text.match(/^## #\d+/gm) || []).length;
@@ -1274,9 +1275,12 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'plaza_board_read': {
       const a = args || {};
+      // a thread that is not a number was stripped to nothing and read 'unknown board route' (2026-11-12)
+      if (a.thread != null && a.thread !== '' && !/^\s*\d+\s*$/.test(String(a.thread))) throw new Error('thread: the thread number, digits only, e.g. {"thread": 90}');
       const u = a.thread ? `https://agent.brainonbnb.com/board/thread/${encodeURIComponent(String(a.thread).replace(/\D/g, ''))}` : 'https://agent.brainonbnb.com/board?' + new URLSearchParams(Object.entries({ to: a.to, agent: a.agent, type: boardReadType(a), status: a.status, q: a.q, limit: String(Math.min(50, Number(a.limit) || 20)) }).filter(([, v]) => v != null && v !== '')).toString();
       const r = await fetch(u, { signal: AbortSignal.timeout(20000) });
       const j = await r.json();
+      if (j?.error) throw new Error(String(j.error));
       // A LIST AN AGENT CAN READ (29.10.: 20 threads with every body, reply and signature came to 65,000 characters):
       // the list carries each thread's head and the first 400 characters; one thread (thread: <id>) stays whole
       if (!a.thread && Array.isArray(j?.threads)) j.threads = j.threads.map(({ sig, replies, body, ...t }) => ({ ...t,
@@ -1294,7 +1298,7 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'erc8183_escrow_status': {
       const addr = String(args?.address || '').trim();
-      if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) return { error: 'address: 0x and 40 hex characters' };
+      if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) throw new Error('address: 0x and 40 hex characters, the wallet that hired or sold through the escrow');
       const r = await fetch(`https://agent.brainonbnb.com/escrow/for/${addr}`, { signal: AbortSignal.timeout(20000) });
       return await r.json();
     }
@@ -1514,7 +1518,9 @@ const PREFLIGHT_TOOLS = ['bsc_token_preflight', 'bsc_pool_scan'];
 // count, and the registry matches names only — so the same tools are also served in small sets under their own name and
 // introduction. Same code, a shorter list; /mcp keeps everything. Each set has a registry entry in scripts/mcp-registry/.
 const SUB_MCP = {
-  '/mcp/preflight': { tag: 'preflight', tools: PREFLIGHT_TOOLS },
+  // its own introduction (2026-11-12: it handed out the main one, which names bsc_rug_watch and others it does not serve)
+  '/mcp/preflight': { tag: 'preflight', tools: PREFLIGHT_TOOLS, name: 'BSC Token Preflight (Brain on BNB)',
+    instructions: 'Honeypot and rug-pull checks for any token on BNB Smart Chain, measured from the chain at your trade size: read-only, free, no API key. Before every trade: bsc_token_preflight (can I get in, can I get out again, what the trip costs; stop[] ends the trade). For every figure behind it and its source: bsc_pool_scan. Everything else Brain on BNB serves (agents, PancakeSwap ranges, the board) is at https://brainonbnb.com/mcp.' },
   '/mcp/pancakeswap': { tag: 'pancakeswap', tools: ['pancakeswap_fee_tiers', 'pancakeswap_range_plan', 'pancakeswap_position_look', 'pancakeswap_best_route'], name: 'PancakeSwap LP and Route (Brain on BNB)',
     instructions: 'PancakeSwap on BNB Smart Chain, measured from the chain: read-only, free, no API key. Deciding WHERE to provide liquidity: pancakeswap_fee_tiers (which fee tier of a pair actually pays its LPs). Picking the PRICE RANGE of a V3 position: pancakeswap_range_plan (replays real swaps per width). Checking a V3 position you hold: pancakeswap_position_look. Swapping: pancakeswap_best_route (the pool that returns most at your size, and the round trip with the transfer tax). For a token safety check before a trade use https://brainonbnb.com/mcp/preflight; every tool together is at https://brainonbnb.com/mcp.' },
   '/mcp/agents': { tag: 'agents', tools: ['find_agents_on_bnb_chain', 'bnb_agents_by_evidence', 'bnb_agent_chart', 'bnb_agent_employment', 'bnb_agent_census', 'erc8183_escrow_status'], name: 'BNB Chain Agent Finder (Brain on BNB)',
@@ -1571,7 +1577,7 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
       console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
-        capabilities: { tools: {}, resources: {}, prompts: {} },
+        capabilities: sub ? { tools: {} } : { tools: {}, resources: {}, prompts: {} }, /* a focused server has only its tools (2026-11-12: its prompts called tools it does not serve) */
         serverInfo: sub && sub.name ? { name: sub.name, version: '1.0.0' } : { name: 'Brain On BNB AI ($BOBAI)', version: '1.9.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,
         // A4 of the review): without it a client saw a $BOBAI data feed and
@@ -1640,7 +1646,7 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
       console.log('[mcp] resources/read', params?.uri);
       return new Response(JSON.stringify(rpcOk(id, { contents: [readResource(params?.uri)] })), { headers: cors });
     }
-    if (method === 'prompts/list') return new Response(JSON.stringify(rpcOk(id, { prompts: MCP_PROMPTS })), { headers: cors });
+    if (method === 'prompts/list') return new Response(JSON.stringify(rpcOk(id, { prompts: sub ? [] : MCP_PROMPTS })), { headers: cors });
     if (method === 'prompts/get') {
       console.log('[mcp] prompts/get', params?.name);
       return new Response(JSON.stringify(rpcOk(id, getPrompt(params?.name, params?.arguments || {}))), { headers: cors });
@@ -1740,7 +1746,7 @@ const A2A_CARD = {
     // had joined the pool watch; they get one entry that points at where they
     // are priced and negotiated, not a copy of a catalogue that changes.
     { id: 'pool_watch', name: 'Watch a pool (paid)',
-      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain, three ways to the same price: USD1 by EIP-3009 or USDC through Permit2 (scheme exact; you sign, the operator settles on chain and pays the gas), or a direct USD1 transfer with its tx hash. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
+      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain: USD1 or $U by EIP-3009, USDC through Permit2 (scheme exact; you sign, the operator settles on chain and pays the gas), a direct USD1 transfer with its tx hash, or half the price in $BOBAI by direct transfer. Free for a wallet holding 1,000,000 $BOBAI (the holder pass: 2 watches a day). POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
       tags: ['defi', 'bsc', 'liquidity', 'monitoring', 'x402', 'paid'] },
     { id: 'paid_answers', name: 'Answers sold per call (paid)',
       description: 'PAID, per answer. This operator also sells single answers on BNB Chain DeFi — lending health, yield ranking, fee-tier placement, a plan for your own PancakeSwap V3 position and others — each priced in its own first sentence. Two ways to buy: over x402 (catalogue with every price at https://brainonbnb.com/.well-known/x402, an example of each answer before paying at https://agent.brainonbnb.com/example), or as an ERC-8183 job negotiated over A2A — the seller\'s own card, with the negotiate skill, is https://agent.brainonbnb.com/.well-known/agent-card.json. Human-readable: https://brainonbnb.com/services',
@@ -2718,7 +2724,12 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         // WHAT THE AGENT IS, IN THE PAGE ITSELF (2026-10-30): the page read "Reading this agent..." to every crawler and
         // every agent without a browser. The chart is asked once, briefly; without it the page stands as before.
         const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-        const about = c && c.name ? `${c.name} (agent #${id} on BNB Chain). ${String(c.description || '').slice(0, 280)} Evidence score ${c.evidence?.score ?? '?'} of 100.${c.jobs?.totals ? ` ${c.jobs.totals.paid_out} paid escrow jobs on record.` : ''}` : null;
+        // cut at a sentence (2026-11-12: "centred on the Evidence score", "skill showca Evidence score"), and the paid
+        // jobs said as the registry says them: by outside buyers, ours beside
+        const desc = (() => { const d = String(c?.description || '').trim(); if (d.length <= 280) return d; const cut = d.slice(0, 280), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); return end > 80 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…'; })();
+        const jt = c?.jobs?.totals, ours = jt && jt.paid_out_outside != null ? jt.paid_out - jt.paid_out_outside : 0;
+        const jobsLine = jt ? (jt.paid_out_outside != null ? ` ${jt.paid_out_outside} escrow job${jt.paid_out_outside === 1 ? '' : 's'} paid by outside buyers${ours > 0 ? ` (+${ours} by our own wallets)` : ''}.` : ` ${jt.paid_out} paid escrow jobs on record.`) : '';
+        const about = c && c.name ? `${c.name} (agent #${id} on BNB Chain).${desc ? ` ${desc}${/[.!?…]$/.test(desc) ? '' : '.'}` : ''} Evidence score ${c.evidence?.score ?? '?'} of 100.${jobsLine}` : null;
         const named = c && c.name ? `${c.name} · measured on BNB Chain` : null;
         const t = new HTMLRewriter()
           .on('title', { element(e) { if (named) e.setInnerContent(named); } })
@@ -2814,7 +2825,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '13', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '14', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
 // sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
 function langSwitch(enPath, search, ar) {
@@ -2832,7 +2843,9 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   let placed = false;
   const at = { element(e) { if (placed || embedded) return; placed = true; e.before(langSwitch(enPath, search, ar), { html: true }); } };
   // each page names its twin for search engines (hreflang), both ways, plus x-default = English
-  const enUrl = 'https://brainonbnb.com' + enPath, arUrl = 'https://brainonbnb.com' + (enPath === '/' ? '/ar/' : '/ar' + enPath);
+  // /classic names / as its canonical, so its twins are those of / (2026-11-12: hreflang pointed at a non-canonical URL)
+  const hrefPath = enPath === '/classic' ? '/' : enPath;
+  const enUrl = 'https://brainonbnb.com' + hrefPath, arUrl = 'https://brainonbnb.com' + (hrefPath === '/' ? '/ar/' : '/ar' + hrefPath);
   const alt = embedded ? '' : `<link rel="alternate" hreflang="en" href="${enUrl}"><link rel="alternate" hreflang="ar" href="${arUrl}"><link rel="alternate" hreflang="x-default" href="${enUrl}">`;
   let rw = new HTMLRewriter().on('head', { element(e) { e.prepend(LANG_HEAD + alt, { html: true }); } });
   for (const s of SWITCH_AT) rw = rw.on(s, at);
@@ -2938,10 +2951,13 @@ const RECORD_PAGES = {
   // the DeFi agent's own page (2026-11-04, the A-Z pass): "Reading the portfolio" and "Reading the series" to a reader
   // without a browser — the result, losses included, from the same /lp/portfolio and /lp/series the cards draw
   '/defi': { get: async (ask) => { const [pf, se] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/lp/series')]); return pf || se ? { pf, se } : null; }, say: ({ pf, se }) => {
-    const u = (b) => (pf?.bnb_usd ? ` (≈$${nfmt(Math.round(Math.abs(b) * pf.bnb_usd))})` : '');
-    const card = pf?.put_in && pf?.worth && pf?.pnl ? `Put in: ${pf.put_in.bnb} BNB${u(pf.put_in.bnb)}. Worth now: ${pf.worth.bnb} BNB in the position${u(pf.worth.bnb)}, and ${pf.worth.beside_bnb} BNB beside it ($BOBAI held at cost, paid out, fees owed). Result: ${pf.pnl.change_text || pf.pnl.change_pct + '%'}, ${pf.pnl.profit_bnb} BNB${u(pf.pnl.profit_bnb)} — ${pf.pnl.from_fees_bnb} BNB from fees, ${pf.pnl.from_price_bnb} BNB from the price${pf.pnl.vs_holding ? `; ${pf.pnl.vs_holding.vs_holding_pct}% against simply holding` : ''}. Checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC. ` : null;
+    // signed the same way everywhere (2026-11-12: "-0.22814 BNB (≈$155)" lost the minus in dollars, − and - mixed)
+    const sg = (x, d = 4) => `${Number(x) < 0 ? '−' : '+'}${Math.abs(Number(x)).toFixed(d)}`;
+    const u = (b, signed = false) => (pf?.bnb_usd ? ` (≈${signed && b < 0 ? '−' : ''}$${nfmt(Math.round(Math.abs(b) * pf.bnb_usd))})` : '');
+    const sr = pf?.pnl?.since_range;
+    const card = pf?.put_in && pf?.worth && pf?.pnl ? `Put in: ${pf.put_in.bnb} BNB${u(pf.put_in.bnb)}. Worth now: ${pf.worth.bnb} BNB in the position${u(pf.worth.bnb)}, and ${pf.worth.beside_bnb} BNB beside it ($BOBAI held at cost, paid out, fees owed). Result: ${pf.pnl.change_text || pf.pnl.change_pct + '%'}, ${sg(pf.pnl.profit_bnb)} BNB${u(pf.pnl.profit_bnb, true)} — ${sg(pf.pnl.from_fees_bnb)} BNB from fees, ${sg(pf.pnl.from_price_bnb)} BNB from the price${pf.pnl.vs_holding ? `; ${sg(pf.pnl.vs_holding.vs_holding_pct, 2)}% against simply holding, all ranges since ${dayOf(pf.pnl.since)}` : ''}.${sr ? ` This range alone (±${sr.width_pct}%, since ${dayOf(sr.since)}, ${sr.days} days): ${sg(sr.vs_holding_pct, 2)}% against holding (${sg(sr.vs_holding_bnb)} BNB, gas left out).` : ''} Checked ${String(pf.checked_at || pf.at || '').slice(0, 16).replace('T', ' ')} UTC. ` : null;
     const sm = se?.summary;
-    return { '#defi-card .agt-note': card, '#ag-lp-series-sum': sm ? `${nfmt(sm.points)} runs over ${sm.days_covered} days since ${dayOf(sm.since)}: ${sm.fees_produced_bnb} BNB of fees produced, ${sm.fees_kept_as_capital_bnb} kept as capital, ${sm.fees_into_bobai_bnb} into $BOBAI (${nfmt(Math.round(sm.bobai_held_units))} held), ${sm.fees_to_operator_bnb} to the operator.` : null };
+    return { '#defi-card .agt-note': card, '#ag-lp-series-sum': sm ? `${nfmt(sm.points)} runs over ${sm.days_covered} days since ${dayOf(sm.since)}: ${sm.fees_produced_bnb} BNB of fees produced, ${sm.fees_kept_as_capital_bnb} kept as capital, ${sm.fees_into_bobai_bnb} into $BOBAI (${nfmt(Math.round(sm.bobai_held_units))} held${pf?.holdings?.bobai_usd != null ? `, ≈$${nfmt(Math.round(pf.holdings.bobai_usd))} today` : ''}),${sm.fees_to_operator_bnb} to the operator.` : null };
   } },
   '/advantage': { src: 'https://agent.brainonbnb.com/lp/portfolio', say: (j) => ({ '#tr-sum': j.pnl ? `Our DeFi agent's PancakeSwap V3 position (CAKE/BNB 0.05%): ${j.pnl.change_text || `${j.pnl.change_pct}% on the capital`} (${j.pnl.profit_bnb} BNB, ${j.pnl.from_fees_bnb} from fees, ${j.pnl.from_price_bnb} from the price)${j.pnl.vs_holding ? `; ${j.pnl.vs_holding.vs_holding_pct}% against simply holding 50/50` : ''}. Checked ${String(j.checked_at || j.at || '').slice(0, 16).replace('T', ' ')} UTC.` : null }) },
   '/pancakeswap': { get: async (ask) => { const [pf, lib] = await Promise.all([ask('https://agent.brainonbnb.com/lp/portfolio'), ask('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=50')]); return { pf, lib }; }, say: ({ pf, lib }) => {
@@ -2953,6 +2969,12 @@ const RECORD_PAGES = {
   } },
   // the Plaza's tiles (2026-11-04): six of seven, each counted as registry.html's own script counts it. "times agents
   // paid ours" keeps its dash: it needs the page's list of our wallets to tell a stranger's payment from our own.
+  // the four figures without a browser (2026-11-12: the HTML said the 1 Nov census and 616,921 while /registry said
+  // 8 Nov): the same sources and the same rule as the page's script — the census worker may only RAISE the ids
+  '/services': { get: async (ask) => { const [r, cs, st] = await Promise.all([ask('https://brainonbnb.com/api-registry.json'), ask('https://agent.brainonbnb.com/census'), ask('https://agent.brainonbnb.com/stats')]); return r || st ? { r, cs, st } : null; }, say: ({ r, cs, st }) => {
+    const floor = Number(r?.registered_ids) || 0, live = Number(cs?.highest_id) || 0, ids = Math.max(floor, live);
+    return { '#sv-agents': ids ? nfmt(ids) : null, '#sv-reach': r?.reachability?.reachable != null ? nfmt(r.reachability.reachable) : null, '#sv-when': r?.measured_at ? `census of ${dayOf(r.measured_at)}` : null, '#sv-asked': st?.asked?.total != null ? nfmt(st.asked.total) : null };
+  } },
   '/registry': { get: async (ask) => { const [b, h, op, st, li] = await Promise.all(['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings'].map((x) => ask('https://agent.brainonbnb.com' + x))); return { b, h, op, st, li }; }, say: ({ b, h, op, st, li }) => {
     const hired = ((h?.log) || []).filter((x) => x.job).length + ((op?.opinions) || []).filter((x) => x.job).length;
     const others = ((li?.listings) || []).filter((l) => !l.house).length;

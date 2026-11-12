@@ -244,7 +244,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
   return {
-    at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
+    at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsdNow > 0 ? bnbUsdNow : bnbUsd, bnb_usd_at_run: bnbUsd,
     pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10, at_edge: !inRange && atEdge, side },
     next,
     day: daySummary,
@@ -272,7 +272,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
       kept_working_bnb: r5(sum.fees_kept_as_capital_bnb),
       into_bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)),
-      profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
+      profit_bnb: r5(p.bnb), profit_usd: usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
       change_text: changeText(value.change_pct, sum.since),
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       // The price part in its two causes (2026-10-09): the market (a wallet that held each arrival 50/50) and the
@@ -290,6 +290,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       // The share of time, from the ten-minute tape; the run counts beside it lean high (D3).
       time_in_range_pct: sum.time_in_range ? sum.time_in_range.in_range_pct : null,
+      // the tape began after `since` (2026-11-12: 100 % read as "in range since 3 Sep"), so the share names its own start
+      time_in_range_from: sum.time_in_range && sum.time_in_range.from ? String(sum.time_in_range.from).slice(0, 10) : null, time_in_range_samples: sum.time_in_range ? sum.time_in_range.samples ?? null : null,
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },
     last_24h: day,

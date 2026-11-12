@@ -48,9 +48,9 @@
         <li><b>Every hit charges seven stations.</b> Full, each fires its super power by itself. 8 in a row is SUPER, 16 MEGA, 24 GOD.</li>
         <li><b>Fair:</b> every round is new and equally hard, and the server replays your taps before your score counts.</li>
       </ul></div>
-      <div class="pp-card fi"><h2>The prize pool</h2><p class="pp-pool"><b id="pp-pool">808 $BOBAI</b> <span id="pp-usd"></span></p>
-        <p id="pp-rule">The <b>overall #1 on 30 November</b> takes all of it. The daily winner gets nothing but the glory.</p>
-        <p class="pp-small">Only $BOBAI counts: anything else sent to the prize wallet is lost. Holders of 100,000+ $BOBAI can show a 🧠 next to their name.</p></div>
+      <div class="pp-card fi"><h2>The prize pool</h2><p class="pp-pool"><b id="pp-pool">… $BOBAI</b> <span id="pp-usd"></span></p>
+        <p id="pp-rule">The <b>overall #1 on 30 November (23:59 UTC)</b> takes all of it. The daily winner gets nothing but the glory.</p>
+        <p class="pp-small">Only $BOBAI counts for the prize; the BNB in the same wallet is the Giggle Academy pot from the trade tax. Holders of 100,000+ $BOBAI can show a 🧠 next to their name.</p></div>
     </div>
     <div class="pp-grid">
       <div class="pp-card fi"><h2>Today's top 10</h2><ol class="pp-top" id="pp-day-top"><li class="pp-wait">loading…</li></ol></div>
@@ -78,7 +78,7 @@
   const sc = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
   const B = { holder: ' 🧠', pass: ' 💎' };
   const fill = (id, j) => { const el = document.getElementById(id); if (!el) return;
-    el.innerHTML = j && j.rows && j.rows.length ? j.rows.map((r) => '<li><span translate="no">' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
+    el.innerHTML = !j ? '<li class="pp-wait">The board is not reachable right now. Try again in a minute.</li>' : j.rows && j.rows.length ? j.rows.map((r) => '<li><span translate="no">' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
     if (j && j.players != null) el.insertAdjacentHTML('afterend', '<p class="pp-small">' + Number(j.players).toLocaleString('en-US') + ' player' + (j.players === 1 ? '' : 's') + (id === 'pp-day-top' ? ' today' : ' this season') + '</p>'); };
   Promise.all([J('/api/pop/top?scope=day'), J('/api/pop/top?scope=all'), J('/api/pop/pool'), J('/api/price')]).then(([d, a, p, px]) => {
     fill('pp-day-top', d); fill('pp-all-top', a);
@@ -86,7 +86,7 @@
     if (Date.now() >= SEASON_END) return;
     if (d && d.no) document.getElementById('pp-day').textContent = 'Daily #' + d.no + ' is on. A new board every day until 30 November.';
     if (p && p.bobai != null) { document.getElementById('pp-pool').textContent = Number(p.bobai).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' $BOBAI';
-      if (px && px.price_usd) document.getElementById('pp-usd').textContent = '≈ $' + (p.bobai * px.price_usd).toFixed(2) + ' · goal $10'; }
+      if (px && px.price_usd) document.getElementById('pp-usd').textContent = '≈ $' + (p.bobai * px.price_usd).toFixed(2) + ' today'; }
   });
 })();
 </script>

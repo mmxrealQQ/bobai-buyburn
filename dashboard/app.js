@@ -1566,6 +1566,11 @@ fillLpYours();
   get('https://agent.brainonbnb.com/board?limit=1').then((j) => { if (j && j.total > 0) set('board', nf(j.total) + (j.total === 1 ? ' thread · ' : ' threads · ') + nf(j.open) + ' open'); });
   get('https://agent.brainonbnb.com/stats').then((j) => { const f = j && j.earned && j.earned.from_strangers; if (f && f.count > 0) set('services', nf(f.count) + ' answers paid by agents'); });
   get('https://agent.brainonbnb.com/lp/portfolio').then((j) => { const p = j && j.pool; if (p && typeof p.in_range === 'boolean') set('defi', String(p.label || 'CAKE/BNB').split(' ')[0] + (p.in_range ? ' in range' : ' out of range') + (p.width_pct ? ' · ±' + p.width_pct + '%' : '')); });
+  // Brain Pop (2026-11-12): who leads today and how many play, from the game's own board (a read, it counts no visit)
+  if (Date.now() < Date.parse('2026-12-01T00:00:00Z')) get('/api/pop/top?scope=day').then((j) => {
+    if (!j) return; const n = Number(j.players) || 0, top = j.rows && j.rows[0] && j.rows[0].name;
+    set('pop', top ? '#1 today: ' + String(top).slice(0, 24) + ' · ' + nf(n) + (n === 1 ? ' player' : ' players') : 'Nobody on today’s board yet: be #1');
+  });
   get('/api/nft-drop').then((j) => { const t = j && j.total; if (t && t.minted != null && t.cap) set('nft', nf(t.minted) + ' of ' + nf(t.cap) + ' minted'); });
   // the PancakeSwap tools (2026-10-27): how many PancakeSwap fixes the library holds, from the board itself
   get('https://agent.brainonbnb.com/board?type=library&q=pancakeswap&limit=1').then((j) => { if (j && !j.near && j.matched > 0) set('pancakeswap', nf(j.matched) + ' PancakeSwap fixes · any token'); });

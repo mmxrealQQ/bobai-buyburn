@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24620 lines.
+# one fetch. 75 files, 24628 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -12027,6 +12027,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       // Exposed, or a browser agent cannot read the header it is told to decode.
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
+        // the version beside accepts in the body too (2026-11-12): clients that read the body (the v1 response shape) look for it
+        x402Version: 2,
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `${payWays({ amount: fmtUsd1(ANSWER_PRICE), payTo, direct: `${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''}` })} — or ${fmtUsd1(ANSWER_PRICE)} $U by EIP-3009 like USD1 (the last entry of accepts) — and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs; a filled-in body: GET https://agent.brainonbnb.com/example?service=${serviceId} → request.`,
@@ -12145,6 +12147,8 @@ async function tipRoute(env, ctx, payTo, q, proof) {
       status: 402,
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
+        // the version beside accepts in the body too (2026-11-12): clients that read the body (the v1 response shape) look for it
+        x402Version: 2,
         error: 'payment required',
         what: 'A voluntary tip. It buys and unlocks nothing: the free measurements stay free (the pool scan 1,000 a caller a day) and the paid answers, the pool watch and the scan day pass keep their price whether you tip or not.',
         amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
@@ -12197,6 +12201,8 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
       status: 402,
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: what })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
+        // the version beside accepts in the body too (2026-11-12): clients that read the body (the v1 response shape) look for it
+        x402Version: 2,
         error: 'payment required',
         what: `${what}. The first ${SCAN_FREE_PER_DAY.toLocaleString('en-US')} scans every UTC day stay free without it.`,
         price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 (by EIP-3009, accepts[0], or by direct transfer), or the same amount in USDC by standard x402 (accepts[1], Permit2) or in $U by EIP-3009 (the last entry) — every way lands in the same wallet${bobai ? `; or half that in $BOBAI: ${bobai.tokens.toLocaleString('en-US')} $BOBAI by direct transfer (accepts[3])` : ''}`,
@@ -12276,6 +12282,8 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
       headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: `Pool watch for ${WATCH_DAYS} days` })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       requirements,
       body: {
+        // the version beside accepts in the body too (2026-11-12): clients that read the body (the v1 response shape) look for it
+        x402Version: 2,
         error: 'payment required',
         what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
         // Both assets named (2026-09-18): the standard x402 route settles in

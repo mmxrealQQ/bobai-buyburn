@@ -319,7 +319,7 @@
             <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The pot fills from trade tax &mdash; the first send lands with the first bot run that has BNB to split&hellip;</td></tr></tbody></table>
           </div>
         </div>
-      <p class="lb-note">WE are the donation. The pot is the old prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
+      <p class="lb-note">WE are the donation. The pot is the BNB in the Brain Pop prize wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
     </div>
   </section>
 
@@ -917,7 +917,7 @@
       <a class="ec fi" href="/?pop=play" data-pop data-until="2026-12-01T00:00:00Z">
         <div class="ec-top"><img src="terminal/br/mini.webp" width="96" height="96" alt="Brain Pop logo" loading="lazy" decoding="async"><h3>Brain Pop</h3></div>
         <p>60 seconds, the same creatures for all. Top 10 daily to 30 Nov.</p>
-        <span class="ec-live" data-eclive="pop">Daily winner gets nothing</span>
+        <span class="ec-live" data-eclive="pop">Overall #1 on 30 Nov takes the pool</span>
         <div class="ec-foot"><span class="ec-go">Play <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
     </div>
@@ -1529,10 +1529,10 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=137" defer></script>
+<script src="app.js?v=138" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1794382305">
+<link rel="stylesheet" href="terminal/terminal.css?v=1794469526">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1583,7 +1583,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1794382305'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1794469526'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

@@ -7661,11 +7661,11 @@ window.__btBrSeason = brSeason;
   // the player's private code: only this browser shows it; the overall winner shows it to claim the prize
   const codeLine = () => { const c = lsGet('bt-pop-code'); return c ? '<p class="br-pp-n">Your player code: <b class="br-pp-code">' + esc(c) + '</b> · keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.</p>' : ''; };
   // THE PRIZE POOL (operator, 6.11.): the $BOBAI in the Giggle/prize wallet — 808.41 to start, every $BOBAI donated adds —
-  // all of it to the overall #1 on 30 Nov; the bar's goal $100,000 (operator: "exaggerated"); ONLY $BOBAI counts, anything
+  // all of it to the overall #1 on 30 Nov; the bar's goal $10 (GOAL below); ONLY $BOBAI counts, anything
   // else sent there is lost (said plainly)
   const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 10; // $10 (operator 7.11.: "$10", the X post "goal $100k → $100 → $10"; 6.11. evening it was $100)
-  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
-    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Anything other than $BOBAI sent to the prize pool (BNB, USDT, any token) is <b>lost</b>. It is not part of the prize pool.</p></div>';
+  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov (23:59 UTC) gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
+    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;
     try { const j = await api('pool'); if (!pp.contains(box) || j.bobai == null) return; const usd = j.bobai * (S.price || 0);
@@ -7689,7 +7689,7 @@ window.__btBrSeason = brSeason;
       + '<p>' + (E.RUN_MS / 1000) + ' seconds. The whole terminal is the field. Tap the brainrot creatures and score as much ROT as you can. Every day is equally hard, the same for everyone; every round brings its own creatures. The server replays every tap, so every score is real. Daily top 10; the overall #1 on 30 Nov wins the whole $BOBAI prize pool.</p>'
       + '<h4>💯 POINTS PER POP</h4>'
       + '<p><b>worth x multiplier x aim x speed</b></p><ul>'
-      + '<li><b>Worth:</b> small creatures 8, big ones 5. Golden ones count 5 times.</li>'
+      + '<li><b>Worth:</b> small creatures 800, big ones 500. Golden ones count 5 times.</li>'
       + '<li><b>Aim:</b> hit the middle for up to 1.5x, the edge gives 0.5x.</li>'
       + '<li><b>Speed:</b> tap a creature right as it appears for up to 2.5x. The longer it lives, the less it pays.</li></ul>'
       + '<h4>🔥 STREAK AND MULTIPLIER</h4><ul>'
@@ -7708,8 +7708,8 @@ window.__btBrSeason = brSeason;
       + row('rug', 'THE RUG (red candle)', ' From second 7 on. Tapping it costs 4,000 points, breaks your streak and drains every meter by 6. Only the RUG SLAYER makes them safe.')
       + '<h4>👾 SPECIAL CREATURES</h4>'
       + row('octo', 'OCTOPUS', ' Splits into 3 little brains: pop them fast for a quick streak.')
-      + row('snail', 'SNAIL', ' Crawls across at 15, 31 and 48 seconds. Worth 25.')
-      + row('kaiju', 'THE BOSS (second 36)', ' Needs 8 hits, worth 120. When it dies it bursts into 6 golden brains.')
+      + row('snail', 'SNAIL', ' Crawls across at 15, 31 and 48 seconds. Worth 2,500.')
+      + row('kaiju', 'THE BOSS (second 36)', ' Needs 8 hits, worth 12,000. When it dies it bursts into 6 golden brains.')
       + row('mini', 'GOLDEN BRAIN', ' 5x points and charges the stations twice.')
       + '<h4>🕹 CONTROLS</h4><ul>'
       + '<li><b>Crosshair:</b> pick its shape and colour on the PLAY page (desktop).</li>'
@@ -7795,14 +7795,14 @@ window.__btBrSeason = brSeason;
     if (b.classList.contains('br-pp-go') && !named()) { // the name first: what is typed is brainrotted and taken; nothing typed, a nudge
       const box = pp.querySelector('.br-pp-nm'), inp = box && box.querySelector('input'), v = inp ? inp.value.trim() : '';
       if (v) { pp.querySelector('.br-pp-rot')?.click(); if (!named()) return; await new Promise(r => setTimeout(r, 700)); }
-      else { if (box) { box.hidden = false; const m = box.querySelector('small'); m.textContent = 'Type your name first (or 🎲 for a random one)'; m.classList.add('bad'); inp?.focus(); } return; }
+      else lsSet('bt-pop-named', '1'); /* 12.11.: nothing typed = the random name it already shows, no second step before the first run */
     }
     if (b.classList.contains('br-pp-go') || b.classList.contains('br-pp-again')) { if (b.classList.contains('br-pp-again')) { DAY = null; await openPanel(); if (!DAY) return; } begin(); return; }
     if (b.classList.contains('br-pp-shg') || b.classList.contains('br-pp-dare')) fetch('/api/pop/share?to=' + (b.classList.contains('br-pp-dare') ? 'dare' : 'game') + (pid.startsWith('f00d') ? '&own=1' : ''), { cache: 'no-store' }).catch(() => {}); /* counted (7.11.) */
     if (b.classList.contains('br-pp-shg')) { const link = SITE_URL + '/m/pop', text = 'BRAIN POP 6.9 🧠 60 seconds of pure brainrot. The overall #1 on 30 Nov wins the whole $BOBAI prize pool. Can you out-rot me?';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') b.textContent = link; } setTimeout(() => { b.textContent = '📣 SHARE THE GAME'; }, 2500); return; }
     if (b.classList.contains('br-pp-share')) { pp.hidden = true; window.__btShare?.('rot'); return; }
-    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/m/pop/' + LAST.run, text = 'I scored ' + sc7(LAST.score) + ' ROT in Daily Brain Pop #' + LAST.no + '. Beat me 🧠';
+    if (b.classList.contains('br-pp-dare')) { const link = SITE_URL + '/m/pop/' + LAST.run, text = 'I scored ' + Math.floor(LAST.score).toLocaleString('en-US') + ' ROT in Daily Brain Pop #' + LAST.no + '. Free, 60 seconds. Beat me before midnight UTC 🧠';
       try { if (navigator.share && portrait) { await navigator.share({ text, url: link }); return; } await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'LINK COPIED ✓'; } catch (err) { if (err?.name !== 'AbortError') { b.textContent = link; } } }
   });
   // SOUND AND TOUCH (6.11., operator: "make it the best browser game in the world"): every pop, miss, rug and power is
@@ -8030,11 +8030,11 @@ window.__btBrSeason = brSeason;
       // as the goal, BUY (counted as buy:pop-run) and LINK WALLET (the same signature flow as the start window) side by side
       + '<div class="br-pp-hold"><b>🧠 NEXT TO YOUR NAME</b><span>Hold 100,000 $BOBAI and the board shows 🧠 beside you · 💎 from 1,000,000</span>'
       + '<div class="br-pp-hb"><a href="/buy?from=pop-run" target="_blank" rel="noopener">BUY $BOBAI ↗</a><span class="br-pp-wl"></span></div>'
-      + '<small>The game is free. $BOBAI is the brain behind it: 3% of every trade burns tokens, adds liquidity, funds the DeFi agent and the Giggle Academy pot. The prize pool is paid in $BOBAI.</small></div>'
+      + '<small>The game is free. $BOBAI is the brain behind it: 3% of every trade is split by bots, every slice on chain. The prize pool is paid in $BOBAI.</small></div>'
       + '<div class="br-pp-b">' + (res ? '<button type="button" class="br-pp-share">SHARE</button><button type="button" class="br-pp-dare">CHALLENGE A FRIEND</button>' : '') + '<button type="button" class="br-pp-again">PLAY AGAIN</button><button type="button" class="br-pp-x">Close</button></div></div>';
     scope = 'day'; bday = res ? res.day : null; loadBoard(); fillWallet();
     // a reason to come back: the next day's plan, counted down (until the season's last day)
-    const nx = pp.querySelector('.br-pp-c'), tick = () => { if (!pp.contains(nx) || pp.hidden) return clearInterval(nx._t); const t = new Date(), ms = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1) - t, el2 = nx.querySelector('.br-pp-next'); if (el2) el2.textContent = (t.toISOString().slice(0, 10) >= LASTD ? 'Last day of the season. ' : 'Next daily in ' + Math.floor(ms / 3600e3) + ' h ' + Math.floor(ms / 60e3) % 60 + ' min. ') + 'New creatures, new board.'; };
+    const nx = pp.querySelector('.br-pp-c'), tick = () => { if (!pp.contains(nx) || pp.hidden) return clearInterval(nx._t); const t = new Date(), ms = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + 1) - t, el2 = nx.querySelector('.br-pp-next'); if (el2) el2.textContent = t.toISOString().slice(0, 10) >= LASTD ? 'Last day of the season: it ends in ' + Math.floor(ms / 3600e3) + ' h ' + Math.floor(ms / 60e3) % 60 + ' min (23:59 UTC).' : 'Next daily in ' + Math.floor(ms / 3600e3) + ' h ' + Math.floor(ms / 60e3) % 60 + ' min (00:00 UTC). New creatures, new board.'; };
     nx.querySelector('.br-pp-b')?.insertAdjacentHTML('beforebegin', '<p class="br-pp-next br-pp-n"></p>'); tick(); nx._t = setInterval(tick, 30000);
   }
 

@@ -124,7 +124,8 @@ for (const sz of SIZES) {
   const buyRes = buyHref ? await fetch(BASE + buyHref, { redirect: 'manual', headers: { 'sec-purpose': 'prefetch' } }) : null; /* a prefetch is never counted as a click */
   say(buyHref === '/buy?from=pop-run' && buyRes && buyRes.status === 302 && /pancakeswap\.finance\/swap\?outputCurrency=0x245c/.test(buyRes.headers.get('location') || ''), `${sz} rule 13: the result shows $BOBAI with the counted buy link`, JSON.stringify({ buyHref, status: buyRes && buyRes.status, to: buyRes && (buyRes.headers.get('location') || '').slice(0, 60) }));
   // 8 (6.11. later): a reason to come back — the next daily counted down
-  say(/^(Next daily in \d+ h \d+ min\.|Last day of the season\.) New creatures/.test(B1.next), `${sz} rule 8: the result counts down to the next daily`, B1.next);
+  // 12.11.: the clock names its zone; the last day counts down to the season's end instead of to a next daily
+  say(/^(Next daily in \d+ h \d+ min \(00:00 UTC\)\. New creatures|Last day of the season: it ends in \d+ h \d+ min \(23:59 UTC\)\.$)/.test(B1.next), `${sz} rule 8: the result counts down to the next daily`, B1.next);
   await click('#bt [data-sc="all"]', mob); await waitFor(`/SEASON/.test(document.querySelector('#bt .br-pp-days')?.textContent||'') && !/…/.test(document.querySelector('#bt .br-pp-board')?.textContent||'…')`, 15000);
   const B2 = await ev(`document.querySelector('#bt .br-pp-days')?.textContent||''`); await shot('daily-overall-' + sz);
   say(B1.tabs === 'DAILY|OVERALL' && /^DAY \d+ · \d+ NOV/.test(B1.day || '') && /^[0-9A-F]{8}$/.test(B1.code) && B1.code === res.code && /SEASON/.test(B2), `${sz} rule 7: DAILY and OVERALL, the day shown, the player code`, JSON.stringify({ B1, B2 }));

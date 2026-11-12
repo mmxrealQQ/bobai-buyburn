@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7518 lines.
+# one fetch. 17 files, 7520 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -408,6 +408,8 @@ if (SELF) {
   is('a source without a reserve sweeps all of it', sweepable(33n * e18 / 10n, 0n, 50n * e18) === 33n * e18 / 10n);
   check('nothing above the reserve', refuseSweep({ ...healthySweep, balance: 0, bnbEquivalent: 0, kept: 3.3 }), true);
   is('the refusal names the reserve', /keeps for its own hires/.test(refuseSweep({ ...healthySweep, balance: 0, kept: 3.3 })));
+  // 12.11.: the log read "the 3.2798673873069237 $U the wallet keeps" — the reserve is said in cents
+  is('the reserve is said in cents, not 16 digits', /the 3\.28 \$U the wallet keeps/.test(refuseSweep({ ...healthySweep, symbol: '$U', balance: 0, kept: 3.2798673873069237 })));
   is('the provider source keeps 4 $U', INCOME_SOURCES.find((s) => s.key === 'provider')?.keep === 4);
 
   console.log('increase');
@@ -4463,7 +4465,7 @@ export const refuse = refuseCollect;
 export function refuseSweep(state) {
   const sym = state.symbol || 'the token';
   if (!(state.balance > 0)) return state.kept > 0
-    ? `nothing above the ${state.kept} ${sym} the wallet keeps for its own hires`
+    ? `nothing above the ${Number(state.kept).toFixed(2)} ${sym} the wallet keeps for its own hires`
     : `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
   if (state.gasBnb < MIN_SWEEP_GAS_BNB) return `the wallet holds ${Number(state.gasBnb).toFixed(6)} BNB, not enough gas for approve + swap`;
   if (state.feedAgeS > 3600) return `Chainlink BNB/USD is ${Math.round(state.feedAgeS / 60)} min old — not a live price, so the route cannot be checked`;

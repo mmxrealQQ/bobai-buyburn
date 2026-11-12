@@ -66,5 +66,10 @@ say(pf && pf.pnl.time_in_range_from && pf.pnl.time_in_range_from > pf.pnl.since,
 const rec = await fetch(`${AGENT}/lp/agent`, { headers: { ...UA, accept: 'text/html' } }).then((r) => r.text()).catch(() => '');
 say(/kept for its own hires/.test(rec) && !/\d\.\d{9,} \$U/.test(rec.replace(/<[^>]+>/g, ' ').replace(/nothing above the [\d.]+ \$U/g, '')), '/lp/agent: the hire reserve stands apart, no 16-digit $U figures in its own sentences');
 say(/Back to the DeFi agent/.test(rec) && /until 20 Nov 2026/.test(rec), '/lp/agent: the back link names the DeFi agent, the lead dates the tax slice');
+// x402: the version in the 402 body too, for clients that read the body (v1 response shape)
+for (const [u, m] of [[`${AGENT}/answer?service=health_factor`, 'GET'], [`${AGENT}/watch`, 'POST']]) {
+  const b = await fetch(u, { method: m, headers: { ...UA, 'content-type': 'application/json' }, ...(m === 'POST' ? { body: '{}' } : {}) }).then((r) => r.json()).catch(() => null);
+  say(b && b.x402Version === 2 && Array.isArray(b.accepts), `402 body of ${u.replace(AGENT, '')} names x402Version 2 beside accepts`);
+}
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exit(fails ? 1 : 0);

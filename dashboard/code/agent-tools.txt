@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4226 lines.
+# one fetch. 5 files, 4227 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -999,7 +999,7 @@ function errorAnswer(e) {
   const msg = e?.message || String(e);
   const HINTS = {
     bad_address: 'Send a BSC address as the argument "address" — 0x followed by 40 hex characters — or a BscScan, DexScreener or PancakeSwap link containing one.',
-    bad_usd: 'Send the size as a positive number of dollars, e.g. usd=250, or leave it out for the default.',
+    bad_usd: 'Send the size as a positive number of dollars (usd; capitalUsd for pancakeswap_range_plan), e.g. 250, or leave it out for the default.',
     is_wallet: 'This address is a wallet. Send the token’s contract address instead (or its pool, or a link containing one).',
     not_a_token: 'Nothing at this address behaves like a token. Check that the address is the token contract, not a router, an NFT or another contract.',
     no_pool: 'No pool was found at the venues read. A token still on its four.meme launch curve is answered by bsc_token_preflight and bsc_pool_scan from the curve.',
@@ -2507,7 +2507,8 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       });
     }
 
-    if (url.pathname === '/.well-known/agent-card.json') {
+    // agent.json too (2026-11-12): older A2A probers ask that name on the apex; the agent worker already serves both
+    if (url.pathname === '/.well-known/agent-card.json' || url.pathname === '/.well-known/agent.json') {
       return new Response(JSON.stringify(A2A_CARD, null, 2), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
       });

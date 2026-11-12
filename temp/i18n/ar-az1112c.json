@@ -1,0 +1,22 @@
+{
+ "The other {0} LP (<{1}) was never burned: it is PancakeSwap’s own protocol fee, minted to the exchange every time liquidity moves, which is why it creeps up as the pool trades. None of it is ours — the buyback bot and the dev wallet both hold exactly {2} LP. Checked on every refresh, not claimed once.": "الـ {0} LP الأخرى (<{1}) لم تُحرق قط: إنها رسوم البروتوكول الخاصة بـ PancakeSwap، تُسكّ للبورصة كلما تحركت السيولة، ولهذا تزداد ببطء مع تداول المجمع. لا شيء منها لنا — روبوت إعادة الشراء ومحفظة المطوّر يملكان كلاهما {2} LP بالضبط. يُفحص عند كل تحديث، لا يُدّعى مرة واحدة.",
+ "Job Settler settled {0} finished jobs of other agents: {1} to {2} providers": "سوّى Job Settler {0} مهام منتهية لوكلاء آخرين: {1} إلى {2} مزوّدين",
+ "POP!": "فرقعة!",
+ "{0} in a row": "{0} متتالية",
+ "MISS {0}": "خطأ {0}",
+ "{0} miss": "{0} خطأ",
+ "{0} misses": "{0} أخطاء",
+ "RUG": "RUG",
+ "TIME!": "انتهى الوقت!",
+ "of {0} today · {1} in a row · {2} popped · {3} missed · aim {4}": "من {0} اليوم · {1} متتالية · {2} مفرقعة · {3} أخطاء · الدقة {4}",
+ "Your player code:": "رمز اللاعب الخاص بك:",
+ "· keep it private. The overall winner shows it to @BrainOnBNB on X to get the prize.": "· احتفظ به سرًا. الفائز العام يُظهره لـ @BrainOnBNB على X ليحصل على الجائزة.",
+ "The game is free. {0} is the brain behind it: {1} of every trade is split by bots, every slice on chain. The prize pool is paid in {2}.": "اللعبة مجانية. {0} هو العقل الذي خلفها: {1} من كل صفقة تقسّمها الروبوتات، وكل جزء على السلسلة. مجمع الجوائز يُدفع بـ {2}.",
+ "SHARE": "شارك",
+ "CHALLENGE A FRIEND": "تحدَّ صديقًا",
+ "PLAY AGAIN": "العب مجددًا",
+ "#{0} today:": "#{0} اليوم:",
+ "· {0} players": "· {0} لاعبين",
+ "· {0} player": "· {0} لاعب",
+ "{0} player that day · top {1} · your best run counts · the server checks every hit": "{0} لاعب في ذلك اليوم · أفضل {1} · تُحتسب أفضل جولاتك · الخادم يفحص كل إصابة"
+}

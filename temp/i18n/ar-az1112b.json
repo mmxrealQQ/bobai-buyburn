@@ -1,0 +1,18 @@
+{
+ "<div class=\"br-pp-pool\"><p><b>PRIZE POOL</b> <span class=\"amt\">…</span> <small class=\"usd\"></small><br>The <b>overall #{0}</b> on {1} Nov ({2} UTC) gets <b>ALL</b> of it.</p><div class=\"bar\"><i></i><span>goal $": "<div class=\"br-pp-pool\"><p><b>مجمع الجوائز</b> <span class=\"amt\">…</span> <small class=\"usd\"></small><br><b>الأول العام #{0}</b> في {1} نوفمبر ({2} UTC) يحصل عليه <b>كله</b>.</p><div class=\"bar\"><i></i><span>الهدف $",
+ "<p class=\"don\">Grow it: send <b>only {0}</b> to <code>{1}</code> <button type=\"button\" class=\"br-pp-copy\">copy address</button></p><p class=\"warn\">⚠ Only <b>{2}</b> counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.</p></div>": "<p class=\"don\">كبّره: أرسل <b>{0} فقط</b> إلى <code>{1}</code> <button type=\"button\" class=\"br-pp-copy\">انسخ العنوان</button></p><p class=\"warn\">⚠ فقط <b>{2}</b> يُحتسب للجائزة. الـ BNB في هذه المحفظة هو وعاء Giggle Academy من ضريبة التداول؛ وأي توكن آخر يُرسل هنا ليس جزءًا من الجائزة.</p></div>",
+ "<small>The game is free. {0} is the brain behind it: {1} of every trade is split by bots, every slice on chain. The prize pool is paid in {2}.</small></div>": "<small>اللعبة مجانية. {0} هو العقل الذي خلفها: {1} من كل صفقة تقسّمها الروبوتات، وكل جزء على السلسلة. مجمع الجوائز يُدفع بـ {2}.</small></div>",
+ "Last day of the season: it ends in": "آخر يوم في الموسم: ينتهي بعد",
+ "Last day of the season: it ends in {0} h {1} min ({2} UTC).": "آخر يوم في الموسم: ينتهي بعد {0} س {1} د ({2} UTC).",
+ "Next daily in {0} h {1} min ({2} UTC). New creatures, new board.": "التحدي اليومي القادم بعد {0} س {1} د ({2} UTC). مخلوقات جديدة، لوحة جديدة.",
+ "overall #{0} on {1} November ({2} UTC)": "المركز العام #{0} يوم {1} نوفمبر ({2} UTC)",
+ "Only {0} counts for the prize; the BNB in the same wallet is the Giggle Academy pot from the trade tax. Holders of {1}+ {2} can show a 🧠 next to their name.": "فقط {0} يُحتسب للجائزة؛ والـ BNB في المحفظة نفسها هو وعاء Giggle Academy من ضريبة التداول. حاملو {1}+ {2} يمكنهم إظهار 🧠 بجانب أسمائهم.",
+ "The board is not reachable right now. Try again in a minute.": "اللوحة غير متاحة الآن. حاول مجددًا بعد دقيقة.",
+ "≈ {0} today": "≈ {0} اليوم",
+ "WE are the donation. The pot is the BNB in the Brain Pop prize wallet": "نحن التبرّع. الصندوق هو الـ BNB في محفظة جوائز Brain Pop",
+ "Overall #{0} on {1} Nov takes the pool": "المركز #{0} العام في {1} نوفمبر يأخذ المجمع",
+ "Nobody on today’s board yet: be #{0}": "لا أحد على لوحة اليوم بعد: كن #{0}",
+ "on {0} Nov ({1} UTC) gets": "يوم {0} نوفمبر ({1} UTC) يحصل على",
+ "⚠ Only": "⚠ فقط",
+ "counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.": "يُحتسب للجائزة. الـ BNB في هذه المحفظة هو وعاء Giggle Academy من ضريبة التداول؛ وأي توكن آخر يُرسل هنا ليس جزءًا من الجائزة."
+}

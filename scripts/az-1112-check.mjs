@@ -84,6 +84,18 @@ for (const [u, m] of [[`${AGENT}/answer?service=health_factor`, 'GET'], [`${AGEN
   say([...OWN_WALLETS].every((w) => ours.includes(w)), `/registry: the page's list of our wallets holds all ${OWN_WALLETS.size} of own-wallets.js (${ours.length} listed)`);
   say(/id="aw-n-listed">\d/.test(src), '/registry HTML: agents listed by others is a number, not a dash');
 }
+// MCP leftovers: the range plan's narrowest width cannot equal a width it says it cannot hold; the usd refusal names
+// the argument the range plan takes; the apex answers agent.json as the agent worker does
+{
+  const rp = await call(`${SITE}/mcp`, 'pancakeswap_range_plan', { token: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });
+  const j = (() => { try { return JSON.parse(text(rp)); } catch { return null; } })();
+  say(j && !(j.widths_this_tier_cannot_hold_pct || []).includes(j.narrowest_mintable_width_pct), `range plan CAKE: narrowest ${j?.narrowest_mintable_width_pct} is not in "cannot hold" ${JSON.stringify(j?.widths_this_tier_cannot_hold_pct)}`);
+  const bu = await call(`${SITE}/mcp`, 'pancakeswap_range_plan', { token: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', capitalUsd: -5 });
+  const hint = text(bu).split('code: bad_usd')[1] || '';
+  say(/capitalUsd/.test(hint) && !/usd=250/.test(hint), `the hint after a refused capitalUsd names capitalUsd, not usd=250 ("${text(bu).replace(/\s+/g, ' ').slice(0, 90)}")`);
+  const aj = await json(`${SITE}/.well-known/agent.json`);
+  say(aj && aj.name && Array.isArray(aj.skills), `apex /.well-known/agent.json is the agent card (${aj?.name})`);
+}
 // the scanner's other pools: found by the index, their depth read from the chain (CAKE: PancakeSwap's V2 pair is among them)
 {
   const r = await call(`${SITE}/mcp`, 'bsc_pool_scan', { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });

@@ -1,0 +1,11 @@
+{
+ "Checked every hour. A position the price has left for {0} h is re-set as a wide range centred on the price again, with one swap that balances the two tokens — wide, because in the": "يُفحص كل ساعة. المركز الذي غادره السعر لمدة {0} ساعة يُعاد ضبطه كنطاق واسع متمركز على السعر مجددًا، بمبادلة واحدة توازن التوكنين — واسع، لأنه في",
+ "The portfolio": "المحفظة",
+ "one model, {0} KB": "نموذج واحد، {0} KB",
+ "Brain On BNB AI ({0}): an AI-built token on BNB Chain. Its {1} tax is split by bots {2}/{3} into the creator share, burns and permanent liquidity (LP burned). Free on-chain tools for agents and traders. Owner renounced.": "Brain On BNB AI ({0}): توكن بناه الذكاء الاصطناعي على BNB Chain. تقسّم الروبوتات ضريبته البالغة {1} على مدار {2}/{3} بين حصة المنشئ والحرق والسيولة الدائمة (LP محروق). أدوات مجانية على السلسلة للوكلاء والمتداولين. تم التخلي عن الملكية.",
+ "Brain On BNB AI ({0}) is an AI-built token on BNB Chain. Every trade pays a {1} tax that bots split {2}/{3} into the creator share, burns and permanent liquidity with the LP burned, every slice a transaction you can open. Free on-chain tools for agents and traders: a token preflight, a pool scanner, every AI agent on BNB Chain measured. Owner renounced.": "Brain On BNB AI ({0}) توكن بناه الذكاء الاصطناعي على BNB Chain. كل صفقة تدفع ضريبة {1} تقسّمها الروبوتات على مدار {2}/{3} بين حصة المنشئ والحرق والسيولة الدائمة مع حرق LP، وكل جزء معاملة يمكنك فتحها. أدوات مجانية على السلسلة للوكلاء والمتداولين: فحص مسبق للتوكن، وماسح للمجمّعات، وقياس كل وكيل ذكاء اصطناعي على BNB Chain. تم التخلي عن الملكية.",
+ "Runs its own PancakeSwap V{0} range, every step on chain.": "يدير نطاقه الخاص على PancakeSwap V{0}، كل خطوة على السلسلة.",
+ "{0} seconds, the same creatures for all. Top {1} daily to {2} Nov.": "{0} ثانية، المخلوقات نفسها للجميع. أفضل {1} يوميًا حتى {2} نوفمبر.",
+ "Best route, real cost, the fee tier that pays LPs.": "أفضل مسار، والتكلفة الحقيقية، ومستوى الرسوم الذي يُربح مزوّدي LP.",
+ "{0} self-tests — ADHD, IQ, depression, anxiety, trauma, personality. Anonymous, free, no registration, instant results.": "{0} اختبارًا ذاتيًا — ADHD، IQ، الاكتئاب، القلق، الصدمة، الشخصية. مجهول الهوية، مجاني، بلا تسجيل، نتائج فورية."
+}

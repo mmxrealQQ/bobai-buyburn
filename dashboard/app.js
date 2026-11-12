@@ -1569,7 +1569,11 @@ fillLpYours();
   // Brain Pop (2026-11-12): who leads today and how many play, from the game's own board (a read, it counts no visit)
   if (Date.now() < Date.parse('2026-12-01T00:00:00Z')) get('/api/pop/top?scope=day').then((j) => {
     if (!j) return; const n = Number(j.players) || 0, top = j.rows && j.rows[0] && j.rows[0].name;
-    set('pop', top ? '#1 today: ' + String(top).slice(0, 24) + ' · ' + nf(n) + (n === 1 ? ' player' : ' players') : 'Nobody on today’s board yet: be #1');
+    // the name in a node of its own (translate="no"): the words around it stay keys the Arabic dictionary can match
+    const e = document.querySelector('[data-eclive="pop"]'); if (!e) return;
+    if (!top) { e.textContent = 'Nobody on today’s board yet: be #1'; return; }
+    const nm = document.createElement('span'); nm.setAttribute('translate', 'no'); nm.textContent = String(top).slice(0, 24);
+    e.textContent = ''; e.append('#1 today: ', nm, ' · ' + nf(n) + (n === 1 ? ' player' : ' players'));
   });
   get('/api/nft-drop').then((j) => { const t = j && j.total; if (t && t.minted != null && t.cap) set('nft', nf(t.minted) + ' of ' + nf(t.cap) + ' minted'); });
   // the PancakeSwap tools (2026-10-27): how many PancakeSwap fixes the library holds, from the board itself

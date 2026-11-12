@@ -354,7 +354,8 @@ export async function rangePlan(input, opts = {}) {
     pool, fee_pct: +(feeRaw / 1e4).toFixed(4),
     // The grid the ranges were snapped to, and the widths it cannot hold.
     tick_spacing: spacing,
-    narrowest_mintable_width_pct: +((Math.exp((spacing * TICK_LN) / 2) - 1) * 100).toFixed(3),
+    // four places (2026-11-12): toFixed(3) read 0.25 beside "cannot hold 0.25" for a true 0.2503
+    narrowest_mintable_width_pct: +((Math.exp((spacing * TICK_LN) / 2) - 1) * 100).toFixed(4),
     widths_this_tier_cannot_hold_pct: notMintable,
     tier_chosen_because: chosen,
     quote_chosen_because: what.kind === 'v3pool' ? null : wantQuote ? 'the quote asked for' : 'the quote with the deepest V3 pool for this token — pass quote to pin another',

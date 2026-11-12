@@ -13,9 +13,9 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,indexedPool,priceQuote,flapInfo,flapLadder,UNI_QUOTER,
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
-  measureTax,venues,FACTORIES,simulateRoundTrip,
+  measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=37';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=38';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -1184,12 +1184,12 @@ function render(d){
         hidden=(d.others||[]).length-shown.length;
   if(shown.length){
     const ov=card('Where else it trades',
-      'Everything above measures one pool, read exactly from the chain. These are the others, as DexScreener indexes them — its dollar figures are its own and can differ a little from the chain’s.');
+      'Everything above measures one pool, read exactly from the chain. These are the others: DexScreener’s index finds them, and each one’s depth is read from the chain too — both sides of the pool, in BNB or dollars. A figure marked “index” is DexScreener’s own (a pool quoted in another token).');
     const l=el('div','vn');
     shown.slice(0,6).forEach(x=>{
       const r=el('div','vn-r');
       r.appendChild(el('span','vn-n',x.name||'Unknown'));
-      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)+(x.source==='index'?' · index':'')));
       r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
         ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
         : el('span','lk dim','position-based'));
@@ -1384,7 +1384,7 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool,on
     others.slice(0,6).forEach(x=>{
       const r=el('div','vn-r');
       r.appendChild(el('span','vn-n',x.name||'Unknown'));
-      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)+(x.source==='index'?' · index':'')));
       r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
         ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
         : el('span','lk dim','position-based'));
@@ -1616,7 +1616,7 @@ async function scanOnce(input){
     // Venues from DexScreener, which indexes the small DEXes; GoPlus's list is
     // the fallback and only covers what it happens to know.
     at('checking where else it trades…');
-    const dsAll=(await venues(token))||[];
+    const dsAll=await measureVenues((await venues(token))||[],bnbUsd,token);
     // PancakeSwap Infinity CL pools found from their keys on chain and sized by the quoter (2026-10-19, infinityFind;
     // the same as scanner-scan.js): measured even when an index lists them, the larger figure stands.
     if(what.kind!=='v2pair'&&what.kind!=='v3pool'){
@@ -1648,7 +1648,7 @@ async function scanOnce(input){
     }
     const others=dsAll.length
       ? dsAll.filter(x=>!pool||x.pair!==pool.pair.toLowerCase())
-        .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq}))
+        .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq,source:x.source||'index'}))
       : (gp.dex||[]).filter(x=>x.pair&&(!pool||x.pair.toLowerCase()!==pool.pair.toLowerCase()))
         .map(x=>({pair:x.pair,name:x.name||x.liquidity_type||'Unknown',liquidity:parseFloat(x.liquidity)||0}))
         .sort((a,b)=>b.liquidity-a.liquidity);

@@ -71,5 +71,13 @@ for (const [u, m] of [[`${AGENT}/answer?service=health_factor`, 'GET'], [`${AGEN
   const b = await fetch(u, { method: m, headers: { ...UA, 'content-type': 'application/json' }, ...(m === 'POST' ? { body: '{}' } : {}) }).then((r) => r.json()).catch(() => null);
   say(b && b.x402Version === 2 && Array.isArray(b.accepts), `402 body of ${u.replace(AGENT, '')} names x402Version 2 beside accepts`);
 }
+// the scanner's other pools: found by the index, their depth read from the chain (CAKE: PancakeSwap's V2 pair is among them)
+{
+  const r = await call(`${SITE}/mcp`, 'bsc_pool_scan', { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });
+  const t = text(r), j = (() => { try { return JSON.parse(t); } catch { return null; } })();
+  const list = JSON.stringify(j || {}).match(/"source":"(chain|index)"/g) || [];
+  const chain = list.filter((x) => x.includes('chain')).length;
+  say(chain >= 3, `bsc_pool_scan CAKE: the other pools' depth is read from the chain (${chain} chain, ${list.length - chain} index)`);
+}
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exit(fails ? 1 : 0);

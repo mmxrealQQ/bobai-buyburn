@@ -843,6 +843,35 @@ export async function venues(token){
     return list.length?list:null;
   }catch(e){return null}
 }
+// THE OTHER POOLS' DEPTH FROM THE CHAIN (2026-11-12, operator: "the scanner perfect, the part below too"): DexScreener
+// stays the index that FINDS the pools; their size is read here. For each pool (the deepest eight with an address) both
+// sides are read with balanceOf: the side quoted in BNB or a dollar coin at its price, the token's side at the token's
+// on-chain price (its WBNB pair, priceToken). A concentrated V3 pool often holds far more of one side, so doubling one
+// side would misstate it (CAKE's Uniswap pool: $156k doubled against $3.4M held). No token price: the quote side
+// doubled. A pool quoted in anything else keeps the index's figure and says so (source 'index'); read here: 'chain'.
+export async function measureVenues(list,bnbUsd,token){
+  if(!Array.isArray(list)||!list.length||!(bnbUsd>0))return list;
+  const usdOf={};QUOTES.forEach(([a,,stable])=>{usdOf[a]=stable?1:bnbUsd});
+  const top=list.filter(x=>/^0x[0-9a-f]{40}$/.test(x.pair)&&x.source!=='quoter').slice(0,8);
+  list.forEach(x=>{if(!x.source)x.source='index'});
+  if(!top.length)return list;
+  try{
+    const tok=String(token||'').toLowerCase(), tp=tok?await priceToken(tok,bnbUsd).catch(()=>null):null;
+    const tUsd=tp&&tp.usd>0?tp.usd:null, tDec=tp&&tp.dec!=null?tp.dec:18;
+    const tk=await multicall(top.flatMap(x=>[call(x.pair,'0x0dfe1681'),call(x.pair,'0xd21220a7')]));
+    const sides=top.map((x,i)=>{const a=[tk[2*i],tk[2*i+1]].map(h=>h&&h.length>=66?'0x'+h.slice(-40).toLowerCase():null);
+      const q=a.find(t=>t&&t!==tok&&usdOf[t]!=null)||null;return {q,t:tUsd&&a.includes(tok)?tok:null}});
+    const bal=(t,p)=>call(t,'0x70a08231'+p.slice(2).padStart(64,'0'));
+    const want=top.flatMap((x,i)=>sides[i].q?[bal(sides[i].q,x.pair),...(sides[i].t?[bal(sides[i].t,x.pair)]:[])]:[]);
+    const got=await multicall(want);
+    let k=0;
+    top.forEach((x,i)=>{const s=sides[i];if(!s.q)return;const hq=got[k++],ht=s.t?got[k++]:null;if(!(hq&&hq.length>=66))return;
+      const qUsd=Number(hx(hq))/1e18*usdOf[s.q];
+      const oUsd=ht&&ht.length>=66?Number(hx(ht))/Math.pow(10,tDec)*tUsd:qUsd;
+      x.liq=Math.round(qUsd+oUsd);x.source='chain'});
+  }catch(e){/* the index's figures stand, named as such */}
+  return list.sort((a,b)=>b.liq-a.liq);
+}
 
 // === THE TAX, MEASURED ===
 // Not read off a label — read off trades that actually happened. The pair says

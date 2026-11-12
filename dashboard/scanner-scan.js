@@ -19,7 +19,7 @@ import {
   balOf, call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover, indexedPool, UNI_QUOTER, priceQuote, flapInfo, flapLadder, FLAP_PORTAL, INF_CL_QUOTER,
   infinityFind, infinityPool, infReachUsd,
-  ladderV2, onePctV2, ladderV3, onePctV3, ladderInf, onePctInf, measureTax, venues, simulateRoundTrip,
+  ladderV2, onePctV2, ladderV3, onePctV3, ladderInf, onePctInf, measureTax, venues, measureVenues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
   readHolders, lpCustody, contractAges, readActivity, readFlow,
 } from './scanner-chain.js';
@@ -379,7 +379,7 @@ export async function scan(input, env, timing = null) {
   // "returning 1%" — a liquid token that read like a honeypot. The right
   // refusal came only on the calls where DexScreener happened to fail.
   mark('pool');
-  const dsAll = (await venues(token)) || [];
+  const dsAll = await measureVenues((await venues(token)) || [], bnbUsd, token);
   // PancakeSwap Infinity CL pools no index lists (2026-10-19, infinityFind): found from their keys on chain, sized by
   // the quoter, and put beside the index's pools — named as measured, never as an index figure.
   // Measured even when an index lists the pool: GoPlus listed AEON's $1M pool at $127 (19.10.), and that figure would
@@ -428,7 +428,7 @@ export async function scan(input, env, timing = null) {
   const byPair = new Map();
   for (const x of dsAll || [])
     if (x.pair && x.pair.toLowerCase() !== mineKey)
-      byPair.set(x.pair.toLowerCase(), { pair: x.pair, name: x.name + (x.quote ? ' · ' + x.quote : ''), liquidity: x.liq || 0 });
+      byPair.set(x.pair.toLowerCase(), { pair: x.pair, name: x.name + (x.quote ? ' · ' + x.quote : ''), liquidity: x.liq || 0, source: x.source === 'chain' || x.source === 'quoter' ? 'chain' : 'index' });
   for (const x of gp.dex || []) {
     const key = String(x.pair || '').toLowerCase();
     if (!key || key === mineKey) continue;

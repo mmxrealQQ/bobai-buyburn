@@ -7,7 +7,7 @@
 //            #363709); every hire it logged has its five transactions; every answered hire names where its answer was
 //            read and its figure; no hire is counted "answered" without its figure
 // usage: node scripts/agent-hires-check.mjs [origin]
-import { healthFactorIn, inRangeIn, jobIdFromReceipt } from '../worker-agent/agent-hires.js';
+import { healthFactorIn, inRangeIn, jobIdFromReceipt, shortOfU } from '../worker-agent/agent-hires.js';
 const origin = (process.argv[2] || 'https://agent.brainonbnb.com').replace(/\/$/, '');
 let fails = 0; const say = (ok, t) => { if (!ok) fails++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${t}`); };
 const keel = JSON.stringify({ chain_id: 56, response: { content: JSON.stringify({ healthFactor: 2.174, primaryCollateralSymbol: 'BNB' }) } });
@@ -17,6 +17,9 @@ say(healthFactorIn({ text: 'I cannot read Venus positions with my tools.' }) ===
 say(inRangeIn(JSON.stringify({ response: { content: JSON.stringify({ positions: [{ inRange: false }] }) } })) === false && inRangeIn('nothing here') === null, 'in range is found nested, and only when it is there');
 const K = '0xEa4DAa3100A767e86FDed867729ae7446476EBA6';
 say(jobIdFromReceipt({ logs: [{ address: '0x1', topics: ['0xa', '0x' + '9'.repeat(64)] }, { address: K, topics: ['0xb', '0x' + (57046).toString(16).padStart(64, '0')] }] }) === '57046' && jobIdFromReceipt({ logs: [] }) === null, 'the job id comes from the kernel\'s own log in the receipt');
+// 12.11.: the refusal said "holds 0.09385887119454214 $U" — cents, rounded down, and the price the health check reads
+const sh = shortOfU(93858871194542140n, 150000000000000000n), sh2 = shortOfU(149999999999999999n, 150000000000000000n);
+say(sh === 'the wallet holds 0.09 $U, the price is 0.15' && sh2.startsWith('the wallet holds 0.14 $U') && /the price is ([\d.]+)/.exec(sh)[1] === '0.15', `a short wallet is said in cents, rounded down ("${sh}"; "${sh2}")`);
 const j = await fetch(`${origin}/hires?r=${Date.now()}`).then((r) => r.json()).catch(() => null);
 say(j?.switched_on === true && (j.hires || []).length === 3 && j.hires.every((h) => [302257, 304493, 363709].includes(h.by)), `GET /hires: switched on, ${(j?.hires || []).length} hires (${(j?.hires || []).map((h) => `#${h.by} -> ${h.seller_name}`).join(', ')})`);
 const rows = (j?.log || []).filter((r) => r.job);

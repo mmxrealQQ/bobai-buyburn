@@ -57,6 +57,14 @@ async function log(env, row) {
   return row;
 }
 
+// The refusal when the hiring wallet is short (12.11.: the log read "holds 0.09385887119454214 $U"). The balance is
+// said in cents, rounded DOWN so a wallet just short never reads as holding the price; the price stays as quoted
+// (the health check reads "the price is <n>" to size the runway).
+export function shortOfU(uBal, budget) {
+  const cents = BigInt(uBal) / 10n ** 16n; // in BigInt: Number() would round 0.1499… up to 0.15
+  return `the wallet holds ${cents / 100n}.${String(cents % 100n).padStart(2, '0')} $U, the price is ${Number(budget) / 1e18}`;
+}
+
 // The job id the createJob receipt logged: the kernel's first indexed word, checked against the job itself.
 export function jobIdFromReceipt(rc, commerce = ERC8183.commerce) {
   for (const l of rc?.logs || []) if (String(l.address).toLowerCase() === commerce.toLowerCase() && l.topics?.length >= 2) {
@@ -127,7 +135,7 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
   const transport = fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
   const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account: me, chain: bsc, transport });
   const [uBal, bnb] = await Promise.all([pub.call({ to: U, data: ERC20_BAL(me.address) }).then((r) => BigInt(r.data || '0x0')), pub.getBalance({ address: me.address })]);
-  if (uBal < budget) return log(env, { ...base, status: 'refused', wallet: me.address, reason: `the wallet holds ${Number(uBal) / 1e18} $U, the price is ${Number(budget) / 1e18}` });
+  if (uBal < budget) return log(env, { ...base, status: 'refused', wallet: me.address, reason: shortOfU(uBal, budget) });
   if (bnb < GAS_FLOOR) return log(env, { ...base, status: 'refused', wallet: me.address, reason: `the wallet holds ${formatEther(bnb)} BNB; ${formatEther(GAS_FLOOR)} is the floor` });
   const plan = { ...base, wallet: me.address, provider: q.provider, price_u: Number(budget) / 1e18, task };
   if (dry) return { ...plan, status: 'plan', calls: q.calls.map((c) => c.what) };

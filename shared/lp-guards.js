@@ -201,7 +201,7 @@ export const refuse = refuseCollect;
 export function refuseSweep(state) {
   const sym = state.symbol || 'the token';
   if (!(state.balance > 0)) return state.kept > 0
-    ? `nothing above the ${state.kept} ${sym} the wallet keeps for its own hires`
+    ? `nothing above the ${Number(state.kept).toFixed(2)} ${sym} the wallet keeps for its own hires`
     : `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
   if (state.gasBnb < MIN_SWEEP_GAS_BNB) return `the wallet holds ${Number(state.gasBnb).toFixed(6)} BNB, not enough gas for approve + swap`;
   if (state.feedAgeS > 3600) return `Chainlink BNB/USD is ${Math.round(state.feedAgeS / 60)} min old — not a live price, so the route cannot be checked`;

@@ -392,6 +392,8 @@ if (SELF) {
   is('a source without a reserve sweeps all of it', sweepable(33n * e18 / 10n, 0n, 50n * e18) === 33n * e18 / 10n);
   check('nothing above the reserve', refuseSweep({ ...healthySweep, balance: 0, bnbEquivalent: 0, kept: 3.3 }), true);
   is('the refusal names the reserve', /keeps for its own hires/.test(refuseSweep({ ...healthySweep, balance: 0, kept: 3.3 })));
+  // 12.11.: the log read "the 3.2798673873069237 $U the wallet keeps" — the reserve is said in cents
+  is('the reserve is said in cents, not 16 digits', /the 3\.28 \$U the wallet keeps/.test(refuseSweep({ ...healthySweep, symbol: '$U', balance: 0, kept: 3.2798673873069237 })));
   is('the provider source keeps 4 $U', INCOME_SOURCES.find((s) => s.key === 'provider')?.keep === 4);
 
   console.log('increase');

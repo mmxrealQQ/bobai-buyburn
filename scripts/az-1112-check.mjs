@@ -62,7 +62,8 @@ say(/[؀-ۿ]/.test(arDesc), `/ar/: the meta description is Arabic ("${arDesc.sli
 const pf = await json(`${AGENT}/lp/portfolio`);
 say(pf && Math.abs(pf.put_in.bnb * pf.bnb_usd - pf.put_in.usd) < 1 && pf.bnb_usd_at_run != null, `/lp/portfolio: one BNB price for every dollar (bnb_usd ${pf?.bnb_usd}, at the run ${pf?.bnb_usd_at_run})`);
 say(pf && pf.pnl.time_in_range_from && pf.pnl.time_in_range_from > pf.pnl.since, `/lp/portfolio: time in range names its own start (${pf?.pnl?.time_in_range_from}, since ${pf?.pnl?.since})`);
-const rec = await get(`${AGENT}/lp/agent`);
+// the record answers JSON unless a browser asks for the page
+const rec = await fetch(`${AGENT}/lp/agent`, { headers: { ...UA, accept: 'text/html' } }).then((r) => r.text()).catch(() => '');
 say(/kept for its own hires/.test(rec) && !/\d\.\d{9,} \$U/.test(rec.replace(/<[^>]+>/g, ' ').replace(/nothing above the [\d.]+ \$U/g, '')), '/lp/agent: the hire reserve stands apart, no 16-digit $U figures in its own sentences');
 say(/Back to the DeFi agent/.test(rec) && /until 20 Nov 2026/.test(rec), '/lp/agent: the back link names the DeFi agent, the lead dates the tax slice');
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');

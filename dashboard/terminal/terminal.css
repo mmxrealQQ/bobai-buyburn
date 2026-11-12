@@ -1344,6 +1344,8 @@
 #bt .br-pp-how .x{flex:none;width:34px;text-align:center;font-style:normal;font-size:1.3rem;color:#ff2840}
 #bt .br-pp-how .pw{grid-column:1/-1;flex-wrap:wrap}
 #bt .br-pp-how .pw img{width:26px;height:26px;margin-right:-4px}
+#bt .br-pp-f13{margin:6px 0 6px;padding:8px 12px;border-radius:12px;border:2px solid #ff4fd8;background:rgba(255,79,216,.12);font-size:.8rem;line-height:1.35}
+#bt .br-pp-f13 b:first-child{display:block;font:400 1.05rem/1.1 Impact,'Arial Black',sans-serif;letter-spacing:.04em;color:#b6ff3b}
 #bt .br-pp-pool{margin:6px 0 8px;padding:10px 12px;border-radius:12px;border:2px solid #ffe600;background:rgba(255,230,0,.07)}
 #bt .br-pp-pool p{margin:0 0 6px;font-size:.8rem}
 #bt .br-pp-pool .amt{font:400 1.25rem/1 Impact,'Arial Black',sans-serif;color:#ffe600;letter-spacing:.02em}

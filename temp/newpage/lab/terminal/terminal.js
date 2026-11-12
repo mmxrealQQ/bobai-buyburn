@@ -7664,7 +7664,11 @@ window.__btBrSeason = brSeason;
   // all of it to the overall #1 on 30 Nov; the bar's goal $10 (GOAL below); ONLY $BOBAI counts, anything
   // else sent there is lost (said plainly)
   const POOL = '0x5E4102520A71B2AA18a1208330d4848dea4BD105', GOAL = 10; // $10 (operator 7.11.: "$10", the X post "goal $100k → $100 → $10"; 6.11. evening it was $100)
-  const poolHtml = () => '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov (23:59 UTC) gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
+  // FRIDAY THE 13TH (operator 12.11.): on 13 Nov, the game's own UTC day from 00:00 to 23:59, the daily #1 wins $13 USDT
+  // from the operator himself (not the prize pool). Shown only on that day; before and after it is gone by itself.
+  const F13 = () => new Date().toISOString().slice(0, 10) === '2026-11-13';
+  const f13Html = () => F13() ? '<p class="br-pp-f13"><b>FRIDAY THE 13TH</b> <span>Today’s daily #1 wins <b>$13 USDT</b> (BEP-20) from the dev. Details on X: @BrainOnBNB</span></p>' : '';
+  const poolHtml = () => f13Html() + '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov (23:59 UTC) gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
     + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;

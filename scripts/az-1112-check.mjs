@@ -71,6 +71,19 @@ for (const [u, m] of [[`${AGENT}/answer?service=health_factor`, 'GET'], [`${AGEN
   const b = await fetch(u, { method: m, headers: { ...UA, 'content-type': 'application/json' }, ...(m === 'POST' ? { body: '{}' } : {}) }).then((r) => r.json()).catch(() => null);
   say(b && b.x402Version === 2 && Array.isArray(b.accepts), `402 body of ${u.replace(AGENT, '')} names x402Version 2 beside accepts`);
 }
+// /registry without a browser: "times agents paid ours" is a number (it said "—" = "could not be read"), counted with
+// our own wallets left out — and the page's own list of our wallets is the worker's list (it missed two on 12.11.)
+{
+  const { OWN_WALLETS } = await import('../worker-agent/own-wallets.js');
+  const src = await get(`${SITE}/registry`), n = (src.match(/id="aw-n-us">([\d,]+)</) || [])[1];
+  const [own, buys] = await Promise.all([json(`${AGENT}/jobs/own`), json(`${AGENT}/buys`)]);
+  const mine = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());
+  const want = Object.values(own?.jobs || {}).filter((j) => j.client && !mine(j.client) && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || '')).length + (buys?.payments || []).filter((x) => !x.self_test && !mine(x.from)).length;
+  say(n && Number(n.replace(/,/g, '')) === want, `/registry HTML: times agents paid ours = ${n} (counted here: ${want})`);
+  const ours = ((src.match(/var OURS = \[([^\]]+)\]/) || [])[1] || '').match(/0x[0-9a-f]{40}/g) || [];
+  say([...OWN_WALLETS].every((w) => ours.includes(w)), `/registry: the page's list of our wallets holds all ${OWN_WALLETS.size} of own-wallets.js (${ours.length} listed)`);
+  say(/id="aw-n-listed">\d/.test(src), '/registry HTML: agents listed by others is a number, not a dash');
+}
 // the scanner's other pools: found by the index, their depth read from the chain (CAKE: PancakeSwap's V2 pair is among them)
 {
   const r = await call(`${SITE}/mcp`, 'bsc_pool_scan', { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' });

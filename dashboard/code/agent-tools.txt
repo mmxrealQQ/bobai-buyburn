@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4221 lines.
+# one fetch. 5 files, 4226 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -29,6 +29,7 @@ import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { titleAndBody } from '../shared/plaza-board.js';
 import { groupLibrary, dateLine, checkLine } from '../shared/board-topics.js';
 import { translate, decodeHtml, escapeHtml, toAr, AR_PAGES, NOAR } from './i18n/core.js';
+import { isOwnWallet } from '../worker-agent/own-wallets.js';
 import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -2991,11 +2992,15 @@ const RECORD_PAGES = {
     const floor = Number(r?.registered_ids) || 0, live = Number(cs?.highest_id) || 0, ids = Math.max(floor, live);
     return { '#sv-agents': ids ? nfmt(ids) : null, '#sv-reach': r?.reachability?.reachable != null ? nfmt(r.reachability.reachable) : null, '#sv-when': r?.measured_at ? `census of ${dayOf(r.measured_at)}` : null, '#sv-asked': st?.asked?.total != null ? nfmt(st.asked.total) : null };
   } },
-  '/registry': { get: async (ask) => { const [b, h, op, st, li] = await Promise.all(['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings'].map((x) => ask('https://agent.brainonbnb.com' + x))); return { b, h, op, st, li }; }, say: ({ b, h, op, st, li }) => {
+  '/registry': { get: async (ask) => { const [b, h, op, st, li, own, buys] = await Promise.all(['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings', '/jobs/own', '/buys'].map((x) => ask('https://agent.brainonbnb.com' + x))); return { b, h, op, st, li, own, buys }; }, say: ({ b, h, op, st, li, own, buys }) => {
     const hired = ((h?.log) || []).filter((x) => x.job).length + ((op?.opinions) || []).filter((x) => x.job).length;
-    const others = ((li?.listings) || []).filter((l) => !l.house).length;
+    const others = li?.listings ? li.listings.filter((l) => !l.house).length : null;
+    // paid ours (2026-11-12: the page without a browser said "—", which it defines as "could not be read"): the same count as
+    // the page's script — paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers
+    const paidUs = own?.jobs && buys ? Object.values(own.jobs).filter((j) => j.client && !isOwnWallet(j.client) && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || '')).length
+      + ((buys.payments) || []).filter((x) => !x.self_test && !isOwnWallet(x.from)).length : null;
     return { '#pb-n-all': b ? nfmt(b.total) : null, '#pb-n-open': b ? nfmt(b.open) : null, '#pb-n-done': b ? nfmt(b.resolved || 0) : null,
-      '#aw-n-hired': h || op ? nfmt(hired) : null, '#aw-n-settled': st?.totals ? nfmt(st.totals.jobs || 0) : null, '#aw-n-listed': others ? nfmt(others) : null };
+      '#aw-n-hired': h || op ? nfmt(hired) : null, '#aw-n-settled': st?.totals ? nfmt(st.totals.jobs || 0) : null, '#aw-n-listed': others != null ? nfmt(others) : null, '#aw-n-us': paidUs != null ? nfmt(paidUs) : null };
   } },
   '/screener': { src: 'https://agent.brainonbnb.com/screener', say: (j) => {
     const f = j.fields, at = (row, k) => row[f.indexOf(k)];

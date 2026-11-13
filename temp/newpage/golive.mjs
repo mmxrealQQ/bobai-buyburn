@@ -149,7 +149,10 @@ if (!APPLY) {
   add.push('/ar', '/ar/*'); // the Arabic twin of every page (2026-11-08); /liquidity and /agents left the list for it (they are _redirects to /defi, served without the worker)
   add.push('/og/*'); // the share card of a scan (2026-10-13), proxied to worker-og in _worker.js
   add.push('/brainscreener', '/brainscreener/*', '/game', '/game/*', '/worldcup', '/worldcup/*', '/builder', '/builder/*'); // builder sheet: password in _worker.js
-  r.include = [...new Set([...r.include, ...add])];
+  // a path a rule already covers is not added again (2026-11-13: families became prefixes like "/board*", 99 -> 82 rules;
+  // adding "/board" and "/board.html" back would undo it). * matches anything, as Pages reads it.
+  const covers = (rule, p) => new RegExp('^' + rule.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(p.replace(/\*/g, 'x/y'));
+  r.include = [...new Set([...r.include, ...add.filter((p) => !r.include.some((rule) => covers(rule, p)))])];
   must(r.include.length <= 100, 'Pages allows at most 100 route rules');
   fs.writeFileSync(path.join(OUT, '_routes.json'), JSON.stringify(r, null, 2) + '\n');
 }

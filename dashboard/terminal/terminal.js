@@ -6104,6 +6104,10 @@ export async function open() {
   if (loaded) return; loaded = true;
   liveSince = Date.now();
   logLine('BOOT', '#F0B90B', ['connecting to BNB Chain…']);
+  // THE CHART DOES NOT WAIT FOR THE TIMELINE (2026-11-13, operator: "sometimes the chart and the timeline load slowly"):
+  // the ledger's candles answer in ~0.1 s, but were asked only after logs, chain and the hour of swaps from public nodes
+  // (9-17 s after the page on 13.11.). Asked first now; without a ledger its own retries fall back to the swaps later.
+  loadCandles(); setInterval(() => { if (!document.hidden && bt.classList.contains('on')) loadCandles(); }, 60e3);
   const [evs] = await Promise.all([logs().catch(e => { window.__logsErr = String(e && e.stack || e); logLine('DATA', '#ff4d6d', ['a source did not answer: ' + String(e.message || e).slice(0, 60)]); return []; }), chain().catch(() => logLine('RPC', '#ff5a36', ['chain read failed, retrying']))]);
   events = evs;
   // one more try after a pause: a node that turned the first request away usually answers the second (2026-09-27)
@@ -6114,7 +6118,7 @@ export async function open() {
   // replay, slowed down, with a tax float — many in a row were chaos and the replay took forever. They stay in S.hist
   // and the replay fires them as plain dots (replayDots), the way live shows them.
   for (const x of hist || []) if (isAlert(x) && !events.some(e => e.id === x.id) && !(x.buy && dropped.has(x.tx.toLowerCase()))) events.push(x);
-  loadCandles(); setInterval(() => { if (!document.hidden && bt.classList.contains('on')) loadCandles(); }, 60e3);
+  if (CH.src !== 'ledger') loadCandles(); // no ledger yet: the hour of swaps just read makes the chart now
   events.sort((a, b) => a.t - b.t);
   // a cold start on a slow line can come back empty: try the record again instead of showing an empty brain
   for (let i = 0; i < 3 && !events.length; i++) { await new Promise(r => setTimeout(r, 4000)); events = await logs().catch(() => []); }

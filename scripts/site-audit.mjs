@@ -221,7 +221,8 @@ if (args.includes('--self-test')) {
 const routed = (() => {
   try {
     const r = JSON.parse(fs.readFileSync(path.join(DASH, '_routes.json'), 'utf8'));
-    return (r.include || []).map((x) => x.replace(/\*$/, ''));
+    // a trailing * is a prefix (13.11.: "/board*" stands for /board, /board.md, /board/12 …), kept as "<prefix>*"
+    return (r.include || []).map((x) => (/[^/]\*$/.test(x) ? x : x.replace(/\*$/, '')));
   } catch { return []; }
 })();
 
@@ -234,7 +235,7 @@ const exists = (rel, fromPage) => {
   const clean = rel.split('#')[0].split('?')[0];
   if (!clean || clean.startsWith('http')) return true;
   const asPath = clean.startsWith('/') ? clean : '/' + clean;
-  if (routed.some((r) => asPath === r || (r.endsWith('/') && asPath.startsWith(r)))) return true;
+  if (routed.some((r) => asPath === r || (r.endsWith('/') && asPath.startsWith(r)) || (r.endsWith('*') && asPath.startsWith(r.slice(0, -1))))) return true;
   // Relative links resolve against the page they appear on, not against the
   // site root. Getting this wrong reported every worldcup page's own nav as
   // broken — 60 findings that were all the audit's fault.

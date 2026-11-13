@@ -258,7 +258,7 @@ button.bw-card .bw-n{color:var(--bp-gold)}
 .bw-page .pg-open:hover{color:var(--bp-gold);border-color:var(--bp-line2)}
 .bw-page .bw-x{margin-left:8px}
 @media (max-aspect-ratio:3/4),(max-width:559px){.bw-page{padding:0}.bw-page .pg-open{display:none}}
-/* X Official carries a gold check, X Community a "CT" — compact, no text labels (operator, 2026-09-26) */
+/* X Official carries a gold check — compact, no text labels (operator, 2026-09-26) */
 .bp-soc a{position:relative;width:30px;height:28px;padding:0;justify-content:center}
 .bp-soc a small{position:absolute;right:-6px;top:-5px;height:13px;padding:0 3px;border-radius:7px;background:var(--bp-gold);color:#0b090a;font:900 7.5px/13px var(--bp-mono);letter-spacing:.02em;box-shadow:0 0 8px rgba(240,185,11,.6)}
 .bp-ok{position:absolute;right:-4px;top:-4px;width:13px;height:13px;border-radius:50%;background:var(--bp-gold);color:#0b090a;font:900 8px/13px sans-serif;text-align:center;font-style:normal;box-shadow:0 0 8px rgba(240,185,11,.6)}

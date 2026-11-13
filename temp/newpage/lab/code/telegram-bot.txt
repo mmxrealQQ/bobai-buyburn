@@ -4159,7 +4159,6 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}&amp;chain=bsc">PancakeSwap</a>
 
 🐦 <a href="https://x.com/BrainOnBNB">X Official</a>
-🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>
 🎮 <a href="https://brainonbnb.com/game">Game</a>
 ⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
 🎁 <a href="${NFT_DASHBOARD_URL}">Buy Drops NFT</a>

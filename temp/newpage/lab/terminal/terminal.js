@@ -5059,7 +5059,10 @@ const chartX = chartCv.getContext('2d');
 const pxBnb = () => S.price > 0 && S.bnbP > 0 ? S.price / S.bnbP : 0;
 async function loadCandles() {
   try {
-    const j = await getJSON(CANDLES_URL, 12000);
+    // the first read takes the answer the page asked for while it loaded (window.__btEarly, 2026-11-13); empty = ask again
+    const early = window.__btEarly && window.__btEarly.c; if (early) window.__btEarly.c = null;
+    let j = early && !new URLSearchParams(location.search).get('candles') ? await early : null;
+    if (!(Array.isArray(j?.rows) && j.rows.length)) j = await getJSON(CANDLES_URL, 12000);
     if (Array.isArray(j?.rows) && j.rows.length) { const firstLedger = CH.src !== 'ledger'; CH.rows = j.rows.filter(r => r.c > 0).sort((a, b) => a.t - b.t); CH.min = j.minutes || 10; CH.src = 'ledger'; CH.dirty = true; try { if (opened) readMood(); } catch {}
       // a replay started before the ledger came (REPLAY tapped right after the boot): its older trades join from here on
       if (firstLedger && mode === 'replay' && playhead) dotsFrom(playhead); // once: the minute's reloads leave the replay's plan alone
@@ -6108,6 +6111,11 @@ export async function open() {
   // the ledger's candles answer in ~0.1 s, but were asked only after logs, chain and the hour of swaps from public nodes
   // (9-17 s after the page on 13.11.). Asked first now; without a ledger its own retries fall back to the swaps later.
   loadCandles(); setInterval(() => { if (!document.hidden && bt.classList.contains('on')) loadCandles(); }, 60e3);
+  // THE PRICE WITH THE PAGE (2026-11-13): the site's own on-chain price (/api/price: pair reserves x Chainlink, asked in
+  // the page's head) stands until chain() has read the public nodes (6-10 s on a phone); dated a minute back, so the
+  // chain's own read and every trade's Sync win over it
+  const earlyP = window.__btEarly && window.__btEarly.p;
+  if (earlyP) earlyP.then(j => { if (!j || S.price > 0 || !(+j.price_usd > 0 && +j.bnb_usd > 0)) return; S.bnbP = +j.bnb_usd; S.price = +j.price_usd; S.priceAt = Date.now() - 60e3; CH.dirty = true; }).catch(() => {});
   const [evs] = await Promise.all([logs().catch(e => { window.__logsErr = String(e && e.stack || e); logLine('DATA', '#ff4d6d', ['a source did not answer: ' + String(e.message || e).slice(0, 60)]); return []; }), chain().catch(() => logLine('RPC', '#ff5a36', ['chain read failed, retrying']))]);
   events = evs;
   // one more try after a pause: a node that turned the first request away usually answers the second (2026-09-27)

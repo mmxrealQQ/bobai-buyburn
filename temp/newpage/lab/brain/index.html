@@ -246,10 +246,26 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1794542989737">
+<link rel="stylesheet" href="brain/brain.css?v=1794577902057">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1794542989">
+<!-- THE TERMINAL WITHOUT A CHAIN OF WAITS (2026-11-13, operator: "on the phone the chart still loads a bit slowly"): the
+     module was asked only after the whole page was read, three.js only after the module, its passes only after three.js,
+     and the candles + price only after all of it ran (chart 10-13 s on a throttled phone). All asked with the page now. -->
+<link rel="modulepreload" href="terminal/terminal.js?v=1794577901">
+<link rel="modulepreload" href="terminal/vendor/build/three.module.min.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/EffectComposer.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/RenderPass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/UnrealBloomPass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/OutputPass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/Pass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/MaskPass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/postprocessing/ShaderPass.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/shaders/CopyShader.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/shaders/LuminosityHighPassShader.js">
+<link rel="modulepreload" href="terminal/vendor/jsm/shaders/OutputShader.js">
+<script>/* read by terminal.js (loadCandles, open): the chart's candles and the on-chain price, asked while the page loads */(()=>{const g=(u)=>fetch(u,{cache:"no-store"}).then((r)=>r.ok?r.json():null).catch(()=>null);window.__btEarly={c:g("https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles"),p:g("/api/price")}})()</script>
+<link rel="stylesheet" href="terminal/terminal.css?v=1794577901">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -1513,9 +1529,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1794542989')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1794577901')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1794542989738" defer></script>
-<script src="brain/cards.js?v=1794542989738" defer></script>
-<script src="brain/hero.js?v=1794542989738" defer></script>
+<script src="brain/brain.js?v=1794577902059" defer></script>
+<script src="brain/cards.js?v=1794577902059" defer></script>
+<script src="brain/hero.js?v=1794577902059" defer></script>
 </body></html>

@@ -144,6 +144,56 @@ export function buybackWalletVerdict(look, prior = null) {
   }
   return { good: true, recheck: false, detail: `${held}, and the bot has sent since the first look (nonce ${prior.nonce} → ${look.nonce})` };
 }
+// EVERY STEP OF A RUN (15.11., the A-Z pass): the bot logs a step only when it worked — a BOB swap that failed, a Giggle
+// send that was refused, a liquidity add that reverted simply leave their fields out, and the run still reads as a burn.
+// Each run of the last 48 h must carry every step that was on at its time (the windows as in worker/index.js, pinned
+// by scripts/buyback-runs-regressions.mjs): creator, BOBAI swap + burn, BOB swap + burn until Dec 1, the LP agent and
+// the Giggle pot until Nov 20, and a BOBAI liquidity entry (bobai-liq-log.json, written right after) while Boost III
+// runs and for good from Dec 1. Pure.
+export const BUYBACK_WINDOWS = {
+  lpShare: [Date.parse('2026-09-09T05:30:00Z'), Date.parse('2026-11-20T00:01:00Z')],
+  giggle: [Date.parse('2026-09-17T00:01:00Z'), Date.parse('2026-11-20T00:01:00Z')],
+  bobaiLiqBoost3: [Date.parse('2026-09-19T18:00:00Z'), Date.parse('2026-11-20T00:01:00Z')],
+  bobaiLiqPhase: Date.parse('2026-12-01T00:01:00Z'),
+};
+export function buybackRunsVerdict(runs, liqLog, now = Date.now(), W = BUYBACK_WINDOWS) {
+  if (!Array.isArray(runs) || !Array.isArray(liqLog)) return { good: false, detail: 'the burn or liquidity log could not be read' };
+  const recent = runs.filter((r) => r && Date.parse(r.time) > now - 48 * 3600e3);
+  if (!recent.length) return { good: true, detail: 'no run in 48 h (no volume, no run)' };
+  const liqAt = liqLog.map((l) => Date.parse(l?.time)).filter((x) => x > 0);
+  const inW = (t, [a, b]) => t >= a && t < b;
+  const short = [];
+  for (const r of recent) {
+    const t = Date.parse(r.time), miss = [];
+    if (!r.creatorTx) miss.push('creator');
+    if (!(r.bobaiSwapTx && r.bobaiBurnTx)) miss.push('BOBAI burn');
+    if (t < W.bobaiLiqPhase && !(r.bobSwapTx && r.bobBurnTx)) miss.push('BOB burn');
+    if (inW(t, W.lpShare) && !r.lpAgentTx) miss.push('LP agent share');
+    if (inW(t, W.giggle) && !r.giggleTx) miss.push('Giggle pot');
+    // a small run's liquidity slice is under the bot's MIN_LIQ (0.0003 BNB) and skipped on purpose (5 Oct, 0.0012 BNB):
+    // asked only from the line the bot acts from
+    if ((inW(t, W.bobaiLiqBoost3) || t >= W.bobaiLiqPhase) && +r.totalBnb >= BUYBACK_ACTS_ABOVE_BNB && !liqAt.some((x) => x >= t - 5000 && x <= t + 300e3)) miss.push('BOBAI liquidity');
+    if (miss.length) short.push(`${r.time.slice(5, 16).replace('T', ' ')} without ${miss.join(', ')}`);
+  }
+  return short.length
+    ? { good: false, detail: `${short.length} of ${recent.length} runs in 48 h left a step out: ${short.slice(-3).join(' · ')} — the BNB of a failed step stays on the wallet and is split again next run` }
+    : { good: true, detail: `${recent.length} runs in 48 h, every step with its transaction` };
+}
+export const buybackRunsHolds = () => {
+  const T = Date.parse('2026-11-15T12:00:00Z'), at = (h) => new Date(T - h * 3600e3).toISOString();
+  const full = (h) => ({ time: at(h), totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3', bobSwapTx: '0x4', bobBurnTx: '0x5', lpAgentTx: '0x6', giggleTx: '0x7' });
+  const liq = (h) => ({ time: new Date(T - h * 3600e3 + 600).toISOString() });
+  const D2 = Date.parse('2026-12-02T12:00:00Z'), at2 = (h) => new Date(D2 - h * 3600e3).toISOString();
+  return buybackRunsVerdict([full(3), full(30)], [liq(3), liq(30)], T).good === true
+    && buybackRunsVerdict([full(3), { ...full(2), giggleTx: undefined }], [liq(3), liq(2)], T).good === false
+    && buybackRunsVerdict([full(3)], [], T).good === false
+    && buybackRunsVerdict([{ ...full(3), bobBurnTx: undefined }], [liq(3)], T).good === false
+    && buybackRunsVerdict([{ ...full(60), bobBurnTx: undefined }], [], T).good === true
+    && buybackRunsVerdict([{ time: at2(1), totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3' }], [{ time: new Date(D2 - 3600e3 + 900).toISOString() }], D2).good === true
+    && buybackRunsVerdict([{ time: at2(1), totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3' }], [], D2).good === false
+    && buybackRunsVerdict([{ ...full(3), totalBnb: '0.0012' }], [], T).good === true /* a small run skips its liquidity on purpose */
+    && buybackRunsVerdict(null, [], T).good === false;
+};
 // When to look again: 90 seconds after the bot's next ten-minute mark, so a whole run lies between the looks.
 export const msToSecondLook = (now = Date.now()) => (600000 - (now % 600000)) + 90000;
 export async function readBuybackLook(rpc = 'https://bsc-dataseed.binance.org') {
@@ -339,7 +389,7 @@ const staleHolds = () => staleAhead('The season runs until 30 November 2026; the
   && staleAhead('<p>The season ended on 30 November.</p>', Date.parse('2027-01-01T00:00:00Z')).length === 0
   && staleAhead('from Dec 1, 2026, 00:01 UTC, for good, 1% creator', Date.parse('2027-01-01T00:00:00Z')).length === 0
   && staleAhead('the slice runs until 20 Nov 2026', Date.parse('2026-11-22T00:00:00Z')).length === 1;
-export const PRIZE_PAID_FROM = Date.parse('2026-11-30T00:00:00Z');
+export const PRIZE_PAID_FROM = Date.parse('2026-12-01T00:15:00Z'); // (15.11.) 30 Nov is still played: the pool is judged through it, paid out after the season (the boards close 23:59 UTC, the chain record 00:15)
 export function prizeVerdict(v, addr, now = Date.now()) {
   if (now < PRIZE_PAID_FROM || addr !== '0x5E4102520A71B2AA18a1208330d4848dea4BD105' || v.good || /could not be read/.test(v.detail)) return v;
   return { ...v, name: v.name.replace(/holds at least [d,.]+ BOBAI/, 'holds the Brain Pop pool until it is paid out'), good: true, detail: `${v.detail.split(' — ')[0]} — the season ended Nov 30, the pool goes to the overall #1; not judged` };
@@ -451,6 +501,7 @@ const ok = (area, name, good, detail = '') => results.push({ area, name, good, d
 ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
 ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a run reads red, tax that just arrived does not)', buybackVerdictHolds());
+ok('Health', 'the buyback-run rule passes its own pins (a run without a step that was on is red, after Dec 1 no BOB burn is asked)', buybackRunsHolds());
 ok('Health', 'the told-buys / burn-alert rules pass their own pins (an untold buy, a stuck queue, a burn stuck an hour read red)', tgEvidenceHolds());
 ok('Health', 'the agent-hire rules pass their own pins (a refusal, a stale or stuck hire and a short wallet are red)', hiresHolds());
 ok('Health', 'the refused-payment rule passes its own pins (a payer\'s empty wallet is theirs, a failed RPC or an unknown reason is ours)', refusedHolds());
@@ -541,6 +592,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     const h = t ? ageHours(t) : null;
     ok('Bots', 'last burn (informational)', true, h === null ? 'no timestamp' : `${fmtAge(h)} ago — idle is normal when volume is low`);
   }
+  const lq = await getJson(`${LOGS}/logs/bobai-liq-log.json`);
+  const liqItems = Array.isArray(lq.json) ? lq.json : null;
+  const rv = buybackRunsVerdict(items.length ? items : null, liqItems);
+  ok('Bots', 'every buyback run of the last 48 h did every step that was on (creator, burns, shares, BOBAI liquidity)', rv.good, rv.detail);
 }
 
 // ---- the money numbers ----------------------------------------------------
@@ -894,15 +949,19 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   // gas floor, and the second opinion because the leash's session had expired — both were red only once a run had failed.
   // Every wallet that pays its own gas is read every morning; under two floors (0.003 BNB) is red while the work still runs.
   {
-    const GAS_WALLETS = [['DeFi agent #363709', '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963'], ['Venus health #302257', '0xEAC21928DE023677A25eb925D1cb1b0786FaF946'], ['Venus yield #304493', '0x497dAc54FD7238027Ecbbd194b353379a1D605F0'], ['Altana leash', '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3']];
+    // (15.11.) each wallet its own floor: the hiring wallets two hire floors (0.003); the x402 income wallet pays only the
+    // Permit2 settles and the sweep (worker-lp/x402-settle.js, ~0.00001 BNB each) — 0.001 is a hundred of them; the NFT
+    // relayer keeps 0.02 for the mints (fund-service-wallet MIN_REMAINING) plus one top-up of another wallet (~0.005)
+    const GAS_WALLETS = [['DeFi agent #363709', '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963', 0.003], ['Venus health #302257', '0xEAC21928DE023677A25eb925D1cb1b0786FaF946', 0.003], ['Venus yield #304493', '0x497dAc54FD7238027Ecbbd194b353379a1D605F0', 0.003], ['Altana leash', '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3', 0.003],
+      ['x402 income', '0x690E950214980BC329823A2DB2fD90C06Bd54dE4', 0.001], ['NFT relayer', '0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2', 0.025]];
     const gas = [];
-    for (const [n, a] of GAS_WALLETS) {
+    for (const [n, a, floor] of GAS_WALLETS) {
       const b = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [a, 'latest'] }) })
         .then((r) => r.json()).then((x) => (x.result ? Number(BigInt(x.result)) / 1e18 : null)).catch(() => null);
-      gas.push({ n, b });
+      gas.push({ n, b, floor });
     }
-    const low = gas.filter((g) => g.b == null || g.b < 0.003);
-    ok('Agents', 'every agent wallet that pays its own gas holds at least 0.003 BNB (two hire floors)', !low.length, gas.map((g) => `${g.n} ${g.b == null ? 'unread' : g.b.toFixed(4)}`).join(' · ') + (low.length ? ' (top up: node scripts/fund-service-wallet.mjs --to <provider|altana|health|yield> --usd 3 --confirm)' : ''));
+    const low = gas.filter((g) => g.b == null || g.b < g.floor);
+    ok('Agents', 'every wallet that pays its own gas holds its floor (hiring agents 0.003 BNB, x402 income 0.001, NFT relayer 0.025)', !low.length, gas.map((g) => `${g.n} ${g.b == null ? 'unread' : g.b.toFixed(4)}${g.b != null && g.b < g.floor ? ' < ' + g.floor : ''}`).join(' · ') + (low.length ? ' (top up from the NFT relayer: node scripts/fund-service-wallet.mjs --to <provider|altana|health|yield|service> --usd 3 --confirm; the relayer itself from the operator)' : ''));
     const ses = (await getJ(`${AGENT}/session`)).body, keys = ses?.chains?.find((c) => c.chainId === 56)?.keys || [];
     ok('Agents', 'the Altana leash has a valid session key (the second opinion pays through it)', keys.some((k) => k.role === 'session' && k.valid), keys.length ? `${keys.filter((k) => k.role === 'session' && k.valid).length} valid of ${keys.filter((k) => k.role === 'session').length} session keys` : 'no keys read');
   }

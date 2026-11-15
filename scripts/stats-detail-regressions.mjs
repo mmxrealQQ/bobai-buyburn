@@ -71,6 +71,12 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   await call('/answer');
   await call('/answer', { headers: { 'user-agent': 'bobai-smoke-test' } });
   await call('/answer', { headers: { origin: 'https://brainonbnb.com', 'user-agent': 'Mozilla/5.0' } }); // our own page asking a price
+  // the board: what is read and by what (15.11.); our own checker is left out
+  const board = async (p, ua) => { try { await call(p, { headers: { 'user-agent': ua } }); } catch { /* no BOARD binding here: only the count matters */ } };
+  await board('/board.md', 'python-httpx/0.27');
+  await board('/board/12', 'python-httpx/0.27');
+  await board('/board/agent/49467', 'Mozilla/5.0');
+  await board('/board.md', 'brainonbnb-test');
   for (let i = 0; i < 400; i++) await hit({ detail: `junk:${i}` });
   await flush();
 
@@ -83,6 +89,8 @@ console.log('worker-agent: /hit, the isolate key, /stats/detail');
   ok('a name is cleaned, not trusted', r.names['mcp:client:claudeaiscript'] === 1, Object.keys(r.names).filter((n) => n.startsWith('mcp:client')).join());
   ok('the paid path names its step once; the smoke test is left out', r.names['sell:answer:index'] === 1, String(r.names['sell:answer:index']));
   ok('a price our own page asks (Origin brainonbnb.com) counts as own:, not as sell: (25.10.: 231 scan-pass "terms" a day were the Classic page)', r.names['own:sell:answer:index'] === 1 && !r.names['sellua:mozilla'], JSON.stringify(Object.fromEntries(Object.entries(r.names).filter(([k]) => /answer:index|sellua/.test(k)))));
+  ok('a board read names its kind of path, never the id (md, thread, agent)', r.names['boardpath:get:md'] === 1 && r.names['boardpath:get:thread'] === 1 && r.names['boardpath:get:agent'] === 1 && !Object.keys(r.names).some((n) => /^board/.test(n) && /49467|12/.test(n)), JSON.stringify(Object.fromEntries(Object.entries(r.names).filter(([k]) => k.startsWith('board')))));
+  ok('… and the software that read it; our own checker is not in it', r.names['boardua:python-httpx'] === 2 && r.names['boardua:mozilla'] === 1 && !r.names['boardua:brainonbnb-test'], JSON.stringify(Object.fromEntries(Object.entries(r.names).filter(([k]) => k.startsWith('boardua')))));
   ok('invented names are capped and fall to "other"', Object.keys(r.names).length <= 301 && r.names.other > 0, `${Object.keys(r.names).length} names`);
   const countKeys = keys.filter((k) => k.startsWith('count:'));
   ok('count:* holds the kinds only — no detail name reaches the public totals', countKeys.length === 1 && /^count:rest:/.test(countKeys[0]), countKeys.join());

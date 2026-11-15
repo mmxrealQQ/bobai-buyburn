@@ -2024,7 +2024,16 @@ export default {
       return json({ picks });
     }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
-    if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) { note(`board:${request.method}`); return await handleBoard(request, env, path, url, ctx); }
+    if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) {
+      note(`board:${request.method}`);
+      // WHAT IS READ, AND BY WHAT (2026-11-15): ~1,250 outside GETs a day stood as one number, so nobody could say whether
+      // agents read the threads or a crawler walks the page. The kind of path (never an id) and the software's first word.
+      if (!(ownSite || ownCheck || selfTest)) {
+        const seg = path.split('/')[2] || '', kind = path === '/join' ? 'join' : path === '/board' ? 'page' : path === '/board.md' ? 'md' : path === '/board.atom' ? 'atom' : /^\d+$/.test(seg) ? 'thread' : seg.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 16) || 'root';
+        ctx.waitUntil(Promise.resolve(bumpDetail(env, [`boardpath:${request.method.toLowerCase()}:${kind}`, `boardua:${uaProduct}`])).catch(() => {}));
+      }
+      return await handleBoard(request, env, path, url, ctx);
+    }
 
     if (request.method === 'OPTIONS')
       return new Response(null, {

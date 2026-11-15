@@ -2820,19 +2820,25 @@ export async function postPopChampion(env, tick) {
   let text = await popChampionText(day);
   if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`);
   if (text === undefined) return;
-  await env.KV.put(flag, text ? 'sent' : 'nobody', { expirationTtl: 3 * 86400 }); // once, also when nobody played
-  if (!text) return;
+  if (!text) { await env.KV.put(flag, 'nobody', { expirationTtl: 3 * 86400 }); return; } // once, also when nobody played
+  // MARKED ONLY WHEN SENT (15.11., the A-Z pass): the day was marked before Telegram answered, so one refused send lost the
+  // post (on 1 Dec: the season-over post). Now a refusal is tried again next minute, at most 5 times a day.
+  const tryKey = flag + ':try', tries = Number(await env.KV.get(tryKey)) || 0;
+  if (tries >= 5) return;
+  await env.KV.put(tryKey, String(tries + 1), { expirationTtl: 3 * 86400 });
+  const done = () => env.KV.put(flag, 'sent', { expirationTtl: 3 * 86400 });
   // THE CHAMPION'S CARD (7.11., operator: "ecosystem number one"): the post is the champion's own run card (name, score,
   // place — bobai-og /pop/<run>.png) with the text as its caption and a line into the challenge; text alone if it fails
   const champ = await popChampionRun(day);
   if (champ) {
     const caption = text.replace('▶️ Play today: https://brainonbnb.com/m/pop?from=tg', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ + '?from=tg');
     const ph = await tg('sendPhoto', { chat_id: TG_CHAT_ID, photo: 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + day, caption, parse_mode: 'HTML' }).catch(() => null);
-    if (ph?.ok) return;
+    if (ph?.ok) return done();
     console.error('[POP CHAMPION] photo refused, text instead ' + day, JSON.stringify(ph));
   }
   const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => null);
-  if (!sent?.ok) console.error('[POP CHAMPION] Telegram refused ' + day, JSON.stringify(sent));
+  if (sent?.ok) return done();
+  console.error('[POP CHAMPION] Telegram refused ' + day + ' (try ' + (tries + 1) + ' of 5)', JSON.stringify(sent));
 }
 // the day's record on BNB Chain (agent.brainonbnb.com/pop/chain?day=): its transaction, or null while not written
 async function popChainTx(day) {

@@ -16,6 +16,9 @@ export const FIRST_DAY = '2026-11-06';
 // the season gets ONE $BOBAI, every daily winner gets NOTHING (the operator's joke, said so on the page)
 export const LAST_DAY = '2026-11-30';
 export const seasonOver = today => today > LAST_DAY;
+// the day a request means when it names none (15.11.): today, and once the season is over its last day — so old links
+// (/m/pop, ?pop=play, posts) still open the game (an unranked rematch of 30 Nov) instead of 400 "no such day"
+export const askedDay = (d, today) => d || (seasonOver(today) ? LAST_DAY : today);
 // the creatures and their moves, as the terminal's CREW (snail and kaiju come at fixed beats, not from this list)
 export const CREW = { octo: ['fly', 'pop', 'spin', 'float'], bulb: ['run'], astro: ['float', 'spin'], fridge: ['run', 'pop', 'rise'], sock: ['rise', 'pop'],
   shrimp: ['run', 'pop', 'spin'], eyeball: ['run', 'pop'], duck: ['fly', 'zoom'], banana: ['pop', 'rise', 'zoom'], pigeon: ['fly'], cactus: ['run', 'pop', 'rise'],

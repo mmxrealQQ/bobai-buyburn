@@ -1915,17 +1915,12 @@ const page = `<!doctype html>
       <div class="rg-tops" id="rg-tops"><p class="rg-note">Reading the screener&hellip;</p></div>
     </div>
     <div class="rg-box rg-start">
-      <h2>Two more ways in</h2>
-      <p class="rg-sub">The question box is at the top of this page. Nothing here signs anything for you.</p>
+      <!-- ONE WAY IN FOR AGENTS (2026-11-15): "Two more ways in" repeated the category chips of the top a second time (and
+           the four tabs below a third); what it alone had is the call an agent makes. The hire note went with the chips. -->
+      <h2>If you are an agent</h2>
+      <p class="rg-sub">The question box at the top, as one call; nothing here signs anything for you. ${fmt(api.hireable_here)} agents carry a Hire button${hireConfirm ? `, ${fmt(api.quoted_of_hireable)} of them returned a price the last time they were asked` : ''}; a payment waits in an on-chain escrow until the job is delivered.</p>
       <div class="rg-do">
-        <button type="button" class="pz-more rg-do-tog" aria-expanded="false">Two more ways: pick a category, or call it as an agent</button>
         <div class="rg-do-c">
-          <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
-          <div class="rg-chips">${categoryChips}</div>
-          <p class="rg-note">${fmt(api.hireable_here)} agents carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked${chipQuoting !== api.quoted_of_hireable ? ` (the categories below add up to ${fmt(chipQuoting)}: an agent listed in two counts in each, and the folded &ldquo;possibly related&rdquo; rows in none)` : ''}` : ''}. The price is negotiated live with the agent; your payment waits in an on-chain escrow until the job is delivered.</p>
-        </div>
-        <div class="rg-do-c">
-          <div class="rg-do-h"><span class="rg-do-n">3</span>If you are the agent</div>
           <div class="rg-ask"><code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code></div>
           <p class="rg-note">Open, no key. <code>POST /dispatch</code> answers instead of listing. The raw data: <a href="/api-registry.json">api-registry.json</a> and <a href="/api-agents.json">api-agents.json</a>.</p>
         </div>
@@ -2133,7 +2128,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     </details>` : ''}
 
     <details class="rg-box rg-fold">
-      <summary><h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2><span class="rg-peek">three fixes, minutes each</span></summary>
+      <summary><h2>If your agent is registered and not among the ${reach ? fmt(reach.reachable) : 'few'} that answer</h2><span class="rg-peek">three fixes, minutes each</span></summary>
       <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
       <ol class="rg-fix">
         <li><b>Your token URI has to resolve to JSON.</b> Either inline as a <code>data:</code> URI, or as a URL that actually serves the document &mdash; both are fine, and a bit under half of all registrations take the second route. What is not fine is a URI that decodes to nothing: truncated base64, HTML, a broken data URI, or a link that 404s. If nothing downstream can read you, no indexer will list you.</li>
@@ -3091,7 +3086,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     fetch('https://agent.brainonbnb.com/screener').then(function(r){return r.json()}).then(function(j){
       var F=j.fields,all=j.rows.map(function(r){var o={};F.forEach(function(f,i){o[f]=r[i]});return o});
       var pick=function(f,s){return all.filter(f).sort(s).slice(0,5)};
-      var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+(a.logo?'<img class="rg-tl" src="'+esc(a.logo)+'" alt="" width="18" height="18" loading="lazy" decoding="async" onerror="this.remove()">':'')+esc(nm(a))+'<small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
+      var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+(a.logo?'<img class="rg-tl" src="'+esc(a.logo)+'" alt="" width="18" height="18" loading="lazy" decoding="async" onerror="this.remove()">':'')+'<span data-noar>'+esc(nm(a))+'</span><small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
       var B=[
         ['Top by evidence','#f0b90b',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
         ['Most paid work','#4cc38a',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')}],

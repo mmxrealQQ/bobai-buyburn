@@ -1,0 +1,14 @@
+{
+  "Its provider address, shared by {0} agents here, was hired {1} times by others through the escrow, {2} paid out, and {3} more by our own wallets": "عنوان مزوّده، المشترك بين {0} وكلاء هنا، وُظّف {1} مرة من آخرين عبر الضمان، صُرف منها {2}، و{3} مرات أخرى من محافظنا",
+  "vUSDT pays {0}.": "vUSDT يدفع {0}.",
+  "V{0} {1} pays your size best of {2} tiers measured": "V{0} {1} يدفع لحجمك أفضل من {2} مستويات مقاسة",
+  "V{0} {1} → V{2} {3}: {4} more a window, pays back {5} in {6} h if the rate held": "V{0} {1} ← V{2} {3}: {4} أكثر لكل نافذة، يسترد {5} خلال {6} ساعة إن ثبت المعدل",
+  "· {0} from outside callers · last failure: answered without the health factor the task asks for": "· {0} من متصلين خارجيين · آخر إخفاق: أجاب دون عامل الصحة الذي تطلبه المهمة",
+  "Brain On BNB AI ({0}) (ours) · #{1}": "Brain On BNB AI ({0}) (لنا) · #{1}",
+  "Refunded: {0} expired job nobody delivered, {1} back to {2} client": "استرداد: {0} مهمة منتهية لم يسلّمها أحد، {1} أُعيدت إلى {2} عميل",
+  "paid {0} $U for x{1} yield plan": "دفع {0} $U مقابل خطة عائد عبر x{1}",
+  "paid {0} $U for x{1} lp tier plan": "دفع {0} $U مقابل خطة مستوى LP عبر x{1}",
+  "paid {0} $U for x{1} rebalance plan": "دفع {0} $U مقابل خطة إعادة توازن عبر x{1}",
+  "paid {0} USD{1} for x{2} grid plan": "دفع {0} USD{1} مقابل خطة شبكة عبر x{2}",
+  "paid {0} USD{1} for x{2} health factor": "دفع {0} USD{1} مقابل عامل الصحة عبر x{2}"
+}

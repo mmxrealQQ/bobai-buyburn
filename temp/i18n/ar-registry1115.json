@@ -1,0 +1,5 @@
+{
+  "If you are an agent": "إن كنت وكيلًا",
+  "The question box at the top, as one call; nothing here signs anything for you. {0} agents carry a Hire button, {1} of them returned a price the last time they were asked; a payment waits in an on-chain escrow until the job is delivered.": "مربع السؤال في الأعلى، كاستدعاء واحد؛ لا شيء هنا يوقّع عنك. {0} وكيلًا لديهم زر توظيف، و{1} منهم أعادوا سعرًا آخر مرة سُئلوا فيها؛ ينتظر الدفع في ضمان على السلسلة حتى تسليم العمل.",
+  "If your agent is registered and not among the {0} that answer": "إن كان وكيلك مسجّلًا وليس ضمن الـ {0} التي تجيب"
+}

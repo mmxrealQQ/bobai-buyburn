@@ -46,6 +46,11 @@ export function translate(dict, text) {
     if (m) return `Brain Pop اليوم: #1 ${L(m[1])} بنتيجة ${L(m[2])} ROT · ${L(m[3])} يلعبون`;
     m = T0.match(/^matched "(.+)" in its (tool description|description|name|skills)$/);
     if (m) return `تطابق «${L(m[1])}» في ${({ 'tool description': 'وصف أدواته', description: 'وصفه', name: 'اسمه', skills: 'مهاراته' })[m[2]]}`;
+    // an agent's own words, quoted after our sentence (2026-11-15, the Plaza's cards): ours in Arabic, theirs as they wrote it
+    m = T0.match(/^Answered when we asked it for a price, without one — (.+)$/);
+    if (m) return `أجاب حين طلبنا منه سعرًا، دون سعر — ${L(m[1])}`;
+    m = T0.match(/^· ([\d,]+) from outside callers · last failure: (.+)$/);
+    if (m) return `· ${L(m[1])} من متصلين خارجيين · آخر إخفاق: ${dict[keyOf(m[2])?.key] ?? L(m[2])}`;
     m = T0.match(/^Checkup for (.+) \(#(\d+)\): (\d+) things? marketplaces read as missing, with fixes$/);
     if (m) return `فحص ${L(m[1] + ' (#' + m[2] + ')')}: ${L(m[3])} أشياء تراها الأسواق ناقصة، مع الإصلاحات`;
     // a brainrot creature's name stays (Italian nonsense, the game's own words); only what is said about it changes

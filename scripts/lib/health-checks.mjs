@@ -616,6 +616,27 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     const pc = inSeason ? await getJson(`${AGENT}/pop/chain?day=${y}`) : null, rec = pc?.json;
     ok('Ecosystem', 'yesterday\'s Brain Pop result is written on BNB Chain', !inSeason || (!!rec && (/^0x[0-9a-f]{64}$/.test(rec.tx || '') || rec.players === 0)), !inSeason ? 'outside the season' : rec ? (rec.tx ? `${y}: ${rec.champion} · tx ${rec.tx.slice(0, 10)}…` : `${y}: nobody played`) : `${y}: not written — ${pc?.error || 'see /pop/chain last_run'}`);
   }
+  // THE SCANNER'S LOG HOSTS, AS A BROWSER ON THIS SITE SEES THEM (2026-11-15): a log host missing from the CSP took the
+  // trades and the measured tax out of every browser scan for two weeks, and nothing was red. The CSP is pinned in
+  // scripts/; what only a live read can see is a host that stops answering eth_getLogs, or stops allowing this origin
+  // (CORS). The hosts come from the published scanner-chain.js itself, so there is no second list to drift. Red when no
+  // host serves logs to this origin; the others are named in the detail.
+  {
+    const src = await fetch(`${SITE}/scanner-chain.js`).then((r) => r.text()).catch(() => '');
+    const hosts = ((src.match(/LOGS_RPCS=\[([^\]]+)\]/) || [])[1] || '').match(/https:\/\/[^'"]+/g) || [];
+    const res = [];
+    for (const h of hosts) {
+      const ask = (body) => fetch(h, { method: 'POST', signal: AbortSignal.timeout(10000), headers: { 'content-type': 'application/json', origin: SITE }, body: JSON.stringify(body) })
+        .then(async (r) => ({ status: r.status, acao: r.headers.get('access-control-allow-origin') || '', j: await r.json().catch(() => null) })).catch((e) => ({ status: 0, err: String(e.message || e).slice(0, 40) }));
+      const b = await ask({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] });
+      const head = b.j?.result ? parseInt(b.j.result, 16) : 0;
+      const l = head ? await ask({ jsonrpc: '2.0', id: 2, method: 'eth_getLogs', params: [{ address: '0x6eadd4cb786898b34929444988380ed0cc6fd9a6', fromBlock: '0x' + (head - 300).toString(16), toBlock: '0x' + (head - 200).toString(16) }] }) : null;
+      const cors = /^(\*|https:\/\/brainonbnb\.com)$/.test(l?.acao || b.acao || '');
+      const good = !!l && Array.isArray(l.j?.result) && cors;
+      res.push({ h: h.replace('https://', ''), good, why: good ? 'ok' : !head ? (b.err || `HTTP ${b.status}`) : !Array.isArray(l?.j?.result) ? (l?.j?.error?.message || `HTTP ${l?.status}`).slice(0, 40) : `CORS "${l.acao || 'none'}"` });
+    }
+    ok('Ecosystem', 'the scanner\'s log hosts serve eth_getLogs to this site\'s origin (CORS) — at least one', res.some((x) => x.good), hosts.length ? res.map((x) => `${x.h} ${x.why}`).join(' · ') : 'no LOGS_RPCS in the published scanner-chain.js');
+  }
   // HEAD, not GET: /buy counts every GET as a buy click, and a morning check must not add to that figure
   const head = (ua) => fetch(`${SITE}/buy?from=health`, { method: 'HEAD', redirect: 'manual', headers: { 'user-agent': ua } }).then((r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '' })).catch(() => null);
   const buyB = await head('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'), buyBot = await head('brainonbnb-health');

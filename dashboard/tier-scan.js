@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf, logHead,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -173,7 +173,7 @@ export async function feeTiers(input) {
       'It trades on other venues only, and comparing PancakeSwap fee tiers is not a question that has an answer here.',
     );
 
-  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
+  const head = (await logHead()).head - HEAD_BACK;
   // One window, and only one: an hour of chain (WINDOW_BLOCKS in scanner-chain);
   // the endpoint answers anything much older by demanding a personal token.
   const from = head - (WINDOW_BLOCKS - 1);

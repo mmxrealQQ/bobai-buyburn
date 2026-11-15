@@ -30,7 +30,7 @@ import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, WINDOW_BLOCKS, HEAD_BACK,
-  SWAP_V3_T, SWAP_V3_UNI, int256, decOf,
+  SWAP_V3_T, SWAP_V3_UNI, int256, decOf, logHead,
 } from './scanner-chain.js';
 
 export class RangeError extends Error {
@@ -202,7 +202,7 @@ export async function rangePlan(input, opts = {}) {
   // This pool's hour may already be kept, by the last replay or by the fee tiers (keptLogs in scanner-chain). Its own blocks
   // then stand in the answer, so the window reported is the one the swaps came from.
   const kept = await keptLogs(pool);
-  const head = kept ? kept.head : parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
+  const head = kept ? kept.head : (await logHead()).head - HEAD_BACK;
   const from = kept ? kept.from : head - (WINDOW_BLOCKS - 1);
   let logs = kept ? kept.logs : null;
   // Five refusals in four seconds, five calls in a row (measured 2026-11-02), and the sixth call read it: a refusal here is

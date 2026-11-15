@@ -914,16 +914,28 @@ export const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
 async function windowSpan(from,to){
   try{
     const [a,b]=await Promise.all([
-      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false],LOGS_RPC),
-      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false],LOGS_RPC)]);
+      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false]),
+      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false])]);   // block headers: any node, with the usual fallback (15.11.)
     const s=parseInt(b.timestamp,16)-parseInt(a.timestamp,16);
     if(!(s>0))return null;
     return s<5400?Math.round(s/60)+' minutes':(s/3600).toFixed(1).replace(/\.0$/,'')+' hours';
   }catch(e){return null}
 }
+// The chain head from the first log host that answers, and which one it was (2026-11-15): the reads that start from
+// it asked LOGS_RPC alone, so one host the browser may not reach (Pocket, missing from the CSP for two weeks) emptied
+// the tax, the trades and the four.meme feed of every scan in a browser. Throws only when none of them answers.
+export async function logHead(){
+  for(const url of [LOGS_RPC,...LOGS_RPCS.filter(u=>u!==LOGS_RPC)]){
+    try{const h=parseInt(await rpc('eth_blockNumber',[],url),16);if(isFinite(h)&&h>0)return {head:h,url}}catch(e){}
+  }
+  throw new Error('no log endpoint answered the chain head');
+}
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
-    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16)-HEAD_BACK;
+    // EVERY LOG HOST FOR THE HEAD, NOT THE FIRST ALONE (2026-11-15): Pocket went first on 2.11. and the page's CSP did
+    // not name it, so in a browser this one read failed in 3 ms and no scan there measured a tax or read its trades
+    // for two weeks, while publicnode answered. The next host is asked; the window reads below already did that.
+    const head=(await logHead()).head-HEAD_BACK;
     // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
     // 59 min — the endpoint answers that in one call and refuses only beyond
     // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
@@ -2062,8 +2074,8 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // assumed: every log the manager writes about a token carries that token's
 // address in its first data word, and that is all this reads.
 export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
-  const url=LOGS_RPCS[0];
-  const head=Number(await rpc('eth_blockNumber',[],url))-HEAD_BACK;
+  const {head:h0,url}=await logHead();   // the host that answered reads the windows too (15.11.)
+  const head=h0-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
   const logs=(await Promise.all(windows.map(([from,to])=>

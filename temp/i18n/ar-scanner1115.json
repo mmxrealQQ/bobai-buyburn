@@ -1,0 +1,4 @@
+{
+  "No transfer tax in a buy and sell simulated at this block.": "لا ضريبة تحويل في شراء وبيع محاكَيين عند هذه الكتلة.",
+  "Run on the chain from a fresh address and its gap read, not a label. No executed trade was available to measure it from; real wallets can be treated differently, and a token can add a tax later if its contract allows it.": "نُفّذ على السلسلة من عنوان جديد وقُرئ الفارق، لا من ملصق. لم تتوفر صفقة منفّذة لقياسها منها؛ قد تُعامَل المحافظ الحقيقية بشكل مختلف، وقد يضيف التوكن ضريبة لاحقًا إن سمح عقده بذلك."
+}

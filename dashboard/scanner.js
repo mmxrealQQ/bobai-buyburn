@@ -15,7 +15,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=39';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=40';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -673,6 +673,11 @@ function verdictCard(d,pool,gp,gpOk,tax){
   }else if(measured){
     line('good','No transfer tax. You keep what you trade, minus the pool fee.',
       'Measured from trades that actually executed. A token can still add one later if its contract allows it.');
+  }else if(d.simB||d.simS){
+    // SIMULATED 0% IS AN ANSWER (2026-11-15): with no executed trade to read, a buy and a sell simulated at this block
+    // that both came to 0% said "could not be established" here, while the tax section and the cost note below said 0%
+    line('good','No transfer tax in a buy and sell simulated at this block.',
+      'Run on the chain from a fresh address and its gap read, not a label. No executed trade was available to measure it from; real wallets can be treated differently, and a token can add a tax later if its contract allows it.');
   }else{
     line('unknown','Whether it takes a transfer tax could not be established.',
       'No executed trade was available to measure it from, and no label is trusted in its place. Treat the cost above as a floor.');

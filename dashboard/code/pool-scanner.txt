@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7953 lines.
+# one fetch. 6 files, 7970 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -930,16 +930,28 @@ export const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
 async function windowSpan(from,to){
   try{
     const [a,b]=await Promise.all([
-      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false],LOGS_RPC),
-      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false],LOGS_RPC)]);
+      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false]),
+      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false])]);   // block headers: any node, with the usual fallback (15.11.)
     const s=parseInt(b.timestamp,16)-parseInt(a.timestamp,16);
     if(!(s>0))return null;
     return s<5400?Math.round(s/60)+' minutes':(s/3600).toFixed(1).replace(/\.0$/,'')+' hours';
   }catch(e){return null}
 }
+// The chain head from the first log host that answers, and which one it was (2026-11-15): the reads that start from
+// it asked LOGS_RPC alone, so one host the browser may not reach (Pocket, missing from the CSP for two weeks) emptied
+// the tax, the trades and the four.meme feed of every scan in a browser. Throws only when none of them answers.
+export async function logHead(){
+  for(const url of [LOGS_RPC,...LOGS_RPCS.filter(u=>u!==LOGS_RPC)]){
+    try{const h=parseInt(await rpc('eth_blockNumber',[],url),16);if(isFinite(h)&&h>0)return {head:h,url}}catch(e){}
+  }
+  throw new Error('no log endpoint answered the chain head');
+}
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
-    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16)-HEAD_BACK;
+    // EVERY LOG HOST FOR THE HEAD, NOT THE FIRST ALONE (2026-11-15): Pocket went first on 2.11. and the page's CSP did
+    // not name it, so in a browser this one read failed in 3 ms and no scan there measured a tax or read its trades
+    // for two weeks, while publicnode answered. The next host is asked; the window reads below already did that.
+    const head=(await logHead()).head-HEAD_BACK;
     // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
     // 59 min — the endpoint answers that in one call and refuses only beyond
     // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
@@ -2078,8 +2090,8 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // assumed: every log the manager writes about a token carries that token's
 // address in its first data word, and that is all this reads.
 export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
-  const url=LOGS_RPCS[0];
-  const head=Number(await rpc('eth_blockNumber',[],url))-HEAD_BACK;
+  const {head:h0,url}=await logHead();   // the host that answered reads the windows too (15.11.)
+  const head=h0-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
   const logs=(await Promise.all(windows.map(([from,to])=>
@@ -4148,7 +4160,7 @@ export async function scan(input, env, timing = null) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=85" type="module"></script>
+<script src="scanner.js?v=86" type="module"></script>
 </body>
 </html>
 
@@ -4173,7 +4185,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=39';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=40';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output
@@ -4831,6 +4843,11 @@ function verdictCard(d,pool,gp,gpOk,tax){
   }else if(measured){
     line('good','No transfer tax. You keep what you trade, minus the pool fee.',
       'Measured from trades that actually executed. A token can still add one later if its contract allows it.');
+  }else if(d.simB||d.simS){
+    // SIMULATED 0% IS AN ANSWER (2026-11-15): with no executed trade to read, a buy and a sell simulated at this block
+    // that both came to 0% said "could not be established" here, while the tax section and the cost note below said 0%
+    line('good','No transfer tax in a buy and sell simulated at this block.',
+      'Run on the chain from a fresh address and its gap read, not a label. No executed trade was available to measure it from; real wallets can be treated differently, and a token can add a tax later if its contract allows it.');
   }else{
     line('unknown','Whether it takes a transfer tax could not be established.',
       'No executed trade was available to measure it from, and no label is trusted in its place. Treat the cost above as a floor.');
@@ -7554,7 +7571,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, keptLogs, keepLogs, logsRefusal, WINDOW_BLOCKS, HEAD_BACK, V2_LP_SHARE, decOf, logHead,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -7700,7 +7717,7 @@ export async function feeTiers(input) {
       'It trades on other venues only, and comparing PancakeSwap fee tiers is not a question that has an answer here.',
     );
 
-  const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16) - HEAD_BACK;
+  const head = (await logHead()).head - HEAD_BACK;
   // One window, and only one: an hour of chain (WINDOW_BLOCKS in scanner-chain);
   // the endpoint answers anything much older by demanding a personal token.
   const from = head - (WINDOW_BLOCKS - 1);

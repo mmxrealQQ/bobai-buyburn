@@ -19,6 +19,7 @@ globalThis.fetch = async (url, init) => {
   const reply = (x) => ({ ok: true, json: async () => x });
   if (Array.isArray(body)) return reply(body.map((q) => ({ jsonrpc: '2.0', id: q.id, result: '0x' + '0'.repeat(63) + '7' })));
   if (mode === 'revert') return reply({ jsonrpc: '2.0', id: body.id, error: { code: 3, message: 'execution reverted: Multicall3: call failed', data: '0x08c379a0' } });
+  if (mode === 'first-log-host-blocked') { if (String(url).includes('pocket.network')) throw new TypeError('Failed to fetch'); return reply({ jsonrpc: '2.0', id: body.id, result: '0x7f825ca' }); }
   if (mode === 'throttle-then-ok') return asked.length === 1 ? reply({ jsonrpc: '2.0', id: body.id, error: { code: -32005, message: 'limit exceeded' } }) : reply({ jsonrpc: '2.0', id: body.id, result: '0x2a' });
   return reply({ jsonrpc: '2.0', id: body.id, error: { code: -32000, message: 'header not found' } });
 };
@@ -40,6 +41,23 @@ ok('any other error still tries every node before it gives up', asked.length >= 
 mode = 'revert'; asked = [];
 const mc = await C.multicall([{ to: '0x' + '2'.repeat(40), data: '0x0902f1ac' }, { to: '0x' + '3'.repeat(40), data: '0x0dfe1681' }]);
 ok('a multicall whose read reverts falls back to the plain batch after ONE aggregate call', asked.filter((a) => !a.batch).length === 1 && asked.filter((a) => a.batch).length === 1 && mc.length === 2, JSON.stringify(asked.map((a) => a.batch ? 'batch' : 'single')));
+
+// THE BROWSER'S LOG HOSTS (2026-11-15): Pocket went first among the log hosts on 2.11. without a line in the page's CSP;
+// in a browser its calls failed in 3 ms and the head read, pinned to it, emptied the tax and the trades of every scan.
+{
+  const fs = await import('node:fs');
+  const csp = (fs.readFileSync(path.resolve(import.meta.dirname, '../dashboard/_headers'), 'utf8').match(/connect-src([^;]+)/) || [])[1] || '';
+  const hosts = [...new Set([...C.RPCS, ...C.LOGS_RPCS, ...C.ARCHIVE_RPCS].map((u) => new URL(u).origin))];
+  const missing = hosts.filter((h) => !csp.split(/\s+/).includes(h));
+  ok('every chain host the scanner may call is allowed by the page\'s CSP (connect-src)', hosts.length >= 5 && !missing.length, missing.join(' ') || `${hosts.length} hosts`);
+
+  mode = 'first-log-host-blocked'; asked = [];
+  const h = await C.logHead().catch((e) => ({ err: e.message }));
+  ok('a blocked first log host: the head comes from the next one', h.head === 0x7f825ca && !/pocket/.test(h.url || ''), JSON.stringify(h));
+  asked = [];
+  const t = await C.measureTax('0x' + '4'.repeat(40), '0x' + '5'.repeat(40), true, 'v2');
+  ok('… and the tax read goes on past it instead of giving up at once', !(t && t.reason === 'the log endpoint did not answer' && asked.length <= 1), `${JSON.stringify(t).slice(0, 120)} after ${asked.length} calls`);
+}
 
 console.log(`\nrpc-revert: ${fails ? fails + ' FAIL' : 'all pins hold'}`);
 process.exit(fails ? 1 : 0);

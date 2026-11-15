@@ -188,8 +188,40 @@ async function getPrice() {
     source: 'on-chain: PancakeSwap V2 pair reserves × Chainlink BNB/USD feed — no off-chain price API',
     pair: PAIR,
     chainlink_feed: CHAINLINK_BNB_USD,
+    ...(await market24h(priceUsd)),
     note: 'Spot price from live reserves. Your execution price differs: 3% transfer tax + price impact (see bobai_liquidity). Not financial advice.',
   };
+}
+
+// THE LAST 24 HOURS NEXT TO THE PRICE (2026-11-15): /api/price is the route outside callers read most, and a price with no
+// change and no volume beside it sends a tracker elsewhere for those two. Both come from our own ledger of the pool's
+// Swap events (worker-tg-bot /candles, ten-minute candles, BNB-priced, each with the BNB/USD of its minute), never a
+// third party. Ledger slow or down: the field is left out and the price answers as before.
+let m24Cache = null;
+export async function market24h(priceUsd, { fresh = false } = {}) {
+  if (fresh) m24Cache = null;
+  try {
+    if (!m24Cache || Date.now() - m24Cache.at > 60000) {
+      const j = await Promise.race([fetch('https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles').then((r) => (r.ok ? r.json() : null)), new Promise((res) => setTimeout(() => res(null), 1500))]);
+      if (!Array.isArray(j?.rows) || !j.rows.length) return {};
+      m24Cache = { at: Date.now(), rows: j.rows };
+    }
+    const now = Date.now(), rows = m24Cache.rows.filter((r) => r.t > now - 86400000);
+    const before = m24Cache.rows.filter((r) => r.t <= now - 86400000 && r.c > 0 && r.u > 0).at(-1);
+    if (!rows.length || !before || now - 86400000 - before.t > 3600000) return {};
+    const sum = (f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
+    const then = before.c * before.u;
+    return {
+      market_24h: {
+        change_pct: Number(((priceUsd / then - 1) * 100).toFixed(2)),
+        price_usd_24h_ago: Number(then.toPrecision(6)),
+        volume_usd: Math.round(sum((r) => r.v * r.u)),
+        buys: sum((r) => r.b), sells: sum((r) => r.s),
+        buy_volume_usd: Math.round(sum((r) => r.bb * r.u)), sell_volume_usd: Math.round(sum((r) => r.sb * r.u)),
+        source: 'our own ledger of the PancakeSwap pair’s Swap events, ten-minute candles: https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles',
+      },
+    };
+  } catch { return {}; }
 }
 
 async function getLiquidity() {
@@ -1661,7 +1693,7 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
 
 const A2A_CARD = {
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'Read-only agent surface on BNB Chain: a pre-trade check for any BSC token (can you get in and out at your size, the round trip with the measured tax), the pool scanner behind it, Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose — and $BOBAI in depth. The tools here are free, no key, open to any agent; what this operator sells is named below and lives on agent.brainonbnb.com.',
+  description: 'Read-only agent surface on BNB Chain: a pre-trade check for any BSC token (can you get in and out at your size, the round trip with the measured tax), the pool scanner behind it, Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose — and $BOBAI in depth. The tools here are free, no key, open to any agent. Ask in plain words too: a message/send with only a text part ("price of $BOBAI", "find an agent that rebalances a PancakeSwap position", or any 0x token address for the pre-trade check) is answered by the free tool those words name. What this operator sells is named below and lives on agent.brainonbnb.com.',
   // THE A2A ENDPOINT, NOT THE HOMEPAGE (2026-10-10). url was
   // https://brainonbnb.com/ — an HTML page, nothing for a client to POST
   // message/send to. The A2A endpoint this operator serves is the agent

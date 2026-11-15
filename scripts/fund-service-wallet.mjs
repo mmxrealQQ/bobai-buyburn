@@ -54,6 +54,9 @@ const TARGETS = {
   // wallet"). It pays the gas of the daily Bound hire, the 21:15 settle and the public refunds; at 0.001476 BNB it was
   // under the hire's 0.0015 floor and Bound was skipped on 14 and 15 Nov. Same relayer, same guards.
   provider: { address: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963', label: 'provider' },
+  // the two Venus agents' own wallets (agentWallets of #302257 and #304493): the daily Venus work and their hires
+  health: { address: '0xEAC21928DE023677A25eb925D1cb1b0786FaF946', label: 'venus health' },
+  yield: { address: '0x497dAc54FD7238027Ecbbd194b353379a1D605F0', label: 'venus yield' },
 };
 const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'; // BSC mainnet feed, 8 decimals
 

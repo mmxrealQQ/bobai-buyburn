@@ -890,6 +890,22 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   ok('Agents', 'the newest second opinion does not contradict the agent', !lastOk || lastOk.agrees !== false, lastOk ? `agrees ${lastOk.agrees} on #${(lastOk.answer || [])[0]?.position || '?'}` : 'none yet');
   const leashU = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0xcE24439F2D9C6a2289F741120FE202248B666666', data: '0x70a08231000000000000000000000000c5a17b5295fc50badb1f9f9c09b412fe5e84f7d3' }, 'latest'] }) }).then((r) => r.json()).then((j) => (j.result ? Number(BigInt(j.result)) / 1e18 : null)).catch(() => null);
   ok('Agents', 'the Altana leash holds $U for at least five more second opinions', leashU != null && leashU >= 0.05, leashU == null ? 'unreadable' : `${leashU.toFixed(2)} $U (top up: node scripts/fund-leash.mjs --send)`);
+  // BEFORE IT FAILS, NOT AFTER (2026-11-15): the Bound hire was skipped two days because 0x7380 had sunk under the 0.0015 BNB
+  // gas floor, and the second opinion because the leash's session had expired — both were red only once a run had failed.
+  // Every wallet that pays its own gas is read every morning; under two floors (0.003 BNB) is red while the work still runs.
+  {
+    const GAS_WALLETS = [['DeFi agent #363709', '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963'], ['Venus health #302257', '0xEAC21928DE023677A25eb925D1cb1b0786FaF946'], ['Venus yield #304493', '0x497dAc54FD7238027Ecbbd194b353379a1D605F0'], ['Altana leash', '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3']];
+    const gas = [];
+    for (const [n, a] of GAS_WALLETS) {
+      const b = await fetch('https://bsc-dataseed1.defibit.io', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [a, 'latest'] }) })
+        .then((r) => r.json()).then((x) => (x.result ? Number(BigInt(x.result)) / 1e18 : null)).catch(() => null);
+      gas.push({ n, b });
+    }
+    const low = gas.filter((g) => g.b == null || g.b < 0.003);
+    ok('Agents', 'every agent wallet that pays its own gas holds at least 0.003 BNB (two hire floors)', !low.length, gas.map((g) => `${g.n} ${g.b == null ? 'unread' : g.b.toFixed(4)}`).join(' · ') + (low.length ? ' (top up: node scripts/fund-service-wallet.mjs --to <provider|altana|health|yield> --usd 3 --confirm)' : ''));
+    const ses = (await getJ(`${AGENT}/session`)).body, keys = ses?.chains?.find((c) => c.chainId === 56)?.keys || [];
+    ok('Agents', 'the Altana leash has a valid session key (the second opinion pays through it)', keys.some((k) => k.role === 'session' && k.valid), keys.length ? `${keys.filter((k) => k.role === 'session' && k.valid).length} valid of ${keys.filter((k) => k.role === 'session').length} session keys` : 'no keys read');
+  }
   // Marque keeps brainonbnb.com/defi as #363709's endpoint (2026-10-09: its live test got the page's 405 and the
   // listing dropped): a JSON-RPC POST there must reach the agent.
   const dp = await fetch(SITE + '/defi', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: { role: 'user', kind: 'message', messageId: 'health', parts: [{ kind: 'text', text: 'what can you do' }] } } }), signal: AbortSignal.timeout(30000) }).catch(() => null);

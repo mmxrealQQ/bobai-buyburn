@@ -1,0 +1,15 @@
+{
+  "Check a token": "افحص توكن",
+  "Token address": "عنوان التوكن",
+  "Paste any BNB Chain token address ({0}…)": "الصق عنوان أي توكن على BNB Chain ({0}…)",
+  "Check it, free": "افحصه مجانًا",
+  "Depth, the cost of your trade at your size and the tax measured from real trades. No wallet.": "العمق، وتكلفة صفقتك بحجمك، والضريبة مقاسة من صفقات حقيقية. بلا محفظة.",
+  "Connect your agent": "اربط وكيلك",
+  "MCP server": "خادم MCP",
+  "Claude, Cursor, any MCP client: add this URL. Free, no key.": "Claude وCursor وأي عميل MCP: أضف هذا الرابط. مجاني، بلا مفتاح.",
+  "Skill, one command": "مهارة، بأمر واحد",
+  "Claude Code, Codex, Cursor and more: the pre-trade check runs on your machine.": "Claude Code وCodex وCursor وغيرها: فحص ما قبل الصفقة يعمل على جهازك.",
+  "A{0}A, in plain words": "A{0}A، بكلمات بسيطة",
+  "message/send with one text part: “price of {0}”, “find an agent that rebalances”, or a token address.": "message/send بجزء نصي واحد: «سعر {0}»، «اعثر على وكيل يعيد التوازن»، أو عنوان توكن.",
+  "Copied": "تم النسخ"
+}

@@ -69,6 +69,19 @@
   .sv-card h3,.sv-buy h3{font-size:.95rem;margin:0 0 6px;font-weight:600}
   .sv-card h3 a{color:var(--text);text-decoration:none}
   .sv-card h3 a:hover{color:var(--gold)}
+  /* the whole page card opens its page (2026-11-15: only a small "Open" link did); "What it shows" stays its own tap */
+  #sv-pages .sv-card{position:relative;transition:border-color .2s}
+  #sv-pages .sv-card:hover{border-color:rgba(240,185,11,.45)}
+  #sv-pages .sv-card h3 a::after{content:'';position:absolute;inset:0;border-radius:inherit}
+  #sv-pages .sv-card .sv-more,#sv-pages .sv-card .sv-cost a{position:relative;z-index:1}
+  .sv-check-n{color:var(--muted);font-size:.78rem;margin:8px auto 0;max-width:640px}
+  .sv-conn{list-style:none;display:grid;gap:12px;margin:14px 0 6px;padding:0;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+  .sv-conn li{border:1px solid rgba(240,185,11,.3);border-radius:14px;background:rgba(240,185,11,.05);padding:12px 14px;min-width:0;display:flex;flex-direction:column}
+  .sv-conn b{font-size:.88rem;color:var(--gold)}
+  .sv-conn span{color:var(--muted);font-size:.76rem;line-height:1.55;margin:4px 0 8px;flex:1}
+  .sv-conn code{display:block;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.35);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.74rem;color:var(--text);overflow-wrap:anywhere}
+  .sv-copy{align-self:flex-start;margin-top:8px;background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.45);border-radius:999px;padding:4px 12px;font-size:.74rem;cursor:pointer}
+  .sv-copy:hover,.sv-copy:focus-visible{background:rgba(240,185,11,.12);outline:none}
   .sv-ask{color:var(--gold);font-size:.84rem;line-height:1.5;margin:0 0 8px}
   .sv-what{color:var(--muted);font-size:.8rem;line-height:1.6;margin:0}
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
@@ -147,7 +160,14 @@
   <header class="sv-hero hx">
     <h1>What we can do <em>for you</em></h1>
     <p class="hx-claim">We measure BNB Chain and tell you what we found. <em>Free&nbsp;to&nbsp;look</em>, $0.10 an answer.</p>
-    <div class="hx-try" role="navigation" aria-label="On this page"><a class="hx-chip" href="#sv-pages">Open a page</a><a class="hx-chip" href="#sv-hire">Hire us</a><a class="hx-chip" href="#sv-agent">For your agent</a><a class="hx-chip" href="#sv-g-free">Free tools</a><a class="hx-chip" href="#sv-g-paid">What costs money</a><a class="hx-chip" href="#sv-not">What we will not do</a></div>
+    <!-- THE FIRST ANSWER ON THE PAGE ITSELF (2026-11-15): the page told a visitor to open the scanner and paste an address;
+         now the address goes in here and the scanner opens on it (/scanner?token=). The shared .hx-form of the Plaza. -->
+    <form class="hx-form sv-check" action="/scanner" method="get" role="search" aria-label="Check a token">
+      <input name="token" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Paste any BNB Chain token address (0x…)" aria-label="Token address" required>
+      <button type="submit">Check it, free</button>
+    </form>
+    <p class="sv-check-n">Depth, the cost of your trade at your size and the tax measured from real trades. No wallet.</p>
+    <div class="hx-try" role="navigation" aria-label="On this page"><a class="hx-chip" href="#sv-pages">Open a page</a><a class="hx-chip" href="#sv-hire">Hire us</a><a class="hx-chip" href="#sv-agent">For your agent</a><a class="hx-chip" href="#sv-not">What we will not do</a></div>
     <p class="hx-trust"><span><span class="hx-dot"></span>Nothing signs, no wallet until you buy</span><span>Paid in USD1, one signature, no gas</span><span>Free with 1,000,000 $BOBAI: <a href="/pass">holder pass</a></span><span><a href="#sv-pay">Other ways to pay</a></span></p>
     <details class="primer hx-more">
       <summary>Four ways to get the same work</summary>
@@ -161,9 +181,9 @@
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
     </details>
     <div class="sv-nums">
-      <div class="sv-num"><b id="sv-agents">400,225</b><span>agent ids registered on BNB Chain</span></div>
-      <div class="sv-num"><b id="sv-reach">1,002</b><span>of them send any reply when contacted <i id="sv-when">census of 2026-11-01</i></span></div>
-      <div class="sv-num"><b id="sv-asked">616,921</b><span>requests answered for others — people, agents and registries</span></div>
+      <div class="sv-num"><b id="sv-agents">419,005</b><span>agent ids registered on BNB Chain</span></div>
+      <div class="sv-num"><b id="sv-reach">1,007</b><span>of them send any reply when contacted <i id="sv-when">census of 2026-11-15</i></span></div>
+      <div class="sv-num"><b id="sv-asked">668,043</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -399,6 +419,14 @@
   <section class="sv-sec" id="sv-agent">
     <h2>Point your own agent at us</h2>
     <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and the half a machine can pay for. <span id="sv-paid"></span></p>
+    <!-- CONNECT IN ONE LINE (2026-11-15): the endpoint and the install command were behind "Show the 11 tools" and a folded
+         "four ways"; a developer comes for exactly these lines. Free, no key, the same tools as the lists below. -->
+    <ul class="sv-conn" aria-label="Connect your agent">
+      <li><b>MCP server</b><span>Claude, Cursor, any MCP client: add this URL. Free, no key.</span><code>https://brainonbnb.com/mcp</code><button type="button" class="sv-copy" data-copy="https://brainonbnb.com/mcp">Copy</button></li>
+      <li><b>Skill, one command</b><span>Claude Code, Codex, Cursor and more: the pre-trade check runs on your machine.</span><code>npx skills add https://brainonbnb.com</code><button type="button" class="sv-copy" data-copy="npx skills add https://brainonbnb.com">Copy</button></li>
+      <li><b>A2A, in plain words</b><span>message/send with one text part: &ldquo;price of $BOBAI&rdquo;, &ldquo;find an agent that rebalances&rdquo;, or a token address.</span><code>https://agent.brainonbnb.com/a2a</code><button type="button" class="sv-copy" data-copy="https://agent.brainonbnb.com/a2a">Copy</button></li>
+    </ul>
+    <script>document.querySelectorAll('.sv-copy').forEach(function(b){b.addEventListener('click',function(){var t=b.getAttribute('data-copy'),done=function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy'},1600)};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){})}})})</script>
     <h3 class="sv-needs-h" id="sv-g-free" style="margin:18px 0 4px;font-size:.85rem;scroll-margin-top:84px">Free, and staying free</h3>
     <p class="sv-sub" style="margin-bottom:10px">Reading public chain data costs us almost nothing, so none of this has a key, an account or a signup.</p>
     <details class="sv-capsw"><summary>Show the 11 tools</summary>

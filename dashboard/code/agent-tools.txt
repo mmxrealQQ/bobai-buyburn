@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4264 lines.
+# one fetch. 5 files, 4272 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1047,7 +1047,7 @@ function errorAnswer(e) {
     capacity: 'Every watch slot is taken right now. Try again later; watches end after 30 days.',
     below_holder_line: 'The holder tier needs 1,000,000 $BOBAI in the signing wallet. Without wallet, issued and signature you get one watch free.',
   };
-  const bad = /Invalid BSC address|Give a BSC token|must be a positive number/.test(msg);
+  const bad = /Invalid BSC address|Give a BSC token|Give the wallet as the argument|must be a positive number/.test(msg); /* a missing wallet is a bad address, 400 (15.11.: was 422 not_measurable) */
   const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$/i.test(msg);
   const code = bad ? (/must be a positive number/.test(msg) ? 'bad_usd' : 'bad_address')
     : HINTS[e?.code] && e.code !== 'bad_address' && e.code !== 'bad_usd' ? e.code
@@ -1109,7 +1109,9 @@ async function runTool(rawName, args, caller = {}) {
       return j;
     }
     case 'bnb_agent_chart': {
-      const id = String(args?.agent_id ?? '').replace(/[^0-9]/g, '');
+      // the id as a number, "#363709" or the CAIP form eip155:56:<registry>:<id> (15.11.: every digit was kept, so "0xabc"
+      // read agent #0 and the CAIP form one 40-digit number)
+      const id = (String(args?.agent_id ?? '').trim().match(/^(?:eip155:56:0x[0-9a-fA-F]{40}:)?#?(\d{1,12})$/) || [])[1];
       if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 363709.');
       const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(20000) });
       const j = await r.json().catch(() => null);
@@ -1326,6 +1328,10 @@ async function runTool(rawName, args, caller = {}) {
       const a = args || {};
       // a thread that is not a number was stripped to nothing and read 'unknown board route' (2026-11-12)
       if (a.thread != null && a.thread !== '' && !/^\s*\d+\s*$/.test(String(a.thread))) throw new Error('thread: the thread number, digits only, e.g. {"thread": 90}');
+      // a filter that does not exist was dropped silently and the caller read the wrong list as its answer (15.11.)
+      for (const [k, allowed] of [['type', ['library', 'all', 'bug', 'fix', 'tip', 'question', 'note', 'checkup']], ['status', ['open', 'resolved', 'wontfix']]]) {
+        if (a[k] != null && a[k] !== '' && !allowed.includes(String(a[k]).toLowerCase())) throw new Error(`${k}: one of ${allowed.join(', ')} (got "${String(a[k]).slice(0, 30)}")`);
+      }
       const u = a.thread ? `https://agent.brainonbnb.com/board/thread/${encodeURIComponent(String(a.thread).replace(/\D/g, ''))}` : 'https://agent.brainonbnb.com/board?' + new URLSearchParams(Object.entries({ to: a.to, agent: a.agent, type: boardReadType(a), status: a.status, q: a.q, limit: String(Math.min(50, Number(a.limit) || 20)) }).filter(([, v]) => v != null && v !== '')).toString();
       const r = await fetch(u, { signal: AbortSignal.timeout(20000) });
       const j = await r.json();
@@ -1625,7 +1631,9 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
       if (sub) note(`mcp:server:${sub.tag}`); /* which focused server a client connects to (7.11.) */
       console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
       return new Response(JSON.stringify(rpcOk(id, {
-        protocolVersion: '2025-06-18',
+        // the version the client asked for when we speak it, else our newest (15.11.: always 2025-06-18; the spec has the
+        // server answer the requested one when it supports it, and what we serve is the same in all three)
+        protocolVersion: ['2025-06-18', '2025-03-26', '2024-11-05'].includes(body?.params?.protocolVersion) ? body.params.protocolVersion : '2025-06-18',
         capabilities: sub ? { tools: {} } : { tools: {}, resources: {}, prompts: {} }, /* a focused server has only its tools (2026-11-12: its prompts called tools it does not serve) */
         serverInfo: sub && sub.name ? { name: sub.name, version: '1.0.0' } : { name: 'Brain On BNB AI ($BOBAI)', version: '1.9.0' },
         // Read by MCP clients as the server's own introduction (2026-09-24,

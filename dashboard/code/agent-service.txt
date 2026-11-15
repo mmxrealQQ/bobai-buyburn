@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24677 lines.
+# one fetch. 75 files, 24709 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -20848,7 +20848,7 @@ const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 
 // that index result.accepted / result.provider directly (the generated
 // /registry ask box, register-own-agents.mjs) until they read the part.
 const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
-const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money' };
+const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money', position_look: 'pancakeswap_position_look', fix_lookup: 'bnb_fix_lookup' };
 
 // Plain words on the shared endpoint -> the free tool they name (2026-11-15). Agents first: "find an agent for X" is a
 // search even when it names $BOBAI's own topics. Then $BOBAI's own questions, most specific first; a $BOBAI question that
@@ -20873,6 +20873,27 @@ export function textTool(words) {
   ];
   for (const [re, tool] of rules) if (re.test(w)) return { tool };
   return { tool: 'bobai_token_info' };
+}
+
+// An address WITH words (15.11., the A-Z pass): "fee tiers for 0x…", "best route for $500 of 0x…", "balance of 0x…" all got
+// the token preflight. The words now pick the free tool, a size in dollars ("$500", "2k usd", "$1,500") rides along as
+// the tool's own size argument; words that name none of them keep the preflight.
+export function addressTool(words, addr) {
+  const w = String(words || '').toLowerCase().replace(/0x[0-9a-f]{40}/g, ' ').slice(0, 400);
+  const m = w.match(/\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k\b)?|(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:usd\b|dollars?\b)/);
+  const usd = m ? Number((m[1] || m[3]).replace(/,/g, '')) * (m[2] || m[4] ? 1000 : 1) : 0;
+  const size = usd > 0 && usd < 1e9 ? usd : null;
+  const rules = [
+    [/\b(escrow|erc-?8183|jobs?)\b/, 'erc8183_escrow_status'],
+    [/\b(fee ?tiers?|tiers?)\b/, 'pancakeswap_fee_tiers'],
+    [/\b(range|ranges)\b/, 'pancakeswap_range_plan', 'capitalUsd'],
+    [/\b(route|routes|routing)\b/, 'pancakeswap_best_route', 'usd'],
+    [/\bpositions?\b/, 'pancakeswap_position_look'],
+    [/\b(balance|balances|holdings?)\b/, 'bobai_wallet_balance'],
+    [/\b(pools?|depth|deep)\b/, 'bsc_pool_scan'],
+  ];
+  for (const [re, tool, sz] of rules) if (re.test(w)) return { tool, args: { address: addr, ...(sz && size ? { [sz]: size } : {}) } };
+  return { tool: 'bsc_token_preflight', args: { address: addr, ...(size ? { usd: size } : {}) } };
 }
 
 const dataParts = (message) => {
@@ -21054,7 +21075,9 @@ export async function handleA2A(request, env, opts = {}) {
   const { data, text } = dataParts(body?.params?.message);
   // THE PLAZA BOARD OVER A2A (2026-10-23): any of our endpoints reads and writes the board — skill "plaza-board",
   // action read (filters as GET /board) | post | reply | status (the signed entry, as POST /board)
-  if (String(data.skill || '').toLowerCase() === 'plaza-board') {
+  // skills spelled with _ or - are the same skill (15.11.: the card's escrow_status worked, plaza_board was -32601)
+  const skill0 = String(data.skill || '').toLowerCase().replace(/_/g, '-');
+  if (skill0 === 'plaza-board') {
     const { readBoard, writeEntry, BOARD_HOW } = await import('./board.js');
     const action = String(data.action || 'read');
     if (action === 'how') return rpcOk(id, agentMessage(BOARD_HOW));
@@ -21063,12 +21086,14 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, agentMessage(r.body));
   }
   // ANY WALLET'S ESCROW OVER A2A (2026-10-23): skill "escrow-status", { address } — escrow-for.js, read-only
-  if (String(data.skill || '').toLowerCase() === 'escrow-status') {
+  if (skill0 === 'escrow-status') {
     const { readEscrowFor } = await import('./escrow-for.js');
     const address = String(data.address || data.wallet || (String(text || '').match(/0x[0-9a-fA-F]{40}/) || [])[0] || '');
     return rpcOk(id, agentMessage(await readEscrowFor(env, address)));
   }
-  if (!opts.agent) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
+  // a card skill that names one of our ids as its ARGUMENT ({"skill":"agent_chart","agent_id":363709}) asks about that
+  // agent, it does not ask that agent (15.11.: routed to the DeFi agent's own endpoint and answered -32601)
+  if (!opts.agent && !CARD_TOOLS[String(data.skill || data.method || '').toLowerCase()]) { const routed = ownAgentNamed(data); if (routed) opts = { ...opts, agent: routed }; }
   const skill = String(data.skill || data.method || '').toLowerCase();
   // The address that speaks for this endpoint: on an agent's own endpoint its agentWallet as the registry names it
   // (agent-wallets.js, 2026-10-21), on the shared one the provider. A quote names the wallet of the agent whose
@@ -21197,14 +21222,21 @@ export async function handleA2A(request, env, opts = {}) {
     // PLAIN WORDS, ANSWERED (2026-11-15): "what is the price of BOBAI" got a sentence naming the skill price instead of the
     // price, "find me an agent that can rebalance" the whole catalogue. A question with no skill and no address now goes to
     // the free tool its words name; nothing that names none of them changes.
-    const said = !skill && !addr ? textTool(words) : null;
-    const tool = skill ? CARD_TOOLS[skill] : addr ? 'bsc_token_preflight' : said?.tool || null;
+    const said = !skill ? (addr ? addressTool(words, addr) : textTool(words)) : null;
+    const tool = skill ? CARD_TOOLS[skill] : said?.tool || null;
     if (tool) {
       const { skill: _s, method: _m, ...inputs } = data;
-      const j = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: { ...(addr ? { address: addr } : {}), ...(said?.args || {}), ...inputs, ...(data.params || {}) } } }) }).then((r) => r.json()).catch(() => null);
+      const call = (name, args) => fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) }).then((r) => r.json()).catch(() => null);
+      let used = tool, j = await call(tool, { ...(addr ? { address: addr } : {}), ...(said?.args || {}), ...inputs, ...(data.params || {}) });
+      // a wallet sent as a token (15.11.): "check 0x<wallet>" answered "that is a wallet"; the wallet's balance answers it
+      if (!skill && addr && tool === 'bsc_token_preflight' && j?.result?.structuredContent?.code === 'is_wallet') { used = 'bobai_wallet_balance'; j = await call(used, { address: addr }); }
       const body = j?.result?.content?.[0]?.text;
-      if (!body) return rpcErr(id, -32000, `${tool} did not answer: ${String(j?.error?.message || 'no reply').slice(0, 160)}`);
-      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: body }] });
+      if (!body) return rpcErr(id, -32000, `${used} did not answer: ${String(j?.error?.message || 'no reply').slice(0, 160)}`);
+      // the tool's structured answer rides along as a data part, a refusal marked as one with its code (15.11.: a refusal
+      // came back as an ordinary text message, nothing a program could tell apart)
+      const sc = j.result.structuredContent, isErr = j.result.isError === true;
+      const dataPart = sc && typeof sc === 'object' ? { ...sc, tool: used, ...(isErr ? { is_error: true } : {}) } : isErr ? { tool: used, is_error: true, error: body.slice(0, 400) } : null;
+      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: body }, ...(dataPart ? [{ kind: 'data', data: dataPart }] : [])] });
     }
   }
 

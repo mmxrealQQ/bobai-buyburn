@@ -353,7 +353,7 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   // structuredContent for the three trading reads (MCP 2025-06-18)
   const st = w.match(/const STRUCTURED_TOOLS = new Set\(\[([^\]]*)\]\)/)?.[1] || '';
   ok('tools/call answers bsc_token_preflight, bsc_pool_scan and pancakeswap_best_route with structuredContent', ['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route'].every((n) => st.includes(`'${n}'`))
-    && /STRUCTURED_TOOLS\.has\([^)]*\)[^\n]*\{ structuredContent: out \}/.test(w) && /protocolVersion: '2025-06-18'/.test(w));
+    && /STRUCTURED_TOOLS\.has\([^)]*\)[^\n]*\{ structuredContent: out \}/.test(w) && /protocolVersion: (?:\[[^\]]*\]\.includes\([^)]*\) \? body\.params\.protocolVersion : )?'2025-06-18'/.test(w)); /* 15.11.: the asked version is echoed when we speak it; 2025-06-18 stays the newest */
   const stdio = fs.readFileSync(path.resolve(import.meta.dirname, '../mcp/server.mjs'), 'utf8');
   ok('… and the stdio server the same, carrying the REST refusal’s code and hint', /STRUCTURED\.has\(params\?\.name\)[^\n]*structuredContent: out/.test(stdio) && /e\.code = String\(body\.code\)/.test(stdio) && /structuredContent: \{ error: msg, code: e\.code/.test(stdio));
   // fee tiers: sixty seconds in the edge cache, and no tool description says "nothing cached" any more

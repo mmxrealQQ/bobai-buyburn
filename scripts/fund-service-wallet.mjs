@@ -50,6 +50,10 @@ const SERVICE_WALLET = '0x690E950214980BC329823A2DB2fD90C06Bd54dE4';
 const TARGETS = {
   service: { address: SERVICE_WALLET, label: 'x402 service' },
   altana: { address: '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3', label: 'altana agent' },
+  // --to provider: the provider wallet, agentWallet of the DeFi agent #363709 (2026-11-15, operator: "senden vom nft
+  // wallet"). It pays the gas of the daily Bound hire, the 21:15 settle and the public refunds; at 0.001476 BNB it was
+  // under the hire's 0.0015 floor and Bound was skipped on 14 and 15 Nov. Same relayer, same guards.
+  provider: { address: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963', label: 'provider' },
 };
 const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'; // BSC mainnet feed, 8 decimals
 

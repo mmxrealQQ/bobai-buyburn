@@ -53,6 +53,8 @@
     "/token.html",
     "/faq",
     "/faq.html",
+    "/pop*",
+    "/connect*",
     "/roadmap",
     "/roadmap.html",
     "/archive",

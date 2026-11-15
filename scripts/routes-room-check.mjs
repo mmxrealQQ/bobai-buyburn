@@ -39,7 +39,9 @@ const files = [];
   }
 })(DASH, '');
 const oldRouted = (p) => matches(OLD, p);
-const grabbed = files.filter((p) => routed(p) && !oldRouted(p));
+// on purpose since 15.11.: /pop and /connect go through the worker for the EN|ع switch (scripts/ar-assets-regressions.mjs)
+const MEANT = new Set(['/pop.html', '/connect.html']);
+const grabbed = files.filter((p) => routed(p) && !oldRouted(p) && !MEANT.has(p));
 say(grabbed.length === 0, `no grab: no static file newly runs through the worker${grabbed.length ? ' — ' + grabbed.slice(0, 10).join(' ') : ''}`);
 
 console.log(fails ? `\n${fails} FAILING` : '\nall pass');

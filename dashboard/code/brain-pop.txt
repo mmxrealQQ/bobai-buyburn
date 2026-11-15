@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 8 files, 842 lines.
+# one fetch. 8 files, 845 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -398,6 +398,9 @@ export const FIRST_DAY = '2026-11-06';
 // the season gets ONE $BOBAI, every daily winner gets NOTHING (the operator's joke, said so on the page)
 export const LAST_DAY = '2026-11-30';
 export const seasonOver = today => today > LAST_DAY;
+// the day a request means when it names none (15.11.): today, and once the season is over its last day — so old links
+// (/m/pop, ?pop=play, posts) still open the game (an unranked rematch of 30 Nov) instead of 400 "no such day"
+export const askedDay = (d, today) => d || (seasonOver(today) ? LAST_DAY : today);
 // the creatures and their moves, as the terminal's CREW (snail and kaiju come at fixed beats, not from this list)
 export const CREW = { octo: ['fly', 'pop', 'spin', 'float'], bulb: ['run'], astro: ['float', 'spin'], fridge: ['run', 'pop', 'rise'], sock: ['rise', 'pop'],
   shrimp: ['run', 'pop', 'spin'], eyeball: ['run', 'pop'], duck: ['fly', 'zoom'], banana: ['pop', 'rise', 'zoom'], pigeon: ['fly'], cactus: ['run', 'pop', 'rise'],
@@ -543,7 +546,7 @@ export function check(day, pops, hits = []) {
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
-import { nameOf, dayOf, dayNo, validDay, seasonOver, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
+import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
 import { checkLink, balanceOf, tierOf, linkMessage, TIERS, STALE_MS } from './wallet.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
@@ -635,8 +638,8 @@ export class PopBoard {
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
         { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); if (u.searchParams.has('from')) this.bump(today, 'came_' + fromOf(u.searchParams.get('from'))); } }
-        const d = u.searchParams.get('d') || today; if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
-        return J({ v: V, day: d, no: dayNo(d), today, ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
+        const d = askedDay(u.searchParams.get('d'), today); if (!validDay(d, today)) return J({ error: 'no such day' }, 400);
+        return J({ v: V, day: d, no: dayNo(d), today, season_over: seasonOver(today), ms: RUN_MS, plan: plan(d), weapons: WEAPONS, names: { adj: ADJ, noun: NOUN, rot: ROT, kind: ROT_KIND }, top: this.top('day', d), players: this.players(d) });
       }
       // THE STEP BEFORE THE GAME (11.11., operator: "measure first"): the terminal says once per load who arrived and from
       // where (visit_<from>, once a day per browser), and what they chose at the brainrot notice (ask_stay / ask_std);

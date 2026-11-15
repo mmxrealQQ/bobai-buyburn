@@ -2859,7 +2859,9 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '14', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '15', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+// (15.11.) /i18n/* is cached a year (immutable, _headers): a change of core.js also bumps its ?v= in ar.js, a change of
+// ar.json its "v" — scripts/ar-assets-regressions.mjs holds all three against the last commit
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
 // sent to the Arabic twin before the page paints. Its look sits here, so an English page needs no other file.
 function langSwitch(enPath, search, ar) {
@@ -2883,6 +2885,9 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   const alt = embedded ? '' : `<link rel="alternate" hreflang="en" href="${enUrl}"><link rel="alternate" hreflang="ar" href="${arUrl}"><link rel="alternate" hreflang="x-default" href="${enUrl}">`;
   let rw = new HTMLRewriter().on('head', { element(e) { e.prepend(LANG_HEAD + alt, { html: true }); } });
   for (const s of SWITCH_AT) rw = rw.on(s, at);
+  // a header with no button to stand before (the whitepaper's: back, title, an empty right slot) takes it INSIDE that slot,
+  // so the title keeps its place (15.11.: the whitepaper had no switch at all)
+  rw = rw.on('.nav .ar-in', { element(e) { if (placed || embedded) return; placed = true; e.append(langSwitch(enPath, search, ar), { html: true }); } });
   if (!ar) return rw.transform(res);
   const T = (s) => { const v = translate(dict, s); return typeof v === 'string' ? v : null; };
   let skip = 0, buf = '';

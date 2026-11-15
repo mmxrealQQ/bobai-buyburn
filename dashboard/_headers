@@ -97,6 +97,12 @@
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
+# The Arabic layer (15.11.): ar.json (288 KB) is always asked as ?v=<its "v">, ar.js/ar.css as ?v=AR_V, core.js as the
+# ?v= in ar.js — every change gets a new address, so a reader of /ar/ loads them once, not on every page.
+# scripts/ar-assets-regressions.mjs fails a change without its new version.
+/i18n/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # The @font-face rules themselves do change, so they keep the ?v= treatment.
 /fonts.css
   Cache-Control: public, max-age=604800, must-revalidate

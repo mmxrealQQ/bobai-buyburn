@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5901,
-   "zipBytes": 104030,
-   "txtBytes": 311937,
-   "sha256": "3354b30d5992d546",
+   "lines": 5907,
+   "zipBytes": 104226,
+   "txtBytes": 312475,
+   "sha256": "33834ae4ebf8d494",
    "reqs": [
     {
      "what": "A bot token",
@@ -522,10 +522,10 @@
    "title": "Brain Pop 6.9 — the daily game in the terminal",
    "tagline": "60 seconds, one engine file, every tap replayed by the server.",
    "files": 8,
-   "lines": 842,
-   "zipBytes": 35455,
-   "txtBytes": 82884,
-   "sha256": "8eedec234acb7b6f",
+   "lines": 845,
+   "zipBytes": 35615,
+   "txtBytes": 83249,
+   "sha256": "506ad7814dc5c11e",
    "reqs": [
     {
      "what": "A worker with a Durable Object (SQLite)",
@@ -631,10 +631,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4259,
-   "zipBytes": 152290,
-   "txtBytes": 456732,
-   "sha256": "dc1c69dc1f9ee24d",
+   "lines": 4264,
+   "zipBytes": 152521,
+   "txtBytes": 457309,
+   "sha256": "fdd29798f10593d6",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

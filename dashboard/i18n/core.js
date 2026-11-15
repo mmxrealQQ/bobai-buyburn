@@ -40,6 +40,13 @@ export function translate(dict, text) {
     if (m) return `${L(m[1])} وكيلًا على BNB Chain أجابوا على إحصاء ${L(m[2])}. أعلى درجات الدليل خارج وكلائنا: ${L(m[3])}.`;
     m = T0.match(/^([\d,]+) others here in ([\d,]+) days, ([\d,]+) of them wrote: (.+?)(?: and more)?\.$/);
     if (m) return `${L(m[1])} آخرون هنا خلال ${L(m[2])} يومًا، كتب منهم ${L(m[3])}: ${L(m[4])}${/ and more\.$/.test(T0) ? ' وغيرهم' : ''}.`;
+    // the Venus agents' log line (app.js): one or more actions, each with its amount, and the health factor (15.11.)
+    m = T0.match(/^Venus agent #(\d+) (.+?)(?:, health factor ([\d.]+))?$/);
+    if (m) {
+      const VD = { supplied: 'أودع', borrowed: 'اقترض', repaid: 'سدّد', 'switched on as collateral': 'فعّل كضمان' };
+      const parts = m[2].split(', ').map((p) => { const q = p.match(/^(supplied|borrowed|repaid|switched on as collateral)(?: (.+))?$/); return q ? VD[q[1]] + (q[2] ? ' ' + L(q[2]) : '') : null; });
+      if (parts.every(Boolean)) return `وكيل Venus ${L('#' + m[1])} ${parts.join('، ')}${m[3] ? '، عامل الصحة ' + L(m[3]) : ''}`;
+    }
     m = T0.match(/^YOU JUST PASSED (.+)$/);
     if (m) return `لقد تجاوزت للتو ${L(m[1])}`;
     m = T0.match(/^Brain Pop today: #1 (.+) with ([\d,.]+) ROT · ([\d,]+) playing$/);
@@ -87,7 +94,7 @@ export function translate(dict, text) {
 export const ltr = (s) => '⁦' + s + '⁩';
 
 // HTML source text as the worker sees it (entities not decoded) and back
-const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rarr: '→', larr: '←', uarr: '↑', darr: '↓', middot: '·', hellip: '…', mdash: '—', ndash: '–', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', times: '×', copy: '©', bull: '•', deg: '°', asymp: '≈', ne: '≠', le: '≤', ge: '≥' };
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rarr: '→', larr: '←', uarr: '↑', darr: '↓', middot: '·', hellip: '…', mdash: '—', ndash: '–', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', times: '×', copy: '©', bull: '•', deg: '°', asymp: '≈', ne: '≠', le: '≤', ge: '≥', minus: '−', sect: '§', plusmn: '±' };
 export function decodeHtml(s) {
   return String(s).replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (m, e) => (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENT[e] ?? m));
 }

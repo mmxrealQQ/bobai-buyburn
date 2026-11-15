@@ -183,7 +183,7 @@ txt: https://brainonbnb.com/code/prize-pool-bot.txt
 Pool Scanner
 ------------
 Reads any BNB Chain pool. No backend at all.
-6 files, 7949 lines
+6 files, 7953 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -302,7 +302,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-75 files, 24668 lines
+75 files, 24677 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

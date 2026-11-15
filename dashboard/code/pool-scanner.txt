@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7949 lines.
+# one fetch. 6 files, 7953 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -251,6 +251,10 @@ export async function rpc(method,params,url){
     const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params});
     if(j&&!j.error)return j.result;
     if(j&&j.error&&url)throw new Error(j.error.message);
+    // A REVERT IS AN ANSWER HERE TOO (2026-11-15), as in rpcBatch above: every node gives the same one. A multicall whose
+    // read reverts ("Multicall3: call failed") went to all five endpoints, one after the other, before multicall() fell
+    // back to its plain batch — 1.4 to 3.2 s of a BTCB preflight. Only a throttled or silent endpoint moves on.
+    if(j&&j.error&&!throttled(j.error)&&/revert/i.test(String(j.error.message||''))){const e=new Error(j.error.message);e.reverted=true;e.data=j.error.data;throw e}
   }
   throw new Error('every BSC endpoint refused '+method+(postRefusal?': '+postRefusal:''));
 }
@@ -4144,7 +4148,7 @@ export async function scan(input, env, timing = null) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=84" type="module"></script>
+<script src="scanner.js?v=85" type="module"></script>
 </body>
 </html>
 
@@ -4169,7 +4173,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=38';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=39';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output

@@ -235,6 +235,10 @@ export async function rpc(method,params,url){
     const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params});
     if(j&&!j.error)return j.result;
     if(j&&j.error&&url)throw new Error(j.error.message);
+    // A REVERT IS AN ANSWER HERE TOO (2026-11-15), as in rpcBatch above: every node gives the same one. A multicall whose
+    // read reverts ("Multicall3: call failed") went to all five endpoints, one after the other, before multicall() fell
+    // back to its plain batch — 1.4 to 3.2 s of a BTCB preflight. Only a throttled or silent endpoint moves on.
+    if(j&&j.error&&!throttled(j.error)&&/revert/i.test(String(j.error.message||''))){const e=new Error(j.error.message);e.reverted=true;e.data=j.error.data;throw e}
   }
   throw new Error('every BSC endpoint refused '+method+(postRefusal?': '+postRefusal:''));
 }

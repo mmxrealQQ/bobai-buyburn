@@ -253,9 +253,12 @@
       <h3>Ask it</h3>
       <p class="agt-note">Paste a PancakeSwap V3 position id, or the address of a wallet that holds exactly one position. The look is free: in range or not, room left, value, fees owed. The plan costs a tenth of a dollar.</p>
       <div class="lp-ask">
-        <input id="lp-yours-in" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="7309536  or  0x…" aria-label="Position id or wallet address">
+        <input id="lp-yours-in" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Position id  or  0x…" aria-label="Position id or wallet address">
         <button id="lp-yours-go" type="button" class="mkt-go" style="border:0;background:none;font:inherit;cursor:pointer">Look &rarr;</button>
       </div>
+      <!-- THE EXAMPLE IS LIVE (2026-11-15): the placeholder named 7309536, a position that no longer exists, so typing the
+           example gave an error; our position's id changes with every re-set, so it comes from the portfolio model -->
+      <button id="lp-yours-ours" type="button" hidden style="border:0;background:none;font:inherit;cursor:pointer;color:var(--gold);font-size:.78rem;padding:8px 0 0">Try it on ours</button>
       <div id="lp-yours-out" class="lp-yours-out" hidden></div>
     </div>
     <!-- closed it is one line: its own height, not an empty box as tall as "Ask it" beside it (26.10.) -->
@@ -276,7 +279,7 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=139" defer></script>
+<script src="app.js?v=140" defer></script>
 <script>
   // the folds (2026-10-24): a tap or Enter on a fold's first line opens it; links and buttons inside keep working.
   // The second opinion is drawn later by app.js, so its first line is marked again whenever it is redrawn.

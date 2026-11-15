@@ -1,0 +1,8 @@
+{
+  "Put in: {0} BNB (≈{1}). Worth now: {2} BNB in the position (≈{3}), and {4} BNB beside it ({5} held at cost, paid out, fees owed). Result: {6} on the capital since {7} Sep, {8} BNB (≈{9}) — {10} BNB from fees, {11} BNB from the price; {12} against simply holding, all ranges since {13}. This range alone (±{14}, since {15}, {16} days): {17} against holding ({18} BNB, gas left out). Checked {19} UTC.": "المُدخَل: {0} BNB (≈{1}). القيمة الآن: {2} BNB في المركز (≈{3})، و{4} BNB بجانبه ({5} محتفظ به بالتكلفة، مدفوع، رسوم مستحقة). النتيجة: {6} على رأس المال منذ {7} سبتمبر، {8} BNB (≈{9}) — {10} BNB من الرسوم، {11} BNB من السعر؛ {12} مقارنة بمجرد الاحتفاظ، كل النطاقات منذ {13}. هذا النطاق وحده (±{14}، منذ {15}، {16} يومًا): {17} مقارنة بالاحتفاظ ({18} BNB، دون الغاز). فُحص {19} UTC.",
+  "{0} runs over {1} days since {2}: {3} BNB of fees produced, {4} kept as capital, {5} into {6} ({7} held, ≈{8} today),{9} to the operator.": "{0} تشغيلًا خلال {1} يومًا منذ {2}: {3} BNB من الرسوم المُنتَجة، {4} أُبقيت رأس مال، {5} إلى {6} ({7} محتفظ به، ≈{8} اليوم)، {9} للمشغّل.",
+  "from the price; {0} against simply holding, all ranges since {1}. This range alone (±{2}, since {3}, {4} days): {5} against holding ({6} BNB": "من السعر؛ {0} مقارنة بمجرد الاحتفاظ، كل النطاقات منذ {1}. هذا النطاق وحده (±{2}، منذ {3}، {4} يومًا): {5} مقارنة بالاحتفاظ ({6} BNB",
+  ", gas left out). Checked {0} UTC.": "، دون الغاز). فُحص {0} UTC.",
+  "of fees produced, {0} kept as capital, {1} into {2} ({3} held, ≈{4} today),{5} to the operator.": "من الرسوم المُنتَجة، {0} أُبقيت رأس مال، {1} إلى {2} ({3} محتفظ به، ≈{4} اليوم)، {5} للمشغّل.",
+  "{0} top-up, {1} collect": "{0} تعبئة، {1} تحصيل"
+}

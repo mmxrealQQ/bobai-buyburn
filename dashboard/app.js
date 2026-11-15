@@ -1224,6 +1224,8 @@ function fillLpPortfolio(){
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
     const h = m.holdings, p = m.pnl, d = m.day || {};
+    { const t = document.getElementById('lp-yours-ours'), pos = String((m.pool && m.pool.position) || '').replace(/\D/g, '');
+      if (t && pos) { t.dataset.id = pos; t.textContent = 'Try it on ours: #' + pos + ' →'; t.hidden = false; } }
     if (n(m.put_in.usd) > 0 && n(m.put_in.bnb) > 0) { window.__pfBnbUsd = n(m.put_in.usd) / n(m.put_in.bnb); setTimeout(lpCurveUsd, 0); }
     const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
     const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : m.pool.at_edge ? '⏸ <b>waiting at the edge</b> <span class="m">(just re-set, earns from the first tick inside)</span>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
@@ -1420,6 +1422,9 @@ function fillLpYours(){
   const inp = el('lp-yours-in'), go = el('lp-yours-go'), out = el('lp-yours-out');
   if(!inp || !go || !out) return;
   out.addEventListener('click', e => { const b = e.target.closest('.lp-pick'); if(!b || go.disabled) return; inp.value = b.dataset.id; go.click(); });
+  // our own position as the one-tap example (2026-11-15): its id is set by fillLpPortfolio from the model
+  const ours = el('lp-yours-ours');
+  if(ours) ours.addEventListener('click', () => { if(!ours.dataset.id || go.disabled) return; inp.value = ours.dataset.id; go.click(); });
   const A = 'https://agent.brainonbnb.com';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const paramsFor = v => /^\d+$/.test(v) ? {position: v} : {address: v};

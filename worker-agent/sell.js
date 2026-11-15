@@ -79,7 +79,7 @@ import { submitDeliverable, providerAccount } from './submit.js';
 import { accountFor, accountForAgent, ourAccounts } from './agent-wallets.js';
 import { signedQuote, agentMessage } from './standard-quote.js';
 import { parseTask, answerTask } from './plain-tasks.js';
-import { understoodReply, understand, readHoldings, readTargets } from './understand.js';
+import { understoodReply, understand, readHoldings, readTargets, tokenBySymbol } from './understand.js';
 
 const RPCS = [
   'https://bsc-dataseed1.defibit.io',
@@ -317,11 +317,14 @@ export function pickService(text = '', explicit) {
   return null;
 }
 
-export const RANGE_WORDS = /\bv3 positions?\b|\bpositions? (held|of|owned)\b|\bin range\b|out of range|re-?cent(er|re)|range check|\blp range/i;
+export const RANGE_WORDS =/\bv3 positions?\b|\bpositions? (held|of|owned)\b|\bin range\b|out of range|re-?cent(er|re)|range check|\blp range/i;
 export const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
   if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }
+  // A TOKEN NAMED BY ITS SYMBOL (2026-11-15): "grid plan for CAKE" was told to name the token's address. The few majors
+  // of BNB Chain are read as their contract when the sentence names exactly one of them and no address; only `token`.
+  if (!addr && !out.token && tokenBySymbol(text)) out.token = tokenBySymbol(text);
   // The amount of a yield question (2026-10-30): "1000 USDT" was read and dropped, and the plan answered without a size.
   if (out.amountUsd == null && /\byield\b/i.test(String(text))) {
     const m = String(text).match(/\$\s?([\d,]+)|\b([\d,]+)\s*(?:USDT|USDC|USD1|FDUSD|DAI)\b/i);
@@ -408,6 +411,31 @@ const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 
 // /registry ask box, register-own-agents.mjs) until they read the part.
 const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
 const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money' };
+
+// Plain words on the shared endpoint -> the free tool they name (2026-11-15). Agents first: "find an agent for X" is a
+// search even when it names $BOBAI's own topics. Then $BOBAI's own questions, most specific first; a $BOBAI question that
+// names none of them gets the token's facts. Anything else stays the catalogue.
+export function textTool(words) {
+  const w = String(words || '').toLowerCase().slice(0, 400);
+  if (!w.trim()) return null;
+  if (/\b(agents?|bots?)\b/.test(w) && /\b(find|search|looking|need|who|which|any|is there|are there|hire|recommend|list|show)\b/.test(w) && !/\b(you|your)\s+(agents?|services?)\b/.test(w)) {
+    return { tool: 'find_agents_on_bnb_chain', args: { query: String(words).trim().slice(0, 200), limit: 5 } };
+  }
+  if (!/\$?bobai\b|brain ?on ?bnb/.test(w)) return null;
+  const rules = [
+    [/\bburn(s|ed|t)?\b/, 'bobai_burned'],
+    [/\b(whales?|smart money|top holders?|who (is |are )?buy)/, 'bobai_smart_money'],
+    [/\bnfts?\b/, 'bobai_nft_drop'],
+    [/\b(how (do|can|to) (i |we )?(buy|get)|where (to|can i|do i) (buy|trade)|purchase|buy)\b/, 'bobai_purchase_guide'],
+    [/\b(liquidity|liq|pool|lp)\b/, 'bobai_liquidity'],
+    [/\b(tokenomics|supply|tax|taxes|holders?)\b/, 'bobai_tokenomics'],
+    [/\b(volume|activity|trades?|trading)\b/, 'bobai_activity'],
+    [/\b(price|cost|worth|value|market ?cap|mcap|fdv)\b/, 'bobai_price'],
+    [/\b(website|links?|telegram|twitter|socials?)\b/, 'bobai_links'],
+  ];
+  for (const [re, tool] of rules) if (re.test(w)) return { tool };
+  return { tool: 'bobai_token_info' };
+}
 
 const dataParts = (message) => {
   const parts = message?.parts || [];
@@ -728,16 +756,17 @@ export async function handleA2A(request, env, opts = {}) {
   if (!forced) {
     const words = [text, data.task_description].filter(Boolean).join(' ');
     const addr = words.match(/0x[a-fA-F0-9]{40}/)?.[0];
-    const tool = skill ? CARD_TOOLS[skill] : addr ? 'bsc_token_preflight' : null;
+    // PLAIN WORDS, ANSWERED (2026-11-15): "what is the price of BOBAI" got a sentence naming the skill price instead of the
+    // price, "find me an agent that can rebalance" the whole catalogue. A question with no skill and no address now goes to
+    // the free tool its words name; nothing that names none of them changes.
+    const said = !skill && !addr ? textTool(words) : null;
+    const tool = skill ? CARD_TOOLS[skill] : addr ? 'bsc_token_preflight' : said?.tool || null;
     if (tool) {
       const { skill: _s, method: _m, ...inputs } = data;
-      const j = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: { ...(addr ? { address: addr } : {}), ...inputs, ...(data.params || {}) } } }) }).then((r) => r.json()).catch(() => null);
+      const j = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: { ...(addr ? { address: addr } : {}), ...(said?.args || {}), ...inputs, ...(data.params || {}) } } }) }).then((r) => r.json()).catch(() => null);
       const body = j?.result?.content?.[0]?.text;
       if (!body) return rpcErr(id, -32000, `${tool} did not answer: ${String(j?.error?.message || 'no reply').slice(0, 160)}`);
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: body }] });
-    }
-    if (!skill && /\$?bobai/i.test(words)) {
-      return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: 'Contract 0x245c386dcfed896f5c346107596141e5edcbffff on BNB Chain, 3% tax, buy with 6% slippage on PancakeSwap: skill price, tokenomics or purchase_guide answer here for free. Paid answers cost half in $BOBAI and nothing for a wallet holding 1,000,000 $BOBAI: https://brainonbnb.com/pass' }] });
     }
   }
 

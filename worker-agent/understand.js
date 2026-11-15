@@ -7,6 +7,17 @@
 
 const ADDR = /0x[a-fA-F0-9]{40}/g;
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+// A TOKEN NAMED BY ITS SYMBOL (2026-11-15): "grid plan for CAKE" was told to name an address, and "CAKE on BNB Chain" was
+// read as WBNB (the chain's name is not the token). The majors of BNB Chain, each with exactly one contract; a sentence
+// that names exactly one of them gets that contract, two or none get nothing.
+const SYMBOL_TOKENS = { CAKE: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', BNB: WBNB, WBNB, BTCB: '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c', ETH: '0x2170ed0880ac9a755fd29b2688956bd959f933f8', BOBAI: '0x245c386dcfed896f5c346107596141e5edcbffff' };
+const SYMBOL_WORDS = /(?<![\w$])\$?(CAKE|WBNB|BNB|BTCB|ETH|BOBAI)(?!\w)(?!\s*(?:smart\s*)?chain)/gi;
+export function tokenBySymbol(text = '') {
+  const named = [...new Set([...String(text).matchAll(SYMBOL_WORDS)].map((m) => SYMBOL_TOKENS[m[1].toUpperCase()]))];
+  // a pair against BNB ("CAKE/BNB") is about the other token: BNB is the side it is quoted in
+  const other = named.length === 2 && named.includes(WBNB) ? named.find((a) => a !== WBNB) : null;
+  return named.length === 1 ? named[0] : other;
+}
 // "with 5000 USDT" is dollars too (2026-10-23: Marque job 57037 named its capital in USDT and was planned at $1,000)
 const usd = (t) => { const m = String(t).match(/\$\s?([\d,]+(?:\.\d+)?)\s*(k|K)?/) || String(t).match(/([\d,]+(?:\.\d+)?)\s*(?:usd[tc1]?|busd|fdusd|dollars?)\b/i); if (!m) return null; const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1); return v > 0 ? v : null; };
 
@@ -56,7 +67,7 @@ export function understand(service, text = '') {
   if (need.includes('token') && addrs[0]) p.token = addrs[0];
   // "a grid for WBNB/USDT" names the token without its address (Mandate's grid question, 2026-10-15): WBNB is the one
   // token read by name, since BNB Chain's wrapped BNB has exactly one address
-  else if (need.includes('token') && /\bW?BNB\b/.test(t)) p.token = WBNB;
+  else if (need.includes('token') && tokenBySymbol(t)) p.token = tokenBySymbol(t);
   if (need.includes('position')) { const m = t.match(/position\s*(?:id\s*)?#?\s*(\d{3,})/i); if (m) p.position = m[1]; else if (addrs[0]) p.address = addrs[0]; }
   if (need.includes('capitalUsd')) { const v = usd(t); if (v) p.capitalUsd = v; }
   if (need.includes('amountUsd')) { const v = usd(t) ?? (Number(named(t, 'amountUsd')) > 0 ? Number(named(t, 'amountUsd')) : null); if (v) p.amountUsd = v; }

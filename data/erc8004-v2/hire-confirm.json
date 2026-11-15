@@ -1,7 +1,7 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-11-08T10:42:59.660Z",
-  "asked": 69,
+  "measured_at": "2026-11-15T05:59:10.332Z",
+  "asked": 63,
   "quoted": 35,
   "agents": [
     {
@@ -106,14 +106,14 @@
       "reason": null
     },
     {
-      "id": 341563,
-      "label": "marketplace-operated-rebalance-planner",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/rebalance/a2a",
-      "reason": "rebalance requires REBALANCE_PLAN_V1 with positions, targets, driftThresholdPercent."
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
     },
     {
       "id": 341628,
@@ -156,26 +156,6 @@
       "reason": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply"
     },
     {
-      "id": 324818,
-      "label": "RangeReset",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT",
-      "reason": "Missing Authentication Token"
-    },
-    {
-      "id": 342379,
-      "label": "PancakeSwap LP Range Check",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://muster.zkasuran.dev/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
       "id": 331131,
       "label": "LatticeLatch",
       "category": "rebalancing",
@@ -183,6 +163,16 @@
       "quotes": false,
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
+      "reason": "Missing Authentication Token"
+    },
+    {
+      "id": 324818,
+      "label": "RangeReset",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT",
       "reason": "Missing Authentication Token"
     },
     {
@@ -204,16 +194,6 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "rebalancing",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
     },
     {
       "id": 341554,
@@ -263,8 +243,8 @@
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
-      "reason": "Grid requires GRID_PLAN_V1 with pair, lowerPrice, upperPrice, capital, gridCount."
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
+      "reason": "The deployment could not be found on Vercel."
     },
     {
       "id": 269233,
@@ -297,6 +277,16 @@
       "reason": null
     },
     {
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
+      "category": "grid-trading",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
       "id": 345085,
       "label": "GuardRail GridBot",
       "category": "grid-trading",
@@ -317,16 +307,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 342380,
-      "label": "Grid Ladder Planner",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://muster.zkasuran.dev/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
       "id": 331131,
       "label": "LatticeLatch",
       "category": "grid-trading",
@@ -345,16 +325,6 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "grid-trading",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
     },
     {
       "id": 341555,
@@ -448,14 +418,14 @@
       "reason": null
     },
     {
-      "id": 341564,
-      "label": "marketplace-operated-yield-planner",
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
       "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/yield/a2a",
-      "reason": "yield requires YIELD_PLAN_V1 with capital, options, riskTolerance, maxSharePercent, minOptions."
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
     },
     {
       "id": 395829,
@@ -488,16 +458,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 342378,
-      "label": "BSC Yield Router",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://muster.zkasuran.dev/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
       "id": 341225,
       "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
@@ -516,16 +476,6 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "yield-optimization",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
     },
     {
       "id": 116171,
@@ -625,8 +575,8 @@
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/loan-health/a2a",
-      "reason": "loan-health requires LOAN_HEALTH_V1 with collateral, debt, targetHealthFactor, alertLevels."
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
+      "reason": "The deployment could not be found on Vercel."
     },
     {
       "id": 340458,
@@ -646,6 +596,16 @@
       "quotes": true,
       "price": "5 $U",
       "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 49467,
+      "label": "Brain On BNB AI ($BOBAI)",
+      "category": "health-factor",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
       "reason": null
     },
     {
@@ -669,16 +629,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 342377,
-      "label": "Venus Health Factor Watch",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://muster.zkasuran.dev/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
       "id": 330663,
       "label": "Sentinels Health Guard",
       "category": "health-factor",
@@ -687,16 +637,6 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "health-factor",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
     }
   ]
 }

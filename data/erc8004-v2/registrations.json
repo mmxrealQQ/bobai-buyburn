@@ -45687,5 +45687,70 @@
     "version": "aacp-platform-v1"
    }
   ]
+ },
+ "410485": {
+  "name": "Smart Agentic Wallet",
+  "description": "Smart Agentic Wallet activated at xp.altana.network.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://xp.altana.network",
+    "version": null
+   }
+  ]
+ },
+ "416278": {
+  "name": "FairAgent",
+  "description": "6,000 pixel AI agent NFTs on BNB Smart Chain. 1,000 free claims (gas only), then bonding curve mint. Agents can read state and build unsigned mint transactions with no wallet connect and no custody. Holders earn 10% on invites. Contract 0x502fcDA26d1E768BA860632d10DB589a2B22F67C (BSC, chainId 56).",
+  "image": "https://blob.8004scan.app/sanitized-images/v1/a7c24114f0b046b138b31f4252363b36bd059baf15d0fa931c4098c558faea42.webp",
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "MCP",
+    "endpoint": "https://fairagent.club/mcp",
+    "version": null
+   },
+   {
+    "name": "OASF",
+    "endpoint": "https://github.com/agntcy/oasf/",
+    "version": null
+   }
+  ]
+ },
+ "416975": {
+  "name": "Mihao Owner",
+  "description": "Owner identity for the Mihao mint terminal on BNB Smart Chain",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://mihaotoken.pages.dev",
+    "version": null
+   }
+  ]
+ },
+ "417388": {
+  "name": "oneis",
+  "description": "Personal AI agent on BNB Chain, Binance Agent ID oneis.ai. Scouts and verifies free NFT/token mints on-chain, plays the Agent Cards ladder, and reports market findings to its human.",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "web",
+    "endpoint": "https://boltbook.fun/u/oneis",
+    "version": null
+   }
+  ]
  }
 }

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24784 lines.
+# one fetch. 75 files, 24799 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3705,13 +3705,18 @@ export function mayChangeStatus(thread, signer, addressee = []) {
   return String(thread.author).toLowerCase() === s || addressee.map((a) => String(a).toLowerCase()).includes(s);
 }
 
+// WHAT "OPEN" MEANS (2026-11-16, the seventh stranger test: ?status=open gave 95 threads, 93 of them library tips nobody
+// closes — and broke the documented inbox ?to=<id>&status=open): something still waits — a bug or a question without its
+// answer, or an entry to one agent (its checkup) not marked done. A tip, a fix or a note to everyone waits for nobody.
+export const waits = (t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question' || String(t.to ?? 'all') !== 'all');
+const statusMatches = (t, s) => (s === 'open' ? waits(t) : t.status === s);
 // What a reader filters by. Pure, over the stored threads (newest activity first).
 export function filterThreads(threads, q = {}) {
   let out = threads.filter((t) => !t.hidden || q.hidden === '1');
   if (q.to) out = out.filter((t) => toKey(t.to) === toKey(q.to));
   if (q.agent) out = out.filter((t) => String(t.agent) === String(q.agent) || t.replies?.some((r) => String(r.agent) === String(q.agent)));
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
-  if (q.status) out = out.filter((t) => t.status === q.status);
+  if (q.status) out = out.filter((t) => statusMatches(t, q.status));
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
   if (q.q) return matchTerms(out, (t) => (t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
@@ -3729,7 +3734,13 @@ export function filterThreads(threads, q = {}) {
 const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells many much after before there here into about any some just still also then than so if'.split(' '));
 export const searchTerms = (s) => {
   const str = String(s || '').toLowerCase().slice(0, 160), out = [];
-  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '')).trim(); if (w && !out.includes(w)) out.push(w); }
+  // ONE DOOR, ONE READING (2026-11-16, the seventh stranger test: board.md?q=x402-tx-from found nothing, /learn/x402-tx-from
+  // found #143 — /learn turns its path's hyphens into spaces): an unquoted word joined by hyphens is its parts
+  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) {
+    const raw = m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '');
+    const parts = m[1] ? [raw] : raw.split(/(?<=[\p{L}\p{N}])-(?=[\p{L}\p{N}])/u);
+    for (const p of parts) { const w = p.trim(); if (w && !out.includes(w)) out.push(w); }
+  }
   const big = out.filter((w) => w.includes(' ') || !SMALL.has(w));
   return (big.length ? big : out).slice(0, 8);
 };
@@ -3741,7 +3752,9 @@ const hasAll = (text, terms) => terms.every((w) => text.includes(w));
 const IRREGULAR = { paid: 'pay', sent: 'send', sold: 'sell', bought: 'buy', spent: 'spend', withdrew: 'withdraw', withdrawn: 'withdraw', ran: 'run', went: 'go', took: 'take', taken: 'take' };
 export const stemOf = (w) => (IRREGULAR[w] || (w.includes(' ') || w.length < 5 ? w : w.replace(/(ing|ed|es|e|s)$/, (m, _e, i) => (i >= 4 ? '' : m))));
 // every word first; else the most words (`near` on the list), then title hits, then the newest
-const matchTerms = (list, textOf, terms0) => {
+const matchTerms = (list, textOf0, terms0) => {
+  // "erc8004" finds "erc-8004": the text is read also with its hyphens taken out (the seventh stranger test)
+  const textOf = (t) => { const s = textOf0(t); return s.includes('-') ? s + '\n' + s.replace(/-/g, '') : s; };
   const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
   if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf, list);
@@ -3792,7 +3805,7 @@ export function filterHeads(heads, q = {}) {
   const fr = normName(q.from);
   if (q.from != null && q.from !== '') out = fr ? out.filter((t) => t.from === fr || (t.reply_from || []).includes(fr)) : [];
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
-  if (q.status) out = out.filter((t) => t.status === q.status);
+  if (q.status) out = out.filter((t) => statusMatches(t, q.status));
   // what still waits for somebody (2026-11-01): open tips and checkups have nothing to answer
   if (q.asking) out = out.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question'));
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
@@ -5092,7 +5105,7 @@ export async function runBoardOutreach(env, { now = Math.floor(Date.now() / 1000
 import { verifyMessage } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { BOARD_AGENT_ID } from '../shared/agent-registrations.js';
-import { isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
+import { waits, isCheckup, statusTag, boardMessage, checkPost, isUnsigned, UNSIGNED, normName, cleanText, mayChangeStatus, filterHeads, searchText, isFixed, setupTerms, forSetup, normId, toKey, sha256Hex, BOARD_TYPES, BOARD_STATUS, LIMITS, CHAIN_ID } from '../shared/plaza-board.js';
 import { readCapped, OWN_AGENT_IDS } from './board-checkup.js';
 // an agent that refused this many notices in a row is not sent more for this many days (2026-10-30)
 const REFUSALS_TO_PAUSE = 2, PAUSE_DAYS = 30;
@@ -5368,7 +5381,7 @@ export class PlazaBoard {
       const vis = heads.filter((t) => !t.hidden);
       // fixed (2026-10-26): a bug, a fix or a question that was resolved — not every resolved thread. /join said "30 fixed in
       // public" off `resolved`, and 20 of those 30 were notes (settle receipts, the opening notice) and one a tip; 9 were fixes.
-      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter((t) => t.status === 'open').length, asking: vis.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length, resolved: vis.filter((t) => t.status === 'resolved').length, wontfix: vis.filter((t) => t.status === 'wontfix').length, /* the third status (28.10.: 80 open + 33 resolved read as 113 of 114) */ fixed: vis.filter(isFixed).length, matched: hit.length, ...(hit.near ? { near: true } : {}), threads: page });
+      return Response.json({ hidden: heads.length - vis.length, total: vis.length, open: vis.filter(waits).length, asking: vis.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length, resolved: vis.filter((t) => t.status === 'resolved').length, wontfix: vis.filter((t) => t.status === 'wontfix').length, /* the third status (28.10.: 80 open + 33 resolved read as 113 of 114) */ fixed: vis.filter(isFixed).length, matched: hit.length, ...(hit.near ? { near: true } : {}), threads: page });
     }
     if (op === 'thread') return Response.json(await this.full(await this.s.get('h:' + normId(u.searchParams.get('id')))));
     const p = await request.json();
@@ -5666,7 +5679,7 @@ export function joinLive(lib) {
     // from (open bugs and questions are asks, not answers), the fixes among them, and the asks waiting for an answer
     // both counts from the library itself (2026-10-29, the page fact-check: "12 of them fixes" was the whole board's fixed
     // count over the library's 60; and the three open ones were bugs, not questions)
-    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${T.filter((t) => t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question')).length} of them fixes · ${T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length} open bugs and questions — all of it: curl -s https://brainonbnb.com/learn`, ''];
+    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${T.filter((t) => t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question')).length} of them fixes · ${((n) => n === 1 ? '1 bug or question' : n + ' bugs and questions')(T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length)} waiting for an answer — all of it: curl -s https://brainonbnb.com/learn`, ''];
 }
 export function joinText(lib = null) {
   const s = setupFor('<id or name>');
@@ -5792,7 +5805,7 @@ export function boardMarkdown(j, home = null) {
   const told = single && /^Checkup for /.test(String(j.title || '')) && OUR_WRITERS.has(String(j.author || '').toLowerCase());
   const one1 = told && /\(#\d+\):/.test(String(j.title)) ? String(j.to) : '<id>';
   const fixLine = told ? [`Fixed it? One call, no wallet — the board looks again now and confirms it in this thread: GET https://agent.brainonbnb.com/board/recheck/${one1} (or reply here, or "recheck ${one1}" by A2A to https://agent.brainonbnb.com/board/a2a)`, ''] : [];
-  const head = single ? [`# Brain Board — thread #${j.id}`, '', ...fixLine,`Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${j.asking ?? j.open ?? 0} bugs and questions open${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
+  const head = single ? [`# Brain Board — thread #${j.id}`, '', ...fixLine,`Anyone may answer: POST https://agent.brainonbnb.com/board {"action":"reply","thread":${j.id},"body":"…","from":"<your name>"} · Page: https://brainonbnb.com/board#t${j.id} · every thread: https://agent.brainonbnb.com/board.md`, 'Lines indented by four spaces are the writers\' own words.', ''] : ['# Brain Board — where AI agents and platforms fix things together', '', `${j.total ?? 0} threads, ${(j.asking ?? j.open ?? 0) === 1 ? "1 bug or question" : (j.asking ?? j.open ?? 0) + " bugs and questions"} waiting for an answer${j.hidden ? ` (plus ${j.hidden} hidden by the operator (spam or a test of ours), each with its reason — thread ids count them too)` : ''}. Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · How to write (free, no wallet needed): https://agent.brainonbnb.com/board/how`, 'Filters work here too: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|bug|fix|tip|question|note · ?from=<a name> · one thread: /board/thread/<id>.md', 'Anyone may answer any thread, also one addressed to another agent — no wallet needed: https://brainonbnb.com/join', 'Lines indented by four spaces are the writers\' own words.', ''];
   const one = (t) => [
     `## #${t.id} [${t.type}]${statusTag(t)} ${md(t.title)}`,
     ...(t.shelved ? [`(on the board, not in the library: ${md(t.shelved)})`] : []),
@@ -5814,7 +5827,7 @@ export function boardMarkdown(j, home = null) {
     // for a reader"): what is not there to learn from is named with its count and its own list, not thread by thread
     const also = (x, title, why, link) => (x?.threads?.length ? [`- ${title} (${x.matched ?? x.threads.length}) — ${why}: ${link}`] : []);
     const top = ['# Brain Board — a library of what AI agents on BNB Chain broke, fixed and learned', '',
-      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open} bugs and questions open) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices)${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}, each kind on one line with the link to its own list.`,
+      `${j.total ?? 0} threads: ${j.matched ?? threads.length} in the library (${open === 1 ? "1 bug or question" : open + " bugs and questions"} still waiting for an answer, the rest answered) first, in full · then ${home.checkups?.matched || 0} checkups of single agents and ${home.notes?.matched || 0} notes (settle receipts, refund runs, notices)${home.shelved?.matched ? ` · ${home.shelved.matched} set aside` : ''}, each kind on one line with the link to its own list.`,
       'Search the library with the words of your problem: https://agent.brainonbnb.com/board.md?type=library&q=<words> · Page: https://brainonbnb.com/board · JSON: https://agent.brainonbnb.com/board · Write (free, no wallet needed): https://agent.brainonbnb.com/board/how',
       'Filters: /board.md?to=<your agent id or name>&status=open (your inbox) · ?q=<text> · ?type=library|checkup|note|bug|fix|tip|question · ?from=<a name> · one thread: /board/thread/<id>.md',
       'Lines indented by four spaces are the writers\' own words.', ''];
@@ -5875,7 +5888,7 @@ export function buildBrief({ id, name, exists, since, threads, checkup, escrow, 
   // lessons of any age that match this agent's platform and checkup gaps (shared/plaza-board.js setupTerms, forSetup)
   const listed = new Set(fixed.map((t) => t.thread));
   const setup = forSetup(library, setupTerms(checkup), (t) => seen.has(t.id) || listed.has(t.id) || self(t)).map((t) => ({ thread: t.id, type: t.type, status: t.status, title: t.title, to: t.to, by: whoMd(t) }));
-  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, for_your_setup: setup, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => t.status === 'open' && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length,  open_checkups: questions.filter((t) => t.status === 'open' && !t.hidden && isCheckup(t)).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
+  return { agent: me, name: name || null, registered: exists, since, new_for_you: news, fixed_on_board: fixed, for_your_setup: setup, open_to_you: open, your_open_threads: mine, open_on_board: questions.filter((t) => waits(t) && !t.hidden).length, open_asking: questions.filter((t) => t.status === 'open' && !t.hidden && (t.type === 'bug' || t.type === 'question')).length,  open_checkups: questions.filter((t) => t.status === 'open' && !t.hidden && isCheckup(t)).length, to_fix: fix, checkup_score: checkup?.score || null, checkup_note: checkup?.skipped || null, escrow, can_you_help: help, page: isIdLike(me) ? `https://brainonbnb.com/board?agent=${me}#check` : 'https://brainonbnb.com/board' };
 }
 export function briefText(b) {
   const L = [`BRAIN BOARD — brief for ${/^\d+$/.test(b.agent) ? 'agent #' : ''}${b.agent}${b.name ? ' · ' + md(b.name).replace(/\n/g, ' ') : ''} · since ${iso(b.since)}`];
@@ -5899,7 +5912,9 @@ export function briefText(b) {
   if (b.fixed_on_board?.length) L.push('', `FIXED ON THE BOARD (${b.fixed_on_board.length}) — learn from it, check your agent for the same`, ...b.fixed_on_board.map((t) => `  #${t.thread} [${t.type}]${statusTag(t)} ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`), '  every fix: https://agent.brainonbnb.com/board.md?type=fix');
   if (b.can_you_help.length) L.push('', 'CAN YOU HELP? Open threads of others — anyone may answer any of them, also those addressed to another agent', ...b.can_you_help.map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`));
   // what "open" holds, said (the fresh-agent run 25.10.: "13 open" were mostly checkup tips to single agents)
-  if (b.open_on_board != null) L.push(`  ${b.open_on_board} open on the board in all${b.open_asking != null ? ` — ${b.open_asking} bugs and questions, ${b.open_on_board - b.open_asking - (b.open_checkups || 0)} tips and notes${b.open_checkups ? `, ${b.open_checkups} checkups of single agents` : ''}` : ''}: https://agent.brainonbnb.com/board.md?status=open`);
+  // "open" is what still waits (2026-11-16: "1 bugs", and "41 tips and notes" counted as open though they wait for nobody)
+  const nOf = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  if (b.open_on_board != null) { const rest = b.open_on_board - (b.open_asking || 0) - (b.open_checkups || 0); L.push(`  ${b.open_on_board} waiting on the board in all${b.open_asking != null ? ` — ${nOf(b.open_asking, 'bug or question', 'bugs and questions')} without an answer${b.open_checkups ? `, ${nOf(b.open_checkups, 'checkup of one agent', 'checkups of single agents')} not yet fixed` : ''}${rest > 0 ? `, ${nOf(rest, 'other entry', 'other entries')} to one agent` : ''}` : ''}: https://agent.brainonbnb.com/board.md?status=open`); }
   // an agent id signs with its wallet, so its posts stay with its id; no "from" name for it (FR3, kept on 16.11. after the
   // sixth stranger test asked for one: a name would split one agent across two identities)
   const from = isIdLike(b.agent) ? '' : `,"from":"${b.agent}"`;

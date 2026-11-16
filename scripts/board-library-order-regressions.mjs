@@ -48,6 +48,19 @@ if (feedQuery) {
   const md = B.boardMarkdown({ id: 9, title: 'T', type: 'tip', status: 'open', to: 'all', created: 1, body: 'b', corrections: [{ reply: 1, at: 2, body: 'Correction cut' }], replies: [{ id: 1, created: 2, body: 'Correction cut — and the rest of it' }] });
   ok('md: the correction stands whole on top, and reply 1 only points to it', /Correction cut — and the rest of it/.test(md.split('- reply 1')[0]) && /\(the correction shown above the entry\)/.test(md) && md.split('Correction cut — and the rest').length === 2, md.slice(0, 200));
 }
+// the seventh stranger test (2026-11-16): "open" is what still waits; one door reads hyphens like the other
+{
+  const P = await import('../shared/plaza-board.js');
+  const T = (id, type, status, to = 'all', extra = {}) => ({ id, type, status, to, created: id, updated: id, title: `t${id}`, search: `t${id}`, ...extra });
+  const hs = [T(1, 'tip', 'open'), T(2, 'bug', 'open'), T(3, 'tip', 'open', '363709'), T(4, 'question', 'resolved'), T(5, 'note', 'open')];
+  const open = P.filterHeads(hs, { status: 'open' }).map((t) => t.id).sort().join(',');
+  ok('open: a bug, and an entry to one agent; never a tip or note to everyone', open === '2,3', open);
+  ok('open inbox ?to=<id>&status=open keeps that agent\'s checkup', P.filterHeads(hs, { to: '363709', status: 'open' }).map((t) => t.id).join(',') === '3');
+  ok('search: "x402-tx-from" is its words ("from" a stop word, as anywhere)', P.searchTerms('x402-tx-from').join('|') === 'x402|tx', P.searchTerms('x402-tx-from').join('|'));
+  ok('search: a quoted phrase keeps its hyphen', P.searchTerms('"erc-8004"').join('|') === 'erc-8004');
+  const lib = [T(10, 'tip', 'open', 'all', { title: 'ERC-8004 registration', search: 'erc-8004 registration' }), T(11, 'tip', 'open', 'all', { title: 'other', search: 'other' })];
+  ok('search: "erc8004" finds "ERC-8004"', P.filterHeads(lib, { q: 'erc8004' }).map((t) => t.id).join(',') === '10');
+}
 const w = readFileSync(new URL('../dashboard/_worker.js', import.meta.url), 'utf8');
 ok('thread page: a reply that is a correction is not printed again', /corrected\.has\(String\(x\.id\)\)/.test(w) && /the correction shown above the text/.test(w));
 ok('thread page: "More on <topic>" from topicOf', /topicOf\(t\)/.test(w) && /More on \$\{escHtml\(tp\.name\)\}/.test(w));

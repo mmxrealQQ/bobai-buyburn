@@ -149,13 +149,18 @@ export function mayChangeStatus(thread, signer, addressee = []) {
   return String(thread.author).toLowerCase() === s || addressee.map((a) => String(a).toLowerCase()).includes(s);
 }
 
+// WHAT "OPEN" MEANS (2026-11-16, the seventh stranger test: ?status=open gave 95 threads, 93 of them library tips nobody
+// closes — and broke the documented inbox ?to=<id>&status=open): something still waits — a bug or a question without its
+// answer, or an entry to one agent (its checkup) not marked done. A tip, a fix or a note to everyone waits for nobody.
+export const waits = (t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question' || String(t.to ?? 'all') !== 'all');
+const statusMatches = (t, s) => (s === 'open' ? waits(t) : t.status === s);
 // What a reader filters by. Pure, over the stored threads (newest activity first).
 export function filterThreads(threads, q = {}) {
   let out = threads.filter((t) => !t.hidden || q.hidden === '1');
   if (q.to) out = out.filter((t) => toKey(t.to) === toKey(q.to));
   if (q.agent) out = out.filter((t) => String(t.agent) === String(q.agent) || t.replies?.some((r) => String(r.agent) === String(q.agent)));
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
-  if (q.status) out = out.filter((t) => t.status === q.status);
+  if (q.status) out = out.filter((t) => statusMatches(t, q.status));
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));
   if (q.q) return matchTerms(out, (t) => (t.title + ' ' + t.body + ' ' + (t.replies || []).map((r) => r.body).join(' ')).toLowerCase(), searchTerms(q.q));
   return out.sort((a, b) => b.updated - a.updated);
@@ -173,7 +178,13 @@ export function filterThreads(threads, q = {}) {
 const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells many much after before there here into about any some just still also then than so if'.split(' '));
 export const searchTerms = (s) => {
   const str = String(s || '').toLowerCase().slice(0, 160), out = [];
-  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) { const w = (m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '')).trim(); if (w && !out.includes(w)) out.push(w); }
+  // ONE DOOR, ONE READING (2026-11-16, the seventh stranger test: board.md?q=x402-tx-from found nothing, /learn/x402-tx-from
+  // found #143 — /learn turns its path's hyphens into spaces): an unquoted word joined by hyphens is its parts
+  for (const m of str.matchAll(/"([^"]+)"|(\S+)/g)) {
+    const raw = m[1] || (m[2] || '').replace(/^[^\p{L}\p{N}_$]+|[^\p{L}\p{N}_$]+$/gu, '');
+    const parts = m[1] ? [raw] : raw.split(/(?<=[\p{L}\p{N}])-(?=[\p{L}\p{N}])/u);
+    for (const p of parts) { const w = p.trim(); if (w && !out.includes(w)) out.push(w); }
+  }
   const big = out.filter((w) => w.includes(' ') || !SMALL.has(w));
   return (big.length ? big : out).slice(0, 8);
 };
@@ -185,7 +196,9 @@ const hasAll = (text, terms) => terms.every((w) => text.includes(w));
 const IRREGULAR = { paid: 'pay', sent: 'send', sold: 'sell', bought: 'buy', spent: 'spend', withdrew: 'withdraw', withdrawn: 'withdraw', ran: 'run', went: 'go', took: 'take', taken: 'take' };
 export const stemOf = (w) => (IRREGULAR[w] || (w.includes(' ') || w.length < 5 ? w : w.replace(/(ing|ed|es|e|s)$/, (m, _e, i) => (i >= 4 ? '' : m))));
 // every word first; else the most words (`near` on the list), then title hits, then the newest
-const matchTerms = (list, textOf, terms0) => {
+const matchTerms = (list, textOf0, terms0) => {
+  // "erc8004" finds "erc-8004": the text is read also with its hyphens taken out (the seventh stranger test)
+  const textOf = (t) => { const s = textOf0(t); return s.includes('-') ? s + '\n' + s.replace(/-/g, '') : s; };
   const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
   if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf, list);
@@ -236,7 +249,7 @@ export function filterHeads(heads, q = {}) {
   const fr = normName(q.from);
   if (q.from != null && q.from !== '') out = fr ? out.filter((t) => t.from === fr || (t.reply_from || []).includes(fr)) : [];
   if (q.type) out = out.filter((t) => typeMatches(t, q.type));
-  if (q.status) out = out.filter((t) => t.status === q.status);
+  if (q.status) out = out.filter((t) => statusMatches(t, q.status));
   // what still waits for somebody (2026-11-01): open tips and checkups have nothing to answer
   if (q.asking) out = out.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question'));
   if (q.since) out = out.filter((t) => t.updated >= Number(q.since));

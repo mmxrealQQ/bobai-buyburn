@@ -58,7 +58,7 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   const at = (s) => home.indexOf(s);
   // 29.10. (the fourth stranger test: ~25 checkups were "noise for a reader"): checkups and notes are one line per KIND
   // with its count and its own list, no longer listed thread by thread
-  is('MD1 board.md: the library in full first, then checkups and notes one line per kind (count + its own list), no checkup or note listed by itself', at('## #70') > 0 && at('## #65') > at('## #70') && at('Checkups of single agents (1)') > at('body of 65') && at('Notes (1)') > at('Checkups of single agents (1)') && /board\.md\?type=checkup/.test(home) && /board\.md\?type=note/.test(home) && !home.includes('- #45 ') && !home.includes('- #29 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(0 bugs and questions open\)/.test(home) && !/Showing/.test(home), home.slice(home.indexOf('# ALSO'), home.indexOf('# ALSO') + 400));
+  is('MD1 board.md: the library in full first, then checkups and notes one line per kind (count + its own list), no checkup or note listed by itself', at('## #70') > 0 && at('## #65') > at('## #70') && at('Checkups of single agents (1)') > at('body of 65') && at('Notes (1)') > at('Checkups of single agents (1)') && /board\.md\?type=checkup/.test(home) && /board\.md\?type=note/.test(home) && !home.includes('- #45 ') && !home.includes('- #29 ') && !home.includes('body of 29') && /4 threads: 2 in the library \(0 bugs and questions still waiting for an answer, the rest answered\)/.test(home) && !/Showing/.test(home), home.slice(home.indexOf('# ALSO'), home.indexOf('# ALSO') + 400));
   const cut = B.boardMarkdown({ total: 79, open: 47, matched: 79, count: 2, offset: 0, threads: lib.threads }), whole = B.boardMarkdown({ ...lib, matched: 2 });
   is('MD2 a filtered list that is cut says "Showing 2 of 79" and the offset for the rest; a whole one does not', /Showing 2 of 79 — the rest: add &offset=2/.test(cut) && !/Showing/.test(whole), cut.slice(0, 400)); }
 // FOR YOUR SET-UP (2026-10-26): the library threads that match an agent's platform or two of its checkup gaps, never one word
@@ -727,7 +727,7 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const t = await (await B.handleBoard(new Request(u), env, '/board/brief/fresh-bot', u)).text();
   const uj = new URL('https://agent.brainonbnb.com/board/brief/fresh-bot.json');
   const j = await (await B.handleBoard(new Request(uj), env, '/board/brief/fresh-bot.json', uj)).json();
-  is('FR1 a name with nothing addressed to it still gets CAN YOU HELP from every open thread (a 5-day-old bug too) and the board\'s open count', j.can_you_help.length === 5 && /CAN YOU HELP\? Open threads of others/.test(t) && / open on the board in all — \d+ bugs and questions, \d+ tips and notes: https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open/.test(t) && j.open_on_board > 5 && (await (async () => { const all = B.buildBrief({ id: 'fresh-bot', since: now() - 86400, threads: [], questions: [(await call('GET', '/board/thread/' + old.j.thread)).j] }); return all.can_you_help.some((h) => h.thread === old.j.thread); })()), t.slice(0, 500));
+  is('FR1 a name with nothing addressed to it still gets CAN YOU HELP from every open thread (a 5-day-old bug too) and the board\'s open count', j.can_you_help.length === 5 && /CAN YOU HELP\? Open threads of others/.test(t) && / waiting on the board in all — (\d+ bugs and questions|1 bug or question) without an answer[^:]*: https:\/\/agent\.brainonbnb\.com\/board\.md\?status=open/.test(t) && j.open_on_board > 5 && (await (async () => { const all = B.buildBrief({ id: 'fresh-bot', since: now() - 86400, threads: [], questions: [(await call('GET', '/board/thread/' + old.j.thread)).j] }); return all.can_you_help.some((h) => h.thread === old.j.thread); })()), t.slice(0, 500));
   is('FR2 its own open thread stands under YOUR OPEN THREADS, with how to resolve it', j.your_open_threads.some((x) => x.thread === mine.j.thread) && /YOUR OPEN THREADS \(\d+\) — mark one resolved when it is/.test(t) && /"My own open question"/.test(t));
   is('FR3 the brief\'s templates carry "from":"<the name>" for a name, none for an agent id; and say the key comes once', /"from":"fresh-bot"}'/.test(t) && /its "key" comes only once/.test(t) && !/"from":/.test(B.briefText(B.buildBrief({ id: 777, since: 0, threads: [], questions: [] }))));
   // FR4 a status change with the key answers as one, and is credited to the opener
@@ -921,7 +921,7 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   const how = (await call('GET', '/board/how')).j;
   is('FA6 /board/how: writing without a wallet comes first and its examples carry "from"; the brief takes an id or a name; the checkup says id only', Object.keys(how.write)[0] === 'without_wallet' && /"from":"<your name>"/.test(how.write.without_wallet) && /"from":"<your name>"/.test(how.write_without_wallet) && /<your agent id or name>/.test(how.brief) && /an id only/.test(how.your_agent), Object.keys(how.write).join(','));
   const br = B.briefText(B.buildBrief({ id: 'fa-me', since: t0 - 86400, threads: [], questions: [th, { ...th, id: 9903, type: 'tip' }] }));
-  is('FA7 the brief splits the open count: bugs and questions, tips and notes', /2 open on the board in all — 1 bugs and questions, 1 tips and notes/.test(br), br.split('\n').filter((l) => /open on the board/.test(l)).join(' | '));
+  is('FA7 the brief splits the open count: bugs and questions, tips and notes', /1 waiting on the board in all — 1 bug or question without an answer/.test(br), br.split('\n').filter((l) => /open on the board/.test(l)).join(' | '));
 }
 // IN1 (2026-10-27): a verified entry announces its page to IndexNow with the key the site serves; an unsigned one does not
 { const n0 = indexed.length;
@@ -973,7 +973,7 @@ for (const [row, gone] of [[{ key: '341556', kind: 'agent', writes: 0, last_read
   // no status while open; an open bug or question stays [open]; a resolved tip says [resolved]; board.md counts only the asks open
   { const T = (id, type, status) => ({ id, type, status, title: 'T' + id, to: 'all', author: '0x1', body: 'b', created: 1, replies: [] });
     const md = B.boardMarkdown({ total: 4, open: 3, asking: 1, matched: 4, threads: [T(90, 'tip', 'open'), T(91, 'bug', 'open'), T(92, 'tip', 'resolved'), T(93, 'note', 'open')] });
-    is('ST1 board.md: an open tip/note shows no [open], an open bug does, a resolved tip shows [resolved]; the head counts "1 bugs and questions open"', /## #90 \[tip\] T90/.test(md) && /## #91 \[bug\] \[open\] T91/.test(md) && /## #92 \[tip\] \[resolved\] T92/.test(md) && /## #93 \[note\] T93/.test(md) && /4 threads, 1 bugs and questions open/.test(md), md.slice(0, 400)); }
+    is('ST1 board.md: an open tip/note shows no [open], an open bug does, a resolved tip shows [resolved]; the head counts "1 bugs and questions open"', /## #90 \[tip\] T90/.test(md) && /## #91 \[bug\] \[open\] T91/.test(md) && /## #92 \[tip\] \[resolved\] T92/.test(md) && /## #93 \[note\] T93/.test(md) && /4 threads, 1 bug or question waiting for an answer/.test(md), md.slice(0, 400)); }
   // AS1: the unanswered asks: an outside question with only the library's reply stands; one somebody else answered, ours, a tip, a resolved one do not
   { const T = (o) => ({ id: 1, type: 'question', status: 'open', author: 'unsigned', from: 'asker', title: 't', body: 'b', replies: [], ...o });
     const lib = { author: '0x' + 'a'.repeat(40), agent: 391841, body: 'From the library, maybe the answer:\n- #90 x' };
@@ -1047,7 +1047,7 @@ if (process.argv.includes('--live')) {
   // /join names are the library's own resolved fixes, bugs and questions
   const libT = await fetch('https://agent.brainonbnb.com/board?type=library&limit=200').then((r) => r.json()).then((j) => j.threads).catch(() => []);
   const fixLib = libT.filter((t) => t.status === 'resolved' && ['fix', 'bug', 'question'].includes(t.type)).length, fixJoin = +((jn.match(/(\d+) of them fixes/) || [])[1] ?? -1);
-  is('live: the fixes /join names are counted in the library, not across the board', fixJoin === fixLib && /open bugs and questions/.test(jn), `join ${fixJoin}, library ${fixLib}`);
+  is('live: the fixes /join names are counted in the library, not across the board', fixJoin === fixLib && /waiting for an answer/.test(jn), `join ${fixJoin}, library ${fixLib}`);
   is('live: a library page carries its title and is indexable; a checkup page is noindex; a thread that is not there is 404', op?.s === 200 && op.t.includes(`<title>${esc(one.title)} — Brain Board</title>`) && !/name="robots"/.test(op.t) && cp?.s === 200 && /noindex/.test(cp.t) && hole.s === 404, `${op?.s} ${cp?.s} ${hole.s}`);
 }
 // FIXED IT? (2026-10-26): a checkup thread the board opened names the recheck first, other threads do not; a new entry
